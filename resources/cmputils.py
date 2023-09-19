@@ -1,42 +1,36 @@
 from cStringIO import StringIO
-
 from pyasn1 import debug
+from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed
-from pyasn1_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue, \
-    RelativeDistinguishedName
-from pyasn1_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
-from pyasn1_modules.rfc2511 import CertTemplate
 from pyasn1_alt_modules import rfc4210, pem
-from pyasn1.codec.der import decoder, encoder
+from pyasn1_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
+from pyasn1_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
+from pyasn1_modules.rfc2511 import CertTemplate
 
+# PKIMessage ::= SEQUENCE {
+#     body             PKIBody,
+#     protection   [0] PKIProtection OPTIONAL,
+# extraCerts   [1] SEQUENCE SIZE (1..MAX) OF CMPCertificate
+#                      OPTIONAL
+# }
+#
+# PKIHeader ::= SEQUENCE {
+#     pvno                INTEGER     { cmp1999(1), cmp2000(2) },
+#     sender              GeneralName,
+#     recipient           GeneralName,
+#     messageTime     [0] GeneralizedTime         OPTIONAL,
+#     protectionAlg   [1] AlgorithmIdentifier     OPTIONAL,
+#     senderKID       [2] KeyIdentifier           OPTIONAL,
+#     recipKID        [3] KeyIdentifier           OPTIONAL,
+#     transactionID   [4] OCTET STRING            OPTIONAL,
+#     senderNonce     [5] OCTET STRING            OPTIONAL,
+#     recipNonce      [6] OCTET STRING            OPTIONAL,
+#     freeText        [7] PKIFreeText             OPTIONAL,
+#     generalInfo     [8] SEQUENCE SIZE (1..MAX) OF
+#                         InfoTypeAndValue     OPTIONAL
+# }
 
-
-
-'''
-     PKIMessage ::= SEQUENCE {
-         body             PKIBody,
-         protection   [0] PKIProtection OPTIONAL,	
-     extraCerts   [1] SEQUENCE SIZE (1..MAX) OF CMPCertificate
-                          OPTIONAL
-     }
-
-     PKIHeader ::= SEQUENCE {
-         pvno                INTEGER     { cmp1999(1), cmp2000(2) },
-         sender              GeneralName,
-         recipient           GeneralName,
-         messageTime     [0] GeneralizedTime         OPTIONAL,
-         protectionAlg   [1] AlgorithmIdentifier     OPTIONAL,
-         senderKID       [2] KeyIdentifier           OPTIONAL,
-         recipKID        [3] KeyIdentifier           OPTIONAL,
-         transactionID   [4] OCTET STRING            OPTIONAL,
-         senderNonce     [5] OCTET STRING            OPTIONAL,
-         recipNonce      [6] OCTET STRING            OPTIONAL,
-         freeText        [7] PKIFreeText             OPTIONAL,
-         generalInfo     [8] SEQUENCE SIZE (1..MAX) OF
-                             InfoTypeAndValue     OPTIONAL
-     }
-'''
 
 # revocation reasons http://www.alvestrand.no/objectid/2.5.29.21.html#
 REASON_UNSPECIFIED = 0
@@ -58,11 +52,8 @@ PKISTATUS_REVOCATION_NOTIFICATION = 5
 PKISTATUS_KEY_UPDATE_WARNING = 6
 
 
-
 def build_cmp_revive_request(serial_number, sender='test-cmp-cli@example.com', recipient='test-cmp-srv@example.com'):
-    return build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
-                                    recipient='test-cmp-srv@example.com',
-                                    reason=REASON_REMOVE_FROM_CRL)
+    return build_cmp_revoke_request(serial_number, sender=sender, recipient=recipient, reason=REASON_REMOVE_FROM_CRL)
 
 
 def build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
@@ -73,10 +64,10 @@ def build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
     :param sender: optional str, sender to use in the request
     :param recipient: optional str, recipient of the request
     :param reason: optional int, one of the REASON_* constants
-    :returns: bytes, DER-encoded PKIMessage """
+    :returns: pyasn1 PKIMessage """
 
     # PKIHeader
-    pvno = univ.Integer(2) # cmp2000
+    pvno = univ.Integer(2)  # cmp2000
     sender = GeneralName().setComponentByName('rfc822Name', sender)
     recipient = GeneralName().setComponentByName('rfc822Name', recipient)
 
@@ -100,14 +91,13 @@ def build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
     # this is also how you specify whether you set it on HOLD or RESUME a held cert.
     crl_entry_details = Extensions()
     crl_reason = Extension()
-    crl_reason.setComponentByName('extnID', univ.ObjectIdentifier((2, 5, 29, 21))) #2.5.29.21 CRL reason
+    crl_reason.setComponentByName('extnID', univ.ObjectIdentifier((2, 5, 29, 21)))  # 2.5.29.21 CRL reason
     crl_reason.setComponentByName('extnValue', REASON_UNSPECIFIED)
     crl_entry_details.setComponentByPosition(0, crl_reason)
 
     rev_details.setComponentByName('crl_entry_details', crl_entry_details)
 
     rev_req_content.setComponentByPosition(0, rev_details)
-
 
     # this `magic` is required because `[11] RevReqContent` has the explicit 11 tag
     # thus we create an ad-hoc subtype, just like we did in BuildCmpFromPkcs10
@@ -119,11 +109,41 @@ def build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
     pki_message = rfc4210.PKIMessage()
     pki_message.setComponentByName('body', pki_body)
     pki_message.setComponentByName('header', pki_header)
+    return pki_message
 
-    # print(pki_message.prettyPrint())
-    cmp_request = encoder.encode(pki_message)
-    return cmp_request
 
+def build_cmp_p10cr_request_from_csr(csr, sender='test-cmp-cli@example.com', recipient='test-cmp-srv@example.com'):
+    """Creates a pyasn1 pkiMessage from a pyasn1 PKCS10 CSR
+
+    :returns: pyasn1 PKIMessage structure"""
+    # PKIHeader
+    pvno = univ.Integer(2)
+    sender = GeneralName().setComponentByName('rfc822Name', sender)
+    recipient = GeneralName().setComponentByName('rfc822Name', recipient)
+
+    pki_header = rfc4210.PKIHeader()
+    pki_header['pvno'] = pvno
+    pki_header['sender'] = sender
+    pki_header['recipient'] = recipient
+
+    # PKIBody
+    pki_body = rfc4210.PKIBody()
+
+    # explained http://sourceforge.net/mailarchive/message.php?msg_id=31787332
+    ctag4 = Tag(tagClassContext, tagFormatConstructed, 4)
+    pkcs10_tagged = csr.subtype(explicitTag=ctag4, cloneValueFlag=True)
+    pki_body['p10cr'] = pkcs10_tagged
+
+    # PKIMessage
+    pki_message = rfc4210.PKIMessage()
+    pki_message['body'] = pki_body
+    pki_message['header'] = pki_header
+    return pki_message
+
+
+def encode_to_der(asn1_structure):
+    """Generic tool for DER-encoding a pyasn1 data structure"""
+    return encoder.encode(asn1_structure)
 
 
 def csr_attach_signature(csr, signature):
@@ -185,11 +205,16 @@ def parse_pki_message(raw):
     # body = pkiMessage['body']
     return pki_message  # , header, body
 
-def get_cmp_status_from_pki_message(pki_message):
-    """Takes pyasn1 PKIMessage object and returns its status"""
-    response = pki_message['body']['rp']['response'][0]  # only get first response from sequence
+
+def get_cmp_status_from_pki_message(pki_message, response_index=0):
+    """Takes pyasn1 PKIMessage object and returns its status as a string
+
+    :param response_index: optional int, index of response to get from the sequence, 0 by default
+    """
+    response = pki_message['body']['rp']['response'][response_index]
     status = response['status']['status']
     return str(status)
+
 
 def get_cmp_response_type(pki_message):
     """Returns the body type of a pyasn1 object representing a PKIMessage as a string, e.g., rp, ip"""
@@ -204,7 +229,6 @@ def get_cert_from_pki_message(pki_message, cert_number=0):
     :param cert_number: optional int, index of certificate to extract, will only extract the first certificate
                         from the sequence by default
     """
-
     response = pki_message['body']['cp']['response'][cert_number]
     status = response['status']['status']
 
@@ -213,13 +237,15 @@ def get_cert_from_pki_message(pki_message, cert_number=0):
     serial_number = str(cert['tbsCertificate']['serialNumber'])
     return serial_number, cert
 
+
 def parse_csr(raw_csr, header_included=False):
     """Builds a pyasn1-structured CSR out of a raw, base-64 request. If header_included
     is true, it is assumed that the request is enclosed in markers, that will be removed
     -----BEGIN CERTIFICATE REQUEST-----', '-----END CERTIFICATE REQUEST-----"""
     if header_included:
-        raw_csr = pem.readPemFromFile(StringIO(raw_csr), '-----BEGIN CERTIFICATE REQUEST-----',
-                                     '-----END CERTIFICATE REQUEST-----')
+        raw_csr = pem.readPemFromFile(StringIO(raw_csr),
+                                      '-----BEGIN CERTIFICATE REQUEST-----',
+                                      '-----END CERTIFICATE REQUEST-----')
 
     csr, _ = decoder.decode(raw_csr, asn1Spec=CertificationRequest())
     return csr
