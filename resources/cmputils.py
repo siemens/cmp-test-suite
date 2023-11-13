@@ -1,12 +1,16 @@
-from cStringIO import StringIO
+import base64
+from io import BytesIO
 from pyasn1 import debug
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed
 from pyasn1_alt_modules import rfc4210, pem
-from pyasn1_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
-from pyasn1_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
-from pyasn1_modules.rfc2511 import CertTemplate
+from pyasn1_alt_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
+from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
+from pyasn1_alt_modules.rfc2511 import CertTemplate
+
+
+debug.setLogger(debug.Debug('all'))
 
 # PKIMessage ::= SEQUENCE {
 #     body             PKIBody,
@@ -116,6 +120,7 @@ def build_cmp_p10cr_request_from_csr(csr, sender='test-cmp-cli@example.com', rec
     """Creates a pyasn1 pkiMessage from a pyasn1 PKCS10 CSR
 
     :returns: pyasn1 PKIMessage structure"""
+    import sys, pdb; pdb.Pdb(stdout=sys.__stdout__).set_trace()
     # PKIHeader
     pvno = univ.Integer(2)
     sender = GeneralName().setComponentByName('rfc822Name', sender)
@@ -133,6 +138,7 @@ def build_cmp_p10cr_request_from_csr(csr, sender='test-cmp-cli@example.com', rec
     ctag4 = Tag(tagClassContext, tagFormatConstructed, 4)
     pkcs10_tagged = csr.subtype(explicitTag=ctag4, cloneValueFlag=True)
     pki_body['p10cr'] = pkcs10_tagged
+    # pki_body['p10cr'] = csr
 
     # PKIMessage
     pki_message = rfc4210.PKIMessage()
@@ -238,31 +244,64 @@ def get_cert_from_pki_message(pki_message, cert_number=0):
     return serial_number, cert
 
 
+def strip_header(raw):
+    """Get rid of -----BEGIN CERTIFICATE REQUEST-----', '-----END CERTIFICATE REQUEST----- markers
+    :param raw: bytes, input structure"""
+    result = raw.decode('ascii')
+    result = result.replace("-----BEGIN CERTIFICATE REQUEST-----", "").replace("-----END CERTIFICATE REQUEST-----", "").replace("\n", "")
+    return bytes(result, 'ascii')
+
+
 def parse_csr(raw_csr, header_included=False):
     """Builds a pyasn1-structured CSR out of a raw, base-64 request. If header_included
     is true, it is assumed that the request is enclosed in markers, that will be removed
     -----BEGIN CERTIFICATE REQUEST-----', '-----END CERTIFICATE REQUEST-----"""
+    # import sys, pdb; pdb.Pdb(stdout=sys.__stdout__).set_trace()
+
     if header_included:
-        raw_csr = pem.readPemFromFile(StringIO(raw_csr),
-                                      '-----BEGIN CERTIFICATE REQUEST-----',
-                                      '-----END CERTIFICATE REQUEST-----')
+        raw_csr = strip_header(raw_csr)
+
+    raw_csr = base64.b64decode(raw_csr)
+        # raw_csr = pem.readPemFromFile(BytesIO(raw_csr))
+
 
     csr, _ = decoder.decode(raw_csr, asn1Spec=CertificationRequest())
     return csr
 
 
 if __name__ == '__main__':
-    data = build_cmp_revoke_request(12345)
-    debug.setLogger(debug.Debug('all'))
+    raw = b"""-----BEGIN CERTIFICATE REQUEST-----
+MIICfTCCAWUCAQAwODELMAkGA1UEBhMCREUxDzANBgNVBAcMBk11bmljaDEYMBYG
+A1UEAwwPSGFucyBNdXN0ZXJtYW5uMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAn0Id1aUXllUOamUiaYFFvrsURBwaUzyTb8Z9UnFmlSYD9czTpQKt5bL9
+VbwlSEm30J6h4Y1LMIU/y2idWWBkK7yI749Ql8q4zh4NQ4NcBd3IRzkgZxiQDdiI
+iSvc3fkvWLDY3waOIk1hPW9Yb6SmH3S4F8DcLmXNccoa/fWjqHEKnEonQlMMfPWs
+tKmAAFljejBU7h6nJUcPRNjEnjNydmx9D25oM/iu1XAIWugnYoSqyFCfD3oN5Pui
+Mmr/F7WBj0e16ImINn54HzjtpHmtMR4r/5OYIHEwoaP7drQblSNKoc49kM1FlCa6
+DZDGYEx4zFxPPcaDTfWnzoOlBlYwsQIDAQABoAAwDQYJKoZIhvcNAQELBQADggEB
+AJs8DtRWYt9cJ1dU6YAyDEG2iCKlfVb6Dk6Hl3cic63iGyvOPcZSpAwxkkSqG+tU
+cTlX6Qu3ORAjCVGeUoXCxwsGysFXUqEHYoUo2GpZiZvdg8yzXd2LVBzSWh7kNu3z
+3TEcdFwamA/cWAXjJNg1AMLdo8bMa+jjduIHqSyvUzPKq5SiRmdAT+rMsZAOC65E
+PPecU9SVCMELD6rY46KnhDuL5ydD5GuN9K1KEP9CScELxu8T+vK+Wk5U9rUSz84K
+U9AdPI4bJKAneUvtA00I0FvofvqGronaCgl1n3z8OunimESh6+3yNkcCaVjmW+Lm
+a+6aleaT4eMGuJC7IVhpwrs=
+-----END CERTIFICATE REQUEST-----"""
 
-    structure, _ = decoder.decode(data, asn1Spec=rfc4210.PKIMessage())
-    print(structure)
 
-    data = build_cmp_revoke_request(12345)
-    open('cmp-revoke.bin', 'wb').write(data)
+    result = parse_csr(raw, header_included=True)
+    print(result)
 
-    data = build_cmp_revive_request(54321)
-    open('cmp-revive.bin', 'wb').write(data)
+    #data = build_cmp_revoke_request(12345)
+    #debug.setLogger(debug.Debug('all'))
 
-    data = build_cmp_revoke_request(11111, reason=REASON_CERTIFICATE_HOLD)
-    open('cmp-hold.bin', 'wb').write(data)
+    #structure, _ = decoder.decode(data, asn1Spec=rfc4210.PKIMessage())
+    #print(structure)
+
+    #data = build_cmp_revoke_request(12345)
+    #open('cmp-revoke.bin', 'wb').write(data)
+
+    #data = build_cmp_revive_request(54321)
+    #open('cmp-revive.bin', 'wb').write(data)
+
+    #data = build_cmp_revoke_request(11111, reason=REASON_CERTIFICATE_HOLD)
+    #open('cmp-hold.bin', 'wb').write(data)
