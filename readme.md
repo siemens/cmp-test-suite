@@ -8,6 +8,10 @@ A library of primitives for automating PKI- and CMP-related tests using RobotFra
 - `config` - a place for storing configuration options (e.g., IP addresses, port numbers, etc.)
 
 
+# Configuration
+Prepare your environment by installing the dependencies from `requirements.txt`. Using a Python virtualenv is a good
+practice. In this case you would run `pip install -r requirements.txt` inside the environment.
+
 # Usage
 1. Run `robot tests` to execute all the tests in the `tests/` directory.
 2. Explore `report.html` to see the results.
