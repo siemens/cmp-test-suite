@@ -16,3 +16,7 @@ A library of primitives for automating PKI- and CMP-related tests using RobotFra
 Other useful commands
 - `make test` - run all the tests
 - `make doc` - generate HTML documentation for test suites and available keywords, store in `doc/`.
+
+
+# Supporting materials
+- https://docs.robotframework.org/docs/getting_started/ide How to use this with an IDE.
