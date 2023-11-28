@@ -1,4 +1,4 @@
-cryptography==41.0.3
-pyasn1==0.5.0
+cryptography==41.0.7
+pyasn1==0.5.1
 pyasn1-alt-modules==0.4.2
 robotframework==6.1.1
