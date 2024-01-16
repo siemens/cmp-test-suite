@@ -400,16 +400,30 @@ def get_nested_value(asn1_obj, query):
     # first_rdn = get_nested_value(parsed_data, 'header.sender.directoryName.rdnSequence/0')
     # get_nested_value(result, 'header.sender.directoryName.rdnSequence/0/0.value')
     keys = query.split('.')
-    for key in keys:
-        if '/' in key:
-            parts = key.split('/')
-            for part in parts:
-                if part.isdigit():
-                    asn1_obj = asn1_obj[int(part)]
-                else:
-                    asn1_obj = asn1_obj[part]
-        else:
-            asn1_obj = asn1_obj[key]
+
+    # we use these to gradually build up the traversed path, to show an informative error message if an error occurs
+    traversed_so_far = ''
+    current_piece = ''
+    try:
+        for key in keys:
+            current_piece = key
+            if '/' in key:
+                parts = key.split('/')
+                for part in parts:
+                    current_piece = part
+                    if part.isdigit():
+                        asn1_obj = asn1_obj[int(part)]
+                    else:
+                        asn1_obj = asn1_obj[part]
+                    traversed_so_far += f'/{part}'
+            else:
+                asn1_obj = asn1_obj[key]
+            traversed_so_far += f'.{key}' if traversed_so_far else key
+    except KeyError as err:
+        report = (f'Traversal ERROR, got this far: {traversed_so_far}, issue at {current_piece}, the query was {query}')
+        report += f'\nAvailable keys at this step: {list(asn1_obj.keys())}'
+        print(report)
+        raise
     return asn1_obj
 
 
