@@ -1,4 +1,4 @@
-from cStringIO import StringIO
+from io import StringIO
 
 from pyasn1.type import univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed
@@ -353,15 +353,72 @@ def get_pyasn1_field_via_path(data, path):
     return data
 
 
+# This function provides a way to query an ASN1 object by passing a string that represents a path to the piece you are
+# interested in, think of it asn ASN1Path, by analogy with XPath for XML or JSONPath for JSON. It is meant to be
+# invoked from RobotFramework test cases, hence the notation is a compact, single string.
+#
+# To understand the notation, imagine you have this structure:
+# PKIMessage:
+#  header=PKIHeader:
+#   pvno=cmp2000
+#   sender=GeneralName:
+#    directoryName=Name:
+#     rdnSequence=RDNSequence:
+#      RelativeDistinguishedName:
+#       AttributeTypeAndValue:
+#        type=2.5.4.10
+#        value=0x13074e65746f506179
+#      RelativeDistinguishedName:
+#       AttributeTypeAndValue:
+#        type=2.5.4.3
+#        value=0x130755736572204341
+#
+# The query 'header.sender.directoryName.rdnSequence/0' will return the first (i.e. index 0) element inside rdnSequence
+#      RelativeDistinguishedName:
+#       AttributeTypeAndValue:
+#        type=2.5.4.10
+#        value=0x13074e65746f506179
+#
+# The query 'header.sender.directoryName.rdnSequence/0/0.value' will return the first element of rdnSequence, then dive
+# in and extract the first element of that (which will be of type AttributeTypeAndValue), then it will return the
+# attribute called `value`
+# value=0x13074e65746f506179
+#
+# A few points to make it easier to navigate through PyASN1's own stringified notation.
+# - if there's a `=` in the line (e.g., `header=PKIHeader`), then its children are accessed via the dot, e.g.:
+#   `header.pvno` or `header.sender`.
+# - if there's no equal sign, it is a sequence or a set, and elements are accessed by index (even if pyasn1 shows them
+#   as a string!). For instance, in the following piece you don't write the query as
+#   `RelativeDistinguishedName.AttributeTypeAndValue.type`, but as `/0/0.type`, which reads as "get inside the first
+#   element of the first element, then retrieve the attribute called 'type'.
+#     rdnSequence=RDNSequence:
+#      RelativeDistinguishedName:
+#       AttributeTypeAndValue:
+#        type=2.5.4.10
 
-
+def get_nested_value(asn1_obj, query):
+    # first_rdn = get_nested_value(parsed_data, 'header.sender.directoryName.rdnSequence/0')
+    # get_nested_value(result, 'header.sender.directoryName.rdnSequence/0/0.value')
+    keys = query.split('.')
+    for key in keys:
+        if '/' in key:
+            parts = key.split('/')
+            for part in parts:
+                if part.isdigit():
+                    asn1_obj = asn1_obj[int(part)]
+                else:
+                    asn1_obj = asn1_obj[part]
+        else:
+            asn1_obj = asn1_obj[key]
+    return asn1_obj
 
 
 if __name__ == '__main__':
     from base64 import b64decode
 
-    if False:
-        raw = '''MIIIEDBTAgECpCYwJDEQMA4GA1UEChMHTmV0b1BheTEQMA4GA1UEAxMHVXNlciBDQYEXdGVzdC1j
+    if True:
+        # parse a pkimessage
+        raw = b64decode('''MIIIEDBTAgECpCYwJDEQMA4GA1UEChMHTmV0b1BheTEQMA4GA1UEAxMHVXNlciBDQYEXdGVzdC1j
 bXAtY2xpQGRla2FydC5jb22hDTALBgkqhkiG9w0BAQW3DjAMMAoCAQIDBQAAAACAoIICBQOCAgEA
 GSDhkVWbYb3TjeupiQXk4Laa/AlD5rWNsIyzFeUxvlyefMjfLqzx5gM+ilEmLklEowhxTtnf7q69
 2NeunTUDHR73G1XJiEHaQn548qP7KeNMTMSfnlJ8xjOnyvWG/v91VPZYeARdyU8JzgQh3JP5WZHM
@@ -397,13 +454,26 @@ fSUO9jdQlT8zcyqsUHa4KL9RgvmpRfdUrec8JQ7LPzCwYrjjcpyIzgHIOj1ozUE2AOv9zh/YnjUt
 mg0vtiZsf24+Ixdm2btxAbaaijMit7i4Fcjd5RN1wtZZxBm9zqM88ESP0BfCX3qGwdHwvqG3yUK1
 HnAwi5rKuR3D4eqzuFKKgHG4r1RVwFCUSwvrgJCiVNsv2T0ypWdxSu9V+wFVqT0PHiZi4vJukGOZ
 Haq6P07jh/+9/+Qb0ekTqEmgbZc8aXUjmeIw7X83nOZDVwBPlh7GE5+5e54PbK076iOHQ2uG/AYt
-Aa/Ap/XrL6CDeGT5HFvxbg=='''.decode('base64')
-        import pdb
+Aa/Ap/XrL6CDeGT5HFvxbg==''')
+        # import pdb
 
-        pdb.set_trace()
+        # pdb.set_trace()
         result = ParsePkiMessage(raw)
-        print
         result.prettyPrint()
+
+        # access the 0th element of a complex structure
+        rdn_first = get_nested_value(result, 'header.sender.directoryName.rdnSequence/0')
+        print(rdn_first)
+
+        # access the key named `value` of the 0th element of `rdn`
+        piece = get_nested_value(rdn_first[0], 'value')
+        # piece = get_nested_value(rdn, '/0.value')
+        print(piece)
+
+        # access the key named `value` of the 0th element of `rdn`, but do so in a single query that starts from the
+        # parent object. Here the syntax
+        rdn_inner_value = get_nested_value(result, 'header.sender.directoryName.rdnSequence/0/0.value')
+        print(rdn_inner_value)
 
     if False:  # test response to a revocation request
         # suspend raw = 'MIIIJDBVAgECpCgwJjEQMA4GA1UEChMHTmV0b1BheTESMBAGA1UEAxMJZU1hcmsxIENBgRd0ZXN0LWNtcC1jbGlAZGVrYXJ0LmNvbaENMAsGCSqGSIb3DQEBBawJMAcwBTADAgEAoIICBQOCAgEAC+fG7MFaqeU4/L/gyaNQ41l8IC5aHsicE4HxNq5JHsMTCO/e2QjOviVRNwN1tdU3T+PTwgjUIDyihngfoKPhJRDaOy/L/Np+HKtRgftCGMA56fJi6AZhsauz7/IXa3OL0Xezhqz8UvV+WZylbAo9kL1aIt+xTOHh1uNb9fspgF4xQwpo5szIaMyc9/hTpXRSI/bEsWHUdNVZt68JwOin6d2tqISQGxb5Rv8OttJB+4bRq3YSwTnn/Kceznh2zD/6JYUo9HVwvW5phKj0jv7s1TNvH+WYtH3cDUwWkm1v1/vZOxWUGIWG7u07jk/ukDFll6xn8Tx78Xt50uFFEFKhBXFHWFdaSP9aFvei/btgQ7nOGvkdB+SAIl+JljmLFz+GaQFfNuT9jB4lEkVmfhCb8MFdJc4DIKLC4n/5j8h/Xv6U/+qggfX92BNJzODRY1BQEM4tNE4ADwXB6NHuUbOnmHkZ8QYJFZd3act4gbYPUii4jxYX9dx4Rzd2OSx2HVNz3Nh6TXiITqEFMBvq1SdnPZ47xL1taazrrGMdYxrZXl0T7T4MQ+Mxhbg+/YPsVssn7Km5b3mcangPjM9Ja17zH2uAJyTVx/m6i8+fpSENXX2tpnbmVhPExWl9MGBiEp9YlNKhsSALEdJ5UsgpQfEGYPikRxpQhQCs+wNT4SaS0NOhggW1MIIFsTCCBa0wggOVoAMCAQICCgi8Ac9BTqSxWW0wDQYJKoZIhvcNAQEFBQAwJjEQMA4GA1UEChMHTmV0b1BheTESMBAGA1UEAxMJZU1vbmV5IENBMB4XDTE0MDMxNjE5MzM0NFoXDTI0MDMxNjE5MzM0NFowJjEQMA4GA1UEChMHTmV0b1BheTESMBAGA1UEAxMJZU1hcmsxIENBMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAqGihs2m+D6DN8LjOvqX25mMcV6ongrBQ9SHDDZfmGre1oqP+bSo5NKzGKyDJqTjelt/YHyu3Ja+qT38IcCFN5NbC045yxTz0bEtqpXFdYymBrRBBrXk4YPjul5BDL1BngqXy+Wv7nGqjAb5utdZgxDIwT0C0RQl5bDM4/qeMFeahMA265lYxErbDd8Bez+OA5CEHrl9V2wcHf3bh3d8+QiD038OYNkzuY9EDL1qGxpVBoKhEf3t6JFhyIaqJjoMBO7Z/GT5YU/1YbjvQzuLYm2uqNz62v0NvY4P+ujJWHuyo635x0afnHbciLsInITRJ6nK83GFS4ihpSfZsW9CaFUUhutcg8uRJD5W46rZLsF79EQjL1rf1o4cKmMGRh8gWBvq7/eCpmumZ2mLqwy2wFRTPqRwrcjGKiPcghYiBjxAlAC3UNmziRa1z90I8YASkJDxJO+NXdtctARpxMJfvU1xruXf90aZX3YATWwT3CofEwxRc8Hi94yRmU08NYw4AyLfELVipOglqwrE1n4cy1Yj0j3PmXAG0M8/FjjMVDfMVT6ncgRkgVItYGu5gqIa2nAwE93vAgHsRu4TSE3bfK6/6qVsRPBd9/RuusxkW1DjA47XiUH1M6yral4Hx+uUNu/RonBvZCI+bMW1XCihvrdSy5PXAXm8vqvmmz1RnWIcCAwEAAaOB3DCB2TA4BgNVHRIEMTAvhi1odHRwOi8vaW5zaWRlLmRla2FydC5jb20vbmV0b3BheS9lbW9uZXljYS5jZXIwPgYDVR0fBDcwNTAzoDGgL4YtaHR0cDovL2luc2lkZS5kZWthcnQuY29tL25ldG9wYXkvZW1vbmV5Y2EuY2VyMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgGGMB0GA1UdDgQWBBTc/+iImG8HF9JdNP2IIBXYTgFqsjAdBgorBgEEAcZ1AQEBAQH/BAwwCgICA9IeBEV1cm8wDQYJKoZIhvcNAQEFBQADggIBAEpUe7c2uRVjcqcrD7+eakVo7bP0ax8MXuFG/+BHVm+A29B+duHun76Je1H8HJsYpOiMUy4oRteUeDdSCaekvYT+WQm7KQJ0+qwDY4ptW90FD0Q9BZ2LU/rFVzDGUtixtBaNeMwtVaSaRmn2Gc1kdriKEQGTyGwkkHRzE6LMQFUSrbJx42crf/bX/e+QJ7r8Kfk0G/ALHKradJ144a9IihaYVVeQxLrBDNT7vNAWx55waDgc8lVoeP0Wc0iA+q1vLA2yNnHpLJtlHtcAb8cZ0G1/ex/Id8ih1vOqQxMqxPn7VDNODjbRZWoAGJ+vGXx5OlHk6sA+ia8rjKjhoR4lnkA9T32KlXcZD5Bx/Y4RPF8nMPRo+42/QFEj7kbNTkFHADPqmrOSd3es+v28kbM/DjVEcj2HAWE+sVa6pUTCWROZx+4N96VxGdL93JRUMZ3qwNnXZZ4GakR/1nSqQEVZy4qjiylkN+WpY3c9nBIXocKAE9o32vBq3PN1iyjCRsG1f3VS95L2LJOH7J9P8rDuTp3EWEI7HFF8QGSM4uXULf9KQhfxMHiriQL+xLCRo27YiKzStJpF2lTSnhq1Qx83ykcs+H5l+xfIzQig1vwztslFzs4U4FlfTsXLBIANvenb1lwhZePG2RCoDWTiVSOXErdgM8qet6jJCfiXswlNhQUw'.decode('base64')
