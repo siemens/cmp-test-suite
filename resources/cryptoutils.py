@@ -75,13 +75,21 @@ def generate_csr(common_name, subjectAltName=None):
 
 def sign_csr(csr, key, hash_alg="sha256"):
     """Sign a CSR with a given key, using a specified hashing algorithm
-    
+
     :param csr: x509.CertificateSigningRequestBuilder, the CSR to be signed
     :param key: cryptography.hazmat.primitives.asymmetric, private key used for the signature
     :param hash_alg: optional str, a hashing algorithm name
     :returns: bytes, PEM-encoded CSR
     """
-    # so far we hardcode it to sha256
-    hash_alg_instance = hashes.SHA256()
+    match hash_alg:
+        case "sha256":
+            hash_alg_instance = hashes.SHA256()
+        case "sha384":
+            hash_alg_instance = hashes.SHA384()
+        case "sha512":
+            hash_alg_instance = hashes.SHA512()
+        case _:
+            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
+
     csr_out = csr.sign(key, hash_alg_instance)
     return csr_out.public_bytes(serialization.Encoding.PEM)
