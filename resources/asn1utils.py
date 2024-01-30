@@ -396,9 +396,14 @@ def get_pyasn1_field_via_path(data, path):
 #       AttributeTypeAndValue:
 #        type=2.5.4.10
 
-def get_nested_value(asn1_obj, query):
-    # first_rdn = get_nested_value(parsed_data, 'header.sender.directoryName.rdnSequence/0')
-    # get_nested_value(result, 'header.sender.directoryName.rdnSequence/0/0.value')
+def get_asn1_value(asn1_obj, query):
+    """Extract a value from a complex PyASN1 structure by specifying its path in ASN1Path notation.
+
+    :param asn1_obj: pyasn1 object, the structure you want to query
+    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
+                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
+    :returns: pyasn1 object, the value you were looking for; or will raise a ValueError with details
+    """
     keys = query.split('.')
 
     # we use these to gradually build up the traversed path, to show an informative error message if an error occurs
@@ -420,11 +425,41 @@ def get_nested_value(asn1_obj, query):
                 asn1_obj = asn1_obj[key]
             traversed_so_far += f'.{key}' if traversed_so_far else key
     except KeyError as err:
-        report = (f'Traversal ERROR, got this far: {traversed_so_far}, issue at {current_piece}, the query was {query}')
-        report += f'\nAvailable keys at this step: {list(asn1_obj.keys())}'
-        print(report)
-        raise
-    return asn1_obj
+        available_keys = list(asn1_obj.keys())
+        report = f"> Traversal ERROR, got this far: `{traversed_so_far}`, issue at `{current_piece}`, the query was `{query}`"
+        report += f'\n> Available keys at this step: {available_keys}'
+        if len(available_keys) == 1:
+            report += f', try `{traversed_so_far}.{available_keys[0]}`'
+        report += f'\n> Underlying error: {err}'
+        raise ValueError(report)
+    else:
+        return asn1_obj
+
+
+def get_asn1_value_as_string(asn1_obj, query):
+    """Wrap get_nested_value to return a plain string
+
+    :param asn1_obj: pyasn1 object, the structure you want to query
+    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
+                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
+    :returns: str, the value you were looking for as a string; or will raise a ValueError with details.
+    """
+    result = get_asn1_value(asn1_obj, query)
+    decoded, _rest = decoder.decode(result)
+    return decoded.prettyPrint()
+
+
+def get_asn1_value_as_number(asn1_obj, query):
+    """Wrap get_nested_value to return an integer
+
+    :param asn1_obj: pyasn1 object, the structure you want to query
+    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
+                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
+    :returns: int, the value you were looking for as an integer; or will raise a ValueError with details.
+    """
+    result = get_asn1_value(asn1_obj, query)
+    decoded, _rest = decoder.decode(result)
+    return int(decoded)
 
 
 if __name__ == '__main__':
