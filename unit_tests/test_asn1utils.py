@@ -1,12 +1,13 @@
 import unittest
-from base64 import b64decode
+
 from resources import asn1utils
 from resources.cmputils import parse_pki_message
+from resources.utils import load_and_decode_pem_file
+
 
 class TestASN1Utils(unittest.TestCase):
     def setUp(self):
-        raw = open('data/cmp-sample-reject.pem', 'r').read()
-        raw = b64decode(raw)
+        raw = load_and_decode_pem_file('data/cmp-sample-reject.pem')
         self.pki_message = parse_pki_message(raw)
 
     def test_get_asn1_value_as_string_bad_query(self):
