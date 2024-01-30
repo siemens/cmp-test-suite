@@ -462,6 +462,19 @@ def get_asn1_value_as_number(asn1_obj, query):
     return int(decoded)
 
 
+def get_asn1_value_as_bytes(asn1_obj, query):
+    """Wrap get_nested_value to return an integer
+
+    :param asn1_obj: pyasn1 object, the structure you want to query
+    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
+                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
+    :returns: bytes, the value you were looking for as bytes; or will raise a ValueError with details.
+    """
+    result = get_asn1_value(asn1_obj, query)
+    # decoded, _rest = decoder.decode(result)
+    return result.asOctets()
+
+
 if __name__ == '__main__':
     from base64 import b64decode
 
