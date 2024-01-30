@@ -6,6 +6,7 @@ A library of primitives for automating PKI- and CMP-related tests using RobotFra
 - `resources` - reusable keywords written in RF or Python
 - `data` - pre-generated test data (e.g., keys, certificates), if required
 - `config` - a place for storing configuration options (e.g., IP addresses, port numbers, etc.)
+- `unit_tests` - tests for the library itself, specifically its Python primitives
 
 
 # Configuration
@@ -20,6 +21,7 @@ practice. In this case you would run `pip install -r requirements.txt` inside th
 Other useful commands
 - `make test` - run all the tests
 - `make doc` - generate HTML documentation for test suites and available keywords, store in `doc/`.
+- `make unittest` - run unit tests that verify the functionality of the library itself.
 
 
 # Design considerations
