@@ -340,18 +340,6 @@ def get_field_value_from_pkimessage_as_bytes_via_path(data, path):
     return data.asOctets()
 
 
-def get_pyasn1_field_via_path(data, path):
-    """Extract as PyASN1 object from a complex PyASN1 structure by specifying its path
-
-    :param data: pyasn1 object
-    :param path: str, path to the field you want to extract, given as a dot-notation, e.g.,
-                       "header.senderNonce", "protection", "header.sender.directoryName", etc.
-    :return: pyasn1 object, the value you were looking for"""
-    keys = path.strip().split('.')
-    for key in keys:
-        data = data[key]
-    return data
-
 
 # This function provides a way to query an ASN1 object by passing a string that represents a path to the piece you are
 # interested in, think of it asn ASN1Path, by analogy with XPath for XML or JSONPath for JSON. It is meant to be
