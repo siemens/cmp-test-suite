@@ -17,4 +17,5 @@ docs:
 	python -m robot.libdoc resources/keywords.resource doc/keywords.html
 	python -m robot.libdoc resources/cryptoutils.py doc/cryptoutils.html
 	python -m robot.libdoc resources/cmputils.py doc/cmputils.html
+	python -m robot.libdoc resources/asn1utils.py doc/asn1utils.html
 	python -m robot.testdoc tests/ doc/tests-suites.html

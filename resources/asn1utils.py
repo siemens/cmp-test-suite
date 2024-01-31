@@ -1,4 +1,4 @@
-"""This file contains generic primitives for querying PyASN1 objects using ASN1Path,
+"""This library contains generic primitives for querying PyASN1 objects using ASN1Path,
 a notation similar to XPath for XML or JSONPath for JSON.
 
 The primitives are meant to be invoked from RobotFramework test cases, hence the notation
@@ -6,31 +6,34 @@ is a compact, single string.
 
 To understand the notation, imagine you have this structure pretty-printed by PyASN1:
 
-PKIMessage:
- header=PKIHeader:
-  pvno=cmp2000
-  sender=GeneralName:
-   directoryName=Name:
-    rdnSequence=RDNSequence:
-     RelativeDistinguishedName:
-      AttributeTypeAndValue:
-       type=2.5.4.10
-       value=0x13074e65746f506179
-     RelativeDistinguishedName:
-      AttributeTypeAndValue:
-       type=2.5.4.3
-       value=0x130755736572204341
 
-The query 'header.sender.directoryName.rdnSequence/0' will return the first (i.e. index 0) element inside rdnSequence
-     RelativeDistinguishedName:
-      AttributeTypeAndValue:
-       type=2.5.4.10
-       value=0x13074e65746f506179
+|    PKIMessage:
+|     header=PKIHeader:
+|      pvno=cmp2000
+|      sender=GeneralName:
+|       directoryName=Name:
+|        rdnSequence=RDNSequence:
+|         RelativeDistinguishedName:
+|          AttributeTypeAndValue:
+|           type=2.5.4.10
+|           value=0x13074e65746f506179
+|         RelativeDistinguishedName:
+|          AttributeTypeAndValue:
+|           type=2.5.4.3
+|           value=0x130755736572204341
 
-The query 'header.sender.directoryName.rdnSequence/0/0.value' will return the first element of rdnSequence, then dive
-in and extract the first element of that (which will be of type AttributeTypeAndValue), then it will return the
-attribute called `value`
-value=0x13074e65746f506179
+The query `header.sender.directoryName.rdnSequence/0` will return the first (i.e. index 0) element inside `rdnSequence`:
+
+|         RelativeDistinguishedName:
+|          AttributeTypeAndValue:
+|           type=2.5.4.10
+|           value=0x13074e65746f506179
+
+The query `header.sender.directoryName.rdnSequence/0/0.value` will return the first element of `rdnSequence`, then dive
+in and extract the first element of that (which will be of type `AttributeTypeAndValue`), then it will return the
+attribute called `value`:
+
+| value=0x13074e65746f506179
 
 A few points to make it easier to navigate through PyASN1's own stringified notation.
 - if there's a `=` in the line (e.g., `header=PKIHeader`), then its children are accessed via the dot, e.g.:
@@ -38,24 +41,35 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 - if there's no equal sign, it is a sequence or a set, and elements are accessed by index (even if pyasn1 shows them
   as a string!). For instance, in the following piece you don't write the query as
   `RelativeDistinguishedName.AttributeTypeAndValue.type`, but as `/0/0.type`, which reads as "get inside the first
-  element of the first element, then retrieve the attribute called 'type'.
-    rdnSequence=RDNSequence:
-     RelativeDistinguishedName:
-      AttributeTypeAndValue:
-       type=2.5.4.10
+  element of the first element, then retrieve the attribute called `type`.
 
+|    rdnSequence=RDNSequence:
+|     RelativeDistinguishedName:
+|      AttributeTypeAndValue:
+|       type=2.5.4.10
 """
 
 from pyasn1.codec.der import decoder
 
 
 def asn1_must_contain_fields(data, fields):
-    """Ensure that all fields listed in `fields` are present in the header of `data`
+    """
+    Verifies that the given ASN.1 structure contains the specified fields.
 
-    :param data: pyasn1 object
-    :param fields: str, comma-separated list of field names that must be present. NOTE that we're not passing it as a
-                   list of str, this is syntactic sugar for invocation from within RobotFramework tests.
-    :returns: None, raise ValueError of the required fields are not present"""
+    `data` is the pyasn1 structure to check.
+    `fields` is a string that represents a comma-separated list field names to check for in the ASN.1 structure. Spaces
+    in this string will be ignored.
+
+    Example:
+    | Asn1 Must Contain Fields | ${asn1} | header,body,soul |
+    | Asn1 Must Contain Fields | ${asn1} | header, body ,   soul |
+    """
+    # """Ensure that all fields listed in `fields` are present in the header of `data`
+    #
+    # :param data: pyasn1 object
+    # :param fields: str, comma-separated list of field names that must be present. NOTE that we're not passing it as a
+    #                list of str, this is syntactic sugar for invocation from within RobotFramework tests.
+    # :returns: None, raise ValueError of the required fields are not present"""
     present_fields = list(data)
     absent_fields = []
     fields = [item.strip() for item in fields.split(',')]
