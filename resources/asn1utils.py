@@ -49,7 +49,7 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 from pyasn1.codec.der import decoder
 
 
-def pkimessage_must_contain_fields(data, fields):
+def asn1_must_contain_fields(data, fields):
     """Ensure that all fields listed in `fields` are present in the header of `data`
 
     :param data: pyasn1 object
@@ -63,28 +63,6 @@ def pkimessage_must_contain_fields(data, fields):
 
     if len(absent_fields) > 0:
         raise ValueError(f"The following required fields were absent: {absent_fields}")
-
-
-def get_field_value_from_pkimessage_as_bytes(data, field_name):
-    """Extract the value of a field from a PKIMessage structure
-
-    :param data: pyasn1 object representing a PKIMessage
-    :param field_name: str, name of the field you want to extract, e.g., "protection"
-    :return: bytes, raw value of that field"""
-    return data[field_name].asOctets()
-
-
-def get_field_value_from_pkimessage_as_bytes_via_path(data, path):
-    """Extract the value of a field from a PKIMessage structure
-
-    :param data: pyasn1 object representing a PKIMessage
-    :param path: str, name of the field you want to extract, given as a dot-notation, e.g.,
-                       "header.senderNonce" or "protection"
-    :return: bytes, raw value of that field"""
-    keys = path.strip().split('.')
-    for key in keys:
-        data = data[key]
-    return data.asOctets()
 
 
 def get_asn1_value(asn1_obj, query):
