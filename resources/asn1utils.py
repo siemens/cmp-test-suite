@@ -53,10 +53,12 @@ def asn1_must_contain_fields(data, fields):
     """Ensure that all fields listed in `fields` are present in the header of `data`
 
     :param data: pyasn1 object
-    :param fields: list of str, names of fields that must be present in it
+    :param fields: str, comma-separated list of field names that must be present. NOTE that we're not passing it as a
+                   list of str, this is syntactic sugar for invocation from within RobotFramework tests.
     :returns: None, raise ValueError of the required fields are not present"""
     present_fields = list(data)
     absent_fields = []
+    fields = [item.strip() for item in fields.split(',')]
     for entry in fields:
         if entry not in present_fields:
             absent_fields.append(entry)

@@ -26,7 +26,8 @@ class TestASN1Utils(unittest.TestCase):
         WHEN get_asn1_value_as_string is called
         THEN a string is expected, and its value must match the expected value
         """
-        result = asn1utils.get_asn1_value_as_string(self.asn1_object, 'header.sender.directoryName.rdnSequence/0/0.value')
+        result = asn1utils.get_asn1_value_as_string(self.asn1_object,
+                                                    'header.sender.directoryName.rdnSequence/0/0.value')
         self.assertIsInstance(result, str)
         self.assertEqual(result, 'NetoPay')
 
@@ -47,14 +48,14 @@ class TestASN1Utils(unittest.TestCase):
     #     result = asn1utils.get_asn1_value_as_number(self.asn1_object, 'body.error.pKIStatusInfo.failInfo')
     #     self.assertIsInstance(result, int)
     #     self.assertEquals(result, 128)
-        
+
     def test_asn1_must_contain_fields_positive(self):
         """
-        GIVEN a pyasn1 structure and a list of fields,
+        GIVEN a pyasn1 structure and a comma-separated list of fields,
         WHEN all fields are present in the structure,
         THEN no exception must be raised.
         """
-        expected_fields = ['header', 'body', 'protection', 'extraCerts']
+        expected_fields = 'header,body,protection,extraCerts'
         try:
             asn1utils.asn1_must_contain_fields(self.asn1_object, expected_fields)
         except ValueError:
@@ -62,11 +63,11 @@ class TestASN1Utils(unittest.TestCase):
 
     def test_asn1_must_contain_fields_negative(self):
         """
-        GIVEN a pyasn1 structure and a list of fields,
+        GIVEN a pyasn1 structure and a comma-separated list of fields,
         WHEN one or more fields are absent from the structure,
         THEN a ValueError exception must be raised.
         """
-        expected_fields = ['thisfieldisabsent']
+        expected_fields = 'thisfieldisabsent,soisthisone'
         with self.assertRaises(ValueError):
             asn1utils.asn1_must_contain_fields(self.asn1_object, expected_fields)
 
