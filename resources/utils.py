@@ -1,14 +1,28 @@
-from base64 import b64decode
+from base64 import b64decode, b64encode
+import re
+import logging
 
 
-def modify_bytes(data, offset=0, patch=b'0'):
-    """Manipulate a raw payload to change some bytes in it
+def log_base64(data):
+    """Log some data as a base64 encoded string, this is useful for binary payloads"""
+    if type(data) is bytes:
+        logging.info(b64encode(data))
+    elif type(data) is str:
+        logging.info(b64encode(data.encode('ascii')))
+
+
+def manipulate_first_byte(data):
+    """Manipulate a buffer to change its first byte to 0x00 (or to 0x01 if it was 0x00).
+
+    This is useful if you want to deliberately break a cryptographic signature.
     
-    :param data: bytes, original buffer to modify
-    :param offset: int, location where to modify bytes
-    :param patch: optional bytes, what data to include at that offset; by default will set a byte to 0
+    :param data: bytes, buffer to modify
+    :returns: bytes, modified buffer
     """
-    return data[:offset] + patch + data[offset+len(patch):]
+    if data[0] == 0:
+        return b'\x01' + data[1:]
+    else:
+        return b'\x00' + data[1:]
 
 
 def buffer_length_must_be_at_least(data, length):
@@ -53,6 +67,19 @@ def load_and_decode_pem_file(path):
     # note that b64decode doesn't care about \n in the string to be decoded, so we keep them to potentially improve
     # readability when debugging.
     return b64decode(result)
+
+
+def strip_armour(raw):
+    """Remove PEM armour, like -----BEGIN CERTIFICATE REQUEST----- and -----END CERTIFICATE REQUEST-----
+
+    :param raw: bytes, input structure
+    :returns: bytes unarmoured data
+    """
+    result = raw.decode('ascii')
+    result = re.sub("-----BEGIN .*?-----", '', result)
+    result = re.sub("-----END .*?-----", '', result)
+    result = result.replace("\n", "")
+    return bytes(result, 'ascii')
 
 
 if __name__ == "__main__":
