@@ -2,6 +2,9 @@ from base64 import b64decode, b64encode
 import re
 import logging
 
+def log_asn1(pyasn1_obj):
+    """Log a pyasn1 object as a string for debugging purposes."""
+    logging.info(pyasn1_obj.prettyPrint())
 
 def log_base64(data):
     """Log some data as a base64 encoded string, this is useful for binary payloads"""
