@@ -4,7 +4,7 @@ from io import BytesIO
 from pyasn1 import debug
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
-from pyasn1.type import univ, useful
+from pyasn1.type import univ, useful, constraint
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
 from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, pem
 from pyasn1_alt_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
@@ -119,72 +119,112 @@ def build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
     return pki_message
 
 
-def build_p10cr_from_csr(csr, sender='test-cmp-cli@example.com', recipient='test-cmp-srv@example.com'):
+def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
+                         omit_fields=None):
     """Creates a pyasn1 pkiMessage from a pyasn1 PKCS10 CSR,
 
     :param csr: pyasn1 rfc6402.CertificationRequest
+    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMEssage
 
     :returns: pyasn1 PKIMessage structure"""
-    # import sys, pdb; pdb.Pdb(stdout=sys.__stdout__).set_trace()
-    # PKIHeader
-    pvno = univ.Integer(2)
-    sender = rfc5280.GeneralName().setComponentByName('rfc822Name', sender)
-    recipient = rfc5280.GeneralName().setComponentByName('rfc822Name', recipient)
+    # since pyasn1 does not give us a way to remove an attribute from a structure after it was added to it,
+    # we proactively check whether a field should be omitted (e.g. when crafting bad inputs) and skip adding
+    # it in the first place
+    if omit_fields is None:
+        omit_fields = set()
+    else:
+        omit_fields = set(omit_fields.strip().split(','))
 
     pki_header = rfc9480.PKIHeader()
-    pki_header['pvno'] = pvno
-    pki_header['sender'] = sender
-    pki_header['recipient'] = recipient
 
-    transaction_id = univ.OctetString('0123456789abcdef').subtype(
-        explicitTag=Tag(tagClassContext, tagFormatSimple, 4)
-    )
-    pki_header['transactionID'] = transaction_id
+    if 'pvno' not in omit_fields:
+        pvno = univ.Integer(2)
+        pki_header['pvno'] = pvno
 
-    sender_nonce = univ.OctetString('1111111122222222').subtype(
-        explicitTag=Tag(tagClassContext, tagFormatSimple, 5)
-    )
-    pki_header['senderNonce'] = sender_nonce
+    if 'sender' not in omit_fields:
+        sender = rfc5280.GeneralName().setComponentByName('rfc822Name', sender)
+        pki_header['sender'] = sender
 
 
-    # works well, but I'm not sure we need it for now
-    recipient_nonce = univ.OctetString('0000000000111111').subtype(
-        explicitTag=Tag(tagClassContext, tagFormatSimple, 6)
-    )
-    pki_header['recipNonce'] = recipient_nonce
+    if 'recipient' not in omit_fields:
+        recipient = rfc5280.GeneralName().setComponentByName('rfc822Name', recipient)
+        pki_header['recipient'] = recipient
+
+    if 'transactionID' not in omit_fields:
+        transaction_id = univ.OctetString('0123456789abcdef').subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 4)
+        )
+        pki_header['transactionID'] = transaction_id
+
+    if 'senderNonce' not in omit_fields:
+        sender_nonce = univ.OctetString('1111111122222222').subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 5)
+        )
+        pki_header['senderNonce'] = sender_nonce
+
+    if 'recipNonce' not in omit_fields:
+        # works well, but I'm not sure we need it for now
+        recipient_nonce = univ.OctetString('0000000000111111').subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 6)
+        )
+        pki_header['recipNonce'] = recipient_nonce
 
 
     # SHOULD NOT be required
     # TODO later - set to some bad time and see what happens
-    now = datetime.now()
-    message_time = useful.GeneralizedTime().fromDateTime(now)
-    message_time_subtyped = message_time.subtype(
-        explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
-    )
-    pki_header['messageTime'] = message_time_subtyped
+    if 'messageTime' not in omit_fields:
+        now = datetime.now()
+        message_time = useful.GeneralizedTime().fromDateTime(now)
+        message_time_subtyped = message_time.subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
+        )
+        pki_header['messageTime'] = message_time_subtyped
 
-    pki_header['senderKID'] = rfc9480.KeyIdentifier(b'CN=CloudCA-Integration-Test-User').subtype(
-        explicitTag=Tag(tagClassContext, tagFormatSimple, 2)
-    )
+    if 'senderKID' not in omit_fields:
+        pki_header['senderKID'] = rfc9480.KeyIdentifier(b'CN=CloudCA-Integration-Test-User').subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 2)
+        )
 
-    pki_header['recipKID'] = rfc9480.KeyIdentifier(b'CN=CloudPKI-Integration-Testl').subtype(
-        explicitTag=Tag(tagClassContext, tagFormatSimple, 3)
-    )
+    if 'recipKID' not in omit_fields:
+        pki_header['recipKID'] = rfc9480.KeyIdentifier(b'CN=CloudPKI-Integration-Testl').subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 3)
+        )
 
+    if protection not in omit_fields and protection == 'pbmac1':
+        prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
+        )
 
-    # TODO set protectionAlg data in the structure
-    prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(
-        explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
-    )
+        # algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 9))  # HMAC_SHA256
+        # algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 11))  # HMAC_SHA512
+        prot_alg_id['algorithm'] = univ.ObjectIdentifier((1, 2, 840, 113533, 7, 66, 13))  # PBMAC1
+        # prot_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
 
-    # algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 9))  # HMAC_SHA256
-    algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 11))  # HMAC_SHA512
-    # parameters = encoder.encode(univ.Null())  # no params are used
-    parameters = univ.Null()  # no params are used
-    prot_alg_id['algorithm'] = algorithm
-    prot_alg_id['parameters'] = parameters
+        parameters = rfc9480.PBMParameter()
+        parameters['salt'] = univ.OctetString(b'1234567890abcdef').subtype(
+            # TODO ask Russ why this is necessary and could not have been inferred?
+            subtypeSpec=constraint.ValueSizeConstraint(0, 128)
+        )
 
-    pki_header['protectionAlg'] = prot_alg_id
+        owf_alg_id = rfc5280.AlgorithmIdentifier().subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
+        )
+        owf_alg_id['algorithm'] = univ.ObjectIdentifier((2, 16, 840, 1, 101, 3, 4, 2, 3))  # SHA512
+        owf_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
+        parameters['owf'] = owf_alg_id
+
+        parameters['iterationCount'] = 262144
+
+        mac_alg_id = rfc5280.AlgorithmIdentifier().subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
+        )
+        mac_alg_id['algorithm'] = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 11))  # HMACWithSHA512
+        mac_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
+
+        parameters['mac'] = mac_alg_id
+        prot_alg_id['parameters'] = parameters
+
+        pki_header['protectionAlg'] = prot_alg_id
 
 
     # PKIBody
