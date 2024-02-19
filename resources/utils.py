@@ -39,6 +39,29 @@ def buffer_length_must_be_at_least(data, length):
         raise ValueError(f"Buffer length {len(data)} < {length}, but should have been >={length}!")
 
 
+def decode_pem_string(data):
+    if type(data) is bytes:
+        data = data.decode('ascii')
+    raw = data.splitlines()
+    filtered_lines = []
+    # first do some cosmetic filtering
+    for line in raw:
+        if line.startswith('#'):  # remove comments
+            continue
+        elif line.strip() == '':  # remove blank lines
+            continue
+        else:
+            filtered_lines.append(line)
+
+    if '-----BEGIN' in filtered_lines[0]:
+        result = ''.join(filtered_lines[1:-1])
+    else:
+        result = ''.join(filtered_lines)
+
+    # note that b64decode doesn't care about \n in the string to be decoded, so we keep them to potentially improve
+    # readability when debugging.
+    return b64decode(result)
+
 def load_and_decode_pem_file(path):
     """Load a base64-encoded PEM file, with or without a header, ignore comments, and return the decoded data.
 
