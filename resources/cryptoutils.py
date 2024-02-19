@@ -1,9 +1,10 @@
+import os
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import hashes
-
+from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 # map strings used in OpenSSL-like common name notation to objects of NameOID types that
 # cryptography.x509 uses internally
@@ -14,6 +15,9 @@ NAME_MAP = {
     'O': NameOID.ORGANIZATION_NAME,
     'CN': NameOID.COMMON_NAME,
 }
+
+def generate_rsa_keypair(length=2048):
+    return rsa.generate_private_key(public_exponent=65537, key_size=length)
 
 def generate_keypair(algorithm="rsa", length=2048):
     return rsa.generate_private_key(public_exponent=65537, key_size=length)
@@ -93,3 +97,70 @@ def sign_csr(csr, key, hash_alg="sha256"):
 
     csr_out = csr.sign(key, hash_alg_instance)
     return csr_out.public_bytes(serialization.Encoding.PEM)
+
+
+def compute_hmac(data, key, hash_alg="sha256"):
+    """Compute HMAC for the given data using specified key.
+    :param data: bytes, data to be hashed.
+    :param key: bytes, key to use for the HMAC.
+    :param hash_alg: optional str, name of the hash algorithm to use.
+
+    :returns: bytes, the HMAC signature
+    """
+    match hash_alg:
+        case "sha256":
+            hash_alg_instance = hashes.SHA256()
+        case "sha384":
+            hash_alg_instance = hashes.SHA384()
+        case "sha512":
+            hash_alg_instance = hashes.SHA512()
+        case _:
+            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
+
+    if type(key) is str:
+        key = key.encode('utf-8')
+
+    h = hmac.HMAC(key, hash_alg_instance)
+    h.update(data)
+    signature = h.finalize()
+    return signature
+
+
+def compute_pbmac1(data, key, iterations=262144, salt=None, length=32, hash_alg="sha256"):
+    """Compute HMAC for the given data using specified key.
+    :param data: bytes, data to be hashed.
+    :param key: bytes, key to use for the HMAC.
+    :param salt:
+    :param hash_alg: optional str, name of the hash algorithm to use.
+
+    :returns: bytes, the HMAC signature
+    """
+    match hash_alg:
+        case "sha256":
+            hash_alg_instance = hashes.SHA256()
+        case "sha384":
+            hash_alg_instance = hashes.SHA384()
+        case "sha512":
+            hash_alg_instance = hashes.SHA512()
+        case _:
+            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
+
+    if type(key) is str:
+        key = key.encode('utf-8')
+
+    salt = salt or os.urandom(16)
+
+    # step 1, derive key
+    kdf = PBKDF2HMAC(
+        algorithm=hash_alg_instance,
+        length=length,
+        salt=salt,
+        iterations=iterations,
+    )
+    derived_key = kdf.derive(key)
+
+    # step 2, compute HMAC using this derived key
+    h = hmac.HMAC(derived_key, hash_alg_instance)
+    h.update(data)
+    signature = h.finalize()
+    return signature
