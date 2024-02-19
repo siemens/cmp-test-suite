@@ -1,16 +1,19 @@
+from datetime import datetime
 import base64
 from io import BytesIO
 from pyasn1 import debug
 from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import univ
-from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed
-from pyasn1_alt_modules import rfc4210, pem
+from pyasn1.error import PyAsn1Error
+from pyasn1.type import univ, useful
+from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
+from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, pem
 from pyasn1_alt_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
+from cryptoutils import compute_hmac, compute_pbmac1
 
 
-debug.setLogger(debug.Debug('all'))
+# debug.setLogger(debug.Debug('all'))
 
 # PKIMessage ::= SEQUENCE {
 #     body             PKIBody,
@@ -116,34 +119,120 @@ def build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
     return pki_message
 
 
-def build_cmp_p10cr_request_from_csr(csr, sender='test-cmp-cli@example.com', recipient='test-cmp-srv@example.com'):
-    """Creates a pyasn1 pkiMessage from a pyasn1 PKCS10 CSR
+def build_p10cr_from_csr(csr, sender='test-cmp-cli@example.com', recipient='test-cmp-srv@example.com'):
+    """Creates a pyasn1 pkiMessage from a pyasn1 PKCS10 CSR,
+
+    :param csr: pyasn1 rfc6402.CertificationRequest
 
     :returns: pyasn1 PKIMessage structure"""
-    import sys, pdb; pdb.Pdb(stdout=sys.__stdout__).set_trace()
+    # import sys, pdb; pdb.Pdb(stdout=sys.__stdout__).set_trace()
     # PKIHeader
     pvno = univ.Integer(2)
-    sender = GeneralName().setComponentByName('rfc822Name', sender)
-    recipient = GeneralName().setComponentByName('rfc822Name', recipient)
+    sender = rfc5280.GeneralName().setComponentByName('rfc822Name', sender)
+    recipient = rfc5280.GeneralName().setComponentByName('rfc822Name', recipient)
 
-    pki_header = rfc4210.PKIHeader()
+    pki_header = rfc9480.PKIHeader()
     pki_header['pvno'] = pvno
     pki_header['sender'] = sender
     pki_header['recipient'] = recipient
 
-    # PKIBody
-    pki_body = rfc4210.PKIBody()
+    transaction_id = univ.OctetString('0123456789abcdef').subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 4)
+    )
+    pki_header['transactionID'] = transaction_id
 
-    # explained http://sourceforge.net/mailarchive/message.php?msg_id=31787332
-    ctag4 = Tag(tagClassContext, tagFormatConstructed, 4)
-    pkcs10_tagged = csr.subtype(explicitTag=ctag4, cloneValueFlag=True)
-    pki_body['p10cr'] = pkcs10_tagged
-    # pki_body['p10cr'] = csr
+    sender_nonce = univ.OctetString('1111111122222222').subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 5)
+    )
+    pki_header['senderNonce'] = sender_nonce
+
+
+    # works well, but I'm not sure we need it for now
+    recipient_nonce = univ.OctetString('0000000000111111').subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 6)
+    )
+    pki_header['recipNonce'] = recipient_nonce
+
+
+    # SHOULD NOT be required
+    # TODO later - set to some bad time and see what happens
+    now = datetime.now()
+    message_time = useful.GeneralizedTime().fromDateTime(now)
+    message_time_subtyped = message_time.subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
+    )
+    pki_header['messageTime'] = message_time_subtyped
+
+    pki_header['senderKID'] = rfc9480.KeyIdentifier(b'CN=CloudCA-Integration-Test-User').subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 2)
+    )
+
+    pki_header['recipKID'] = rfc9480.KeyIdentifier(b'CN=CloudPKI-Integration-Testl').subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 3)
+    )
+
+
+    # TODO set protectionAlg data in the structure
+    prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
+    )
+
+    # algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 9))  # HMAC_SHA256
+    algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 11))  # HMAC_SHA512
+    # parameters = encoder.encode(univ.Null())  # no params are used
+    parameters = univ.Null()  # no params are used
+    prot_alg_id['algorithm'] = algorithm
+    prot_alg_id['parameters'] = parameters
+
+    pki_header['protectionAlg'] = prot_alg_id
+
+
+    # PKIBody
+    pki_body = rfc9480.PKIBody()
+    pki_body['p10cr']['certificationRequestInfo'] = csr['certificationRequestInfo']
+    pki_body['p10cr']['signatureAlgorithm'] = csr['signatureAlgorithm']
+    pki_body['p10cr']['signature'] = csr['signature']
+
 
     # PKIMessage
-    pki_message = rfc4210.PKIMessage()
+    pki_message = rfc9480.PKIMessage()
     pki_message['body'] = pki_body
     pki_message['header'] = pki_header
+    return pki_message
+
+
+def protect_pkimessage_hmac(pki_message, password):
+    """Protects a PKIMessage with a HMAC, based on a password, returning the updated pyasn1 PKIMessage structure
+    :param pki_message: pyasn1 PKIMessage
+    :param password: optional str, password to use for calculating the HMAC protection
+    :returns: pyasn1 PKIMessage structure with the prorection included"""
+    protected_part = rfc9480.ProtectedPart()
+    protected_part['header'] = pki_message['header']
+    protected_part['body'] = pki_message['body']
+
+    encoded = encoder.encode(protected_part)
+    protection = compute_hmac(encoded, password, hash_alg="sha512")
+    wrapped_protection = rfc9480.PKIProtection().fromOctetString(protection).subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
+    )
+    pki_message['protection'] = wrapped_protection
+    return pki_message
+
+def protect_pkimessage_pbmac1(pki_message, password, iterations=262144, salt=None, length=32, hash_alg="sha512"):
+    """Protects a PKIMessage with a PBMAC1, based on a password, returning the updated pyasn1 PKIMessage structure
+    :param pki_message: pyasn1 PKIMessage
+    :param password: optional str, password to use for calculating the HMAC protection
+    :returns: pyasn1 PKIMessage structure with the prorection included"""
+    protected_part = rfc9480.ProtectedPart()
+    protected_part['header'] = pki_message['header']
+    protected_part['body'] = pki_message['body']
+
+    encoded = encoder.encode(protected_part)
+    protection = compute_pbmac1(encoded, password, iterations=iterations, salt=salt, length=length, hash_alg=hash_alg)
+    wrapped_protection = rfc9480.PKIProtection().fromOctetString(protection).subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
+    )
+    pki_message['protection'] = wrapped_protection
     return pki_message
 
 
@@ -154,7 +243,7 @@ def encode_to_der(asn1_structure):
 
 def csr_attach_signature(csr, signature):
     """Takes a pyasn1 CSR object and attaches the signature to it, returning a
-    signed pyasn1 CSR object. The signature is a buffer of raw data (not base64, etc)"""
+    signed pyasn1 CSR object. The signature is a buffer of raw data (not base64, etc.)"""
     sig_alg_id = SignatureAlgorithmIdentifier()
     algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 1, 1, 5))  # RSA_SIGN
     parameters = encoder.encode(univ.Null())  # no params are used
@@ -204,12 +293,16 @@ def csr_extend_subject(csr, rdn):
 
 
 def parse_pki_message(raw):
-    """Takes a raw, ASN1 encoded PKIMessage structure and returns a
+    """Takes a raw, DER-encoded PKIMessage structure and returns a
     pyasn1 parsed object"""
-    pki_message, _ = decoder.decode(raw, asn1Spec=rfc4210.PKIMessage())
-    # header = pkiMessage['header']
-    # body = pkiMessage['body']
-    return pki_message  # , header, body
+    try:
+        pki_message, _remainder = decoder.decode(raw, asn1Spec=rfc9480.PKIMessage())
+    except PyAsn1Error as err:
+        # Here we suppress the details of the error returned by pyasn1, because they are usually extremely verbose
+        # and barely helpful to a non-pyasn1 expert. If you have to debug a payload, get the server's response from
+        # RobotFramework's log and feed it into this function manually.
+        raise ValueError("Failed to parse PKIMessage: %s ...", str(err)[:100])
+    return pki_message
 
 
 def get_cmp_status_from_pki_message(pki_message, response_index=0):
@@ -217,7 +310,8 @@ def get_cmp_status_from_pki_message(pki_message, response_index=0):
 
     :param response_index: optional int, index of response to get from the sequence, 0 by default
     """
-    response = pki_message['body']['rp']['response'][response_index]
+    message_type = get_cmp_response_type(pki_message)  # e.g., rp, ip, etc.
+    response = pki_message['body'][message_type]['response'][response_index]
     status = response['status']['status']
     return str(status)
 
@@ -235,73 +329,61 @@ def get_cert_from_pki_message(pki_message, cert_number=0):
     :param cert_number: optional int, index of certificate to extract, will only extract the first certificate
                         from the sequence by default
     """
-    response = pki_message['body']['cp']['response'][cert_number]
-    status = response['status']['status']
+    message_type = get_cmp_response_type(pki_message)
+    # TODO throw an error if this is not a type of message that contains certificates
 
-    assert PKISTATUS_ACCEPTED == status
+    response = pki_message['body'][message_type]['response'][cert_number]
+    # status = response['status']['status']
+
     cert = response['certifiedKeyPair']['certOrEncCert']['certificate']
     serial_number = str(cert['tbsCertificate']['serialNumber'])
     return serial_number, cert
 
 
-def strip_header(raw):
-    """Get rid of -----BEGIN CERTIFICATE REQUEST-----', '-----END CERTIFICATE REQUEST----- markers
-    :param raw: bytes, input structure"""
-    result = raw.decode('ascii')
-    result = result.replace("-----BEGIN CERTIFICATE REQUEST-----", "").replace("-----END CERTIFICATE REQUEST-----", "").replace("\n", "")
-    return bytes(result, 'ascii')
-
-
-def parse_csr(raw_csr, header_included=False):
-    """Builds a pyasn1-structured CSR out of a raw, base-64 request. If header_included
-    is true, it is assumed that the request is enclosed in markers, that will be removed
-    -----BEGIN CERTIFICATE REQUEST-----', '-----END CERTIFICATE REQUEST-----"""
-    # import sys, pdb; pdb.Pdb(stdout=sys.__stdout__).set_trace()
-
-    if header_included:
-        raw_csr = strip_header(raw_csr)
-
-    raw_csr = base64.b64decode(raw_csr)
-        # raw_csr = pem.readPemFromFile(BytesIO(raw_csr))
-
-
-    csr, _ = decoder.decode(raw_csr, asn1Spec=CertificationRequest())
+def parse_csr(raw_csr):
+    """Builds a pyasn1-structured CSR out of a raw, base-64 request."""
+    csr, _ = decoder.decode(raw_csr, asn1Spec=rfc6402.CertificationRequest())
     return csr
 
 
 if __name__ == '__main__':
-    raw = b"""-----BEGIN CERTIFICATE REQUEST-----
-MIICfTCCAWUCAQAwODELMAkGA1UEBhMCREUxDzANBgNVBAcMBk11bmljaDEYMBYG
-A1UEAwwPSGFucyBNdXN0ZXJtYW5uMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAn0Id1aUXllUOamUiaYFFvrsURBwaUzyTb8Z9UnFmlSYD9czTpQKt5bL9
-VbwlSEm30J6h4Y1LMIU/y2idWWBkK7yI749Ql8q4zh4NQ4NcBd3IRzkgZxiQDdiI
-iSvc3fkvWLDY3waOIk1hPW9Yb6SmH3S4F8DcLmXNccoa/fWjqHEKnEonQlMMfPWs
-tKmAAFljejBU7h6nJUcPRNjEnjNydmx9D25oM/iu1XAIWugnYoSqyFCfD3oN5Pui
-Mmr/F7WBj0e16ImINn54HzjtpHmtMR4r/5OYIHEwoaP7drQblSNKoc49kM1FlCa6
-DZDGYEx4zFxPPcaDTfWnzoOlBlYwsQIDAQABoAAwDQYJKoZIhvcNAQELBQADggEB
-AJs8DtRWYt9cJ1dU6YAyDEG2iCKlfVb6Dk6Hl3cic63iGyvOPcZSpAwxkkSqG+tU
-cTlX6Qu3ORAjCVGeUoXCxwsGysFXUqEHYoUo2GpZiZvdg8yzXd2LVBzSWh7kNu3z
-3TEcdFwamA/cWAXjJNg1AMLdo8bMa+jjduIHqSyvUzPKq5SiRmdAT+rMsZAOC65E
-PPecU9SVCMELD6rY46KnhDuL5ydD5GuN9K1KEP9CScELxu8T+vK+Wk5U9rUSz84K
-U9AdPI4bJKAneUvtA00I0FvofvqGronaCgl1n3z8OunimESh6+3yNkcCaVjmW+Lm
-a+6aleaT4eMGuJC7IVhpwrs=
+    from utils import decode_pem_string
+
+    raw = """	-----BEGIN CERTIFICATE REQUEST-----
+MIIC1TCCAb0CAQAwXDELMAkGA1UEBhMCREUxEDAOBgNVBAgMB0JhdmFyaWExDzAN
+BgNVBAcMBk11bmljaDEQMA4GA1UECgwHQ01QIExhYjEYMBYGA1UEAwwPSGFucyBN
+dXN0ZXJtYW5uMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtaRNCb2X
+OnYeG6zcKS03x5wpJz2vputiGuGtyynCBEt7emJcUe8EwY8e1poMZm8ZfjvjJ/0B
+rtR4ozJkxWd2yyR4k8pbfDe2XuoSGLP0Dr4kts7TKpxjp9wLVj/TaAWnlZYCAaS9
+KJ/ZjkJrijeaQRIqImkMjD9bO69R9t8anv829vXV9Ux1y4qHMjPkhmo7LoXn6fOY
+WwHjz/pxY+g+OiuLa4ZCuqGgm5PAwQa+EfkbqBrH0KKz2IyyoeMwpr9vNT72dyej
+qEHKBS0zSwRdXm2Z/VWgOKc755vjjEHjuVenqcvHI0LwpUg9H7r5LW2u5MZF20z2
+8wungl5qSaSdDwIDAQABoDQwMgYJKoZIhvcNAQkOMSUwIzAhBgNVHREEGjAYggho
+YW5zLmNvbYIMd3d3LmhhbnMuY29tMA0GCSqGSIb3DQEBCwUAA4IBAQBWHmVCkIPw
+Ye/Hr9Hsh3T9fJmma8BQiaG46Obsx40MruzlTdwb+KvDEELgVPOLU6nbiKJMSS93
+jBlK/mSOkHMIbKj9y/hwIxIGTv15ol/CTYyNUMB7tW0x6KQW1qAYFsI0YXUP+kV6
+jozNZe7ji7OJyoAaMYQiZCJUE9kbf6FxRU0pIL8Lu6TYt/UQ/ukK9dnr4rIRKvdt
+g8vxmqAWlyg5MTTQ0DfmLAwCUYaVfTgsl8TEVUiCwgdB++Hw+W96g8OFLWNr7+nc
+830ekfQElpSt9Vb9PkaeNF4hX7EsISLAITfY1+i6knpLlbbXqNA0abrxtVMWo5db
+LJPchrUaU95b
 -----END CERTIFICATE REQUEST-----"""
+    csr = decode_pem_string(raw)
+    csr, _ = decoder.decode(csr, asn1Spec=CertificationRequest())
+    # csr = parse_csr(csr)
+    print(csr.prettyPrint())
 
+    # result = encode_to_der(csr)
+    # print(result)
 
-    result = parse_csr(raw, header_included=True)
-    print(result)
+    # ctag4 = Tag(tagClassContext, tagFormatConstructed, 4)
+    # tagged_csr = csr.subtype(explicitTag=ctag4, cloneValueFlag=True)
+    # print(tagged_csr)
 
-    #data = build_cmp_revoke_request(12345)
-    #debug.setLogger(debug.Debug('all'))
+    p10cr = build_p10cr_from_csr(csr)
+    print(p10cr.prettyPrint())
+    protected_pki_message = protect_pkimessage_hmac(p10cr, b"test")
+    print(protected_pki_message.prettyPrint())
 
-    #structure, _ = decoder.decode(data, asn1Spec=rfc4210.PKIMessage())
-    #print(structure)
+    # from base64 import b64encode
+    # print(b64encode(encode_to_der(protected_pki_message)))
 
-    #data = build_cmp_revoke_request(12345)
-    #open('cmp-revoke.bin', 'wb').write(data)
-
-    #data = build_cmp_revive_request(54321)
-    #open('cmp-revive.bin', 'wb').write(data)
-
-    #data = build_cmp_revoke_request(11111, reason=REASON_CERTIFICATE_HOLD)
-    #open('cmp-hold.bin', 'wb').write(data)
