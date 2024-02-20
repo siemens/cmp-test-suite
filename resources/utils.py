@@ -1,10 +1,19 @@
 from base64 import b64decode, b64encode
 import re
 import logging
+from pyasn1.type import base
+
 
 def log_asn1(pyasn1_obj):
-    """Log a pyasn1 object as a string for debugging purposes."""
-    logging.info(pyasn1_obj.prettyPrint())
+    """Log a pyasn1 object as a string for debugging purposes. For convenience, it will gracefully
+    ignore objects that are not pyasn1, so that the function can be invoked from RobotFramework
+    scenarios without having to check the type of the object first.
+    """
+    if isinstance(pyasn1_obj, base.Asn1Item):
+        logging.info(pyasn1_obj.prettyPrint())
+    else:
+        logging.info("Cannot prettyPrint this, it is not a pyasn1 object")
+
 
 def log_base64(data):
     """Log some data as a base64 encoded string, this is useful for binary payloads"""
