@@ -195,9 +195,7 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
             explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
         )
 
-        # algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 9))  # HMAC_SHA256
-        # algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 11))  # HMAC_SHA512
-        prot_alg_id['algorithm'] = univ.ObjectIdentifier((1, 2, 840, 113533, 7, 66, 13))  # PBMAC1
+        prot_alg_id['algorithm'] = univ.ObjectIdentifier((1, 2, 840, 113549, 1, 5, 14))  # PBMAC1
         # prot_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
 
         parameters = rfc9480.PBMParameter()
@@ -206,20 +204,20 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
             subtypeSpec=constraint.ValueSizeConstraint(0, 128)
         )
 
-        owf_alg_id = rfc5280.AlgorithmIdentifier().subtype(
-            explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
-        )
+        owf_alg_id = rfc5280.AlgorithmIdentifier()  # .subtype(
+            # explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
+        # )
         owf_alg_id['algorithm'] = univ.ObjectIdentifier((2, 16, 840, 1, 101, 3, 4, 2, 3))  # SHA512
-        owf_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
+        # owf_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
         parameters['owf'] = owf_alg_id
 
         parameters['iterationCount'] = 262144
 
-        mac_alg_id = rfc5280.AlgorithmIdentifier().subtype(
-            explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
-        )
+        mac_alg_id = rfc5280.AlgorithmIdentifier()  # .subtype(
+            # explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
+        # )
         mac_alg_id['algorithm'] = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 11))  # HMACWithSHA512
-        mac_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
+        # mac_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
 
         parameters['mac'] = mac_alg_id
         prot_alg_id['parameters'] = parameters
