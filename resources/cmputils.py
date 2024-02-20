@@ -386,6 +386,27 @@ def parse_csr(raw_csr):
     return csr
 
 
+def patch_message_time(pki_message, new_time=None):
+    """Patches the messageTime field of a PKIMessage structure with a new time,
+    or the current time if none is provided
+
+    :param pki_message: pyasn1 PKIMessage structure, but raw DER-encoded blobs are also accepted, will be converted
+                        automatically, this is to make it easier to use this function in RobotFramework
+    :param new_time: optional datetime, time to use for the messageTime field, will use the current time by default
+    """
+    if type(pki_message) is bytes:
+        pki_message = parse_pki_message(pki_message)
+
+    new_time = new_time or datetime.now()
+    message_time = useful.GeneralizedTime().fromDateTime(new_time)
+    message_time_subtyped = message_time.subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
+    )
+    pki_message['header']['messageTime'] = message_time_subtyped
+    return pki_message
+
+
+
 if __name__ == '__main__':
     from utils import decode_pem_string
 
