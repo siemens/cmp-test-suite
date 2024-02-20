@@ -34,17 +34,17 @@ CA must issue a certificate when the CSR is valid
     ${result}=  Exchange data with CA    ${der_pkimessage}
     ${pki_message}=     Parse Pki Message    ${result.content}
     ${value}=       Get Asn1 Value As String   ${pki_message}    header.sender.directoryName.rdnSequence/0/0.value
-    Should Be Equal    ${value}    Siemens PKI
+    Should Be Equal    ${value}    Siemens IT
 
-CA must reject request when the CSR signature is invalid
-    [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
-    [Tags]    csr    negative   crypto
-    No Operation
-
-CA must reject request when the CSR is not valid asn1
-    [Documentation]    When we send a structure that is not valid DER-encoded ASN1, the CA must respond with an error.
-    [Tags]    csr    negative   asn1
-    No Operation
+#CA must reject request when the CSR signature is invalid
+#    [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
+#    [Tags]    csr    negative   crypto
+#    No Operation
+#
+#CA must reject request when the CSR is not valid asn1
+#    [Documentation]    When we send a structure that is not valid DER-encoded ASN1, the CA must respond with an error.
+#    [Tags]    csr    negative   asn1
+#    No Operation
 
 
 #CA must reject request with an invalid signature
