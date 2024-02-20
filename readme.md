@@ -47,6 +47,28 @@ For example, payloads in PKI are often DER-encoded, but you can also use PEM. Th
 neglected, while transforming one into the other is easy and can be automated (e.g., write keywords and functions that
 convert automatically to whatever makes sense, and accept either format at the input).
 
+## Documenting tests
+Point to the section of the RFC where the requirement is discussed, include a relevant quote.
+
+## Tagging tests
+Use the RFC
+
+## String parameters
+NOTE that we're not passing it as a
+                   list of str, this is syntactic sugar for invocation from within RobotFramework tests.
+    :returns: None, raise ValueError of the required fields are not present"""
+
+
+## Mask internal-use Python functions
+
+```
+from robot.api.deco import not_keyword
+
+@not_keyword
+def this_is_not_a_keyword():
+    pass
+```
+
 
 # Supporting materials
 - https://docs.robotframework.org/docs/getting_started/ide How to use this with an IDE.
