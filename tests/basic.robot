@@ -22,7 +22,9 @@ CA must reject requests that feature unknown signature algorithms
     [Tags]    negative  crypto
     ${data}=  Get Binary File  data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/req-p10cr-prot_none-pop_sig.pkimessage
     Log base64    ${data}
-    ${response}=  Exchange data with CA    ${data}
+    ${updated_pki_message}=  Patch message time    ${data}
+    ${encoded}=  Encode To Der    ${updated_pki_message}
+    ${response}=  Exchange data with CA    ${encoded}
     Should Be Equal    ${response.status_code}  ${400}
 
 
