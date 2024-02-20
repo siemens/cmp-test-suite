@@ -1,7 +1,5 @@
 from datetime import datetime
-import base64
-from io import BytesIO
-from pyasn1 import debug
+import sys
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import univ, useful, constraint
@@ -12,7 +10,12 @@ from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attri
 from pyasn1_alt_modules.rfc2511 import CertTemplate
 from cryptoutils import compute_hmac, compute_pbmac1
 
+# When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
+# otherwise. This is just for cosmetic convenience.
+sys.set_int_max_str_digits(0)
 
+
+# from pyasn1 import debug
 # debug.setLogger(debug.Debug('all'))
 
 # PKIMessage ::= SEQUENCE {
