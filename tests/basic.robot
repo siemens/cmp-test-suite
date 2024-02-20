@@ -1,67 +1,62 @@
 *** Settings ***
 Documentation        General tests for CMP logic, not necessarily specific to the lightweight profile
 Resource    ../resources/keywords.resource
+Library     OperatingSystem
 Library     ../resources/utils.py
-
+Library     ../resources/asn1utils.py
 
 
 *** Test Cases ***
-CA must reject request with an invalid signature
-    [Documentation]    Demonstrate how to use some keywords
-    ...                just an example
-    [Tags]    csr    crypto    negative
-    ${csr_signed}=    Generate CSR with RSA2048 and a predefined common name
-    # ${manipulated_signed}=    Modify bytes    ${csr_signed}
-    # ${p10_pkimessage}=    Build CMP p10cr request from CSR    ${manipulated_signed}
-    Log    ${csr_signed}
-    # Evaluate    pdb.Pdb(stdout=sys.__stdout__).set_trace()    modules=sys, pdb
-    ${parsed_csr}=    Parse CSR    ${csr_signed}    header_included=True
-    Log    ${parsed_csr} 
-    ${p10_pkimessage}=    Build CMP p10cr request from CSR    ${parsed_csr}
+CA must reject malformed reqest
+    [Documentation]    When we send an invalid PKIMessage to the CA, it must respond with a 400 status code to indicate
+    ...                a client-side error in the supplied input data.
+    ...                Ref: "3.3.  General Form",  "All applicable "Client Error 4xx" or "Server Error 5xx" status codes
+    ...                MAY be used to inform the client about errors."
+    [Tags]    negative  status  rfc6712     robot:skip-on-failure
+    ${response}=  Exchange data with CA    this dummy input is not a valid PKIMessage
+    Should Be Equal    ${response.status_code}  ${400}
 
-    # ${ca_response}=    Send CMP request to CA    ${p10_pkimessage}    http://127.0.0.1:8080/pkix
-    ${ca_response}=    Get Binary File    data/example-p10r.pkimessage
-
-    ${result}=    Parse PKI Message    ${ca_response}
-    ${status}=     Get CMP status from PKI Message    ${result}
-
-    Should be equal    ${status}    rejection
-
-
-# ALTERNATIVE CA must reject request with an invalid signature
-#     [Documentation]    Demonstrate how to use some keywords
-#     ...                just an example
-#     [Tags]    csr    crypto    negative
-#     Generate CSR with RSA2048 and a predefined common name
-#     Modify bytes in CSR
-#     Build CMP p10cr request from CSR
-#     ${ca_response}=    Send CMP request to CA    http://127.0.0.1:8080/pkix
-#     Parse PKI Message    ${ca_response}
-#     ${status}=     Get CMP status from PKI Message
-#     Should be equal    ${status}    rejection
+CA must reject requests that feature unknown signature algorithms
+    [Documentation]    When we send an valid PKIMessage to the CA, it must respond with a 400 status code to indicate
+    ...                a client-side error in the supplied input data.
+    [Tags]    negative  crypto
+    ${data}=  Get Binary File  data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/req-p10cr-prot_none-pop_sig.pkimessage
+    Log base64    ${data}
+    ${response}=  Exchange data with CA    ${data}
+    Should Be Equal    ${response.status_code}  ${400}
 
 
 
-CSR must be generated with subjectAltName support
-    [Documentation]    Demonstrate how to use some keywords
-    ...                just an example
-    [Tags]    csr
-    ${key}=    Generate keypair    rsa    2048
-    ${csr}=    Generate CSR    C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Hans Mustermann        hans.com,www.hans.com
-    ${csr_signed}=    Sign CSR    ${csr}    ${key}
+CA must issue a certificate when the CSR is valid
+    [Documentation]    When we send a valid CSR, the CA should respond with a valid certificate.
+    [Tags]    csr    positive
+    ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
+    ${result}=  Exchange data with CA    ${der_pkimessage}
+    ${pki_message}=     Parse Pki Message    ${result.content}
+    ${value}=       Get Asn1 Value As String   ${pki_message}    header.sender.directoryName.rdnSequence/0/0.value
+    Should Be Equal    ${value}    Siemens PKI
 
-    # [Teardown]    to do
+CA must reject request when the CSR signature is invalid
+    [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
+    [Tags]    csr    negative   crypto
+    No Operation
 
-STATEFUL CSR must be generated with subjectAltName support
-    [Documentation]    Demonstrate how to use some keywords
-    ...                just an example
-    [Tags]    csr
-    Generate keypair    rsa    2048
-    Generate CSR    C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Hans Mustermann        hans.com,www.hans.com
-    Sign CSR
-    Manipulate a bit in CSR
-    ${result}=      Send CSR to CA
-    Should be False     ${result}
+CA must reject request when the CSR is not valid asn1
+    [Documentation]    When we send a structure that is not valid DER-encoded ASN1, the CA must respond with an error.
+    [Tags]    csr    negative   asn1
+    No Operation
 
 
-    # [Teardown]    to do
+#CA must reject request with an invalid signature
+#    [Documentation]    Demonstrate how to use some keywords
+#    ...                just an example
+#    [Tags]    csr    crypto    negative
+#    ${csr_signed}=    Generate CSR with RSA2048 and a predefined common name
+#    Log    ${csr_signed}
+#    ${parsed_csr}=    Parse CSR    ${csr_signed}
+#    Log    ${parsed_csr}
+#    ${p10_pkimessage}=      Build P10cr From Csr    ${parsed_csr}
+#    ${ca_response}=    Get Binary File    data/example-p10r.pkimessage
+#    ${result}=    Parse PKI Message    ${ca_response}
+#    ${status}=     Get CMP status from PKI Message    ${result}
+#    Should be equal    ${status}    rejection

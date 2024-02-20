@@ -2,22 +2,61 @@
 Documentation        Tests specifically for the lightweight CMP profile
 Resource    ../resources/keywords.resource
 Library     ../resources/utils.py
-
-
+Library     ../resources/asn1utils.py
+Library     ../resources/cmputils.py
+Library     OperatingSystem
 
 *** Test Cases ***
-PKIMessage header must include all required fields
+PKI entity must respond with a PKIStatusInfo structure when a malformed request is received
+    [Documentation]    When we send an invalid PKIMessage to a PKI entity, it MUST indicate the error condition in
+    ...                the PKIStatusInfo structure
+    ...                Ref:  3.6.2. Reporting Error Conditions Downstream
+    ...                   "In case the PKI management entity detects any other error condition on requests [..]
+    ...                   from downstream [..], it MUST report them downstream in the form of an error message as
+    ...                   described in Section 3.6.4.
+    [Tags]    negative  rfc9483
+    ${response}=  Exchange data with CA    this dummy input is not a valid PKIMessage
+    ${asn1_response}=  Parse Pki Message    ${response.content}
+    ${response_type}=  Get Cmp Response Type    ${asn1_response}
+    # Should Be Equal    ${response_type}  ${rp}
+    Should Be Equal    error    ${response_type}
+
+
+Server must issue a certificate when a correct p10cr is sent
+    [Documentation]    When a correct p10cr is sent to the server, it must issue a certificate
+    [Tags]    positive  rfc9483  p10cr
+    ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
+    ${response}=  Exchange data with CA    ${der_pkimessage}
+
+    ${pki_message}=      Parse Pki Message    ${response.content}
+    Asn1 Must Contain Fields    ${pki_message}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce,implicitConfirmValue,ConfirmWaitTimeValue,CertProfileValue
+
+
+
+Response PKIMessage header must include all required fields
     [Documentation]    Check that the PKIMessage coming from the server includes all the required fields
     [Tags]    headers
-    ${key}=    Generate keypair    rsa    2048
-    ${csr}=    Generate CSR    C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Hans Mustermann        hans.com,www.hans.com
+    ${key}=    Generate RSA keypair
+#    ${csr}=    Generate CSR    C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Hans Mustermann        hans.com,www.hans.com
+    ${csr}=    Generate CSR    CN=Hans Mustermann
     ${csr_signed}=    Sign CSR    ${csr}    ${key}
-    Generate basic PKIMessage
-    Send PKIMessage to server
-    ${pki_message}=      Retrieve response from server
-    ${required_fields_raw}=     Set variable    pvno,sender,recipient,protectionAlg,transactionID,senderNonce,implicitConfirmValue,ConfirmWaitTimeValue,CertProfileValue
-    ${required_fields}=    Split String    ${required_fields_raw}   ,
-    PKIMessage must contain fields      ${pki_message}      ${required_fields}
+    Log             ${csr_signed}
+    ${decoded_csr}=    Decode PEM string    ${csr_signed}
+    ${parsed_csr}=     Parse Csr    ${decoded_csr}
+
+    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=CloudCA-Integration-Test-User    recipient=CloudPKI-Integration-Test
+
+    ${protected_p10cr}=     Protect Pkimessage Hmac    ${p10cr}    SiemensIT
+    Log Asn1    ${protected_p10cr}
+
+    ${encoded}=  Encode To Der    ${protected_p10cr}
+    Log Base64    ${encoded}
+    ${response}=  Exchange data with CA    ${encoded}
+#    build_p10cr_from_csr
+#    Generate basic PKIMessage
+#    Send PKIMessage to server
+    ${pki_message}=      Parse Pki Message    ${response.content}
+    Asn1 Must Contain Fields    ${pki_message}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce,implicitConfirmValue,ConfirmWaitTimeValue,CertProfileValue
     # [Teardown]    to do
 
 SenderNonce must be present and at least 128 bit long
