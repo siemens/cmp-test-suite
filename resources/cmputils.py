@@ -1,10 +1,11 @@
 from datetime import datetime
 import sys
+import os
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import univ, useful, constraint
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
-from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, pem
+from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, pem, rfc8018
 from pyasn1_alt_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
@@ -122,6 +123,43 @@ def build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
     return pki_message
 
 
+def _prepare_pbmac1_parameters(salt=None, iterations=1, length=32, hash_alg="sha256"):
+    salt = salt or os.urandom(16)
+
+    match hash_alg:
+        case "sha256":
+            hmac_alg = rfc8018.id_hmacWithSHA256
+        case "sha384":
+            hmac_alg = rfc8018.id_hmacWithSHA384
+        case "sha512":
+            hmac_alg = rfc8018.id_hmacWithSHA512
+        case _:
+            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
+
+
+
+    outer_params = rfc8018.PBMAC1_params()
+    outer_params['keyDerivationFunc'] = rfc8018.AlgorithmIdentifier()
+
+
+    pbkdf2_params = rfc8018.PBKDF2_params()
+    pbkdf2_params['salt']['specified'] = univ.OctetString(salt)
+    pbkdf2_params['iterationCount'] = iterations
+    pbkdf2_params['keyLength'] = length
+    pbkdf2_params['prf'] = rfc8018.AlgorithmIdentifier()
+    pbkdf2_params['prf']['algorithm'] = hmac_alg
+    pbkdf2_params['prf']['parameters'] = univ.Null()
+
+    outer_params['keyDerivationFunc']['algorithm'] = rfc8018.id_PBKDF2
+    outer_params['keyDerivationFunc']['parameters'] = pbkdf2_params
+
+    outer_params['messageAuthScheme']['algorithm'] = hmac_alg
+    outer_params['messageAuthScheme']['parameters'] = univ.Null()
+
+
+    return outer_params
+
+
 def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
                          omit_fields=None):
     """Creates a pyasn1 pkiMessage from a pyasn1 PKCS10 CSR,
@@ -198,33 +236,12 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
             explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
         )
 
-        prot_alg_id['algorithm'] = univ.ObjectIdentifier((1, 2, 840, 113549, 1, 5, 14))  # PBMAC1
+        prot_alg_id['algorithm'] = rfc8018.id_PBMAC1
+            # univ.ObjectIdentifier((1, 2, 840, 113549, 1, 5, 14)))  # PBMAC1
         # prot_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
 
-        parameters = rfc9480.PBMParameter()
-        parameters['salt'] = univ.OctetString(b'1234567890abcdef').subtype(
-            # TODO ask Russ why this is necessary and could not have been inferred?
-            subtypeSpec=constraint.ValueSizeConstraint(0, 128)
-        )
-
-        owf_alg_id = rfc5280.AlgorithmIdentifier()  # .subtype(
-            # explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
-        # )
-        owf_alg_id['algorithm'] = univ.ObjectIdentifier((2, 16, 840, 1, 101, 3, 4, 2, 3))  # SHA512
-        # owf_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
-        parameters['owf'] = owf_alg_id
-
-        parameters['iterationCount'] = 262144
-
-        mac_alg_id = rfc5280.AlgorithmIdentifier()  # .subtype(
-            # explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
-        # )
-        mac_alg_id['algorithm'] = univ.ObjectIdentifier((1, 2, 840, 113549, 2, 11))  # HMACWithSHA512
-        # mac_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
-
-        parameters['mac'] = mac_alg_id
-        prot_alg_id['parameters'] = parameters
-
+        pbmac1_parameters = _prepare_pbmac1_parameters(salt=None, iterations=262144, length=32, hash_alg="sha512")
+        prot_alg_id['parameters'] = pbmac1_parameters
         pki_header['protectionAlg'] = prot_alg_id
 
 

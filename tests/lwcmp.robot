@@ -46,7 +46,7 @@ Response PKIMessage header must include all required fields
 
     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=CloudCA-Integration-Test-User    recipient=CloudPKI-Integration-Test
 
-    ${protected_p10cr}=     Protect Pkimessage Hmac    ${p10cr}    SiemensIT
+    ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    SiemensIT
     Log Asn1    ${protected_p10cr}
 
     ${encoded}=  Encode To Der    ${protected_p10cr}
