@@ -1,3 +1,4 @@
+import logging
 import os
 from cryptography import x509
 from cryptography.x509.oid import NameOID
@@ -158,9 +159,11 @@ def compute_pbmac1(data, key, iterations=262144, salt=None, length=32, hash_alg=
         iterations=iterations,
     )
     derived_key = kdf.derive(key)
+    logging.info(f"Derived key: {derived_key}")
 
     # step 2, compute HMAC using this derived key
     h = hmac.HMAC(derived_key, hash_alg_instance)
     h.update(data)
     signature = h.finalize()
+    logging.info(f"Signature: {signature}")
     return signature
