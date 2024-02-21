@@ -409,6 +409,7 @@ def patch_message_time(pki_message, new_time=None):
 
 
 if __name__ == '__main__':
+    # TODO move this into unit tests if this is still needed, otherwise remove it
     from utils import decode_pem_string
 
     raw = """	-----BEGIN CERTIFICATE REQUEST-----

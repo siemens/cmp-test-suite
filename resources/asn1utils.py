@@ -41,7 +41,7 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 - if there's no equal sign, it is a sequence or a set, and elements are accessed by index (even if pyasn1 shows them
   as a string!). For instance, in the following piece you don't write the query as
   `RelativeDistinguishedName.AttributeTypeAndValue.type`, but as `/0/0.type`, which reads as "get inside the first
-  element of the first element, then retrieve the attribute called `type`.
+  element of the first element, then retrieve the attribute called `type`".
 
 |    rdnSequence=RDNSequence:
 |     RelativeDistinguishedName:

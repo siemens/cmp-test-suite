@@ -9,6 +9,9 @@ from pkilint.validation import ValidationFindingSeverity
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 
+# TODO for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
+# return False
+
 
 def validate_certificate_openssl(data):
     """Validate a certificate by attempting to load it with the cryptography library, which invokes OpenSSL underneath.
