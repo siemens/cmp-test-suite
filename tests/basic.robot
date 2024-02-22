@@ -19,7 +19,7 @@ CA must reject malformed reqest
 CA must reject requests that feature unknown signature algorithms
     [Documentation]    When we send an valid PKIMessage to the CA, it must respond with a 400 status code to indicate
     ...                a client-side error in the supplied input data.
-    [Tags]    negative  crypto  ak
+    [Tags]    negative  crypto
     ${data}=  Get Binary File  data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/req-p10cr-prot_none-pop_sig.pkimessage
     Log base64    ${data}
     ${updated_pki_message}=  Patch message time    ${data}
