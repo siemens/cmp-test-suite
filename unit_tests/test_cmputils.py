@@ -4,6 +4,7 @@ import unittest
 from resources import cmputils
 from resources import cryptoutils
 from resources.utils import load_and_decode_pem_file, decode_pem_string
+from resources.asn1utils import get_asn1_value_as_bytes, get_asn1_value_as_string, get_asn1_value
 
 class TestCmpUtils(unittest.TestCase):
     @classmethod
@@ -26,6 +27,29 @@ class TestCmpUtils(unittest.TestCase):
         stringified_status = str(body['error']['pKIStatusInfo']['statusString'])
         self.assertIn('cannot create', stringified_status)
 
+    def test_parse_p10cr_success_response(self):
+        raw = load_and_decode_pem_file('data/example-response-p10rp-cert.pem')
+        pki_message = cmputils.parse_pki_message(raw)
+        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
+        print(pki_message.prettyPrint())
+
+        sender_nonce = get_asn1_value_as_bytes(pki_message, 'header.senderNonce')
+        self.assertEqual(sender_nonce, b'\xd3\xcd\x9d\xdd\xe5n+\xad\x84\x82U\xac\xa8&\xf9\xc0')
+
+        recip_nonce = get_asn1_value_as_bytes(pki_message, 'header.recipNonce')
+        self.assertEqual(recip_nonce, b'1111111122222222')
+
+        recipient = get_asn1_value_as_string(pki_message, 'header.recipient.directoryName.rdnSequence/0/0.value')
+        self.assertEqual(recipient, 'Upstream-CMP-ENDENTITY')
+
+        self.assertEqual("cp", cmputils.get_cmp_response_type(pki_message))
+
+        response_status = str(get_asn1_value(pki_message, 'body.cp.response/0.status.status'))
+        self.assertEqual('accepted', response_status)
+
+        cert_subject = get_asn1_value_as_string(pki_message, 'body.cp.response/0.certifiedKeyPair.certOrEncCert.'
+                                                             'certificate.tbsCertificate.subject.rdnSequence/0/0.value')
+        self.assertEqual(cert_subject, 'Hans Mustermann')
 
     def test_get_cmp_status_from_pki_message(self):
         status = cmputils.get_cmp_status_from_pki_message(self.pki_message)
