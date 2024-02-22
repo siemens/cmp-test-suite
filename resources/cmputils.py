@@ -160,6 +160,25 @@ def _prepare_pbmac1_parameters(salt=None, iterations=1, length=32, hash_alg="sha
     return outer_params
 
 
+def _prepare_implicit_confirm_general_info_structure():
+    """This is a helper function to prepare the `generalInfo` field of a PKIHeader structure,
+    if we want to tell the server that we want the implicitConfirm feature"""
+    implicit_confirm = rfc9480.InfoTypeAndValue()
+    implicit_confirm['infoType'] = rfc9480.id_it_implicitConfirm
+    implicit_confirm['infoValue'] = univ.Null("")
+    # TODO ask Russ about it, if use the line below instead of the one above, the structure is not present in the final
+    # pkiheader. When stepping through it with the debugger I noticed that with `""` the structure isValue=True, whereas
+    # without it isValue=False and the thing is a schema, rather than a value object; what's the logic?
+    # implicit_confirm['infoValue'] = univ.Null()
+
+    general_info_wrapper = univ.SequenceOf(componentType=rfc9480.InfoTypeAndValue()).subtype(
+                                    subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX)).subtype(
+                                    explicitTag=Tag(tagClassContext, tagFormatSimple, 8))
+
+    general_info_wrapper.setComponentByPosition(0, implicit_confirm)
+    return general_info_wrapper
+
+
 def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
                          omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
                          implicit_confirm=False):
@@ -247,6 +266,12 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
         pbmac1_parameters = _prepare_pbmac1_parameters(salt=None, iterations=262144, length=32, hash_alg="sha512")
         prot_alg_id['parameters'] = pbmac1_parameters
         pki_header['protectionAlg'] = prot_alg_id
+
+    if 'generalInfo' not in omit_fields and implicit_confirm:
+        # If implicitConfirm is used, it is featured in the `generalInfo` field of the structure
+        general_info = _prepare_implicit_confirm_general_info_structure()
+        # pki_header['generalInfo'].setComponentByPosition(0, general_info)
+        pki_header['generalInfo'] = general_info
 
     if 'freeText' not in omit_fields:
         # this freeText attribute bears no functionality, but we include it here for the sake of

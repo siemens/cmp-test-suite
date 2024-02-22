@@ -44,7 +44,7 @@ Response PKIMessage header must include all required fields
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
 
-    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=CloudCA-Integration-Test-User    recipient=CloudPKI-Integration-Test
+    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=CloudCA-Integration-Test-User    recipient=CloudPKI-Integration-Test      implicit_confirm=${True}
 
     ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    SiemensIT
     Log Asn1    ${protected_p10cr}

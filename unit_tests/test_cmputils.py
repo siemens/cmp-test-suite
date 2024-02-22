@@ -1,4 +1,5 @@
 import unittest
+from base64 import b64encode
 
 # from resources import asn1utils
 from resources import cmputils
@@ -80,8 +81,9 @@ class TestCmpUtils(unittest.TestCase):
         csr = cryptoutils.generate_csr("CN=Hans")
         signed_csr = cryptoutils.sign_csr(csr, keypair)
         asn1_csr = cmputils.parse_csr(decode_pem_string(signed_csr))
-        p10cr = cmputils.build_p10cr_from_csr(asn1_csr)
-
+        p10cr = cmputils.build_p10cr_from_csr(asn1_csr, implicit_confirm=True)
+        der_encoded = cmputils.encode_to_der(p10cr)
+        print(b64encode(der_encoded))
         print(p10cr.prettyPrint())
 
 
