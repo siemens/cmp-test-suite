@@ -161,7 +161,8 @@ def _prepare_pbmac1_parameters(salt=None, iterations=1, length=32, hash_alg="sha
 
 
 def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
-                         omit_fields=None):
+                         omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
+                         implicit_confirm=False):
     """Creates a pyasn1 pkiMessage from a pyasn1 PKCS10 CSR,
 
     :param csr: pyasn1 rfc6402.CertificationRequest
@@ -192,23 +193,26 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
         pki_header['recipient'] = recipient
 
     if 'transactionID' not in omit_fields:
-        transaction_id = univ.OctetString('0123456789abcdef').subtype(
+        transaction_id = transaction_id or os.urandom(16)
+        wrapper_transaction_id = univ.OctetString(transaction_id).subtype(
             explicitTag=Tag(tagClassContext, tagFormatSimple, 4)
         )
-        pki_header['transactionID'] = transaction_id
+        pki_header['transactionID'] = wrapper_transaction_id
 
     if 'senderNonce' not in omit_fields:
-        sender_nonce = univ.OctetString('1111111122222222').subtype(
+        sender_nonce = sender_nonce or os.urandom(16)
+        wrapper_sender_nonce = univ.OctetString(sender_nonce).subtype(
             explicitTag=Tag(tagClassContext, tagFormatSimple, 5)
         )
-        pki_header['senderNonce'] = sender_nonce
+        pki_header['senderNonce'] = wrapper_sender_nonce
 
     if 'recipNonce' not in omit_fields:
         # works well, but I'm not sure we need it for now
-        recipient_nonce = univ.OctetString('0000000000111111').subtype(
+        recip_nonce = recip_nonce or os.urandom(16)
+        wrapper_recipient_nonce = univ.OctetString(recip_nonce).subtype(
             explicitTag=Tag(tagClassContext, tagFormatSimple, 6)
         )
-        pki_header['recipNonce'] = recipient_nonce
+        pki_header['recipNonce'] = wrapper_recipient_nonce
 
 
     # SHOULD NOT be required
@@ -231,7 +235,7 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
             explicitTag=Tag(tagClassContext, tagFormatSimple, 3)
         )
 
-    if protection not in omit_fields and protection == 'pbmac1':
+    if 'protection' not in omit_fields and protection == 'pbmac1':
         prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(
             explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
         )
