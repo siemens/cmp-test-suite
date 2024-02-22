@@ -248,6 +248,14 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
         prot_alg_id['parameters'] = pbmac1_parameters
         pki_header['protectionAlg'] = prot_alg_id
 
+    if 'freeText' not in omit_fields:
+        # this freeText attribute bears no functionality, but we include it here for the sake of
+        # having a complete example of a PKIHeader structure
+        free_text = rfc9480.PKIFreeText().subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 7)
+        )
+        free_text.setComponentByPosition(0, 'This text is free, so let us have it')
+        pki_header['freeText'] = free_text
 
     # PKIBody
     pki_body = rfc9480.PKIBody()
