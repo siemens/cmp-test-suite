@@ -14,6 +14,19 @@ class TestCmpUtils(unittest.TestCase):
         raw_pki_message = load_and_decode_pem_file('data/example-cmp-response-accept.pem')
         cls.pki_message = cmputils.parse_pki_message(raw_pki_message)
 
+
+    def test_parse_error_response(self):
+        raw = load_and_decode_pem_file('data/example-response-unsupported-algo.pem')
+        pki_message = cmputils.parse_pki_message(raw)
+        body = pki_message['body']
+        self.assertEqual("error", body.getName())
+        self.assertEqual("rejection", str(body['error']['pKIStatusInfo']['status']))
+
+        # these are optional, though present in the specific example we're loading
+        stringified_status = str(body['error']['pKIStatusInfo']['statusString'])
+        self.assertIn('cannot create', stringified_status)
+
+
     def test_get_cmp_status_from_pki_message(self):
         status = cmputils.get_cmp_status_from_pki_message(self.pki_message)
         self.assertEqual("accepted", status)
