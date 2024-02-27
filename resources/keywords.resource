@@ -76,3 +76,10 @@ Protection algorithms must match
     ${response_algo}=   Get Asn1 Value    ${response}   header.protectionAlg.algorithm
     Should be equal     ${request_algo}   ${response_algo}
     # TODO also check the parameters, if any
+
+
+Protection must be valid
+    [Documentation]     Ensure that the protection in the PKIMessage is cryptographically valid
+    [Arguments]         ${pki_message}
+    # TODO
+    No Operation
