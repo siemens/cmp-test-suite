@@ -32,7 +32,6 @@ Generate CSR with RSA2048 and a predefined common name
     ${csr}=    Generate CSR    C=DE,L=Munich,CN=Hans Mustermann
     ${csr_signed}=    Sign CSR    ${csr}    ${key}
     Log    ${csr_signed}
-
     RETURN    ${csr_signed}
 
 Exchange data with CA
@@ -61,12 +60,12 @@ Response time must be fresh
     [Documentation]     Ensure that the response time is not far off from the time of our request
     ...                 The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
     [Arguments]         ${request}    ${response}   ${tolerance}=${120}
-    ${request_time}=    Get Asn1 Value as datetime     ${request}  header.messageTime
+    ${request_time}=    Get Asn1 Value as datetime     ${request}   header.messageTime
     ${response_time}=   Get Asn1 Value as datetime     ${response}  header.messageTime
 
     ${delta_verbose}=   Subtract Date From Date    ${response_time}    ${request_time}     verbose
     ${delta}=           Subtract Date From Date    ${response_time}    ${request_time}
-    Should Be True      ${delta} < ${tolerance}
+    Should Be True      ${delta} < ${tolerance}    Time between request and response exceeds tolerance
 
 
 Protection algorithms must match
@@ -74,7 +73,7 @@ Protection algorithms must match
     [Arguments]         ${request}    ${response}
     ${request_algo}=    Get Asn1 Value    ${request}    header.protectionAlg.algorithm
     ${response_algo}=   Get Asn1 Value    ${response}   header.protectionAlg.algorithm
-    Should be equal     ${request_algo}   ${response_algo}
+    Should be equal     ${request_algo}   ${response_algo}      Protection algorithm mismatch
     # TODO also check the parameters, if any
 
 
