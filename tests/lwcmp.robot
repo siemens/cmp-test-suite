@@ -57,6 +57,7 @@ Response PKIMessage header must include all required fields
 
     Sender and Recipient nonces must match    ${protected_p10cr}      ${pki_message}
     Response time must be fresh               ${protected_p10cr}      ${pki_message}
+    Protection algorithms must match          ${protected_p10cr}      ${pki_message}
     # [Teardown]    to do
 
 #SenderNonce must be present and at least 128 bit long

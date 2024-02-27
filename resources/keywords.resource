@@ -67,3 +67,12 @@ Response time must be fresh
     ${delta_verbose}=   Subtract Date From Date    ${response_time}    ${request_time}     verbose
     ${delta}=           Subtract Date From Date    ${response_time}    ${request_time}
     Should Be True      ${delta} < ${tolerance}
+
+
+Protection algorithms must match
+    [Documentation]     Ensure that the protection algorithms in the request and response match
+    [Arguments]         ${request}    ${response}
+    ${request_algo}=    Get Asn1 Value    ${request}    header.protectionAlg.algorithm
+    ${response_algo}=   Get Asn1 Value    ${response}   header.protectionAlg.algorithm
+    Should be equal     ${request_algo}   ${response_algo}
+    # TODO also check the parameters, if any
