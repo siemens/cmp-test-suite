@@ -36,6 +36,15 @@ Exchange data with CA
     Log             ${response.content}
     Log base64       ${response.content}
     RETURN        ${response}Response time must be fresh
+
+Sender and Recipient nonces must match
+    [Documentation]     Ensure that the recipient nonce in the response matches the sender nonce in the request
+    [Arguments]         ${request}    ${response}
+    ${request_nonce}=   Get Asn1 Value As Bytes    ${request}  header.senderNonce
+    ${response_nonce}=  Get Asn1 Value As Bytes    ${response}  header.recipNonce
+    Should Be Equal     ${request_nonce}    ${response_nonce}
+
+
 Response time must be fresh
     [Documentation]     Ensure that the response time is not far off from the time of our request
     ...                 The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)

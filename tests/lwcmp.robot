@@ -57,6 +57,7 @@ Response PKIMessage header must include all required fields
 #    Send PKIMessage to server
     ${pki_message}=      Parse Pki Message    ${response.content}
     Asn1 Must Contain Fields    ${pki_message}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+    Sender and Recipient nonces must match    ${protected_p10cr}      ${pki_message}
     Response time must be fresh               ${protected_p10cr}      ${pki_message}
     # [Teardown]    to do
 
