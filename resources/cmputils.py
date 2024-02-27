@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 import os
 from pyasn1.codec.der import decoder, encoder
@@ -237,7 +237,7 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
     # SHOULD NOT be required
     # TODO later - set to some bad time and see what happens
     if 'messageTime' not in omit_fields:
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         message_time = useful.GeneralizedTime().fromDateTime(now)
         message_time_subtyped = message_time.subtype(
             explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
@@ -452,7 +452,7 @@ def patch_message_time(pki_message, new_time=None):
     if type(pki_message) is bytes:
         pki_message = parse_pki_message(pki_message)
 
-    new_time = new_time or datetime.now()
+    new_time = new_time or datetime.now(timezone.utc)
     message_time = useful.GeneralizedTime().fromDateTime(new_time)
     message_time_subtyped = message_time.subtype(
         explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
