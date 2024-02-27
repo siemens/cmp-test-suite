@@ -31,7 +31,6 @@ Generate CSR with RSA2048 and a predefined common name
     ${key}=    Generate keypair    rsa    2048
     ${csr}=    Generate CSR    C=DE,L=Munich,CN=Hans Mustermann
     ${csr_signed}=    Sign CSR    ${csr}    ${key}
-    # Evaluate    pdb.Pdb(stdout=sys.__stdout__).set_trace()    modules=sys, pdb
     Log    ${csr_signed}
 
     RETURN    ${csr_signed}

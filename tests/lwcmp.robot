@@ -37,7 +37,6 @@ Response PKIMessage header must include all required fields
     [Documentation]    Check that the PKIMessage coming from the server includes all the required fields
     [Tags]    headers   ak
     ${key}=    Generate RSA keypair
-#    ${csr}=    Generate CSR    C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Hans Mustermann        hans.com,www.hans.com
     ${csr}=    Generate CSR    CN=Hans Mustermann
     ${csr_signed}=    Sign CSR    ${csr}    ${key}
     Log             ${csr_signed}

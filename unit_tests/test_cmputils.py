@@ -31,8 +31,6 @@ class TestCmpUtils(unittest.TestCase):
     def test_parse_p10cr_success_response(self):
         raw = load_and_decode_pem_file('data/example-response-p10rp-cert.pem')
         pki_message = cmputils.parse_pki_message(raw)
-        print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-        print(pki_message.prettyPrint())
 
         sender_nonce = get_asn1_value_as_bytes(pki_message, 'header.senderNonce')
         self.assertEqual(sender_nonce, b'\xd3\xcd\x9d\xdd\xe5n+\xad\x84\x82U\xac\xa8&\xf9\xc0')
