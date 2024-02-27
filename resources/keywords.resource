@@ -10,6 +10,7 @@ Resource         ../config/${environment}.robot
 
 Library   RequestsLibrary
 Library   OperatingSystem
+Library   DateTime
 Library   ../resources/cryptoutils.py
 Library   ../resources/cmputils.py
 Library   ../resources/utils.py
@@ -34,4 +35,14 @@ Exchange data with CA
     ${response}=    POST    url=${CA_CMP_URL}     data=${payload}    headers=&{headers}     verify=${False}     expected_status=any
     Log             ${response.content}
     Log base64       ${response.content}
-    RETURN        ${response}
+    RETURN        ${response}Response time must be fresh
+Response time must be fresh
+    [Documentation]     Ensure that the response time is not far off from the time of our request
+    ...                 The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
+    [Arguments]         ${request}    ${response}   ${tolerance}=${120}
+    ${request_time}=    Get Asn1 Value as datetime     ${request}  header.messageTime
+    ${response_time}=   Get Asn1 Value as datetime     ${response}  header.messageTime
+
+    ${delta_verbose}=   Subtract Date From Date    ${response_time}    ${request_time}     verbose
+    ${delta}=           Subtract Date From Date    ${response_time}    ${request_time}
+    Should Be True      ${delta} < ${tolerance}

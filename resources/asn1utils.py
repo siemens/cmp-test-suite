@@ -123,7 +123,7 @@ def get_asn1_value(asn1_obj, query):
 
 
 def get_asn1_value_as_string(asn1_obj, query):
-    """Wrap get_nested_value to return a plain string
+    """Wrap get_asn1_value to return a plain string
 
     :param asn1_obj: pyasn1 object, the structure you want to query
     :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
@@ -136,7 +136,7 @@ def get_asn1_value_as_string(asn1_obj, query):
 
 
 def get_asn1_value_as_number(asn1_obj, query):
-    """Wrap get_nested_value to return an integer
+    """Wrap get_asn1_value to return an integer
 
     :param asn1_obj: pyasn1 object, the structure you want to query
     :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
@@ -149,7 +149,7 @@ def get_asn1_value_as_number(asn1_obj, query):
 
 
 def get_asn1_value_as_bytes(asn1_obj, query):
-    """Wrap get_nested_value to return an integer
+    """Wrap get_asn1_value to return an integer
 
     :param asn1_obj: pyasn1 object, the structure you want to query
     :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
@@ -159,3 +159,15 @@ def get_asn1_value_as_bytes(asn1_obj, query):
     result = get_asn1_value(asn1_obj, query)
     # decoded, _rest = decoder.decode(result)
     return result.asOctets()
+
+
+def get_asn1_value_as_datetime(asn1_obj, query):
+    """Wrap get_asn1_value to return a DateTime object
+
+    :param asn1_obj: pyasn1 object, the structure you want to query
+    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
+                 'header.messageTime'
+    :returns: DateTime, the value you requested; or will raise a ValueError with details.
+    """
+    result = get_asn1_value(asn1_obj, query)
+    return result.asDateTime
