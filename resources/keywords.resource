@@ -14,6 +14,7 @@ Library   DateTime
 Library   ../resources/cryptoutils.py
 Library   ../resources/cmputils.py
 Library   ../resources/utils.py
+Library   ../resources/asn1utils.py
 
 
 *** Keywords ***
