@@ -52,11 +52,10 @@ Response PKIMessage header must include all required fields
     ${encoded}=  Encode To Der    ${protected_p10cr}
     Log Base64    ${encoded}
     ${response}=  Exchange data with CA    ${encoded}
-#    build_p10cr_from_csr
-#    Generate basic PKIMessage
-#    Send PKIMessage to server
     ${pki_message}=      Parse Pki Message    ${response.content}
-    Asn1 Must Contain Fields    ${pki_message}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+    ${pki_header}=       Get Asn1 value   ${pki_message}    header
+    Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+
     Sender and Recipient nonces must match    ${protected_p10cr}      ${pki_message}
     Response time must be fresh               ${protected_p10cr}      ${pki_message}
     # [Teardown]    to do
