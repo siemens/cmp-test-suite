@@ -128,3 +128,11 @@ Certificate must be valid
     # Use PKILint to check the certificate for issues, https://github.com/digicert/pkilint
     # If PKILint complains, we log a warning, but keep going
     Run Keyword And Warn On Failure     Validate Certificate PKILint   ${der_certificate}
+
+
+
+PKIMessage body type must be
+    [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
+    [Arguments]        ${pki_message}    ${expected_type}
+    ${response_type}=  Get CMP response type    ${pki_message}
+    Should Be Equal    ${response_type}    ${expected_type}    Response type mismatch

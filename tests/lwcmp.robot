@@ -81,6 +81,7 @@ Response PKIMessage header must include all required fields
     Response time must be fresh               ${protected_p10cr}      ${pki_message}
     Protection algorithms must match          ${protected_p10cr}      ${pki_message}
     Protection must be valid                  ${pki_message}
+    PKIMessage body type must be              ${pki_message}    cp
     # [Teardown]    to do
 
 
