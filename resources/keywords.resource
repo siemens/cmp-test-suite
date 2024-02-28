@@ -82,3 +82,12 @@ Protection must be valid
     [Arguments]         ${pki_message}
     # TODO
     No Operation
+
+
+
+SenderNonce must be at least 128 bits long
+    [Documentation]     Ensure that the sender nonce is at least 128 bits long
+    [Arguments]         ${pki_message}
+    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}   header.senderNonce
+    # 16 bytes is 128 bits
+    Buffer length must be at least    ${sender_nonce}    32

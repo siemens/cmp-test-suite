@@ -41,11 +41,12 @@ def buffer_length_must_be_at_least(data, length):
     """Check whether the length of a byte buffer is at least `length` bytes
 
     :param data: bytes, the buffer to examine
-    :param length: int, the minimum required length in bytes
+    :param length: stringified int, the minimum required length in bytes; it will come as a string
+                   from RobotFramework, just as a matter of convenience of the caller.
     :returns: bool
     """
-    if not len(data) >= length:
-        raise ValueError(f"Buffer length {len(data)} < {length}, but should have been >={length}!")
+    if not len(data) >= int(length):
+        raise ValueError(f"Buffer length {len(data)} < {length}, but should have been >={length} bytes!")
 
 
 def decode_pem_string(data):

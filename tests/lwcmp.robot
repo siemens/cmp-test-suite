@@ -56,6 +56,7 @@ Response PKIMessage header must include all required fields
     Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
 
     Sender and Recipient nonces must match    ${protected_p10cr}      ${pki_message}
+    SenderNonce must be at least 128 bits long  ${pki_message}
     Response time must be fresh               ${protected_p10cr}      ${pki_message}
     Protection algorithms must match          ${protected_p10cr}      ${pki_message}
     Protection must be valid                  ${pki_message}
