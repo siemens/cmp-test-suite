@@ -49,7 +49,7 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 |       type=2.5.4.10
 """
 
-from pyasn1.codec.der import decoder
+from pyasn1.codec.der import decoder, encoder
 
 
 def asn1_must_contain_fields(data, fields):
@@ -171,3 +171,15 @@ def get_asn1_value_as_datetime(asn1_obj, query):
     """
     result = get_asn1_value(asn1_obj, query)
     return result.asDateTime
+
+
+def get_asn1_value_as_der(asn1_obj, query):
+    """Wrap get_asn1_value to return a DER-encoded version of the queried value
+
+    :param asn1_obj: pyasn1 object, the structure you want to query
+    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
+                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
+    :returns: bytes, the DER-encoded bytes of the value you were looking for; or will raise a ValueError with details.
+    """
+    result = get_asn1_value(asn1_obj, query)
+    return encoder.encode(result)
