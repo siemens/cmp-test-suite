@@ -16,6 +16,7 @@ Library   ../resources/cryptoutils.py
 Library   ../resources/cmputils.py
 Library   ../resources/utils.py
 Library   ../resources/asn1utils.py
+Library   ../resources/certutils.py
 
 
 *** Keywords ***
@@ -107,3 +108,23 @@ Collect nonce from PKIMessage
     ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}   header.senderNonce
     Append To List     ${collector}    ${sender_nonce}
     Log    ${collector}
+
+
+
+Certificate must be valid
+    [Documentation]    Verify if a certificate is valid and passes sanity checks. The certificate is passed as a
+    ...                DER-encoded byte buffer. These checks are done by trying to parse the certificate with
+    ...                OpenSSL and PKILint. OpenSSL is relatively forgiving and will accept a certificate that
+    ...                may contain issues, but is good enough for practical applications - failure to load with OpenSSL
+    ...                is treated as an error. PKILint is very picky and will find issues even if a certificate
+    ...                is accepted by OpenSSL. PKILint's findings will be logged and reported as warnings - making
+    ...                it clear that there's something of interest, but not failing the test.
+    [Arguments]        ${der_certificate}
+    Log base64         ${der_certificate}
+    # If OpenSSL complains, we fail the test
+    ${result_openssl}=  Validate Certificate OpenSSL   ${der_certificate}
+    Should be true      ${result_openssl}    Certificate failed OpenSSL validation
+
+    # Use PKILint to check the certificate for issues, https://github.com/digicert/pkilint
+    # If PKILint complains, we log a warning, but keep going
+    Run Keyword And Warn On Failure     Validate Certificate PKILint   ${der_certificate}

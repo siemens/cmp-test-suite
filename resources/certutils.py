@@ -31,7 +31,7 @@ def validate_certificate_pkilint(data):
     """Validate a certificate using the pkilint tool.
 
     :param data: bytes, DER-encoded X509 certificate.
-    :returns bool: True if all is well, otherwise False (errors will be printed in the log)"""
+    :returns None: Will raise an exception if issues were found"""
     doc_validator = certificate.create_pkix_certificate_validator_container(
         certificate.create_decoding_validators(name.ATTRIBUTE_TYPE_MAPPINGS, extension.EXTENSION_MAPPINGS),
         [
@@ -54,10 +54,7 @@ def validate_certificate_pkilint(data):
     findings_count = report.get_findings_count(results, ValidationFindingSeverity.WARNING)
     if findings_count > 0:
         issues = report.ReportGeneratorPlaintext(results, ValidationFindingSeverity.WARNING).generate()
-        logging.error('Certificate validation with pkilint failed: %s', issues)
-        return False
-
-    return True
+        raise ValueError(issues)
 
 
 if __name__ == "__main__":

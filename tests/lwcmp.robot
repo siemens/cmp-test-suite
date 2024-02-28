@@ -74,6 +74,10 @@ Response PKIMessage header must include all required fields
 
     Collect nonce from PKIMessage    ${pki_message}   ${collected_nonces}
 
+    ${der_cert}=    Get Asn1 value as DER    ${pki_message}    extraCerts/0
+    Log base64    ${der_cert}
+    Certificate must be valid    ${der_cert}
+
     Response time must be fresh               ${protected_p10cr}      ${pki_message}
     Protection algorithms must match          ${protected_p10cr}      ${pki_message}
     Protection must be valid                  ${pki_message}
