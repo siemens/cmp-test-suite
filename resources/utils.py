@@ -1,8 +1,52 @@
 from base64 import b64decode, b64encode
+from collections import Counter
+from itertools import combinations
 import re
 import logging
 from pyasn1.type import base
 
+
+def nonces_must_be_diverse(nonces, minimal_hamming_distance=10):
+    """Check that a list of nonces are diverse enough, by computing the Hamming distance between them. Nonces will be
+    right-padded with 0x00 if their lengths are different.
+
+    :param nonces: list of bytes, nonces to check
+    :param minimal_hamming_distance: stringified int, the minimum hamming distance between any two nonces; stringified
+                                     for convenience of calling from within RobotFramework tests.
+    :returns: nothing, but will raise a ValueError if at least two nonces are not diverse enough; the checker stops at
+              the first violation it finds.
+    """
+    for nonce1, nonce2 in combinations(nonces, 2):
+        # Pad the shorter nonce with zeros, so they are of the same length
+        max_length = max(len(nonce1), len(nonce2))
+        nonce1 = nonce1.ljust(max_length, b'\x00')
+        nonce2 = nonce2.ljust(max_length, b'\x00')
+
+        hamming_distance = sum([bin(n1 ^ n2).count('1') for n1, n2 in zip(nonce1, nonce2)])
+        if hamming_distance < minimal_hamming_distance:
+            report = (f"Nonces are not diverse enough! Hamming distance between nonces {nonce1} and {nonce2} is "
+                      f"{hamming_distance}, but should have been at least {minimal_hamming_distance}.")
+
+            # Convert bytes to binary strings, as it is an easier representation for humans to look at
+            nonce1_bin = ' '.join([format(n, '08b') for n in nonce1])
+            nonce2_bin = ' '.join([format(n, '08b') for n in nonce2])
+            report += f"\nNonce1: {nonce1_bin}\nNonce2: {nonce2_bin}"
+            raise ValueError(report)
+
+
+def nonces_must_be_unique(nonces):
+    """Check that a list of nonces are all unique.
+
+    :param nonces: list of bytes, nonces to check
+    :returns: nothing, but will raise a ValueError if the nonces are not unique
+    """
+    # uncomment this to provoke an error by duplicating a nonce
+    # nonces.append(nonces[0])
+    nonce_counts = Counter(nonces)
+    repeated_nonces = [(nonce, count) for nonce, count in nonce_counts.items() if count > 1]
+
+    if repeated_nonces:
+        raise ValueError(f"Nonces are not unique! Repeated nonces with counts: {repeated_nonces}")
 
 def log_asn1(pyasn1_obj):
     """Log a pyasn1 object as a string for debugging purposes. For convenience, it will gracefully

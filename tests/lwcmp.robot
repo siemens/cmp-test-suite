@@ -5,6 +5,20 @@ Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/cmputils.py
 Library     OperatingSystem
+Library     Collections
+
+Suite Setup    Initialize Global Variables
+
+
+*** Variables ***
+# This variable is a collector of nonces that the server sent back to us throughout all the tests. In the end we use
+# it to check that the server is not sending the same nonce twice, and that the nonces are cryptographically secure.
+@{collected_nonces}    ${EMPTY}
+
+*** Keywords ***
+Initialize Global Variables
+    [Documentation]    Define global variables that will be used in the test suite and accessible within any test case
+    Set Global Variable    @{collected_nonces}    @{EMPTY}
 
 *** Test Cases ***
 PKI entity must respond with a PKIStatusInfo structure when a malformed request is received
@@ -57,32 +71,28 @@ Response PKIMessage header must include all required fields
 
     Sender and Recipient nonces must match    ${protected_p10cr}      ${pki_message}
     SenderNonce must be at least 128 bits long  ${pki_message}
+
+    Collect nonce from PKIMessage    ${pki_message}   ${collected_nonces}
+
     Response time must be fresh               ${protected_p10cr}      ${pki_message}
     Protection algorithms must match          ${protected_p10cr}      ${pki_message}
     Protection must be valid                  ${pki_message}
     # [Teardown]    to do
 
-#SenderNonce must be present and at least 128 bit long
-#    [Documentation]    Check that the PKIMessage contains the SenderNonce field and that its value is >=128 bit.
-#    ...                Ref: 3.1. General Description of the CMP Message Header
-#    [Tags]    crypto
-#    ${key}=    Generate keypair    rsa    2048
-#    ${csr}=    Generate CSR    C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Hans Mustermann        hans.com,www.hans.com
-#    ${csr_signed}=    Sign CSR    ${csr}    ${key}
-#    Generate basic PKIMessage
-#    Send PKIMessage to server
-#    ${pki_message}=      Retrieve response from server
-#    ${protection}=  Get field value from PKIMessage as bytes        protection
-#    Buffer length must be at least      ${protection}   128
-#    # [Teardown]    to do
+
+
+SenderNonces must be cryptographically secure
+    [Documentation]    Check that the SenderNonce values from all the received PKIMessage structures are unique and
+    ...                cryptographically secure. The latter is checked by computing the Hamming distance between each
+    ...                pair of nonces and ensuring it is at least 10 bits.
+    ...                Ref: 3.1. General Description of the CMP Message Header
+    [Tags]    crypto    ak
+    Log     ${collected_nonces}
+    Nonces Must Be Unique    ${collected_nonces}
+    Nonces Must Be Diverse   ${collected_nonces}
 
 
 
-#SenderNonces must be cryptographically secure
-#    [Documentation]    Check that the PKIMessage contains the SenderNonce field and that its value is >=128 bit.
-#    ...                Ref: 3.1. General Description of the CMP Message Header
-#    [Tags]    crypto
-#    Log     dummy test
 #
 #
 #Messages without protection must be rejected, except if not possible for error messages
@@ -96,12 +106,7 @@ Response PKIMessage header must include all required fields
 #    [Tags]    consistency
 #    No Operation
 #
-#The same type of PKIProtection must be used across a PKI operation
-#    [Documentation]    The same type of protection is required to be used for all messages of one PKI management
-#    ...                operation.
-#    ...                Ref: 1.6. Compatibility with Existing CMP Profiles
-#    [Tags]    consistency
-#    No Operation
+
 #
 #PKIStatusInfo must be set when an error occurred
 #    [Documentation]    When a negative response is sent by the RA/CA, the error details must be shown in PKIStatusInfo.

@@ -11,6 +11,7 @@ Resource         ../config/${environment}.robot
 Library   RequestsLibrary
 Library   OperatingSystem
 Library   DateTime
+Library   Collections
 Library   ../resources/cryptoutils.py
 Library   ../resources/cmputils.py
 Library   ../resources/utils.py
@@ -69,7 +70,9 @@ Response time must be fresh
 
 
 Protection algorithms must match
-    [Documentation]     Ensure that the protection algorithms in the request and response match
+    [Documentation]    Ensure that the protection algorithms in the request and response match
+    ...                Ref: 1.6. Compatibility with Existing CMP Profiles
+    [Tags]    consistency   crypto
     [Arguments]         ${request}    ${response}
     ${request_algo}=    Get Asn1 Value    ${request}    header.protectionAlg.algorithm
     ${response_algo}=   Get Asn1 Value    ${response}   header.protectionAlg.algorithm
@@ -86,8 +89,21 @@ Protection must be valid
 
 
 SenderNonce must be at least 128 bits long
-    [Documentation]     Ensure that the sender nonce is at least 128 bits long
+    [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
+    ...                Ref: 3.1. General Description of the CMP Message Header
+    [Tags]    crypto
     [Arguments]         ${pki_message}
     ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}   header.senderNonce
+    # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
+    # Buffer length must be at least    ${sender_nonce}    32
     # 16 bytes is 128 bits
-    Buffer length must be at least    ${sender_nonce}    32
+    Buffer length must be at least    ${sender_nonce}    16
+
+
+Collect nonce from PKIMessage
+    [Documentation]    Extract the senderNonce from a PKIMessage and append it to a list, which will be used later
+    ...                in a test that checks for nonces to be cryptographically strong.
+    [Arguments]        ${pki_message}   ${collector}
+    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}   header.senderNonce
+    Append To List     ${collector}    ${sender_nonce}
+    Log    ${collector}
