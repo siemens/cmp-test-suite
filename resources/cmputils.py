@@ -19,30 +19,6 @@ sys.set_int_max_str_digits(0)
 # from pyasn1 import debug
 # debug.setLogger(debug.Debug('all'))
 
-# PKIMessage ::= SEQUENCE {
-#     body             PKIBody,
-#     protection   [0] PKIProtection OPTIONAL,
-# extraCerts   [1] SEQUENCE SIZE (1..MAX) OF CMPCertificate
-#                      OPTIONAL
-# }
-#
-# PKIHeader ::= SEQUENCE {
-#     pvno                INTEGER     { cmp1999(1), cmp2000(2) },
-#     sender              GeneralName,
-#     recipient           GeneralName,
-#     messageTime     [0] GeneralizedTime         OPTIONAL,
-#     protectionAlg   [1] AlgorithmIdentifier     OPTIONAL,
-#     senderKID       [2] KeyIdentifier           OPTIONAL,
-#     recipKID        [3] KeyIdentifier           OPTIONAL,
-#     transactionID   [4] OCTET STRING            OPTIONAL,
-#     senderNonce     [5] OCTET STRING            OPTIONAL,
-#     recipNonce      [6] OCTET STRING            OPTIONAL,
-#     freeText        [7] PKIFreeText             OPTIONAL,
-#     generalInfo     [8] SEQUENCE SIZE (1..MAX) OF
-#                         InfoTypeAndValue     OPTIONAL
-# }
-
-
 # revocation reasons http://www.alvestrand.no/objectid/2.5.29.21.html#
 REASON_UNSPECIFIED = 0
 REASON_KEY_COMPROMISE = 1
