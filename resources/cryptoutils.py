@@ -43,6 +43,10 @@ HASH_NAME_OBJ_MAP = {
 
 
 def get_hash_from_signature_oid(oid):
+    """Determine the name of a hashing function used in a signature algorithm given by its oid
+
+    :param oid: str, OID of signing algorithm
+    :return: str, name of hashing algorithm, e.g., 'sha256'"""
     try:
         return OID_HASH_MAP[oid]
     except KeyError:
@@ -186,3 +190,16 @@ def compute_pbmac1(data, key, iterations=262144, salt=None, length=32, hash_alg=
     signature = h.finalize()
     logging.info(f"Signature: {signature}")
     return signature
+
+
+def compute_hash(alg_name, data):
+    """Calculate the hash of data using an algorithm given by its name
+
+    :param alg_name: str, name of algorithm, e.g., 'sha256', see HASH_NAME_OBJ_MAP
+    :param data: bytes, the buffer we want to hash
+    :return: bytes, the resulting hash
+    """
+    hash_class = hash_name_to_instance(alg_name)
+    digest = hashes.Hash(hash_class)
+    digest.update(data)
+    return digest.finalize()
