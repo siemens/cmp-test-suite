@@ -423,6 +423,8 @@ def get_cert_from_pki_message(pki_message, cert_number=0):
     :param pki_message: pyasn1 PkiMessage
     :param cert_number: optional int, index of certificate to extract, will only extract the first certificate
                         from the sequence by default
+
+    :return:    pyasn1 object representing a certificate
     """
     message_type = get_cmp_response_type(pki_message)
     # TODO throw an error if this is not a type of message that contains certificates
@@ -430,9 +432,10 @@ def get_cert_from_pki_message(pki_message, cert_number=0):
     response = pki_message['body'][message_type]['response'][cert_number]
     # status = response['status']['status']
 
-    cert = response['certifiedKeyPair']['certOrEncCert']['certificate']
-    serial_number = str(cert['tbsCertificate']['serialNumber'])
-    return serial_number, cert
+    cert = response['certifiedKeyPair']['certOrEncCert']['certificate']['tbsCertificate']
+    # serial_number = str(cert['tbsCertificate']['serialNumber'])
+    # return serial_number, cert
+    return cert
 
 
 def parse_csr(raw_csr):

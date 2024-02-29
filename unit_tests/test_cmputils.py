@@ -59,7 +59,8 @@ class TestCmpUtils(unittest.TestCase):
         self.assertEqual("ip", message_type)
 
     def test_get_cert_from_pki_message(self):
-        serial_number, cert = cmputils.get_cert_from_pki_message(self.pki_message)
+        cert = cmputils.get_cert_from_pki_message(self.pki_message)
+        serial_number = str(cert['serialNumber'])
         self.assertEqual("7286628116517592062", serial_number)
 
     def test_build_p10cr_without_attributes(self):
