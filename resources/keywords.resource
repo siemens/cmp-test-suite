@@ -36,6 +36,14 @@ Generate CSR with RSA2048 and a predefined common name
     Log    ${csr_signed}
     RETURN    ${csr_signed}
 
+
+Load and parse example CSR
+    [Documentation]    Load a CSR from a PEM file, and return it as a pyasn1 object.  This is for convenience, to remove
+    ...                the need to generate a new keypair.
+    ${csr}=  Load And Decode Pem File    data/example-csr.pem
+    ${parsed_csr}=     Parse Csr    ${csr}
+    RETURN             ${parsed_csr}
+
 Exchange data with CA
     [Documentation]    Send a HTTP POST request to a server, and return the response.
     [Arguments]     ${payload}
