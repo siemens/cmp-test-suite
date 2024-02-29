@@ -1,21 +1,22 @@
-from datetime import datetime, timezone
-import sys
 import os
+import sys
+from datetime import datetime, timezone
+
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import univ, useful, constraint
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
-from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, pem, rfc8018, rfc5480
+from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480
 from pyasn1_alt_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
+
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
                          compute_password_based_mac)
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
 sys.set_int_max_str_digits(0)
-
 
 # from pyasn1 import debug
 # debug.setLogger(debug.Debug('all'))
@@ -138,7 +139,6 @@ def _prepare_password_based_mac_parameters(salt=None, iterations=5, hash_alg="sh
     return pbm_parameter
 
 
-
 def _prepare_pbmac1_parameters(salt=None, iterations=1, length=32, hash_alg="sha256"):
     salt = salt or os.urandom(16)
 
@@ -152,11 +152,8 @@ def _prepare_pbmac1_parameters(salt=None, iterations=1, length=32, hash_alg="sha
         case _:
             raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
 
-
-
     outer_params = rfc8018.PBMAC1_params()
     outer_params['keyDerivationFunc'] = rfc8018.AlgorithmIdentifier()
-
 
     pbkdf2_params = rfc8018.PBKDF2_params()
     pbkdf2_params['salt']['specified'] = univ.OctetString(salt)
@@ -171,7 +168,6 @@ def _prepare_pbmac1_parameters(salt=None, iterations=1, length=32, hash_alg="sha
 
     outer_params['messageAuthScheme']['algorithm'] = hmac_alg
     outer_params['messageAuthScheme']['parameters'] = univ.Null()
-
 
     return outer_params
 
@@ -188,11 +184,12 @@ def _prepare_implicit_confirm_general_info_structure():
     # implicit_confirm['infoValue'] = univ.Null()
 
     general_info_wrapper = univ.SequenceOf(componentType=rfc9480.InfoTypeAndValue()).subtype(
-                                    subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX)).subtype(
-                                    explicitTag=Tag(tagClassContext, tagFormatSimple, 8))
+        subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX)).subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 8))
 
     general_info_wrapper.setComponentByPosition(0, implicit_confirm)
     return general_info_wrapper
+
 
 def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
                          omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
@@ -245,7 +242,6 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
             explicitTag=Tag(tagClassContext, tagFormatSimple, 6)
         )
         pki_header['recipNonce'] = wrapper_recipient_nonce
-
 
     # SHOULD NOT be required
     # TODO later - set to some bad time and see what happens
@@ -329,9 +325,10 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
     return pki_message
 
 
-def build_cert_conf(cert, cert_req_id=-1, sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
-                       omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
-                       implicit_confirm=False):
+def build_cert_conf(cert, cert_req_id=-1, sender='tests@example.com', recipient='testr@example.com',
+                    protection='pbmac1',
+                    omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
+                    implicit_confirm=False):
     """Create a PKIMessage of certConf type
 
     :param cert: pyasn1 certificate object
@@ -363,7 +360,6 @@ def build_cert_conf(cert, cert_req_id=-1, sender='tests@example.com', recipient=
     return pki_message
 
 
-
 def protect_pkimessage_hmac(pki_message, password):
     """Protects a PKIMessage with a HMAC, based on a password, returning the updated pyasn1 PKIMessage structure
     :param pki_message: pyasn1 PKIMessage
@@ -380,6 +376,7 @@ def protect_pkimessage_hmac(pki_message, password):
     )
     pki_message['protection'] = wrapped_protection
     return pki_message
+
 
 def protect_pkimessage_pbmac1(pki_message, password, iterations=262144, salt=None, length=32, hash_alg="sha512"):
     """Protects a PKIMessage with a PBMAC1, based on a password, returning the updated pyasn1 PKIMessage structure
@@ -418,6 +415,7 @@ def protect_pkimessage_password_based_mac(pki_message, password, iterations=5, s
     )
     pki_message['protection'] = wrapped_protection
     return pki_message
+
 
 def encode_to_der(asn1_structure):
     """Generic tool for DER-encoding a pyasn1 data structure"""
@@ -570,7 +568,6 @@ def find_oid_in_general_info(pki_message, oid):
     return False
 
 
-
 if __name__ == '__main__':
     # TODO move this into unit tests if this is still needed, otherwise remove it
     from utils import decode_pem_string
@@ -612,4 +609,3 @@ LJPchrUaU95b
 
     # from base64 import b64encode
     # print(b64encode(encode_to_der(protected_pki_message)))
-

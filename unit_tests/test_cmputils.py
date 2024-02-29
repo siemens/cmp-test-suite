@@ -1,11 +1,11 @@
 import unittest
-from base64 import b64encode
 
 # from resources import asn1utils
 from resources import cmputils
 from resources import cryptoutils
-from resources.utils import load_and_decode_pem_file, decode_pem_string
 from resources.asn1utils import get_asn1_value_as_bytes, get_asn1_value_as_string, get_asn1_value
+from resources.utils import load_and_decode_pem_file, decode_pem_string
+
 
 class TestCmpUtils(unittest.TestCase):
     @classmethod
@@ -15,7 +15,6 @@ class TestCmpUtils(unittest.TestCase):
 
         raw_pki_message = load_and_decode_pem_file('data/example-cmp-response-accept.pem')
         cls.pki_message = cmputils.parse_pki_message(raw_pki_message)
-
 
     def test_parse_error_response(self):
         raw = load_and_decode_pem_file('data/example-response-unsupported-algo.pem')
@@ -108,10 +107,5 @@ class TestCmpUtils(unittest.TestCase):
         self.assertTrue(result)
 
 
-
-
-
 if __name__ == '__main__':
     unittest.main()
-
-

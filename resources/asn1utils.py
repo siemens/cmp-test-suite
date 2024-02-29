@@ -110,7 +110,7 @@ def get_asn1_value(asn1_obj, query):
                 asn1_obj = asn1_obj[key]
             traversed_so_far += f'.{key}' if traversed_so_far else key
     except Exception as err:
-    # except KeyError as err:
+        # except KeyError as err:
         available_keys = list(asn1_obj.keys())
         report = f"> Traversal ERROR, got this far: `{traversed_so_far}`, issue at `{current_piece}`, the query was `{query}`"
         report += f'\n> Available keys at this step: {available_keys}'

@@ -1,5 +1,7 @@
 import unittest
+
 from resources import utils
+
 
 class TestUtils(unittest.TestCase):
     def test_nonces_must_be_unique(self):
@@ -10,13 +12,12 @@ class TestUtils(unittest.TestCase):
         with self.assertRaises(ValueError):
             utils.nonces_must_be_unique(nonces_dupe)
 
-
     def test_nonces_must_be_diverse(self):
-        nonces_similar = [b'\x00'*16, b'\x01' + b'\x00'*15]
+        nonces_similar = [b'\x00' * 16, b'\x01' + b'\x00' * 15]
         with self.assertRaises(ValueError):
             utils.nonces_must_be_diverse(nonces_similar)
 
-        nonces_diverse = [b'\x00'*16, b'\xFF'*16]
+        nonces_diverse = [b'\x00' * 16, b'\xFF' * 16]
         utils.nonces_must_be_diverse(nonces_diverse)
 
 

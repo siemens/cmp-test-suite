@@ -1,8 +1,9 @@
+import logging
+import re
 from base64 import b64decode, b64encode
 from collections import Counter
 from itertools import combinations
-import re
-import logging
+
 from pyasn1.type import base
 
 
@@ -47,6 +48,7 @@ def nonces_must_be_unique(nonces):
 
     if repeated_nonces:
         raise ValueError(f"Nonces are not unique! Repeated nonces with counts: {repeated_nonces}")
+
 
 def log_asn1(pyasn1_obj):
     """Log a pyasn1 object as a string for debugging purposes. For convenience, it will gracefully
@@ -116,6 +118,7 @@ def decode_pem_string(data):
     # readability when debugging.
     return b64decode(result)
 
+
 def load_and_decode_pem_file(path):
     """Load a base64-encoded PEM file, with or without a header, ignore comments, and return the decoded data.
 
@@ -163,4 +166,4 @@ def strip_armour(raw):
 
 
 if __name__ == "__main__":
-    print (load_and_decode_pem_file('../data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/csr.pem'))
+    print(load_and_decode_pem_file('../data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/csr.pem'))

@@ -1,13 +1,13 @@
 """Some wrapper-tools for validating an X509 cert by invoking other software, e.g., OpenSSL, pkilint. """
 import logging
 
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
 from pkilint import loader
 from pkilint import report
 from pkilint.pkix import certificate, name, extension
 from pkilint.validation import ValidationFindingSeverity
 
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
 
 # TODO for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False

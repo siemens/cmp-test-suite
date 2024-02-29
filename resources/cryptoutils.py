@@ -1,11 +1,12 @@
 import logging
 import os
+
 from cryptography import x509
-from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.x509.oid import NameOID
 
 # map strings used in OpenSSL-like common name notation to objects of NameOID types that
 # cryptography.x509 uses internally
@@ -68,6 +69,7 @@ def hash_name_to_instance(alg):
 def generate_rsa_keypair(length=2048):
     return rsa.generate_private_key(public_exponent=65537, key_size=length)
 
+
 def generate_keypair(algorithm="rsa", length=2048):
     return rsa.generate_private_key(public_exponent=65537, key_size=length)
 
@@ -80,10 +82,11 @@ def save_key(key, path, passphrase=b"11111"):
     :param passphrase: optional str, password to use for encrypting the key"""
     with open(path, "wb") as f:
         f.write(key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.BestAvailableEncryption(passphrase),
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.BestAvailableEncryption(passphrase),
         ))
+
 
 def generate_csr(common_name, subjectAltName=None):
     """Generate a CSR based on the given string parameters
@@ -109,12 +112,12 @@ def generate_csr(common_name, subjectAltName=None):
     #     x509.NameAttribute(NameOID.COUNTRY_NAME, u"DE"),
     #     x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"CMP Lab"),
     #     ]))
-    
+
     if subjectAltName:
         # if there are any subjectAltNames given, process the list into objects that the CSRBuilder can deal with
         items = subjectAltName.strip().split(',')
         dns_names = [x509.DNSName(item) for item in items]
-        csr = csr.add_extension(x509.SubjectAlternativeName(dns_names), critical=False)    
+        csr = csr.add_extension(x509.SubjectAlternativeName(dns_names), critical=False)
 
         # the logic above will essentially boil down to a call like this one:
         # csr = csr.add_extension(
@@ -125,6 +128,7 @@ def generate_csr(common_name, subjectAltName=None):
         # ]), critical=False)
 
     return csr
+
 
 def sign_csr(csr, key, hash_alg="sha256"):
     """Sign a CSR with a given key, using a specified hashing algorithm
@@ -218,7 +222,6 @@ def compute_password_based_mac(data, key, iterations=5, salt=None, hash_alg="sha
 
     :returns: bytes, the HMAC signature
     """
-
     salt = salt or os.urandom(16)
 
     if type(key) is str:
