@@ -81,8 +81,18 @@ class TestCmpUtils(unittest.TestCase):
         asn1_csr = cmputils.parse_csr(decode_pem_string(signed_csr))
         p10cr = cmputils.build_p10cr_from_csr(asn1_csr, implicit_confirm=True)
         der_encoded = cmputils.encode_to_der(p10cr)
-        print(b64encode(der_encoded))
-        print(p10cr.prettyPrint())
+        # print(b64encode(der_encoded))
+        # print(p10cr.prettyPrint())
+
+    def test_find_implicit_confirm_extension(self):
+        raw = load_and_decode_pem_file('data/example-response-error-implicitConfirm.pem')
+        pki_message = cmputils.parse_pki_message(raw)
+
+        oid_implicit_confirm = '1.3.6.1.5.5.7.4.13'
+        result = cmputils.find_oid_in_general_info(pki_message, oid_implicit_confirm)
+        self.assertTrue(result)
+
+
 
 
 

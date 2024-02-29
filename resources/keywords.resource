@@ -136,3 +136,9 @@ PKIMessage body type must be
     [Arguments]        ${pki_message}    ${expected_type}
     ${response_type}=  Get CMP response type    ${pki_message}
     Should Be Equal    ${response_type}    ${expected_type}    Response type mismatch
+
+PKIMessage must contain implicitConfirm extension
+    [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo
+    [Arguments]        ${pki_message}
+    ${result}=         Find OID in General Info    ${pki_message}      1.3.6.1.5.5.7.4.13
+    Should Be True     ${result}    The implicitConfirm extension was not found in the message

@@ -74,6 +74,8 @@ Response PKIMessage header must include all required fields
 
     Collect nonce from PKIMessage    ${pki_message}   ${collected_nonces}
 
+    PKIMessage must contain implicitConfirm extension   ${pki_message}
+
     ${der_cert}=    Get Asn1 value as DER    ${pki_message}    extraCerts/0
     Log base64    ${der_cert}
     Certificate must be valid    ${der_cert}

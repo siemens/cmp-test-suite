@@ -461,6 +461,24 @@ def patch_message_time(pki_message, new_time=None):
     return pki_message
 
 
+def find_oid_in_general_info(pki_message, oid):
+    """Check if a given OID is present in the generalInfo part of a PKIMessage header
+
+    :param pki_message: pyasn1 object representing a PKIMessage
+    :param oid: str, OID we're looking for
+    :returns: bool
+    """
+    # generalInfo     [8] SEQUENCE SIZE (1..MAX) OF InfoTypeAndValue     OPTIONAL
+    # generalInfo is a sequence, we iterate through it and look for the OID we need
+    general_info = pki_message['header']['generalInfo']
+    oid = univ.ObjectIdentifier(oid)
+    for entry in general_info:
+        if entry['infoType'] == oid:
+            return True
+
+    return False
+
+
 
 if __name__ == '__main__':
     # TODO move this into unit tests if this is still needed, otherwise remove it
