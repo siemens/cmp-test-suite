@@ -211,7 +211,7 @@ def compute_hash(alg_name, data):
     return digest.finalize()
 
 
-def compute_password_based_mac(data, key, iterations=5, salt=None, hash_alg="sha256"):
+def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="sha256"):
     """Implement the password-based MAC algorithm defined in RFC 4210 Sec. 5.1.3.1. The MAC is always HMAC_hash_alg.
 
     :param data: bytes, data to be hashed.

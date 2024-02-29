@@ -101,7 +101,7 @@ def build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
     return pki_message
 
 
-def _prepare_password_based_mac_parameters(salt=None, iterations=5, hash_alg="sha256"):
+def _prepare_password_based_mac_parameters(salt=None, iterations=1000, hash_alg="sha256"):
     """Helper function to construct the ASN1 structures required for using password-based-mac protection
 
     :param salt: optional bytes, salt to use for the password-based-mac protection, if not given, will generate 16 random bytes
@@ -275,7 +275,7 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
 
         elif protection == 'password-based-mac':
             prot_alg_id['algorithm'] = rfc4210.id_PasswordBasedMac
-            pbm_parameters = _prepare_password_based_mac_parameters(salt=None, iterations=5, hash_alg="sha256")
+            pbm_parameters = _prepare_password_based_mac_parameters(salt=None, iterations=1000, hash_alg="sha256")
             prot_alg_id['parameters'] = pbm_parameters
 
         pki_header['protectionAlg'] = prot_alg_id
@@ -396,7 +396,7 @@ def protect_pkimessage_pbmac1(pki_message, password, iterations=262144, salt=Non
     return pki_message
 
 
-def protect_pkimessage_password_based_mac(pki_message, password, iterations=5, salt=None, hash_alg="sha256"):
+def protect_pkimessage_password_based_mac(pki_message, password, iterations=1000, salt=None, hash_alg="sha256"):
     """Protects a PKIMessage with a password-based-mac (defined in RFC 4210), based on a password, returning
     the updated pyasn1 PKIMessage structure
 
