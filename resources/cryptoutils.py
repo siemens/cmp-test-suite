@@ -17,6 +17,50 @@ NAME_MAP = {
     'CN': NameOID.COMMON_NAME,
 }
 
+# map OIDs of signature algorithms to the stringified names of hash functions
+# used in the signature; this is needed to compute the certificate has for
+# certConfirm messages, since it must contain the hash of the certificate,
+# computed with the same algorithm as the one in the signature
+OID_HASH_MAP = {
+    '1.2.840.113549.1.1.5': 'sha1',  # sha1-with-rsa-signature
+    '1.2.840.113549.1.1.11': 'sha256',  # sha256WithRSAEncryption
+    '1.2.840.113549.1.1.12': 'sha384',  # sha384WithRSAEncryption
+    '1.2.840.113549.1.1.13': 'sha512',  # sha512WithRSAEncryption
+
+    '1.2.840.10045.4.3.1': 'sha224',  # ecdsa-with-SHA224
+    '1.2.840.10045.4.3.2': 'sha256',  # ecdsa-with-SHA256
+    '1.2.840.10045.4.3.3': 'sha384',  # ecdsa-with-SHA384
+    '1.2.840.10045.4.3.4': 'sha512',  # ecdsa-with-SHA512
+}
+
+HASH_NAME_OBJ_MAP = {
+    'sha1': hashes.SHA1(),
+    'sha224': hashes.SHA224(),
+    'sha256': hashes.SHA256(),
+    'sha384': hashes.SHA384(),
+    'sha512': hashes.SHA512(),
+}
+
+
+def get_hash_from_signature_oid(oid):
+    try:
+        return OID_HASH_MAP[oid]
+    except KeyError:
+        raise ValueError(f'Unknown signature algorithm OID {oid}, '
+                         f'check OID_HASH_MAP in cryptoutils.py')
+
+
+def hash_name_to_instance(alg):
+    """Return an instance of a hash algorithm object based on its name
+
+    :param alg: str, name of hashing algorithm, e.g., 'sha256'
+    :return: cryptography.hazmat.primitives.hashes"""
+    try:
+        return HASH_NAME_OBJ_MAP[alg]
+    except KeyError:
+        raise ValueError(f"Unsupported hash algorithm: {alg}")
+
+
 def generate_rsa_keypair(length=2048):
     return rsa.generate_private_key(public_exponent=65537, key_size=length)
 
@@ -86,16 +130,7 @@ def sign_csr(csr, key, hash_alg="sha256"):
     :param hash_alg: optional str, a hashing algorithm name
     :returns: bytes, PEM-encoded CSR
     """
-    match hash_alg:
-        case "sha256":
-            hash_alg_instance = hashes.SHA256()
-        case "sha384":
-            hash_alg_instance = hashes.SHA384()
-        case "sha512":
-            hash_alg_instance = hashes.SHA512()
-        case _:
-            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
-
+    hash_alg_instance = hash_name_to_instance(hash_alg)
     csr_out = csr.sign(key, hash_alg_instance)
     return csr_out.public_bytes(serialization.Encoding.PEM)
 
@@ -108,15 +143,7 @@ def compute_hmac(data, key, hash_alg="sha256"):
 
     :returns: bytes, the HMAC signature
     """
-    match hash_alg:
-        case "sha256":
-            hash_alg_instance = hashes.SHA256()
-        case "sha384":
-            hash_alg_instance = hashes.SHA384()
-        case "sha512":
-            hash_alg_instance = hashes.SHA512()
-        case _:
-            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
+    hash_alg_instance = hash_name_to_instance(hash_alg)
 
     if type(key) is str:
         key = key.encode('utf-8')
@@ -136,15 +163,7 @@ def compute_pbmac1(data, key, iterations=262144, salt=None, length=32, hash_alg=
 
     :returns: bytes, the HMAC signature
     """
-    match hash_alg:
-        case "sha256":
-            hash_alg_instance = hashes.SHA256()
-        case "sha384":
-            hash_alg_instance = hashes.SHA384()
-        case "sha512":
-            hash_alg_instance = hashes.SHA512()
-        case _:
-            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
+    hash_alg_instance = hash_name_to_instance(hash_alg)
 
     if type(key) is str:
         key = key.encode('utf-8')

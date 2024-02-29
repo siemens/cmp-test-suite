@@ -63,6 +63,12 @@ class TestCmpUtils(unittest.TestCase):
         serial_number = str(cert['serialNumber'])
         self.assertEqual("7286628116517592062", serial_number)
 
+        sig_algorithm = str(cert['signature']['algorithm'])
+        self.assertEqual('1.2.840.113549.1.1.5', sig_algorithm)
+
+        hash_alg_name = cryptoutils.get_hash_from_signature_oid(sig_algorithm)
+        self.assertEqual('sha1', hash_alg_name)
+
     def test_build_p10cr_without_attributes(self):
         keypair = cryptoutils.generate_rsa_keypair()
         csr = cryptoutils.generate_csr("CN=Hans")
