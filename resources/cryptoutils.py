@@ -141,6 +141,7 @@ def sign_csr(csr, key, hash_alg="sha256"):
 
 def compute_hmac(data, key, hash_alg="sha256"):
     """Compute HMAC for the given data using specified key.
+
     :param data: bytes, data to be hashed.
     :param key: bytes, key to use for the HMAC.
     :param hash_alg: optional str, name of the hash algorithm to use.
@@ -160,6 +161,7 @@ def compute_hmac(data, key, hash_alg="sha256"):
 
 def compute_pbmac1(data, key, iterations=262144, salt=None, length=32, hash_alg="sha256"):
     """Compute HMAC for the given data using specified key.
+
     :param data: bytes, data to be hashed.
     :param key: bytes, key to use for the HMAC.
     :param salt:
@@ -203,3 +205,33 @@ def compute_hash(alg_name, data):
     digest = hashes.Hash(hash_class)
     digest.update(data)
     return digest.finalize()
+
+
+def compute_password_based_mac(data, key, iterations=5, salt=None, hash_alg="sha256"):
+    """Implement the password-based MAC algorithm defined in RFC 4210 Sec. 5.1.3.1. The MAC is always HMAC_hash_alg.
+
+    :param data: bytes, data to be hashed.
+    :param key: bytes, key to use for the HMAC.
+    :param iterations: optional int, the number of times to do the hash iterations
+    :param salt: optional bytes, salt to use; if not given, a random 16-byte salt will be generated
+    :param hash_alg: optional str, name of the hash algorithm to use, e.g., 'sha256'
+
+    :returns: bytes, the HMAC signature
+    """
+
+    salt = salt or os.urandom(16)
+
+    if type(key) is str:
+        key = key.encode('utf-8')
+
+    initial_input = key + salt
+    for i in range(iterations):
+        initial_input = compute_hash(hash_alg, initial_input)
+
+    hash_alg_instance = hash_name_to_instance(hash_alg)
+
+    h = hmac.HMAC(initial_input, hash_alg_instance)
+    h.update(data)
+    signature = h.finalize()
+    logging.info(f"Signature: {signature}")
+    return signature
