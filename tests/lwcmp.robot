@@ -121,6 +121,39 @@ CA must issue certificate via p10cr without implicitConfirm
 #    PKIMessage body type must be              ${pki_message}    cp
 
 
+CA must support p10cr with password-based-mac protection
+    [Documentation]    Check that the CA can handle a p10cr that is protected with a password-based-mac
+    [Tags]    headers   ak
+    ${parsed_csr}=     Load and parse example CSR
+    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}     protection=password-based-mac
+    ${protected_p10cr}=     Protect Pkimessage password based mac    ${p10cr}    ${PRESHARED_SECRET}
+    Log Asn1    ${protected_p10cr}
+
+    ${encoded}=  Encode To Der    ${protected_p10cr}
+    Log Base64    ${encoded}
+    ${response}=  Exchange data with CA    ${encoded}
+    ${pki_message}=      Parse Pki Message    ${response.content}
+    ${pki_header}=       Get Asn1 value   ${pki_message}    header
+    Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+
+    Sender and Recipient nonces must match    ${protected_p10cr}      ${pki_message}
+    SenderNonce must be at least 128 bits long  ${pki_message}
+
+    Collect nonce from PKIMessage    ${pki_message}   ${collected_nonces}
+
+    PKIMessage must contain implicitConfirm extension   ${pki_message}
+
+    ${der_cert}=    Get Asn1 value as DER    ${pki_message}    extraCerts/0
+    Log base64    ${der_cert}
+    Certificate must be valid    ${der_cert}
+
+    Response time must be fresh               ${protected_p10cr}      ${pki_message}
+    Protection algorithms must match          ${protected_p10cr}      ${pki_message}
+    Protection must be valid                  ${pki_message}
+    PKIMessage body type must be              ${pki_message}    cp
+
+
+
 SenderNonces must be cryptographically secure
     [Documentation]    Check that the SenderNonce values from all the received PKIMessage structures are unique and
     ...                cryptographically secure. The latter is checked by computing the Hamming distance between each

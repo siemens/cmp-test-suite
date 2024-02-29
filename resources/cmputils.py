@@ -5,11 +5,12 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import univ, useful, constraint
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
-from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, pem, rfc8018
+from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, pem, rfc8018, rfc5480
 from pyasn1_alt_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
-from cryptoutils import compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash
+from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
+                         compute_password_based_mac)
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -97,6 +98,45 @@ def build_cmp_revoke_request(serial_number, sender='test-cmp-cli@example.com',
     pki_message.setComponentByName('body', pki_body)
     pki_message.setComponentByName('header', pki_header)
     return pki_message
+
+
+def _prepare_password_based_mac_parameters(salt=None, iterations=5, hash_alg="sha256"):
+    """Helper function to construct the ASN1 structures required for using password-based-mac protection
+
+    :param salt: optional bytes, salt to use for the password-based-mac protection, if not given, will generate 16 random bytes
+    :param iterations: optional int, number of iterations of the OWF (hashing) to perform
+    :param hash_alg: optional str, name of hashing algorithm to use, "sha256" by default
+    :return: pyasn1 rfc9480.PBMParameter structure
+    """
+    salt = salt or os.urandom(16)
+
+    match hash_alg:
+        case "sha256":
+            hmac_alg_oid = rfc8018.id_hmacWithSHA256
+            hash_alg_oid = rfc5480.id_sha256
+        case "sha384":
+            hmac_alg_oid = rfc8018.id_hmacWithSHA384
+            hash_alg_oid = rfc5480.id_sha384
+        case "sha512":
+            hmac_alg_oid = rfc8018.id_hmacWithSHA512
+            hash_alg_oid = rfc5480.id_sha512
+        case _:
+            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
+
+    pbm_parameter = rfc9480.PBMParameter()
+    pbm_parameter['salt'] = univ.OctetString(salt).subtype(subtypeSpec=constraint.ValueSizeConstraint(0, 128))
+    pbm_parameter['iterationCount'] = iterations
+
+    pbm_parameter['owf'] = rfc8018.AlgorithmIdentifier()
+    pbm_parameter['owf']['algorithm'] = hash_alg_oid
+    pbm_parameter['owf']['parameters'] = univ.Null()
+
+    pbm_parameter['mac'] = rfc8018.AlgorithmIdentifier()
+    pbm_parameter['mac']['algorithm'] = hmac_alg_oid
+    pbm_parameter['mac']['parameters'] = univ.Null()
+
+    return pbm_parameter
+
 
 
 def _prepare_pbmac1_parameters(salt=None, iterations=1, length=32, hash_alg="sha256"):
@@ -227,17 +267,21 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
             explicitTag=Tag(tagClassContext, tagFormatSimple, 3)
         )
 
-    if 'protection' not in omit_fields and protection == 'pbmac1':
+    if 'protection' not in omit_fields:
         prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(
             explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
         )
 
-        prot_alg_id['algorithm'] = rfc8018.id_PBMAC1
-            # univ.ObjectIdentifier((1, 2, 840, 113549, 1, 5, 14)))  # PBMAC1
-        # prot_alg_id['parameters'] = encoder.encode(univ.Null())  # if no params are used
+        if protection == 'pbmac1':
+            prot_alg_id['algorithm'] = rfc8018.id_PBMAC1
+            pbmac1_parameters = _prepare_pbmac1_parameters(salt=None, iterations=262144, length=32, hash_alg="sha512")
+            prot_alg_id['parameters'] = pbmac1_parameters
 
-        pbmac1_parameters = _prepare_pbmac1_parameters(salt=None, iterations=262144, length=32, hash_alg="sha512")
-        prot_alg_id['parameters'] = pbmac1_parameters
+        elif protection == 'password-based-mac':
+            prot_alg_id['algorithm'] = rfc4210.id_PasswordBasedMac
+            pbm_parameters = _prepare_password_based_mac_parameters(salt=None, iterations=5, hash_alg="sha256")
+            prot_alg_id['parameters'] = pbm_parameters
+
         pki_header['protectionAlg'] = prot_alg_id
 
     if 'generalInfo' not in omit_fields and implicit_confirm:
@@ -354,6 +398,26 @@ def protect_pkimessage_pbmac1(pki_message, password, iterations=262144, salt=Non
     pki_message['protection'] = wrapped_protection
     return pki_message
 
+
+def protect_pkimessage_password_based_mac(pki_message, password, iterations=5, salt=None, hash_alg="sha256"):
+    """Protects a PKIMessage with a password-based-mac (defined in RFC 4210), based on a password, returning
+    the updated pyasn1 PKIMessage structure
+
+    :param pki_message: pyasn1 PKIMessage to protect
+    :param password: optional, password to use for calculating the password-based-mac protection
+    :returns: pyasn1 PKIMessage structure with the protection included"""
+    protected_part = rfc9480.ProtectedPart()
+    protected_part['header'] = pki_message['header']
+    protected_part['body'] = pki_message['body']
+
+    encoded = encoder.encode(protected_part)
+    protection = compute_password_based_mac(encoded, password, iterations=iterations, salt=salt, hash_alg=hash_alg)
+
+    wrapped_protection = rfc9480.PKIProtection().fromOctetString(protection).subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
+    )
+    pki_message['protection'] = wrapped_protection
+    return pki_message
 
 def encode_to_der(asn1_structure):
     """Generic tool for DER-encoding a pyasn1 data structure"""
