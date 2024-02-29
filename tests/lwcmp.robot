@@ -96,7 +96,7 @@ CA must issue certificate via p10cr without implicitConfirm
     [Documentation]    Ensure that the server can issue certificates and wait for a confirmation to be sent by the EE
     [Tags]    headers   ak
     ${parsed_csr}=     Load and parse example CSR
-    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=CN=CloudCA-Integration-Test-User    recipient=CN=CloudPKI-Integration-Test      implicit_confirm=${False}
+    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${False}
     ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
     Log Asn1    ${protected_p10cr}
 
