@@ -1,6 +1,7 @@
 *** Settings ***
 Documentation        Tests specifically for the lightweight CMP profile
 Resource    ../resources/keywords.resource
+Resource    ../config/${environment}.robot
 Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/cmputils.py
@@ -14,6 +15,9 @@ Suite Setup    Initialize Global Variables
 # This variable is a collector of nonces that the server sent back to us throughout all the tests. In the end we use
 # it to check that the server is not sending the same nonce twice, and that the nonces are cryptographically secure.
 @{collected_nonces}    ${EMPTY}
+
+# normally this would be provided from the command line
+${environment}    cloudpki
 
 *** Keywords ***
 Initialize Global Variables
@@ -57,9 +61,9 @@ Response PKIMessage header must include all required fields
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
 
-    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=CloudCA-Integration-Test-User    recipient=CloudPKI-Integration-Test      implicit_confirm=${True}
+    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
 
-    ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    SiemensIT
+    ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
     Log Asn1    ${protected_p10cr}
 
     ${encoded}=  Encode To Der    ${protected_p10cr}
@@ -93,7 +97,7 @@ CA must issue certificate via p10cr without implicitConfirm
     [Tags]    headers   ak
     ${parsed_csr}=     Load and parse example CSR
     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=CN=CloudCA-Integration-Test-User    recipient=CN=CloudPKI-Integration-Test      implicit_confirm=${False}
-    ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    SiemensIT
+    ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
     Log Asn1    ${protected_p10cr}
 
     # send initial request
@@ -107,7 +111,7 @@ CA must issue certificate via p10cr without implicitConfirm
     # prepare confirmation message by extracting the certifiate and getting the needed data from it
     ${cert}=    Get Cert From Pki Message    ${pki_message}
     ${conf_message}=    Build Cert Conf    ${cert}
-    ${protected_conf_message}=     Protect Pkimessage Pbmac1    ${conf_message}    SiemensIT
+    ${protected_conf_message}=     Protect Pkimessage Pbmac1    ${conf_message}    ${PRESHARED_SECRET}
     ${encoded}=  Encode To Der    ${protected_conf_message}
     Log Base64    ${encoded}
     ${response}=  Exchange data with CA    ${encoded}
