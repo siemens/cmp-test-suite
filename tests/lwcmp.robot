@@ -88,6 +88,35 @@ Response PKIMessage header must include all required fields
 
 
 
+CA must issue certificate via p10cr without implicitConfirm
+    [Documentation]    Ensure that the server can issue certificates and wait for a confirmation to be sent by the EE
+    [Tags]    headers   ak
+    ${parsed_csr}=     Load and parse example CSR
+    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=CN=CloudCA-Integration-Test-User    recipient=CN=CloudPKI-Integration-Test      implicit_confirm=${False}
+    ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    SiemensIT
+    Log Asn1    ${protected_p10cr}
+
+    # send initial request
+    ${encoded}=  Encode To Der    ${protected_p10cr}
+    Log Base64    ${encoded}
+    ${response}=  Exchange data with CA    ${encoded}
+    ${pki_message}=      Parse Pki Message    ${response.content}
+    # could also be ip, kup, ccp; consider examining the tag; the overall structure is CertRepMessage
+    PKIMessage body type must be              ${pki_message}    cp
+
+    # prepare confirmation message by extracting the certifiate and getting the needed data from it
+    ${cert}=    Get Cert From Pki Message    ${pki_message}
+    ${conf_message}=    Build Cert Conf    ${cert}
+    ${protected_conf_message}=     Protect Pkimessage Pbmac1    ${conf_message}    SiemensIT
+    ${encoded}=  Encode To Der    ${protected_conf_message}
+    Log Base64    ${encoded}
+    ${response}=  Exchange data with CA    ${encoded}
+    ${pki_message}=      Parse Pki Message    ${response.content}
+    ${response_type}=  Get CMP response type    ${pki_message}
+    Log      ${response_type}
+#    PKIMessage body type must be              ${pki_message}    cp
+
+
 SenderNonces must be cryptographically secure
     [Documentation]    Check that the SenderNonce values from all the received PKIMessage structures are unique and
     ...                cryptographically secure. The latter is checked by computing the Hamming distance between each

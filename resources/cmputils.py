@@ -9,7 +9,7 @@ from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, pem, rfc8018
 from pyasn1_alt_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
-from cryptoutils import compute_hmac, compute_pbmac1
+from cryptoutils import compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -178,16 +178,14 @@ def _prepare_implicit_confirm_general_info_structure():
     general_info_wrapper.setComponentByPosition(0, implicit_confirm)
     return general_info_wrapper
 
-
-def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
+def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
                          omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
                          implicit_confirm=False):
-    """Creates a pyasn1 pkiMessage from a pyasn1 PKCS10 CSR,
+    """Generic function for preparing the skeleton structure of a PKIMessage, the body of which must be
+    set later.
 
-    :param csr: pyasn1 rfc6402.CertificationRequest
     :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMEssage
-
-    :returns: pyasn1 PKIMessage structure"""
+    :returns: pyasn1 PKIMessage structure without a body"""
     # since pyasn1 does not give us a way to remove an attribute from a structure after it was added to it,
     # we proactively check whether a field should be omitted (e.g. when crafting bad inputs) and skip adding
     # it in the first place
@@ -205,7 +203,6 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
     if 'sender' not in omit_fields:
         sender = rfc5280.GeneralName().setComponentByName('rfc822Name', sender)
         pki_header['sender'] = sender
-
 
     if 'recipient' not in omit_fields:
         recipient = rfc5280.GeneralName().setComponentByName('rfc822Name', recipient)
@@ -282,18 +279,69 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
         free_text.setComponentByPosition(0, 'This text is free, so let us have it')
         pki_header['freeText'] = free_text
 
-    # PKIBody
+    # PKIMessage
+    pki_message = rfc9480.PKIMessage()
+    pki_message['header'] = pki_header
+    return pki_message
+
+
+def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
+                         omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
+                         implicit_confirm=False):
+    """Creates a pyasn1 p10cr pkiMessage from a pyasn1 PKCS10 CSR,
+
+    :param csr: pyasn1 rfc6402.CertificationRequest
+    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMEssage
+
+    :returns: pyasn1 PKIMessage structure with a body set to p10cr"""
+    pki_message = _prepare_pki_message(sender=sender, recipient=recipient, protection=protection,
+                                       omit_fields=omit_fields, transaction_id=transaction_id,
+                                       sender_nonce=sender_nonce, recip_nonce=recip_nonce,
+                                       implicit_confirm=implicit_confirm)
+
+    # Prepare PKIBody of type p10cr
     pki_body = rfc9480.PKIBody()
     pki_body['p10cr']['certificationRequestInfo'] = csr['certificationRequestInfo']
     pki_body['p10cr']['signatureAlgorithm'] = csr['signatureAlgorithm']
     pki_body['p10cr']['signature'] = csr['signature']
 
-
-    # PKIMessage
-    pki_message = rfc9480.PKIMessage()
     pki_message['body'] = pki_body
-    pki_message['header'] = pki_header
     return pki_message
+
+
+def build_cert_conf(cert, cert_req_id=-1, sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
+                       omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
+                       implicit_confirm=False):
+    """Create a PKIMessage of certConf type
+
+    :param cert: pyasn1 certificate object
+    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMessage
+
+    :returns: pyasn1 PKIMessage structure with a body set to certConf based on the given cert"""
+    pki_message = _prepare_pki_message(sender=sender, recipient=recipient, protection=protection,
+                                       omit_fields=omit_fields, transaction_id=transaction_id,
+                                       sender_nonce=sender_nonce, recip_nonce=recip_nonce,
+                                       implicit_confirm=implicit_confirm)
+
+    sig_algorithm = str(cert['signature']['algorithm'])
+    hash_alg = get_hash_from_signature_oid(sig_algorithm)
+    der_cert = encode_to_der(cert)
+    hash = compute_hash(hash_alg, der_cert)
+
+    cert_status = rfc9480.CertStatus()
+    cert_status['certHash'] = univ.OctetString(hash)
+    cert_status['certReqId'] = cert_req_id
+
+    cert_conf = rfc9480.CertConfirmContent().subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 24)
+    )
+    cert_conf.append(cert_status)
+
+    pki_body = rfc9480.PKIBody()
+    pki_body['certConf'] = cert_conf
+    pki_message['body'] = pki_body
+    return pki_message
+
 
 
 def protect_pkimessage_hmac(pki_message, password):

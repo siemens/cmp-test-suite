@@ -91,6 +91,14 @@ class TestCmpUtils(unittest.TestCase):
         # print(b64encode(der_encoded))
         # print(p10cr.prettyPrint())
 
+    def test_build_cert_conf(self):
+        """This is just a way to invoke the logic in the given functions"""
+        cert = cmputils.get_cert_from_pki_message(self.pki_message)
+        pki_message = cmputils.build_cert_conf(cert, 245)
+        der_encoded = cmputils.encode_to_der(pki_message)
+        # print(b64encode(der_encoded))
+        # print(pki_message.prettyPrint())
+
     def test_find_implicit_confirm_extension(self):
         raw = load_and_decode_pem_file('data/example-response-error-implicitConfirm.pem')
         pki_message = cmputils.parse_pki_message(raw)
