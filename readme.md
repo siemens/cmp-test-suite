@@ -70,5 +70,16 @@ def this_is_not_a_keyword():
 ```
 
 
+# Preparing test data
+This section explains how OpenSSL can be used to generate test data, such as key-pairs or CSRs.
+
+
+- Get list of supported algorithms `openssl list -signature-algorithms`, let's say you will use `RSA`.
+- Generate a private key `openssl genpkey -algorithm RSA -out private-key-rsa.pem`.
+- Generate a CSR `openssl req -new -key private-key-rsa.pem -out csr-rsa.pem -nodes -subj /CN=testSubject` (note that
+  on Windows you might have to write the latter part as `//CN=testSubject`).
+- Generate a PKIMessage `ir`: `openssl cmp -cmd ir -server https://broker.sdo-dev.siemens.cloud/.well-known/cmp -recipient //CN=test -ref 11111 -csr csr-rsa.pem -secret pass:SiemensIT -popo 1 -certout result-cert.pem -newkey private-key-rsa.pem -reqout req-ir.pkimessage`
+
+
 # Supporting materials
 - https://docs.robotframework.org/docs/getting_started/ide How to use this with an IDE.
