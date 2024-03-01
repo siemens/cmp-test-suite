@@ -569,43 +569,4 @@ def find_oid_in_general_info(pki_message, oid):
 
 
 if __name__ == '__main__':
-    # TODO move this into unit tests if this is still needed, otherwise remove it
-    from utils import decode_pem_string
-
-    raw = """	-----BEGIN CERTIFICATE REQUEST-----
-MIIC1TCCAb0CAQAwXDELMAkGA1UEBhMCREUxEDAOBgNVBAgMB0JhdmFyaWExDzAN
-BgNVBAcMBk11bmljaDEQMA4GA1UECgwHQ01QIExhYjEYMBYGA1UEAwwPSGFucyBN
-dXN0ZXJtYW5uMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtaRNCb2X
-OnYeG6zcKS03x5wpJz2vputiGuGtyynCBEt7emJcUe8EwY8e1poMZm8ZfjvjJ/0B
-rtR4ozJkxWd2yyR4k8pbfDe2XuoSGLP0Dr4kts7TKpxjp9wLVj/TaAWnlZYCAaS9
-KJ/ZjkJrijeaQRIqImkMjD9bO69R9t8anv829vXV9Ux1y4qHMjPkhmo7LoXn6fOY
-WwHjz/pxY+g+OiuLa4ZCuqGgm5PAwQa+EfkbqBrH0KKz2IyyoeMwpr9vNT72dyej
-qEHKBS0zSwRdXm2Z/VWgOKc755vjjEHjuVenqcvHI0LwpUg9H7r5LW2u5MZF20z2
-8wungl5qSaSdDwIDAQABoDQwMgYJKoZIhvcNAQkOMSUwIzAhBgNVHREEGjAYggho
-YW5zLmNvbYIMd3d3LmhhbnMuY29tMA0GCSqGSIb3DQEBCwUAA4IBAQBWHmVCkIPw
-Ye/Hr9Hsh3T9fJmma8BQiaG46Obsx40MruzlTdwb+KvDEELgVPOLU6nbiKJMSS93
-jBlK/mSOkHMIbKj9y/hwIxIGTv15ol/CTYyNUMB7tW0x6KQW1qAYFsI0YXUP+kV6
-jozNZe7ji7OJyoAaMYQiZCJUE9kbf6FxRU0pIL8Lu6TYt/UQ/ukK9dnr4rIRKvdt
-g8vxmqAWlyg5MTTQ0DfmLAwCUYaVfTgsl8TEVUiCwgdB++Hw+W96g8OFLWNr7+nc
-830ekfQElpSt9Vb9PkaeNF4hX7EsISLAITfY1+i6knpLlbbXqNA0abrxtVMWo5db
-LJPchrUaU95b
------END CERTIFICATE REQUEST-----"""
-    csr = decode_pem_string(raw)
-    csr, _ = decoder.decode(csr, asn1Spec=CertificationRequest())
-    # csr = parse_csr(csr)
-    print(csr.prettyPrint())
-
-    # result = encode_to_der(csr)
-    # print(result)
-
-    # ctag4 = Tag(tagClassContext, tagFormatConstructed, 4)
-    # tagged_csr = csr.subtype(explicitTag=ctag4, cloneValueFlag=True)
-    # print(tagged_csr)
-
-    p10cr = build_p10cr_from_csr(csr)
-    print(p10cr.prettyPrint())
-    protected_pki_message = protect_pkimessage_hmac(p10cr, b"test")
-    print(protected_pki_message.prettyPrint())
-
-    # from base64 import b64encode
-    # print(b64encode(encode_to_der(protected_pki_message)))
+    pass
