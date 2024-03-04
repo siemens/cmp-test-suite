@@ -4,7 +4,7 @@ import os
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
 
@@ -128,6 +128,30 @@ def generate_csr(common_name, subjectAltName=None):
         # ]), critical=False)
 
     return csr
+
+
+def sign_data(data, key, hash_alg="sha256"):
+    """Sign the given data with a given private key, using a specified hashing algorithm
+
+    :param data: bytes, data to be signed
+    :param key: cryptography.hazmat.primitives.asymmetric, private key used for the signature (RSA only for now)
+    :param hash_alg: optional str, a hashing algorithm name
+    :return: bytes, the signature
+    """
+    hash_alg_instance = hash_name_to_instance(hash_alg)
+
+    if isinstance(key, rsa.RSAPrivateKey):
+        signature = key.sign(
+            data,
+            padding.PSS(
+                mgf=padding.MGF1(hash_alg_instance),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hash_alg_instance
+        )
+    else:
+        raise ValueError(f"Unsupported key type: {type(key)}, only RSA is implemented for now")
+    return signature
 
 
 def sign_csr(csr, key, hash_alg="sha256"):
