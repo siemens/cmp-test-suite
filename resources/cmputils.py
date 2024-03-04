@@ -6,13 +6,13 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import univ, useful, constraint
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
-from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480
+from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211
 from pyasn1_alt_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
 
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
-                         compute_password_based_mac)
+                         compute_password_based_mac, sign_data)
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -322,6 +322,88 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
     pki_body['p10cr']['signature'] = csr['signature']
 
     pki_message['body'] = pki_body
+    return pki_message
+
+
+
+def build_cr_from_csr(csr, signing_key, hash_alg='sha256', cert_req_id=0,
+                      sender='tests@example.com', recipient='testr@example.com',
+                      protection='pbmac1', omit_fields=None, transaction_id=None, sender_nonce=None,
+                      recip_nonce=None, implicit_confirm=False):
+    """Create a PKIMessage of type CR, given a CSR and a signing key
+
+    :param csr: pyasn1 rfc6402.CertificationRequest
+    :param signing_key: cryptography.hazmat.primitives.asymmetric key object
+    :param hash_alg: optional str, name of the hashing algorithm to use for proof of possession (sha256 by default)
+    :param cert_req_id: optional int, value for certReqId, 0 by default
+
+    :returns: pyasn1 PKIMessage structure with a body set to p10cr"""
+
+    pki_message = _prepare_pki_message(sender=sender, recipient=recipient, protection=protection,
+                                       omit_fields=omit_fields, transaction_id=transaction_id,
+                                       sender_nonce=sender_nonce, recip_nonce=recip_nonce,
+                                       implicit_confirm=implicit_confirm)
+
+    # ask Russ: why can't I write `cert_template['subject'] = csr['certificationRequestInfo']['subject']`?
+    # or at least `cert_template['subject'] = csr['certificationRequestInfo']['subject'].subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 5))`?
+    # this is related to the schema-vs-value matter
+    cert_template = rfc9480.CertTemplate()
+    subject = rfc5280.Name().subtype(
+        implicitTag=Tag(tagClassContext, tagFormatConstructed, 5))
+    subject.setComponentByName('rdnSequence', csr['certificationRequestInfo']['subject']['rdnSequence'])
+    cert_template['subject'] = subject
+    # cert_template['subject'] = csr['certificationRequestInfo']['subject'].subtype(
+    #     implicitTag=Tag(tagClassContext, tagFormatConstructed, 5))
+    # cert_template['subject'] = csr['certificationRequestInfo']['subject']
+    # subject = csr['certificationRequestInfo']['subject']
+
+    pub_key_info = rfc5280.SubjectPublicKeyInfo().subtype(
+        implicitTag=Tag(tagClassContext, tagFormatConstructed, 6))
+    pub_key_info.setComponentByName('algorithm', csr['certificationRequestInfo']['subjectPublicKeyInfo']['algorithm'])
+    pub_key_info.setComponentByName('subjectPublicKey', csr['certificationRequestInfo']['subjectPublicKeyInfo']['subjectPublicKey'])
+    cert_template['publicKey'] = pub_key_info
+    # ask Russ: this is what I had before - it ran without error, but the resulting pki_message did not contain this
+    # section in the end
+    # cert_template['publicKey'] = csr['certificationRequestInfo']['subjectPublicKeyInfo'].subtype(
+    #     implicitTag=Tag(tagClassContext, tagFormatConstructed, 6))
+
+    cert_request = rfc4211.CertRequest()
+    cert_request['certReqId'] = cert_req_id
+    cert_request['certTemplate'] = cert_template
+
+    # DER-encode the CertRequest and calculate its signature
+    der_cert_request = encoder.encode(cert_request)
+    signature = sign_data(der_cert_request, signing_key, hash_alg=hash_alg)
+
+    popo_key = rfc4211.POPOSigningKey().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 1))
+    popo_key['signature'] = univ.BitString().fromOctetString(signature)
+    popo_key['algorithmIdentifier'] = csr['certificationRequestInfo']['subjectPublicKeyInfo']['algorithm']
+
+    popo = rfc4211.ProofOfPossession()
+    popo['signature'] = popo_key
+
+    cert_request_msg = rfc4211.CertReqMsg()
+    cert_request_msg['certReq'] = cert_request
+    cert_request_msg['popo'] = popo
+
+    # cert_request_messages = rfc9480.CertReqMessages()
+    # cert_request_messages.append(cert_request_msg)
+
+
+    pki_body = rfc9480.PKIBody()
+    pki_body['cr'] = rfc9480.CertReqMessages().subtype(
+            explicitTag=Tag(tagClassContext, tagFormatSimple, 2))
+    pki_body['cr'].append(cert_request_msg)
+    pki_message['body'] = pki_body
+    # cert_request_messages = rfc9480.CertReqMessages()
+    # cert_request_messages.append(cert_request_msg)
+    #
+    #
+    # pki_body = rfc9480.PKIBody()
+    # pki_body['cr'] = cert_request_messages.subtype(
+    #         explicitTag=Tag(tagClassContext, tagFormatSimple, 2))
+    # pki_message['body'] = pki_body
+
     return pki_message
 
 

@@ -1,5 +1,7 @@
 import unittest
 
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+
 # from resources import asn1utils
 from resources import cmputils
 from resources import cryptoutils
@@ -105,6 +107,21 @@ class TestCmpUtils(unittest.TestCase):
         oid_implicit_confirm = '1.3.6.1.5.5.7.4.13'
         result = cmputils.find_oid_in_general_info(pki_message, oid_implicit_confirm)
         self.assertTrue(result)
+
+    def test_build_cr(self):
+        csr = self.csr_object
+        raw_key = open('data/private-key-rsa.pem', 'rb').read()
+        private_key = load_pem_private_key(raw_key, password=None)
+        pki_message = cmputils.build_cr_from_csr(csr, private_key, hash_alg="sha256", cert_req_id=1945)
+        # print(pki_message.prettyPrint())
+
+        self.assertEqual("cr", pki_message['body'].getName())
+        cert_req_id = get_asn1_value(pki_message, 'body.cr/0.certReq.certReqId')
+        self.assertEqual(1945, cert_req_id)
+
+        popo_alg_oid = get_asn1_value(pki_message, 'body.cr/0.popo.signature.algorithmIdentifier.algorithm')
+        self.assertEqual('1.2.840.113549.1.1.1', str(popo_alg_oid))
+
 
 
 if __name__ == '__main__':
