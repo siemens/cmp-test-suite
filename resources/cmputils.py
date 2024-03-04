@@ -7,7 +7,7 @@ from pyasn1.error import PyAsn1Error
 from pyasn1.type import univ, useful, constraint
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
 from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211
-from pyasn1_alt_modules.rfc2314 import CertificationRequest, SignatureAlgorithmIdentifier, Signature, Attributes
+from pyasn1_alt_modules.rfc2314 import SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
 
@@ -325,7 +325,6 @@ def build_p10cr_from_csr(csr, sender='tests@example.com', recipient='testr@examp
     return pki_message
 
 
-
 def build_cr_from_csr(csr, signing_key, hash_alg='sha256', cert_req_id=0,
                       sender='tests@example.com', recipient='testr@example.com',
                       protection='pbmac1', omit_fields=None, transaction_id=None, sender_nonce=None,
@@ -360,7 +359,8 @@ def build_cr_from_csr(csr, signing_key, hash_alg='sha256', cert_req_id=0,
     pub_key_info = rfc5280.SubjectPublicKeyInfo().subtype(
         implicitTag=Tag(tagClassContext, tagFormatConstructed, 6))
     pub_key_info.setComponentByName('algorithm', csr['certificationRequestInfo']['subjectPublicKeyInfo']['algorithm'])
-    pub_key_info.setComponentByName('subjectPublicKey', csr['certificationRequestInfo']['subjectPublicKeyInfo']['subjectPublicKey'])
+    pub_key_info.setComponentByName('subjectPublicKey',
+                                    csr['certificationRequestInfo']['subjectPublicKeyInfo']['subjectPublicKey'])
     cert_template['publicKey'] = pub_key_info
     # ask Russ: this is what I had before - it ran without error, but the resulting pki_message did not contain this
     # section in the end
@@ -389,10 +389,9 @@ def build_cr_from_csr(csr, signing_key, hash_alg='sha256', cert_req_id=0,
     # cert_request_messages = rfc9480.CertReqMessages()
     # cert_request_messages.append(cert_request_msg)
 
-
     pki_body = rfc9480.PKIBody()
     pki_body['cr'] = rfc9480.CertReqMessages().subtype(
-            explicitTag=Tag(tagClassContext, tagFormatSimple, 2))
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 2))
     pki_body['cr'].append(cert_request_msg)
     pki_message['body'] = pki_body
     # cert_request_messages = rfc9480.CertReqMessages()
