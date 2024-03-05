@@ -379,7 +379,7 @@ def build_cr_from_csr(csr, signing_key, hash_alg='sha256', cert_req_id=0,
     popo_key['signature'] = univ.BitString().fromOctetString(signature)
 
     # patch the algorithm inside algorithmIdentifier, instead of re-creating the structure from scratch
-    popo_key['algorithmIdentifier'] = csr['certificationRequestInfo']['subjectPublicKeyInfo']['algorithm']
+    popo_key['algorithmIdentifier'] = csr['certificationRequestInfo']['subjectPublicKeyInfo']['algorithm'].clone()
     popo_sig_oid = get_sig_oid_from_key_hash(csr['certificationRequestInfo']['subjectPublicKeyInfo']['algorithm']['algorithm'], hash_alg)
     popo_key['algorithmIdentifier']['algorithm'] = popo_sig_oid
 
