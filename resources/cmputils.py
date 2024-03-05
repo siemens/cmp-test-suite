@@ -12,7 +12,7 @@ from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attri
 from pyasn1_alt_modules.rfc2511 import CertTemplate
 
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
-                         compute_password_based_mac, sign_data)
+                         compute_password_based_mac, sign_data, get_sig_oid_from_key_hash)
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -377,7 +377,11 @@ def build_cr_from_csr(csr, signing_key, hash_alg='sha256', cert_req_id=0,
 
     popo_key = rfc4211.POPOSigningKey().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 1))
     popo_key['signature'] = univ.BitString().fromOctetString(signature)
+
+    # patch the algorithm inside algorithmIdentifier, instead of re-creating the structure from scratch
     popo_key['algorithmIdentifier'] = csr['certificationRequestInfo']['subjectPublicKeyInfo']['algorithm']
+    popo_sig_oid = get_sig_oid_from_key_hash(csr['certificationRequestInfo']['subjectPublicKeyInfo']['algorithm']['algorithm'], hash_alg)
+    popo_key['algorithmIdentifier']['algorithm'] = popo_sig_oid
 
     popo = rfc4211.ProofOfPossession()
     popo['signature'] = popo_key

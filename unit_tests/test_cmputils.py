@@ -120,7 +120,7 @@ class TestCmpUtils(unittest.TestCase):
         self.assertEqual(1945, cert_req_id)
 
         popo_alg_oid = get_asn1_value(pki_message, 'body.cr/0.popo.signature.algorithmIdentifier.algorithm')
-        self.assertEqual('1.2.840.113549.1.1.1', str(popo_alg_oid))
+        self.assertEqual('1.2.840.113549.1.1.11', str(popo_alg_oid))
 
 
 

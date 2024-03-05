@@ -7,6 +7,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
+from pyasn1_alt_modules import rfc9481
 
 # map strings used in OpenSSL-like common name notation to objects of NameOID types that
 # cryptography.x509 uses internally
@@ -41,6 +42,31 @@ HASH_NAME_OBJ_MAP = {
     'sha384': hashes.SHA384(),
     'sha512': hashes.SHA512(),
 }
+
+# Map of tuples (asymmetric algorithm OID, hash algorithm name) to the OID of a signature algorithm, e.g.
+# ('1.2.840.113549.1.1.1', 'sha256') -> '1.2.840.113549.1.1.11', i.e. (RSA, SHA256) -> sha256WithRSAEncryption
+# The OIDs are taken from pyasn1-alt-modules, so they are not strings, but rather univ.Oid objects (which can be
+# stringified, if necessary). This is needed when creating the `popo` (ProofOfPossession) structure for CRMF.
+OID_SIG_HASH_MAP = {
+    (rfc9481.rsaEncryption, 'sha256'): rfc9481.sha256WithRSAEncryption,
+    (rfc9481.rsaEncryption, 'sha384'): rfc9481.sha384WithRSAEncryption,
+    (rfc9481.rsaEncryption, 'sha512'): rfc9481.sha512WithRSAEncryption,
+}
+
+
+def get_sig_oid_from_key_hash(alg_oid, hash_alg):
+    """Determine the OID of a signature algorithm given by the OID of the asymmetric algorithm and the name of the
+    hashing function used in the signature
+
+    :param: alg_oid: pyasn1.type.univ.ObjectIdentifier, OID of asymmetric algorithm
+    :param: hash_alg: str, name of hashing algorithm, e.g., 'sha256'
+    :returns: pyasn1.type.univ.ObjectIdentifier of signature algorithm, e.g., '1.2.840.113549.1.1.11' (i.e., sha256WithRSAEncryption)"""
+
+    try:
+        return OID_SIG_HASH_MAP[(alg_oid, hash_alg)]
+    except KeyError:
+        raise ValueError(f'Unsupported signature algorithm for ({alg_oid}, {hash_alg}), '
+                         f'see cryptoutils.OID_SIG_HASH_MAP')
 
 
 def get_hash_from_signature_oid(oid):
