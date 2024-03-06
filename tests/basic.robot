@@ -16,34 +16,44 @@ CA must reject malformed reqest
     ${response}=  Exchange data with CA    this dummy input is not a valid PKIMessage
     Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
 
+
 CA must reject requests that feature unknown signature algorithms
-    [Documentation]    When we send an valid PKIMessage to the CA, it must respond with a 400 status code to indicate
-    ...                a client-side error in the supplied input data.
+    [Documentation]    When we send a valid PKIMessage to the CA, but the signature algorithms used in the request are
+    ...                unknown to the server, it should reject the request and respond with a 400 status code to
+    ...                indicate a client-side error in the supplied input data.
     [Tags]    negative  crypto
     ${data}=  Get Binary File  data/req-p10cr-prot_none-pop_sig-dilithium.pkimessage
     Log base64    ${data}
     ${updated_pki_message}=  Patch message time    ${data}
     ${encoded}=  Encode To Der    ${updated_pki_message}
     ${response}=  Exchange data with CA    ${encoded}
-
-    ${raw_response}=    Load And Decode Pem File    data/example-response-unsupported-algo.pem
-    ${parsed_response}=    Parse PKI Message    ${raw_response}
-
-    ${value}=       Get Asn1 Value As String   ${parsed_response}    header.sender.directoryName.rdnSequence/0/0.value
-
-
     Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
 
+    ${pki_message}=  Parse Pki Message    ${response.content}
+    PKIMessage body type must be              ${pki_message}    error
 
 
-CA must issue a certificate when the CSR is valid
-    [Documentation]    When we send a valid CSR, the CA should respond with a valid certificate.
+
+CA must issue a certificate when we send a valid p10cr request
+    [Documentation]    When we send a valid CSR inside a p10cr, the CA should respond with a valid certificate.
     [Tags]    csr    positive
     ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
-    ${result}=  Exchange data with CA    ${der_pkimessage}
-    ${pki_message}=     Parse Pki Message    ${result.content}
-    ${value}=       Get Asn1 Value As String   ${pki_message}    header.sender.directoryName.rdnSequence/0/0.value
-    Should Be Equal    ${value}    Siemens IT
+    ${request_pki_message}=  Parse Pki Message    ${der_pkimessage}
+    ${response}=  Exchange data with CA    ${der_pkimessage}
+    ${response_pki_message}=     Parse Pki Message    ${response.content}
+    Should Be Equal    ${response.status_code}  ${200}      We expected status code 200, but got ${response.status_code}
+
+    Sender and Recipient nonces must match    ${request_pki_message}      ${response_pki_message}
+    SenderNonce must be at least 128 bits long  ${response_pki_message}
+    PKIMessage body type must be              ${response_pki_message}    cp
+
+    ${response_status}=    Get Asn1 value as string    ${response_pki_message}    body.cp.response/0.status
+    Should be equal     ${response_status}    accepted      We expected status `accepted`, but got ${response_status}
+
+    # TODO check the remaining part for correctness
+    ${der_cert}=    Get Asn1 value as DER    ${response_pki_message}    body.cp.response/0.certifiedKeyPair.certOrEncCert.certificate.tbsCertificate
+    Certificate must be valid    ${der_cert}
+
 
 #CA must reject request when the CSR signature is invalid
 #    [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.

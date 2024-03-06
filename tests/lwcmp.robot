@@ -25,19 +25,24 @@ Initialize Global Variables
     Set Global Variable    @{collected_nonces}    @{EMPTY}
 
 *** Test Cases ***
-PKI entity must respond with a PKIStatusInfo structure when a malformed request is received
-    [Documentation]    When we send an invalid PKIMessage to a PKI entity, it MUST indicate the error condition in
-    ...                the PKIStatusInfo structure
-    ...                Ref:  3.6.2. Reporting Error Conditions Downstream
-    ...                   "In case the PKI management entity detects any other error condition on requests [..]
-    ...                   from downstream [..], it MUST report them downstream in the form of an error message as
-    ...                   described in Section 3.6.4.
-    [Tags]    negative  rfc9483
-    ${response}=  Exchange data with CA    this dummy input is not a valid PKIMessage
-    ${asn1_response}=  Parse Pki Message    ${response.content}
-    ${response_type}=  Get Cmp Response Type    ${asn1_response}
-    # Should Be Equal    ${response_type}  ${rp}
-    Should Be Equal    error    ${response_type}
+# TODO: there is not enough info for the server to formulate a proper PKIMessage, so we should send a malformed request
+# which is more sophisticated, to make sure there is a bare minimum of info that can be used to send back a PKIMessage
+# error
+#PKI entity must respond with a PKIStatusInfo structure when a malformed request is received
+#    [Documentation]    When we send an invalid PKIMessage to a PKI entity, it MUST indicate the error condition in
+#    ...                the PKIStatusInfo structure
+#    ...                Ref:  3.6.2. Reporting Error Conditions Downstream
+#    ...                   "In case the PKI management entity detects any other error condition on requests [..]
+#    ...                   from downstream [..], it MUST report them downstream in the form of an error message as
+#    ...                   described in Section 3.6.4.
+#    ...
+#    [Tags]    negative  rfc9483
+#    ${response}=  Exchange data with CA    this dummy input is not a valid PKIMessage
+#    Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
+#
+#    ${asn1_response}=  Parse Pki Message    ${response.content}
+#    ${response_type}=  Get Cmp Response Type    ${asn1_response}
+#    Should Be Equal    error    ${response_type}
 
 
 Server must issue a certificate when a correct p10cr is sent
@@ -88,7 +93,6 @@ Response PKIMessage header must include all required fields
     Protection algorithms must match          ${protected_p10cr}      ${pki_message}
     Protection must be valid                  ${pki_message}
     PKIMessage body type must be              ${pki_message}    cp
-    # [Teardown]    to do
 
 
 
