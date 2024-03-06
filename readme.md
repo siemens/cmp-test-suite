@@ -5,21 +5,39 @@ A library of primitives for automating PKI- and CMP-related tests using RobotFra
 - `tests` - the test suites themselves
 - `resources` - reusable keywords written in RF or Python
 - `data` - pre-generated test data (e.g., keys, certificates), if required
-- `config` - a place for storing configuration options (e.g., IP addresses, port numbers, etc.)
+- `config` - a place for storing configuration options (e.g., IP addresses, port numbers, etc.) for target environments
+   you want to test.
 - `unit_tests` - tests for the library itself, specifically its Python primitives
+- `doc` - generated documentation of the test suite and the keywords it is made of
 
 
 # Configuration
 Prepare your environment by installing the dependencies from `requirements.txt`. Using a Python virtualenv is a good
-practice. In this case you would run `pip install -r requirements.txt` inside the environment.
+practice:
+
+1. Create a virtual environment: `python -m venv venv-cmp-tests`
+2. Activate the environment: `source venv-cmp-tests/bin/activate`
+3. Install the dependencies: `pip install -r requirements.txt`
 
 # Usage
 1. Run `robot tests` to execute all the tests in the `tests/` directory.
 2. Explore `report.html` to see the results.
 
+## Advanced usage examples
+You can run specific tests on specific environments by adjusting command line options. Consider this example:
+`robot --outputdir=out  --variable environment:cloudpki  --include crypto tests`
 
-Other useful commands
-- `make test` - run all the tests
+- `--outputdir=out` - store the results in the `out` directory
+- `--variable environment:cloudpki` - use the settings given in the `config/cloudpki.robot` file
+- `--include crypto` - run only the tests that have the `crypto` tag
+
+
+
+## Other useful commands
+- `make test` - run all the tests, store the results in `out/`, use the `config/local.robot` settings.
+- `make testlog` - run all the tests, store the results in subdirectories like `out/2024-01-20_17-45_January-1`, so that
+  you can keep track of the history of test runs, instead of overwriting them. This will use the default test environment.
+- `make testlog env=cloudpki` - as above, but use the `config/cloudpki.robot` settings.
 - `make doc` - generate HTML documentation for test suites and available keywords, store in `doc/`.
 - `make unittest` - run unit tests that verify the functionality of the library itself.
 

@@ -14,18 +14,25 @@ CA must reject malformed reqest
     ...                MAY be used to inform the client about errors."
     [Tags]    negative  status  rfc6712     robot:skip-on-failure
     ${response}=  Exchange data with CA    this dummy input is not a valid PKIMessage
-    Should Be Equal    ${response.status_code}  ${400}
+    Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
 
 CA must reject requests that feature unknown signature algorithms
     [Documentation]    When we send an valid PKIMessage to the CA, it must respond with a 400 status code to indicate
     ...                a client-side error in the supplied input data.
     [Tags]    negative  crypto
-    ${data}=  Get Binary File  data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/req-p10cr-prot_none-pop_sig.pkimessage
+    ${data}=  Get Binary File  data/req-p10cr-prot_none-pop_sig-dilithium.pkimessage
     Log base64    ${data}
     ${updated_pki_message}=  Patch message time    ${data}
     ${encoded}=  Encode To Der    ${updated_pki_message}
     ${response}=  Exchange data with CA    ${encoded}
-    Should Be Equal    ${response.status_code}  ${400}
+
+    ${raw_response}=    Load And Decode Pem File    data/example-response-unsupported-algo.pem
+    ${parsed_response}=    Parse PKI Message    ${raw_response}
+
+    ${value}=       Get Asn1 Value As String   ${parsed_response}    header.sender.directoryName.rdnSequence/0/0.value
+
+
+    Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
 
 
 

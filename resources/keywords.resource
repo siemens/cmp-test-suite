@@ -85,7 +85,7 @@ Protection algorithms must match
     [Arguments]         ${request}    ${response}
     ${request_algo}=    Get Asn1 Value    ${request}    header.protectionAlg.algorithm
     ${response_algo}=   Get Asn1 Value    ${response}   header.protectionAlg.algorithm
-    Should be equal     ${request_algo}   ${response_algo}      Protection algorithm mismatch
+    Should be equal     ${request_algo}   ${response_algo}      Protection algorithm mismatch, we sent ${request_algo}, we got ${response_algo}
     # TODO also check the parameters, if any
 
 
