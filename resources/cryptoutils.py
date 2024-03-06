@@ -167,14 +167,8 @@ def sign_data(data, key, hash_alg="sha256"):
     hash_alg_instance = hash_name_to_instance(hash_alg)
 
     if isinstance(key, rsa.RSAPrivateKey):
-        signature = key.sign(
-            data,
-            padding.PSS(
-                mgf=padding.MGF1(hash_alg_instance),
-                salt_length=padding.PSS.MAX_LENGTH
-            ),
-            hash_alg_instance
-        )
+        # use PKCS1v15 padding, because we have to: https://crypto.stackexchange.com/a/76760
+        signature = key.sign(data, padding.PKCS1v15(), hash_alg_instance)
     else:
         raise ValueError(f"Unsupported key type: {type(key)}, only RSA is implemented for now")
     return signature
