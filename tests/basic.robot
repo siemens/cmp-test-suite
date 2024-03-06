@@ -21,7 +21,7 @@ CA must reject requests that feature unknown signature algorithms
     [Documentation]    When we send a valid PKIMessage to the CA, but the signature algorithms used in the request are
     ...                unknown to the server, it should reject the request and respond with a 400 status code to
     ...                indicate a client-side error in the supplied input data.
-    [Tags]    negative  crypto
+    [Tags]    negative  crypto  p10cr
     ${data}=  Get Binary File  data/req-p10cr-prot_none-pop_sig-dilithium.pkimessage
     Log base64    ${data}
     ${updated_pki_message}=  Patch message time    ${data}
@@ -36,7 +36,7 @@ CA must reject requests that feature unknown signature algorithms
 
 CA must issue a certificate when we send a valid p10cr request
     [Documentation]    When we send a valid CSR inside a p10cr, the CA should respond with a valid certificate.
-    [Tags]    csr    positive
+    [Tags]    csr    p10cr  positive
     ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
     ${request_pki_message}=  Parse Pki Message    ${der_pkimessage}
     ${response}=  Exchange data with CA    ${der_pkimessage}

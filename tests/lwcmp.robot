@@ -58,7 +58,7 @@ Server must issue a certificate when a correct p10cr is sent
 
 Response PKIMessage header must include all required fields
     [Documentation]    Check that the PKIMessage coming from the server includes all the required fields
-    [Tags]    headers   ak
+    [Tags]    headers   p10cr   ak
     ${key}=    Generate RSA keypair
     ${csr}=    Generate CSR    CN=Hans Mustermann
     ${csr_signed}=    Sign CSR    ${csr}    ${key}
@@ -98,7 +98,7 @@ Response PKIMessage header must include all required fields
 
 CA must issue certificate via p10cr without implicitConfirm
     [Documentation]    Ensure that the server can issue certificates and wait for a confirmation to be sent by the EE
-    [Tags]    headers   ak
+    [Tags]    headers   p10cr   ak
     ${parsed_csr}=     Load and parse example CSR
     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${False}
     ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
@@ -127,7 +127,7 @@ CA must issue certificate via p10cr without implicitConfirm
 
 CA must support p10cr with password-based-mac protection
     [Documentation]    Check that the CA can handle a p10cr that is protected with a password-based-mac
-    [Tags]    headers   ak
+    [Tags]    headers   p10cr   ak
     ${parsed_csr}=     Load and parse example CSR
     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}     protection=password-based-mac
     ${protected_p10cr}=     Protect Pkimessage password based mac    ${p10cr}    ${PRESHARED_SECRET}
@@ -159,7 +159,7 @@ CA must support p10cr with password-based-mac protection
 
 CA must support cr with implicitConfirm
     [Documentation]    Check that the server can handle CRMF requests with implicitConfirm
-    [Tags]    headers   ak
+    [Tags]    headers   cr  ak
     ${key}=    Generate RSA keypair
     ${csr}=    Generate CSR    CN=Hans Mustermann
     # even though we compute the signature ourselves in `Build Cr From Csr`, we still need to sign the CSR here,
