@@ -467,7 +467,20 @@ def protect_pkimessage_pbmac1(pki_message, password, iterations=262144, salt=Non
     """Protects a PKIMessage with a PBMAC1, based on a password, returning the updated pyasn1 PKIMessage structure
     :param pki_message: pyasn1 PKIMessage
     :param password: optional str, password to use for calculating the HMAC protection
-    :returns: pyasn1 PKIMessage structure with the prorection included"""
+    :returns: pyasn1 PKIMessage structure with the protection included"""
+
+    # Prepare the parameters for protectionAlg to update the header, because the incoming pki_message may have another
+    # type of protection, or no protection at all.
+    prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
+    )
+
+    prot_alg_id['algorithm'] = rfc8018.id_PBMAC1
+    pbmac1_parameters = _prepare_pbmac1_parameters(salt=salt, iterations=iterations, length=length, hash_alg=hash_alg)
+    prot_alg_id['parameters'] = pbmac1_parameters
+
+    pki_message['header']['protectionAlg'] = prot_alg_id
+
     protected_part = rfc9480.ProtectedPart()
     protected_part['header'] = pki_message['header']
     protected_part['body'] = pki_message['body']
