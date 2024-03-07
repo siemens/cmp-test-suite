@@ -48,11 +48,14 @@ Initialize Global Variables
 Server must issue a certificate when a correct p10cr is sent
     [Documentation]    When a correct p10cr is sent to the server, it must issue a certificate
     [Tags]    positive  rfc9483  p10cr
-    ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
-    ${response}=  Exchange data with CA    ${der_pkimessage}
+    ${pki_message}=     Load and refresh PKIMessage from file    data/example-rufus-01-p10cr.pem
+    ${protected_pki_message}=     Protect Pkimessage Pbmac1    ${pki_message}    ${PRESHARED_SECRET}
+    ${encoded}=  Encode To Der    ${protected_pki_message}
+    ${response}=  Exchange data with CA    ${encoded}
 
     ${pki_message}=      Parse Pki Message    ${response.content}
-    Asn1 Must Contain Fields    ${pki_message}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce,implicitConfirmValue,ConfirmWaitTimeValue,CertProfileValue
+    ${pki_header}=       Get Asn1 value   ${pki_message}    header
+    Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce,implicitConfirmValue,ConfirmWaitTimeValue,CertProfileValue
 
 
 

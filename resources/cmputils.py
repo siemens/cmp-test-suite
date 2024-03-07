@@ -628,6 +628,27 @@ def parse_csr(raw_csr):
     return csr
 
 
+def patch_transaction_id(pki_message, new_id=None):
+    """Patches the transactionId of a PKIMessage structure with a new ID, this is useful when you load a request
+    from a file and send it multiple times to the CA. It would normally reject it because the transactionId is
+    repeated - hence the patching.
+
+    :param pki_message: pyasn1 PKIMessage structure, but raw DER-encoded blobs are also accepted, will be converted
+                        automatically, this is to make it easier to use this function in RobotFramework
+    :param new_id: optional bytes, new transactionId to use, will generate a random one by default
+    :returns: a pyasn1 PKIMessage structure with the updated transactionId
+    """
+    if type(pki_message) is bytes:
+        pki_message = parse_pki_message(pki_message)
+
+    new_id = new_id or os.urandom(16)
+    wrapper_transaction_id = univ.OctetString(new_id).subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 4)
+    )
+    pki_message['header']['transactionID'] = wrapper_transaction_id
+    return pki_message
+
+
 def patch_message_time(pki_message, new_time=None):
     """Patches the messageTime field of a PKIMessage structure with a new time,
     or the current time if none is provided

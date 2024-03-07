@@ -28,6 +28,21 @@ Try to Log PKIMessage as ASN1
     Log Asn1            ${pki_message}
 
 
+Load and refresh PKIMessage from file
+    [Documentation]    Load a PKIMessage from a PEM file, update its transactionId and messageTime, and return it
+    ...                as a pyasn1 object. This is useful when sending previously sent messages, the CA will reject
+    ...                them if the time is not fresh or if the transactionId is not unique.
+    [Arguments]        ${path}    ${transaction_id}=${NONE}    ${message_time}=${NONE}
+    ${raw}=            Load And Decode Pem File    ${path}
+    ${pki_message}=    Parse Pki Message    ${raw}
+    Log Asn1           ${pki_message}
+    ${pki_message}=    Patch transaction id   ${pki_message}    ${transaction_id}
+    ${pki_message}=    Patch message time     ${pki_message}    ${message_time}
+    RETURN             ${pki_message}
+
+
+
+
 Generate CSR with RSA2048 and a predefined common name
     [Documentation]    Produce a generic, valid CSR that has a correct signature
     ${key}=    Generate keypair    rsa    2048
