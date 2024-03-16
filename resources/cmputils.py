@@ -501,6 +501,36 @@ def protect_pkimessage_password_based_mac(pki_message, password, iterations=1000
     :param pki_message: pyasn1 PKIMessage to protect
     :param password: optional, password to use for calculating the password-based-mac protection
     :returns: pyasn1 PKIMessage structure with the protection included"""
+
+    if type(salt) is str:
+        # if it came as a string, it was passed directly through RobotFramework; we accept that and transform it
+        # to have better readability in RF test cases
+        salt = bytes(salt, 'utf-8')
+
+    # If protection parameters are already set in the message, we have to override that
+    # because sometimes we're dealing not with messages we produced ourselves, but with messages
+    # loaded from somewhere else as a template
+    prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
+    )
+    prot_alg_id['algorithm'] = rfc4210.id_PasswordBasedMac
+    pbm_parameters = _prepare_password_based_mac_parameters(salt=salt, iterations=iterations, hash_alg=hash_alg)
+    prot_alg_id['parameters'] = pbm_parameters
+    pki_message['header']['protectionAlg'] = prot_alg_id
+
+    protected_part = rfc9480.ProtectedPart()
+    protected_part['header'] = pki_message['header']
+    protected_part['body'] = pki_message['body']
+
+    encoded = encoder.encode(protected_part)
+    protection = compute_password_based_mac(encoded, password, iterations=iterations, salt=salt, hash_alg=hash_alg)
+
+    wrapped_protection = rfc9480.PKIProtection().fromOctetString(protection).subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
+    )
+    pki_message['protection'] = wrapped_protection
+    return pki_message
+
     protected_part = rfc9480.ProtectedPart()
     protected_part['header'] = pki_message['header']
     protected_part['body'] = pki_message['body']
