@@ -47,7 +47,7 @@ CA must issue a certificate when we send a valid p10cr request
     SenderNonce must be at least 128 bits long  ${response_pki_message}
     PKIMessage body type must be              ${response_pki_message}    cp
 
-    ${response_status}=    Get Asn1 value as string    ${response_pki_message}    body.cp.response/0.status
+    ${response_status}=    Get CMP status from PKIMessage    ${response_pki_message}
     Should be equal     ${response_status}    accepted      We expected status `accepted`, but got ${response_status}
 
     # TODO check the remaining part for correctness
