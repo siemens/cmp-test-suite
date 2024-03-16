@@ -524,7 +524,7 @@ def csr_attach_signature(csr, signature):
     """Takes a pyasn1 CSR object and attaches the signature to it, returning a
     signed pyasn1 CSR object. The signature is a buffer of raw data (not base64, etc.)"""
     sig_alg_id = SignatureAlgorithmIdentifier()
-    algorithm = univ.ObjectIdentifier((1, 2, 840, 113549, 1, 1, 5))  # RSA_SIGN
+    algorithm = rfc5480.sha1WithRSAEncryption
     parameters = encoder.encode(univ.Null())  # no params are used
 
     sig_alg_id['algorithm'] = algorithm
