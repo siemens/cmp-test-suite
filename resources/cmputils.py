@@ -687,5 +687,17 @@ def find_oid_in_general_info(pki_message, oid):
     return False
 
 
+def add_implicit_confirm(pki_message):
+    """Set the generalInfo part of a PKIMessage header to a structure that contains implicitConfirm; overriding
+    other parts of generalInfo, if any!
+
+    :param pki_message: pyasn1 object representing a PKIMessage
+    :returns: updated pyasn1 object"""
+    # TODO consider refactoring so that implicitConfirm is added if the list already exists, rather than rewrite it.
+    general_info = _prepare_implicit_confirm_general_info_structure()
+    pki_message['header']['generalInfo'] = general_info
+    return pki_message
+
+
 if __name__ == '__main__':
     pass
