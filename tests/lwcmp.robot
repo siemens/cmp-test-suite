@@ -160,8 +160,8 @@ CA must support p10cr with password-based-mac protection
     PKIMessage body type must be              ${pki_message}    cp
 
 
-CA must support cr with implicitConfirm
-    [Documentation]    Check that the server can handle CRMF requests with implicitConfirm
+CA must support cr with implicitConfirm and PBMAC1 protection
+    [Documentation]    Check that the server can handle CRMF requests with implicitConfirm and PBMAC1 protection
     [Tags]    headers   cr  ak
     ${key}=    Generate RSA keypair
     ${csr}=    Generate CSR    CN=Hans Mustermann
@@ -199,6 +199,96 @@ CA must support cr with implicitConfirm
     Protection algorithms must match          ${protected_pki_message}      ${pki_message}
     Protection must be valid                  ${pki_message}
     PKIMessage body type must be              ${pki_message}    cp
+
+
+CA must reject requests with signature protection but without extraCerts
+    [Documentation]    Check that the server can handle CRMF requests with implicitConfirm and signature protection
+    [Tags]    headers   cr  ak
+    ${key}=    Generate RSA keypair
+    ${csr}=    Generate CSR    CN=Hans Mustermann
+    # even though we compute the signature ourselves in `Build Cr From Csr`, we still need to sign the CSR here,
+    # because that's how the cryptography.hazmat API works
+    ${csr_signed}=    Sign CSR    ${csr}    ${key}
+    Log             ${csr_signed}
+    ${decoded_csr}=    Decode PEM string    ${csr_signed}
+    ${parsed_csr}=     Parse Csr    ${decoded_csr}
+
+    ${pki_message}=    Build Cr From Csr    ${parsed_csr}    ${key}       sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
+    ${protected_pki_message}=     Protect Pkimessage with signature    ${pki_message}    ${key}
+    Log Asn1    ${protected_pki_message}
+
+    ${encoded}=  Encode To Der    ${protected_pki_message}
+    Log Base64    ${encoded}
+    ${response}=  Exchange data with CA    ${encoded}
+
+    ${pki_message}=      Parse Pki Message    ${response.content}
+    ${pki_header}=       Get Asn1 value   ${pki_message}    header
+    Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+
+    Sender and Recipient nonces must match    ${protected_pki_message}      ${pki_message}
+    SenderNonce must be at least 128 bits long  ${pki_message}
+    Collect nonce from PKIMessage    ${pki_message}   ${collected_nonces}
+
+    PKIMessage body type must be              ${pki_message}    error
+    ${pki_status}=     Get ASN1 value    ${pki_message}    body.error.pKIStatusInfo.status
+    Should Be Equal    ${pki_status}  ${2}      We expected status `(2) rejection`, but got ${pki_status}
+
+    ${status_string}=   Get ASN1 value    ${pki_message}    body.error.pKIStatusInfo.statusString/0
+    Should contain      ${status_string}    no extraCert
+
+
+#    ${der_cert}=    Get Asn1 value as DER    ${pki_message}    extraCerts/0
+#    Log base64    ${der_cert}
+#    Certificate must be valid    ${der_cert}
+
+    Response time must be fresh               ${protected_pki_message}      ${pki_message}
+    Protection algorithms must match          ${protected_pki_message}      ${pki_message}
+    Protection must be valid                  ${pki_message}
+
+
+CA must support requests with signature protection
+    [Documentation]    Check that the server can handle CRMF requests with implicitConfirm and signature protection
+    [Tags]    headers   cr  ak
+    ${key}=    Generate RSA keypair
+    ${csr}=    Generate CSR    CN=Hans Mustermann
+    # even though we compute the signature ourselves in `Build Cr From Csr`, we still need to sign the CSR here,
+    # because that's how the cryptography.hazmat API works
+    ${csr_signed}=    Sign CSR    ${csr}    ${key}
+    Log             ${csr_signed}
+    ${decoded_csr}=    Decode PEM string    ${csr_signed}
+    ${parsed_csr}=     Parse Csr    ${decoded_csr}
+
+    ${pki_message}=    Build Cr From Csr    ${parsed_csr}    ${key}       sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
+    ${protected_pki_message}=     Protect Pkimessage with signature    ${pki_message}    ${key}      extra_certs=data/dummy-cert.pem
+    Log Asn1    ${protected_pki_message}
+
+    ${encoded}=  Encode To Der    ${protected_pki_message}
+    Log Base64    ${encoded}
+    ${response}=  Exchange data with CA    ${encoded}
+
+    ${pki_message}=      Parse Pki Message    ${response.content}
+    ${pki_header}=       Get Asn1 value   ${pki_message}    header
+    Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+
+    Sender and Recipient nonces must match    ${protected_pki_message}      ${pki_message}
+    SenderNonce must be at least 128 bits long  ${pki_message}
+    Collect nonce from PKIMessage    ${pki_message}   ${collected_nonces}
+
+    PKIMessage body type must be              ${pki_message}    error
+    ${pki_status}=     Get ASN1 value    ${pki_message}    body.error.pKIStatusInfo.status
+    Should Be Equal    ${pki_status}  ${2}      We expected status `(2) rejection`, but got ${pki_status}
+
+    ${status_string}=   Get ASN1 value    ${pki_message}    body.error.pKIStatusInfo.statusString/0
+    Should contain      ${status_string}    no extraCert
+
+
+#    ${der_cert}=    Get Asn1 value as DER    ${pki_message}    extraCerts/0
+#    Log base64    ${der_cert}
+#    Certificate must be valid    ${der_cert}
+
+    Response time must be fresh               ${protected_pki_message}      ${pki_message}
+    Protection algorithms must match          ${protected_pki_message}      ${pki_message}
+    Protection must be valid                  ${pki_message}
 
 
 

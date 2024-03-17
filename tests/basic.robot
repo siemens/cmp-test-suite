@@ -39,6 +39,12 @@ CA must issue a certificate when we send a valid p10cr request
     [Tags]    csr    p10cr  positive
     ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
     ${request_pki_message}=  Parse Pki Message    ${der_pkimessage}
+    ${request_pki_message}=  Patch message time    ${request_pki_message}
+    # NOTE that we are patching the transaction id so the message looks like a new one
+    ${request_pki_message}=  Patch transaction id    ${request_pki_message}     prefix=11111111111111111111
+    ${protected_p10cr}=     Protect Pkimessage password based mac    ${request_pki_message}    ${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
+    ${der_pkimessage}=  Encode To Der    ${protected_p10cr}
+
     ${response}=  Exchange data with CA    ${der_pkimessage}
     ${response_pki_message}=     Parse Pki Message    ${response.content}
     Should Be Equal    ${response.status_code}  ${200}      We expected status code 200, but got ${response.status_code}
@@ -53,6 +59,42 @@ CA must issue a certificate when we send a valid p10cr request
     # TODO check the remaining part for correctness
     ${der_cert}=    Get Asn1 value as DER    ${response_pki_message}    body.cp.response/0.certifiedKeyPair.certOrEncCert.certificate.tbsCertificate
     Certificate must be valid    ${der_cert}
+
+CA must reject a valid p10cr request if the transactionId is not new
+    [Documentation]    When we send a valid p10cr that uses a transactionId that was already used, the CA should
+    ...                reject the request
+    [Tags]    csr    p10cr  negative
+    ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
+    ${request_pki_message}=  Parse Pki Message    ${der_pkimessage}
+    # first we send a good request, ensuring the time is fresh and the transactionId is new
+    ${request_pki_message}=  Patch message time    ${request_pki_message}
+    ${request_pki_message}=  Patch transaction id    ${request_pki_message}     0123456789012345678901234567891
+    ${request_pki_message}=  Add implicit confirm    ${request_pki_message}
+#    xxx
+    ${protected_p10cr}=     Protect Pkimessage password based mac    ${request_pki_message}    ${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
+    ${encoded}=  Encode To Der    ${protected_p10cr}
+    ${response}=  Exchange data with CA    ${encoded}
+
+    # then send the same thing again and expect an error with failInfo = transactionIdInUse
+    ${response_new}=  Exchange data with CA    ${encoded}
+    ${response_pki_message}=     Parse Pki Message    ${response_new.content}
+
+    Sender and Recipient nonces must match    ${request_pki_message}      ${response_pki_message}
+    SenderNonce must be at least 128 bits long  ${response_pki_message}
+    PKIMessage body type must be              ${response_pki_message}    error
+
+    ${pki_status}=     Get ASN1 value    ${response_pki_message}    body.error.pKIStatusInfo.status
+    Should Be Equal    ${pki_status}  ${2}      We expected status `(2) rejection`, but got ${pki_status}
+
+    # TODO PKIFailureInfo is optional, but if it is set, then it must contain the specific values we check for
+    # create a nice primitive for this
+    ${pki_fail_info}=  Get ASN1 value    ${response_pki_message}    body.error.pKIStatusInfo.failInfo
+    Should Be Equal    ${pki_fail_info}  ${21}      We expected status `(21) transactionIdInUse`, but got ${pki_status}
+#    Check if optional error info in PKIMessage equals    ${response_pki_message}    ${21}
+
+
+    Should Be Equal    ${response.status_code}  ${400}      We expected status code 200, but got ${response.status_code}
+
 
 
 #CA must reject request when the CSR signature is invalid
