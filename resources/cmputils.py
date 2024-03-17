@@ -12,7 +12,8 @@ from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attri
 from pyasn1_alt_modules.rfc2511 import CertTemplate
 
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
-                         compute_password_based_mac, sign_data, get_sig_oid_from_key_hash)
+                         compute_password_based_mac, sign_data, get_sig_oid_from_key_hash,
+                         get_alg_oid_from_key_hash)
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -278,6 +279,11 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
             pbm_parameters = _prepare_password_based_mac_parameters(salt=None, iterations=1000, hash_alg="sha256")
             prot_alg_id['parameters'] = pbm_parameters
 
+        elif protection == 'signature':
+            # TODO this depends on the signature algorithm, which implies we'd have to pass in the key or some
+            # information about it
+            pass
+
         pki_header['protectionAlg'] = prot_alg_id
 
     if 'generalInfo' not in omit_fields and implicit_confirm:
@@ -531,17 +537,43 @@ def protect_pkimessage_password_based_mac(pki_message, password, iterations=1000
     pki_message['protection'] = wrapped_protection
     return pki_message
 
+
+def protect_pkimessage_with_signature(pki_message, signing_key, extra_certs=None, hash_alg="sha256"):
+    """Protects a PKIMessage with a signature, returning the updated pyasn1 PKIMessage structure
+
+    :param pki_message: pyasn1 PKIMessage to protect
+    :param signing_key: cryptography.hazmat.primitives.asymmetric key object to use for signing
+    :param hash_alg: optional str, name of the hashing algorithm to use with the signature (sha256 by default)
+    :returns: pyasn1 PKIMessage structure with the protection included"""
+
+    # Prepare the parameters for protectionAlg to update the header, because the incoming pki_message may have another
+    # type of protection, or no protection at all.
+    prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(
+        explicitTag=Tag(tagClassContext, tagFormatSimple, 1)
+    )
+
+    prot_alg_id['algorithm'] = get_alg_oid_from_key_hash(signing_key, hash_alg)
+
+    # TODO create different parameter structures depending on what the signing key is
+    parameters = univ.Null("")
+    prot_alg_id['parameters'] = parameters
+
+    pki_message['header']['protectionAlg'] = prot_alg_id
+
     protected_part = rfc9480.ProtectedPart()
     protected_part['header'] = pki_message['header']
     protected_part['body'] = pki_message['body']
 
     encoded = encoder.encode(protected_part)
-    protection = compute_password_based_mac(encoded, password, iterations=iterations, salt=salt, hash_alg=hash_alg)
+    protection = sign_data(encoded, signing_key, hash_alg)
 
     wrapped_protection = rfc9480.PKIProtection().fromOctetString(protection).subtype(
         explicitTag=Tag(tagClassContext, tagFormatSimple, 0)
     )
     pki_message['protection'] = wrapped_protection
+
+    # TODO: add extraCerts here
+
     return pki_message
 
 

@@ -4,7 +4,7 @@ import os
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.asymmetric import rsa, padding, ec
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
 from pyasn1_alt_modules import rfc9481
@@ -52,6 +52,32 @@ OID_SIG_HASH_MAP = {
     (rfc9481.rsaEncryption, 'sha384'): rfc9481.sha384WithRSAEncryption,
     (rfc9481.rsaEncryption, 'sha512'): rfc9481.sha512WithRSAEncryption,
 }
+
+
+def get_alg_oid_from_key_hash(key, hash_alg):
+    """Find the pyasn1 oid given the hazmat key instance and a name of a hashing algorithm
+
+    :param key: cryptography.hazmat.primitives.asymmetric, key instance
+    :param hash_alg: str, name of hashing algorithm, e.g., 'sha256'
+    :return: pyasn1.type.univ.ObjectIdentifier of signature algorithm
+    """
+    if isinstance(key, rsa.RSAPrivateKey):
+        if hash_alg == 'sha256':
+            return rfc9481.sha256WithRSAEncryption
+        elif hash_alg == 'sha384':
+            return rfc9481.sha384WithRSAEncryption
+        elif hash_alg == 'sha512':
+            return rfc9481.sha512WithRSAEncryption
+
+    elif isinstance(key, ec.ECDSA):
+        if hash_alg == 'sha256':
+            return rfc9481.ecdsa_with_SHA256
+        elif hash_alg == 'sha384':
+            return rfc9481.ecdsa_with_SHA384
+        elif hash_alg == 'sha512':
+            return rfc9481.ecdsa_with_SHA512
+
+    raise ValueError(f'Unsupported signature algorithm for ({key}, {hash_alg})')
 
 
 def get_sig_oid_from_key_hash(alg_oid, hash_alg):
@@ -160,7 +186,7 @@ def sign_data(data, key, hash_alg="sha256"):
     """Sign the given data with a given private key, using a specified hashing algorithm
 
     :param data: bytes, data to be signed
-    :param key: cryptography.hazmat.primitives.asymmetric, private key used for the signature (RSA only for now)
+    :param key: cryptography.hazmat.primitives.asymmetric, private key used for the signature (RSA or ECDSA for now)
     :param hash_alg: optional str, a hashing algorithm name
     :return: bytes, the signature
     """
@@ -169,8 +195,10 @@ def sign_data(data, key, hash_alg="sha256"):
     if isinstance(key, rsa.RSAPrivateKey):
         # use PKCS1v15 padding, because we have to: https://crypto.stackexchange.com/a/76760
         signature = key.sign(data, padding.PKCS1v15(), hash_alg_instance)
+    elif isinstance(key, ec.ECDSA):
+        signature = key.sign(data, ec.ECDSA(hash_alg_instance))
     else:
-        raise ValueError(f"Unsupported key type: {type(key)}, only RSA is implemented for now")
+        raise ValueError(f"Unsupported key type: {type(key)}, only RSA and ECDSA is implemented for now")
     return signature
 
 
