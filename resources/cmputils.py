@@ -14,6 +14,9 @@ from pyasn1_alt_modules.rfc2511 import CertTemplate
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
                          compute_password_based_mac, sign_data, get_sig_oid_from_key_hash,
                          get_alg_oid_from_key_hash)
+from resources.certutils import parse_certificate
+
+from utils import load_and_decode_pem_file
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -573,6 +576,18 @@ def protect_pkimessage_with_signature(pki_message, signing_key, extra_certs=None
     pki_message['protection'] = wrapped_protection
 
     # TODO: add extraCerts here
+    # - if it is a path string - load it and parse it
+    # - it could also be the raw DER-encoded or PEM-encoded bytes; for now we assume it is a path
+    if extra_certs:
+        raw = load_and_decode_pem_file(extra_certs)
+        cert = parse_certificate(raw)
+        extra_certs_wrapper = univ.SequenceOf(
+            componentType=rfc9480.CMPCertificate()).subtype(
+                subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX)).subtype(
+                    explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
+        extra_certs_wrapper.append(cert)
+
+        pki_message['extraCerts'] = extra_certs_wrapper
 
     return pki_message
 

@@ -8,9 +8,19 @@ from pkilint import report
 from pkilint.pkix import certificate, name, extension
 from pkilint.validation import ValidationFindingSeverity
 
+from pyasn1_alt_modules import rfc9480
+from pyasn1.codec.der import decoder
 
 # TODO for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False
+
+def parse_certificate(data):
+    """Parse a DER-encoded X509 certificate into a pyasn1 object.
+
+    :param data: bytes, DER-encoded X509 certificate.
+    :returns: pyasn1 object, the parsed certificate."""
+    cert, _rest = decoder.decode(data, asn1Spec=rfc9480.CMPCertificate())
+    return cert
 
 
 def validate_certificate_openssl(data):
