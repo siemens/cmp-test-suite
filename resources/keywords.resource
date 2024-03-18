@@ -23,6 +23,7 @@ Library   ../resources/certutils.py
 Try to Log PKIMessage as ASN1
     [Documentation]    Tentatively parse a buffer, assuming it is a DER-encoded PKIMessage, and log its contents.
     ...                If that is not the case, ignore this and keep going. This is for convenience in logging.
+    ...                DEPRECATED in favour of `try_to_log_pkimessage' in Python, which is more concise.
     [Arguments]         ${payload}
     ${pki_message}=     Parse Pki Message    ${payload}
     Log Asn1            ${pki_message}
@@ -63,14 +64,15 @@ Exchange data with CA
     [Documentation]    Send a HTTP POST request to a server, and return the response.
     [Arguments]     ${payload}
     Log Base64    ${payload}
-    Run Keyword And Ignore Error     Try to Log PKIMessage as ASN1    ${payload}
+#    Run Keyword And Ignore Error     Try to Log PKIMessage as ASN1    ${payload}
+    Try to Log PKIMessage    ${payload}
     # TODO check if type of payload is a pyasn1 structure, and if it is, der-encode it automatically? Maybe?
 
     &{headers}=     Create Dictionary    Content-Type=application/pkixcmp    Accept-Type=application/pkixcmp
     ${response}=    POST    url=${CA_CMP_URL}     data=${payload}    headers=&{headers}     verify=${False}     expected_status=any
     Log             ${response.content}
     Log base64      ${response.content}
-    Run Keyword And Ignore Error     Try to Log PKIMessage as ASN1    ${response.content}
+    Try to Log PKIMessage    ${response.content}
     RETURN        ${response}
 
 Sender and Recipient nonces must match

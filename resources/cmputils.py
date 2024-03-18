@@ -1,10 +1,11 @@
+import logging
 import os
 import sys
 from datetime import datetime, timezone
 
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
-from pyasn1.type import univ, useful, constraint
+from pyasn1.type import univ, useful, constraint, base
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
 from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211
 from pyasn1_alt_modules.rfc2314 import SignatureAlgorithmIdentifier, Signature, Attributes
@@ -785,3 +786,28 @@ def add_implicit_confirm(pki_message):
 
 if __name__ == '__main__':
     pass
+
+
+# this is a Python implementation of the RobotFramework keyword `Try to Log PKIMessage as ASN1`. Viewing
+# its output of this one requires fewer clicks in the reports.
+def try_to_log_pkimessage(data):
+    """Given the input data and assuming it is a DER-encoded PKIMessage, try to decode it and log the ASN1 structure
+    in a human-readable way. Will also accept inputs that are pyasn1 objects or strings, for convenience of invocation
+    from RF tests.
+
+    :param data: bytes, str or pyasn1 - something that is assumed to be a PKIMessage structure, either DER-encoded or
+                 a pyasn1 object.
+    """
+    if isinstance(data, base.Asn1Item):
+        logging.info(data.prettyPrint())
+        return
+
+    if isinstance(data, str):
+        data = bytes(data, 'utf-8')
+
+    try:
+        parsed = parse_pki_message(data)
+    except:
+        logging.info("Cannot prettyPrint this, it does not seem to be a valid PKIMessage")
+
+    logging.info(parsed.prettyPrint())
