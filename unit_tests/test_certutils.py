@@ -1,6 +1,6 @@
 import unittest
 
-from resources.certutils import parse_certificate
+from resources.certutils import parse_certificate, validate_certificate_pkilint, validate_certificate_openssl
 from resources.utils import load_and_decode_pem_file
 
 
@@ -14,3 +14,16 @@ class TestCertUtils(unittest.TestCase):
         raw = load_and_decode_pem_file('data/dummy-cert.pem')
         result = parse_certificate(raw)
         self.assertIsNotNone(result)
+
+    def test_invalidate_broken_certificate(self):
+        """
+        GIVEN a problematic DER-encoded X509 certificate without a signature
+        WHEN we try to validate it with OpenSSL and PKILint
+        THEN exceptions will be thrown to signalize an error
+        """
+        raw = load_and_decode_pem_file('data/cert-nosig.pem')
+        with self.assertRaises(Exception):
+            validate_certificate_pkilint(raw)
+
+        with self.assertRaises(Exception):
+            validate_certificate_openssl(raw)

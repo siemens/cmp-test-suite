@@ -31,10 +31,9 @@ def validate_certificate_openssl(data):
     try:
         _certificate = x509.load_der_x509_certificate(data, default_backend())
     except Exception as e:
-        logging.error("Certificate validation with openssl failed: %s", e)
-        return False
-
-    return True
+        message = f"Certificate validation with openssl failed: {e}"
+        logging.error(message)
+        raise ValueError(message)
 
 
 def validate_certificate_pkilint(data):
