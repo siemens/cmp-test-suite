@@ -1,6 +1,6 @@
-cryptography==41.0.7
+cryptography==42.0.5
 pyasn1==0.5.1
-pyasn1-alt-modules==0.4.3
+pyasn1-alt-modules==0.4.4
 robotframework==7.0
-pkilint==0.9.9
+pkilint==0.9.10
 robotframework-requests==0.9.6
