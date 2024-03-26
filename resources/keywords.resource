@@ -24,6 +24,7 @@ Try to Log PKIMessage as ASN1
     [Documentation]    Tentatively parse a buffer, assuming it is a DER-encoded PKIMessage, and log its contents.
     ...                If that is not the case, ignore this and keep going. This is for convenience in logging.
     ...                DEPRECATED in favour of `try_to_log_pkimessage' in Python, which is more concise.
+    [Tags]             robot:flatten
     [Arguments]         ${payload}
     ${pki_message}=     Parse Pki Message    ${payload}
     Log Asn1            ${pki_message}
