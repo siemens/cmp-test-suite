@@ -15,7 +15,7 @@ from pyasn1_alt_modules.rfc2511 import CertTemplate
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
                          compute_password_based_mac, sign_data, get_sig_oid_from_key_hash,
                          get_alg_oid_from_key_hash)
-from resources.certutils import parse_certificate
+from certutils import parse_certificate
 
 # from utils import load_and_decode_pem_file
 import utils
