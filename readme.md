@@ -16,7 +16,9 @@ Prepare your environment by installing the dependencies from `requirements.txt`.
 practice:
 
 1. Create a virtual environment: `python -m venv venv-cmp-tests`
-2. Activate the environment: `source venv-cmp-tests/bin/activate`
+2. Activate the environment:
+   - on Linux or cygwin: `source venv-cmp-tests/bin/activate`
+   - on Windows with Powershell: `.\venv-cmp-tests\Scripts\Activate.ps1`
 3. Install the dependencies: `pip install -r requirements.txt`
 
 # Usage
