@@ -10,7 +10,7 @@ help:
 # By default, run the tests against the local environment from config/local.robot
 # You can override it, e.g., `make test env=cloudpki`
 env ?= local
-test:
+test: check_ejbca
 	robot --outputdir=out --variable environment:$(env) tests
 
 # As above, but keep the results in timestamped subdirectories, so they keep accumulating. This is useful because you
@@ -23,6 +23,11 @@ unittest:
 	# adjust path such that the unit tests can be started from the root directory, to make it easier to load
 	# example files from data/
 	PYTHONPATH=./resources python -m unittest discover -s unit_tests
+
+check_ejbca:
+ifeq ($(env), ejbca)
+	$(MAKE) -f Makefile_EJBCA start_EJBCA
+endif
 
 docs:
 	python -m robot.libdoc resources/keywords.resource doc/keywords.html
