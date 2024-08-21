@@ -33,13 +33,21 @@ You can run specific tests on specific environments by adjusting command line op
 - `--variable environment:cloudpki` - use the settings given in the `config/cloudpki.robot` file
 - `--include crypto` - run only the tests that have the `crypto` tag
 
+### using pre-configured EJBCA docker
+prerequisites  
+- Linux or WSL (for windows)  
+  When using WSL make sure to use the Linux filesystem.
+- docker
+- [compose compose v2](https://github.com/docker/compose?tab=readme-ov-file)
 
+To use EJBCA docker, you need to set the `--variable environment` to `ejbca`.
 
 ## Other useful commands
 - `make test` - run all the tests, store the results in `out/`, use the `config/local.robot` settings.
 - `make testlog` - run all the tests, store the results in subdirectories like `out/2024-01-20_17-45_January-1`, so that
   you can keep track of the history of test runs, instead of overwriting them. This will use the default test environment.
 - `make testlog env=cloudpki` - as above, but use the `config/cloudpki.robot` settings.
+- `make testlog env=ejbca` - as above, but use the `config/ejbca.robot` settings.
 - `make doc` - generate HTML documentation for test suites and available keywords, store in `doc/`.
 - `make unittest` - run unit tests that verify the functionality of the library itself.
 
