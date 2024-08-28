@@ -48,8 +48,11 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 |      AttributeTypeAndValue:
 |       type=2.5.4.10
 """
+import logging
+from typing import Union, List
 
 from pyasn1.codec.der import decoder, encoder
+from pyasn1.type.univ import BitString
 
 
 def asn1_must_contain_fields(data, fields):
@@ -183,3 +186,96 @@ def get_asn1_value_as_der(asn1_obj, query):
     """
     result = get_asn1_value(asn1_obj, query)
     return encoder.encode(result)
+
+
+def is_bit_set_in_bitstring(
+        asn1_bitstring: BitString, bit_index: Union[int, str], exclusive: bool = True
+) -> bool:
+    """
+    Check if a specific bit is set in an ASN.1 BitString.
+
+    This keyword determines whether a specific bit at the given index in an ASN.1
+    BitString is set (i.e., equals 1). It also checks whether this bit is the
+    only one set, depending on the value of the `exclusive` parameter.
+
+    Arguments:
+    - asn1_bitstring: The BitString object from pyasn1 to be checked.
+    - bit_index: The index of the bit to be checked. Can be provided as an integer or string.
+    - exclusive: A boolean indicating whether only the queried bit is allowed to be set (default is `True`).
+
+    Returns:
+    - `True` if the bit is set and meets the conditions specified by `exclusive`, `False` otherwise.
+    """
+
+
+
+    if isinstance(exclusive, str):
+        # Convert the exclusive parameter from string to boolean if necessary
+        exclusive = bool(int(exclusive))
+
+    # Convert the bit index to an integer
+    bit_index = int(bit_index)
+    x = tuple(asn1_bitstring)
+
+    logging.info(f"BitString Len: {len(x)} data:{x}")
+
+    try:
+        # Check if the bit at the specified index is set
+        if x[bit_index] == 1:
+            if exclusive:
+                # If exclusive, ensure that only this bit is set
+                return sum(x) == 1
+            return True  # The bit is set, but other bits may also be set
+        return False  # The bit at the specified index is not set
+
+    except IndexError:
+        # If the index is out of range, return False
+        return False
+
+
+def is_either_bit_set_in_bitstring(
+        asn1_bitstring: BitString,
+        bit_index: Union[List[Union[str, int]], str],
+        exclusive: bool = True,
+) -> bool:
+    """
+    Check if any bit in a list of indices is set in an ASN.1 BitString.
+
+    This keyword checks whether any bit at the specified indices in an ASN.1
+    BitString is set (i.e., equals 1). It can handle multiple bit indices
+    provided as a list, tuple, or a comma-separated string. The `exclusive`
+    parameter determines if only one bit can be set.
+
+    Arguments:
+    - asn1_bitstring: The BitString object from pyasn1 to be checked.
+    - bit_index: The index or indices of the bits to be checked. Can be provided as a list, tuple, or comma-separated string.
+    - exclusive: A boolean indicating whether only one of the queried bits is allowed to be set (default is `True`).
+
+    Returns:
+    - `True` if any of the specified bits are set and meet the conditions specified by `exclusive`, `False` otherwise.
+    """
+
+    logging.info(tuple(asn1_bitstring))
+
+    if isinstance(exclusive, str):
+        # Convert the exclusive parameter from string to boolean if necessary
+        exclusive = bool(int(exclusive))
+
+    if isinstance(bit_index, (list, tuple)):
+        # If bit_index is a list or tuple, check each index
+        for i in bit_index:
+            tmp = is_bit_set_in_bitstring(asn1_bitstring, i, exclusive=exclusive)
+            if tmp:
+                return True
+        return False
+
+    elif isinstance(bit_index, str):
+        # If bit_index is a string, split it into a list of integers
+        values = [int(x.strip()) for x in bit_index.strip().split(",")]
+        return is_either_bit_set_in_bitstring(
+            asn1_bitstring, values, exclusive=exclusive
+        )
+
+    else:
+        # If bit_index is an integer (not intended, but allowed), check it directly
+        return is_bit_set_in_bitstring(asn1_bitstring, bit_index, exclusive=exclusive)
