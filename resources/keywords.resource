@@ -216,23 +216,7 @@ PKIMessage Has Set Either Failure Bit
      ${bit_status}=     Is either bit set in bitstring    ${failInfo}    ${bit_index}    ${exclusive}
      RETURN  ${bit_status}
 
-Check Exclusive FailureBit From Response
-     [Documentation]    The keyword checks for the presence of a specific failure bit in the failInfo field of the PKIStatusInfo structure within the PKI message. The Options Include to set if the Bit is exclusive. Expects to contains a PKIMessage structure
-     [Arguments]        ${response}    ${bit_index}
-     #${is_valid}=    Has Rfc6712 Conform Status Code    ${response}
-     Should be true    ${is_valid}
-     ${pki_message}=      Parse Pki Message    ${response.content}
-     ${flag}=    PKIMessage Has Set the Right Failure Bit    ${pki_message}    ${bit_index}
-     Should be true    ${flag}
 
-Check Either FailureBit From Response
-     [Documentation]    The keyword checks for the presence of a specific failure bit in the failInfo field of the PKIStatusInfo structure within the PKI message. The Options Include to set if the Bit is exclusive. Expects to contains a PKIMessage structure
-     [Arguments]        ${response}    ${bit_indicies}    ${exclusive}
-     # TODO add Recommendation for http Response code
-     Should be true    ${is_valid}
-     ${pki_message}=      Parse Pki Message    ${response.content}
-     ${flag}=    PKIMessage Has Set Either Failure Bit    ${pki_message}    ${bit_index}    ${exclusive}
-     Should be true    ${flag}
 
 
 PKIMessage Has Set Failure Bit
@@ -242,8 +226,6 @@ PKIMessage Has Set Failure Bit
     ...                Arguments:
     ...                - `${pki_message}`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
     ...                - `${bit_index}`: The index of the bit to check within the `failInfo` field.
-    ...                - `${exclusive}`: A boolean value indicating whether the bit check should be exclusive (`True`) or non-exclusive (`False`).
-    ...                                  So that only  1 Bit is set. But it Could be Either One.
     ...
     ...                Example Usage:
     ...                | ${bit_status}=    PKIMessage Has Set Either Failure Bit    | ${pki_message}    | ${bit_index}
@@ -258,17 +240,14 @@ PKIMessage Has Set Failure Bit
     ...                3. Get Failure Information:
     ...                   - Retrieves the `failInfo` field from the `PKIMessage` using the `Get failure info` keyword.
     ...
-    ...                4. Log Failure Info Type:
-    ...                   - Logs the data type of the retrieved `failInfo` for debugging purposes.
-    ...
-    ...                5. Check the Bit Status:
+    ...                4. Check the Bit Status:
     ...                   - Determines if the specified bit is set using the `Is either bit set in bitstring` keyword.
     ...                   - Considers the `exclusive` parameter to check if the bit is set exclusively or not.
     ...
-    ...                6. Return Bit Status:
+    ...                5. Return Bit Status:
     ...                   Should be true    Check
 
-    [Arguments]        ${pki_message}     ${bit_index}     ${exclusive}
+    [Arguments]        ${pki_message}     ${bit_index}
     ${pki_header}=       Get Asn1 value   ${pki_message}    header
     Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
     ${failInfo}=        Get failure info    ${pki_message}
@@ -281,6 +260,7 @@ PKIMessage Has Set Either Failure Bit
     ...                   or non-exclusively (at least one bit is set).
     ...                Arguments:
     ...                - `${pki_message}`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+    ...                                   Can be of type  Http-Response, bytes, ASN1 Structure
     ...                - `${bit_Indices}`: The Indices of the bit to check within the `failInfo` field.
     ...                - `${exclusive}`: A boolean value indicating whether the bit check should be exclusive (`True`) or non-exclusive (`False`).
     ...                                  So that only 1 Bit is set. But it Could be Either One.
@@ -298,21 +278,111 @@ PKIMessage Has Set Either Failure Bit
     ...                3. Get Failure Information:
     ...                   - Retrieves the `failInfo` field from the `PKIMessage` using the `Get failure info` keyword.
     ...
-    ...                4. Log Failure Info Type:
-    ...                   - Logs the data type of the retrieved `failInfo` for debugging purposes.
     ...
-    ...                5. Check the Bit Status:
+    ...                4. Check the Bit Status:
     ...                   - Determines if the specified bit is set using the `Is either bit set in bitstring` keyword.
     ...                   - Considers the `exclusive` parameter to check if the bit is set exclusively or not.
     ...
-    ...                6. Return Bit Status:
+    ...                5. Return Bit Status:
     ...                   Should be true    Check
 
     [Arguments]        ${pki_message}     ${bit_index}     ${exclusive}
     ${pki_header}=       Get Asn1 value   ${pki_message}    header
     Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
     ${failInfo}=        Get failure info    ${pki_message}
-    Log Data Type       ${failInfo}
     ${bit_status}=      Is either bit set in bitstring    ${failInfo}    ${bit_index}    ${exclusive}
     Should be true              ${bit_status}
+
+
+Check Exclusive FailureBit
+    [Documentation]    This keyword checks for a specific failure bit in the `failInfo` field of the `PKIStatusInfo` structure within a `PKIMessage`. If it is just a check and not has to be There
+    ...                If the value must be present and correctly set, use the following keyword: `PKIMessage Has Set Failure Bit.
+    ...                The check is performed exclusively, ensuring that only the specified bit is set and no others. The keyword expects the input to contain a valid `PKIMessage` structure within the HTTP response.
+    ...                Arguments:
+    ...                - `${response}`: The HTTP response object that contains the `PKIMessage`. The response can have a
+    ...                                    `content` attribute containing the serialized `PKIMessage` or it
+    ...                                     could be a DER-Encoded Byte Stream or a ASN1 Structure itself.
+    ...
+    ...                                    Can be of type  Http-Response, bytes, ASN1 Structure
+    ...                - `${bit_index}`: The index of the failure bit to check within the `failInfo` field of the `PKIMessage`.
+    ...                - `${if_present_has_to_be_correct}`: Does the Run `PKIMessage Has Set Failure Bit` if PKIMessage is set.
+    ...
+    ...                Example Usage:
+    ...                | Check Exclusive FailureBit From Response    | ${response}    | ${bit_index}    |    ${if_present_has_to_be_correct}
+    ...
+    ...                Steps:
+    ...                1. Validate HTTP Status Code:
+    ...                   - (Optional) Verifies if the HTTP response conforms to RFC 6712 status codes using the `Has Rfc6712 Conform Status Code` keyword.
+    ...
+    ...                2. Parse the PKIMessage:
+    ...                   - Extracts and parses the `PKIMessage` from the HTTP response content using the `Parse Pki Message` keyword. If None is Returned
+    ...                      This Keyword Returns.
+    ...                3. Check the Exclusive Failure Bit:
+    ...                   - Calls the `PKIMessage Has Set the Right Failure Bit` keyword to check if the specific failure bit at the given `${bit_index}` is the only one set in the `failInfo` field.
+    ...
+    ...                4. Assertions:
+    ...                   - Asserts that the status code is valid.
+    ...                   - Asserts that the specific failure bit is not set exclusively.
+
+    [Arguments]        ${pki_message}     ${bit_index}    ${if_present_has_to_be_correct}=False
+    # TODO    Add Optional check for Http Status Code
+    ${pki_message}    Try parse pki message    ${pki_message}
+    Run Keyword If   ${pki_message == None}    Log    PKIMessage parsed to `Check Exclusive FailureBit`
+    Run Keyword If   ${pki_message == None}    RETURN
+
+
+    # fails if not the right bit is set.
+    Run Keyword If    ${if_present_has_to_be_correct != False}    PKIMessage Has Set Either Failure Bit   ${pki_message}     ${bit_index}
+    Run Keyword If    ${if_present_has_to_be_correct != False}    RETURN
+
+    # checks and then logs the if the Bit is set.
+    ${failInfo}=    Get failure info   ${response}
+    ${bit_status}=    Is bit set in bitstring    ${failInfo}    ${bit_index}
+    Run Keyword If    ${bit_status == false}    Log    PKIMessage Failure Bit is set: ${flag}
+
+Check Either FailureBit Set
+    [Documentation]    This keyword checks for a specific failure bit in the `failInfo` field of the `PKIStatusInfo` structure within a `PKIMessage`. If it is just a check and not has to be There
+    ...                If the value must be present and correctly set, use the following keyword: `PKIMessage Has Set Failure Bit.
+    ...                The check is performed exclusively, ensuring that only the specified bit is set and no others. The keyword expects the input to contain a valid `PKIMessage` structure within the HTTP response.
+    ...                Arguments:
+    ...                - `${response}`: The HTTP response object that contains the `PKIMessage`. The response can have a
+    ...                                    `content` attribute containing the serialized `PKIMessage` or it
+    ...                                     could be a DER-Encoded Byte Stream or a ASN1 Structure itself
+    ...                - `${bit_index}`: The index of the failure bit to check within the `failInfo` field of the `PKIMessage`.
+    ...                - `${if_present_has_to_be_correct}`: Does the Run `PKIMessage Has Set Failure Bit` if PKIMessage is set.
+    ...
+    ...                Example Usage:
+    ...                | Check Exclusive FailureBit From Response    | ${response}    | ${bit_index}    |    ${exclusive}    |    ${if_present_has_to_be_correct}
+    ...
+    ...                Steps:
+    ...                1. Validate HTTP Status Code:
+    ...                   - (Optional) Verifies if the HTTP response conforms to RFC 6712 status codes using the `Has Rfc6712 Conform Status Code` keyword.
+    ...
+    ...                2. Parse to get PKIMessage:
+    ...                   - Extracts and parses the `PKIMessage` from the HTTP response content using the `Parse Pki Message` keyword. If None is Returned
+    ...                      This Keyword Returns.
+    ...
+    ...                3. Check the Exclusive Failure Bit:
+    ...                   - Calls the `PKIMessage Has Set the Right Failure Bit` keyword to check if the specific failure bit at the given `${bit_index}` is the only one set in the `failInfo` field.
+    ...
+    ...                4. Assertions:
+    ...                   - Asserts that the status code is valid.
+    ...                   - Asserts that the specific failure bit is not set exclusively.
+
+    [Arguments]        ${pki_message}     ${bit_index}    ${exclusive}    ${if_present_has_to_be_correct}=False
+    # TODO    Add Optional check for Http Status Code
+    ${pki_message}    Try parse pki message    ${pki_message}
+    Run Keyword If   ${pki_message == None}    Log    PKIMessage parsed to `Check Exclusive FailureBit`
+    Run Keyword If   ${pki_message == None}    RETURN
+
+
+    # fails if not the right bit is set.
+    Run Keyword If    ${if_present_has_to_be_correct != False}    PKIMessage Has Set Either Failure Bit   ${pki_message}     ${bit_index}
+    Run Keyword If    ${if_present_has_to_be_correct != False}    RETURN
+
+    # checks and then logs the if the Bit is set.
+    ${failInfo}=    Get failure info   ${response}
+    ${bit_status}=    Is either bit set in bitstring    ${failInfo}    ${bit_index}    ${exclusive}
+    Run Keyword If    ${bit_status == false}    Log    PKIMessage Failure Bit is set: ${flag}
+
 
