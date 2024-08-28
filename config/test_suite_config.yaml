@@ -3,3 +3,4 @@
 
 
 debug_asn1_decode_remainder: true
+allow_only_http_status_code : ["200", "201", "202", "203", "3xx", "4xx", "5xx"]
