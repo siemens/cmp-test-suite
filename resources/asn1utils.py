@@ -51,9 +51,13 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 import logging
 from typing import Union, List
 
+import requests
 from pyasn1.codec.der import decoder, encoder
+from pyasn1.error import PyAsn1Error
 from pyasn1.type.univ import BitString
+from pyasn1_alt_modules import rfc9480
 
+import cmputils
 
 def asn1_must_contain_fields(data, fields):
     """
@@ -189,7 +193,9 @@ def get_asn1_value_as_der(asn1_obj, query):
 
 
 def is_bit_set_in_bitstring(
-        asn1_bitstring: BitString, bit_index: Union[int, str], exclusive: bool = True
+        asn1_bitstring: BitString,
+        bit_index: Union[int, str],
+        exclusive: bool = True
 ) -> bool:
     """
     Check if a specific bit is set in an ASN.1 BitString.
@@ -235,7 +241,7 @@ def is_bit_set_in_bitstring(
 
 def is_either_bit_set_in_bitstring(
         asn1_bitstring: BitString,
-        bit_index: Union[List[Union[str, int]], str],
+        bit_indices: Union[List[Union[str, int]], str],
         exclusive: bool = True,
 ) -> bool:
     """
@@ -248,7 +254,7 @@ def is_either_bit_set_in_bitstring(
 
     Arguments:
     - asn1_bitstring: The BitString object from pyasn1 to be checked.
-    - bit_index: The index or indices of the bits to be checked. Can be provided as a list, tuple, or comma-separated string.
+    - bit_indices: The index or indices of the bits to be checked. Can be provided as a list, tuple, or comma-separated string.
     - exclusive: A boolean indicating whether only one of the queried bits is allowed to be set (default is `True`).
 
     Returns:
@@ -261,21 +267,49 @@ def is_either_bit_set_in_bitstring(
         # Convert the exclusive parameter from string to boolean if necessary
         exclusive = bool(int(exclusive))
 
-    if isinstance(bit_index, (list, tuple)):
+    if isinstance(bit_indices, (list, tuple)):
         # If bit_index is a list or tuple, check each index
-        for i in bit_index:
+        for i in bit_indices:
             tmp = is_bit_set_in_bitstring(asn1_bitstring, i, exclusive=exclusive)
             if tmp:
                 return True
         return False
 
-    elif isinstance(bit_index, str):
+    elif isinstance(bit_indices, str):
         # If bit_index is a string, split it into a list of integers
-        values = [int(x.strip()) for x in bit_index.strip().split(",")]
+        values = [int(x.strip()) for x in bit_indices.strip().split(",")]
         return is_either_bit_set_in_bitstring(
             asn1_bitstring, values, exclusive=exclusive
         )
 
     else:
         # If bit_index is an integer (not intended, but allowed), check it directly
-        return is_bit_set_in_bitstring(asn1_bitstring, bit_index, exclusive=exclusive)
+        return is_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)
+
+
+def pkimessage_has_failure_info(data: requests.Response | rfc9480.PKIMessage | bytes) -> bool:
+    """
+    Checks if the provided data contains failure information in the PKI message.
+
+    :param data: The input data which can be a requests.Response, a rfc9480.PKIMessage, or raw bytes.
+    :return: True if the PKIMessage contains failure information, False otherwise.
+    :raises ValueError: If the input data type is not supported.
+    """
+    if isinstance(data, requests.Response):
+        data = cmputils.parse_pki_message(data.content)
+    elif isinstance(data, bytes):
+        data = cmputils.parse_pki_message(data)
+    elif isinstance(data, rfc9480.PKIMessage):
+        pass
+    else:
+        raise ValueError("Unsupported data type provided. Expected requests.Response, rfc9480.PKIMessage, or bytes.")
+
+    try:
+        data_obj = get_asn1_value(data, "body.error.pKIStatusInfo.failInfo")
+        return data_obj.hasValue()
+    except PyAsn1Error as err:
+        pass
+    except Exception as e:
+        print(e)
+
+    return False
