@@ -5,6 +5,8 @@ Library     OperatingSystem
 Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/pkimsg_utils.py
+Library     ../resources/pycrypto_utils/key_utils.py
+
 
 
 *** Test Cases ***
