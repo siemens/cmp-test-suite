@@ -1,15 +1,16 @@
 from typing import Union, Any, Tuple
 
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey
+from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey, DSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
 
 from pyasn1_alt_modules import rfc2986, rfc9480
 
 # Type alias for supported private key types
-ASYM_PRIVATE_KEY = Union[RSAPrivateKey, EllipticCurvePrivateKey, DSAPrivateKey, DHPrivateKey, bytes]
+ASYM_PRIVATE_KEY = Union[RSAPrivateKey, EllipticCurvePrivateKey, DSAPrivateKey, DHPrivateKey]
+ASYM_PUBLIC_KEY = Union[RSAPublicKey, EllipticCurvePublicKey, DSAPublicKey, DHPublicKey]
 
 
 # those types are Alias for the option a function can have.
