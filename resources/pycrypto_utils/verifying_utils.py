@@ -3,7 +3,7 @@ from typing import Union
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import padding
 
-from cast_utils.cast_cert import cast_asn1cert_to_cert
+from cast_utils.cast_cert import cast_asn1cert_to_cert, cast_asn1csr_to_csr
 from typingutils import ASYM_PUBLIC_KEY, CERT_TYPE, CSR_TYPE
 
 
@@ -55,7 +55,7 @@ def verify_cert_signature(cert: CERT_TYPE, public_key: ASYM_PUBLIC_KEY = None):
         If the certificate's signature is not valid when verified against the provided or extracted public key.
     """
     # Converts the input in a x509.Certificate object.
-    cert = cast_asn1cert_to_cert(cert)
+    cert: x509.Certificate = cast_asn1cert_to_cert(cert)
 
     if public_key is None:
         # Extract the public key from the CSR, which will be used to verify the signature.
@@ -89,7 +89,7 @@ def verify_csr_signature(csr: CSR_TYPE, public_key: ASYM_PUBLIC_KEY = None):
         If the certificate's signature is not valid when verified against the provided or extracted public key.
     """
     # Converts the input in a x509.CertificateSigningRequest object.
-    cert = cast_asn1cert_to_cert(csr)
+    cert = cast_asn1csr_to_csr(csr)
 
     if public_key is None:
         # Extract the public key from the CSR, which will be used to verify the signature.
@@ -99,7 +99,7 @@ def verify_csr_signature(csr: CSR_TYPE, public_key: ASYM_PUBLIC_KEY = None):
     # Verify the signature of the CSR.
     public_key.verify(
         cert.signature,  # The signature to verify.
-        cert.tbs_certificate_bytes,  # The data that was signed.
+        cert.tbs_certrequest_bytes,  # The data that was signed.
         padding.PKCS1v15(),  # The padding scheme used for the signature.
         cert.signature_hash_algorithm,  # The hash algorithm used for the signature.
     )

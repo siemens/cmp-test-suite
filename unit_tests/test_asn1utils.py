@@ -3,7 +3,7 @@ import unittest
 from resources import asn1utils
 from resources.cmputils import parse_pki_message
 from resources.utils import load_and_decode_pem_file
-
+from testingutils import *
 
 class TestASN1Utils(unittest.TestCase):
     @classmethod
