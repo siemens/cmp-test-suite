@@ -21,6 +21,13 @@ practice:
    - on Windows with Powershell: `.\venv-cmp-tests\Scripts\Activate.ps1`
 3. Install the dependencies: `pip install -r requirements.txt`
 
+Note: If WSL 2.0 is being used, run the following commands to fix the python3-venv error:
+
+1. `sudo apt update`
+2. `sudo apt-get install libpython3-dev`
+3. `sudo apt-get install python3-venv`
+
+
 # Usage
 1. Run `robot tests` to execute all the tests in the `tests/` directory.
 2. Explore `report.html` to see the results.
@@ -111,3 +118,17 @@ This section explains how OpenSSL can be used to generate test data, such as key
 
 # Supporting materials
 - https://docs.robotframework.org/docs/getting_started/ide How to use this with an IDE.
+
+# Development
+
+1. Install the dependencies: `pip install -r requirements-dev.txt`
+2. Change Source DIR
+   If using IntelliJ or PyCharm
+   `File -> Project Structure... -> Modules` -> click on the resources folder and click on `Source` and apply.
+
+another Option might be:
+
+```
+import sys
+sys.path.append("./resources")
+```
