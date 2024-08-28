@@ -17,6 +17,7 @@ Library   ../resources/cmputils.py
 Library   ../resources/utils.py
 Library   ../resources/asn1utils.py
 Library   ../resources/certutils.py
+Library   ../resources/pycrypto_utils/key_utils.py
 
 
 *** Keywords ***
@@ -154,6 +155,31 @@ Certificate must be valid
     # Use PKILint to check the certificate for issues, https://github.com/digicert/pkilint
     # If PKILint complains, we log a warning, but keep going
     Run Keyword And Warn On Failure     Validate Certificate PKILint   ${der_certificate}
+
+Generate Fresh CSR And Key Returns DER-Data And Key
+     [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the DER-formatted data and the key.
+     ...                    If the CSR contains a broken signature, the Certificate Authority (CA) is expected to respond with an error.
+     ...
+     ...                Arguments:
+     ...                - ${key_algo_name}: The name of the key algorithm (e.g., RSA, ECDSA).
+     ...                - ${key_params}: Parameters required for the key generation (e.g., key size, curve name).
+     ...                - ${CN}: Common Name (CN) for the certificate.
+     ...
+     ...                Returns:
+     ...                - ${data}: DER-formatted CSR data.
+     ...                - ${key}: The generated key.
+     ...
+     ...                Example:
+     ...                | ${key}=        | Generate Key       | ${key_algo_name} | ${key_params} |
+     ...                | ${csr}=        | Generate CSR       | C=DE,L=Munich,CN=${CN} |
+     ...                | ${csr_signed}= | Sign CSR           | ${csr}          | ${key}        |
+     ...                | ${data}=       | Decode pem string  | ${csr_signed}   |
+     ...                | RETURN         | ${data}            | ${key}
+     ${key}=    Generate key    ${key_algo_name}    ${key_params}
+     ${csr}=    Generate CSR    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
+     ${csr_signed}=    Sign CSR    ${csr}    ${key}
+     ${data}=    Decode pem string   ${csr_signed}
+     RETURN    ${data}   ${key}
 
 
 
