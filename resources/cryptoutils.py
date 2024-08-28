@@ -17,6 +17,7 @@ NAME_MAP = {
     'L': NameOID.LOCALITY_NAME,
     'O': NameOID.ORGANIZATION_NAME,
     'CN': NameOID.COMMON_NAME,
+    'emailAddress': NameOID.EMAIL_ADDRESS,
 }
 
 # map OIDs of signature algorithms to the stringified names of hash functions
@@ -140,7 +141,7 @@ def save_key(key, path, passphrase=b"11111"):
         ))
 
 
-def generate_csr(common_name, subjectAltName=None):
+def generate_csr(common_name: str = "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com" , subjectAltName=None):
     """Generate a CSR based on the given string parameters
 
     :param common_name: str, common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
