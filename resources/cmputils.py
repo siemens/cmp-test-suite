@@ -650,17 +650,44 @@ def csr_extend_subject(csr, rdn):
     return csr
 
 
-def parse_pki_message(raw):
-    """Takes a raw, DER-encoded PKIMessage structure and returns a
-    pyasn1 parsed object"""
+def parse_pki_message(data: Union[requests.Response, bytes, rfc9480.PKIMessage], allow_cast: bool = False) -> rfc9480.PKIMessage:
+    """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
+
+    If `allow_cast` is set to `False`, the function only allows bytes as DER-Encoded
+
+
+    Arguments:
+        data (requests.Response | bytes | rfc9480.PKIMessage): The raw input data to be parsed.
+        allow_cast (bool): Specifies whether to allow direct return of the input if it is of type `rfc9480.PKIMessage`.
+                           Defaults to `False`.
+
+    Returns:
+        pyasn1 parsed object: Represents the PKIMessage structure.
+
+    Raises:
+        ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
+    """
+    if allow_cast:
+        if isinstance(data, bytes):
+            pass
+        elif isinstance(data, rfc9480.PKIMessage):
+            return data
+        elif isinstance(data, requests.Response):
+            data = data.content
+
+    if not isinstance(data, bytes):
+        raise ValueError("Input must be of type bytes or convertible to bytes.")
+
     try:
-        pki_message, _remainder = decoder.decode(raw, asn1Spec=rfc9480.PKIMessage())
+        pki_message, _remainder = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     except PyAsn1Error as err:
-        # Here we suppress the details of the error returned by pyasn1, because they are usually extremely verbose
-        # and barely helpful to a non-pyasn1 expert. If you have to debug a payload, get the server's response from
-        # RobotFramework's log and feed it into this function manually.
-        raise ValueError("Failed to parse PKIMessage: %s ...", str(err)[:100])
+        # Suppress detailed pyasn1 error messages; they are typically too verbose and
+        # not helpful for non-pyasn1 experts. If debugging is needed, retrieve the server's
+        # response from Robot Framework's log and manually pass it into this function.
+        raise ValueError("Failed to parse PKIMessage: %s ..." % str(err)[:100])
+
     return pki_message
+
 
 
 def get_cmp_status_from_pki_message(pki_message, response_index=0):
