@@ -165,5 +165,52 @@ def strip_armour(raw):
     return bytes(result, 'ascii')
 
 
+def log_data_type(data):
+    logging.info(type(data))
+
+
+def log_args(*args):
+    """
+    Log a message by replacing placeholders in a base string with provided arguments.
+
+    This keyword allows you to log a formatted message by replacing placeholders
+    (indicated by asterisks `*`) in a base string with the subsequent arguments
+    provided. The asterisks in the base string act as placeholders, which are
+    replaced one by one with the arguments supplied.
+
+    Example use case:
+    - Input: `log_args("This is the type: *", "class: int")`
+    - Output: The logged message would be: `"This is the type: class: int"`
+
+    If the base string does not contain any placeholders, the arguments are appended
+    to the base string.
+
+    Arguments:
+    - *args: The first argument is the base string, and the following arguments are
+             the values that will replace the placeholders in the base string.
+
+    Returns:
+    - None. The function logs the formatted message.
+    """
+
+    if isinstance(args[0], str):
+        base = args[0]
+        for arg in args[1:]:
+            if "*" in base and not "*x":
+                # Replace the first occurrence of the placeholder '*' with the next argument
+                base = base.replace("*", str(arg), 1)
+            else:
+                # If no placeholders are left, append the argument to the base string
+                base += str(arg)
+    else:
+        # If the first argument is not a string, join all arguments into a single string
+        base = " ".join(args)
+
+    # Log the final message after formatting
+    logging.info(base.strip())
+
+
+
+
 if __name__ == "__main__":
     print(load_and_decode_pem_file('../data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/csr.pem'))
