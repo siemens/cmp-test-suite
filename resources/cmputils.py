@@ -2,10 +2,13 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+from typing import Union, List
 
+import requests
+from cryptography import x509
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
-from pyasn1.type import univ, useful, constraint, base
+from pyasn1.type import univ, useful, constraint, base, tag
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
 from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211
 from pyasn1_alt_modules.rfc2314 import SignatureAlgorithmIdentifier, Signature, Attributes
@@ -250,7 +253,7 @@ def prepare_extra_certs(certs: Union[x509.Certificate, List[Union[rfc9480.Certif
 
 def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
                          omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
-                         implicit_confirm=False):
+                         implicit_confirm=False, certs=None):
     """Generic function for preparing the skeleton structure of a PKIMessage, the body of which must be
     set later.
 
@@ -356,6 +359,9 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
         )
         free_text.setComponentByPosition(0, 'This text is free, so let us have it')
         pki_header['freeText'] = free_text
+
+    if certs is not None:
+        pki_message["extraCerts"] = prepare_extra_certs(certs)
 
     # PKIMessage
     pki_message = rfc9480.PKIMessage()
@@ -861,6 +867,9 @@ def add_implicit_confirm(pki_message):
     general_info = _prepare_implicit_confirm_general_info_structure()
     pki_message['header']['generalInfo'] = general_info
     return pki_message
+
+
+
 
 
 if __name__ == '__main__':
