@@ -1,5 +1,7 @@
 import unittest
 
+import cryptography.exceptions
+
 import pycrypto_utils.verifying_utils
 from resources import modifyutils
 from resources.cryptoutils import generate_csr, sign_csr, generate_rsa_keypair
@@ -20,13 +22,11 @@ class TestUtils(unittest.TestCase):
         :return: None
         """
 
-        der_data = load_and_decode_pem_file('data/example-csr.pem')
+        csr = generate_csr("Hans Mustermann")
+
 
         # Modify the common name (CN) in the CSR to "Hans MusterMann"
         modified_csr = modifyutils.modify_csr_cn(der_data, new_cn="Hans MusterMann")
 
         # Verify the signature of the modified CSR
-        is_valid = pycrypto_utils.verifying_utils.verify_csr_signature(modified_csr)
-
-        # Assert that the signature verification fails (returns False)
-        self.assertEqual(False, is_valid)
+        self.assertRaises(pycrypto_utils.verifying_utils.verify_csr_signature(modified_csr), cryptography.exceptions.InvalidSignature)
