@@ -196,6 +196,57 @@ def _prepare_implicit_confirm_general_info_structure():
     general_info_wrapper.setComponentByPosition(0, implicit_confirm)
     return general_info_wrapper
 
+def prepare_extra_certs(certs: Union[x509.Certificate, List[Union[rfc9480.Certificate, x509.Certificate, bytes, str]]], pki_message: rfc9480.PKIMessage = None) -> univ.SequenceOf:
+    """
+    Prepares a sequence of ASN.1 encoded certificates for use in a certificate management protocol.
+
+    This function processes a single certificate or a list of certificates, where each certificate
+    can be represented as an `x509.Certificate` object, a file path, or a DER-encoded byte stream.
+    It returns an ASN.1 `SequenceOf` object containing the encoded certificates.
+
+    The function performs the following steps:
+    1. If a single `x509.Certificate` object is provided, it is wrapped in a list.
+    2. Converts each certificate in the list to an `x509.Certificate` object if it is not already one.
+    3. Transforms each `x509.Certificate` object into its ASN.1 encoded form.
+    4. Appends each encoded certificate to an ASN.1 `SequenceOf` container.
+
+    :param certs: A single certificate or a list of certificates, where each certificate can be:
+                  - an `x509.Certificate` object,
+                  - a file path to a certificate (as a string),
+                  - a DER-encoded certificate (as bytes).
+    :type certs: Union[x509.Certificate, List[Union[x509.Certificate, bytes, str]]]
+
+    :return: An ASN.1 `SequenceOf` object containing the encoded certificates, suitable for inclusion
+             in a certificate management protocol.
+    :rtype: univ.SequenceOf
+    """
+    MAX = float('inf')
+
+    # Wrap a single x509.Certificate into a list if it's not already a list
+    if isinstance(certs, x509.Certificate):
+        certs = [certs]
+
+    # Convert each item in the list to an x509.Certificate object
+    certs = [cast_to_cert(cert=cert_i) for cert_i in certs]
+
+    # Convert each x509.Certificate to its ASN.1 encoded form
+    certs = [cast_x509_cert_to_asn1(cert=cert_i) for cert_i in certs]
+
+    # Create an ASN.1 SequenceOf container to hold the encoded certificates
+    cert_list = univ.SequenceOf(componentType=rfc9480.CMPCertificate()).subtype(
+        subtypeSpec=constraint.ValueSizeConstraint(1, MAX)).subtype(
+        explicitTag=tag.Tag(tag.tagClassContext,
+                            tag.tagFormatSimple, 1))
+
+    # Append each encoded certificate to the ASN.1 SequenceOf container
+    for x in certs:
+        cert_list.append(x)
+
+    if pki_message is not None:
+        pki_message["extraCerts"] = prepare_extra_certs(certs)
+
+
+    return cert_list
 
 def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
                          omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
