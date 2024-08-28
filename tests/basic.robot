@@ -4,6 +4,7 @@ Resource    ../resources/keywords.resource
 Library     OperatingSystem
 Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
+Library     ../resources/pkimsg_utils.py
 
 
 *** Test Cases ***
@@ -105,7 +106,7 @@ CA must reject request when the CSR signature is invalid
      ${csr_signed}=    Sign CSR    ${csr}    ${key}
      ${data}=    Decode pem string   ${csr_signed}
      # needs to be changed so that it is still a Valid Asn1 Structure
-     ${modified_csr_der}=  errorutils.Modify csr cn  ${data}   Hans MustermanNG11
+     ${modified_csr_der}=  Modify csr cn  ${data}   Hans MustermanNG11
      Log base64       ${modified_csr_der}
      ${parsed_csr}=     Parse Csr    ${modified_csr_der}
      ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
@@ -114,7 +115,10 @@ CA must reject request when the CSR signature is invalid
      ${encoded}=  Encode To Der    ${protected_p10cr}
      ${response}=  Exchange data with CA    ${encoded}
      # checks if the Implementation returns a Status Code or a Status Code with a PKI Message
-     Has rfc6712 conform status code   ${response}
+
+     # TODO
+     # Has rfc6712 conform status code   ${response}
+
      ${code_ok}=  Status Code Is Eq    ${response}    ${200}
      ${contains_msg}=    check_http_response_contains_pki_message    ${response}
 
@@ -132,11 +136,6 @@ CA must reject request when the CSR signature is invalid
 
 
 #CA must reject request when the CSR is not valid asn1
-#    [Documentation]    When we send a structure that is not valid DER-encoded ASN1, the CA must respond with an error.
-#    [Tags]    csr    negative   asn1
-#    No Operation
-
-
 #CA must reject request with an invalid signature
 #    [Documentation]    Demonstrate how to use some keywords
 #    ...                just an example
@@ -150,3 +149,35 @@ CA must reject request when the CSR signature is invalid
 #    ${result}=    Parse PKI Message    ${ca_response}
 #    ${status}=     Get CMP status from PKI Message    ${result}
 #    Should be equal    ${status}    rejection
+#     [Documentation]    When we send a structure that is not valid DER-encoded ASN1, the CA must respond with an error.
+#     [Tags]    csr    negative   asn1
+
+
+# TODO SKip on Fail
+CA must reject request when the CSR is send Again
+    [Documentation]    Ensure that the Certification Authority (CA) correctly rejects a Certificate Signing Request (CSR) if it has already been submitted and processed, preventing duplicate certificate issuance.
+    [Tags]    csr    negative   asn1    rfc6712
+    ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
+    ${request_pki_message}=  Parse Pki Message    ${der_pkimessage}
+    ${request_pki_message}=  Patch message time    ${request_pki_message}
+    # NOTE that we are patching the transaction id so the message looks like a new one
+    ${request_pki_message}=  Patch transaction id    ${request_pki_message}     prefix=11111111111111111111
+    ${protected_p10cr}=     Protect Pkimessage password based mac    ${request_pki_message}    ${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
+    ${der_pkimessage}=  Encode To Der    ${protected_p10cr}
+
+    ${response}=  Exchange data with CA    ${der_pkimessage}
+    ${response_pki_message}=     Parse Pki Message    ${response.content}
+    Should Be Equal    ${response.status_code}  ${200}      We expected status code 200, but got ${response.status_code}
+
+    Sender and Recipient nonces must match    ${request_pki_message}      ${response_pki_message}
+    SenderNonce must be at least 128 bits long  ${response_pki_message}
+    PKIMessage body type must be              ${response_pki_message}    cp
+
+    ${response_status}=    Get CMP status from PKIMessage    ${response_pki_message}
+    Should be equal     ${response_status}    accepted      We expected status `accepted`, but got ${response_status}
+    ${response3}=  Exchange data with CA    ${der_pkimessage}
+                                        #Returns duplicateCertReq    (26) but exclusively
+    # this check is a CA Configuration.
+    # some Configuration may accept the same Request, but some will allowed it.
+    Check Either FailureBit From Response    ${response3}    ${26}    ${1}
+

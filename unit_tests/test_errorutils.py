@@ -1,4 +1,6 @@
 import unittest
+
+import pycrypto_utils.verifying_utils
 from resources import modifyutils
 from resources.cryptoutils import generate_csr, sign_csr, generate_rsa_keypair
 from cryptography.hazmat.primitives import serialization
@@ -24,7 +26,7 @@ class TestUtils(unittest.TestCase):
         modified_csr = modifyutils.modify_csr_cn(der_data, new_cn="Hans MusterMann")
 
         # Verify the signature of the modified CSR
-        is_valid = modifyutils.verify_csr_signature(modified_csr)
+        is_valid = pycrypto_utils.verifying_utils.verify_csr_signature(modified_csr)
 
         # Assert that the signature verification fails (returns False)
         self.assertEqual(False, is_valid)
