@@ -97,11 +97,40 @@ CA must reject a valid p10cr request if the transactionId is not new
 
 
 
-#CA must reject request when the CSR signature is invalid
-#    [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
-#    [Tags]    csr    negative   crypto
-#    No Operation
-#
+CA must reject request when the CSR signature is invalid
+     [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
+     [Tags]    csr    negative   crypto
+     ${key}=    Generate key    rsa    2048
+     ${csr}=    Generate CSR    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
+     ${csr_signed}=    Sign CSR    ${csr}    ${key}
+     ${data}=    Decode pem string   ${csr_signed}
+     # needs to be changed so that it is still a Valid Asn1 Structure
+     ${modified_csr_der}=  errorutils.Modify csr cn  ${data}   Hans MustermanNG11
+     Log base64       ${modified_csr_der}
+     ${parsed_csr}=     Parse Csr    ${modified_csr_der}
+     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
+     ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
+     Log Asn1    ${protected_p10cr}
+     ${encoded}=  Encode To Der    ${protected_p10cr}
+     ${response}=  Exchange data with CA    ${encoded}
+     # checks if the Implementation returns a Status Code or a Status Code with a PKI Message
+     Has rfc6712 conform status code   ${response}
+     ${code_ok}=  Status Code Is Eq    ${response}    ${200}
+     ${contains_msg}=    check_http_response_contains_pki_message    ${response}
+
+     ${either_bits}=  Set Variable  1, 9
+
+     IF    ${code_ok}
+     #TODO needs to decided if the message should return badPop or badMessageCheck
+     ${bit_status}=    Check Either FailureBit From Response    ${response}    ${either_bits}    ${1}
+     ELSE IF    ${contains_msg}
+     #TODO needs to decided if the message should return badPop or badMessageCheck
+     Check Either FailureBit From Response    ${response}    ${either_bits}    ${1}
+     END
+     #Run keyword IF    not    ${contains_msg}
+     #LOG  "The Server Response did not Contained a PKI Message"
+
+
 #CA must reject request when the CSR is not valid asn1
 #    [Documentation]    When we send a structure that is not valid DER-encoded ASN1, the CA must respond with an error.
 #    [Tags]    csr    negative   asn1
