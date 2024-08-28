@@ -141,7 +141,7 @@ def save_key(key, path, passphrase=b"11111"):
         ))
 
 
-def generate_csr(common_name: str = "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com" , subjectAltName=None):
+def generate_csr(common_name: str = None , subjectAltName=None):
     """Generate a CSR based on the given string parameters
 
     :param common_name: str, common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
@@ -149,6 +149,8 @@ def generate_csr(common_name: str = "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe 
     :returns: x509.CertificateSigningRequestBuilder
     """
     csr = x509.CertificateSigningRequestBuilder()
+
+    common_name = common_name or "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
 
     # take a string like "C=DE,ST=Bavaria,L=Munich,O=CMP Lab" and transform it into a dictionary that maps each component to a
     # corresponding x509.NameAttribute.

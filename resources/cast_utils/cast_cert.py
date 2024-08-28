@@ -1,12 +1,9 @@
 import logging
-from typing import Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc2986, rfc9480
-import utils
-
 
 from typingutils import CSR_TYPE, CERT_TYPE
 
