@@ -746,6 +746,29 @@ def parse_pki_message(data: Union[requests.Response, bytes, rfc9480.PKIMessage],
     return pki_message
 
 
+def try_parse_pki_message(data: Union[requests.Response, bytes, rfc9480.PKIMessage, None]) -> rfc9480.PKIMessage | None:
+    """TRy to Parse input data to PKIMessage structure and return a pyasn1 parsed object.
+
+    If `allow_cast` is set to `False`, the function only allows bytes as DER-Encoded
+
+
+    Arguments:
+        data (requests.Response | bytes | rfc9480.PKIMessage | None): The raw input data to be parsed.
+
+    Returns:
+        pyasn1 parsed object: Represents the PKIMessage structure or None
+
+    """
+    if data is None:
+       return None
+
+    try:
+        return parse_pki_message(data, allow_cast=False)
+    except PyAsn1Error as err:
+        return None
+    except ValueError:
+        raise ValueError("try_parse_pki_message should get the following Input Data types: "
+                         "requests.Response, bytes, rfc9480.PKIMessage, None")
 
 def get_cmp_status_from_pki_message(pki_message, response_index=0):
     """Takes pyasn1 PKIMessage object and returns its status as a string
