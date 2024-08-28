@@ -7,7 +7,7 @@ from asn1utils import get_asn1_value
 from cmputils import parse_pki_message
 
 
-def get_to_failure_info(data: Union[requests.Response, rfc9480.PKIMessage, bytes]) -> rfc9480.PKIFailureInfo:
+def get_failure_info(data: Union[requests.Response, rfc9480.PKIMessage, bytes]) -> rfc9480.PKIFailureInfo:
     """Extract PKI failure information from the given input.
 
 

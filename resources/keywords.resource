@@ -18,6 +18,7 @@ Library   ../resources/utils.py
 Library   ../resources/asn1utils.py
 Library   ../resources/certutils.py
 Library   ../resources/pycrypto_utils/key_utils.py
+Library   ../resources/pkimsg_utils.py
 
 
 *** Keywords ***
@@ -182,7 +183,6 @@ Generate Fresh CSR And Key Returns DER-Data And Key
      RETURN    ${data}   ${key}
 
 
-
 PKIMessage body type must be
     [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
     [Arguments]        ${pki_message}    ${expected_type}
@@ -202,9 +202,8 @@ PKIMessage Has Set the Right Failure Bit
      ${pki_header}=       Get Asn1 value   ${pki_message}    header
      Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
      # check if the right Failure Code is returned
-     ${failInfo}=   Get Asn1 Value    ${pki_message}    body.error.pKIStatusInfo.failInfo
-     Log Data Type    ${failInfo}
-     ${bit_status}=     Is bit set in bitstring    ${failInfo}    ${bit_index}    ${1}
+     ${failInfo}=   Get failure info    ${pki_message}
+     ${bit_status}=     Is bit set in bitstring    ${failInfo}    ${bit_index}    exclusive=${1}
      RETURN    ${bit_status}
 
 PKIMessage Has Set Either Failure Bit
@@ -213,15 +212,14 @@ PKIMessage Has Set Either Failure Bit
      ${pki_header}=       Get Asn1 value   ${pki_message}    header
      Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
      # check if the right Failure Code is returned
-     ${failInfo}=   Get Asn1 Value    ${pki_message}    body.error.pKIStatusInfo.failInfo
-     Log Data Type    ${failInfo}
+     ${failInfo}=   Get failure info    ${pki_message}
      ${bit_status}=     Is either bit set in bitstring    ${failInfo}    ${bit_index}    ${exclusive}
      RETURN  ${bit_status}
 
 Check Exclusive FailureBit From Response
      [Documentation]    The keyword checks for the presence of a specific failure bit in the failInfo field of the PKIStatusInfo structure within the PKI message. The Options Include to set if the Bit is exclusive. Expects to contains a PKIMessage structure
      [Arguments]        ${response}    ${bit_index}
-     ${is_valid}=    Has Rfc6712 Conform Status Code    ${response}
+     #${is_valid}=    Has Rfc6712 Conform Status Code    ${response}
      Should be true    ${is_valid}
      ${pki_message}=      Parse Pki Message    ${response.content}
      ${flag}=    PKIMessage Has Set the Right Failure Bit    ${pki_message}    ${bit_index}
@@ -229,21 +227,92 @@ Check Exclusive FailureBit From Response
 
 Check Either FailureBit From Response
      [Documentation]    The keyword checks for the presence of a specific failure bit in the failInfo field of the PKIStatusInfo structure within the PKI message. The Options Include to set if the Bit is exclusive. Expects to contains a PKIMessage structure
-     [Arguments]        ${response}    ${bit_index}    ${exclusive}
-     ${is_valid}=    Has rfc6712 conform status code   ${response}
+     [Arguments]        ${response}    ${bit_indicies}    ${exclusive}
+     # TODO add Recommendation for http Response code
      Should be true    ${is_valid}
      ${pki_message}=      Parse Pki Message    ${response.content}
      ${flag}=    PKIMessage Has Set Either Failure Bit    ${pki_message}    ${bit_index}    ${exclusive}
      Should be true    ${flag}
 
 
-Check if optional error info in PKIMessage equals
-    [Documentation]    If the PKIFailureInfo field If send has the same value. The value is matched Exclusive.
-    [Arguments]        ${response}    ${bit_index}
-    # TODO may needs to check, that Failure Code is only Acceptable if the http Error Code is unequal 200.
-    ${has_info}=    PKIMessage has PKIFailureInfo    ${response} # accepts a response, PKIMessage or bytes
-    IF    ${has_info}
-    ${pki_message}=      Parse Pki Message    ${response.content}
-    ${flag}=    PKIMessage Has Set the Right Failure Bit    ${pki_message}    ${bit_index}
-    Should be true    ${flag}
-    END
+PKIMessage Has Set Failure Bit
+    [Documentation]    This keyword checks for a specific single failure bit in the `failInfo` field of the `PKIStatusInfo` structure within a `PKIMessage`.
+    ...                The check can be configured to verify if the bit is set exclusively (only one of the Indices Option is set or
+    ...                   or non-exclusively (at least one bit is set).
+    ...                Arguments:
+    ...                - `${pki_message}`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+    ...                - `${bit_index}`: The index of the bit to check within the `failInfo` field.
+    ...                - `${exclusive}`: A boolean value indicating whether the bit check should be exclusive (`True`) or non-exclusive (`False`).
+    ...                                  So that only  1 Bit is set. But it Could be Either One.
+    ...
+    ...                Example Usage:
+    ...                | ${bit_status}=    PKIMessage Has Set Either Failure Bit    | ${pki_message}    | ${bit_index}
+    ...
+    ...                Steps:
+    ...                1. Retrieve the PKI Header:
+    ...                   - Extracts the `header` from the `PKIMessage` using the `Get Asn1 value` keyword.
+    ...
+    ...                2. Validate PKI Header Fields:
+    ...                   - Ensures that the extracted `header` contains the required fields: `pvno`, `sender`, `recipient`, `protectionAlg`, `transactionID`, `senderNonce`.
+    ...
+    ...                3. Get Failure Information:
+    ...                   - Retrieves the `failInfo` field from the `PKIMessage` using the `Get failure info` keyword.
+    ...
+    ...                4. Log Failure Info Type:
+    ...                   - Logs the data type of the retrieved `failInfo` for debugging purposes.
+    ...
+    ...                5. Check the Bit Status:
+    ...                   - Determines if the specified bit is set using the `Is either bit set in bitstring` keyword.
+    ...                   - Considers the `exclusive` parameter to check if the bit is set exclusively or not.
+    ...
+    ...                6. Return Bit Status:
+    ...                   Should be true    Check
+
+    [Arguments]        ${pki_message}     ${bit_index}     ${exclusive}
+    ${pki_header}=       Get Asn1 value   ${pki_message}    header
+    Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+    ${failInfo}=        Get failure info    ${pki_message}
+    ${bit_status}=      Is bit set in bitstring    ${failInfo}    ${bit_index}
+    Should be true              ${bit_status}
+
+PKIMessage Has Set Either Failure Bit
+    [Documentation]    This keyword checks for a specific failure bit in the `failInfo` field of the `PKIStatusInfo` structure within a `PKIMessage`.
+    ...                The check can be configured to verify if the bit is set exclusively (only one of the Indices Option is set or
+    ...                   or non-exclusively (at least one bit is set).
+    ...                Arguments:
+    ...                - `${pki_message}`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+    ...                - `${bit_Indices}`: The Indices of the bit to check within the `failInfo` field.
+    ...                - `${exclusive}`: A boolean value indicating whether the bit check should be exclusive (`True`) or non-exclusive (`False`).
+    ...                                  So that only 1 Bit is set. But it Could be Either One.
+    ...
+    ...                Example Usage:
+    ...                       PKIMessage Has Set Either Failure Bit    | ${pki_message}    | ${bit_Indices}    | ${exclusive}
+    ...
+    ...                Steps:
+    ...                1. Retrieve the PKI Header:
+    ...                   - Extracts the `header` from the `PKIMessage` using the `Get Asn1 value` keyword.
+    ...
+    ...                2. Validate PKI Header Fields:
+    ...                   - Ensures that the extracted `header` contains the required fields: `pvno`, `sender`, `recipient`, `protectionAlg`, `transactionID`, `senderNonce`.
+    ...
+    ...                3. Get Failure Information:
+    ...                   - Retrieves the `failInfo` field from the `PKIMessage` using the `Get failure info` keyword.
+    ...
+    ...                4. Log Failure Info Type:
+    ...                   - Logs the data type of the retrieved `failInfo` for debugging purposes.
+    ...
+    ...                5. Check the Bit Status:
+    ...                   - Determines if the specified bit is set using the `Is either bit set in bitstring` keyword.
+    ...                   - Considers the `exclusive` parameter to check if the bit is set exclusively or not.
+    ...
+    ...                6. Return Bit Status:
+    ...                   Should be true    Check
+
+    [Arguments]        ${pki_message}     ${bit_index}     ${exclusive}
+    ${pki_header}=       Get Asn1 value   ${pki_message}    header
+    Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+    ${failInfo}=        Get failure info    ${pki_message}
+    Log Data Type       ${failInfo}
+    ${bit_status}=      Is either bit set in bitstring    ${failInfo}    ${bit_index}    ${exclusive}
+    Should be true              ${bit_status}
+
