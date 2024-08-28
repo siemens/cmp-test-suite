@@ -168,3 +168,56 @@ PKIMessage must contain implicitConfirm extension
     [Arguments]        ${pki_message}
     ${result}=         Find OID in General Info    ${pki_message}      1.3.6.1.5.5.7.4.13
     Should Be True     ${result}    The implicitConfirm extension was not found in the message
+
+
+PKIMessage Has Set the Right Failure Bit
+     [Documentation]   The keyword checks for the presence of a specific failure bit in the failInfo field of the PKIStatusInfo structure within the PKI message. The Bit is Exclusive, which means that it only allows this bit.
+     [Arguments]        ${pki_message}    ${bit_index}
+     ${pki_header}=       Get Asn1 value   ${pki_message}    header
+     Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+     # check if the right Failure Code is returned
+     ${failInfo}=   Get Asn1 Value    ${pki_message}    body.error.pKIStatusInfo.failInfo
+     Log Data Type    ${failInfo}
+     ${bit_status}=     Is bit set in bitstring    ${failInfo}    ${bit_index}    ${1}
+     RETURN    ${bit_status}
+
+PKIMessage Has Set Either Failure Bit
+     [Documentation]    The keyword checks for the presence of a specific failure bit in the failInfo field of the PKIStatusInfo structure within the PKI message. The Options Include to set if the Bit is exclusive.
+     [Arguments]        ${pki_message}     ${bit_index}     ${exclusive}
+     ${pki_header}=       Get Asn1 value   ${pki_message}    header
+     Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+     # check if the right Failure Code is returned
+     ${failInfo}=   Get Asn1 Value    ${pki_message}    body.error.pKIStatusInfo.failInfo
+     Log Data Type    ${failInfo}
+     ${bit_status}=     Is either bit set in bitstring    ${failInfo}    ${bit_index}    ${exclusive}
+     RETURN  ${bit_status}
+
+Check Exclusive FailureBit From Response
+     [Documentation]    The keyword checks for the presence of a specific failure bit in the failInfo field of the PKIStatusInfo structure within the PKI message. The Options Include to set if the Bit is exclusive. Expects to contains a PKIMessage structure
+     [Arguments]        ${response}    ${bit_index}
+     ${is_valid}=    Has Rfc6712 Conform Status Code    ${response}
+     Should be true    ${is_valid}
+     ${pki_message}=      Parse Pki Message    ${response.content}
+     ${flag}=    PKIMessage Has Set the Right Failure Bit    ${pki_message}    ${bit_index}
+     Should be true    ${flag}
+
+Check Either FailureBit From Response
+     [Documentation]    The keyword checks for the presence of a specific failure bit in the failInfo field of the PKIStatusInfo structure within the PKI message. The Options Include to set if the Bit is exclusive. Expects to contains a PKIMessage structure
+     [Arguments]        ${response}    ${bit_index}    ${exclusive}
+     ${is_valid}=    Has rfc6712 conform status code   ${response}
+     Should be true    ${is_valid}
+     ${pki_message}=      Parse Pki Message    ${response.content}
+     ${flag}=    PKIMessage Has Set Either Failure Bit    ${pki_message}    ${bit_index}    ${exclusive}
+     Should be true    ${flag}
+
+
+Check if optional error info in PKIMessage equals
+    [Documentation]    If the PKIFailureInfo field If send has the same value. The value is matched Exclusive.
+    [Arguments]        ${response}    ${bit_index}
+    # TODO may needs to check, that Failure Code is only Acceptable if the http Error Code is unequal 200.
+    ${has_info}=    PKIMessage has PKIFailureInfo    ${response} # accepts a response, PKIMessage or bytes
+    IF    ${has_info}
+    ${pki_message}=      Parse Pki Message    ${response.content}
+    ${flag}=    PKIMessage Has Set the Right Failure Bit    ${pki_message}    ${bit_index}
+    Should be true    ${flag}
+    END
