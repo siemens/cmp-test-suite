@@ -176,7 +176,7 @@ Generate Fresh CSR And Key Returns DER-Data And Key
      ...                | ${data}=       | Decode pem string  | ${csr_signed}   |
      ...                | RETURN         | ${data}            | ${key}
      ${key}=    Generate key    ${key_algo_name}    ${key_params}
-     ${csr}=    Generate CSR    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
+     ${csr}=    Generate CSR    ${CN}
      ${csr_signed}=    Sign CSR    ${csr}    ${key}
      ${data}=    Decode pem string   ${csr_signed}
      RETURN    ${data}   ${key}

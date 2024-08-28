@@ -3,10 +3,10 @@ from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc2986, rfc2459
 from pyasn1.type import char
 
-from cast_utils.cast_cert import cast_csr_to_asn1
-from typingutils import csr_cert_types
+from cast_utils.cast_cert import cast_csr_to_asn1csr
+from typingutils import CSR_TYPE
 
-def modify_csr_cn(csr_data: csr_cert_types, new_cn: Optional[str] = "Hans Mustermann") -> bytes:
+def modify_csr_cn(csr_data: CSR_TYPE, new_cn: Optional[str] = "Hans Mustermann") -> bytes:
     """Modifies the Common Name (CN) in a CSR. Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
     Args:
@@ -20,7 +20,7 @@ def modify_csr_cn(csr_data: csr_cert_types, new_cn: Optional[str] = "Hans Muster
         ValueError: If no Common Name (CN) is found in the CSR.
     """
     # Decode the CSR from its DER-encoded form into a CertificationRequest object.
-    csr = cast_csr_to_asn1(csr_data)
+    csr = cast_csr_to_asn1csr(csr_data)
 
     # Access the subject field from the CSR, which contains the RDNSequence.
     subject = csr["certificationRequestInfo"]["subject"]
