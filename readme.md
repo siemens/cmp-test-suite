@@ -109,7 +109,7 @@ def this_is_not_a_keyword():
 This section explains how OpenSSL can be used to generate test data, such as key-pairs or CSRs.
 
 
-- Get list of supportfed algorithms `openssl list -signature-algorithms`, let's say you will use `RSA`.
+- Get list of supported algorithms `openssl list -signature-algorithms`, let's say you will use `RSA`.
 - Generate a private key `openssl genpkey -algorithm RSA -out private-key-rsa.pem`.
 - Generate a CSR `openssl req -new -key private-key-rsa.pem -out csr-rsa.pem -nodes -subj /CN=testSubject` (note that
   on Windows you might have to write the latter part as `//CN=testSubject`).
