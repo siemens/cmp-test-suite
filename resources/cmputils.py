@@ -4,7 +4,6 @@ import sys
 from datetime import datetime, timezone
 from typing import Union, List, Optional
 
-import requests
 from cryptography import x509
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
@@ -15,6 +14,7 @@ from pyasn1_alt_modules.rfc2314 import SignatureAlgorithmIdentifier, Signature, 
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
 
+from asn1utils import get_asn1_value
 from castutils import cast_asn1cert_to_cert, cast_cert_to_asn1cert, cast_csr_to_asn1csr
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
                          compute_password_based_mac, sign_data, get_sig_oid_from_key_hash,
@@ -23,7 +23,7 @@ from certutils import parse_certificate
 
 # from utils import load_and_decode_pem_file
 import utils
-from typingutils import AnyCert, CsrType
+from typingutils import AnyCert, CsrType, PkiMsgType
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -751,14 +751,14 @@ def parse_pki_message(data: Union[bytes, rfc9480.PKIMessage], allow_cast: bool =
     return pki_message
 
 
-def try_parse_pki_message(data: Union[requests.Response, bytes, rfc9480.PKIMessage, None]) -> rfc9480.PKIMessage | None:
+def try_parse_pki_message(data: Union[bytes, rfc9480.PKIMessage, None]) -> rfc9480.PKIMessage | None:
     """Try to parse input data to PKIMessage structure and return a pyasn1 parsed object.
 
     If `allow_cast` is set to `False`, the function only allows bytes as DER-Encoded
 
 
     Arguments:
-        data (requests.Response | bytes | rfc9480.PKIMessage | None): The raw input data to be parsed.
+        data (bytes | rfc9480.PKIMessage | None): The raw input data to be parsed.
 
     Returns:
         pyasn1 parsed object: Represents the PKIMessage structure or None
@@ -973,3 +973,29 @@ def modify_csr_cn(csr_data: CsrType, new_cn: Optional[str] = "Hans Mustermann") 
     # Return the DER-encoded CSR with the modified CN.
     return modified_csr_der
 
+
+def pkimessage_has_failure_info(data: PkiMsgType) -> bool:
+    """
+    Checks if the provided data contains failure information in the PKI message.
+
+    :param data: The input data which can be a requests.Response, a rfc9480.PKIMessage, or raw bytes.
+    :return: True if the PKIMessage contains failure information, False otherwise.
+    :raises ValueError: If the input data type is not supported.
+    """
+
+    if isinstance(data, bytes):
+        data = parse_pki_message(data)
+    elif isinstance(data, rfc9480.PKIMessage):
+        pass
+    else:
+        raise ValueError("Unsupported data type provided. Expected requests.Response, rfc9480.PKIMessage, or bytes.")
+
+    try:
+        data_obj = get_asn1_value(data, "body.error.pKIStatusInfo.failInfo")
+        return data_obj.hasValue()
+    except PyAsn1Error as err:
+        pass
+    except Exception as e:
+        print(e)
+
+    return False

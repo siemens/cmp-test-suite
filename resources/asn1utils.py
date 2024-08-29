@@ -51,14 +51,10 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 import logging
 from typing import Union, List
 
-import requests
 from pyasn1.codec.der import decoder, encoder
-from pyasn1.error import PyAsn1Error
 from pyasn1.type.univ import BitString
-from pyasn1_alt_modules import rfc9480
 
-import cmputils
-from typingutils import Strint, PkiMsgType
+from typingutils import Strint
 
 
 def asn1_must_contain_fields(data, fields):
@@ -279,7 +275,7 @@ def is_either_bit_set_in_bitstring(
 
     elif isinstance(bit_indices, str):
         # If bit_index is a string, split it into a list of integers
-        values = [int(x.strip()) for x in bit_indices.strip().split(",")]
+        values = [int(x) for x in bit_indices.strip(" ").split(",")]
         return is_either_bit_set_in_bitstring(
             asn1_bitstring, values, exclusive=exclusive
         )
@@ -287,31 +283,3 @@ def is_either_bit_set_in_bitstring(
     else:
         # If bit_index is an integer (not intended, but allowed), check it directly
         return is_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)
-
-
-def pkimessage_has_failure_info(data: PkiMsgType) -> bool:
-    """
-    Checks if the provided data contains failure information in the PKI message.
-
-    :param data: The input data which can be a requests.Response, a rfc9480.PKIMessage, or raw bytes.
-    :return: True if the PKIMessage contains failure information, False otherwise.
-    :raises ValueError: If the input data type is not supported.
-    """
-    if isinstance(data, requests.Response):
-        data = cmputils.parse_pki_message(data.content)
-    elif isinstance(data, bytes):
-        data = cmputils.parse_pki_message(data)
-    elif isinstance(data, rfc9480.PKIMessage):
-        pass
-    else:
-        raise ValueError("Unsupported data type provided. Expected requests.Response, rfc9480.PKIMessage, or bytes.")
-
-    try:
-        data_obj = get_asn1_value(data, "body.error.pKIStatusInfo.failInfo")
-        return data_obj.hasValue()
-    except PyAsn1Error as err:
-        pass
-    except Exception as e:
-        print(e)
-
-    return False
