@@ -91,9 +91,6 @@ def save_key(key, path, passphrase=b"11111"):
         )
 
 
-
-
-
 def generate_rsa_key(length: int = 2048) -> RSAPrivateKey:
     """Generates an RSA private key of the specified length.
 
@@ -123,7 +120,7 @@ def generate_dsa_key(length: int = 2048) -> DSAPrivateKey:
     - An RSAPrivateKey object representing the generated RSA private key.
 
     Example:
-    | ${private_key} = | Generate DSA Keypair | length=2048 |
+    | ${private_key} = | Generate Dsa Keypair | length=2048 |
     """
 
     return dsa.generate_private_key(key_size=length)
