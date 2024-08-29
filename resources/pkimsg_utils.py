@@ -40,6 +40,6 @@ def contains_pki_failure_info(data: Union[requests.Response, rfc9480.PKIMessage,
         | ${is_failure_present}= | Contains PKI Failure Info | ${response} |
     """
     pki_msg = parse_pki_message(data, allow_cast=True)
-    return get_to_failure_info(pki_msg).hasValue()
+    return get_failure_info(pki_msg).hasValue()
 
 

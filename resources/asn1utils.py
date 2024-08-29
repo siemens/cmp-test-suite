@@ -58,7 +58,7 @@ from pyasn1.type.univ import BitString
 from pyasn1_alt_modules import rfc9480
 
 import cmputils
-from typingutils import Strint
+from typingutils import Strint, PkiMsgType
 
 
 def asn1_must_contain_fields(data, fields):
