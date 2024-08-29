@@ -1,3 +1,15 @@
+"""
+
+This module provides casting object to a specific type from several types. So ensures that the object is of the type which is needed.
+
+Example:
+
+cert: x509.Certificate
+pyasn_cert = cast_cert_to_asn1cert(cert)
+
+"""
+
+
 import logging
 
 from cryptography import x509
@@ -5,12 +17,11 @@ from cryptography.hazmat.primitives import serialization
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc2986, rfc9480
 
-from typingutils import CSR_TYPE, CERT_TYPE
-
+from typingutils import CsrType, CertType
 
 #TODO include Pem
 
-def cast_csr_to_asn1csr(data: CSR_TYPE) -> rfc2986.CertificationRequest:
+def cast_csr_to_asn1csr(data: CsrType, warning_about_asn1_decode_remainder=True) -> rfc2986.CertificationRequest:
     """
     Converts a given Certificate Signing Request (CSR) into an ASN.1 encoded `rfc2986.CertificationRequest` object.
 
@@ -36,7 +47,7 @@ def cast_csr_to_asn1csr(data: CSR_TYPE) -> rfc2986.CertificationRequest:
         csr, remainder = decoder.decode(data, asn1Spec=rfc2986.CertificationRequest())
 
         # Optionally log any remaining undecoded data if debugging is enabled.
-        if debug_asn1_decode_remainder:
+        if warning_about_asn1_decode_remainder:
             logging.debug(f"remainder: {remainder}")
 
         # Return the decoded ASN.1 CertificationRequest object.
@@ -51,7 +62,7 @@ def cast_csr_to_asn1csr(data: CSR_TYPE) -> rfc2986.CertificationRequest:
         raise ValueError(f'Unsupported type: {type(data)}')
 
 
-def cast_asn1csr_to_csr(data: CSR_TYPE) -> x509.CertificateSigningRequest:
+def cast_asn1csr_to_csr(data: CsrType) -> x509.CertificateSigningRequest:
     """
     Convert data to a `x509.CertificateSigningRequest` object.
 
@@ -90,8 +101,8 @@ def cast_asn1csr_to_csr(data: CSR_TYPE) -> x509.CertificateSigningRequest:
         raise ValueError(f'Unsupported type: {type(data)}')
 
 
-# TODO change to actual RFC
-def cast_cert_to_asn1cert(data: CERT_TYPE) -> rfc9480.Certificate:
+
+def cast_cert_to_asn1cert(data: CertType, warning_about_asn1_decode_remainder=True) -> rfc9480.Certificate:
     """
     Converts a given Certificate into an ASN.1 encoded `rfc9480.Certificate` object.
 
@@ -117,7 +128,7 @@ def cast_cert_to_asn1cert(data: CERT_TYPE) -> rfc9480.Certificate:
         csr, remainder = decoder.decode(data, asn1Spec=rfc9480.Certificate)
 
         # Optionally log any remaining undecoded data if debugging is enabled.
-        if debug_asn1_decode_remainder:
+        if warning_about_asn1_decode_remainder:
             logging.debug(f"remainder: {remainder}")
 
         # Return the decoded ASN.1 CertificationRequest object.
@@ -132,7 +143,7 @@ def cast_cert_to_asn1cert(data: CERT_TYPE) -> rfc9480.Certificate:
         raise ValueError(f'Unsupported type: {type(data)}')
 
 
-def cast_asn1cert_to_cert(data: CERT_TYPE) -> x509.Certificate:
+def cast_asn1cert_to_cert(data: CertType) -> x509.Certificate:
     """
     Convert data to a `x509.Certificate` object.
 
