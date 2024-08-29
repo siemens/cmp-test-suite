@@ -203,7 +203,7 @@ PKIMessage Has Set Failure Bit
     [Arguments]        ${pki_message}     ${bit_index}
     ${pki_header}=       Get Asn1 value   ${pki_message}    header
     Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
-    ${failInfo}=        Get failure info    ${pki_message}
+    ${failInfo}=        Get asn1 value    ${pki_message}    body.error.pKIStatusInfo.failInfo
     ${bit_status}=      Is bit set in bitstring    ${failInfo}    ${bit_index}
     Should be true              ${bit_status}
 
@@ -222,9 +222,9 @@ PKIMessage Has Set Either Failure Bit
     ...                       PKIMessage Has Set Either Failure Bit    | ${pki_message}    | ${1,19,6}    | ${exclusive}
     ...
     [Arguments]        ${pki_message}     ${bit_Indices}     ${exclusive}
-    ${pki_header}=       Get Asn1 value   ${pki_message}    header
+    ${pki_header}=       Get asn1 value   ${pki_message}    header
     Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
-    ${failInfo}=        Get failure info    ${pki_message}
+    ${failInfo}=        Get asn1 value    ${pki_message}    body.error.pKIStatusInfo.failInfo
     ${bit_status}=      Is either bit set in bitstring    ${failInfo}    ${bit_Indices}    ${exclusive}
     Should be true              ${bit_status}
 
@@ -257,7 +257,7 @@ Check Exclusive FailureBit
     Run Keyword If    ${if_present_has_to_be_correct != False}    RETURN
 
     # checks and then logs the if the Bit is set.
-    ${failInfo}=    Get failure info   ${response}
+    ${failInfo}=    Get asn1 value    ${response}    body.error.pKIStatusInfo.failInfo
     ${bit_status}=    Is bit set in bitstring    ${failInfo}    ${bit_index}
     Run Keyword If    ${bit_status == false}    Log    PKIMessage Failure Bit is set: ${flag}
 
@@ -287,7 +287,7 @@ Check Either FailureBit Set
     Run Keyword If    ${if_present_has_to_be_correct != False}    RETURN
 
     # checks and then logs the if the Bit is set.
-    ${failInfo}=    Get failure info   ${response}
+    ${failInfo}=    Get asn1 value    ${response}    body.error.pKIStatusInfo.failInfo
     ${bit_status}=    Is either bit set in bitstring    ${failInfo}    ${bit_index}    ${exclusive}
     Run Keyword If    ${bit_status == false}    Log    PKIMessage Failure Bit is set: ${flag}
 

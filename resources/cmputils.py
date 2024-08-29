@@ -1058,26 +1058,6 @@ def generate_pki_message_without_failure_info() -> rfc9480.PKIMessage:
     pki_msg["body"]["error"].setComponentByName('pKIStatusInfo', value)
     return pki_msg
 
-
-def get_failure_info(data: PkiMsgType) -> rfc9480.PKIFailureInfo:
-    """Extract PKI failure information from the given input.
-
-
-    The extracted failure information is retrieved from the `pKIStatusInfo` of the PKI message body.
-
-    Arguments:
-        data (requests.Response | rfc9480.PKIMessage | bytes): The input data to be parsed.
-
-    Returns:
-        rfc9480.PKIFailureInfo: The failure information extracted from the `pKIStatusInfo`.
-
-    Example:
-        | ${failure_info}= | Get To Failure Info | ${response} |
-    """
-    pki_msg = parse_pki_message(data, allow_cast=True)
-    return get_asn1_value(pki_msg, query="body.error.pKIStatusInfo.failInfo")
-
-
 def contains_pki_failure_info(data: PkiMsgType) -> bool:
     """Check if the provided input contains PKI failure information.
 
@@ -1092,4 +1072,4 @@ def contains_pki_failure_info(data: PkiMsgType) -> bool:
         | ${is_failure_present}= | Contains PKI Failure Info | ${response} |
     """
     pki_msg = parse_pki_message(data, allow_cast=True)
-    return get_failure_info(pki_msg).hasValue()
+    return get_asn1_value(pki_msg, "body.error.pKIStatusInfo.failInfo").hasValue()
