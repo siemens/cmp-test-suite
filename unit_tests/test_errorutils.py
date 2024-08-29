@@ -1,17 +1,11 @@
 import unittest
 
 import cryptography.exceptions
-from pyasn1_alt_modules.rfc2459 import common_name
 
+import cmputils
 import crypto_utils.verifying_utils
 from crypto_utils.cert_utils import generate_fresh_csr
-from crypto_utils.load_key_utils import load_rsa_key
-from resources import modifyutils
-from resources.cryptoutils import generate_csr, sign_csr, generate_rsa_keypair
-from cryptography.hazmat.primitives import serialization
-from cryptography import x509
 
-from resources.utils import load_and_decode_pem_file
 
 class TestUtils(unittest.TestCase):
     def test_verification_fails(self):
@@ -32,7 +26,7 @@ class TestUtils(unittest.TestCase):
         crypto_utils.verifying_utils.verify_csr_signature(csr, None)
 
         # Modify the common name (CN) in the CSR to "Hans MusterMann"
-        modified_csr = modifyutils.modify_csr_cn(csr, new_cn="Hans MusterMann")
+        modified_csr = cmputils.modify_csr_cn(csr, new_cn="Hans MusterMann")
 
         # Verify the signature of the modified CSR
         with self.assertRaises(cryptography.exceptions.InvalidSignature):

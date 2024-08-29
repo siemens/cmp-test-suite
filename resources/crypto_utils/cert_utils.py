@@ -7,7 +7,7 @@ from robot.api.deco import not_keyword
 from cryptoutils import generate_csr, sign_csr
 from crypto_utils.key_utils import generate_key
 
-from typingutils import PRIVATE_KEY
+from typingutils import PrivateKey
 
 def pem_to_der(pem_csr: str | bytes) -> bytes:
     """
@@ -34,10 +34,12 @@ def pem_to_der(pem_csr: str | bytes) -> bytes:
 
 
 @not_keyword
-def generate_fresh_csr(common_name: str, key: PRIVATE_KEY = None) -> Tuple[x509.CertificateSigningRequest, PRIVATE_KEY]:
+def generate_fresh_csr(common_name: str, key: PrivateKey = None) -> Tuple[x509.CertificateSigningRequest, PrivateKey]:
     """
     This Function generates a fresh csr with a provided common name
-    :param common_name: in the format CN=Hans,emailAdresse=@.com and so on.
+
+    :param key: PrivateKey to sign the csr or generate a new key, with rsa.
+    :param common_name: In the format CN=Hans,emailAdresse=@.com and so on.
     :return: Returns
     """
 
