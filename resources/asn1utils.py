@@ -211,12 +211,6 @@ def is_bit_set_in_bitstring(
     - `True` if the bit is set and meets the conditions specified by `exclusive`, `False` otherwise.
     """
 
-
-
-    if isinstance(exclusive, str):
-        # Convert the exclusive parameter from string to boolean if necessary
-        exclusive = bool(int(exclusive))
-
     # Convert the bit index to an integer
     bit_index = int(bit_index)
     x = tuple(asn1_bitstring)
@@ -260,10 +254,6 @@ def is_either_bit_set_in_bitstring(
     """
 
     logging.info(tuple(asn1_bitstring))
-
-    if isinstance(exclusive, str):
-        # Convert the exclusive parameter from string to boolean if necessary
-        exclusive = bool(int(exclusive))
 
     if isinstance(bit_indices, (list, tuple)):
         # If bit_index is a list or tuple, check each index

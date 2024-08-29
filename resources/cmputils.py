@@ -9,6 +9,7 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import univ, useful, constraint, base, tag, char
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
+from pyasn1.type.univ import BitString
 from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211, rfc2986, rfc2459
 from pyasn1_alt_modules.rfc2314 import SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
@@ -974,7 +975,7 @@ def modify_csr_cn(csr_data: CsrType, new_cn: Optional[str] = "Hans Mustermann") 
     return modified_csr_der
 
 
-def pkimessage_has_failure_info(data: PkiMsgType) -> bool:
+def pki_message_has_failure_info(data: PkiMsgType) -> bool:
     """
     Checks if the provided data contains failure information in the PKI message.
 
@@ -999,3 +1000,96 @@ def pkimessage_has_failure_info(data: PkiMsgType) -> bool:
         print(e)
 
     return False
+
+
+def generate_pki_status_info(bit_string: str | None = None, info_type: int = 2) -> rfc9480.PKIStatusInfo:
+    """
+    A PKIStatusInfo object populated with a status and failInfo.
+
+    :param bit_string: Bit string to generate a PKIStatusInfo object for.
+    :param info_type: PKIStatusInfo type.Two means rejected.
+    """
+
+    # Access the pkiStatusInfo within the PKIMessage
+    status_info = rfc9480.PKIStatusInfo()
+
+    # Set the status (e.g., rejection which might be represented by 2 in your schema)
+    status_info.setComponentByName('status', info_type)
+
+
+    if bit_string is None:
+        fail_info = BitString()
+    else:
+        # pass
+        # Set the failInfo (BitString)
+        fail_info = BitString(f"'{bit_string}'B")  # Example BitString value
+
+
+    status_info.setComponentByName('failInfo', fail_info)
+
+    return status_info
+
+
+def generate_pki_message_with_failure_info(bit_string: str | None = None) -> rfc9480.PKIMessage:
+    """
+    Returns A PKIMessage object populated with a status with failInfo.
+
+    :param bit_string: Bit stream to generate the FailureInfo types.
+    """
+
+    pki_msg: rfc9480.PKIMessage = parse_pki_message(utils.load_and_decode_pem_file(
+        "data/example-p10cr-rufus.pem"
+    ))
+
+    value = generate_pki_status_info(bit_string)
+    pki_msg["body"]["error"].setComponentByName('pKIStatusInfo', value)
+    return pki_msg
+
+
+
+def generate_pki_message_without_failure_info() -> rfc9480.PKIMessage:
+    """
+    Generates a PKIMessage object with a predefined status but without failInfo.
+    """
+
+    pki_msg: rfc9480.PKIMessage = parse_pki_message(utils.load_and_decode_pem_file("data/example-p10cr-rufus.pem"))
+
+    value = generate_pki_status_info(None)
+    pki_msg["body"]["error"].setComponentByName('pKIStatusInfo', value)
+    return pki_msg
+
+
+def get_failure_info(data: PkiMsgType) -> rfc9480.PKIFailureInfo:
+    """Extract PKI failure information from the given input.
+
+
+    The extracted failure information is retrieved from the `pKIStatusInfo` of the PKI message body.
+
+    Arguments:
+        data (requests.Response | rfc9480.PKIMessage | bytes): The input data to be parsed.
+
+    Returns:
+        rfc9480.PKIFailureInfo: The failure information extracted from the `pKIStatusInfo`.
+
+    Example:
+        | ${failure_info}= | Get To Failure Info | ${response} |
+    """
+    pki_msg = parse_pki_message(data, allow_cast=True)
+    return get_asn1_value(pki_msg, query="body.error.pKIStatusInfo.failInfo")
+
+
+def contains_pki_failure_info(data: PkiMsgType) -> bool:
+    """Check if the provided input contains PKI failure information.
+
+
+    Arguments:
+        data (requests.Response | rfc9480.PKIMessage | bytes): The input data to be checked.
+
+    Returns:
+        bool: `True` if the PKI failure information is present, `False` otherwise.
+
+    Example:
+        | ${is_failure_present}= | Contains PKI Failure Info | ${response} |
+    """
+    pki_msg = parse_pki_message(data, allow_cast=True)
+    return get_failure_info(pki_msg).hasValue()
