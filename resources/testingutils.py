@@ -6,12 +6,14 @@ import utils
 from cmputils import parse_pki_message
 
 
-def generate_pki_status_info(bit_stream: str | None = None) -> rfc9480.PKIStatusInfo:
+def generate_pki_status_info(bit_stream: str | None = None, info_type: int = 2) -> rfc9480.PKIStatusInfo:
     """
-    Generates a PKIStatusInfo object with a predefined status and failInfo.
+    A PKIStatusInfo object populated with a status and failInfo.
 
-    :return: A PKIStatusInfo object populated with a status and failInfo.
-    :rtype: rfc9480.PKIStatusInfo
+    :param bit_stream: Bit stream to generate a PKIStatusInfo object for.
+    :param info_type: PKIStatusInfo type.Two means rejected.
+
+
     """
 
 
@@ -20,7 +22,7 @@ def generate_pki_status_info(bit_stream: str | None = None) -> rfc9480.PKIStatus
     status_info = rfc9480.PKIStatusInfo()
 
     # Set the status (e.g., rejection which might be represented by 2 in your schema)
-    status_info.setComponentByName('status', 2)
+    status_info.setComponentByName('status', info_type)
 
 
     if bit_stream is None:
@@ -37,7 +39,11 @@ def generate_pki_status_info(bit_stream: str | None = None) -> rfc9480.PKIStatus
 
 
 def generate_pki_message_with_failure_info(bit_stream: str | None = None) -> PKIMessage:
+    """
+    Returns A PKIMessage object populated with a status with failInfo.
 
+    :param bit_stream: Bit stream to generate the FailureInfo types.
+    """
 
     pki_msg: rfc9480.PKIMessage = parse_pki_message(utils.load_and_decode_pem_file(
         "data/example-p10cr-rufus.pem"
@@ -53,8 +59,7 @@ def generate_pki_message_without_failure_info() -> rfc9480.PKIMessage:
     """
     Generates a PKIMessage object with a predefined status but without failInfo.
 
-    :return: A PKIMessage object populated with a status but without failInfo.
-    :rtype: rfc9480.PKIMessage
+    Returns A PKIMessage object populated with a status but without failInfo.
     """
 
     pki_msg: rfc9480.PKIMessage = parse_pki_message(utils.load_and_decode_pem_file(pem_file_path))

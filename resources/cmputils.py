@@ -2,19 +2,20 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Union, List
+from typing import Union, List, Optional
 
 import requests
 from cryptography import x509
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
-from pyasn1.type import univ, useful, constraint, base, tag
+from pyasn1.type import univ, useful, constraint, base, tag, char
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
-from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211
+from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211, rfc2986, rfc2459
 from pyasn1_alt_modules.rfc2314 import SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
 
+from castutils import cast_asn1cert_to_cert, cast_cert_to_asn1cert, cast_csr_to_asn1csr
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
                          compute_password_based_mac, sign_data, get_sig_oid_from_key_hash,
                          get_alg_oid_from_key_hash)
@@ -22,6 +23,7 @@ from certutils import parse_certificate
 
 # from utils import load_and_decode_pem_file
 import utils
+from typingutils import AnyCert, CsrType
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -199,7 +201,11 @@ def _prepare_implicit_confirm_general_info_structure():
     general_info_wrapper.setComponentByPosition(0, implicit_confirm)
     return general_info_wrapper
 
-def prepare_extra_certs(certs: Union[x509.Certificate, List[Union[rfc9480.Certificate, x509.Certificate, bytes, str]]], pki_message: rfc9480.PKIMessage = None) -> univ.SequenceOf:
+
+
+
+
+def prepare_extra_certs(certs: Union[x509.Certificate, List[AnyCert]]) -> univ.SequenceOf:
     """
     Prepares a sequence of ASN.1 encoded certificates for use in a certificate management protocol.
 
@@ -230,10 +236,10 @@ def prepare_extra_certs(certs: Union[x509.Certificate, List[Union[rfc9480.Certif
         certs = [certs]
 
     # Convert each item in the list to an x509.Certificate object
-    certs = [cast_to_cert(cert=cert_i) for cert_i in certs]
+    certs = [cast_asn1cert_to_cert(data=item ) for item in certs]
 
     # Convert each x509.Certificate to its ASN.1 encoded form
-    certs = [cast_x509_cert_to_asn1(cert=cert_i) for cert_i in certs]
+    certs = [cast_cert_to_asn1cert(data=item) for item in certs]
 
     # Create an ASN.1 SequenceOf container to hold the encoded certificates
     cert_list = univ.SequenceOf(componentType=rfc9480.CMPCertificate()).subtype(
@@ -245,9 +251,6 @@ def prepare_extra_certs(certs: Union[x509.Certificate, List[Union[rfc9480.Certif
     for x in certs:
         cert_list.append(x)
 
-    if pki_message is not None:
-        pki_message["extraCerts"] = prepare_extra_certs(certs)
-
 
     return cert_list
 
@@ -257,7 +260,8 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
     """Generic function for preparing the skeleton structure of a PKIMessage, the body of which must be
     set later.
 
-    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMEssage
+    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMMessage
+    :param certs extraCerts parsed to the PKIMessage structure, for out of bounds means or signing.
     :returns: pyasn1 PKIMessage structure without a body"""
     # since pyasn1 does not give us a way to remove an attribute from a structure after it was added to it,
     # we proactively check whether a field should be omitted (e.g. when crafting bad inputs) and skip adding
@@ -360,12 +364,15 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
         free_text.setComponentByPosition(0, 'This text is free, so let us have it')
         pki_header['freeText'] = free_text
 
-    if certs is not None:
-        pki_message["extraCerts"] = prepare_extra_certs(certs)
+
 
     # PKIMessage
     pki_message = rfc9480.PKIMessage()
     pki_message['header'] = pki_header
+
+    if certs is not None:
+        pki_message["extraCerts"] = prepare_extra_certs(certs)
+
     return pki_message
 
 
@@ -707,14 +714,14 @@ def csr_extend_subject(csr, rdn):
     return csr
 
 
-def parse_pki_message(data: Union[requests.Response, bytes, rfc9480.PKIMessage], allow_cast: bool = False) -> rfc9480.PKIMessage:
+def parse_pki_message(data: Union[bytes, rfc9480.PKIMessage], allow_cast: bool = False) -> rfc9480.PKIMessage:
     """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
 
     If `allow_cast` is set to `False`, the function only allows bytes as DER-Encoded
 
 
     Arguments:
-        data (requests.Response | bytes | rfc9480.PKIMessage): The raw input data to be parsed.
+        data (bytes | rfc9480.PKIMessage): The raw input data to be parsed.
         allow_cast (bool): Specifies whether to allow direct return of the input if it is of type `rfc9480.PKIMessage`.
                            Defaults to `False`.
 
@@ -729,8 +736,6 @@ def parse_pki_message(data: Union[requests.Response, bytes, rfc9480.PKIMessage],
             pass
         elif isinstance(data, rfc9480.PKIMessage):
             return data
-        elif isinstance(data, requests.Response):
-            data = data.content
 
     if not isinstance(data, bytes):
         raise ValueError("Input must be of type bytes or convertible to bytes.")
@@ -747,7 +752,7 @@ def parse_pki_message(data: Union[requests.Response, bytes, rfc9480.PKIMessage],
 
 
 def try_parse_pki_message(data: Union[requests.Response, bytes, rfc9480.PKIMessage, None]) -> rfc9480.PKIMessage | None:
-    """TRy to Parse input data to PKIMessage structure and return a pyasn1 parsed object.
+    """Try to parse input data to PKIMessage structure and return a pyasn1 parsed object.
 
     If `allow_cast` is set to `False`, the function only allows bytes as DER-Encoded
 
@@ -922,3 +927,49 @@ def try_to_log_pkimessage(data):
         logging.info("Cannot prettyPrint this, it does not seem to be a valid PKIMessage")
 
     logging.info(parsed.prettyPrint())
+
+
+
+def modify_csr_cn(csr_data: CsrType, new_cn: Optional[str] = "Hans Mustermann") -> bytes:
+    """Modifies the Common Name (CN) in a CSR. Expects a CN to be present in the certificate; otherwise, raises a ValueError.
+
+    Args:
+        csr_data: The DER-encoded CSR as a byte string.
+        new_cn: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
+
+    Returns:
+        The DER-encoded CSR with the modified CN.
+
+    Raises:
+        ValueError: If no Common Name (CN) is found in the CSR.
+    """
+    # Decode the CSR from its DER-encoded form into a CertificationRequest object.
+    csr = cast_csr_to_asn1csr(csr_data)
+
+    # Access the subject field from the CSR, which contains the RDNSequence.
+    subject = csr["certificationRequestInfo"]["subject"]
+
+    # Flag to check if a CN was found and modified.
+    found_cn = False
+
+    # Iterate through the Relative Distinguished Names (RDN) sequence to find the CN.
+    for rdn in subject["rdnSequence"]:  # rdnSequence is a Sequence OF RDN.
+        # Each RDN can contain multiple AttributeTypeAndValue pairs.
+        attribute: rfc2986.AttributeTypeAndValue
+        for attribute in rdn:
+            # Check if the current attribute is a Common Name (CN).
+            if attribute["type"] == rfc2459.id_at_commonName:
+                # Modify the CN by setting a new PrintableString value.
+                found_cn = True
+                attribute['value'] = char.PrintableString(new_cn)
+
+    # If no CN was found, raise an error to indicate that the modification failed.
+    if not found_cn:
+        raise ValueError("No Common Name (CN) found in the provided CSR.")
+
+    # Re-encode the modified CertificationRequest object back into DER format.
+    modified_csr_der = encoder.encode(csr)
+
+    # Return the DER-encoded CSR with the modified CN.
+    return modified_csr_der
+
