@@ -12,3 +12,7 @@ ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CN=CloudCA-Integration-Test-User
 ${RECIPIENT}           CN=CloudPKI-Integration-Test
 ${test_suite_cfg}      ./test_suite_config.yaml
+${DEFAULT_RSA_LENGTH}    2048
+${debug_asn1_decode_remainder}    ${True}
+${DEFAULT_ALGORITHEM}    rsa
+${DEFAULT_EC_CURVE}    None
