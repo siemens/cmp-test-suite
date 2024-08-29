@@ -58,6 +58,8 @@ from pyasn1.type.univ import BitString
 from pyasn1_alt_modules import rfc9480
 
 import cmputils
+from typingutils import Strint
+
 
 def asn1_must_contain_fields(data, fields):
     """
@@ -194,7 +196,7 @@ def get_asn1_value_as_der(asn1_obj, query):
 
 def is_bit_set_in_bitstring(
         asn1_bitstring: BitString,
-        bit_index: Union[int, str],
+        bit_index: Strint,
         exclusive: bool = True
 ) -> bool:
     """
@@ -241,7 +243,7 @@ def is_bit_set_in_bitstring(
 
 def is_either_bit_set_in_bitstring(
         asn1_bitstring: BitString,
-        bit_indices: Union[List[Union[str, int]], str],
+        bit_indices: Union[List[Strint], Strint],
         exclusive: bool = True,
 ) -> bool:
     """
@@ -287,7 +289,7 @@ def is_either_bit_set_in_bitstring(
         return is_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)
 
 
-def pkimessage_has_failure_info(data: requests.Response | rfc9480.PKIMessage | bytes) -> bool:
+def pkimessage_has_failure_info(data: PkiMsgType) -> bool:
     """
     Checks if the provided data contains failure information in the PKI message.
 

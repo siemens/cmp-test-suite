@@ -33,5 +33,6 @@ CertType = Union[bytes, x509.Certificate, rfc9480.Certificate]
 CertGenRet = Tuple[x509.Certificate, PrivateKey]
 
 # A Value which can be parsed to a function.
-ParsePkiMsg = Union[rfc9480.PKIMessage, bytes, requests.Response]
+PkiMsgType = Union[rfc9480.PKIMessage, bytes, requests.Response]
 
+Strint = Union[str, int]
