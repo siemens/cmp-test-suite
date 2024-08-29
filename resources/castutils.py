@@ -8,9 +8,6 @@ from pyasn1_alt_modules import rfc2986, rfc9480
 from typingutils import CSR_TYPE, CERT_TYPE
 
 
-# TODO install pyyaml and load config
-debug_asn1_decode_remainder = True
-
 #TODO include Pem
 
 def cast_csr_to_asn1csr(data: CSR_TYPE) -> rfc2986.CertificationRequest:
