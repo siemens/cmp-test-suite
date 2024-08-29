@@ -1,5 +1,17 @@
-from typing import Union, Any, Tuple
+"""
+typing_utils.py
 
+This module provides type aliases to enhance code readability, maintainability, and type safety.
+Type aliases are used to create descriptive names for commonly used types, making the codebase
+easier to understand and work with.
+
+
+
+"""
+
+from typing import Union, Tuple
+
+import requests
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey, DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
@@ -9,14 +21,17 @@ from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicK
 from pyasn1_alt_modules import rfc2986, rfc9480
 
 # Type alias for supported private key types
-ASYM_PRIVATE_KEY = Union[RSAPrivateKey, EllipticCurvePrivateKey, DSAPrivateKey, DHPrivateKey]
-ASYM_PUBLIC_KEY = Union[RSAPublicKey, EllipticCurvePublicKey, DSAPublicKey, DHPublicKey]
-
+PrivateKey = Union[RSAPrivateKey, EllipticCurvePrivateKey, DSAPrivateKey, DHPrivateKey]
+# Type alias for supported public key types
+PublicKey = Union[RSAPublicKey, EllipticCurvePublicKey, DSAPublicKey, DHPublicKey]
 
 # those types are Alias for the option a function can have.
-CSR_TYPE = Union[bytes, x509.CertificateSigningRequest, rfc2986.CertificationRequest]
-CERT_TYPE = Union[bytes, x509.Certificate, rfc9480.Certificate]
-
+CsrType = Union[bytes, x509.CertificateSigningRequest, rfc2986.CertificationRequest]
+CertType = Union[bytes, x509.Certificate, rfc9480.Certificate]
 
 # If a certificate is generated, a tuple is returned with the following type:
-CERT_GEN_RET = Tuple[x509.Certificate, ASYM_PRIVATE_KEY]
+CertGenRet = Tuple[x509.Certificate, PrivateKey]
+
+# A Value which can be parsed to a function.
+ParsePkiMsg = Union[rfc9480.PKIMessage, bytes, requests.Response]
+
