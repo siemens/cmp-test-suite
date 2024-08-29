@@ -104,8 +104,8 @@ CA must reject request when the CSR signature is invalid
      [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
      [Tags]    csr    negative   crypto
      ${key}=    Generate key    rsa    2048
-     ${csr}=    Generate CSR    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
-     ${csr_signed}=    Sign CSR    ${csr}    ${key}
+     ${csr}=    Generate csr    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
+     ${csr_signed}=    Sign csr    ${csr}    ${key}
      ${data}=    Decode pem string   ${csr_signed}
      # needs to be changed so that it is still a Valid Asn1 Structure
      ${modified_csr_der}=  Modify csr cn  ${data}   Hans MustermanNG11
@@ -118,46 +118,22 @@ CA must reject request when the CSR signature is invalid
      ${response}=  Exchange data with CA    ${encoded}
      # checks if the Implementation returns a Status Code or a Status Code with a PKI Message
 
-     # TODO
-     # Has rfc6712 conform status code   ${response}
-
-     ${code_ok}=  Status Code Is Eq    ${response}    ${200}
-     ${contains_msg}=    check_http_response_contains_pki_message    ${response}
-
-     ${either_bits}=  Set Variable  1, 9
+     ${contains_msg}=    Try parse pki message    ${response.content}
 
      IF    ${code_ok}
      #TODO needs to decided if the message should return badPop or badMessageCheck
-     ${bit_status}=    Check Either FailureBit From Response    ${response}    ${either_bits}    ${1}
+     ${bit_status}=    Check Either FailureBit Set    ${response}    ${either_bits}    ${1}
      ELSE IF    ${contains_msg}
      #TODO needs to decided if the message should return badPop or badMessageCheck
-     Check Either FailureBit From Response    ${response}    ${either_bits}    ${1}
+     Check Either FailureBit Set    ${response}    ${1, 9}    ${1}
      END
      #Run keyword IF    not    ${contains_msg}
      #LOG  "The Server Response did not Contained a PKI Message"
 
 
-#CA must reject request when the CSR is not valid asn1
-#CA must reject request with an invalid signature
-#    [Documentation]    Demonstrate how to use some keywords
-#    ...                just an example
-#    [Tags]    csr    crypto    negative
-#    ${csr_signed}=    Generate CSR with RSA2048 and a predefined common name
-#    Log    ${csr_signed}
-#    ${parsed_csr}=    Parse CSR    ${csr_signed}
-#    Log    ${parsed_csr}
-#    ${p10_pkimessage}=      Build P10cr From Csr    ${parsed_csr}
-#    ${ca_response}=    Get Binary File    data/example-p10r.pkimessage
-#    ${result}=    Parse PKI Message    ${ca_response}
-#    ${status}=     Get CMP status from PKI Message    ${result}
-#    Should be equal    ${status}    rejection
-#     [Documentation]    When we send a structure that is not valid DER-encoded ASN1, the CA must respond with an error.
-#     [Tags]    csr    negative   asn1
-
-
 # TODO SKip on Fail
-CA must reject request when the CSR is send Again
-    [Documentation]    Ensure that the Certification Authority (CA) correctly rejects a Certificate Signing Request (CSR) if it has already been submitted and processed, preventing duplicate certificate issuance.
+CA must reject request when the csr is sent again
+    [Documentation]    Ensure that the Certification Authority (CA) correctly rejects a Certificate Signing Request (csr) if it has already been submitted and processed, preventing duplicate certificate issuance.
     [Tags]    csr    negative   asn1    rfc6712
     ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
     ${request_pki_message}=  Parse Pki Message    ${der_pkimessage}
@@ -181,5 +157,5 @@ CA must reject request when the CSR is send Again
                                         #Returns duplicateCertReq    (26) but exclusively
     # this check is a CA Configuration.
     # some Configuration may accept the same Request, but some will allowed it.
-    Check Either FailureBit From Response    ${response3}    ${26}    ${1}
+    Check Either FailureBit Set    ${response3}    ${26}    ${1}
 
