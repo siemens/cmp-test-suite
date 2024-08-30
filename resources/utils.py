@@ -1,3 +1,4 @@
+import base64
 import logging
 import re
 from base64 import b64decode, b64encode
@@ -173,3 +174,26 @@ def log_data_type(data):
 
 if __name__ == "__main__":
     print(load_and_decode_pem_file('../data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/csr.pem'))
+
+
+def pem_to_der(pem_data: str | bytes) -> bytes:
+    """
+    Converts PEM-encoded data to DER-encoded format.
+
+    :param pem_data: The PEM-encoded as a string or bytes.
+    :return: The DER-encoded data as bytes.
+    """
+
+    if isinstance(pem_data, bytes):
+        pem_data = pem_data.decode("utf-8")
+
+    # Split the PEM string into lines
+    lines = pem_data.strip().splitlines()
+
+    # Filter out the header and footer lines
+    pem_body = ''.join(line for line in lines if not line.startswith('-----'))
+
+    # Decode the base64 encoded content to DER format
+    der_data = base64.b64decode(pem_body)
+
+    return der_data
