@@ -3,77 +3,20 @@ This module provides utility functions for generating, saving, and loading crypt
 It is designed to facilitate key management by offering simple methods to create new keys,
 store them and retrieve them when needed.
 
-Functions:
-----------
-- generate_key() -> str:
-    Generates a new cryptographic key using a secure algorithm and returns it as a string.
-
-- save_key(key: str, filepath: str) -> None:
-    Saves a given key to a specified file path. Ensures the key is securely stored
-    by using appropriate file permissions.
-
-- load_key(filepath: str) -> str:
-    Loads a cryptographic key from a specified file path. Verifies the integrity of the key
-    during the loading process.
-
-Usage:
-------
-1. Generate a new cryptographic key using `generate_key()` or `generate_keypair()`.
-2. Save the generated key to a file using `save_key(key, filepath, password)`.
-3. Load an existing key from a file using `load_key(filepath)` when needed.
-
 """
 
-import os
 from typing import Tuple
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import dh, rsa, ec, dsa, ed25519
-from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
 from typingutils import PrivateKey, PublicKey
 
 
-# already implemented.
+# already implemented. in next Merge.
 def get_curve():
     raise NotImplementedError()
-
-def generate_diffie_hellman_keypair(p: int, g: int, private_value: int = None) -> Tuple[dh.DHPrivateKey, dh.DHPublicKey]:
-    """
-    Generates a Diffie-Hellman shared key using the provided parameters.
-
-    Args:
-        p (int): The prime number for the Diffie-Hellman group.
-        g (int): The generator for the Diffie-Hellman group.
-        private_value (int): The private value (private key) used by the current party.
-
-    Returns:
-        bytes: The derived shared key.
-
-    Raises:
-        ValueError: If there is an error during key exchange.
-    """
-
-
-    # Create DH parameter numbers from provided p and g
-    dh_parameters = dh.DHParameterNumbers(p, g).parameters(default_backend())
-
-    # Generate the private key using the provided private value
-    private_key = dh_parameters.generate_private_key()
-
-    if private_value is None:
-        # Generate the public key based on the provided private value
-        public_numbers = dh.DHPublicNumbers(private_value, dh_parameters)
-        public_key = public_numbers.public_key(default_backend())
-    else:
-        public_key = private_key.public_key()
-
-
-    return private_key, public_key
-
 
 def save_key(key, path, passphrase=b"11111"):
     """Save key to a file
@@ -90,51 +33,6 @@ def save_key(key, path, passphrase=b"11111"):
             )
         )
 
-
-def generate_rsa_key(length: int = 2048) -> RSAPrivateKey:
-    """Generates an RSA private key of the specified length.
-
-    The function generates an RSA key pair with a public exponent of 65537, which is a common choice for RSA encryption.
-
-    Arguments:
-    - length: The length of the RSA key to generate, in bits. Default is 2048.
-
-    Returns:
-    - An RSAPrivateKey object representing the generated RSA private key.
-
-    Example:
-    | ${private_key} = | Generate RSA Keypair | length=2048 |
-    """
-
-    return rsa.generate_private_key(public_exponent=65537, key_size=length)
-
-def generate_dsa_key(length: int = 2048) -> DSAPrivateKey:
-    """Generates an DSA private key of the specified length.
-
-    The function generates an DSA Private key.
-
-    Arguments:
-    - length: The length of the DSA key to generate, in bits. Default is 2048.
-
-    Returns:
-    - An RSAPrivateKey object representing the generated RSA private key.
-
-    Example:
-    | ${private_key} = | Generate Dsa Keypair | length=2048 |
-    """
-
-    return dsa.generate_private_key(key_size=length)
-
-
-def generate_ec_key(curve_name: str = 'secp256r1') -> EllipticCurvePrivateKey:
-
-    curve_name = curve_name.lower()
-
-    curve_class = get_curve(name=curve_name)
-
-    # Generate the ECC private key
-    private_key = ec.generate_private_key(curve_class, default_backend())
-    return private_key
 
 def generate_key(algorithm="rsa", **params) -> PrivateKey:
     """
@@ -153,12 +51,13 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
         - "dh": Diffie-Hellman key pair generation.
     - **params: Additional parameters specific to the algorithm.
         - For "rsa" and "dsa":
-            - length (int): The length of the key to generate, in bits. Default is 2048.
+            - length (int , str): The length of the key to generate, in bits. Default is 2048.
         - For "ecdsa" or "ecdh":
             - curve (str): An elliptic curve instance from `cryptography.hazmat.primitives.asymmetric.ec`. Default is `secp256r1`.
         - For "dh":
-            - p (int): The prime modulus for DH key generation. If not provided, a modulus is generated.
+            - length (int): The prime modulus for DH key generation If not provided, a modulus is generated.
             - g (int): The generator for DH key generation. Default is 2.
+            - secret_scalar (int): the private key value for DH key generation. If not provided, one is generated.
             - length (int): The length of the modulus to generate if `p` is not provided. Default is 2048.
         - For "aes":
             - length (int): The length of the AES key in bits. Valid values are 128, 192, or 256. Default is 256.
@@ -180,6 +79,7 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
     backend = default_backend()
 
     if algorithm == 'rsa':
+        # TODO change with Config
         length = int(params.get('length', 2048)) # it is allowed to parse a string.
         private_key = rsa.generate_private_key(
             public_exponent=65537,
@@ -188,15 +88,15 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
         )
 
     elif algorithm == 'dsa':
+        # TODO change with Config
         length = int(params.get('length', 2048)) # it is allowed to parse a string.
-        private_key = dsa.generate_private_key(
-            key_size=length,
-            backend=backend
-        )
+        private_key = dsa.generate_private_key(key_size=length, backend=backend)
 
     elif algorithm in ['ecdh', 'ecdsa']:
-        curve = params.get('curve', "")
-        curve = get_curve(curve, default=ec.SECP256R1())
+        curve = params.get('curve', None)
+        # TODO change with Config
+        # TODO implementation in next Merge.
+        curve = get_curve(curve, default="secp256r1")
         private_key = ec.generate_private_key(
             curve=curve,
             backend=backend
@@ -208,12 +108,25 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
     elif algorithm == 'dh':
         p = params.get('p')
         g = params.get('g', 2)
+        secret_scalar = params.get("secret_scalar")
+
         if p is None:
-            length = params.get('length', 2048)
+            # TODO change with Config
+            length = int(params.get('length', 2048))
             parameters = dh.generate_parameters(generator=g, key_size=length, backend=backend)
         else:
             parameters = dh.DHParameterNumbers(p, g).parameters(backend)
-        private_key = parameters.generate_private_key()
+
+        if secret_scalar is not None:
+            private_key = dh.DHPrivateNumbers(
+                x=secret_scalar,
+                public_numbers=dh.DHPublicNumbers(
+                    pow(g, secret_scalar, p),
+                    parameters.parameter_numbers()
+                )
+            )
+        else:
+            private_key = parameters.generate_private_key()
 
     else:
         raise ValueError("Unsupported algorithm: {}".format(algorithm))
@@ -241,7 +154,7 @@ def generate_keypair(algorithm: str = "rsa", **kwargs) -> Tuple[PrivateKey, Publ
     Example usage:
     ```python
     private_key, public_key = generate_keypair(algorithm="rsa", length=2048)
-    private_key, public_key = generate_keypair(algorithm="ecdsa", curve=ec.SECP384R1())
+    private_key, public_key = generate_keypair(algorithm="ecdsa", curve="secp384r1")
     ```
     """
     private_key = generate_key(algorithm, **kwargs)
@@ -264,7 +177,7 @@ def load_private_key_from_file(filepath: str, password: str = None) -> PrivateKe
         FileNotFoundError: If the File does not exist.
 
     Example:
-        | ${key}= | Load Key From File | rsa | /path/to/key.pem | password123 |
+        | ${key}= | Load Private Key From File | rsa | /path/to/key.pem | password123 |
     """
     with open(filepath, 'rb') as pem_file:
         pem_data = pem_file.read()
@@ -288,7 +201,7 @@ def load_public_key_from_file(filepath: str) -> PublicKey:
         FileNotFoundError: If the File does not exist.
 
     Example:
-        | ${key}= | Load Key From File | rsa | /path/to/key.pem
+        | ${key}= | Load Public Key From File | rsa | /path/to/key.pem
     """
     with open(filepath, 'rb') as pem_file:
         pem_data = pem_file.read()
