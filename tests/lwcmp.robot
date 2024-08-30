@@ -5,6 +5,7 @@ Resource    ../config/${environment}.robot
 Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/cmputils.py
+Library     ../resources/keyutils.py
 Library     OperatingSystem
 Library     Collections
 
