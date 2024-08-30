@@ -11,7 +11,6 @@ ${CA_CMP_URL}    https://broker.sdo-qa.siemens.cloud/.well-known/cmp
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CN=CloudCA-Integration-Test-User
 ${RECIPIENT}           CN=CloudPKI-Integration-Test
-${test_suite_cfg}      ./test_suite_config.yaml
 ${DEFAULT_RSA_LENGTH}    2048
 ${debug_asn1_decode_remainder}    ${True}
 ${DEFAULT_ALGORITHEM}    rsa
