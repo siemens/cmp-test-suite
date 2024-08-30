@@ -71,7 +71,7 @@ class TestCmpUtils(unittest.TestCase):
         self.assertEqual('sha1', hash_alg_name)
 
     def test_build_p10cr_without_attributes(self):
-        keypair = cryptoutils.generate_rsa_keypair()
+        keypair = cryptoutils.generate_key("rsa")
         csr = cryptoutils.generate_csr("CN=Hans")
         signed_csr = cryptoutils.sign_csr(csr, keypair)
         asn1_csr = cmputils.parse_csr(decode_pem_string(signed_csr))
@@ -83,7 +83,7 @@ class TestCmpUtils(unittest.TestCase):
     def test_build_p10cr(self):
         # TODO this is just an easy way to test the function, but it's not a real test
         # in pycharm select `unittest` from the dropdown and press shift+f9, set breakpoints where needed
-        keypair = cryptoutils.generate_rsa_keypair()
+        keypair = cryptoutils.generate_key("rsa")
         csr = cryptoutils.generate_csr("CN=Hans")
         signed_csr = cryptoutils.sign_csr(csr, keypair)
         asn1_csr = cmputils.parse_csr(decode_pem_string(signed_csr))
