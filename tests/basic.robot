@@ -102,9 +102,7 @@ CA must reject a valid p10cr request if the transactionId is not new
 CA must reject request when the CSR signature is invalid
      [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
      [Tags]    csr    negative   crypto
-     ${key}=    Generate key    rsa    2048
-     ${csr}=    Generate csr    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
-     ${csr_signed}=    Sign csr    ${csr}    ${key}
+     ${csr_signed}    ${key}=    Generate Signed Csr    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
      ${data}=    Decode pem string   ${csr_signed}
      # needs to be changed so that it is still a Valid Asn1 Structure
      ${modified_csr_der}=  Modify csr cn  ${data}   Hans MustermanNG11

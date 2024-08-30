@@ -63,9 +63,7 @@ Server must issue a certificate when a correct p10cr is sent
 Response PKIMessage header must include all required fields
     [Documentation]    Check that the PKIMessage coming from the server includes all the required fields
     [Tags]    headers   p10cr   ak
-    ${key}=    Generate RSA keypair
-    ${csr}=    Generate CSR    CN=Hans Mustermann
-    ${csr_signed}=    Sign CSR    ${csr}    ${key}
+    ${csr_signed}    ${key}=    Generate Signed Csr    CN=Hans Mustermann
     Log             ${csr_signed}
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
@@ -164,11 +162,9 @@ CA must support p10cr with password-based-mac protection
 CA must support cr with implicitConfirm and PBMAC1 protection
     [Documentation]    Check that the server can handle CRMF requests with implicitConfirm and PBMAC1 protection
     [Tags]    headers   cr  ak
-    ${key}=    Generate RSA keypair
-    ${csr}=    Generate CSR    CN=Hans Mustermann
     # even though we compute the signature ourselves in `Build Cr From Csr`, we still need to sign the CSR here,
     # because that's how the cryptography.hazmat API works
-    ${csr_signed}=    Sign CSR    ${csr}    ${key}
+    ${csr_signed}    ${key}=    Generate Signed Csr    CN=Hans Mustermann
     Log             ${csr_signed}
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
@@ -205,11 +201,9 @@ CA must support cr with implicitConfirm and PBMAC1 protection
 CA must reject requests with signature protection but without extraCerts
     [Documentation]    Check that the server can handle CRMF requests with implicitConfirm and signature protection
     [Tags]    headers   cr  ak
-    ${key}=    Generate RSA keypair
-    ${csr}=    Generate CSR    CN=Hans Mustermann
     # even though we compute the signature ourselves in `Build Cr From Csr`, we still need to sign the CSR here,
     # because that's how the cryptography.hazmat API works
-    ${csr_signed}=    Sign CSR    ${csr}    ${key}
+    ${csr_signed}    ${key}=    Generate Signed Csr    CN=Hans Mustermann
     Log             ${csr_signed}
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
@@ -250,11 +244,9 @@ CA must reject requests with signature protection but without extraCerts
 CA must support requests with signature protection
     [Documentation]    Check that the server can handle CRMF requests with implicitConfirm and signature protection
     [Tags]    headers   cr  ak
-    ${key}=    Generate RSA keypair
-    ${csr}=    Generate CSR    CN=Hans Mustermann
     # even though we compute the signature ourselves in `Build Cr From Csr`, we still need to sign the CSR here,
     # because that's how the cryptography.hazmat API works
-    ${csr_signed}=    Sign CSR    ${csr}    ${key}
+    ${csr_signed}    ${key} =    Generate Signed Csr    CN=Hans Mustermann
     Log             ${csr_signed}
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
