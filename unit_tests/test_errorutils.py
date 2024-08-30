@@ -3,7 +3,7 @@ import unittest
 import cryptography.exceptions
 
 import cmputils
-import verifying_utils
+import verifyingutils
 from cryptoutils import generate_signed_csr
 
 
