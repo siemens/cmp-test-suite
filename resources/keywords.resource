@@ -12,12 +12,12 @@ Library   RequestsLibrary
 Library   OperatingSystem
 Library   DateTime
 Library   Collections
+Library   ../resources/asn1utils.py
 Library   ../resources/cryptoutils.py
 Library   ../resources/cmputils.py
 Library   ../resources/utils.py
-Library   ../resources/asn1utils.py
 Library   ../resources/certutils.py
-Library   ../resources/key_utils.py
+Library   ../resources/keyutils.py
 
 
 *** Keywords ***
@@ -48,8 +48,8 @@ Load and refresh PKIMessage from file
 
 Generate CSR with RSA2048 and a predefined common name
     [Documentation]    Produce a generic, valid CSR that has a correct signature
-    ${key}=    Generate keypair    rsa    2048
-    ${csr}=    Generate CSR    C=DE,L=Munich,CN=Hans Mustermann
+    ${key}=    Generate key    rsa    length=2048
+    ${csr}=    Generate CSR    ${DEFAULT_X509NAME}
     ${csr_signed}=    Sign CSR    ${csr}    ${key}
     Log    ${csr_signed}
     RETURN    ${csr_signed}
@@ -220,9 +220,9 @@ PKIMessage Has Set Either Failure Bit
     ...                       PKIMessage Has Set Either Failure Bit    | ${pki_message}    | ${1,19,6}    | ${exclusive}
     ...
     [Arguments]        ${pki_message}     ${bit_Indices}     ${exclusive}
-    ${pki_header}=       Get asn1 value   ${pki_message}    header
+    ${pki_header}=       asn1utils.Get asn1 value    ${pki_message}    header
     Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
-    ${failInfo}=        Get asn1 value    ${pki_message}    body.error.pKIStatusInfo.failInfo
+    ${failInfo}=    asn1utils.Get asn1 value    ${pki_message}    body.error.pKIStatusInfo.failInfo
     ${bit_status}=      Is either bit set in bitstring    ${failInfo}    ${bit_Indices}    ${exclusive}
     Should be true              ${bit_status}
 
@@ -276,17 +276,12 @@ Check Either FailureBit Set
     [Arguments]        ${response}     ${bit_index}    ${exclusive}    ${if_present_has_to_be_correct}=False
     # TODO    Add Optional check for Http Status Code
     ${pki_message}    Try parse pki message    ${response.content}
-    Run Keyword If   ${pki_message == None}    Log    PKIMessage parsed to `Check Exclusive FailureBit`
+    Run Keyword If   ${pki_message == None}    Log    PKIMessage parsed to `Check Exclusive FailureBit is None`
     Run Keyword If   ${pki_message == None}    RETURN
 
-
     # fails if not the right bit is set.
-    Run Keyword If    ${if_present_has_to_be_correct != False}    PKIMessage Has Set Either Failure Bit   ${pki_message}     ${bit_index}
-    Run Keyword If    ${if_present_has_to_be_correct != False}    RETURN
-
+    Run keyword if    ${if_present_has_to_be_correct != False}    PKIMessage Has Set Either Failure Bit   ${pki_message}     ${bit_index}    ${exclusive}
     # checks and then logs the if the Bit is set.
-    ${failInfo}=    Get asn1 value    ${response}    body.error.pKIStatusInfo.failInfo
+    ${failInfo}=    asn1utils.Get asn1 value    ${pki_message}    body.error.pKIStatusInfo.failInfo
     ${bit_status}=    Is either bit set in bitstring    ${failInfo}    ${bit_index}    ${exclusive}
-    Run Keyword If    ${bit_status == false}    Log    PKIMessage Failure Bit is set: ${flag}
-
-
+    Run Keyword If    ${bit_status}    Log    PKIMessage Failure Bit is set: ${failInfo}

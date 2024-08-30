@@ -102,10 +102,11 @@ CA must reject a valid p10cr request if the transactionId is not new
 CA must reject request when the CSR signature is invalid
      [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
      [Tags]    csr    negative   crypto
-     ${csr_signed}    ${key}=    Generate Signed Csr    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
+     ${csr_signed}    ${key}=    Generate Signed Csr    ${DEFAULT_X509NAME}
      ${data}=    Decode pem string   ${csr_signed}
      # needs to be changed so that it is still a Valid Asn1 Structure
-     ${modified_csr_der}=  Modify csr cn  ${data}   Hans MustermanNG11
+     ${data}=    parse_csr    ${data}
+     ${modified_csr_der}=    Modify csr cn  ${data}    Hans MustermanNG11
      Log base64       ${modified_csr_der}
      ${parsed_csr}=     Parse Csr    ${modified_csr_der}
      ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
@@ -117,15 +118,13 @@ CA must reject request when the CSR signature is invalid
 
      ${contains_msg}=    Try parse pki message    ${response.content}
 
-     IF    ${code_ok}
      #TODO needs to decided if the message should return badPop or badMessageCheck
-     ${bit_status}=    Check Either FailureBit Set    ${response}    ${either_bits}    ${1}
-     ELSE IF    ${contains_msg}
+     ${bit_status}=    Check Either FailureBit Set    ${response}    ${1, 9}    ${1}
+     IF    ${contains_msg}
      #TODO needs to decided if the message should return badPop or badMessageCheck
      Check Either FailureBit Set    ${response}    ${1, 9}    ${1}
      END
-     #Run keyword IF    not    ${contains_msg}
-     #LOG  "The Server Response did not Contained a PKI Message"
+     Run Keyword IF    not ${contains_msg}    LOG  "The Server Response did not Contained a PKI Message"
 
 
 # TODO SKip on Fail
@@ -155,4 +154,5 @@ CA must reject request when the csr is sent again
     # this check is a CA Configuration.
     # some Configuration may accept the same Request, but some will allowed it.
     Check Either FailureBit Set    ${response3}    ${26}    ${1}
+
 
