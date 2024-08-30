@@ -3,8 +3,8 @@ import unittest
 import cryptography.exceptions
 
 import cmputils
-import crypto_utils.verifying_utils
-from crypto_utils.cert_utils import generate_fresh_csr
+import verifying_utils
+from cryptoutils import generate_signed_csr
 
 
 class TestUtils(unittest.TestCase):
@@ -16,19 +16,18 @@ class TestUtils(unittest.TestCase):
         intentionally modifies the common name (CN) in the CSR. It then verifies that
         the CSR signature is invalid after modification.
 
-        :return: None
         """
 
-        csr, key = generate_fresh_csr(common_name="CN=Hans", key=None)
+        csr, key = generate_signed_csr(common_name="CN=Hans", key="rsa", pem=False)
 
         #verify if the certificate is correct
-        crypto_utils.verifying_utils.verify_csr_signature(csr, key.public_key())
-        crypto_utils.verifying_utils.verify_csr_signature(csr, None)
+        verifying_utils.verify_csr_signature(csr, key.public_key())
+        verifying_utils.verify_csr_signature(csr, None)
 
         # Modify the common name (CN) in the CSR to "Hans MusterMann"
         modified_csr = cmputils.modify_csr_cn(csr, new_cn="Hans MusterMann")
 
         # Verify the signature of the modified CSR
         with self.assertRaises(cryptography.exceptions.InvalidSignature):
-            crypto_utils.verifying_utils.verify_csr_signature(modified_csr, key.public_key())
+            verifying_utils.verify_csr_signature(modified_csr, key.public_key())
 
