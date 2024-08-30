@@ -264,6 +264,13 @@ def is_either_bit_set_in_bitstring(
         return False
 
     elif isinstance(bit_indices, str):
+
+        if "," not in bit_indices:
+            raise ValueError("is_either_bit_set_in_bitstring supports only "
+                         "',' seperated values. If a single bit check is required Please "
+                         "use is_bit_set_in_bitstring")
+
+
         # If bit_index is a string, split it into a list of integers
         values = [int(x) for x in bit_indices.strip(" ").split(",")]
         return is_either_bit_set_in_bitstring(
