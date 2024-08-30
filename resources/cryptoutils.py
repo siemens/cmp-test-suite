@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding, ec
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
 from pyasn1_alt_modules import rfc9481
+from robot.api.deco import not_keyword
 
 from keyutils import generate_key
 from typingutils import PrivateKey
@@ -138,6 +139,27 @@ def save_key(key, path, passphrase=b"11111"):
         ))
 
 
+@not_keyword
+def parse_common_name_from_str(common_name: str) -> x509.Name:
+    """
+    Parses a string representing common name attributes (e.g., "C=DE,ST=Bavaria,L=Munich,O=CMP Lab")
+    and converts it into an `x509.Name` object that can be used for X.509 certificate generation
+
+    :param common_name: str, common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
+    :returns: x509.Name
+    """
+    items = common_name.strip().split(',')
+    common_names = []
+    for item in items:
+        attribute, value = item.split('=')
+        new_entry = x509.NameAttribute(NAME_MAP[attribute], value.strip())
+        common_names.append(new_entry)
+
+
+    return x509.Name(common_names)
+
+
+
 def generate_csr(common_name: str = None, subjectAltName=None):
     """Generate a CSR based on the given string parameters
 
@@ -149,16 +171,8 @@ def generate_csr(common_name: str = None, subjectAltName=None):
 
     common_name = common_name or "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
 
-    # take a string like "C=DE,ST=Bavaria,L=Munich,O=CMP Lab" and transform it into a dictionary that maps each component to a
-    # corresponding x509.NameAttribute.
-    items = common_name.strip().split(',')
-    common_names = []
-    for item in items:
-        attribute, value = item.split('=')
-        new_entry = x509.NameAttribute(NAME_MAP[attribute], value.strip())
-        common_names.append(new_entry)
-
-    csr = csr.subject_name(x509.Name(common_names))
+    x509_name = parse_common_name_from_str(common_name)
+    csr = csr.subject_name(x509_name)
     # this produces something like
     # csr = csr.subject_name(x509.Name([
     #     x509.NameAttribute(NameOID.COUNTRY_NAME, u"DE"),
@@ -348,7 +362,7 @@ def generate_signed_csr(common_name: str, key: Union[PrivateKey, str, None] = No
     else:
         raise ValueError("the provided key must be either be the name of the generate key or a private key")
 
-    csr = generate_csr(common_name)
+    csr = generate_csr(common_name=common_name)
     csr_signed = sign_csr(csr=csr, key=key)
 
     return csr_signed, key
