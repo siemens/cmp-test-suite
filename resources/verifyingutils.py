@@ -11,7 +11,7 @@ from typingutils import PublicKey
 
 # only internally used, so strict Parsing
 @not_keyword
-def verify_cert_signature(cert: x509.Certificate, public_key: PublicKey = None):
+def verify_cert_signature(cert: x509.Certificate):
     """
     Verifies the digital signature of an X.509 certificate using the provided or extracted public key.
 
@@ -19,9 +19,6 @@ def verify_cert_signature(cert: x509.Certificate, public_key: PublicKey = None):
     :param cert:
         The certificate to verify, represented in a type that can be cast to an X.509 certificate object.
         It should be in a DER-encoded form compatible with the `x509.Certificate` type.
-    :param public_key:
-        The public key used for verifying the certificate's signature.
-        This parameter is optional. If not provided, the public key is extracted from the certificate.
 
     :raises ValueError:
         If the certificate type is not valid or casting fails.
@@ -29,9 +26,9 @@ def verify_cert_signature(cert: x509.Certificate, public_key: PublicKey = None):
         If the certificate's signature is not valid when verified against the provided or extracted public key.
     """
 
-    if public_key is None:
-        # Extract the public key from the CSR, which will be used to verify the signature.
-        public_key = cert.public_key()
+
+    # Extract the public key from the CSR, which will be used to verify the signature.
+    public_key = cert.public_key()
 
 
     # Verify the signature of the CSR.
@@ -43,7 +40,8 @@ def verify_cert_signature(cert: x509.Certificate, public_key: PublicKey = None):
     )
 
 # only internally used, so strict Parsing
-def verify_csr_signature(csr: x509.CertificateSigningRequest, public_key: PublicKey = None):
+@not_keyword
+def verify_csr_signature(csr: x509.CertificateSigningRequest):
     """
     Verifies the digital signature of an X.509 CSR using the provided or extracted public key.
 
@@ -51,20 +49,13 @@ def verify_csr_signature(csr: x509.CertificateSigningRequest, public_key: Public
     :param csr:
         The Certificate Signing Request to verify, represented in a type that can be cast to an X.509 CSR object.
         It should be in a DER-encoded form compatible with the `x509.Certificate` type.
-    :param public_key:
-        The public key used for verifying the certificate's signature.
-        This parameter is optional. If not provided, the public key is extracted from the certificate.
 
-    :raises ValueError:
-        If the csr type is not valid or casting fails.
     :raises InvalidSignature:
         If the csr's signature is not valid when verified against the provided or extracted public key.
     """
 
-    if public_key is None:
-        # Extract the public key from the CSR, which will be used to verify the signature.
-        public_key = csr.public_key()
-
+    # Extract the public key from the CSR, which will be used to verify the signature.
+    public_key = csr.public_key()
 
     # Verify the signature of the CSR.
     public_key.verify(
