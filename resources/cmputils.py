@@ -14,9 +14,10 @@ from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5
 from pyasn1_alt_modules.rfc2314 import SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
+from robot.api.deco import not_keyword
 
 from asn1utils import get_asn1_value
-from castutils import cast_asn1cert_to_cert, cast_cert_to_asn1cert, cast_csr_to_asn1csr
+from convert_pyasn1_cryptography_utils import convert_cert_crypto_to_pyasn1
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
                          compute_password_based_mac, sign_data, get_sig_oid_from_key_hash,
                          get_alg_oid_from_key_hash)
@@ -24,7 +25,8 @@ from certutils import parse_certificate
 
 # from utils import load_and_decode_pem_file
 import utils
-from typingutils import AnyCert, CsrType, PkiMsgType
+from pki_message_enums import PKIStatus
+from typingutils import PkiMsgType
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -205,42 +207,16 @@ def _prepare_implicit_confirm_general_info_structure():
 
 
 
-
-def prepare_extra_certs(certs: Union[x509.Certificate, List[AnyCert]]) -> univ.SequenceOf:
+def _prepare_extra_certs(certs: List[x509.Certificate]) -> univ.SequenceOf:
     """
     Prepares a sequence of ASN.1 encoded certificates for use in a certificate management protocol.
 
-    This function processes a single certificate or a list of certificates, where each certificate
-    can be represented as an `x509.Certificate` object, a file path, or a DER-encoded byte stream.
-    It returns an ASN.1 `SequenceOf` object containing the encoded certificates.
-
-    The function performs the following steps:
-    1. If a single `x509.Certificate` object is provided, it is wrapped in a list.
-    2. Converts each certificate in the list to an `x509.Certificate` object if it is not already one.
-    3. Transforms each `x509.Certificate` object into its ASN.1 encoded form.
-    4. Appends each encoded certificate to an ASN.1 `SequenceOf` container.
-
-    :param certs: A single certificate or a list of certificates, where each certificate can be:
-                  - an `x509.Certificate` object,
-                  - a file path to a certificate (as a string),
-                  - a DER-encoded certificate (as bytes).
-    :type certs: Union[x509.Certificate, List[Union[x509.Certificate, bytes, str]]]
+    :param certs: List of `x509.Certificate` cryptography objects.
 
     :return: An ASN.1 `SequenceOf` object containing the encoded certificates, suitable for inclusion
              in a certificate management protocol.
-    :rtype: univ.SequenceOf
     """
     MAX = float('inf')
-
-    # Wrap a single x509.Certificate into a list if it's not already a list
-    if isinstance(certs, x509.Certificate):
-        certs = [certs]
-
-    # Convert each item in the list to an x509.Certificate object
-    certs = [cast_asn1cert_to_cert(data=item ) for item in certs]
-
-    # Convert each x509.Certificate to its ASN.1 encoded form
-    certs = [cast_cert_to_asn1cert(data=item) for item in certs]
 
     # Create an ASN.1 SequenceOf container to hold the encoded certificates
     cert_list = univ.SequenceOf(componentType=rfc9480.CMPCertificate()).subtype(
@@ -250,8 +226,7 @@ def prepare_extra_certs(certs: Union[x509.Certificate, List[AnyCert]]) -> univ.S
 
     # Append each encoded certificate to the ASN.1 SequenceOf container
     for x in certs:
-        cert_list.append(x)
-
+        cert_list.append(convert_cert_crypto_to_pyasn1(x))
 
     return cert_list
 
@@ -372,7 +347,7 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
     pki_message['header'] = pki_header
 
     if certs is not None:
-        pki_message["extraCerts"] = prepare_extra_certs(certs)
+        pki_message["extraCerts"] = _prepare_extra_certs(certs)
 
     return pki_message
 
@@ -931,11 +906,11 @@ def try_to_log_pkimessage(data):
 
 
 
-def modify_csr_cn(csr_data: CsrType, new_cn: Optional[str] = "Hans Mustermann") -> bytes:
+def modify_csr_cn(csr: rfc5280.Certificate, new_cn: Optional[str] = "Hans Mustermann") -> bytes:
     """Modifies the Common Name (CN) in a CSR. Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
     Args:
-        csr_data: The DER-encoded CSR as a byte string.
+        csr: pyasn1 `rfc5280.Certificate` object.
         new_cn: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
 
     Returns:
@@ -943,9 +918,8 @@ def modify_csr_cn(csr_data: CsrType, new_cn: Optional[str] = "Hans Mustermann") 
 
     Raises:
         ValueError: If no Common Name (CN) is found in the CSR.
+        :param csr:
     """
-    # Decode the CSR from its DER-encoded form into a CertificationRequest object.
-    csr = cast_csr_to_asn1csr(csr_data)
 
     # Access the subject field from the CSR, which contains the RDNSequence.
     subject = csr["certificationRequestInfo"]["subject"]
@@ -1002,59 +976,44 @@ def pki_message_has_failure_info(data: PkiMsgType) -> bool:
     return False
 
 
-def generate_pki_status_info(bit_string: str | None = None, info_type: int = 2) -> rfc9480.PKIStatusInfo:
+def generate_pki_status_info(bit_string: str | None = None, info_type: PKIStatus = PKIStatus.rejection) -> rfc9480.PKIStatusInfo:
     """
-    A PKIStatusInfo object populated with a status and failInfo.
+    Generates a `rfc9480.PKIStatusInfo` object with the specified status and failure information.
 
-    :param bit_string: Bit string to generate a PKIStatusInfo object for.
-    :param info_type: PKIStatusInfo type.Two means rejected.
+    :param bit_string: Optional bit string representing failure information. If `None`, an empty `BitString` is used.
+                       Defaults to `None`.
+    :param info_type: The type of PKI status to set, represented by a `PKIStatus` enumeration value. Defaults to `PKIStatus.rejection`.
+    :return: A `rfc9480.PKIStatusInfo` object with the specified status and failure information.
     """
-
     # Access the pkiStatusInfo within the PKIMessage
     status_info = rfc9480.PKIStatusInfo()
 
     # Set the status (e.g., rejection which might be represented by 2 in your schema)
-    status_info.setComponentByName('status', info_type)
-
+    status_info.setComponentByName('status', info_type.value)
 
     if bit_string is None:
         fail_info = BitString()
     else:
-        # pass
         # Set the failInfo (BitString)
         fail_info = BitString(f"'{bit_string}'B")  # Example BitString value
-
 
     status_info.setComponentByName('failInfo', fail_info)
 
     return status_info
 
 
-def generate_pki_message_with_failure_info(bit_string: str | None = None) -> rfc9480.PKIMessage:
+
+@not_keyword
+def generate_pki_message_fail_info(failInfo: Union[str, None] = None) -> rfc9480.PKIMessage:
     """
-    Returns A PKIMessage object populated with a status with failInfo.
+    Generates a `rfc9480.PKIMessage` object with a failure information status.
 
-    :param bit_string: Bit stream to generate the FailureInfo types.
+    :param failInfo: Optional failure information to include in the message, represented as a bit string.
+                     Defaults to `None`.
+    :return: A `rfc9480.PKIMessage` object with the provided failure information.
     """
-
-    pki_msg: rfc9480.PKIMessage = parse_pki_message(utils.load_and_decode_pem_file(
-        "data/example-p10cr-rufus.pem"
-    ))
-
-    value = generate_pki_status_info(bit_string)
-    pki_msg["body"]["error"].setComponentByName('pKIStatusInfo', value)
-    return pki_msg
-
-
-
-def generate_pki_message_without_failure_info() -> rfc9480.PKIMessage:
-    """
-    Generates a PKIMessage object with a predefined status but without failInfo.
-    """
-
-    pki_msg: rfc9480.PKIMessage = parse_pki_message(utils.load_and_decode_pem_file("data/example-p10cr-rufus.pem"))
-
-    value = generate_pki_status_info(None)
+    pki_msg = rfc9480.PKIMessage()
+    value = generate_pki_status_info(bit_string=failInfo, info_type=PKIStatus.rejection)
     pki_msg["body"]["error"].setComponentByName('pKIStatusInfo', value)
     return pki_msg
 
