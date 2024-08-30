@@ -17,8 +17,7 @@ Library   ../resources/cmputils.py
 Library   ../resources/utils.py
 Library   ../resources/asn1utils.py
 Library   ../resources/certutils.py
-Library   ../resources/pycrypto_utils/key_utils.py
-Library   ../resources/pkimsg_utils.py
+Library   ../resources/key_utils.py
 
 
 *** Keywords ***
@@ -160,7 +159,6 @@ Certificate must be valid
 Generate Key and CSR
      [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the DER-formatted data and the key.
      ...                    If the CSR contains a broken signature, the Certificate Authority (CA) is expected to respond with an error.
-     ...
      ...                Arguments:
      ...                - ${key_algo_name}: The name of the key algorithm (e.g., RSA, ECDSA).
      ...                - ${key_params}: Parameters required for the key generation (e.g., key size, curve name).
