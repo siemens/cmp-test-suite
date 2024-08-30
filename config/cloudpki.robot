@@ -16,3 +16,4 @@ ${debug_asn1_decode_remainder}    ${True}
 ${DEFAULT_ALGORITHEM}    rsa
 ${DEFAULT_EC_CURVE}    None
 ${ALLOW_ONLY_HTTP_STATUS_CODE}    200, 201, 202, 203, 3xx, 4xx, 5xx
+${DEFAULT_X509NAME}    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
