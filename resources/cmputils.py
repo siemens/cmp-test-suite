@@ -728,10 +728,11 @@ def parse_pki_message(data: Union[bytes, rfc9480.PKIMessage], allow_cast: bool =
 
 
 def try_parse_pki_message(data: Union[bytes, rfc9480.PKIMessage, None]) -> rfc9480.PKIMessage | None:
-    """Try to parse input data to PKIMessage structure and return a pyasn1 parsed object.
+    """
+    Try to parse input data to PKIMessage structure and return a pyasn1 parsed object.
 
-    If `allow_cast` is set to `False`, the function only allows bytes as DER-Encoded
-
+    This function can be used, if the client is unsure about the Return value.
+    A Http message could just return a Status Code which indicates Failure with an Empty body.
 
     Arguments:
         data (bytes | rfc9480.PKIMessage | None): The raw input data to be parsed.
@@ -749,7 +750,7 @@ def try_parse_pki_message(data: Union[bytes, rfc9480.PKIMessage, None]) -> rfc94
         return None
     except ValueError:
         raise ValueError("try_parse_pki_message should get the following Input Data types: "
-                         "requests.Response, bytes, rfc9480.PKIMessage, None")
+                         "bytes, rfc9480.PKIMessage, None")
 
 def get_cmp_status_from_pki_message(pki_message, response_index=0):
     """Takes pyasn1 PKIMessage object and returns its status as a string
@@ -938,7 +939,6 @@ def modify_csr_cn(csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Ha
                 found_cn = True
                 attribute['value'] = char.PrintableString(new_cn)
 
-    # If no CN was found, raise an error to indicate that the modification failed.
     if not found_cn:
         raise ValueError("No Common Name (CN) found in the provided CSR.")
 
