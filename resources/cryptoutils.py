@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, hmac
@@ -8,6 +9,9 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding, ec
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
 from pyasn1_alt_modules import rfc9481
+
+from keyutils import generate_key
+from typingutils import PrivateKey
 
 # map strings used in OpenSSL-like common name notation to objects of NameOID types that
 # cryptography.x509 uses internally
@@ -119,13 +123,6 @@ def hash_name_to_instance(alg):
         raise ValueError(f"Unsupported hash algorithm: {alg}")
 
 
-def generate_rsa_keypair(length=2048):
-    return rsa.generate_private_key(public_exponent=65537, key_size=length)
-
-
-def generate_keypair(algorithm="rsa", length=2048):
-    return rsa.generate_private_key(public_exponent=65537, key_size=length)
-
 
 def save_key(key, path, passphrase=b"11111"):
     """Save key to a file
@@ -141,7 +138,7 @@ def save_key(key, path, passphrase=b"11111"):
         ))
 
 
-def generate_csr(common_name: str = None , subjectAltName=None):
+def generate_csr(common_name: str = None, subjectAltName=None):
     """Generate a CSR based on the given string parameters
 
     :param common_name: str, common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
@@ -313,3 +310,30 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
     signature = h.finalize()
     logging.info(f"Signature: {signature}")
     return signature
+
+
+def generate_signed_csr(common_name: str, key: Union[PrivateKey, str, None] = None, **params)-> Tuple[
+    bytes, PrivateKey]:
+    """
+
+    :param common_name:
+    :param key:
+    :param params: for the key generation for more information, look at `generate_key`
+    :return:
+    """
+
+    if key is None:
+        key = generate_key(algorithm="rsa", length=2048)
+    elif isinstance(key, str):
+        key = generate_key(algorithm=key, **params)
+
+    elif isinstance(key, PrivateKey):
+        pass
+    else:
+        raise ValueError("the provided key must be either be the name of the generate key or a private key")
+
+
+    csr = generate_csr(common_name)
+    csr_signed = sign_csr(csr=csr, key=key)
+
+    return csr_signed, key
