@@ -5,8 +5,6 @@ This module provides type aliases to enhance code readability, maintainability, 
 Type aliases are used to create descriptive names for commonly used types, making the codebase
 easier to understand and work with.
 
-
-
 """
 
 from typing import Union, Tuple
@@ -29,14 +27,31 @@ PublicKey = Union[RSAPublicKey, EllipticCurvePublicKey, DSAPublicKey, DHPublicKe
 CsrType = Union[bytes, x509.CertificateSigningRequest, rfc2986.CertificationRequest]
 CertType = Union[bytes, x509.Certificate, rfc9480.Certificate]
 
-# If a certificate is generated, a tuple is returned with the following type:
+# If a certificate is generated, a tuple is returned with the following type.
+# Introduced for Developer for Better Readability.
 CertGenRet = Tuple[x509.Certificate, PrivateKey]
 
+
+
 # A Value which can be parsed to a function.
+# So that a PKIMessage does not need to be in pyasn1 format, but
+# the raw bytes are also allowed to be parsed.
+# Convince for the user
 PkiMsgType = Union[rfc9480.PKIMessage, bytes]
 
-# String or int type
+
+# This is a "stringified int", to make it easier to pass numeric data
+# to RobotFramework keywords. Normally, if you want
+# to pass an integer, you have to write it as `${45}` - which hinders readability.
+# With a stringified integer, we provide
+# some syntactic sugar, enabling both notations: `${45}` and `45`.
 Strint = Union[str, int]
 
-# also allows to be loaded from file.
+
+# At different stages of RobotFramework tests we deal with
+# certificates in various forms, e.g., DER-encoded bytes,
+# PEM-encoded strings, pyasn1 structures, etc. This type
+# is used in functions that can accept either of these formats
+# and will transform them internally, as required.
 AnyCert = Union[bytes, x509.Certificate, rfc9480.Certificate, str]
+
