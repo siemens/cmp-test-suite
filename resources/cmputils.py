@@ -789,7 +789,7 @@ def get_cert_from_pki_message(pki_message, cert_number=0):
     return cert
 
 
-def parse_csr(raw_csr):
+def parse_csr(raw_csr: bytes) -> rfc6402.CertificationRequest:
     """Builds a pyasn1-structured CSR out of a raw, base-64 request."""
     csr, _ = decoder.decode(raw_csr, asn1Spec=rfc6402.CertificationRequest())
     return csr
@@ -906,7 +906,7 @@ def try_to_log_pkimessage(data):
 
 
 
-def modify_csr_cn(csr: rfc5280.Certificate, new_cn: Optional[str] = "Hans Mustermann") -> bytes:
+def modify_csr_cn(csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Hans Mustermann") -> bytes:
     """Modifies the Common Name (CN) in a CSR. Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
     Args:
