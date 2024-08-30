@@ -312,26 +312,41 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
     return signature
 
 
-def generate_signed_csr(common_name: str, key: Union[PrivateKey, str, None] = None, **params)-> Tuple[
-    bytes, PrivateKey]:
-    """
+def generate_signed_csr(common_name: str, key: Union[PrivateKey, str, None] = None, **params) -> Tuple[bytes, PrivateKey]:
+    """Generate Signed CSR.
 
-    :param common_name:
-    :param key:
-    :param params: for the key generation for more information, look at `generate_key`
-    :return:
-    """
+    Generates a signed Certificate Signing Request (CSR) for a given common name (CN).
+    Optionally, use a specified private key or generate a new one if none is provided.
 
+    If a key is not provided, a new RSA key is generated. If a string is provided, it is used as the key generation
+    algorithm (e.g., "rsa") with additional parameters. If a `PrivateKey` object is provided, it is used directly.
+
+    Args:
+    - `common_name`: The common name (CN) to include in the CSR.
+    - `key`: Optional. The private key to use for signing the CSR. Can be one of:
+        - A `PrivateKey` object from the cryptography library.
+        - A string representing the key generation algorithm (e.g., "rsa").
+        - `None` (default). If `None`, a new RSA key is generated.
+    - `params`: Additional keyword arguments to customize key generation when `key` is a string.
+
+    Returns:
+    - `csr_signed`: The signed CSR in bytes.
+    - `key`: The private key used for signing, as a cryptography library Key-Object.
+
+    Raises:
+    - `ValueError`: If the provided key is neither a valid key generation algorithm string nor a `PrivateKey` object.
+
+    Example:
+    | ${csr_signed} | ${private_key} = | Generate Signed CSR | example.com | rsa | length=2048 |
+    """
     if key is None:
         key = generate_key(algorithm="rsa", length=2048)
     elif isinstance(key, str):
         key = generate_key(algorithm=key, **params)
-
     elif isinstance(key, PrivateKey):
         pass
     else:
         raise ValueError("the provided key must be either be the name of the generate key or a private key")
-
 
     csr = generate_csr(common_name)
     csr_signed = sign_csr(csr=csr, key=key)
