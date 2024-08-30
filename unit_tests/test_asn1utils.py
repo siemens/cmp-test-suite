@@ -3,7 +3,6 @@ import unittest
 from resources import asn1utils
 from resources.cmputils import parse_pki_message
 from resources.utils import load_and_decode_pem_file
-from cmputils import generate_pki_message_with_failure_info, generate_pki_message_without_failure_info
 
 class TestASN1Utils(unittest.TestCase):
     @classmethod
