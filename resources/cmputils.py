@@ -881,34 +881,6 @@ def modify_csr_cn(csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Ha
 
     return csr
 
-
-def pki_message_has_failure_info(data: PKIMsgType) -> bool:
-    """
-    Checks if the provided data contains failure information in the PKI message.
-
-    :param data: The input data which can be a requests.Response, a rfc9480.PKIMessage, or raw bytes.
-    :return: True if the PKIMessage contains failure information, False otherwise.
-    :raises ValueError: If the input data type is not supported.
-    """
-
-    if isinstance(data, bytes):
-        data = parse_pki_message(data)
-    elif isinstance(data, rfc9480.PKIMessage):
-        pass
-    else:
-        raise ValueError("Unsupported data type provided. Expected requests.Response, rfc9480.PKIMessage, or bytes.")
-
-    try:
-        data_obj = get_asn1_value(data, "body.error.pKIStatusInfo.failInfo")
-        return data_obj.hasValue()
-    except PyAsn1Error as err:
-        pass
-    except Exception as e:
-        logging.info(e)
-
-    return False
-
-
 def _generate_pki_status_info(bit_string: str | None = None, info_type: PKIStatus = PKIStatus.rejection) -> rfc9480.PKIStatusInfo:
     """
     Generates a `rfc9480.PKIStatusInfo` object with the specified status and failure information.
