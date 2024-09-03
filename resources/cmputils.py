@@ -2,20 +2,16 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Union, List, Optional
+from typing import Union, Optional
 
-import requests
-from cryptography import x509
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
-from pyasn1.type import univ, useful, constraint, base, tag, char
+from pyasn1.type import univ, useful, constraint, base, char
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
-from pyasn1.type.univ import BitString
 from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211, rfc2986, rfc2459
 from pyasn1_alt_modules.rfc2314 import SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
-from robot.api.deco import not_keyword
 
 from asn1utils import get_asn1_value
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
@@ -690,7 +686,6 @@ def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
         raise ValueError("Failed to parse PKIMessage: %s ..." % str(err)[:100])
 
     return pki_message
-
 
 
 def get_cmp_status_from_pki_message(pki_message, response_index=0):

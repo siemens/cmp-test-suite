@@ -5,8 +5,6 @@ store them and retrieve them when needed.
 
 """
 
-from typing import Tuple
-
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import dh, rsa, ec, dsa, ed25519

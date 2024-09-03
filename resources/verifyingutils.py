@@ -4,11 +4,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import padding
 from robot.api.deco import not_keyword
 
-from typingutils import PublicKey
-
 # TODO: Was changed in next Merge!
-
-
 
 @not_keyword
 def verify_cert_signature(cert: x509.Certificate):
