@@ -77,12 +77,12 @@ class TestASN1Utils(unittest.TestCase):
 
         default_str = "0" * 26
 
-        not_set = get_asn1_value(cmputils.generate_pki_status_info(bit_string=default_str), "failInfo")
+        not_set = get_asn1_value(cmputils._generate_pki_status_info(bit_string=default_str), "failInfo")
 
         self.assertFalse(is_bit_set(not_set, "badPOP,badMessageCheck"), msg='Should is bit set should not return True')
 
 
-        not_set = get_asn1_value(cmputils.generate_pki_status_info(bit_string=default_str), "failInfo")
+        not_set = get_asn1_value(cmputils._generate_pki_status_info(bit_string=default_str), "failInfo")
         default_str_list = list(default_str)
 
         # Change the characters at the desired indices
@@ -91,7 +91,7 @@ class TestASN1Utils(unittest.TestCase):
 
         # Join the list back into a string
         default_str = "".join(default_str_list)
-        set_both_values = get_asn1_value(cmputils.generate_pki_status_info(bit_string=default_str), "failInfo")
+        set_both_values = get_asn1_value(cmputils._generate_pki_status_info(bit_string=default_str), "failInfo")
 
         self.assertFalse(is_bit_set(set_both_values, "badPOP,badMessageCheck", exclusive=True), msg='Should is bit set should not return True')
         self.assertTrue(is_bit_set(set_both_values, "badPOP,badMessageCheck", exclusive=False), msg='Should is bit set should not return True')
