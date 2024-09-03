@@ -4,6 +4,7 @@ help:
 	@echo  '  teslog       - Run all compliance tests, store results in timestamped subirectories in out/'
 	@echo  '  doc          - Produce documentation files and store them in doc/'
 	@echo  '  unittest     - Run unit tests for the test suite itself'
+	@echo  '  verify       - Run automated code quality checks'
 	@echo  ''
 
 
@@ -36,3 +37,7 @@ docs:
 	python -m robot.libdoc resources/asn1utils.py doc/asn1utils.html
 	python -m robot.libdoc resources/certutils.py doc/certutils.html
 	python -m robot.testdoc tests/ doc/tests-suites.html
+
+
+verify:
+	ruff check

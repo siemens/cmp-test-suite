@@ -1,0 +1,12 @@
+src = ["resources"] #, "unit_tests"]
+exclude = ["venv*", "unit_tests"]
+line-length = 120
+respect-gitignore = true
+
+[lint]
+select = [
+#     "F",  # pyflakes
+#    "E", "W",  # Pycodestyle
+    "I001", # isort
+    "D",  # docstring checker
+]
