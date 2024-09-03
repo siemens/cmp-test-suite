@@ -9,7 +9,7 @@ from typingutils import PublicKey
 # TODO: Was changed in next Merge!
 
 
-# only internally used, so strict Parsing
+
 @not_keyword
 def verify_cert_signature(cert: x509.Certificate):
     """
