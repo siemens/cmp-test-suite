@@ -17,8 +17,7 @@ basics:
   script:
     - ruff check
   tags:
-    - linux
-    - docker
+    - LINUX-DOCKER
 
 
 # A more thorough analysis of the code
@@ -30,5 +29,4 @@ pylint:
   script:
     - pylint resources
   tags:
-    - linux
-    - docker
+    - LINUX-DOCKER
