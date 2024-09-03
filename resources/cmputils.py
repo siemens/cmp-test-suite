@@ -4,6 +4,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Union, List, Optional
 
+import requests
 from cryptography import x509
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
@@ -17,7 +18,6 @@ from pyasn1_alt_modules.rfc2511 import CertTemplate
 from robot.api.deco import not_keyword
 
 from asn1utils import get_asn1_value
-from convert_pyasn1_cryptography_utils import convert_cert_crypto_to_pyasn1
 from cryptoutils import (compute_hmac, compute_pbmac1, get_hash_from_signature_oid, compute_hash,
                          compute_password_based_mac, sign_data, get_sig_oid_from_key_hash,
                          get_alg_oid_from_key_hash)
@@ -25,8 +25,8 @@ from certutils import parse_certificate
 
 # from utils import load_and_decode_pem_file
 import utils
-from pki_message_enums import PKIStatus
-from typingutils import PkiMsgType
+from cmp_enums import PKIStatus
+from typingutils import PKIMsgType
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -690,7 +690,7 @@ def csr_extend_subject(csr, rdn):
     return csr
 
 
-def parse_pki_message(data: Union[bytes, rfc9480.PKIMessage], allow_cast: bool = False) -> rfc9480.PKIMessage:
+def parse_pki_message(data: bytes, allow_cast: bool = False) -> rfc9480.PKIMessage:
     """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
 
     If `allow_cast` is set to `False`, the function only allows bytes as DER-Encoded
@@ -727,30 +727,27 @@ def parse_pki_message(data: Union[bytes, rfc9480.PKIMessage], allow_cast: bool =
     return pki_message
 
 
-def try_parse_pki_message(data: Union[bytes, rfc9480.PKIMessage, None]) -> rfc9480.PKIMessage | None:
-    """
-    Try to parse input data to PKIMessage structure and return a pyasn1 parsed object.
+def request_contains_pki_message(data: requests.Response) -> False:
+    """Checks if a server returned a `PKIMessage` on failure.
 
-    This function can be used, if the client is unsure about the Return value.
-    A Http message could just return a Status Code which indicates Failure with an Empty body.
+    The server might respond with an error status code, and in such cases, this function attempts to parse the response as a `PKIMessage`.
+    If the server response is empty or parsing of the `pyasn1` `PKIMessage` structure fails, the function returns `False`.
 
     Arguments:
-        data (bytes | rfc9480.PKIMessage | None): The raw input data to be parsed.
+        data (requests.Response): The Response object.
 
     Returns:
         pyasn1 parsed object: Represents the PKIMessage structure or None
 
     """
-    if data is None:
+    if not data.content:
        return None
 
     try:
-        return parse_pki_message(data, allow_cast=False)
+         parse_pki_message(data.content, allow_cast=False)
+         return True
     except PyAsn1Error as err:
-        return None
-    except ValueError:
-        raise ValueError("try_parse_pki_message should get the following Input Data types: "
-                         "bytes, rfc9480.PKIMessage, None")
+        return False
 
 def get_cmp_status_from_pki_message(pki_message, response_index=0):
     """Takes pyasn1 PKIMessage object and returns its status as a string
@@ -851,7 +848,7 @@ def find_oid_in_general_info(pki_message, oid):
     :param oid: str, OID we're looking for
     :returns: bool
     """
-    # generalInfo     [8] SEQUENCE SIZE (1..MAX) OF InfoTypeAndValue     OPTIONAL
+    # generalInfo [8] SEQUENCE SIZE (1..MAX) OF InfoTypeAndValue OPTIONAL
     # generalInfo is a sequence, we iterate through it and look for the OID we need
     general_info = pki_message['header']['generalInfo']
     oid = univ.ObjectIdentifier(oid)
@@ -907,7 +904,7 @@ def try_to_log_pkimessage(data):
 
 
 
-def modify_csr_cn(csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Hans Mustermann") -> bytes:
+def modify_csr_cn(csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Hans Mustermann") -> rfc9480.CertificationRequest:
     """Modifies the Common Name (CN) in a CSR. Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
     Args:
@@ -942,14 +939,11 @@ def modify_csr_cn(csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Ha
     if not found_cn:
         raise ValueError("No Common Name (CN) found in the provided CSR.")
 
-    # Re-encode the modified CertificationRequest object back into DER format.
-    modified_csr_der = encoder.encode(csr)
 
-    # Return the DER-encoded CSR with the modified CN.
-    return modified_csr_der
+    return csr
 
 
-def pki_message_has_failure_info(data: PkiMsgType) -> bool:
+def pki_message_has_failure_info(data: PKIMsgType) -> bool:
     """
     Checks if the provided data contains failure information in the PKI message.
 
@@ -971,7 +965,7 @@ def pki_message_has_failure_info(data: PkiMsgType) -> bool:
     except PyAsn1Error as err:
         pass
     except Exception as e:
-        print(e)
+        logging.info(e)
 
     return False
 
@@ -992,10 +986,10 @@ def generate_pki_status_info(bit_string: str | None = None, info_type: PKIStatus
     status_info.setComponentByName('status', info_type.value)
 
     if bit_string is None:
-        fail_info = BitString()
+        fail_info = rfc9480.PKIFailureInfo()
     else:
         # Set the failInfo (BitString)
-        fail_info = BitString(f"'{bit_string}'B")  # Example BitString value
+        fail_info = rfc9480.PKIFailureInfo(f"'{bit_string}'B")  # Example BitString value
 
     status_info.setComponentByName('failInfo', fail_info)
 
@@ -1017,7 +1011,7 @@ def generate_pki_message_fail_info(failInfo: Union[str, None] = None) -> rfc9480
     pki_msg["body"]["error"].setComponentByName('pKIStatusInfo', value)
     return pki_msg
 
-def contains_pki_failure_info(data: PkiMsgType) -> bool:
+def contains_pki_failure_info(data: PKIMsgType) -> bool:
     """Check if the provided input contains PKI failure information.
 
 
