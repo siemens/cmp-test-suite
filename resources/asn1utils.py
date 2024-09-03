@@ -285,8 +285,8 @@ def is_bit_set(asn1_bitstring: BitString,
         Is bit set       ${bit_index}    ${exclusive}
         | Is Bit Set | ${failInfo}  | 26                    | ${True} |
         | Is Bit Set | ${failInfo}  | ${26}                    | ${True} |
-        | Is Bit Set | failureInfo | duplicateCertReq      | ${True} |
-        | Is Bit Set | failureInfo | 1, 9               | ${True} |
+        | Is Bit Set | ${failInfo} | duplicateCertReq      | ${True} |
+        | Is Bit Set | ${failInfo} | 1, 9               | ${True} |
     """
 
     logging.info(f"exclusive: {exclusive} {type(exclusive)}")
