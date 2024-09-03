@@ -233,10 +233,10 @@ def _is_either_bit_set_in_bitstring(
         exclusive: bool = True,
 ) -> bool:
     """
-    Checks if a one of the provided bit indices are set in a BitString `pyasn1` `BitString` object.
+    Checks if one of the provided bit indices are set in a `pyasn1` `univ.BitString` object.
     Either exclusive or not.
 
-    :param asn1_bitstring: `pyasn1` `BitString` object.
+    :param asn1_bitstring: `pyasn1` `univ.BitString` object.
     :param bit_indices: Indices a List of allowed Positions to be set.
     :param exclusive: `bool` indicating if only one of the indices must be `True`
           or if any or all of them can be set to `False`.Default is `True`.
@@ -258,18 +258,18 @@ def is_bit_set(asn1_bitstring: BitString,
     """
     Verifies if a specific bit or specific bits are set within a given `BitString` object.
 
-    This keyword checks if a specific bit or bits, defined by their indices or names,
+    This function checks if a specific bit or bits, defined by their indices or names,
     are set within a provided `BitString` object. It supports both integer index
     and named bit indices (comma-separated). The check can be performed either
     exclusively or non-exclusively, depending on the `exclusive` parameter.
 
     Arguments:
-        - asn1_bitstring: `pyasn1` `univ.BitString` object to be checked.
-        - bit_indices: A `str` or `int` representing the bit index or indices to check.
+        - asn1_bitstring: A `pyasn1` `univ.BitString` object to be checked.
+        - bit_indices: A `str` representing the bit index or indices to check.
           This can be:
             - An integer index for a single bit check.
             - A comma-separated string of integers for multiple bit indices.
-            - A comma-separated string of bit names.
+            - A comma-separated string of human-readable bit names.
         - exclusive: A `bool` indicating if only one bit must be set (`True`)
           or if any of them can be set (`False`). Default is `True`.
 
@@ -278,15 +278,14 @@ def is_bit_set(asn1_bitstring: BitString,
           parameter; otherwise, `False`.
 
     Raises:
-        - ValueError: If any of the provided bit indices exceed the maximum value
-          allowed in the `BitString` or if the object is a named type.
+        - ValueError: If any of the provided human-readable names are not part of the options.
+        - ValueError: If a `pyasn1` `schema` object is provided.
 
     Examples:
-        Is bit set       ${bit_index}    ${exclusive}
-        | Is Bit Set | ${failInfo}  | 26                    | ${True} |
-        | Is Bit Set | ${failInfo}  | ${26}                    | ${True} |
-        | Is Bit Set | ${failInfo} | duplicateCertReq      | ${True} |
-        | Is Bit Set | ${failInfo} | 1, 9               | ${True} |
+        | Is Bit Set | ${failInfo} | 26                  | ${True} |
+        | Is Bit Set | ${failInfo} | ${26}               | ${True} |
+        | Is Bit Set | ${failInfo} | duplicateCertReq    | ${True} |
+        | Is Bit Set | ${failInfo} | 1, 9                | ${True} |
     """
 
     logging.info(f"exclusive: {exclusive} {type(exclusive)}")
@@ -301,7 +300,7 @@ def is_bit_set(asn1_bitstring: BitString,
 
     elif isinstance(bit_indices, str):
 
-        # allows not only int to be parsed but also the correct names.
+        # allows not only int to be parsed but also the correct human-readable-names.
         if bit_indices.replace(",", "").strip(" ").isdigit():
             if "," in bit_indices:
                 values = [int(x) for x in bit_indices.strip(" ").split(",")]
@@ -313,7 +312,7 @@ def is_bit_set(asn1_bitstring: BitString,
         else:
             # gets the names of as single values.
             values = bit_indices.strip(" ").split(",")
-            # gets the indices to the corresponding names.
+            # gets the indices to the corresponding human-readable-names.
             names = list(asn1_bitstring.namedValues.keys())
             try:
                bit_indices = [names.index(val) for val in values]
