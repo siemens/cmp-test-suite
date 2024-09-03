@@ -5,12 +5,7 @@ from base64 import b64decode, b64encode
 from collections import Counter
 from itertools import combinations
 
-import requests
-from pyasn1.error import PyAsn1Error
-
 from pyasn1.type import base
-
-from cmputils import parse_pki_message
 
 
 def nonces_must_be_diverse(nonces, minimal_hamming_distance=10):
