@@ -134,34 +134,6 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
     return private_key
 
 
-def generate_keypair(algorithm: str = "rsa", **kwargs) -> Tuple[PrivateKey, PublicKey]:
-    """
-    Generates a cryptographic key pair based on the specified algorithm.
-
-    This function is a wrapper around `generate_key`, returning both the private and public keys for algorithms
-    that support public/private key pairs (e.g., RSA, DSA, ECDSA, ECDH, Ed25519, DH).
-
-    Arguments:
-    - algorithm (str): The cryptographic algorithm to use for key generation. Supported values are the same as in `generate_key`.
-    - **kwargs: Additional parameters specific to the algorithm. Refer to `generate_key` for details.
-
-    Returns:
-    - (private_key, public_key): A tuple containing the generated private and public keys.
-
-    Raises:
-    - ValueError: If the specified algorithm is not supported or if invalid parameters are provided.
-
-    Example usage:
-    ```python
-    private_key, public_key = generate_keypair(algorithm="rsa", length=2048)
-    private_key, public_key = generate_keypair(algorithm="ecdsa", curve="secp384r1")
-    ```
-    """
-    private_key = generate_key(algorithm, **kwargs)
-    public_key = private_key.public_key()
-    return private_key, public_key
-
-
 def load_private_key_from_file(filepath: str, password: str = None) -> PrivateKey:
     """Load a cryptographic Private key from a PEM file.
 
