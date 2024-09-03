@@ -151,6 +151,6 @@ CA must reject request when the csr is sent again
     # this check is a CA Configuration.
     # some Configuration may accept the same Request, but some will allowed it.
     ${pkimessage}=    Parse pki message    ${response3.content}
-    PKIMessage Has Set Failure Bit or Bits    ${pkimessage}    duplicateCertReq,badMessageCheck    exclusive=${1}
+    PKIMessage Has Set Failure Bit or Bits    ${pkimessage}    duplicateCertReq,badMessageCheck    exclusive=${True}
 
 
