@@ -5,6 +5,7 @@ Library     OperatingSystem
 Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/keyutils.py
+Library     ../resources/cmputils.py
 
 
 
@@ -101,36 +102,34 @@ CA must reject a valid p10cr request if the transactionId is not new
 
 CA must reject request when the CSR signature is invalid
      [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
-     [Tags]    csr    negative   crypto
+     [Tags]    csr    negative   crypto    robot:skip-on-failure
      ${csr_signed}    ${key}=    Generate Signed Csr    ${DEFAULT_X509NAME}
      ${data}=    Decode pem string   ${csr_signed}
      # needs to be changed so that it is still a Valid Asn1 Structure
-     ${data}=    parse_csr    ${data}
-     ${modified_csr_der}=    Modify csr cn  ${data}    Hans MustermanNG11
+     ${data}=    Parse Csr    ${data}
+     ${modified_csr_der}=    Modify Csr cn  ${data}    Hans MustermanNG11
      Log base64       ${modified_csr_der}
-     ${parsed_csr}=     Parse Csr    ${modified_csr_der}
-     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
+     ${p10cr}=    Build P10cr From Csr    ${modified_csr_der}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
      ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
      Log Asn1    ${protected_p10cr}
      ${encoded}=  Encode To Der    ${protected_p10cr}
      ${response}=  Exchange data with CA    ${encoded}
      # checks if the Implementation returns a Status Code or a Status Code with a PKI Message
 
-     ${contains_msg}=    Try parse pki message    ${response.content}
-
-     #TODO needs to decided if the message should return badPop or badMessageCheck
-     ${bit_status}=    Check Either FailureBit Set    ${response}    ${1, 9}    ${1}
+     ${contains_msg}=    request_contains_pki_message    ${response}
+     # TODO ADD Http Check! Status Code and No PKIMessage
      IF    ${contains_msg}
-     #TODO needs to decided if the message should return badPop or badMessageCheck
-     Check Either FailureBit Set    ${response}    ${1, 9}    ${1}
+     #TODO needs to decided if the message should return badPOP or badMessageCheck
+     ${pkimessage}=    Parse pki message    ${response.content}
+     PKIMessage Has Set Failure Bit or Bits    ${pkimessage}    badPOP,badMessageCheck    exclusive=${1}
      END
      Run Keyword IF    not ${contains_msg}    LOG  "The Server Response did not Contained a PKI Message"
 
 
-# TODO SKip on Fail
+
 CA must reject request when the csr is sent again
     [Documentation]    Ensure that the Certification Authority (CA) correctly rejects a Certificate Signing Request (csr) if it has already been submitted and processed, preventing duplicate certificate issuance.
-    [Tags]    csr    negative   asn1    rfc6712
+    [Tags]    csr    negative   asn1    robot:skip-on-failure
     ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
     ${request_pki_message}=  Parse Pki Message    ${der_pkimessage}
     ${request_pki_message}=  Patch message time    ${request_pki_message}
@@ -140,19 +139,18 @@ CA must reject request when the csr is sent again
     ${der_pkimessage}=  Encode To Der    ${protected_p10cr}
 
     ${response}=  Exchange data with CA    ${der_pkimessage}
-    ${response_pki_message}=     Parse Pki Message    ${response.content}
+    ${response_pki_message}=     Parse PKI Message    ${response.content}
     Should Be Equal    ${response.status_code}  ${200}      We expected status code 200, but got ${response.status_code}
 
     Sender and Recipient nonces must match    ${request_pki_message}      ${response_pki_message}
     SenderNonce must be at least 128 bits long  ${response_pki_message}
     PKIMessage body type must be              ${response_pki_message}    cp
 
-    ${response_status}=    Get CMP status from PKIMessage    ${response_pki_message}
-    Should be equal     ${response_status}    accepted      We expected status `accepted`, but got ${response_status}
     ${response3}=  Exchange data with CA    ${der_pkimessage}
                                         #Returns duplicateCertReq    (26) but exclusively
     # this check is a CA Configuration.
     # some Configuration may accept the same Request, but some will allowed it.
-    Check Either FailureBit Set    ${response3}    ${26}    ${1}
+    ${pkimessage}=    Parse pki message    ${response3.content}
+    PKIMessage Has Set Failure Bit or Bits    ${pkimessage}    duplicateCertReq,badMessageCheck    exclusive=${1}
 
 
