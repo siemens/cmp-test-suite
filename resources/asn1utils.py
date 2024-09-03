@@ -49,7 +49,7 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 |       type=2.5.4.10
 """
 import logging
-from typing import Union, List
+from typing import List
 
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type.univ import BitString

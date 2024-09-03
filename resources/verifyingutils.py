@@ -1,5 +1,3 @@
-from typing import Union
-
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import padding
 from robot.api.deco import not_keyword

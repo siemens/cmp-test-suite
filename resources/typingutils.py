@@ -9,7 +9,6 @@ easier to understand and work with.
 
 from typing import Union, Tuple
 
-import requests
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey, DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
