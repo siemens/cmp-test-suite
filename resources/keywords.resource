@@ -183,23 +183,23 @@ PKIMessage must contain implicitConfirm extension
     Should Be True     ${result}    The implicitConfirm extension was not found in the message
 
 
-
 PKIMessage Has Set Failure Bit or Bits
-    [Documentation]    This keyword checks for a specific single failure bit in the `failInfo` field of the `PKIStatusInfo` structure within a `PKIMessage`.
+    [Documentation]    This keyword checks for a specific failure bit or bits in the `failInfo` field of the `PKIStatusInfo` structure within a `PKIMessage`.
     ...                The check can be configured to verify if the bit is set exclusively (only one of the Indices Option is set or
-    ...                   or non-exclusively (at least one bit is set).
+    ...                or non-exclusively (at least one bit is set).
     ...                Arguments:
     ...                - `${pki_message}`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
-    ...                - `${bit_index}`: The index of the bit to check within the `failInfo` field.
-    ...                - `${exclusive}`: Determines whether other bits can also be set. If set to true, only the specified bit index will be allowed.
+    ...                - `${bit_indices_or_index}`:The index or indices of the bits to check within the `failInfo` field
+    ...                - `${exclusive}`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be permitted.
+    ...                                 However, if multiple indices are provided, only one of them can be set.
     ...
     ...                Example Usage:
     ...                | ${bit_status}=    PKIMessage Has Set Either Failure Bit    | ${pki_message}    | ${badAlg}    |    exclusive=${True}
     ...
-    [Arguments]        ${pki_message}     ${bit_index}    ${exclusive}=${True}
+    [Arguments]        ${pki_message}     ${bit_indices_or_index}    ${exclusive}=${True}
     ${pki_header}=       asn1utils.Get asn1 value   ${pki_message}    header
     Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
     ${failInfo}=        asn1utils.Get asn1 value    ${pki_message}    body.error.pKIStatusInfo.failInfo
-    ${bit_status}=      Is bit set    ${failInfo}    ${bit_index}    ${exclusive}
+    ${bit_status}=      Is bit set    ${failInfo}    ${bit_indices_or_index}    ${exclusive}
     Should be true    ${bit_status}
 
