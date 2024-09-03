@@ -1,4 +1,4 @@
-src = ["resources"] #, "unit_tests"]
+src = ["resources"]
 exclude = ["venv*", "unit_tests"]
 line-length = 120
 respect-gitignore = true
@@ -7,6 +7,6 @@ respect-gitignore = true
 select = [
 #     "F",  # pyflakes
 #    "E", "W",  # Pycodestyle
-    "I001", # isort
+#    "I001", # isort
     "D",  # docstring checker
 ]
