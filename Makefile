@@ -2,7 +2,7 @@ help:
 	@echo  'Commands:'
 	@echo  '  test         - Run all compliance tests (results will be in out/)'
 	@echo  '  teslog       - Run all compliance tests, store results in timestamped subirectories in out/'
-	@echo  '  docs          - Produce documentation files and store them in doc/'
+	@echo  '  doc          - Produce documentation files and store them in doc/'
 	@echo  '  unittest     - Run unit tests for the test suite itself '
 	@echo  '  autoformat   - Run ruff on all the source files, to resolve all issues automatically '
 	@echo  '  verify  - Run a bunch of checks, to see if there are any obvious deficiencies in the code '
@@ -32,7 +32,7 @@ ifeq ($(env), ejbca)
 	$(MAKE) -f Makefile_EJBCA start_EJBCA
 endif
 
-docs:
+doc:
 	python -m robot.libdoc resources/keywords.resource doc/keywords.html
 	python -m robot.libdoc resources/cryptoutils.py doc/cryptoutils.html
 	python -m robot.libdoc resources/cmputils.py doc/cmputils.html
