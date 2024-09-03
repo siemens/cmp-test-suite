@@ -5,7 +5,12 @@ from base64 import b64decode, b64encode
 from collections import Counter
 from itertools import combinations
 
+import requests
+from pyasn1.error import PyAsn1Error
+
 from pyasn1.type import base
+
+from cmputils import parse_pki_message
 
 
 def nonces_must_be_diverse(nonces, minimal_hamming_distance=10):
@@ -197,3 +202,26 @@ def pem_to_der(pem_data: str | bytes) -> bytes:
     der_data = base64.b64decode(pem_body)
 
     return der_data
+
+
+def request_contains_pki_message(data: requests.Response) -> False:
+    """Checks if a server returned a `PKIMessage` on failure.
+
+    The server might respond with an error status code, and in such cases, this function attempts to parse the response as a `PKIMessage`.
+    If the server response is empty or parsing of the `pyasn1` `PKIMessage` structure fails, the function returns `False`.
+
+    Arguments:
+        data (requests.Response): The Response object.
+
+    Returns:
+        pyasn1 parsed object: Represents the PKIMessage structure or None
+
+    """
+    if not data.content:
+       return None
+
+    try:
+         parse_pki_message(data.content)
+         return True
+    except PyAsn1Error as err:
+        return False
