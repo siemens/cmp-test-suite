@@ -205,31 +205,6 @@ def _prepare_implicit_confirm_general_info_structure():
     return general_info_wrapper
 
 
-
-
-def _prepare_extra_certs(certs: List[x509.Certificate]) -> univ.SequenceOf:
-    """
-    Prepares a sequence of ASN.1 encoded certificates for use in a certificate management protocol.
-
-    :param certs: List of `x509.Certificate` cryptography objects.
-
-    :return: An ASN.1 `SequenceOf` object containing the encoded certificates, suitable for inclusion
-             in a certificate management protocol.
-    """
-    MAX = float('inf')
-
-    # Create an ASN.1 SequenceOf container to hold the encoded certificates
-    cert_list = univ.SequenceOf(componentType=rfc9480.CMPCertificate()).subtype(
-        subtypeSpec=constraint.ValueSizeConstraint(1, MAX)).subtype(
-        explicitTag=tag.Tag(tag.tagClassContext,
-                            tag.tagFormatSimple, 1))
-
-    # Append each encoded certificate to the ASN.1 SequenceOf container
-    for x in certs:
-        cert_list.append(convert_cert_crypto_to_pyasn1(x))
-
-    return cert_list
-
 def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
                          omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
                          implicit_confirm=False, certs=None):
