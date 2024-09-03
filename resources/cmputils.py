@@ -237,7 +237,7 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
     set later.
 
     :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMMessage
-    :param certs extraCerts parsed to the PKIMessage structure, for out of bounds means or signing.
+    :param certs extraCerts parsed to the PKIMessage structure, for out-of-bounds means or signing.
     :returns: pyasn1 PKIMessage structure without a body"""
     # since pyasn1 does not give us a way to remove an attribute from a structure after it was added to it,
     # we proactively check whether a field should be omitted (e.g. when crafting bad inputs) and skip adding
@@ -690,16 +690,11 @@ def csr_extend_subject(csr, rdn):
     return csr
 
 
-def parse_pki_message(data: bytes, allow_cast: bool = False) -> rfc9480.PKIMessage:
+def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
     """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
 
-    If `allow_cast` is set to `False`, the function only allows bytes as DER-Encoded
-
-
     Arguments:
-        data (bytes | rfc9480.PKIMessage): The raw input data to be parsed.
-        allow_cast (bool): Specifies whether to allow direct return of the input if it is of type `rfc9480.PKIMessage`.
-                           Defaults to `False`.
+        data (bytes): The raw input data to be parsed.
 
     Returns:
         pyasn1 parsed object: Represents the PKIMessage structure.
@@ -707,11 +702,6 @@ def parse_pki_message(data: bytes, allow_cast: bool = False) -> rfc9480.PKIMessa
     Raises:
         ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
     """
-    if allow_cast:
-        if isinstance(data, bytes):
-            pass
-        elif isinstance(data, rfc9480.PKIMessage):
-            return data
 
     if not isinstance(data, bytes):
         raise ValueError("Input must be of type bytes or convertible to bytes.")
