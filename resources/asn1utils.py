@@ -264,7 +264,7 @@ def is_bit_set(asn1_bitstring: BitString,
     exclusively or non-exclusively, depending on the `exclusive` parameter.
 
     Arguments:
-        - asn1_bitstring: `pyasn1` `BitString` object to be checked.
+        - asn1_bitstring: `pyasn1` `univ.BitString` object to be checked.
         - bit_indices: A `str` or `int` representing the bit index or indices to check.
           This can be:
             - An integer index for a single bit check.
@@ -315,7 +315,6 @@ def is_bit_set(asn1_bitstring: BitString,
             values = bit_indices.strip(" ").split(",")
             # gets the indices to the corresponding names.
             names = list(asn1_bitstring.namedValues.keys())
-            # TODO Mabye accept lower case
             try:
                bit_indices = [names.index(val) for val in values]
             except ValueError:
