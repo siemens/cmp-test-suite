@@ -37,7 +37,7 @@ CertGenRet = Tuple[x509.Certificate, PrivateKey]
 # So that a PKIMessage does not need to be in pyasn1 format, but
 # the raw bytes are also allowed to be parsed.
 # Convince for the user
-PkiMsgType = Union[rfc9480.PKIMessage, bytes]
+PKIMsgType = Union[rfc9480.PKIMessage, bytes]
 
 
 # This is a "stringified int", to make it easier to pass numeric data
@@ -54,4 +54,3 @@ Strint = Union[str, int]
 # is used in functions that can accept either of these formats
 # and will transform them internally, as required.
 AnyCert = Union[bytes, x509.Certificate, rfc9480.Certificate, str]
-
