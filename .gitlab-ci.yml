@@ -1,0 +1,38 @@
+image: python:3.12
+
+variables:
+  http_proxy: "$CODE_PROXY"
+  https_proxy: "$CODE_PROXY"
+  no_proxy: "$CODE_NO_PROXY"
+
+
+before_script:
+  - pip install -r requirements.txt
+  - pip install ruff pylint
+
+
+stages:
+  - Code style
+  - Static analysis
+
+
+# Check code style, formatting, import sort order, etc.
+basics:
+  stage: Code style
+  allow_failure: true  # for now, but we will gradually raise the bar
+  script:
+    - ruff check
+  tags:
+    - LINUX-DOCKER
+
+
+# A more thorough analysis of the code
+pylint:
+  stage: Static analysis
+  # because pylint is very strict, for now we allow this check to fail,
+  # but in the future we should strive towards making pylint 100% happy
+  allow_failure: true
+  script:
+    - pylint resources
+  tags:
+    - LINUX-DOCKER
