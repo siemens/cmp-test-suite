@@ -847,15 +847,14 @@ def modify_csr_cn(csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Ha
     """Modifies the Common Name (CN) in a CSR. Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
     Args:
-        csr: pyasn1 `rfc5280.Certificate` object.
+        csr: pyasn1 `rfc9480.CertificationRequest` object.
         new_cn: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
 
     Returns:
-        The DER-encoded CSR with the modified CN.
+         returns the modified `rfc9480.CertificationRequest` object.
 
     Raises:
         ValueError: If no Common Name (CN) is found in the CSR.
-        :param csr:
     """
 
     # Access the subject field from the CSR, which contains the RDNSequence.
