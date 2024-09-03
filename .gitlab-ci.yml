@@ -1,5 +1,11 @@
 image: python:3.12
 
+variables:
+  http_proxy: "$CODE_PROXY"
+  https_proxy: "$CODE_PROXY"
+  no_proxy: "$CODE_NO_PROXY"
+
+
 before_script:
   - pip install -r requirements.txt
   - pip install ruff pylint
