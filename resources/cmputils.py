@@ -955,18 +955,3 @@ def generate_pki_message_fail_info(failInfo: Union[str, None] = None) -> rfc9480
     pki_msg["body"]["error"].setComponentByName('pKIStatusInfo', value)
     return pki_msg
 
-def contains_pki_failure_info(data: PKIMsgType) -> bool:
-    """Check if the provided input contains PKI failure information.
-
-
-    Arguments:
-        data (requests.Response | rfc9480.PKIMessage | bytes): The input data to be checked.
-
-    Returns:
-        bool: `True` if the PKI failure information is present, `False` otherwise.
-
-    Example:
-        | ${is_failure_present}= | Contains PKI Failure Info | ${response} |
-    """
-    pki_msg = parse_pki_message(data, allow_cast=True)
-    return get_asn1_value(pki_msg, "body.error.pKIStatusInfo.failInfo").hasValue()
