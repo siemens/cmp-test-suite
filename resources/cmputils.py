@@ -914,7 +914,7 @@ def pki_message_has_failure_info(data: PKIMsgType) -> bool:
     return False
 
 
-def generate_pki_status_info(bit_string: str | None = None, info_type: PKIStatus = PKIStatus.rejection) -> rfc9480.PKIStatusInfo:
+def _generate_pki_status_info(bit_string: str | None = None, info_type: PKIStatus = PKIStatus.rejection) -> rfc9480.PKIStatusInfo:
     """
     Generates a `rfc9480.PKIStatusInfo` object with the specified status and failure information.
 
@@ -941,8 +941,8 @@ def generate_pki_status_info(bit_string: str | None = None, info_type: PKIStatus
 
 
 
-@not_keyword
-def generate_pki_message_fail_info(failInfo: Union[str, None] = None) -> rfc9480.PKIMessage:
+
+def _generate_pki_message_fail_info(failInfo: Union[str, None] = None) -> rfc9480.PKIMessage:
     """
     Generates a `rfc9480.PKIMessage` object with a failure information status.
 
@@ -951,7 +951,7 @@ def generate_pki_message_fail_info(failInfo: Union[str, None] = None) -> rfc9480
     :return: A `rfc9480.PKIMessage` object with the provided failure information.
     """
     pki_msg = rfc9480.PKIMessage()
-    value = generate_pki_status_info(bit_string=failInfo, info_type=PKIStatus.rejection)
+    value = _generate_pki_status_info(bit_string=failInfo, info_type=PKIStatus.rejection)
     pki_msg["body"]["error"].setComponentByName('pKIStatusInfo', value)
     return pki_msg
 
