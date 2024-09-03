@@ -203,12 +203,12 @@ def _prepare_implicit_confirm_general_info_structure():
 
 def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
                          omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
-                         implicit_confirm=False, certs=None):
+                         implicit_confirm=False, extra_certs=None):
     """Generic function for preparing the skeleton structure of a PKIMessage, the body of which must be
     set later.
 
     :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMMessage
-    :param certs extraCerts parsed to the PKIMessage structure, for out-of-bounds means or signing.
+    :param extra_certs extraCerts parsed to the PKIMessage structure, for out-of-bounds means or signing.
     :returns: pyasn1 PKIMessage structure without a body"""
     # since pyasn1 does not give us a way to remove an attribute from a structure after it was added to it,
     # we proactively check whether a field should be omitted (e.g. when crafting bad inputs) and skip adding
@@ -316,9 +316,6 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
     # PKIMessage
     pki_message = rfc9480.PKIMessage()
     pki_message['header'] = pki_header
-
-    if certs is not None:
-        pki_message["extraCerts"] = _prepare_extra_certs(certs)
 
     return pki_message
 
