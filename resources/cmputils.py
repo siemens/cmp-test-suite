@@ -838,7 +838,7 @@ def try_to_log_pkimessage(data):
 def modify_csr_cn(csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Hans Mustermann") -> rfc9480.CertificationRequest:
     """Modifies the Common Name (CN) in a CSR. Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
-    Args:
+    Arguments:
         csr: pyasn1 `rfc9480.CertificationRequest` object.
         new_cn: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
 
@@ -881,7 +881,6 @@ def _generate_pki_status_info(bit_string: str | None = None, info_type: PKIStatu
     :param info_type: The type of PKI status to set, represented by a `PKIStatus` enumeration value. Defaults to `PKIStatus.rejection`.
     :return: A `rfc9480.PKIStatusInfo` object with the specified status and failure information.
     """
-    # Access the pkiStatusInfo within the PKIMessage
     status_info = rfc9480.PKIStatusInfo()
 
     # Set the status (e.g., rejection which might be represented by 2 in your schema)
