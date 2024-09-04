@@ -669,9 +669,6 @@ def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
         ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
     """
 
-    if not isinstance(data, bytes):
-        raise ValueError("Input must be of type bytes or convertible to bytes.")
-
     try:
         pki_message, _remainder = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     except PyAsn1Error as err:
