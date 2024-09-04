@@ -11,7 +11,7 @@ from utils import decode_pem_string
 
 
 class TestUtils(unittest.TestCase):
-    def test_verification_fails(self):
+    def test_csr_signature_verification(self):
         """
         Tests the failure of CSR signature verification when the CSR content is modified.
 
