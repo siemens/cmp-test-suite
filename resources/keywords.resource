@@ -158,7 +158,7 @@ Certificate must be valid
 
 Generate Key and CSR
      [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the DER-formatted data and the key.
-     ...                Arguments:
+     ...                Arguments
      ...                - ${key_algo_name}: The name of the key algorithm (e.g., RSA, ECDSA).
      ...                - ${key_params}: Parameters required for the key generation (e.g., key size, curve name).
      ...                - ${CN}: Common Name (CN) for the certificate.
@@ -183,7 +183,7 @@ PKIMessage must contain implicitConfirm extension
     Should Be True     ${result}    The implicitConfirm extension was not found in the message
 
 
-PKIMessage Has Set Failure Bit or Bits
+PKIMessage Has Set Failure Bits
     [Documentation]    This keyword checks for a specific failure bit or bits in the `failInfo` field of the `PKIStatusInfo` structure within a `PKIMessage`.
     ...                The check can be configured to verify if the bit is set exclusively (only one of the Indices Option is set or
     ...                or non-exclusively (at least one bit is set).

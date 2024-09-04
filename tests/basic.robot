@@ -121,7 +121,7 @@ CA must reject request when the CSR signature is invalid
      IF    ${contains_msg}
      #TODO needs to decided if the message should return badPOP or badMessageCheck
      ${pkimessage}=    Parse pki message    ${response.content}
-     PKIMessage Has Set Failure Bit or Bits    ${pkimessage}    badPOP,badMessageCheck    exclusive=${1}
+     PKIMessage Has Set Failure Bits    ${pkimessage}    badPOP,badMessageCheck    exclusive=${1}
      END
      Run Keyword IF    not ${contains_msg}    LOG  "The Server Response did not Contained a PKI Message"
 
@@ -151,6 +151,6 @@ CA must reject request when the csr is sent again
     # this check is a CA Configuration.
     # some Configuration may accept the same Request, but some will allowed it.
     ${pkimessage}=    Parse pki message    ${response3.content}
-    PKIMessage Has Set Failure Bit or Bits    ${pkimessage}    duplicateCertReq,badMessageCheck    exclusive=${True}
+    PKIMessage Has Set Failure Bits    ${pkimessage}    duplicateCertReq,badMessageCheck    exclusive=${True}
 
 
