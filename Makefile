@@ -30,7 +30,7 @@ ifeq ($(env), ejbca)
 	$(MAKE) -f Makefile_EJBCA start_EJBCA
 endif
 
-docs:
+doc:
 	python -m robot.libdoc resources/keywords.resource doc/keywords.html
 	python -m robot.libdoc resources/cryptoutils.py doc/cryptoutils.html
 	python -m robot.libdoc resources/cmputils.py doc/cmputils.html

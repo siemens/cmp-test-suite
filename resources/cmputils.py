@@ -2,12 +2,13 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+from typing import Union, Optional
 
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
-from pyasn1.type import univ, useful, constraint, base
+from pyasn1.type import univ, useful, constraint, base, char
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
-from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211
+from pyasn1_alt_modules import rfc4210, rfc9480, rfc6402, rfc5280, rfc8018, rfc5480, rfc4211, rfc2986, rfc2459
 from pyasn1_alt_modules.rfc2314 import SignatureAlgorithmIdentifier, Signature, Attributes
 from pyasn1_alt_modules.rfc2459 import GeneralName, Extension, Extensions, Attribute, AttributeValue
 from pyasn1_alt_modules.rfc2511 import CertTemplate
@@ -19,6 +20,7 @@ from certutils import parse_certificate
 
 # from utils import load_and_decode_pem_file
 import utils
+from cmp_enums import PKIStatus
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -199,11 +201,12 @@ def _prepare_implicit_confirm_general_info_structure():
 
 def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.com', protection='pbmac1',
                          omit_fields=None, transaction_id=None, sender_nonce=None, recip_nonce=None,
-                         implicit_confirm=False):
+                         implicit_confirm=False, extra_certs=None):
     """Generic function for preparing the skeleton structure of a PKIMessage, the body of which must be
     set later.
 
-    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMEssage
+    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMMessage
+    :param extra_certs extraCerts parsed to the PKIMessage structure, for out-of-bounds means or signing.
     :returns: pyasn1 PKIMessage structure without a body"""
     # since pyasn1 does not give us a way to remove an attribute from a structure after it was added to it,
     # we proactively check whether a field should be omitted (e.g. when crafting bad inputs) and skip adding
@@ -306,9 +309,12 @@ def _prepare_pki_message(sender='tests@example.com', recipient='testr@example.co
         free_text.setComponentByPosition(0, 'This text is free, so let us have it')
         pki_header['freeText'] = free_text
 
+
+
     # PKIMessage
     pki_message = rfc9480.PKIMessage()
     pki_message['header'] = pki_header
+
     return pki_message
 
 
@@ -650,16 +656,27 @@ def csr_extend_subject(csr, rdn):
     return csr
 
 
-def parse_pki_message(raw):
-    """Takes a raw, DER-encoded PKIMessage structure and returns a
-    pyasn1 parsed object"""
+def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
+    """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
+
+    Arguments:
+        data (bytes): The raw input data to be parsed.
+
+    Returns:
+        pyasn1 parsed object: Represents the PKIMessage structure.
+
+    Raises:
+        ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
+    """
+
     try:
-        pki_message, _remainder = decoder.decode(raw, asn1Spec=rfc9480.PKIMessage())
+        pki_message, _remainder = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     except PyAsn1Error as err:
-        # Here we suppress the details of the error returned by pyasn1, because they are usually extremely verbose
-        # and barely helpful to a non-pyasn1 expert. If you have to debug a payload, get the server's response from
-        # RobotFramework's log and feed it into this function manually.
-        raise ValueError("Failed to parse PKIMessage: %s ...", str(err)[:100])
+        # Suppress detailed pyasn1 error messages; they are typically too verbose and
+        # not helpful for non-pyasn1 experts. If debugging is needed, retrieve the server's
+        # response from Robot Framework's log and manually pass it into this function.
+        raise ValueError("Failed to parse PKIMessage: %s ..." % str(err)[:100])
+
     return pki_message
 
 
@@ -701,7 +718,7 @@ def get_cert_from_pki_message(pki_message, cert_number=0):
     return cert
 
 
-def parse_csr(raw_csr):
+def parse_csr(raw_csr: bytes) -> rfc6402.CertificationRequest:
     """Builds a pyasn1-structured CSR out of a raw, base-64 request."""
     csr, _ = decoder.decode(raw_csr, asn1Spec=rfc6402.CertificationRequest())
     return csr
@@ -762,7 +779,7 @@ def find_oid_in_general_info(pki_message, oid):
     :param oid: str, OID we're looking for
     :returns: bool
     """
-    # generalInfo     [8] SEQUENCE SIZE (1..MAX) OF InfoTypeAndValue     OPTIONAL
+    # generalInfo [8] SEQUENCE SIZE (1..MAX) OF InfoTypeAndValue OPTIONAL
     # generalInfo is a sequence, we iterate through it and look for the OID we need
     general_info = pki_message['header']['generalInfo']
     oid = univ.ObjectIdentifier(oid)
@@ -783,6 +800,9 @@ def add_implicit_confirm(pki_message):
     general_info = _prepare_implicit_confirm_general_info_structure()
     pki_message['header']['generalInfo'] = general_info
     return pki_message
+
+
+
 
 
 if __name__ == '__main__':
@@ -812,3 +832,83 @@ def try_to_log_pkimessage(data):
         logging.info("Cannot prettyPrint this, it does not seem to be a valid PKIMessage")
 
     logging.info(parsed.prettyPrint())
+
+
+
+def modify_csr_cn(csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Hans Mustermann") -> rfc9480.CertificationRequest:
+    """Modifies the Common Name (CN) in a CSR. Expects a CN to be present in the certificate; otherwise, raises a ValueError.
+
+    Arguments:
+        csr: pyasn1 `rfc9480.CertificationRequest` object.
+        new_cn: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
+
+    Returns:
+         returns the modified `rfc9480.CertificationRequest` object.
+
+    Raises:
+        ValueError: If no Common Name (CN) is found in the CSR.
+    """
+
+    # Access the subject field from the CSR, which contains the RDNSequence.
+    subject = csr["certificationRequestInfo"]["subject"]
+
+    # Flag to check if a CN was found and modified.
+    found_cn = False
+
+    # Iterate through the Relative Distinguished Names (RDN) sequence to find the CN.
+    for rdn in subject["rdnSequence"]:  # rdnSequence is a Sequence OF RDN.
+        # Each RDN can contain multiple AttributeTypeAndValue pairs.
+        attribute: rfc2986.AttributeTypeAndValue
+        for attribute in rdn:
+            # Check if the current attribute is a Common Name (CN).
+            if attribute["type"] == rfc2459.id_at_commonName:
+                # Modify the CN by setting a new PrintableString value.
+                found_cn = True
+                attribute['value'] = char.PrintableString(new_cn)
+
+    if not found_cn:
+        raise ValueError("No Common Name (CN) found in the provided CSR.")
+
+
+    return csr
+
+def _generate_pki_status_info(bit_string: str | None = None, info_type: PKIStatus = PKIStatus.rejection) -> rfc9480.PKIStatusInfo:
+    """
+    Generates a `rfc9480.PKIStatusInfo` object with the specified status and failure information.
+
+    :param bit_string: Optional bit string representing failure information. If `None`, an empty `BitString` is used.
+                       Defaults to `None`.
+    :param info_type: The type of PKI status to set, represented by a `PKIStatus` enumeration value. Defaults to `PKIStatus.rejection`.
+    :return: A `rfc9480.PKIStatusInfo` object with the specified status and failure information.
+    """
+    status_info = rfc9480.PKIStatusInfo()
+
+    # Set the status (e.g., rejection which might be represented by 2 in your schema)
+    status_info.setComponentByName('status', info_type.value)
+
+    if bit_string is None:
+        fail_info = rfc9480.PKIFailureInfo()
+    else:
+        # Set the failInfo (BitString)
+        fail_info = rfc9480.PKIFailureInfo(f"'{bit_string}'B")  # Example BitString value
+
+    status_info.setComponentByName('failInfo', fail_info)
+
+    return status_info
+
+
+
+
+def _generate_pki_message_fail_info(failInfo: Union[str, None] = None) -> rfc9480.PKIMessage:
+    """
+    Generates a `rfc9480.PKIMessage` object with a failure information status.
+
+    :param failInfo: Optional failure information to include in the message, represented as a bit string.
+                     Defaults to `None`.
+    :return: A `rfc9480.PKIMessage` object with the provided failure information.
+    """
+    pki_msg = rfc9480.PKIMessage()
+    value = _generate_pki_status_info(bit_string=failInfo, info_type=PKIStatus.rejection)
+    pki_msg["body"]["error"].setComponentByName('pKIStatusInfo', value)
+    return pki_msg
+

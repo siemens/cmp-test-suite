@@ -12,11 +12,12 @@ Library   RequestsLibrary
 Library   OperatingSystem
 Library   DateTime
 Library   Collections
+Library   ../resources/asn1utils.py
 Library   ../resources/cryptoutils.py
 Library   ../resources/cmputils.py
 Library   ../resources/utils.py
-Library   ../resources/asn1utils.py
 Library   ../resources/certutils.py
+Library   ../resources/keyutils.py
 
 
 *** Keywords ***
@@ -47,8 +48,8 @@ Load and refresh PKIMessage from file
 
 Generate CSR with RSA2048 and a predefined common name
     [Documentation]    Produce a generic, valid CSR that has a correct signature
-    ${key}=    Generate keypair    rsa    2048
-    ${csr}=    Generate CSR    C=DE,L=Munich,CN=Hans Mustermann
+    ${key}=    Generate key    rsa    length=2048
+    ${csr}=    Generate CSR    ${DEFAULT_X509NAME}
     ${csr_signed}=    Sign CSR    ${csr}    ${key}
     Log    ${csr_signed}
     RETURN    ${csr_signed}
@@ -155,6 +156,23 @@ Certificate must be valid
     # If PKILint complains, we log a warning, but keep going
     Run Keyword And Warn On Failure     Validate Certificate PKILint   ${der_certificate}
 
+Generate Key and CSR
+     [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the DER-formatted data and the key.
+     ...                Arguments:
+     ...                - `key_algo_name`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+     ...                - `key_params`:The index or indices of the bits to check within the `failInfo` field
+     ...                - `CN`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be permitted.
+     ...                                 However, if multiple indices are provided, only one of them can be set.
+     ...
+     ...                Example Usage:
+     ...                | ${data}   ${key}=    Generate Key and CSR    | ${key_algo_name}    | ${key_params}    |    ${CN}
+     ...
+     [Arguments]        ${key_algo_name}    ${CN}    ${key_params}
+     ${key}=    Generate key    ${key_algo_name}    ${key_params}
+     ${csr}=    Generate CSR    ${CN}
+     ${csr_signed}=    Sign CSR    ${csr}    ${key}
+     ${data}=    Decode pem string   ${csr_signed}
+     RETURN    ${data}   ${key}
 
 
 PKIMessage body type must be
@@ -168,3 +186,25 @@ PKIMessage must contain implicitConfirm extension
     [Arguments]        ${pki_message}
     ${result}=         Find OID in General Info    ${pki_message}      1.3.6.1.5.5.7.4.13
     Should Be True     ${result}    The implicitConfirm extension was not found in the message
+
+
+PKIMessage Has Set Failure Bits
+    [Documentation]    This keyword checks for a specific failure bit or bits in the `failInfo` field of the `PKIStatusInfo` structure within a `PKIMessage`.
+    ...                The check can be configured to verify if the bit is set exclusively (only one of the Indices Option is set or
+    ...                or non-exclusively (at least one bit is set).
+    ...                Arguments:
+    ...                - `pki_message`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+    ...                - `bit_indices_or_index`:The index or indices of the bits to check within the `failInfo` field
+    ...                - `exclusive`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be permitted.
+    ...                                 However, if multiple indices are provided, only one of them can be set.
+    ...
+    ...                Example Usage:
+    ...                | ${bit_status}=    PKIMessage Has Set Failure Bits    | ${pki_message}    | ${badAlg}    |    ${exclusive}
+    ...
+    [Arguments]        ${pki_message}     ${bit_indices_or_index}    ${exclusive}=${True}
+    ${pki_header}=       asn1utils.Get asn1 value   ${pki_message}    header
+    Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+    ${failInfo}=        asn1utils.Get asn1 value    ${pki_message}    body.error.pKIStatusInfo.failInfo
+    ${bit_status}=      Is bit set    ${failInfo}    ${bit_indices_or_index}    ${exclusive}
+    Should be true    ${bit_status}
+

@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, hmac
@@ -8,6 +9,10 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding, ec
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
 from pyasn1_alt_modules import rfc9481
+from robot.api.deco import not_keyword
+
+from keyutils import generate_key
+from typingutils import PrivateKey
 
 # map strings used in OpenSSL-like common name notation to objects of NameOID types that
 # cryptography.x509 uses internally
@@ -17,6 +22,7 @@ NAME_MAP = {
     'L': NameOID.LOCALITY_NAME,
     'O': NameOID.ORGANIZATION_NAME,
     'CN': NameOID.COMMON_NAME,
+    'emailAddress': NameOID.EMAIL_ADDRESS,
 }
 
 # map OIDs of signature algorithms to the stringified names of hash functions
@@ -118,13 +124,6 @@ def hash_name_to_instance(alg):
         raise ValueError(f"Unsupported hash algorithm: {alg}")
 
 
-def generate_rsa_keypair(length=2048):
-    return rsa.generate_private_key(public_exponent=65537, key_size=length)
-
-
-def generate_keypair(algorithm="rsa", length=2048):
-    return rsa.generate_private_key(public_exponent=65537, key_size=length)
-
 
 def save_key(key, path, passphrase=b"11111"):
     """Save key to a file
@@ -140,7 +139,28 @@ def save_key(key, path, passphrase=b"11111"):
         ))
 
 
-def generate_csr(common_name, subjectAltName=None):
+@not_keyword
+def parse_common_name_from_str(common_name: str) -> x509.Name:
+    """
+    Parses a string representing common name attributes (e.g., "C=DE,ST=Bavaria,L=Munich,O=CMP Lab")
+    and converts it into an `x509.Name` object that can be used for X.509 certificate generation
+
+    :param common_name: str, common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
+    :returns: x509.Name
+    """
+    items = common_name.strip().split(',')
+    common_names = []
+    for item in items:
+        attribute, value = item.split('=')
+        new_entry = x509.NameAttribute(NAME_MAP[attribute], value.strip())
+        common_names.append(new_entry)
+
+
+    return x509.Name(common_names)
+
+
+
+def generate_csr(common_name: str = None, subjectAltName=None):
     """Generate a CSR based on the given string parameters
 
     :param common_name: str, common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
@@ -149,16 +169,10 @@ def generate_csr(common_name, subjectAltName=None):
     """
     csr = x509.CertificateSigningRequestBuilder()
 
-    # take a string like "C=DE,ST=Bavaria,L=Munich,O=CMP Lab" and transform it into a dictionary that maps each component to a
-    # corresponding x509.NameAttribute.
-    items = common_name.strip().split(',')
-    common_names = []
-    for item in items:
-        attribute, value = item.split('=')
-        new_entry = x509.NameAttribute(NAME_MAP[attribute], value.strip())
-        common_names.append(new_entry)
+    common_name = common_name or "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
 
-    csr = csr.subject_name(x509.Name(common_names))
+    x509_name = parse_common_name_from_str(common_name)
+    csr = csr.subject_name(x509_name)
     # this produces something like
     # csr = csr.subject_name(x509.Name([
     #     x509.NameAttribute(NameOID.COUNTRY_NAME, u"DE"),
@@ -310,3 +324,45 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
     signature = h.finalize()
     logging.info(f"Signature: {signature}")
     return signature
+
+
+def generate_signed_csr(common_name: str, key: Union[PrivateKey, str, None] = None, **params) -> Tuple[bytes, PrivateKey]:
+    """Generate Signed CSR.
+
+    Generates a signed Certificate Signing Request (CSR) for a given common name (CN).
+    Optionally, use a specified private key or generate a new one if none is provided.
+
+    If a key is not provided, a new RSA key is generated. If a string is provided, it is used as the key generation
+    algorithm (e.g., "rsa") with additional parameters. If a `PrivateKey` object is provided, it is used directly.
+
+    Args:
+    - `common_name`: The common name (CN) to include in the CSR.
+    - `key`: Optional. The private key to use for signing the CSR. Can be one of:
+        - A `PrivateKey` object from the cryptography library.
+        - A string representing the key generation algorithm (e.g., "rsa").
+        - `None` (default). If `None`, a new RSA key is generated.
+    - `params`: Additional keyword arguments to customize key generation when `key` is a string.
+
+    Returns:
+    - `csr_signed`: The signed CSR in bytes.
+    - `key`: The private key used for signing, as a cryptography library Key-Object.
+
+    Raises:
+    - `ValueError`: If the provided key is neither a valid key generation algorithm string nor a `PrivateKey` object.
+
+    Example:
+    | ${csr_signed} | ${private_key} = | Generate Signed CSR | example.com | rsa | length=2048 |
+    """
+    if key is None:
+        key = generate_key(algorithm="rsa", length=2048)
+    elif isinstance(key, str):
+        key = generate_key(algorithm=key, **params)
+    elif isinstance(key, PrivateKey):
+        pass
+    else:
+        raise ValueError("the provided key must be either be the name of the generate key or a private key")
+
+    csr = generate_csr(common_name=common_name)
+    csr_signed = sign_csr(csr=csr, key=key)
+
+    return csr_signed, key

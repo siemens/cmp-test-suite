@@ -21,6 +21,13 @@ practice:
    - on Windows with Powershell: `.\venv-cmp-tests\Scripts\Activate.ps1`
 3. Install the dependencies: `pip install -r requirements.txt`
 
+Note: If WSL 2.0 is being used, run the following commands to fix the python3-venv error:
+
+1. `sudo apt update`
+2. `sudo apt-get install libpython3-dev`
+3. `sudo apt-get install python3-venv`
+
+
 # Usage
 1. Run `robot tests` to execute all the tests in the `tests/` directory.
 2. Explore `report.html` to see the results.
@@ -67,6 +74,17 @@ Follow these principles when building your tests:
 A good practice is to generate new data on-demand once, e.g., by running a script that generates all the required data,
 and then using the same data in subsequent runs.
 
+## Type Design
+
+- Wherever `univ.<ClassName>` appears in the code commentary, it is assumed to refer to the univ module from the `pyasn1` library. 
+The actual import statement is `from pyasn1.type import univ`.
+
+Example: `univ.ObjectIdentifier`
+
+- Wherever `rfc<num>.<ClassName>` appears in the code commentary, it is assumed to be from the `pyasn1_alt_module` library.
+The Actual import is `from pyasn1_alt_module import rfc9480`.
+Example: `rfc9480.PKIMessage`
+
 ## Plaintext vs binary
 Prefer to store data in textual form, rather than binary. This makes it easier to visually inspect the data, copy some
 chunks for experimentation, sharing with colleagues or logging.
@@ -79,7 +97,7 @@ convert automatically to whatever makes sense, and accept either format at the i
 Point to the section of the RFC where the requirement is discussed, include a relevant quote.
 
 ## Tagging tests
-Use the RFC
+TODO Use the RFC
 
 ## String parameters
 NOTE that we're not passing it as a
@@ -111,3 +129,17 @@ This section explains how OpenSSL can be used to generate test data, such as key
 
 # Supporting materials
 - https://docs.robotframework.org/docs/getting_started/ide How to use this with an IDE.
+
+# Development
+
+1. Install the dependencies: `pip install -r requirements-dev.txt`
+2. Change Source DIR
+   If using IntelliJ or PyCharm
+   `File -> Project Structure... -> Modules` -> click on the resources folder and click on `Source` and apply.
+
+another Option might be:
+
+```
+import sys
+sys.path.append("./resources")
+```
