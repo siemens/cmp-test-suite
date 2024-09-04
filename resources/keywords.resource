@@ -158,11 +158,16 @@ Certificate must be valid
 
 Generate Key and CSR
      [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the DER-formatted data and the key.
-     ...                Arguments
-     ...                - ${key_algo_name}: The name of the key algorithm (e.g., RSA, ECDSA).
-     ...                - ${key_params}: Parameters required for the key generation (e.g., key size, curve name).
-     ...                - ${CN}: Common Name (CN) for the certificate.
+     ...                Arguments:
+     ...                - `key_algo_name`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+     ...                - `key_params`:The index or indices of the bits to check within the `failInfo` field
+     ...                - `CN`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be permitted.
+     ...                                 However, if multiple indices are provided, only one of them can be set.
      ...
+     ...                Example Usage:
+     ...                | ${data}   ${key}=    Generate Key and CSR    | ${key_algo_name}    | ${key_params}    |    ${CN}
+     ...
+     [Arguments]        ${key_algo_name}    ${CN}    ${key_params}
      ${key}=    Generate key    ${key_algo_name}    ${key_params}
      ${csr}=    Generate CSR    ${CN}
      ${csr_signed}=    Sign CSR    ${csr}    ${key}
@@ -188,9 +193,9 @@ PKIMessage Has Set Failure Bits
     ...                The check can be configured to verify if the bit is set exclusively (only one of the Indices Option is set or
     ...                or non-exclusively (at least one bit is set).
     ...                Arguments:
-    ...                - `${pki_message}`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
-    ...                - `${bit_indices_or_index}`:The index or indices of the bits to check within the `failInfo` field
-    ...                - `${exclusive}`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be permitted.
+    ...                - `pki_message`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+    ...                - `bit_indices_or_index`:The index or indices of the bits to check within the `failInfo` field
+    ...                - `exclusive`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be permitted.
     ...                                 However, if multiple indices are provided, only one of them can be set.
     ...
     ...                Example Usage:
