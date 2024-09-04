@@ -1,5 +1,7 @@
 import unittest
 
+from pyasn1.type import univ
+
 from resources import cmputils
 from resources.asn1utils import is_bit_set, get_asn1_value
 from resources import asn1utils
@@ -11,6 +13,16 @@ class TestASN1Utils(unittest.TestCase):
     def setUp(cls):
         raw = load_and_decode_pem_file('data/cmp-sample-reject.pem')
         cls.asn1_object = parse_pki_message(raw)
+
+        default_str = "0" * 26
+        default_str_list = list(default_str)
+        # Change the characters at the desired indices
+        default_str_list[1] = "1" # change to badPOP
+        default_str_list[9] = "1" # badMessageCheck
+        default_str = "".join(default_str_list)
+
+        # not exclusive bit string for test_is_bit_set and test_is_bit_set_with_human_readable_names.
+        cls.string_not_exclusive = default_str
 
     def test_get_asn1_value_as_string_bad_query(self):
         """
@@ -73,25 +85,22 @@ class TestASN1Utils(unittest.TestCase):
             asn1utils.asn1_must_contain_fields(self.asn1_object, expected_fields)
 
 
-    def test_bit_is_set(self):
+    def test_is_bit_set(self):
 
         default_str = "0" * 26
 
-        not_set = get_asn1_value(cmputils._generate_pki_status_info(bit_string=default_str), "failInfo")
+        bitstring = univ.BitString(default_str)
 
-        self.assertFalse(is_bit_set(not_set, "badPOP,badMessageCheck"), msg='Should is bit set should not return True')
+        self.assertFalse(is_bit_set(bitstring, "1"), msg='Should is bit set should not return True')
+
+        bitstring = univ.BitString(self.string_not_exclusive)
+        self.assertTrue(is_bit_set(bitstring, "1", exclusive=False), msg='Should is bit set should not return True')
+        self.assertFalse(is_bit_set(bitstring, "1,9", exclusive=True), msg='Should is bit set should not return True')
 
 
-        not_set = get_asn1_value(cmputils._generate_pki_status_info(bit_string=default_str), "failInfo")
-        default_str_list = list(default_str)
+    def test_is_bit_set_with_human_readable_names(self):
 
-        # Change the characters at the desired indices
-        default_str_list[1] = "1" # change to badPOP
-        default_str_list[9] = "1" # badMessageCheck
-
-        # Join the list back into a string
-        default_str = "".join(default_str_list)
-        set_both_values = get_asn1_value(cmputils._generate_pki_status_info(bit_string=default_str), "failInfo")
+        set_both_values = get_asn1_value(cmputils._generate_pki_status_info(bit_string=self.string_not_exclusive), "failInfo")
 
         self.assertFalse(is_bit_set(set_both_values, "badPOP,badMessageCheck", exclusive=True), msg='Should is bit set should not return True')
         self.assertTrue(is_bit_set(set_both_values, "badPOP,badMessageCheck", exclusive=False), msg='Should is bit set should not return True')
@@ -99,7 +108,6 @@ class TestASN1Utils(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             is_bit_set(set_both_values, "UNDEFINED")
-
 
 
 
