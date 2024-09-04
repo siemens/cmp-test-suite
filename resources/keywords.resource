@@ -194,7 +194,7 @@ PKIMessage Has Set Failure Bits
     ...                                 However, if multiple indices are provided, only one of them can be set.
     ...
     ...                Example Usage:
-    ...                | ${bit_status}=    PKIMessage Has Set Either Failure Bit    | ${pki_message}    | ${badAlg}    |    exclusive=${True}
+    ...                | ${bit_status}=    PKIMessage Has Set Failure Bits    | ${pki_message}    | ${badAlg}    |    ${exclusive}
     ...
     [Arguments]        ${pki_message}     ${bit_indices_or_index}    ${exclusive}=${True}
     ${pki_header}=       asn1utils.Get asn1 value   ${pki_message}    header
