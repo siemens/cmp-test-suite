@@ -74,6 +74,17 @@ Follow these principles when building your tests:
 A good practice is to generate new data on-demand once, e.g., by running a script that generates all the required data,
 and then using the same data in subsequent runs.
 
+## Type Design
+
+- Wherever `univ.<ClassName>` appears in the code commentary, it is assumed to refer to the univ module from the `pyasn1` library. 
+The actual import statement is `from pyasn1.type import univ`.
+
+Example: `univ.ObjectIdentifier`
+
+- Wherever `rfc<num>.<ClassName>` appears in the code commentary, it is assumed to be from the `pyasn1_alt_module` library.
+The Actual import is `from pyasn1_alt_module import rfc9480`.
+Example: `rfc9480.PKIMessage`
+
 ## Plaintext vs binary
 Prefer to store data in textual form, rather than binary. This makes it easier to visually inspect the data, copy some
 chunks for experimentation, sharing with colleagues or logging.
