@@ -21,8 +21,34 @@ from resources.cryptoutils import (
     sign_data,
     compute_hmac,
 )
-from resources.aaa_typingutils import PrivateKey
+from typingutils import PrivateKey
 
+def _prepare_password_based_mac_parameters(salt: Optional[bytes]=None, iterations=1000, hash_alg="sha256") -> rfc9480.PBMParameter:
+    """Prepares password-based-mac protection with the pyasn1 `rfc8018.PBMParameter` structure.
+
+    :param salt: optional bytes, salt to use for the password-based-mac protection, if not given, will generate 16 random bytes
+    :param iterations: optional int, number of iterations of the OWF (hashing) to perform
+    :param hash_alg: optional str, name of hashing algorithm to use, "sha256" by default.
+    :return: pyasn1 rfc9480.PBMParameter structure.
+    """
+    salt = salt or os.urandom(16)
+
+    hmac_alg_oid = get_hash_name_oid(f"hmac-{hash_alg}")
+    hash_alg_oid = get_hash_name_oid(hash_alg)
+
+    pbm_parameter = rfc9480.PBMParameter()
+    pbm_parameter['salt'] = univ.OctetString(salt).subtype(subtypeSpec=constraint.ValueSizeConstraint(0, 128))
+    pbm_parameter['iterationCount'] = iterations
+
+    pbm_parameter['owf'] = rfc8018.AlgorithmIdentifier()
+    pbm_parameter['owf']['algorithm'] = hash_alg_oid
+    pbm_parameter['owf']['parameters'] = univ.Null()
+
+    pbm_parameter['mac'] = rfc8018.AlgorithmIdentifier()
+    pbm_parameter['mac']['algorithm'] = hmac_alg_oid
+    pbm_parameter['mac']['parameters'] = univ.Null()
+
+    return pbm_parameter
 
 
 def _prepare_pbmac1_parameters(salt: Optional[bytes]=None, iterations=100, length=32, hash_alg="sha256"):
