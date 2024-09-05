@@ -1,4 +1,4 @@
-"""This library contains generic primitives for querying PyASN1 objects using ASN1Path,
+"""Contains generic primitives for querying PyASN1 objects using ASN1Path,
 a notation similar to XPath for XML or JSONPath for JSON.
 
 The primitives are meant to be invoked from RobotFramework test cases, hence the notation
@@ -48,6 +48,7 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 |      AttributeTypeAndValue:
 |       type=2.5.4.10
 """
+
 import logging
 from typing import List
 
@@ -58,17 +59,18 @@ from robot.api.deco import not_keyword
 from typingutils import Strint
 
 
-def asn1_must_contain_fields(data, fields):
-    """
-    Verifies that the given ASN.1 structure contains the specified fields.
+def asn1_must_contain_fields(data, fields: str):
+    """Verify that the given ASN.1 structure contains the specified fields.
 
     `data` is the pyasn1 structure to check.
     `fields` is a string that represents a comma-separated list field names to check for in the ASN.1 structure. Spaces
     in this string will be ignored.
 
     Example:
+    -------
     | Asn1 Must Contain Fields | ${asn1} | header,body,soul |
     | Asn1 Must Contain Fields | ${asn1} | header, body ,   soul |
+
     """
     # """Ensure that all fields listed in `fields` are present in the header of `data`
     #
@@ -78,7 +80,7 @@ def asn1_must_contain_fields(data, fields):
     # :returns: None, raise ValueError of the required fields are not present"""
     present_fields = list(data)
     absent_fields = []
-    fields = [item.strip() for item in fields.split(',')]
+    fields = [item.strip() for item in fields.split(",")]
     for entry in fields:
         if entry not in present_fields:
             absent_fields.append(entry)
@@ -95,34 +97,37 @@ def get_asn1_value(asn1_obj, query):
                  'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
     :returns: pyasn1 object, the value you were looking for; or will raise a ValueError with details
     """
-    keys = query.split('.')
+    keys = query.split(".")
 
     # we use these to gradually build up the traversed path, to show an informative error message if an error occurs
-    traversed_so_far = ''
-    current_piece = ''
+    traversed_so_far = ""
+    current_piece = ""
     try:
         for key in keys:
             current_piece = key
-            if '/' in key:
-                parts = key.split('/')
+            if "/" in key:
+                parts = key.split("/")
                 for part in parts:
                     current_piece = part
                     if part.isdigit():
                         asn1_obj = asn1_obj[int(part)]
                     else:
                         asn1_obj = asn1_obj[part]
-                    traversed_so_far += f'/{part}'
+                    traversed_so_far += f"/{part}"
             else:
                 asn1_obj = asn1_obj[key]
-            traversed_so_far += f'.{key}' if traversed_so_far else key
+            traversed_so_far += f".{key}" if traversed_so_far else key
     except Exception as err:
         # except KeyError as err:
         available_keys = list(asn1_obj.keys())
-        report = f"> Traversal ERROR, got this far: `{traversed_so_far}`, issue at `{current_piece}`, the query was `{query}`"
-        report += f'\n> Available keys at this step: {available_keys}'
+        report = (
+            f"> Traversal ERROR, got this far: `{traversed_so_far}`,"
+            f" issue at `{current_piece}`, the query was `{query}`"
+        )
+        report += f"\n> Available keys at this step: {available_keys}"
         if len(available_keys) == 1:
-            report += f', try `{traversed_so_far}.{available_keys[0]}`'
-        report += f'\n> Underlying error: {err}'
+            report += f", try `{traversed_so_far}.{available_keys[0]}`"
+        report += f"\n> Underlying error: {err}"
         raise ValueError(report)
     else:
         return asn1_obj
@@ -192,13 +197,8 @@ def get_asn1_value_as_der(asn1_obj, query):
 
 
 @not_keyword
-def _is_bit_set_in_bitstring(
-        asn1_bitstring: BitString,
-        bit_index: Strint,
-        exclusive: bool = True
-) -> bool:
-    """
-    Checks if a single bit is set in a BitString `pyasn1` `BitString` object.
+def _is_bit_set_in_bitstring(asn1_bitstring: BitString, bit_index: Strint, exclusive: bool = True) -> bool:
+    """Check if a single bit is set in a BitString `pyasn1` `BitString` object.
     Either exclusive or not.
 
     :param asn1_bitstring:
@@ -226,14 +226,14 @@ def _is_bit_set_in_bitstring(
         # If the index is out of range, return False
         return False
 
+
 @not_keyword
 def _is_either_bit_set_in_bitstring(
-        asn1_bitstring: BitString,
-        bit_indices: List[int],
-        exclusive: bool = True,
+    asn1_bitstring: BitString,
+    bit_indices: List[int],
+    exclusive: bool = True,
 ) -> bool:
-    """
-    Checks if one of the provided bit indices are set in a `pyasn1` `univ.BitString` object.
+    """Check if one of the provided bit indices are set in a `pyasn1` `univ.BitString` object.
     Either exclusive or not.
 
     :param asn1_bitstring: `pyasn1` `univ.BitString` object.
@@ -243,7 +243,6 @@ def _is_either_bit_set_in_bitstring(
     :return: `True` if the specified bit or bits are set according to the `exclusive`
           parameter; otherwise, `False`.
     """
-
     logging.info(tuple(asn1_bitstring))
     for i in bit_indices:
         tmp = _is_bit_set_in_bitstring(asn1_bitstring, i, exclusive=exclusive)
@@ -252,11 +251,8 @@ def _is_either_bit_set_in_bitstring(
     return False
 
 
-def is_bit_set(asn1_bitstring: BitString,
-               bit_indices: Strint,
-               exclusive: bool = True) -> bool:
-    """
-    Verifies if a specific bit or specific bits are set within a given `BitString` object.
+def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool = True) -> bool:  # noqa: D417
+    """Verify if a specific bit or bits are set within a given `BitString` object.
 
     This function checks if a specific bit or bits, defined by their indices or names,
     are set within a provided `BitString` object. It supports both integer index
@@ -264,6 +260,7 @@ def is_bit_set(asn1_bitstring: BitString,
     exclusively or non-exclusively, depending on the `exclusive` parameter.
 
     Arguments:
+    ---------
         - asn1_bitstring: A `pyasn1` `univ.BitString` object to be checked.
         - bit_indices: A `str` representing the bit index or indices to check.
           This can be:
@@ -274,20 +271,23 @@ def is_bit_set(asn1_bitstring: BitString,
           or if any of them can be set (`False`). Default is `True`.
 
     Returns:
+    -------
         - `True` if the specified bit or bits are set according to the `exclusive`
           parameter; otherwise, `False`.
 
     Raises:
+    ------
         - ValueError: If any of the provided human-readable names are not part of the options.
         - ValueError: If a `pyasn1` `schema` object is provided.
 
     Examples:
+    --------
         | Is Bit Set | ${failInfo} | 26                  | ${True} |
         | Is Bit Set | ${failInfo} | ${26}               | ${True} |
         | Is Bit Set | ${failInfo} | duplicateCertReq    | ${True} |
         | Is Bit Set | ${failInfo} | 1, 9                | ${True} |
-    """
 
+    """
     logging.info(f"exclusive: {exclusive} {type(exclusive)}")
     logging.info(f"type: {type(asn1_bitstring)}")
     logging.info(f"input: {bit_indices} type: {type(bit_indices)}")
@@ -299,14 +299,11 @@ def is_bit_set(asn1_bitstring: BitString,
         return _is_bit_set_in_bitstring(asn1_bitstring=asn1_bitstring, bit_index=bit_indices, exclusive=exclusive)
 
     elif isinstance(bit_indices, str):
-
         # allows not only int to be parsed but also the correct human-readable-names.
         if bit_indices.replace(",", "").strip(" ").isdigit():
             if "," in bit_indices:
                 values = [int(x) for x in bit_indices.strip(" ").split(",")]
-                return _is_either_bit_set_in_bitstring(
-                    asn1_bitstring, values, exclusive=exclusive
-                )
+                return _is_either_bit_set_in_bitstring(asn1_bitstring, values, exclusive=exclusive)
             else:
                 return _is_bit_set_in_bitstring(asn1_bitstring, int(bit_indices.strip()), exclusive=exclusive)
         else:
@@ -315,10 +312,8 @@ def is_bit_set(asn1_bitstring: BitString,
             # gets the indices to the corresponding human-readable-names.
             names = list(asn1_bitstring.namedValues.keys())
             try:
-               bit_indices = [names.index(val) for val in values]
+                bit_indices = [names.index(val) for val in values]
             except ValueError:
                 raise ValueError(f"Provided names: {values} but allowed Are: {names}")
 
-            return _is_either_bit_set_in_bitstring(
-                asn1_bitstring, bit_indices, exclusive=exclusive
-            )
+            return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)

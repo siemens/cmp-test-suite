@@ -4,11 +4,10 @@ from robot.api.deco import not_keyword
 
 # TODO: Was changed in next Merge!
 
+
 @not_keyword
 def verify_cert_signature(cert: x509.Certificate):
-    """
-    Verifies the digital signature of an X.509 certificate using the provided or extracted public key.
-
+    """Verify the digital signature of an X.509 certificate using the provided or extracted public key.
 
     :param cert:
         The certificate to verify, represented in a type that can be cast to an X.509 certificate object.
@@ -19,11 +18,8 @@ def verify_cert_signature(cert: x509.Certificate):
     :raises InvalidSignature:
         If the certificate's signature is not valid when verified against the provided or extracted public key.
     """
-
-
     # Extract the public key from the CSR, which will be used to verify the signature.
     public_key = cert.public_key()
-
 
     # Verify the signature of the CSR.
     public_key.verify(
@@ -33,12 +29,11 @@ def verify_cert_signature(cert: x509.Certificate):
         cert.signature_hash_algorithm,  # The hash algorithm used for the signature.
     )
 
+
 # only internally used, so strict Parsing
 @not_keyword
 def verify_csr_signature(csr: x509.CertificateSigningRequest):
-    """
-    Verifies the digital signature of an X.509 CSR using the provided or extracted public key.
-
+    """Verify the digital signature of an X.509 CSR using the provided or extracted public key.
 
     :param csr:
         The Certificate Signing Request to verify, represented in a type that can be cast to an X.509 CSR object.
@@ -47,7 +42,6 @@ def verify_csr_signature(csr: x509.CertificateSigningRequest):
     :raises InvalidSignature:
         If the csr's signature is not valid when verified against the provided or extracted public key.
     """
-
     # Extract the public key from the CSR, which will be used to verify the signature.
     public_key = csr.public_key()
 
@@ -58,4 +52,3 @@ def verify_csr_signature(csr: x509.CertificateSigningRequest):
         padding.PKCS1v15(),  # The padding scheme used for the signature.
         csr.signature_hash_algorithm,  # The hash algorithm used for the signature.
     )
-

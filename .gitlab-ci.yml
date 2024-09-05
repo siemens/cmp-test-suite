@@ -1,4 +1,4 @@
-image: python:3.12
+image: python:3.11.2
 
 variables:
   http_proxy: "$CODE_PROXY"
@@ -12,6 +12,7 @@ before_script:
 
 
 stages:
+  - type-check
   - Code style
   - Static analysis
 
@@ -21,7 +22,7 @@ basics:
   stage: Code style
   allow_failure: true  # for now, but we will gradually raise the bar
   script:
-    - ruff check
+    - ruff check --fix
   tags:
     - LINUX-DOCKER
 
@@ -34,5 +35,18 @@ pylint:
   allow_failure: true
   script:
     - pylint resources
+  tags:
+    - LINUX-DOCKER
+
+
+Check Typing:
+  stage: type-check
+  before_script:
+    - pip install -r requirements.txt
+    - pip install pyright==1.1.379
+
+  script:
+    - pyright
+  allow_failure: true
   tags:
     - LINUX-DOCKER
