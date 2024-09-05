@@ -976,3 +976,30 @@ def _generate_pki_message_fail_info(fail_info: Optional[str] = None) -> rfc9480.
     value = _generate_pki_status_info(bit_string=fail_info, info_type=PKIStatus.rejection)
     pki_msg["body"]["error"].setComponentByName("pKIStatusInfo", value)
     return pki_msg
+
+
+def get_cert_from_pki_message(pki_message: rfc9480.PKIMessage, cert_number: int = 0) -> rfc9480.CMPCertificate:
+    """Extract a certificate from a pyasn1 `rfc9480.PKIMessage` object.
+
+    :param pki_message: pyasn1 `rfc9480.PkiMessage`
+    :param cert_number: optional int, index of certificate to extract, will only extract the first certificate
+                        from the sequence by default
+
+    :raises ValueError: If the "extra_certs" field is not present in the PKIMessage or
+                        if the cert_number index is out of range.
+    :return:    pyasn1 object representing a certificate `rfc9480.CMPCertificate`
+    """
+
+    if not pki_message["extra_certs"].hasValue():
+        raise ValueError("PKIMessage does not contains Certificates!")
+
+
+    extra_certs: univ.SequenceOf = pki_message["extra_certs"]
+    if cert_number < len(extra_certs):
+        raise ValueError("Certificates index out of range!")
+
+
+    return pki_message["extra_certs"][cert_number]
+
+
+def get_certificate_from_responsebody_responseBody()
