@@ -334,27 +334,26 @@ def _prepare_pki_message(
 
 
 def build_p10cr_from_csr(
-    csr,
-    sender="tests@example.com",
-    recipient="testr@example.com",
-    protection="pbmac1",
-    omit_fields=None,
-    transaction_id=None,
-    sender_nonce=None,
-    recip_nonce=None,
-    implicit_confirm=False,
+        csr: rfc6402.CertificationRequest,
+        sender: str = "tests@example.com",
+        recipient: str = "testr@example.com",
+        omit_fields: str = None,
+        transaction_id=None,
+        sender_nonce=None,
+        recip_nonce=None,
+        implicit_confirm=False,
+        extra_certs: str = None,
 ):
-    """Create a pyasn1 p10cr `rfc9480.PKIMessage` from a pyasn1 PKCS10 CSR.
+    """Creates a pyasn1 p10cr pkiMessage from a pyasn1 PKCS10 CSR
 
-    :param csr: pyasn1 `rfc6402.CertificationRequest`
-    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMEssage
+    :param csr: rfc6402.CertificationRequest
+    :param extra_certs: string of a filepath or a directory to load certificate from.
+    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMessage
 
-    :returns: pyasn1 PKIMessage structure with a body set to p10cr
-    """
+    :returns: pyasn1 PKIMessage structure with a body set to p10cr"""
     pki_message = _prepare_pki_message(
         sender=sender,
         recipient=recipient,
-        protection=protection,
         omit_fields=omit_fields,
         transaction_id=transaction_id,
         sender_nonce=sender_nonce,
@@ -369,8 +368,9 @@ def build_p10cr_from_csr(
     pki_body["p10cr"]["signature"] = csr["signature"]
 
     pki_message["body"] = pki_body
-    return pki_message
+    pki_message["extra_certs"] = _prepare_extra_certs(extra_certs)
 
+    return pki_message
 
 def build_cr_from_csr(
     csr,
@@ -1002,6 +1002,7 @@ def get_cert_from_pki_message(pki_message: rfc9480.PKIMessage, cert_number: int 
 
 
     return pki_message["extra_certs"][cert_number]def _prepare_extra_certs(path: str, recursive: bool = False) -> univ.SequenceOf:
+def _prepare_extra_certs(path: str, recursive: bool = False) -> univ.SequenceOf:
     """Loads certificates from a file or directory and returns a `univ.SequenceOf` structure.
 
     :param path: A string representing a single file path or a directory where the certificates are stored.
