@@ -3,8 +3,10 @@ help:
 	@echo  '  test         - Run all compliance tests (results will be in out/)'
 	@echo  '  teslog       - Run all compliance tests, store results in timestamped subirectories in out/'
 	@echo  '  doc          - Produce documentation files and store them in doc/'
-	@echo  '  unittest     - Run unit tests for the test suite itself'
-	@echo  '  verify       - Run automated code quality checks'
+	@echo  '  unittest     - Run unit tests for the test suite itself '
+	@echo  '  autoformat   - Run ruff on all the source files, to resolve all issues automatically '
+	@echo  '  verify  - Run a bunch of checks, to see if there are any obvious deficiencies in the code '
+	@echo  '  verifyformat   -  Check formatting only '
 	@echo  ''
 
 
@@ -36,8 +38,16 @@ doc:
 	python -m robot.libdoc resources/cmputils.py doc/cmputils.html
 	python -m robot.libdoc resources/asn1utils.py doc/asn1utils.html
 	python -m robot.libdoc resources/certutils.py doc/certutils.html
+	python -m robot.libdoc resources/httputils.py doc/httputils.html
 	python -m robot.testdoc tests/ doc/tests-suites.html
 
+autoformat:
+	ruff check --fix .
 
 verify:
-	ruff check
+	ruff check .
+	pylint .
+	safety check
+
+verifyformat:
+	ruff check .

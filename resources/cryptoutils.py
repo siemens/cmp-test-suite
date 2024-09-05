@@ -3,9 +3,8 @@ import os
 from typing import Tuple, Union
 
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding, ec
+from cryptography.hazmat.primitives import hashes, hmac, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
 from pyasn1_alt_modules import rfc9481
@@ -17,12 +16,12 @@ from typingutils import PrivateKey
 # map strings used in OpenSSL-like common name notation to objects of NameOID types that
 # cryptography.x509 uses internally
 NAME_MAP = {
-    'C': NameOID.COUNTRY_NAME,
-    'ST': NameOID.STATE_OR_PROVINCE_NAME,
-    'L': NameOID.LOCALITY_NAME,
-    'O': NameOID.ORGANIZATION_NAME,
-    'CN': NameOID.COMMON_NAME,
-    'emailAddress': NameOID.EMAIL_ADDRESS,
+    "C": NameOID.COUNTRY_NAME,
+    "ST": NameOID.STATE_OR_PROVINCE_NAME,
+    "L": NameOID.LOCALITY_NAME,
+    "O": NameOID.ORGANIZATION_NAME,
+    "CN": NameOID.COMMON_NAME,
+    "emailAddress": NameOID.EMAIL_ADDRESS,
 }
 
 # map OIDs of signature algorithms to the stringified names of hash functions
@@ -30,23 +29,22 @@ NAME_MAP = {
 # certConfirm messages, since it must contain the hash of the certificate,
 # computed with the same algorithm as the one in the signature
 OID_HASH_MAP = {
-    '1.2.840.113549.1.1.5': 'sha1',  # sha1-with-rsa-signature
-    '1.2.840.113549.1.1.11': 'sha256',  # sha256WithRSAEncryption
-    '1.2.840.113549.1.1.12': 'sha384',  # sha384WithRSAEncryption
-    '1.2.840.113549.1.1.13': 'sha512',  # sha512WithRSAEncryption
-
-    '1.2.840.10045.4.3.1': 'sha224',  # ecdsa-with-SHA224
-    '1.2.840.10045.4.3.2': 'sha256',  # ecdsa-with-SHA256
-    '1.2.840.10045.4.3.3': 'sha384',  # ecdsa-with-SHA384
-    '1.2.840.10045.4.3.4': 'sha512',  # ecdsa-with-SHA512
+    "1.2.840.113549.1.1.5": "sha1",  # sha1-with-rsa-signature
+    "1.2.840.113549.1.1.11": "sha256",  # sha256WithRSAEncryption
+    "1.2.840.113549.1.1.12": "sha384",  # sha384WithRSAEncryption
+    "1.2.840.113549.1.1.13": "sha512",  # sha512WithRSAEncryption
+    "1.2.840.10045.4.3.1": "sha224",  # ecdsa-with-SHA224
+    "1.2.840.10045.4.3.2": "sha256",  # ecdsa-with-SHA256
+    "1.2.840.10045.4.3.3": "sha384",  # ecdsa-with-SHA384
+    "1.2.840.10045.4.3.4": "sha512",  # ecdsa-with-SHA512
 }
 
 HASH_NAME_OBJ_MAP = {
-    'sha1': hashes.SHA1(),
-    'sha224': hashes.SHA224(),
-    'sha256': hashes.SHA256(),
-    'sha384': hashes.SHA384(),
-    'sha512': hashes.SHA512(),
+    "sha1": hashes.SHA1(),
+    "sha224": hashes.SHA224(),
+    "sha256": hashes.SHA256(),
+    "sha384": hashes.SHA384(),
+    "sha512": hashes.SHA512(),
 }
 
 # Map of tuples (asymmetric algorithm OID, hash algorithm name) to the OID of a signature algorithm, e.g.
@@ -54,9 +52,9 @@ HASH_NAME_OBJ_MAP = {
 # The OIDs are taken from pyasn1-alt-modules, so they are not strings, but rather univ.Oid objects (which can be
 # stringified, if necessary). This is needed when creating the `popo` (ProofOfPossession) structure for CRMF.
 OID_SIG_HASH_MAP = {
-    (rfc9481.rsaEncryption, 'sha256'): rfc9481.sha256WithRSAEncryption,
-    (rfc9481.rsaEncryption, 'sha384'): rfc9481.sha384WithRSAEncryption,
-    (rfc9481.rsaEncryption, 'sha512'): rfc9481.sha512WithRSAEncryption,
+    (rfc9481.rsaEncryption, "sha256"): rfc9481.sha256WithRSAEncryption,
+    (rfc9481.rsaEncryption, "sha384"): rfc9481.sha384WithRSAEncryption,
+    (rfc9481.rsaEncryption, "sha512"): rfc9481.sha512WithRSAEncryption,
 }
 
 
@@ -68,22 +66,22 @@ def get_alg_oid_from_key_hash(key, hash_alg):
     :return: pyasn1.type.univ.ObjectIdentifier of signature algorithm
     """
     if isinstance(key, rsa.RSAPrivateKey):
-        if hash_alg == 'sha256':
+        if hash_alg == "sha256":
             return rfc9481.sha256WithRSAEncryption
-        elif hash_alg == 'sha384':
+        elif hash_alg == "sha384":
             return rfc9481.sha384WithRSAEncryption
-        elif hash_alg == 'sha512':
+        elif hash_alg == "sha512":
             return rfc9481.sha512WithRSAEncryption
 
     elif isinstance(key, ec.ECDSA):
-        if hash_alg == 'sha256':
+        if hash_alg == "sha256":
             return rfc9481.ecdsa_with_SHA256
-        elif hash_alg == 'sha384':
+        elif hash_alg == "sha384":
             return rfc9481.ecdsa_with_SHA384
-        elif hash_alg == 'sha512':
+        elif hash_alg == "sha512":
             return rfc9481.ecdsa_with_SHA512
 
-    raise ValueError(f'Unsupported signature algorithm for ({key}, {hash_alg})')
+    raise ValueError(f"Unsupported signature algorithm for ({key}, {hash_alg})")
 
 
 def get_sig_oid_from_key_hash(alg_oid, hash_alg):
@@ -92,37 +90,39 @@ def get_sig_oid_from_key_hash(alg_oid, hash_alg):
 
     :param: alg_oid: pyasn1.type.univ.ObjectIdentifier, OID of asymmetric algorithm
     :param: hash_alg: str, name of hashing algorithm, e.g., 'sha256'
-    :returns: pyasn1.type.univ.ObjectIdentifier of signature algorithm, e.g., '1.2.840.113549.1.1.11' (i.e., sha256WithRSAEncryption)"""
-
+    :returns: pyasn1.type.univ.ObjectIdentifier of signature algorithm,
+              e.g., '1.2.840.113549.1.1.11' (i.e., sha256WithRSAEncryption)
+    """
     try:
         return OID_SIG_HASH_MAP[(alg_oid, hash_alg)]
     except KeyError:
-        raise ValueError(f'Unsupported signature algorithm for ({alg_oid}, {hash_alg}), '
-                         f'see cryptoutils.OID_SIG_HASH_MAP')
+        raise ValueError(
+            f"Unsupported signature algorithm for ({alg_oid}, {hash_alg}), " f"see cryptoutils.OID_SIG_HASH_MAP"
+        )
 
 
 def get_hash_from_signature_oid(oid):
     """Determine the name of a hashing function used in a signature algorithm given by its oid
 
     :param oid: str, OID of signing algorithm
-    :return: str, name of hashing algorithm, e.g., 'sha256'"""
+    :return: str, name of hashing algorithm, e.g., 'sha256'
+    """
     try:
         return OID_HASH_MAP[oid]
     except KeyError:
-        raise ValueError(f'Unknown signature algorithm OID {oid}, '
-                         f'check OID_HASH_MAP in cryptoutils.py')
+        raise ValueError(f"Unknown signature algorithm OID {oid}, " f"check OID_HASH_MAP in cryptoutils.py")
 
 
 def hash_name_to_instance(alg):
     """Return an instance of a hash algorithm object based on its name
 
     :param alg: str, name of hashing algorithm, e.g., 'sha256'
-    :return: cryptography.hazmat.primitives.hashes"""
+    :return: cryptography.hazmat.primitives.hashes
+    """
     try:
         return HASH_NAME_OBJ_MAP[alg]
     except KeyError:
         raise ValueError(f"Unsupported hash algorithm: {alg}")
-
 
 
 def save_key(key, path, passphrase=b"11111"):
@@ -130,46 +130,51 @@ def save_key(key, path, passphrase=b"11111"):
 
     :param key: cryptography.hazmat.primitives.asymmetric, key you want to save
     :param path: str, where to save it
-    :param passphrase: optional str, password to use for encrypting the key"""
+    :param passphrase: optional str, password to use for encrypting the key
+    """
     with open(path, "wb") as f:
-        f.write(key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.BestAvailableEncryption(passphrase),
-        ))
+        f.write(
+            key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.BestAvailableEncryption(passphrase),
+            )
+        )
 
 
 @not_keyword
 def parse_common_name_from_str(common_name: str) -> x509.Name:
-    """
-    Parses a string representing common name attributes (e.g., "C=DE,ST=Bavaria,L=Munich,O=CMP Lab")
+    """Parse a string representing common name attributes (e.g., "C=DE,ST=Bavaria,L=Munich,O=CMP Lab")
     and converts it into an `x509.Name` object that can be used for X.509 certificate generation
 
-    :param common_name: str, common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
+    :param common_name: str, common name in OpenSSL notation, e.g.,
+    "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
     :returns: x509.Name
     """
-    items = common_name.strip().split(',')
+    items = common_name.strip().split(",")
     common_names = []
     for item in items:
-        attribute, value = item.split('=')
+        attribute, value = item.split("=")
         new_entry = x509.NameAttribute(NAME_MAP[attribute], value.strip())
         common_names.append(new_entry)
 
-
     return x509.Name(common_names)
-
 
 
 def generate_csr(common_name: str = None, subjectAltName=None):
     """Generate a CSR based on the given string parameters
 
-    :param common_name: str, common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
-    :param subjectAltName: optional str, list of subject alternative names, e.g., "example.com,www.example.com,pki.example.com"
+    :param common_name: str, common name in OpenSSL notation, e.g.,
+           "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
+    :param subjectAltName: optional str, list of subject alternative names, e.g.,
+                           "example.com,www.example.com,pki.example.com"
     :returns: x509.CertificateSigningRequestBuilder
     """
     csr = x509.CertificateSigningRequestBuilder()
 
-    common_name = common_name or "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
+    common_name = (
+        common_name or "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
+    )
 
     x509_name = parse_common_name_from_str(common_name)
     csr = csr.subject_name(x509_name)
@@ -181,7 +186,7 @@ def generate_csr(common_name: str = None, subjectAltName=None):
 
     if subjectAltName:
         # if there are any subjectAltNames given, process the list into objects that the CSRBuilder can deal with
-        items = subjectAltName.strip().split(',')
+        items = subjectAltName.strip().split(",")
         dns_names = [x509.DNSName(item) for item in items]
         csr = csr.add_extension(x509.SubjectAlternativeName(dns_names), critical=False)
 
@@ -241,7 +246,7 @@ def compute_hmac(data, key, hash_alg="sha256"):
     hash_alg_instance = hash_name_to_instance(hash_alg)
 
     if type(key) is str:
-        key = key.encode('utf-8')
+        key = key.encode("utf-8")
 
     h = hmac.HMAC(key, hash_alg_instance)
     h.update(data)
@@ -262,7 +267,7 @@ def compute_pbmac1(data, key, iterations=262144, salt=None, length=32, hash_alg=
     hash_alg_instance = hash_name_to_instance(hash_alg)
 
     if type(key) is str:
-        key = key.encode('utf-8')
+        key = key.encode("utf-8")
 
     salt = salt or os.urandom(16)
 
@@ -311,7 +316,7 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
     salt = salt or os.urandom(16)
 
     if type(key) is str:
-        key = key.encode('utf-8')
+        key = key.encode("utf-8")
 
     initial_input = key + salt
     for i in range(iterations):
@@ -326,7 +331,9 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
     return signature
 
 
-def generate_signed_csr(common_name: str, key: Union[PrivateKey, str, None] = None, **params) -> Tuple[bytes, PrivateKey]:
+def generate_signed_csr(  # noqa: D417
+    common_name: str, key: Union[PrivateKey, str, None] = None, **params
+) -> Tuple[bytes, PrivateKey]:
     """Generate Signed CSR.
 
     Generates a signed Certificate Signing Request (CSR) for a given common name (CN).
@@ -336,6 +343,7 @@ def generate_signed_csr(common_name: str, key: Union[PrivateKey, str, None] = No
     algorithm (e.g., "rsa") with additional parameters. If a `PrivateKey` object is provided, it is used directly.
 
     Args:
+    ----
     - `common_name`: The common name (CN) to include in the CSR.
     - `key`: Optional. The private key to use for signing the CSR. Can be one of:
         - A `PrivateKey` object from the cryptography library.
@@ -344,14 +352,18 @@ def generate_signed_csr(common_name: str, key: Union[PrivateKey, str, None] = No
     - `params`: Additional keyword arguments to customize key generation when `key` is a string.
 
     Returns:
+    -------
     - `csr_signed`: The signed CSR in bytes.
     - `key`: The private key used for signing, as a cryptography library Key-Object.
 
     Raises:
+    ------
     - `ValueError`: If the provided key is neither a valid key generation algorithm string nor a `PrivateKey` object.
 
     Example:
+    -------
     | ${csr_signed} | ${private_key} = | Generate Signed CSR | example.com | rsa | length=2048 |
+
     """
     if key is None:
         key = generate_key(algorithm="rsa", length=2048)
