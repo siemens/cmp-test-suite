@@ -3,8 +3,10 @@ import os
 from typing import Tuple, Union, Optional
 
 from cryptography import x509
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, dh, ed25519, ed448, dsa, x25519, x448
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
 from pyasn1_alt_modules import rfc9481
@@ -440,3 +442,20 @@ def compute_dh_based_mac(data: bytes, password: Union[str, dh.DHPublicKey], key:
 
     key = compute_hash(data=shared_key, alg_name=hash_alg)
     return compute_hmac(data=data, key=key, hash_alg=hash_alg)
+
+def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
+    """
+    Computes the AES-GMAC (Galois Message Authentication Code) for given data.
+
+    :param key: The encryption key (16, 24, or 32 bytes for AES-128, AES-192, AES-256)
+    :param nonce: Initialization vector (must be 12 bytes for GCM mode)
+    :param data: Data to authenticate
+    :return: The computed MAC (authentication tag)
+    """
+    # Create AES cipher in GCM mode for MAC computation
+    aes_gcm = Cipher(algorithms.AES(key), modes.GCM(nonce), backend=default_backend()).encryptor()
+
+    # Authenticate data and return the authentication tag
+    aes_gcm.authenticate_additional_data(data)
+    aes_gcm.finalize()  # Finalize to get the authentication tag
+    return aes_gcm.tag
