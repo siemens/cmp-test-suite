@@ -1,5 +1,6 @@
-"""Creates an enum for the CMP protocol,
-making test cases more readable for users of the test suite.
+"""
+Defines Enums for use with the Certificate Management Protocol.
+These Enums make the test cases more readable for users of the test suite and facilitate comparisons and switches in the CMP protocol handling code.
 """
 
 from enum import Enum
