@@ -16,6 +16,7 @@ from pyasn1_alt_modules.rfc2511 import CertTemplate
 
 # from utils import load_and_decode_pem_file
 import utils
+from asn1utils import get_asn1_value
 from certutils import parse_certificate
 from cmp_enums import PKIStatus
 from cryptoutils import (
@@ -1000,6 +1001,3 @@ def get_cert_from_pki_message(pki_message: rfc9480.PKIMessage, cert_number: int 
 
 
     return pki_message["extra_certs"][cert_number]
-
-
-def get_certificate_from_responsebody_responseBody()
