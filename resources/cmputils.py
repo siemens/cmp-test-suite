@@ -1000,4 +1000,29 @@ def get_cert_from_pki_message(pki_message: rfc9480.PKIMessage, cert_number: int 
         raise ValueError("Certificates index out of range!")
 
 
-    return pki_message["extra_certs"][cert_number]
+    return pki_message["extra_certs"][cert_number]def _prepare_extra_certs(path: str, recursive: bool = False) -> univ.SequenceOf:
+    """Loads certificates from a file or directory and returns a `univ.SequenceOf` structure.
+
+    :param path: A string representing a single file path or a directory where the certificates are stored.
+    :param recursive: A boolean that, if True, searches recursively through the directory.
+    :return: An `univ.SequenceOf` object filled with `rfc9480.CMPCertificate` instances.
+    """
+    extra_certs_wrapper = (
+        univ.SequenceOf(componentType=rfc9480.CMPCertificate())
+        .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX))
+        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
+    )
+
+    if os.path.isdir(path):
+
+        for file in glob.glob(path, recursive=recursive):
+            raw = utils.load_and_decode_pem_file(file)
+            cert = parse_certificate(raw)
+            extra_certs_wrapper.append(cert)
+
+    elif os.path.isfile(path):
+        raw = utils.load_and_decode_pem_file(path)
+        cert = parse_certificate(raw)
+        extra_certs_wrapper.append(cert)
+
+    return extra_certs_wrapper
