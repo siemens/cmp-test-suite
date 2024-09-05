@@ -4,6 +4,7 @@ from typing import Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, hmac, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, dh
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
@@ -378,3 +379,31 @@ def generate_signed_csr(  # noqa: D417
     csr_signed = sign_csr(csr=csr, key=key)
 
     return csr_signed, key
+
+
+def do_dh_key_exchange(password: str, private_key: dh.DHPrivateKey) -> bytes:
+    """Performs a Diffie-Hellman key exchange to derive a shared secret key.
+
+    :param password: string a secret which is used as DHPrivateKey of the Server.
+    :param private_key: `cryptography` `dh.DHPrivateKey` object, representing the local party's private key.
+    :return: A byte sequence representing the shared secret key derived from the Diffie-Hellman
+             key exchange.
+    """
+
+    parameters = private_key.parameters().parameter_numbers()
+
+    private_key: dh.DHPrivateKey = generate_key(
+        algorithm="dh",
+        p=parameters.p,
+        g=parameters.g,
+        secret_scalar=int.from_bytes(password.encode("utf-8")),
+    )
+
+    other_public_key: dh.DHPublicKey = private_key.public_key()
+
+
+    shared_key = private_key.exchange(other_public_key)
+    logging.info(f"DH shared secret: {shared_key.hex()}")
+    return shared_key
+
+
