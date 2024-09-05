@@ -1,3 +1,4 @@
+import glob
 import logging
 import os
 import sys
@@ -18,7 +19,7 @@ from pyasn1_alt_modules.rfc2511 import CertTemplate
 import utils
 from asn1utils import get_asn1_value
 from certutils import parse_certificate
-from cmp_enums import PKIStatus
+from test_suite_enums import PKIStatus
 from cryptoutils import (
     compute_hash,
     compute_hmac,
