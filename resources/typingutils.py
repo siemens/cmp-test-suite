@@ -1,6 +1,5 @@
-"""typing_utils.py
-
-This module provides type aliases to enhance code readability, maintainability, and type safety.
+"""
+Provides type aliases to enhance code readability, maintainability, and type safety.
 Type aliases are used to create descriptive names for commonly used types, making the codebase
 easier to understand and work with.
 
@@ -12,13 +11,50 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey, DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from pyasn1_alt_modules import rfc2986, rfc9480
 
 # Type alias for supported private key types
-PrivateKey = Union[RSAPrivateKey, EllipticCurvePrivateKey, DSAPrivateKey, DHPrivateKey]
+PrivateKey = Union[
+    RSAPrivateKey,
+    EllipticCurvePrivateKey,
+    DSAPrivateKey,
+    DHPrivateKey,
+    Ed25519PrivateKey,
+    Ed448PrivateKey,
+]
 # Type alias for supported public key types
-PublicKey = Union[RSAPublicKey, EllipticCurvePublicKey, DSAPublicKey, DHPublicKey]
+PublicKey = Union[
+    RSAPublicKey,
+    EllipticCurvePublicKey,
+    DSAPublicKey,
+    DHPublicKey,
+    Ed25519PrivateKey,
+    Ed448PrivateKey,
+]
+
+
+# Keys which can be used for Signing and Verification of a Signature.
+# Used to make sure that only the right keys are allowed for Singing.
+PrivateKeySig = Union[
+    RSAPrivateKey,
+    EllipticCurvePrivateKey,
+    DSAPrivateKey,
+    DHPrivateKey,
+    Ed25519PrivateKey,
+    Ed448PrivateKey,
+]
+PublicKeySig = Union[
+    RSAPrivateKey,
+    EllipticCurvePrivateKey,
+    DSAPrivateKey,
+    DHPrivateKey,
+    Ed25519PrivateKey,
+    Ed448PrivateKey,
+]
+
 
 # those types are Alias for the option a function can have.
 CsrType = Union[bytes, x509.CertificateSigningRequest, rfc2986.CertificationRequest]
