@@ -94,3 +94,96 @@ def _prepare_dh_based_mac(hash_alg: str = "sha1", mac: str = "hmac-sha1") -> rfc
     param["mac"] = alg_id_mac
     param["ofw"] = alg_id_owf
     return param
+
+
+def _prepare_pki_message_protection_field(
+        pki_message: rfc9480.PKIMessage,
+        protection: str,
+        password: Optional[str] = None,
+        private_key: Optional[PrivateKey] = None,
+) -> rfc9480.PKIMessage:
+    """Preparse the pki protection for the PKIMessage algorithm
+    :param pki_message: `pyasn1_alt_module.rfc9480.PKIMessage`
+    :param protection: A string representing the type of Protection.
+    :param password: A string representing a shared secret or a Server Private Key for DHBasedMac.
+    :param private_key: A`cryptography` `PrivateKey` object. For Signing or DHBasedMac.
+    :return: Returns the protected `pyasn1_alt_module.rfc9480.PKIMessage` object.
+    """
+
+    prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
+
+    assert (
+            password or private_key
+    ), "Either a password, private key must be provided for PKIMessage structure Protection"
+
+    protection_type = ProtectionAlgorithm.get(protection)
+
+    protected_part = rfc9480.ProtectedPart()
+    protected_part["header"] = pki_message["header"]
+    protected_part["body"] = pki_message["body"]
+
+    encoded = encoder.encode(protected_part)
+
+    protection_value = b""
+
+    if protection_type == ProtectionAlgorithm.HMAC:
+        prot_alg_id["algorithm"] = rfc8018.id_hmacWithSHA256
+        prot_alg_id["parameters"] = univ.Null()
+        protection_value = compute_hmac(data=encoded, key=password, hash_alg="sha512")
+
+    elif protection_type == ProtectionAlgorithm.PBMAC1:
+        prot_alg_id["algorithm"] = rfc8018.id_PBMAC1
+        salt = os.urandom(16)
+        pbmac1_parameters = _prepare_pbmac1_parameters(salt=salt, iterations=262144, length=32, hash_alg="sha512")
+        prot_alg_id["parameters"] = pbmac1_parameters
+        protection_value = compute_pbmac1(
+            data=encoded,
+            key=password,
+            iterations=262144,
+            salt=salt,
+            length=32,
+            hash_alg="sha512",
+        )
+
+    elif protection_type == ProtectionAlgorithm.PASSWORD_BASED_MAC:
+        salt = os.urandom(16)
+        prot_alg_id["algorithm"] = rfc4210.id_PasswordBasedMac
+        pbm_parameters = _prepare_password_based_mac_parameters(salt=salt, iterations=1000, hash_alg="sha256")
+        prot_alg_id["parameters"] = pbm_parameters
+        protection_value = compute_password_based_mac(
+            data=encoded, key=password, iterations=1000, salt=salt, hash_alg="sha256"
+        )
+
+    elif protection_type == ProtectionAlgorithm.AES_GMAC:
+        nonce = os.urandom(12)
+        prot_alg_id["algorithm"] = AES_GMAC_OIDS[protection]
+        prot_alg_id["parameters"] = rfc9044.GCMParameters()
+        prot_alg_id["parameters"]["nonce"] = univ.OctetString(nonce)
+        protection_value = compute_gmac(data=encoded, key=password.encode("utf-8"), nonce=nonce)
+
+    elif protection_type == ProtectionAlgorithm.SIGNATURE:
+
+        if private_key is None:
+            raise ValueError("private_key must be provided for PKIMessage structure Protection")
+
+        elif not isinstance(private_key, PrivateKey):
+            raise ValueError("private_key must be an instance of PrivateKey, but is of type: {}.".format(type(private_key)))
+
+        prot_alg_id["algorithm"] = get_alg_oid_from_key_hash(key=private_key, hash_alg="sha256")
+        prot_alg_id["parameters"] = univ.Null()
+        protection_value = sign_data(data=encoded, key=private_key, hash_alg="sha256")
+
+    elif protection_type == ProtectionAlgorithm.DH:
+        prot_alg_id["algorithm"] = rfc9480.id_DHBasedMac
+        prot_alg_id["param"] = _prepare_dh_based_mac(hash_alg="sha1", mac="hmac-sha1")
+        protection_value = compute_dh_based_mac(data=encoded, key=private_key, password=password, hash_alg="sha1")
+
+    wrapped_protection = (
+        rfc9480.PKIProtection()
+        .fromOctetString(protection_value)
+        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
+    )
+    pki_message["protection"] = wrapped_protection
+    return pki_message
+
+
