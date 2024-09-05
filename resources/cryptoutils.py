@@ -407,3 +407,18 @@ def do_dh_key_exchange(password: str, private_key: dh.DHPrivateKey) -> bytes:
     return shared_key
 
 
+def compute_dh_based_mac(data: bytes, password: str, key: dh.DHPrivateKey, hash_alg: str = "sha1") -> bytes:
+    """Computes a Message Authentication Code (MAC) using a Diffie-Hellman (DH) based shared secret.
+    Derives a shared Secret, hashes the key and then computes te HMAC.
+
+    :param data: The input data to be authenticated, given as a byte sequence.
+    :param password: (str) A string password used to generate the Server's secret Key.
+    :param key: A `cryptography` `dh.DHPrivateKey` object. Which represents the client's Secret.
+    :param hash_alg: (str) The name of the hash algorithm to be used for key derivation and HMAC computation.
+                     Defaults to "sha1".
+    :return: A byte sequence representing the computed HMAC of the input data using the derived key.
+    """
+
+    shared_key = do_dh_key_exchange(password=password, private_key=key)
+    key = compute_hash(data=shared_key, alg_name=hash_alg)
+    return compute_hmac(data=data, key=key, hash_alg=hash_alg)
