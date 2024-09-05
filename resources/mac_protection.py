@@ -68,3 +68,29 @@ def _prepare_pbmac1_parameters(salt: Optional[bytes]=None, iterations=100, lengt
     return outer_params
 
 
+def _prepare_dh_based_mac(hash_alg: str = "sha1", mac: str = "hmac-sha1") -> rfc4210.DHBMParameter:
+    """Prepares a Diffie-Hellman Based MAC (Message Authentication Code) parameter structure.
+
+    The structure uses a One-Way Hash Function (OWF) to hash the Diffie-Hellman (DH) shared secret to derive a key,
+    which is then used to compute the Message Authentication Code (MAC) with the specified MAC algorithm.
+
+    :param hash_alg: A string representtrting the hash algorithm to be used for the
+                     one-way-function (OWF). Defaults to "sha1"
+    :param mac:  A string representing the MAC algorithm to be used. Defaults to "hmac-sha1
+    :return: A `pyasn1_alt_module.rfc4210.DHBMParameter` object populated with the algorithm identifiers for the
+             specified hash and MAC algorithm.
+    """
+    param = rfc9480.DHBMParameter()
+
+    alg_id_owf = rfc5280.AlgorithmIdentifier()
+    alg_id_mac = rfc5280.AlgorithmIdentifier()
+
+    alg_id_owf["algorithm"] = get_hash_name_oid(hash_alg)
+    alg_id_owf["param"] = univ.Null()
+
+    alg_id_mac["algorithm"] = get_hash_name_oid(mac)
+    alg_id_mac["parameters"] = univ.Null()
+
+    param["mac"] = alg_id_mac
+    param["ofw"] = alg_id_owf
+    return param
