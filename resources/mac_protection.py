@@ -26,8 +26,8 @@ from resources.aaa_typingutils import PrivateKey
 
 
 def _prepare_pbmac1_parameters(salt: Optional[bytes]=None, iterations=100, length=32, hash_alg="sha256"):
-    """Prepares the PBMAC1 pyasn1 `rfc8018.PBMAC1_params`. Used for the `rfc9480.PKIMessage` structure´.
-       PBKDF2 with HMAC as message authentication scheme is used..
+    """Prepares the PBMAC1 pyasn1 `rfc8018.PBMAC1_params`. Used for the `rfc9480.PKIMessage` structure Protection.
+       PBKDF2 with HMAC as message authentication scheme is used.
 
     :param salt: Optional bytes for uniqueness.
     :param iterations: The number of iterations to be used in the PBKDF2 key derivation function.
