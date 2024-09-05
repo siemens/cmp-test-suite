@@ -6,7 +6,17 @@ store them and retrieve them when needed.
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import dh, dsa, ec, ed25519, rsa
+from cryptography.hazmat.primitives.asymmetric import (
+    ec,
+    ed25519,
+    ed448,
+    dsa,
+    x25519,
+    x448,
+    dh,
+    rsa,
+)
+
 
 from typingutils import PrivateKey, PublicKey
 
@@ -33,16 +43,15 @@ def save_key(key, path, passphrase=b"11111"):
         )
 
 
-def generate_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417
-    """Generate a cryptographic key based on the specified algorithm.
 
-    This function supports generating keys for various cryptographic algorithms including:
-    RSA, DSA, ECDSA, ECDH, Ed25519, DH, and AES.
-    Depending on the selected algorithm, additional parameters can be provided to
-    customize the key generation.
+def generate_key(algorithm="rsa", **params) -> PrivateKey:
+    """
+    Generates a cryptographic key based on the specified algorithm.
+
+    This function supports generating keys for various cryptographic algorithms including RSA, DSA, ECDSA, ECDH, Ed25519, DH, and AES.
+    Depending on the selected algorithm, additional parameters can be provided to customize the key generation.
 
     Arguments:
-    ---------
     - algorithm (str): The cryptographic algorithm to use for key generation.
       Supported values include:
         - "rsa": RSA key pair generation (default).
@@ -54,54 +63,52 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417
         - For "rsa" and "dsa":
             - length (int , str): The length of the key to generate, in bits. Default is 2048.
         - For "ecdsa" or "ecdh":
-            - curve (str): An elliptic curve instance from
-                          `cryptography.hazmat.primitives.asymmetric.ec`. Default is `secp256r1`.
+            - curve (str): An elliptic curve instance from `cryptography.hazmat.primitives.asymmetric.ec`. Default is `secp256r1`.
         - For "dh":
-            - length (int): The prime modulus for DH key generation If not provided, a modulus is generated.
             - g (int): The generator for DH key generation. Default is 2.
             - secret_scalar (int): the private key value for DH key generation. If not provided, one is generated.
-            - length (int): The length of the modulus to generate if `p` is not provided. Default is 2048.
-        - For "aes":
-            - length (int): The length of the AES key in bits. Valid values are 128, 192, or 256. Default is 256.
+            - length (int , str): The length of the modulus to generate if `p` is not provided. Default is 2048.
 
     Returns:
-    -------
-    - private_key (object): The generated private key. For "aes", this will be a raw byte
-                            string representing the symmetric key.
+    - private_key (object): The generated private key. For "aes", this will be a raw byte string representing the symmetric key.
 
     Raises:
-    ------
     - ValueError: If the specified algorithm is not supported or if invalid parameters are provided.
 
     Example usage:
     ```python
-           private_key = generate_key(algorithm="rsa", length=2048)
-           private_key = generate_key(algorithm="ecdsa", curve=ec.SECP384R1())
+    private_key = generate_key(algorithm="rsa", length=2048)
+    private_key = generate_key(algorithm="ecdsa", curve=ec.SECP384R1())
     ```
-
     """
+
     algorithm = algorithm.lower()  # Convert to lowercase once
     backend = default_backend()
 
     if algorithm == "rsa":
-        # TODO change with Config
         length = int(params.get("length", 2048))  # it is allowed to parse a string.
         private_key = rsa.generate_private_key(public_exponent=65537, key_size=length, backend=backend)
 
     elif algorithm == "dsa":
-        # TODO change with Config
         length = int(params.get("length", 2048))  # it is allowed to parse a string.
         private_key = dsa.generate_private_key(key_size=length, backend=backend)
 
     elif algorithm in ["ecdh", "ecdsa"]:
-        curve = params.get("curve", None)
-        # TODO change with Config
-        # TODO implementation in next Merge.
-        curve = get_curve(curve, default="secp256r1")
+        curve = params.get("curve", "secp256r1")
+        curve = get_curve_instance(curve_name=curve)
         private_key = ec.generate_private_key(curve=curve, backend=backend)
 
     elif algorithm == "ed25519":
         private_key = ed25519.Ed25519PrivateKey.generate()
+
+    elif algorithm == "ed448":
+        private_key = ed448.Ed448PrivateKey.generate()
+
+    elif algorithm == "x25519":
+        private_key = x25519.X25519PrivateKey.generate()
+
+    elif algorithm == "x448":
+        private_key = x448.X448PrivateKey.generate()
 
     elif algorithm == "dh":
         p = params.get("p")
@@ -109,7 +116,6 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417
         secret_scalar = params.get("secret_scalar")
 
         if p is None:
-            # TODO change with Config
             length = int(params.get("length", 2048))
             parameters = dh.generate_parameters(generator=g, key_size=length, backend=backend)
         else:
