@@ -187,3 +187,41 @@ def _prepare_pki_message_protection_field(
     return pki_message
 
 
+def apply_pki_message_protection(
+        pki_message: rfc9480.PKIMessage,
+        protection: str,
+        password: Optional[str] = None,
+        private_key: Optional[PrivateKey] = None,
+) -> rfc9480.PKIMessage:
+    """
+    Prepares the PKI protection for the PKIMessage algorithm.
+
+    Arguments:
+    - `pki_message`: `pyasn1_alt_module.rfc9480.PKIMessage` object. which has a set `pyasn1_alt_module.rfc9480.PKIBody`
+    - `protection`: String representing the type of protection.
+    - `password`: String representing a shared secret or a server private key for DHBasedMac (default is None).
+    - `private_key`: `cryptography` ``PrivateKey`` object, used for signing or DHBasedMac (default is None).
+
+    Returns:
+    - `rfc9480.PKIMessage`: The PKIMessage object with the applied protection.
+
+    Raises:
+    - ValueError | If the `PKIMessage` body is not set or is not a value. |
+
+
+    Example:
+    | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | pbmac1    | ${SECRET}       |
+    | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | aes-gmac  | ${SECRET}       |
+    | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | signature | private_key=${PRIVATE_KEY}  |
+    | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | dh | private_key=${PRIVATE_KEY}  password={PASSWORD}|
+
+    """
+    if not pki_message["body"].isValue:
+        raise ValueError("PKI Message body needs to be a value!")
+
+    return _prepare_pki_message_protection_field(
+        pki_message=pki_message,
+        protection=protection,
+        password=password,
+        private_key=private_key,
+    )
