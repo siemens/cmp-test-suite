@@ -11,7 +11,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey, DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from pyasn1_alt_modules import rfc2986, rfc9480
@@ -31,7 +31,7 @@ PublicKey = Union[
     EllipticCurvePublicKey,
     DSAPublicKey,
     DHPublicKey,
-    Ed25519PrivateKey,
+    Ed25519PublicKey,
     Ed448PrivateKey,
 ]
 
@@ -47,12 +47,12 @@ PrivateKeySig = Union[
     Ed448PrivateKey,
 ]
 PublicKeySig = Union[
-    RSAPrivateKey,
-    EllipticCurvePrivateKey,
-    DSAPrivateKey,
-    DHPrivateKey,
-    Ed25519PrivateKey,
-    Ed448PrivateKey,
+    RSAPublicKey,
+    EllipticCurvePublicKey,
+    DSAPublicKey,
+    DHPublicKey,
+    Ed25519PublicKey,
+    Ed448PrivateKey
 ]
 
 
