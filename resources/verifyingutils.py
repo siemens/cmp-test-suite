@@ -1,6 +1,10 @@
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding, ec, ed25519, ed448, dsa, x25519, x448
 from robot.api.deco import not_keyword
+
+from oid_mapping import hash_name_to_instance
+from typingutils import PublicKeySig
 
 
 def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, hash_alg: str = None) -> None:
@@ -18,7 +22,7 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
         InvalidSignature: If an unsupported key type is provided.
         ValueError: If the Signature is Invalid.
     """
-    if hash_alg is not None:
+    if hash_alg is not None and not isinstance(hash_alg, hashes.HashAlgorithm):
         hash_alg = hash_name_to_instance(hash_alg)
     # isinstance(ed448.Ed448PrivateKey.generate(), EllipticCurvePrivateKey) → False
     # so can check in this Order.
@@ -38,34 +42,25 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
         raise ValueError(f"Unsupported public key type: {type(public_key).__name__}.")
 
 
-
-
 @not_keyword
-def verify_cert_signature(cert: x509.Certificate):
+def verify_cert_signature(certificate: x509.Certificate):
     """Verify the digital signature of an X.509 certificate using the provided or extracted public key.
 
-    :param cert:
+    :param certificate:
         The certificate to verify, represented in a type that can be cast to an X.509 certificate object.
         It should be in a DER-encoded form compatible with the `x509.Certificate` type.
 
-    :raises ValueError:
-        If the certificate type is not valid or casting fails.
     :raises InvalidSignature:
         If the certificate's signature is not valid when verified against the provided or extracted public key.
     """
-    # Extract the public key from the CSR, which will be used to verify the signature.
-    public_key = cert.public_key()
-
-    # Verify the signature of the CSR.
-    public_key.verify(
-        cert.signature,  # The signature to verify.
-        cert.tbs_certificate_bytes,  # The data that was signed.
-        padding.PKCS1v15(),  # The padding scheme used for the signature.
-        cert.signature_hash_algorithm,  # The hash algorithm used for the signature.
-    )
 
 
-# only internally used, so strict Parsing
+    verify_signature(public_key=certificate.public_key(),
+                     signature=certificate.signature,
+                     data=certificate.tbs_certificate_bytes,
+                     hash_alg=certificate.signature_hash_algorithm)
+
+
 @not_keyword
 def verify_csr_signature(csr: x509.CertificateSigningRequest):
     """Verify the digital signature of an X.509 CSR using the provided or extracted public key.
@@ -77,13 +72,8 @@ def verify_csr_signature(csr: x509.CertificateSigningRequest):
     :raises InvalidSignature:
         If the csr's signature is not valid when verified against the provided or extracted public key.
     """
-    # Extract the public key from the CSR, which will be used to verify the signature.
-    public_key = csr.public_key()
 
-    # Verify the signature of the CSR.
-    public_key.verify(
-        csr.signature,  # The signature to verify.
-        csr.tbs_certrequest_bytes,  # The data that was signed.
-        padding.PKCS1v15(),  # The padding scheme used for the signature.
-        csr.signature_hash_algorithm,  # The hash algorithm used for the signature.
-    )
+    verify_signature(public_key=csr.public_key(),
+                     signature=csr.signature,
+                     data=csr.tbs_certrequest_bytes,
+                     hash_alg=csr.signature_hash_algorithm)
