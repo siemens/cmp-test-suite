@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from pyasn1_alt_modules import rfc9481
 from robot.api.deco import not_keyword
 
-from oid_mapping import NAME_MAP, hash_name_to_instance, get_alg_oid_from_key_hash, get_sig_oid_from_key_hash, get_hash_from_signature_oid
+from oid_mapping import NAME_MAP, hash_name_to_instance
 
 from keyutils import generate_key
 from typingutils import PrivateKey, PrivateKeySig
