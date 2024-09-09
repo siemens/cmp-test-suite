@@ -283,6 +283,29 @@ def _generate_private_dh_from_key(password: str, other_party_key: Union[dh.DHPri
     )
     return private_key
 
+
+def do_dh_key_exchange_password_based(password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]) -> bytes:
+    """Performs a Diffie-Hellman key exchange to derive a shared secret key based on a password.
+
+    Arguments:
+    - `password`: A string used to derive the DH private key for the server or local party.
+    - `other_party_key`: A `cryptography` `dh.DHPrivateKey` or `dh.DHPublicKey` object representing the other party's key.
+
+    Returns:
+    - `bytes`: A byte sequence representing the shared secret key derived from the Diffie-Hellman key exchange.
+
+    Example:
+    | ${shared_secret} = | Do DH Key Exchange Password Based | password=my_password | other_party_key=${public_key} |
+
+    """
+
+    private_key = _generate_private_dh_from_key(password, other_party_key)
+
+    if isinstance(other_party_key, dh.DHPublicKey):
+        shared_key = private_key.exchange(other_party_key)
+        logging.info(f"DH shared secret: {shared_key.hex()}")
+        return shared_key
+
     other_public_key: dh.DHPublicKey = private_key.public_key()
 
 
@@ -305,7 +328,7 @@ def compute_dh_based_mac(data: bytes, password: Union[str, dh.DHPublicKey], key:
     """
 
     if isinstance(password, str):
-        shared_key = do_dh_key_exchange(password=password, private_key=key)
+        shared_key = do_dh_key_exchange(password=password, key=key)
     else:
         shared_key = key.exchange(password)
 
