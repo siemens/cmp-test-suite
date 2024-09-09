@@ -8,7 +8,7 @@ from typingutils import PublicKeySig
 
 
 def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, hash_alg: str = None) -> None:
-    """""Verify a digital signature using the provided public key, data and hash algorithm.
+    """ ""Verify a digital signature using the provided public key, data and hash algorithm.
     Supports: (ECDSA, ED448, ED25519, RSA, DSA).
 
     Args:

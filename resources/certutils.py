@@ -15,6 +15,7 @@ from robot.api.deco import not_keyword
 # TODO for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False
 
+
 @not_keyword
 def parse_certificate(data: bytes) -> rfc9480.CMPCertificate:
     """Parse a DER-encoded X509 certificate into a pyasn1 object.

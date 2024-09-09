@@ -143,6 +143,7 @@ def sign_csr(csr, key, hash_alg="sha256"):
     csr_out = csr.sign(key, hash_alg_instance)
     return csr_out.public_bytes(serialization.Encoding.PEM)
 
+
 @not_keyword
 def compute_hmac(data, key, hash_alg="sha256"):
     """Compute HMAC for the given data using specified key.
@@ -162,6 +163,7 @@ def compute_hmac(data, key, hash_alg="sha256"):
     h.update(data)
     signature = h.finalize()
     return signature
+
 
 @not_keyword
 def compute_pbmac1(data: bytes, key: Union[str, bytes], iterations=262144, salt=None, length=32, hash_alg="sha256"):
@@ -195,6 +197,7 @@ def compute_pbmac1(data: bytes, key: Union[str, bytes], iterations=262144, salt=
     logging.info(f"Signature: {signature}")
     return signature
 
+
 @not_keyword
 def compute_hash(alg_name, data):
     """Calculate the hash of data using an algorithm given by its name
@@ -207,6 +210,7 @@ def compute_hash(alg_name, data):
     digest = hashes.Hash(hash_class)
     digest.update(data)
     return digest.finalize()
+
 
 @not_keyword
 def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="sha256"):
@@ -283,7 +287,9 @@ def generate_signed_csr(  # noqa: D417
     return csr_signed, key
 
 
-def _generate_private_dh_from_key(password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]) -> dh.DHPrivateKey:
+def _generate_private_dh_from_key(
+    password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
+) -> dh.DHPrivateKey:
     """Generates a `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey` based on the parsed password.
     Used to perform a DH Key-Agreement with a provided password.
 
@@ -302,8 +308,9 @@ def _generate_private_dh_from_key(password: str, other_party_key: Union[dh.DHPri
     return private_key
 
 
-def do_dh_key_exchange_password_based(# noqa: D417
-        password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]) -> bytes:
+def do_dh_key_exchange_password_based(  # noqa: D417
+    password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
+) -> bytes:
     """Performs a Diffie-Hellman key exchange to derive a shared secret key based on a password.
 
     Arguments:
@@ -327,13 +334,14 @@ def do_dh_key_exchange_password_based(# noqa: D417
 
     other_public_key: dh.DHPublicKey = private_key.public_key()
 
-
     shared_key = private_key.exchange(other_public_key)
     logging.info(f"DH shared secret: {shared_key.hex()}")
     return shared_key
 
 
-def compute_dh_based_mac(data: bytes, password: Union[str, dh.DHPublicKey], key: dh.DHPrivateKey, hash_alg: str = "sha1") -> bytes:
+def compute_dh_based_mac(
+    data: bytes, password: Union[str, dh.DHPublicKey], key: dh.DHPrivateKey, hash_alg: str = "sha1"
+) -> bytes:
     """Computes a Message Authentication Code (MAC) using a Diffie-Hellman (DH) based shared secret.
     Derives a shared Secret, hashes the key and then computes te HMAC.
 
@@ -354,6 +362,7 @@ def compute_dh_based_mac(data: bytes, password: Union[str, dh.DHPublicKey], key:
     key = compute_hash(data=shared_key, alg_name=hash_alg)
     return compute_hmac(data=data, key=key, hash_alg=hash_alg)
 
+
 @not_keyword
 def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     """
@@ -373,10 +382,12 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     return aes_gcm.tag
 
 
-def generate_cert_from_private_key(# noqa: D417
-        private_key: PrivateKey, common_name: Optional[str] = "CN=Hans",
-                                   hash_alg: Optional[str] = "sha256",
-        sign_key: Optional[PrivSignCertKey] = None) -> x509.Certificate:
+def generate_cert_from_private_key(  # noqa: D417
+    private_key: PrivateKey,
+    common_name: Optional[str] = "CN=Hans",
+    hash_alg: Optional[str] = "sha256",
+    sign_key: Optional[PrivSignCertKey] = None,
+) -> x509.Certificate:
     """Generates a self-signed x509 certificate from a provided private key.
 
     Args:
@@ -402,9 +413,10 @@ def generate_cert_from_private_key(# noqa: D417
     subject = issuer = parse_common_name_from_str(common_name)
 
     if not isinstance(private_key, PrivateKey):
-        raise ValueError("Needs a `cryptography.hazmat.primitives.asymmetric PrivateKey` object for generating a "
-                         "self-singed `cryptography.x509.Certificate`")
-
+        raise ValueError(
+            "Needs a `cryptography.hazmat.primitives.asymmetric PrivateKey` object for generating a "
+            "self-singed `cryptography.x509.Certificate`"
+        )
 
     sign_key = sign_key or private_key
 
@@ -423,27 +435,15 @@ def generate_cert_from_private_key(# noqa: D417
         hash_alg = hash_name_to_instance(hash_alg)
 
         # Sign the certificate with the private key
-        certificate = cert_builder.sign(
-            private_key=sign_key,
-            algorithm=hash_alg
-        )
+        certificate = cert_builder.sign(private_key=sign_key, algorithm=hash_alg)
     elif isinstance(sign_key, rsa.RSAPrivateKey):
         hash_alg = hash_name_to_instance(hash_alg)
-        certificate = cert_builder.sign(
-            private_key=sign_key,
-            algorithm=hash_alg,
-            rsa_padding=padding.PKCS1v15()
-        )
+        certificate = cert_builder.sign(private_key=sign_key, algorithm=hash_alg, rsa_padding=padding.PKCS1v15())
 
     elif isinstance(sign_key, (ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)):
-        certificate = cert_builder.sign(
-            private_key=sign_key,
-            algorithm=None
-        )
+        certificate = cert_builder.sign(private_key=sign_key, algorithm=None)
 
     else:
         raise ValueError(f"Unsupported to sign a Certificate!: {type(sign_key)}")
 
     return certificate
-
-

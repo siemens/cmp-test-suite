@@ -9,19 +9,19 @@ from robot.api.deco import not_keyword
 
 from typingutils import PrivateKey
 
-AES_GMAC_NAME_2_OID= {
+AES_GMAC_NAME_2_OID = {
     "aes128_gmac": rfc9481.id_aes128_GMAC,
     "aes192_gmac": rfc9481.id_aes192_GMAC,
     "aes256_gmac": rfc9481.id_aes256_GMAC,
     "aes-gmac": rfc9481.id_aes256_GMAC,
-    "aes_gmac": rfc9481.id_aes256_GMAC
+    "aes_gmac": rfc9481.id_aes256_GMAC,
 }
 
 
 AES_GMAC_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
     rfc9481.id_aes128_GMAC: "aes128_gmac",
     rfc9481.id_aes192_GMAC: "aes192_gmac",
-    rfc9481.id_aes256_GMAC: "aes256_gmac"
+    rfc9481.id_aes256_GMAC: "aes256_gmac",
 }
 
 
@@ -80,9 +80,13 @@ SUPPORTED_SIG_MAC_OIDS.update(ECDSA_SHA_OID_2_NAME)
 
 
 SYMMETRIC_PROT_ALGO = {}
-SYMMETRIC_PROT_ALGO.update({rfc8018.id_PBMAC1 : "pbmac1",
-                            rfc9480.id_DHBasedMac: "dh_based_mac",
-                            rfc9480.id_PasswordBasedMac: "password_based_mac"})
+SYMMETRIC_PROT_ALGO.update(
+    {
+        rfc8018.id_PBMAC1: "pbmac1",
+        rfc9480.id_DHBasedMac: "dh_based_mac",
+        rfc9480.id_PasswordBasedMac: "password_based_mac",
+    }
+)
 
 SYMMETRIC_PROT_ALGO.update(HMAC_SHA_OID_2_NAME)
 SYMMETRIC_PROT_ALGO.update(AES_GMAC_OID_2_NAME)
@@ -114,7 +118,7 @@ ALLOWED_HASH_TYPES = {
     "sha224": hashes.SHA224(),
     "sha256": hashes.SHA256(),
     "sha384": hashes.SHA384(),
-    "sha512": hashes.SHA512()
+    "sha512": hashes.SHA512(),
 }
 
 
@@ -174,6 +178,7 @@ def get_hash_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
     else:
         raise ValueError("Hash name is not supported: {}".format(hash_name))
 
+
 @not_keyword
 def get_curve_instance(curve_name: str) -> ec.EllipticCurve:
     """Retrieve an instance of an elliptic curve based on its name.
@@ -222,6 +227,7 @@ def get_alg_oid_from_key_hash(key: PrivateKey, hash_alg: str) -> univ.ObjectIden
 
     raise ValueError(f"Unsupported signature algorithm for ({key}, {hash_alg})")
 
+
 @not_keyword
 def get_sig_oid_from_key_hash(alg_oid, hash_alg):
     """Determine the OID of a signature algorithm given by the OID of the asymmetric algorithm and the name of the
@@ -239,6 +245,7 @@ def get_sig_oid_from_key_hash(alg_oid, hash_alg):
             f"Unsupported signature algorithm for ({alg_oid}, {hash_alg}), " f"see cryptoutils.OID_SIG_HASH_MAP"
         )
 
+
 @not_keyword
 def get_hash_from_signature_oid(oid: univ.ObjectIdentifier) -> str:
     """Determine the name of a hashing function used in a signature algorithm given by its oid
@@ -250,8 +257,6 @@ def get_hash_from_signature_oid(oid: univ.ObjectIdentifier) -> str:
         return tmp
     except KeyError:
         raise ValueError(f"Unknown signature algorithm OID {oid}, " f"check OID_HASH_MAP in cryptoutils.py")
-
-
 
 
 @not_keyword

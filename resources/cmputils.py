@@ -110,8 +110,6 @@ def build_cmp_revoke_request(
     return pki_message
 
 
-
-
 def _prepare_implicit_confirm_general_info_structure() -> univ.SequenceOf:
     """Prepare the `generalInfo` field of a PKIHeader structure to
     request the implicitConfirm feature from the server.
@@ -141,7 +139,7 @@ def _prepare_pki_message(
     transaction_id=None,
     sender_nonce=None,
     recip_nonce=None,
-    implicit_confirm=False
+    implicit_confirm=False,
 ):
     """Prepare the skeleton structure of a PKIMessage, with the body to be set later.
 
@@ -232,15 +230,15 @@ def _prepare_pki_message(
 
 
 def build_p10cr_from_csr(
-        csr: rfc6402.CertificationRequest,
-        sender: str = "tests@example.com",
-        recipient: str = "testr@example.com",
-        omit_fields: str = None,
-        transaction_id=None,
-        sender_nonce=None,
-        recip_nonce=None,
-        implicit_confirm=False,
-        extra_certs: str = None,
+    csr: rfc6402.CertificationRequest,
+    sender: str = "tests@example.com",
+    recipient: str = "testr@example.com",
+    omit_fields: str = None,
+    transaction_id=None,
+    sender_nonce=None,
+    recip_nonce=None,
+    implicit_confirm=False,
+    extra_certs: str = None,
 ):
     """Creates a pyasn1 p10cr pkiMessage from a pyasn1 PKCS10 CSR
 
@@ -267,9 +265,10 @@ def build_p10cr_from_csr(
 
     pki_message["body"] = pki_body
     if extra_certs is not None:
-       pki_message["extra_certs"] = _prepare_extra_certs_from_path(extra_certs)
+        pki_message["extra_certs"] = _prepare_extra_certs_from_path(extra_certs)
 
     return pki_message
+
 
 def build_cr_from_csr(
     csr,
@@ -399,7 +398,7 @@ def build_cert_conf(
         implicit_confirm=implicit_confirm,
     )
 
-    sig_algorithm = (cert["signature"]["algorithm"])
+    sig_algorithm = cert["signature"]["algorithm"]
     hash_alg = get_hash_from_signature_oid(sig_algorithm)
     der_cert = encode_to_der(cert)
     hash = cryptoutils.compute_hash(hash_alg, der_cert)
@@ -415,7 +414,6 @@ def build_cert_conf(
     pki_body["certConf"] = cert_conf
     pki_message["body"] = pki_body
     return pki_message
-
 
 
 def encode_to_der(asn1_structure: pyasn1.type.base.Asn1ItemBase) -> bytes:
@@ -734,16 +732,12 @@ def _generate_pki_message_fail_info(fail_info: Optional[str] = None) -> rfc9480.
     return pki_msg
 
 
-
 def _prepare_extra_certs(certs: List[rfc9480.CMPCertificate]) -> univ.SequenceOf:
-
-
     extra_certs_wrapper: univ.SequenceOf = (
         univ.SequenceOf(componentType=rfc9480.CMPCertificate())
         .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX))
         .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
     )
-
 
     extra_certs_wrapper.extend(certs)
 
@@ -764,7 +758,6 @@ def _prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.S
     )
 
     if os.path.isdir(path):
-
         for file in glob.glob(path, recursive=recursive):
             raw = utils.load_and_decode_pem_file(file)
             cert = certutils.parse_certificate(raw)

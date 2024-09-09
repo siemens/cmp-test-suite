@@ -74,7 +74,9 @@ def _prepare_password_based_mac_parameters(
     return pbm_parameter
 
 
-def _prepare_pbmac1_parameters(salt: Optional[bytes] = None, iterations=100, length=32, hash_alg="sha256") -> rfc8018.PBMAC1_params:
+def _prepare_pbmac1_parameters(
+    salt: Optional[bytes] = None, iterations=100, length=32, hash_alg="sha256"
+) -> rfc8018.PBMAC1_params:
     """Prepares the PBMAC1 pyasn1 `rfc8018.PBMAC1_params`. Used for the `rfc9480.PKIMessage` structure Protection.
        PBKDF2 with HMAC as message authentication scheme is used.
 
@@ -298,7 +300,7 @@ def _compute_client_dh_protection(
     private_key: Optional[PrivateKey] = None,
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
-    exclude_cert: bool = False
+    exclude_cert: bool = False,
 ) -> bytes:
     """Computes the DH-protection value for a `pyasn1 rfc9480.PKIMessage` on the client side.
 
@@ -346,7 +348,7 @@ def _compute_pkimessage_protection(
     private_key: Optional[PrivateKey] = None,
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
-    exclude_cert: bool = False
+    exclude_cert: bool = False,
 ) -> bytes:
     """Computes the protection value for a given `pyasn1` `rfc9480.PKIMessage` based on the specified protection algorithm.
     :param pki_message: `pyasn1_alt_module.rfc9480.PKIMessage` object to compute the signature about.
@@ -375,7 +377,7 @@ def _compute_pkimessage_protection(
             certificate=certificate,
             password=password,
             sign_key=sign_key,
-            exclude_cert=exclude_cert
+            exclude_cert=exclude_cert,
         )
 
     elif protection_type_oid in SYMMETRIC_PROT_ALGO:
@@ -402,10 +404,7 @@ def _compute_pkimessage_protection(
 
 
 def _prepare_pki_message_protection_field(
-    pki_message: rfc9480.PKIMessage,
-    protection: str,
-    private_key: Optional[PrivateKey] = None,
-    **params
+    pki_message: rfc9480.PKIMessage, protection: str, private_key: Optional[PrivateKey] = None, **params
 ) -> rfc9480.PKIMessage:
     """Preparse the pki protection for the PKIMessage algorithm
 
@@ -420,7 +419,6 @@ def _prepare_pki_message_protection_field(
 
     prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
 
-
     protection_type = ProtectionAlgorithm.get(protection)
 
     if protection_type == ProtectionAlgorithm.HMAC:
@@ -434,9 +432,12 @@ def _prepare_pki_message_protection_field(
         else:
             salt = bytes.fromhex(params.get("salt"))
 
-        pbmac1_parameters = _prepare_pbmac1_parameters(salt=salt,
-                                                       iterations=int(params.get("iterations", 262144))
-                                                       ,length=int(params.get("length",32)) , hash_alg=params.get("hash_alg", "sha512"))
+        pbmac1_parameters = _prepare_pbmac1_parameters(
+            salt=salt,
+            iterations=int(params.get("iterations", 262144)),
+            length=int(params.get("length", 32)),
+            hash_alg=params.get("hash_alg", "sha512"),
+        )
         prot_alg_id["parameters"] = pbmac1_parameters
 
     elif protection_type == ProtectionAlgorithm.PASSWORD_BASED_MAC:
@@ -445,7 +446,9 @@ def _prepare_pki_message_protection_field(
         else:
             salt = bytes.fromhex(params.get("salt"))
         prot_alg_id["algorithm"] = rfc4210.id_PasswordBasedMac
-        pbm_parameters = _prepare_password_based_mac_parameters(salt=salt, iterations=int(params.get("iterations", 1000)), hash_alg=params.get("hash_alg", "sha256"))
+        pbm_parameters = _prepare_password_based_mac_parameters(
+            salt=salt, iterations=int(params.get("iterations", 1000)), hash_alg=params.get("hash_alg", "sha256")
+        )
         prot_alg_id["parameters"] = pbm_parameters
 
     elif protection_type == ProtectionAlgorithm.AES_GMAC:
@@ -489,8 +492,8 @@ def apply_pki_message_protection(  # noqa: D417
     certificate: Optional[x509.Certificate] = None,
     cert_num: Optional[int] = None,
     sign_key: Optional[PrivSignCertKey] = None,
-    extra_certs: Optional[str]= None,
-    **params
+    extra_certs: Optional[str] = None,
+    **params,
 ) -> rfc9480.PKIMessage:
     """
     Prepares the PKI protection for the PKIMessage algorithm.
@@ -536,15 +539,11 @@ def apply_pki_message_protection(  # noqa: D417
         raise ValueError("Either a password, private key must be provided for PKIMessage structure Protection")
 
     pki_message = _prepare_pki_message_protection_field(
-        pki_message=pki_message,
-        protection=protection,
-        private_key=private_key,
-        **params
+        pki_message=pki_message, protection=protection, private_key=private_key, **params
     )
 
     # exclude generating a certificate from the private key provided.
     exclude_cert = False
-
 
     if cert_num is not None and certificate is not None:
         raise ValueError("Either choose to provide the Certificate or " "provide a Number to Extract the certificate.")
@@ -555,13 +554,16 @@ def apply_pki_message_protection(  # noqa: D417
         certificate = x509.load_der_x509_certificate(certificate)
         exclude_cert = True
 
-
-
     if extra_certs is not None:
         exclude_cert = True
 
     protection_value = _compute_pkimessage_protection(
-        pki_message=pki_message, password=password, private_key=private_key, certificate=certificate, sign_key=sign_key, exclude_cert=exclude_cert
+        pki_message=pki_message,
+        password=password,
+        private_key=private_key,
+        certificate=certificate,
+        sign_key=sign_key,
+        exclude_cert=exclude_cert,
     )
     wrapped_protection = (
         rfc9480.PKIProtection()

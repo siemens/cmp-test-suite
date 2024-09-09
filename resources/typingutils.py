@@ -27,7 +27,7 @@ PrivateKey = Union[
     Ed25519PrivateKey,
     Ed448PrivateKey,
     X25519PrivateKey,
-    X448PrivateKey
+    X448PrivateKey,
 ]
 # Type alias for supported public key types
 PublicKey = Union[
@@ -38,7 +38,7 @@ PublicKey = Union[
     Ed25519PublicKey,
     Ed448PublicKey,
     X25519PublicKey,
-    X448PublicKey
+    X448PublicKey,
 ]
 
 

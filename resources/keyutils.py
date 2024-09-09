@@ -3,6 +3,7 @@ It is designed to facilitate key management by offering simple methods to create
 store them and retrieve them when needed.
 
 """
+
 from typing import Optional
 
 from cryptography.hazmat import backends
@@ -59,7 +60,9 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
         # DH only supports PKCS8 serialization
         format_ = serialization.PrivateFormat.PKCS8
 
-    elif isinstance(key, (x448.X448PrivateKey, x25519.X25519PrivateKey, ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)):
+    elif isinstance(
+        key, (x448.X448PrivateKey, x25519.X25519PrivateKey, ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)
+    ):
         encoding_ = serialization.Encoding.Raw
         format_ = serialization.PrivateFormat.Raw
         encrypt_algo = serialization.NoEncryption()
@@ -72,7 +75,6 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
                 encryption_algorithm=encrypt_algo,
             )
         )
-
 
 
 def generate_key(algorithm="rsa", **params) -> PrivateKey:
@@ -164,6 +166,7 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
 
     return private_key
 
+
 def load_private_key_from_file(filepath: str, password: Optional[str] = "11111") -> PrivateKey:
     """Load Private Key From File.
 
@@ -192,12 +195,12 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
 
     if password == "x448":
         return x448.X448PrivateKey.from_private_bytes(data=pem_data)
-    elif password  == "x25519":
+    elif password == "x25519":
         return x25519.X25519PrivateKey.from_private_bytes(data=pem_data)
 
     elif password == "ed448":
         return ed448.Ed448PrivateKey.from_private_bytes(data=pem_data)
-    elif password  == "ed25519":
+    elif password == "ed25519":
         return ed25519.Ed25519PrivateKey.from_private_bytes(data=pem_data)
 
     password = password if not password else password.encode("utf-8")
@@ -235,15 +238,14 @@ def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
     with open(filepath, "rb") as pem_file:
         pem_data = pem_file.read()
 
-
     if key_type == "x448":
         return x448.X448PublicKey.from_public_bytes(data=pem_data)
-    elif key_type  == "x25519":
+    elif key_type == "x25519":
         return x25519.X25519PublicKey.from_public_bytes(data=pem_data)
 
     elif key_type == "ed448":
         return ed448.Ed448PublicKey.from_public_bytes(data=pem_data)
-    elif key_type  == "ed25519":
+    elif key_type == "ed25519":
         return ed25519.Ed25519PublicKey.from_public_bytes(data=pem_data)
     else:
         public_key = serialization.load_pem_public_key(pem_data, backend=backends.default_backend())
