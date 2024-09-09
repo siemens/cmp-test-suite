@@ -42,7 +42,10 @@ from resources.cryptoutils import (
 from typingutils import PrivateKey, PrivSignCertKey
 from verifyingutils import verify_signature
 
-def _prepare_password_based_mac_parameters(salt: Optional[bytes]=None, iterations=1000, hash_alg="sha256") -> rfc9480.PBMParameter:
+
+def _prepare_password_based_mac_parameters(
+    salt: Optional[bytes] = None, iterations=1000, hash_alg="sha256"
+) -> rfc9480.PBMParameter:
     """Prepares password-based-mac protection with the pyasn1 `rfc8018.PBMParameter` structure.
 
     :param salt: optional bytes, salt to use for the password-based-mac protection, if not given, will generate 16 random bytes
@@ -56,16 +59,16 @@ def _prepare_password_based_mac_parameters(salt: Optional[bytes]=None, iteration
     hash_alg_oid = get_hash_name_to_oid(hash_alg)
 
     pbm_parameter = rfc9480.PBMParameter()
-    pbm_parameter['salt'] = univ.OctetString(salt).subtype(subtypeSpec=constraint.ValueSizeConstraint(0, 128))
-    pbm_parameter['iterationCount'] = iterations
+    pbm_parameter["salt"] = univ.OctetString(salt).subtype(subtypeSpec=constraint.ValueSizeConstraint(0, 128))
+    pbm_parameter["iterationCount"] = iterations
 
-    pbm_parameter['owf'] = rfc8018.AlgorithmIdentifier()
-    pbm_parameter['owf']['algorithm'] = hash_alg_oid
-    pbm_parameter['owf']['parameters'] = univ.Null()
+    pbm_parameter["owf"] = rfc8018.AlgorithmIdentifier()
+    pbm_parameter["owf"]["algorithm"] = hash_alg_oid
+    pbm_parameter["owf"]["parameters"] = univ.Null()
 
-    pbm_parameter['mac'] = rfc8018.AlgorithmIdentifier()
-    pbm_parameter['mac']['algorithm'] = hmac_alg_oid
-    pbm_parameter['mac']['parameters'] = univ.Null()
+    pbm_parameter["mac"] = rfc8018.AlgorithmIdentifier()
+    pbm_parameter["mac"]["algorithm"] = hmac_alg_oid
+    pbm_parameter["mac"]["parameters"] = univ.Null()
 
     return pbm_parameter
 
