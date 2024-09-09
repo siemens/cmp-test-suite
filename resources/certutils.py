@@ -70,8 +70,6 @@ def validate_certificate_pkilint(data):
         raise ValueError(issues)
 
 
-
-
 if __name__ == "__main__":
     raw_cert = open(r"cert.cer", "rb").read()
     result = validate_certificate_pkilint(raw_cert)
