@@ -8,18 +8,30 @@ from typingutils import PublicKeySig
 
 
 def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, hash_alg: str = None) -> None:
-    """Verify a digital signature using the provided public key and data.
+    """""Verify a digital signature using the provided public key, data and hash algorithm.
     Supports: (ECDSA, ED448, ED25519, RSA, DSA).
 
-    :param public_key: A `cryptography` public key object (e.g., Elliptic Curve, Ed25519, Ed448, DSA)
-                       used to verify the signature.
-    :param signature: The digital signature to be verified, provided as a byte sequence.
-    :param data: The original data that was signed, provided as a byte sequence.
-    :param hash_alg: Optional string representing the name of the hash algorithm to be used for verification
-                     (e.g., "sha256"). If not specified, the default algorithm for the given key type is used.
-    :raises
-        InvalidSignature: If an unsupported key type is provided.
-        ValueError: If the Signature is Invalid.
+    Args:
+        `public_key` (cryptography.hazmat.primitives.asymmetric): The public key object used to verify the signature.
+        `signature` (bytes): The digital signature to be verified, provided as a byte sequence.
+        `data` (bytes): The original data that was signed, provided as a byte sequence.
+        `hash_alg` (Optional str ): An optional string representing the name of the hash algorithm to be used for verification
+                                  (e.g., "sha256"). If not specified, the default algorithm for the given key type is used.
+
+    Key Types and Verification:
+        - `RSAPublicKey`: Verifies using PKCS1v15 padding and the provided hash algorithm.
+        - `EllipticCurvePublicKey`: Verifies using ECDSA with the provided hash algorithm.
+        - `Ed25519PublicKey` and `Ed448PublicKey`: Verifies without a hash algorithm.
+        - `DSAPublicKey`: Verifies using the provided hash algorithm.
+        - Unsupported key types (e.g., `X25519PublicKey`, `X448PublicKey`): Raises an error.
+
+    Raises:
+        InvalidSignature: If the signature is invalid.
+        ValueError: If an unsupported key type is provided.
+
+    Example:
+        | Verify Signature | ${public_key} | ${signature} | ${data} | sha256 |
+
     """
 
     if isinstance(hash_alg, hashes.HashAlgorithm):
