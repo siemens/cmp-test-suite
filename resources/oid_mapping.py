@@ -113,15 +113,7 @@ ALLOWED_HASH_TYPES = {
     "sha224": hashes.SHA224(),
     "sha256": hashes.SHA256(),
     "sha384": hashes.SHA384(),
-    "sha512": hashes.SHA512(),
-    "sha3_224": hashes.SHA3_224(),
-    "sha3_256": hashes.SHA3_256(),
-    "sha3_383": hashes.SHA3_384(),
-    "sha3_512": hashes.SHA3_512(),
-    "sha3-224": hashes.SHA3_224(),
-    "sha3-256": hashes.SHA3_256(),
-    "sha3-383": hashes.SHA3_384(),
-    "sha3-512": hashes.SHA3_512(),
+    "sha512": hashes.SHA512()
 }
 
 
