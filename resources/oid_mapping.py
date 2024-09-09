@@ -8,14 +8,16 @@ from pyasn1_alt_modules import rfc9481, rfc8017, rfc5480
 
 from typingutils import PrivateKey
 
-AES_GMAC_OIDS = {
+AES_GMAC_NAME_2_OID= {
     "aes128_gmac": rfc9481.id_aes128_GMAC,
-    "aes192_gmac": rfc9481.id_aes128_GMAC,
-    "aes256_gmac": rfc9481.id_aes128_GMAC
+    "aes192_gmac": rfc9481.id_aes192_GMAC,
+    "aes256_gmac": rfc9481.id_aes256_GMAC,
+    "aes-gmac": rfc9481.id_aes256_GMAC,
+    "aes_gmac": rfc9481.id_aes256_GMAC
 }
 
 
-AES_GMAC_OID_2_NAME = {
+AES_GMAC_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
     rfc9481.id_aes128_GMAC: "aes128_gmac",
     rfc9481.id_aes192_GMAC: "aes192_gmac",
     rfc9481.id_aes256_GMAC: "aes256_gmac"
