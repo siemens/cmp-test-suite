@@ -2,17 +2,36 @@
 Provides functionality to prepare the `pyasn1` `rfc9480.PKIMessage` protection: AlgorithmIdentifier field and computes the PKIProtection.
 """
 
-
+import logging
 import os
+from typing import Union
 
+from cryptography import x509
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric import x448, x25519
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ, constraint
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
-from pyasn1_alt_modules import rfc9044, rfc5280, rfc8018, rfc4210, rfc9480
+from pyasn1_alt_modules import rfc9044, rfc5280, rfc8018, rfc4210, rfc9480, rfc9481
 from typing_extensions import Optional
 
-from cryptoutils import compute_dh_based_mac
-from oid_mapping import AES_GMAC_OIDS, get_alg_oid_from_key_hash, get_hash_name_oid
+from cryptography.hazmat.primitives import serialization
+
+from certutils import parse_certificate
+from cmputils import _prepare_extra_certs, encode_to_der
+from cryptoutils import compute_hash, _generate_private_dh_from_key, do_dh_key_exchange_password_based
+from cryptoutils import generate_cert_from_private_key
+from oid_mapping import (
+    get_alg_oid_from_key_hash,
+    get_hash_name_to_oid,
+    HMAC_SHA_OID_2_NAME,
+    SUPPORTED_SIG_MAC_OIDS,
+    get_hash_from_signature_oid,
+    SHA_OID_2_NAME,
+    SYMMETRIC_PROT_ALGO,
+    AES_GMAC_NAME_2_OID,
+    AES_GMAC_OID_2_NAME,
+)
 from test_suite_enums import ProtectionAlgorithm
 from resources.cryptoutils import (
     compute_pbmac1,
@@ -21,7 +40,8 @@ from resources.cryptoutils import (
     sign_data,
     compute_hmac,
 )
-from typingutils import PrivateKey
+from typingutils import PrivateKey, PrivSignCertKey
+from verifyingutils import verify_signature, verify_cert_signature
 
 def _prepare_password_based_mac_parameters(salt: Optional[bytes]=None, iterations=1000, hash_alg="sha256") -> rfc9480.PBMParameter:
     """Prepares password-based-mac protection with the pyasn1 `rfc8018.PBMParameter` structure.
