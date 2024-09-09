@@ -291,6 +291,53 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         raise ValueError(f"Unsupported Symmetric Mac Protection! : {protection_type_oid}")
 
 
+def _compute_client_dh_protection(
+    pki_message: rfc9480.PKIMessage,
+    password: Optional[str] = None,
+    private_key: Optional[PrivateKey] = None,
+    certificate: Optional[x509.Certificate] = None,
+    sign_key: Optional[PrivSignCertKey] = None,
+) -> bytes:
+    """Computes the DH-protection value for a `pyasn1 rfc9480.PKIMessage` on the client side.
+
+    Can also be x448 or x25519 but needs a sign key for it.
+
+    :param pki_message: `pyasn1 rfc9480.PKIMessage` - The PKIMessage object to which the protection
+                        value is to be computed.
+    :param password: (Optional) A string representing a shared secret or a server private key for DH-based MAC.
+    :param private_key: (Optional) `cryptography.PrivateKey` - The private key used for signature-based protection.
+    :param certificate: (Optional) `cryptography.x509.Certificate` - A certificate to use as the CMP-Protection certificate
+                        if a certificate-based protection is required.
+    :param sign_key: (Optional) `PrivSignCertKey` - A signing key to use for generating a new certificate if needed.
+
+    :raises ValueError: If the PKIMessage protection algorithm OID is not supported.
+
+    :return: `bytes` - The computed protection value for the PKIMessage.
+    """
+    # Private key of the Client.
+
+    # assumes x448and x25519
+    # certificate is the Server on.
+    if certificate is not None and private_key is not None:
+        shared_secret = private_key.exchange(certificate.public_key())
+        # adds own Public Certificate to the PKIMessage.
+        _apply_cert_pkimessage_protection(pki_message=pki_message, private_key=private_key, sign_key=sign_key)
+        # assumes shared secret for DH.
+        return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
+
+    elif certificate is None:
+        # handles DH.
+        shared_secret = do_dh_key_exchange_password_based(password=password, other_party_key=private_key)
+        # DH has no Certificate.
+        return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
+
+    elif certificate is not None and password is not None:
+        raise NotImplementedError("")
+
+    raise ValueError("DH based Password needs a private key and a password or a Certificate and a Private key.")
+
+
+def _compute_pkimessage_protection(
 def _prepare_pki_message_protection_field(
         pki_message: rfc9480.PKIMessage,
         protection: str,
