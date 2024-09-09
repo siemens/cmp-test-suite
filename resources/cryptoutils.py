@@ -13,19 +13,12 @@ from cryptography.x509.oid import NameOID
 from pyasn1_alt_modules import rfc9481
 from robot.api.deco import not_keyword
 
+from oid_mapping import NAME_MAP
+
 from keyutils import generate_key
 from typingutils import PrivateKey, PrivateKeySig
 
-# map strings used in OpenSSL-like common name notation to objects of NameOID types that
-# cryptography.x509 uses internally
-NAME_MAP = {
-    "C": NameOID.COUNTRY_NAME,
-    "ST": NameOID.STATE_OR_PROVINCE_NAME,
-    "L": NameOID.LOCALITY_NAME,
-    "O": NameOID.ORGANIZATION_NAME,
-    "CN": NameOID.COMMON_NAME,
-    "emailAddress": NameOID.EMAIL_ADDRESS,
-}
+
 
 # map OIDs of signature algorithms to the stringified names of hash functions
 # used in the signature; this is needed to compute the certificate has for
