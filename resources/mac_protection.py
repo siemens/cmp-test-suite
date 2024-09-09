@@ -33,8 +33,8 @@ def _prepare_password_based_mac_parameters(salt: Optional[bytes]=None, iteration
     """
     salt = salt or os.urandom(16)
 
-    hmac_alg_oid = get_hash_name_oid(f"hmac-{hash_alg}")
-    hash_alg_oid = get_hash_name_oid(hash_alg)
+    hmac_alg_oid = get_hash_name_to_oid(f"hmac-{hash_alg}")
+    hash_alg_oid = get_hash_name_to_oid(hash_alg)
 
     pbm_parameter = rfc9480.PBMParameter()
     pbm_parameter['salt'] = univ.OctetString(salt).subtype(subtypeSpec=constraint.ValueSizeConstraint(0, 128))
@@ -59,20 +59,12 @@ def _prepare_pbmac1_parameters(salt: Optional[bytes]=None, iterations=100, lengt
     :param iterations: The number of iterations to be used in the PBKDF2 key derivation function.
                        Default is 100.
     :param length: int The desired length of the derived key in bytes. Default is 32 bytes.
-    :param hash_alg:
+    :param hash_alg: str the name of the to use with HMAC.
     :return:
     """
     salt = salt or os.urandom(16)
 
-    match hash_alg:
-        case "sha256":
-            hmac_alg = rfc8018.id_hmacWithSHA256
-        case "sha384":
-            hmac_alg = rfc8018.id_hmacWithSHA384
-        case "sha512":
-            hmac_alg = rfc8018.id_hmacWithSHA512
-        case _:
-            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
+    hmac_alg = get_hash_name_to_oid(f"hmac-{hash_alg}")
 
     outer_params = rfc8018.PBMAC1_params()
     outer_params['keyDerivationFunc'] = rfc8018.AlgorithmIdentifier()
@@ -94,15 +86,14 @@ def _prepare_pbmac1_parameters(salt: Optional[bytes]=None, iterations=100, lengt
     return outer_params
 
 
-def _prepare_dh_based_mac(hash_alg: str = "sha1", mac: str = "hmac-sha1") -> rfc4210.DHBMParameter:
+def _prepare_dh_based_mac(hash_alg: str = "sha1") -> rfc4210.DHBMParameter:
     """Prepares a Diffie-Hellman Based MAC (Message Authentication Code) parameter structure.
 
     The structure uses a One-Way Hash Function (OWF) to hash the Diffie-Hellman (DH) shared secret to derive a key,
     which is then used to compute the Message Authentication Code (MAC) with the specified MAC algorithm.
 
-    :param hash_alg: A string representtrting the hash algorithm to be used for the
+    :param hash_alg: A string representation the hash algorithm to be used for the
                      one-way-function (OWF). Defaults to "sha1"
-    :param mac:  A string representing the MAC algorithm to be used. Defaults to "hmac-sha1
     :return: A `pyasn1_alt_module.rfc4210.DHBMParameter` object populated with the algorithm identifiers for the
              specified hash and MAC algorithm.
     """
@@ -111,10 +102,10 @@ def _prepare_dh_based_mac(hash_alg: str = "sha1", mac: str = "hmac-sha1") -> rfc
     alg_id_owf = rfc5280.AlgorithmIdentifier()
     alg_id_mac = rfc5280.AlgorithmIdentifier()
 
-    alg_id_owf["algorithm"] = get_hash_name_oid(hash_alg)
+    alg_id_owf["algorithm"] = get_hash_name_to_oid(hash_alg)
     alg_id_owf["param"] = univ.Null()
 
-    alg_id_mac["algorithm"] = get_hash_name_oid(mac)
+    alg_id_mac["algorithm"] = get_hash_name_to_oid(f"hmac-{hash_alg}")
     alg_id_mac["parameters"] = univ.Null()
 
     param["mac"] = alg_id_mac
