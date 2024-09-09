@@ -265,16 +265,15 @@ def generate_signed_csr(  # noqa: D417
     return csr_signed, key
 
 
-def do_dh_key_exchange(password: str, private_key: dh.DHPrivateKey) -> bytes:
-    """Performs a Diffie-Hellman key exchange to derive a shared secret key.
+def _generate_private_dh_from_key(password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]) -> dh.DHPrivateKey:
+    """Generates a `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey` based on the parsed password.
+    Used to perform a DH Key-Agreement with a provided password.
 
-    :param password: string a secret which is used as DHPrivateKey of the Server.
-    :param private_key: `cryptography` `dh.DHPrivateKey` object, representing the local party's private key.
-    :return: A byte sequence representing the shared secret key derived from the Diffie-Hellman
-             key exchange.
+    :param password: str password which one of the parties uses as secret DH-Key.
+    :param other_party_key: `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey or DHPublicKey
+    :return: `cryptography.hazmat.primitives.asymmetric.dh.DHPrivateKey` object
     """
-
-    parameters = private_key.parameters().parameter_numbers()
+    parameters = other_party_key.parameters().parameter_numbers()
 
     private_key: dh.DHPrivateKey = generate_key(
         algorithm="dh",
@@ -282,6 +281,7 @@ def do_dh_key_exchange(password: str, private_key: dh.DHPrivateKey) -> bytes:
         g=parameters.g,
         secret_scalar=int.from_bytes(password.encode("utf-8")),
     )
+    return private_key
 
     other_public_key: dh.DHPublicKey = private_key.public_key()
 
