@@ -106,28 +106,27 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
     Raises:
     - ValueError: If the specified algorithm is not supported or if invalid parameters are provided.
 
-    Example usage:
-    ```python
-    private_key = generate_key(algorithm="rsa", length=2048)
-    private_key = generate_key(algorithm="ecdsa", curve=ec.SECP384R1())
-    ```
+    Examples:
+    | ${private_key}= | Generate Key | algorithm=rsa | length=2048 |
+    | ${private_key}= | Generate Key | algorithm=dh | length=2048 |
+    | ${private_key}= | Generate Key | algorithm=ecdsa | curve=secp384r1 |
     """
 
-    algorithm = algorithm.lower()  # Convert to lowercase once
-    backend = default_backend()
+    algorithm = algorithm.lower()
+    backend = backends.default_backend()
 
     if algorithm == "rsa":
-        length = int(params.get("length", 2048))  # it is allowed to parse a string.
+        length = int(params.get("length", 2048))
         private_key = rsa.generate_private_key(public_exponent=65537, key_size=length, backend=backend)
 
     elif algorithm == "dsa":
-        length = int(params.get("length", 2048))  # it is allowed to parse a string.
+        length = int(params.get("length", 2048))
         private_key = dsa.generate_private_key(key_size=length, backend=backend)
 
-    elif algorithm in ["ecdh", "ecdsa"]:
+    elif algorithm in ["ecdh", "ecdsa", "ecc", "ec"]:
         curve = params.get("curve", "secp256r1")
         curve = get_curve_instance(curve_name=curve)
-        private_key = ec.generate_private_key(curve=curve, backend=backend)
+        private_key = ec.generate_private_key(curve=curve)
 
     elif algorithm == "ed25519":
         private_key = ed25519.Ed25519PrivateKey.generate()
