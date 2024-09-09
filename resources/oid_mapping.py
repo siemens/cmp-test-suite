@@ -198,7 +198,7 @@ def get_alg_oid_from_key_hash(key: PrivateKey, hash_alg: str) -> univ.ObjectIden
         elif hash_alg == "sha512":
             return rfc9481.sha512WithRSAEncryption
 
-    elif isinstance(key, ec.ECDSA):
+    elif isinstance(key, ec.EllipticCurvePrivateKey):
         if hash_alg == "sha256":
             return rfc9481.ecdsa_with_SHA256
         elif hash_alg == "sha384":
