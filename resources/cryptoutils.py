@@ -1,4 +1,10 @@
-"""
+"""Provides a collection of functions and classes for cryptographic operations such as key generation,
+signing data, computing hashes, generating Certificate Signing Requests (CSRs), signing CSRs, performing
+Diffie-Hellman (DH) key exchanges, and generating x509 certificates.The module leverages the `cryptography`
+library to support various cryptographic primitives including RSA,
+Elliptic Curve (EC), Ed25519, Ed448, DSA, and DH key types. Additionally, it offers functions for
+hash-based message authentication codes (HMAC), Galois Message Authentication Codes (GMAC),
+and password-based key derivation (PBKDF2).
 """
 import datetime
 import logging
