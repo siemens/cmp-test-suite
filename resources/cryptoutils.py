@@ -79,10 +79,29 @@ def generate_csr(common_name: str = None, subjectAltName=None):
 def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -> bytes:
     """Sign the given data with a given private key, using a specified hashing algorithm.
 
-    :param data: bytes the data to sign.
-    :param key: A `cryptography.hazmat.primitives.asymmetric` PrivateKey object.
-    :param hash_alg: optional str name of the hash function to use
-    :return: bytes the singed data.
+    Supports ECDSA, ED448, ED25519, RSA, and DSA key types for signing.
+
+    Args:
+        data (bytes): The data to be signed, provided as a byte sequence.
+        key (cryptography.hazmat.primitives.asymmetric): The private key object used to sign the data.
+        hash_alg (Optional[str]): An optional string representing the name of the hash algorithm to be used for signing
+                                  (e.g., "sha256"). If not specified, the default algorithm for the given key type is used.
+
+    Key Types and Signing:
+        - `EllipticCurvePrivateKey`: Signs using ECDSA with the provided hash algorithm.
+        - `RSAPrivateKey`: Signs using PKCS1v15 padding and the provided hash algorithm.
+        - `Ed25519PrivateKey` and `Ed448PrivateKey`: Signs without a hash algorithm.
+        - `DSAPrivateKey`: Signs using the provided hash algorithm. Requires a hash algorithm.
+
+    Returns:
+        bytes: The signed data as a byte sequence.
+
+    Raises:
+        ValueError: If an unsupported key type is provided or if the required hash algorithm is not specified.
+
+    Example:
+        | Sign Data | ${data} | ${private_key} | sha256 |
+
     """
 
     if isinstance(hash_alg, hashes.HashAlgorithm):
