@@ -146,7 +146,7 @@ def compute_hmac(data, key, hash_alg="sha256"):
     return signature
 
 
-def compute_pbmac1(data, key, iterations=262144, salt=None, length=32, hash_alg="sha256"):
+def compute_pbmac1(data: bytes, key: Union[str, bytes], iterations=262144, salt=None, length=32, hash_alg="sha256"):
     """Compute HMAC for the given data using specified key.
 
     :param data: bytes, data to be hashed.
@@ -173,10 +173,7 @@ def compute_pbmac1(data, key, iterations=262144, salt=None, length=32, hash_alg=
     derived_key = kdf.derive(key)
     logging.info(f"Derived key: {derived_key}")
 
-    # step 2, compute HMAC using this derived key
-    h = hmac.HMAC(derived_key, hash_alg_instance)
-    h.update(data)
-    signature = h.finalize()
+    signature = compute_hmac(key=derived_key, hash_alg=hash_alg, data=data)
     logging.info(f"Signature: {signature}")
     return signature
 
@@ -214,11 +211,7 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
     for i in range(iterations):
         initial_input = compute_hash(hash_alg, initial_input)
 
-    hash_alg_instance = hash_name_to_instance(hash_alg)
-
-    h = hmac.HMAC(initial_input, hash_alg_instance)
-    h.update(data)
-    signature = h.finalize()
+    signature = compute_hmac(data=data, key=initial_input, hash_alg=hash_alg)
     logging.info(f"Signature: {signature}")
     return signature
 
