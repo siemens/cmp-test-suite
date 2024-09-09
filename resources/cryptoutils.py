@@ -124,7 +124,7 @@ def sign_csr(csr, key, hash_alg="sha256"):
     csr_out = csr.sign(key, hash_alg_instance)
     return csr_out.public_bytes(serialization.Encoding.PEM)
 
-
+@not_keyword
 def compute_hmac(data, key, hash_alg="sha256"):
     """Compute HMAC for the given data using specified key.
 
@@ -144,7 +144,7 @@ def compute_hmac(data, key, hash_alg="sha256"):
     signature = h.finalize()
     return signature
 
-
+@not_keyword
 def compute_pbmac1(data: bytes, key: Union[str, bytes], iterations=262144, salt=None, length=32, hash_alg="sha256"):
     """Compute HMAC for the given data using specified key.
 
@@ -176,7 +176,7 @@ def compute_pbmac1(data: bytes, key: Union[str, bytes], iterations=262144, salt=
     logging.info(f"Signature: {signature}")
     return signature
 
-
+@not_keyword
 def compute_hash(alg_name, data):
     """Calculate the hash of data using an algorithm given by its name
 
@@ -189,7 +189,7 @@ def compute_hash(alg_name, data):
     digest.update(data)
     return digest.finalize()
 
-
+@not_keyword
 def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="sha256"):
     """Implement the password-based MAC algorithm defined in RFC 4210 Sec. 5.1.3.1. The MAC is always HMAC_hash_alg.
 
@@ -335,7 +335,7 @@ def compute_dh_based_mac(data: bytes, password: Union[str, dh.DHPublicKey], key:
     key = compute_hash(data=shared_key, alg_name=hash_alg)
     return compute_hmac(data=data, key=key, hash_alg=hash_alg)
 
-
+@not_keyword
 def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     """
     Computes the AES-GMAC (Galois Message Authentication Code) for given data.
@@ -352,6 +352,7 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     aes_gcm.authenticate_additional_data(data)
     aes_gcm.finalize()  # Finalize to get the authentication tag
     return aes_gcm.tag
+
 
 def generate_cert_from_private_key(# noqa: D417
         private_key: PrivateKey, common_name: Optional[str] = "CN=Hans",

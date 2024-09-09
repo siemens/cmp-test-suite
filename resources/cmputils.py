@@ -14,7 +14,7 @@ from pyasn1_alt_modules import rfc2459, rfc2986, rfc4210, rfc4211, rfc5280, rfc5
 from pyasn1_alt_modules.rfc2314 import Attributes, Signature, SignatureAlgorithmIdentifier
 from pyasn1_alt_modules.rfc2459 import Attribute, AttributeValue, Extension, Extensions, GeneralName
 from pyasn1_alt_modules.rfc2511 import CertTemplate
-
+from robot.api.deco import not_keyword
 
 import utils
 from certutils import parse_certificate
@@ -422,7 +422,7 @@ def build_cert_conf(
 
 
 
-
+@not_keyword
 def encode_to_der(asn1_structure: pyasn1.type.base.Asn1ItemBase) -> bytes:
     """DER-encode a pyasn1 data structure."""
     return encoder.encode(asn1_structure)
