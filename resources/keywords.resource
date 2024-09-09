@@ -108,6 +108,7 @@ Protection algorithms must match
     # TODO also check the parameters, if any
 
 
+
 Protection must be valid
     [Documentation]     Ensure that the protection in the PKIMessage is cryptographically valid
     [Arguments]         ${pki_message}
@@ -165,7 +166,7 @@ Generate Key and CSR
      ...                                 However, if multiple indices are provided, only one of them can be set.
      ...
      ...                Example Usage:
-     ...                | ${data}   ${key}=    Generate Key and CSR    | ${key_algo_name}    | ${key_params}    |    ${CN}
+     ...                | ${data}   ${key}=    Generate Key and CSR    | ${key_algo_name}    |    ${CN}    |    ${key_params}
      ...
      [Arguments]        ${key_algo_name}    ${CN}    ${key_params}
      ${key}=    Generate key    ${key_algo_name}    ${key_params}
