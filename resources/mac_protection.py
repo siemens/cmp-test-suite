@@ -4,7 +4,7 @@ Provides functionality to prepare the `pyasn1` `rfc9480.PKIMessage` protection: 
 
 import logging
 import os
-from typing import Union
+from typing import Union, Optional
 
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
@@ -12,14 +12,14 @@ from pyasn1.codec.der import encoder
 from pyasn1.type import univ, constraint
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
 from pyasn1_alt_modules import rfc9044, rfc5280, rfc8018, rfc4210, rfc9480, rfc9481
-from typing_extensions import Optional
 
 from cryptography.hazmat.primitives import serialization
 
-from certutils import parse_certificate
-from cmputils import _prepare_extra_certs, encode_to_der
-from cryptoutils import compute_hash, do_dh_key_exchange_password_based
-from cryptoutils import generate_cert_from_private_key
+import certutils
+import cmputils
+from cmputils import _prepare_extra_certs
+from cryptoutils import do_dh_key_exchange_password_based
+import cryptoutils
 from oid_mapping import (
     get_alg_oid_from_key_hash,
     get_hash_name_to_oid,
@@ -32,7 +32,8 @@ from oid_mapping import (
     AES_GMAC_OID_2_NAME,
 )
 from test_suite_enums import ProtectionAlgorithm
-from resources.cryptoutils import (
+from cryptoutils import (
+    compute_hash,
     compute_pbmac1,
     compute_gmac,
     compute_password_based_mac,
@@ -40,7 +41,7 @@ from resources.cryptoutils import (
     compute_hmac,
 )
 from typingutils import PrivateKey, PrivSignCertKey
-from verifyingutils import verify_signature
+import verifyingutils
 
 
 def _prepare_password_based_mac_parameters(
@@ -163,7 +164,7 @@ def _apply_cert_pkimessage_protection(
     """
     if certificate is not None:
         raw = certificate.public_bytes(serialization.Encoding.DER)
-        certificate = parse_certificate(raw)
+        certificate = certutils.parse_certificate(raw)
         if not pki_message["extraCerts"].hasValue():
             pki_message["extraCerts"] = _prepare_extra_certs([certificate])
         else:
@@ -179,9 +180,9 @@ def _apply_cert_pkimessage_protection(
 
     elif not pki_message["extraCerts"].hasValue():
         # contains no Certificates so a new one is added.
-        certificate = generate_cert_from_private_key(private_key=private_key, sign_key=sign_key)
+        certificate = cryptoutils.generate_cert_from_private_key(private_key=private_key, sign_key=sign_key)
         raw = certificate.public_bytes(serialization.Encoding.DER)
-        certificate = parse_certificate(raw)
+        certificate = certutils.parse_certificate(raw)
         pki_message["extraCerts"] = _prepare_extra_certs([certificate])
 
     else:
@@ -189,12 +190,12 @@ def _apply_cert_pkimessage_protection(
         data = b"12345678910111213141516"
 
         cert = pki_message["extraCerts"][0]
-        certificate = encode_to_der(cert)
+        certificate = cmputils.encode_to_der(cert)
         certificate = x509.load_der_x509_certificate(certificate)
         signature = sign_data(key=private_key, data=data, hash_alg=certificate.signature_hash_algorithm)
 
         try:
-            verify_signature(
+            verifyingutils.verify_signature(
                 public_key=certificate.public_key(),
                 signature=signature,
                 data=data,
@@ -297,6 +298,7 @@ def _compute_client_dh_protection(
     private_key: Optional[PrivateKey] = None,
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
+    exclude_cert: bool = False
 ) -> bytes:
     """Computes the DH-protection value for a `pyasn1 rfc9480.PKIMessage` on the client side.
 
@@ -309,6 +311,7 @@ def _compute_client_dh_protection(
     :param certificate: (Optional) `cryptography.x509.Certificate` - A certificate to use as the CMP-Protection certificate
                         if a certificate-based protection is required.
     :param sign_key: (Optional) `PrivSignCertKey` - A signing key to use for generating a new certificate if needed.
+    :param exclude_cert: bool - exclude generating a certificate from the private key provided.
 
     :raises ValueError: If the PKIMessage protection algorithm OID is not supported.
 
@@ -320,7 +323,8 @@ def _compute_client_dh_protection(
     if certificate is not None and private_key is not None:
         shared_secret = private_key.exchange(certificate.public_key())
         # adds own Public Certificate to the PKIMessage.
-        _apply_cert_pkimessage_protection(pki_message=pki_message, private_key=private_key, sign_key=sign_key)
+        if not exclude_cert:
+            _apply_cert_pkimessage_protection(pki_message=pki_message, private_key=private_key, sign_key=sign_key)
         # assumes shared secret for DH.
         return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
 
@@ -342,13 +346,15 @@ def _compute_pkimessage_protection(
     private_key: Optional[PrivateKey] = None,
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
+    exclude_cert: bool = False
 ) -> bytes:
     """Computes the protection value for a given `pyasn1` `rfc9480.PKIMessage` based on the specified protection algorithm.
     :param pki_message: `pyasn1_alt_module.rfc9480.PKIMessage` object to compute the signature about.
     :param password: A string representing a shared secret or a Server Private Key for DHBasedMac.
     :param private_key (Optional PrivateKey): The private key used for signature-based protection or DH-based MAC computation.
     :param certificate:  A certificate used as the CMP-Protection certificate for signature-based protection. Only used for Key-Agreement.
-    :param sign_key:  sign_key (Optional PrivSignCertKey): A signing key used for generating a new certificate if needed.
+    :param sign_key:  (Optional PrivSignCertKey): A signing key used for generating a new certificate if needed.
+    :param exclude_cert:  bool exclude generating a certificate from the private key provided.
     :raises:
         ValueError: If the protection algorithm OID is not supported or required parameters are not provided.
     :returns:
@@ -369,6 +375,7 @@ def _compute_pkimessage_protection(
             certificate=certificate,
             password=password,
             sign_key=sign_key,
+            exclude_cert=exclude_cert
         )
 
     elif protection_type_oid in SYMMETRIC_PROT_ALGO:
@@ -383,10 +390,11 @@ def _compute_pkimessage_protection(
 
         protection_value = sign_data(data=encoded, key=private_key, hash_alg=hash_alg)
 
-        # either generates a fresh one or adds the certificate for now.
-        _apply_cert_pkimessage_protection(
-            pki_message=pki_message, private_key=private_key, certificate=certificate, sign_key=sign_key
-        )
+        if not exclude_cert:
+            # either generates a fresh one or adds the certificate.
+            _apply_cert_pkimessage_protection(
+                pki_message=pki_message, private_key=private_key, certificate=certificate, sign_key=sign_key
+            )
         return protection_value
 
     else:
@@ -397,16 +405,21 @@ def _prepare_pki_message_protection_field(
     pki_message: rfc9480.PKIMessage,
     protection: str,
     private_key: Optional[PrivateKey] = None,
+    **params
 ) -> rfc9480.PKIMessage:
     """Preparse the pki protection for the PKIMessage algorithm
 
     :param pki_message: `pyasn1_alt_module.rfc9480.PKIMessage`
     :param protection: A string representing the type of Protection.
     :param private_key: A`cryptography` `PrivateKey` object. For Signing or DHBasedMac.
+    :param **params: Additional parameters that may be required for specific protection types,
+        such as 'iterations', 'salt', 'length', or 'hash_alg'.
+
     :return: Returns the protected `pyasn1_alt_module.rfc9480.PKIMessage` object.
     """
 
     prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
+
 
     protection_type = ProtectionAlgorithm.get(protection)
 
@@ -416,18 +429,30 @@ def _prepare_pki_message_protection_field(
 
     elif protection_type == ProtectionAlgorithm.PBMAC1:
         prot_alg_id["algorithm"] = rfc8018.id_PBMAC1
-        salt = os.urandom(16)
-        pbmac1_parameters = _prepare_pbmac1_parameters(salt=salt, iterations=262144, length=32, hash_alg="sha512")
+        if not params.get("salt"):
+            salt = os.urandom(16)
+        else:
+            salt = bytes.fromhex(params.get("salt"))
+
+        pbmac1_parameters = _prepare_pbmac1_parameters(salt=salt,
+                                                       iterations=int(params.get("iterations", 262144))
+                                                       ,length=int(params.get("length",32)) , hash_alg=params.get("hash_alg", "sha512"))
         prot_alg_id["parameters"] = pbmac1_parameters
 
     elif protection_type == ProtectionAlgorithm.PASSWORD_BASED_MAC:
-        salt = os.urandom(16)
+        if not params.get("salt"):
+            salt = os.urandom(16)
+        else:
+            salt = bytes.fromhex(params.get("salt"))
         prot_alg_id["algorithm"] = rfc4210.id_PasswordBasedMac
-        pbm_parameters = _prepare_password_based_mac_parameters(salt=salt, iterations=1000, hash_alg="sha256")
+        pbm_parameters = _prepare_password_based_mac_parameters(salt=salt, iterations=int(params.get("iterations", 1000)), hash_alg=params.get("hash_alg", "sha256"))
         prot_alg_id["parameters"] = pbm_parameters
 
     elif protection_type == ProtectionAlgorithm.AES_GMAC:
-        nonce = os.urandom(12)
+        if not params.get("salt"):
+            nonce = os.urandom(12)
+        else:
+            nonce = bytes.fromhex(params.get("salt"))
         prot_alg_id["algorithm"] = AES_GMAC_NAME_2_OID[protection]
         prot_alg_id["parameters"] = rfc9044.GCMParameters()
         prot_alg_id["parameters"]["nonce"] = univ.OctetString(nonce)
@@ -441,12 +466,12 @@ def _prepare_pki_message_protection_field(
                 "private_key must be an instance of PrivateKey, but is of type: {}.".format(type(private_key))
             )
 
-        prot_alg_id["algorithm"] = get_alg_oid_from_key_hash(key=private_key, hash_alg="sha256")
+        prot_alg_id["algorithm"] = get_alg_oid_from_key_hash(key=private_key, hash_alg=params.get("hash_alg", "sha256"))
         prot_alg_id["parameters"] = univ.Null()
 
     elif protection_type == ProtectionAlgorithm.DH:
         prot_alg_id["algorithm"] = rfc9480.id_DHBasedMac
-        prot_alg_id["parameters"] = _prepare_dh_based_mac(hash_alg="sha1")
+        prot_alg_id["parameters"] = _prepare_dh_based_mac(hash_alg=params.get("hash_alg", "sha1"))
 
     else:
         raise ValueError(f"Unknown or Unsupported PKIMessage Protection: {protection}")
@@ -464,6 +489,8 @@ def apply_pki_message_protection(  # noqa: D417
     certificate: Optional[x509.Certificate] = None,
     cert_num: Optional[int] = None,
     sign_key: Optional[PrivSignCertKey] = None,
+    extra_certs: Optional[str]= None,
+    **params
 ) -> rfc9480.PKIMessage:
     """
     Prepares the PKI protection for the PKIMessage algorithm.
@@ -480,6 +507,13 @@ def apply_pki_message_protection(  # noqa: D417
                      The certificate used for verifying of the Signature. If provided.
     - `cert_num`: int the number of the certificate used for signing the inside the
                   `pyasn1_alt_module.rfc9480.PKIMessage`
+    - `**params`:
+                 salt: str hex representation without 0x. used for pbmac1, pbm or aes-gmac.
+                 iterations: (str, int)  Number of iterations to be used for KDF.
+                 length: (str, int) Length of the output for pbmac1.
+                 hash_al: str name of the owf to be used. exp. "sha256".
+
+
 
     Returns:
     - `rfc9480.PKIMessage`: The PKIMessage object with the applied protection.
@@ -505,18 +539,29 @@ def apply_pki_message_protection(  # noqa: D417
         pki_message=pki_message,
         protection=protection,
         private_key=private_key,
+        **params
     )
+
+    # exclude generating a certificate from the private key provided.
+    exclude_cert = False
+
 
     if cert_num is not None and certificate is not None:
         raise ValueError("Either choose to provide the Certificate or " "provide a Number to Extract the certificate.")
 
     if cert_num is not None:
         certificate = pki_message["extraCerts"][cert_num]
-        certificate = encode_to_der(certificate)
+        certificate = cmputils.encode_to_der(certificate)
         certificate = x509.load_der_x509_certificate(certificate)
+        exclude_cert = True
+
+
+
+    if extra_certs is not None:
+        exclude_cert = True
 
     protection_value = _compute_pkimessage_protection(
-        pki_message=pki_message, password=password, private_key=private_key, certificate=certificate, sign_key=sign_key
+        pki_message=pki_message, password=password, private_key=private_key, certificate=certificate, sign_key=sign_key, exclude_cert=exclude_cert
     )
     wrapped_protection = (
         rfc9480.PKIProtection()
@@ -580,7 +625,7 @@ def verify_pki_protection(  # noqa: D417
         else:
             # handling x448 and x25519.
             certificate = pki_message["extraCerts"][0]
-            certificate = encode_to_der(certificate)
+            certificate = cmputils.encode_to_der(certificate)
             certificate = x509.load_der_x509_certificate(certificate)
             if private_key is not None:
                 password = private_key.exchange(certificate.public_key())
@@ -597,11 +642,11 @@ def verify_pki_protection(  # noqa: D417
 
     elif protection_type_oid in SUPPORTED_SIG_MAC_OIDS:
         certificate = pki_message["extraCerts"][0]
-        certificate = encode_to_der(certificate)
+        certificate = cmputils.encode_to_der(certificate)
         certificate = x509.load_der_x509_certificate(certificate)
 
         # Raises an InvalidSignature Exception.
-        verify_signature(
+        verifyingutils.verify_signature(
             data=encoded,
             signature=protection_value,
             public_key=certificate.public_key(),
