@@ -206,6 +206,91 @@ def _apply_cert_pkimessage_protection(
             )
 
 
+def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: bytes) -> bytes:
+    """Computes the `pyasn1 rfc9480.PKIMessage` protection.
+    :param pki_message: `pyasn1 rfc9480.PKIMessage` object.
+    :param password: bytes a symmetric password to protect the message.
+    :return:
+    """
+    protected_part = rfc9480.ProtectedPart()
+    protected_part["header"] = pki_message["header"]
+    protected_part["body"] = pki_message["body"]
+
+    protection_type_oid = pki_message["header"]["protectionAlg"]["algorithm"]
+    prot_params = pki_message["header"]["protectionAlg"]["parameters"]
+
+    encoded = encoder.encode(protected_part)
+
+    if protection_type_oid in HMAC_SHA_OID_2_NAME:
+        # gets the sha-Algorithm
+        hash_alg = HMAC_SHA_OID_2_NAME.get(protection_type_oid).split("-")[1]
+        return compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
+
+    elif protection_type_oid == rfc8018.id_PBMAC1:
+        prot_params: rfc8018.PBMAC1_params
+        salt = prot_params["keyDerivationFunc"]["parameters"]["salt"]["specified"].asOctets()
+        iterations = int(prot_params["keyDerivationFunc"]["parameters"]["iterationCount"])
+        length = int(prot_params["keyDerivationFunc"]["parameters"]["keyLength"])
+
+        hmac_alg = prot_params["messageAuthScheme"]["algorithm"]
+
+        # gets the sha-Algorithm
+        hash_alg = HMAC_SHA_OID_2_NAME.get(hmac_alg).split("-")[1]
+
+        return compute_pbmac1(
+            data=encoded,
+            key=password,
+            iterations=iterations,
+            salt=salt,
+            length=length,
+            hash_alg=hash_alg,
+        )
+
+    elif protection_type_oid == rfc4210.id_PasswordBasedMac:
+        prot_params: rfc9480.PBMParameter
+        salt = prot_params["salt"].asOctets()
+        iterations = int(prot_params["iterationCount"])
+        # gets the sha-Algorithm
+        hash_alg = HMAC_SHA_OID_2_NAME.get(prot_params["mac"]["algorithm"]).split("-")[1]
+        return compute_password_based_mac(
+            data=encoded, key=password, iterations=iterations, salt=salt, hash_alg=hash_alg
+        )
+
+    elif protection_type_oid in AES_GMAC_OID_2_NAME:
+        nonce = prot_params["nonce"].asOctets()
+        password = password.encode("utf-8") if isinstance(password, str) else password
+        return compute_gmac(data=encoded, key=password, nonce=nonce)
+
+    elif protection_type_oid == rfc8018.id_PBMAC1:
+        prot_params: rfc8018.PBMAC1_params
+        salt = prot_params["keyDerivationFunc"]["parameters"]["salt"]["specified"].asOctets()
+        iterations = int(prot_params["keyDerivationFunc"]["parameters"]["iterationCount"])
+        length = int(prot_params["keyDerivationFunc"]["parameters"]["keyLength"])
+
+        outer_params: rfc8018.PBKDF2_params = prot_params["keyDerivationFunc"]["parameters"]
+        hmac_alg = outer_params["messageAuthScheme"]["algorithm"]
+
+        # gets the sha-Algorithm
+        hash_alg = HMAC_SHA_OID_2_NAME.get(hmac_alg).split("-")[1]
+
+        return compute_pbmac1(
+            data=encoded,
+            key=password,
+            iterations=iterations,
+            salt=salt,
+            length=length,
+            hash_alg=hash_alg,
+        )
+
+    elif rfc9480.id_DHBasedMac:
+        prot_params: rfc9480.DHBMParameter
+        hash_alg: str = SHA_OID_2_NAME[prot_params["owf"]["algorithm"]]
+        password = compute_hash(alg_name=hash_alg, data=password)
+        return compute_hmac(key=password, data=encoded)
+    else:
+        raise ValueError(f"Unsupported Symmetric Mac Protection! : {protection_type_oid}")
+
+
 def _prepare_pki_message_protection_field(
         pki_message: rfc9480.PKIMessage,
         protection: str,
