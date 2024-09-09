@@ -8,7 +8,6 @@ from typing import Union
 
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric import x448, x25519
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ, constraint
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
@@ -19,7 +18,7 @@ from cryptography.hazmat.primitives import serialization
 
 from certutils import parse_certificate
 from cmputils import _prepare_extra_certs, encode_to_der
-from cryptoutils import compute_hash, _generate_private_dh_from_key, do_dh_key_exchange_password_based
+from cryptoutils import compute_hash, do_dh_key_exchange_password_based
 from cryptoutils import generate_cert_from_private_key
 from oid_mapping import (
     get_alg_oid_from_key_hash,
@@ -41,7 +40,7 @@ from resources.cryptoutils import (
     compute_hmac,
 )
 from typingutils import PrivateKey, PrivSignCertKey
-from verifyingutils import verify_signature, verify_cert_signature
+from verifyingutils import verify_signature
 
 def _prepare_password_based_mac_parameters(salt: Optional[bytes]=None, iterations=1000, hash_alg="sha256") -> rfc9480.PBMParameter:
     """Prepares password-based-mac protection with the pyasn1 `rfc8018.PBMParameter` structure.
