@@ -64,7 +64,7 @@ SHA_OID_2_NAME = {
 # used in the signature; this is needed to compute the certificate has for
 # certConfirm messages, since it must contain the hash of the certificate,
 # computed with the same algorithm as the one in the signature
-OID_HASH_MAP = {}
+OID_HASH_MAP: Dict[univ.ObjectIdentifier, str] = {}
 OID_HASH_MAP.update(RSA_SHA_OID_2_NAME)
 OID_HASH_MAP.update(ECDSA_SHA_OID_2_NAME)
 OID_HASH_MAP.update(HMAC_SHA_OID_2_NAME)
@@ -155,7 +155,7 @@ CURVE_NAMES_TO_INSTANCES = {
 
 
 @not_keyword
-def get_hash_name_oid(hash_name: str) -> univ.ObjectIdentifier:
+def get_hash_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
     """Performs a lookup for the provided hash name.
 
     :param hash_name: A string representing the hash name to look up. Example hash names could be "sha256"
@@ -222,7 +222,6 @@ def get_alg_oid_from_key_hash(key: PrivateKey, hash_alg: str) -> univ.ObjectIden
     raise ValueError(f"Unsupported signature algorithm for ({key}, {hash_alg})")
 
 @not_keyword
-
 def get_sig_oid_from_key_hash(alg_oid, hash_alg):
     """Determine the OID of a signature algorithm given by the OID of the asymmetric algorithm and the name of the
     hashing function used in the signature
@@ -240,15 +239,19 @@ def get_sig_oid_from_key_hash(alg_oid, hash_alg):
         )
 
 @not_keyword
-def get_hash_from_signature_oid(oid):
+def get_hash_from_signature_oid(oid: univ.ObjectIdentifier) -> str:
     """Determine the name of a hashing function used in a signature algorithm given by its oid
 
-    :param oid: str, OID of signing algorithm
+    :param oid: `pyasn1 univ.ObjectIdentifier`, OID of signing algorithm
     :return: str, name of hashing algorithm, e.g., 'sha256'"""
     try:
-        return OID_HASH_MAP[oid]
+        tmp = OID_HASH_MAP[oid]
+        return tmp
     except KeyError:
         raise ValueError(f"Unknown signature algorithm OID {oid}, " f"check OID_HASH_MAP in cryptoutils.py")
+
+
+
 
 @not_keyword
 def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
@@ -257,6 +260,10 @@ def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
     :param alg: str, name of hashing algorithm, e.g., 'sha256'
     :return: cryptography.hazmat.primitives.hashes"""
     try:
+        # to also get the hash function with rsa-sha1 and so on.
+        if "-" in alg:
+            return ALLOWED_HASH_TYPES[alg.split("-")[1]]
+
         return ALLOWED_HASH_TYPES[alg]
     except KeyError:
         raise ValueError(f"Unsupported hash algorithm: {alg}")
