@@ -14,11 +14,11 @@ from pyasn1_alt_modules import rfc9480
 # return False
 
 
-def parse_certificate(data):
+def parse_certificate(data: bytes) -> rfc9480.CMPCertificate:
     """Parse a DER-encoded X509 certificate into a pyasn1 object.
 
     :param data: bytes, DER-encoded X509 certificate.
-    :returns: pyasn1 object, the parsed certificate.
+    :returns: pyasn1 object, the parsed `rfc9480.CMPCertificate`.
     """
     cert, _rest = decoder.decode(data, asn1Spec=rfc9480.CMPCertificate())
     return cert
