@@ -147,6 +147,7 @@ CURVE_NAMES_TO_INSTANCES = {
 }
 
 
+@not_keyword
 def get_hash_name_oid(hash_name: str) -> univ.ObjectIdentifier:
     """Performs a lookup for the provided hash name.
 
@@ -165,7 +166,7 @@ def get_hash_name_oid(hash_name: str) -> univ.ObjectIdentifier:
     else:
         raise ValueError("Hash name is not supported: {}".format(hash_name))
 
-
+@not_keyword
 def get_curve_instance(curve_name: str) -> ec.EllipticCurve:
     """Retrieve an instance of an elliptic curve based on its name.
     Used for generating an Ecc Private Key on the named curve.
@@ -181,6 +182,7 @@ def get_curve_instance(curve_name: str) -> ec.EllipticCurve:
     return CURVE_NAMES_TO_INSTANCES[curve_name]
 
 
+@not_keyword
 def get_alg_oid_from_key_hash(key: PrivateKey, hash_alg: str) -> univ.ObjectIdentifier:
     """Find the pyasn1 oid given the hazmat key instance and a name of a hashing algorithm
 
@@ -212,6 +214,7 @@ def get_alg_oid_from_key_hash(key: PrivateKey, hash_alg: str) -> univ.ObjectIden
 
     raise ValueError(f"Unsupported signature algorithm for ({key}, {hash_alg})")
 
+@not_keyword
 
 def get_sig_oid_from_key_hash(alg_oid, hash_alg):
     """Determine the OID of a signature algorithm given by the OID of the asymmetric algorithm and the name of the
@@ -229,7 +232,7 @@ def get_sig_oid_from_key_hash(alg_oid, hash_alg):
             f"Unsupported signature algorithm for ({alg_oid}, {hash_alg}), " f"see cryptoutils.OID_SIG_HASH_MAP"
         )
 
-
+@not_keyword
 def get_hash_from_signature_oid(oid):
     """Determine the name of a hashing function used in a signature algorithm given by its oid
 
@@ -240,7 +243,7 @@ def get_hash_from_signature_oid(oid):
     except KeyError:
         raise ValueError(f"Unknown signature algorithm OID {oid}, " f"check OID_HASH_MAP in cryptoutils.py")
 
-
+@not_keyword
 def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
     """Return an instance of a hash algorithm object based on its name
 
