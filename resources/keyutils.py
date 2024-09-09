@@ -22,21 +22,54 @@ from oid_mapping import get_curve_instance
 from typingutils import PrivateKey, PublicKey
 
 
+def save_key(key: PrivateKey, path, passphrase: Optional[str] = "11111"):
+    """Save a `cryptographic` `PrivateKey` object to a file.
 
+    Saves a private key to a specified file path. The key can be encrypted with a passphrase
+    or saved without encryption.
 
-def save_key(key, path, passphrase=b"11111"):
-    """Save key to a file
+    Args:
+        key (cryptography.hazmat.primitives.asymmetric): The private key object to save.
+        path (str): The file path where the key will be saved.
+        passphrase (Optional[str]): An optional passphrase used to encrypt the key. If set to None,
+                                    the key will be saved without encryption. Defaults to "11111".
 
-    :param key: cryptography.hazmat.primitives.asymmetric, key you want to save
-    :param path: str, where to save it
-    :param passphrase: optional str, password to use for encrypting the key
+    Key Types and Formats:
+        - `DHPrivateKey`: Serialized in PKCS8 format.
+        - `X448PrivateKey` and `X25519PrivateKey`: Serialized in Raw format (cannot be encrypted).
+        - Other key types: Serialized in Traditional OpenSSL format (PEM encoding).
+
+    Raises:
+        TypeError: If the provided key is not a valid private key object.
+
+    Example:
+        | Save Key | ${key} | /path/to/save/key.pem | password123 |
+
     """
+    encoding_ = serialization.Encoding.PEM
+    format_ = serialization.PrivateFormat.TraditionalOpenSSL
+    passphrase = passphrase.encode("utf-8") if passphrase else None
+
+    if passphrase is None:
+        encrypt_algo = serialization.NoEncryption()
+    else:
+        encrypt_algo = serialization.BestAvailableEncryption(passphrase)
+
+    if isinstance(key, dh.DHPrivateKey):
+        # DH only supports PKCS8 serialization
+        format_ = serialization.PrivateFormat.PKCS8
+
+    elif isinstance(key, (x448.X448PrivateKey, x25519.X25519PrivateKey)):
+        encoding_ = serialization.Encoding.Raw
+        format_ = serialization.PrivateFormat.Raw
+        encrypt_algo = serialization.NoEncryption()
+
     with open(path, "wb") as f:
         f.write(
             key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.TraditionalOpenSSL,
-                encryption_algorithm=serialization.BestAvailableEncryption(passphrase),
+                encoding=encoding_,
+                format=format_,
+                encryption_algorithm=encrypt_algo,
             )
         )
 
