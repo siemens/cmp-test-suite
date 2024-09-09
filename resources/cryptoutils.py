@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 from typing import Tuple, Union, Optional
@@ -461,3 +462,68 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     aes_gcm.authenticate_additional_data(data)
     aes_gcm.finalize()  # Finalize to get the authentication tag
     return aes_gcm.tag
+
+def generate_cert_from_private_key(private_key: PrivateKey, common_name: Optional[str] = "CN=Hans",
+                                   hash_alg: Optional[str] = "sha256") -> x509.Certificate:
+    """Generates a self-signed x509 certificate from a provided private key.
+
+    Args:
+        private_key (PrivateKey): The private key to use for certificate generation.
+        common_name (str, optional): The common name in OpenSSL notation. Defaults to "CN=Hans".
+        hash_alg (str, optional): The name of the hash function to use for signing the certificate. Defaults to "sha256".
+
+    Returns:
+    `cryptography.x509.Certificate`: The generated self-signed x509 certificate.
+
+    Raises:
+    ValueError: If the private key is not supported for certificate signing.
+
+    Examples:
+    | ${private_key} | Generate Key | algorithm=rsa | length=2048 |
+    | ${certificate} | Generate Cert From Private Key | ${private_key} | CN=Hans |
+    """
+
+    # Define the certificate subject and issuer
+    subject = issuer = parse_common_name_from_str(common_name)
+
+    if not isinstance(private_key, PrivateKey):
+        raise ValueError("Needs a `cryptography.hazmat.primitives.asymmetric PrivateKey` object for generating a "
+                         "self-singed `cryptography.x509.Certificate`")
+
+    # Create the certificate builder
+    cert_builder = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(datetime.datetime.now())
+        .not_valid_after(datetime.datetime.now() + datetime.timedelta(days=365))
+    )
+
+    if isinstance(private_key, ec.EllipticCurvePrivateKey):
+        hash_alg = hash_name_to_instance(hash_alg)
+
+        # Sign the certificate with the private key
+        certificate = cert_builder.sign(
+            private_key=private_key,
+            algorithm=hash_alg
+        )
+    elif isinstance(private_key, rsa.RSAPrivateKey):
+        hash_alg = hash_name_to_instance(hash_alg)
+        certificate = cert_builder.sign(
+            private_key=private_key,
+            algorithm=hash_alg,
+            rsa_padding=padding.PKCS1v15()
+        )
+
+    elif isinstance(private_key, (ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)):
+        certificate = cert_builder.sign(
+            private_key=private_key,
+            algorithm=None
+        )
+
+    else:
+        raise ValueError("Unsupported to sign a Certificate!")
+
+    return certificate
