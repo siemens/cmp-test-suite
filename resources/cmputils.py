@@ -14,18 +14,15 @@ from pyasn1_alt_modules import rfc2459, rfc2986, rfc4210, rfc4211, rfc5280, rfc5
 from pyasn1_alt_modules.rfc2314 import Attributes, Signature, SignatureAlgorithmIdentifier
 from pyasn1_alt_modules.rfc2459 import Attribute, AttributeValue, Extension, Extensions, GeneralName
 from pyasn1_alt_modules.rfc2511 import CertTemplate
-from robot.api.deco import not_keyword
 
 import utils
-from certutils import parse_certificate
+import certutils
 from test_suite_enums import PKIStatus
-from cryptoutils import (
-    compute_hash,
-    sign_data
-)
+import cryptoutils
 
-from oid_mapping import get_alg_oid_from_key_hash, get_hash_from_signature_oid, get_sig_oid_from_key_hash, \
-    get_hash_name_to_oid
+from oid_mapping import get_hash_from_signature_oid, get_sig_oid_from_key_hash
+
+
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
 sys.set_int_max_str_digits(0)
@@ -144,8 +141,7 @@ def _prepare_pki_message(
     transaction_id=None,
     sender_nonce=None,
     recip_nonce=None,
-    implicit_confirm=False,
-    extra_certs=None,
+    implicit_confirm=False
 ):
     """Prepare the skeleton structure of a PKIMessage, with the body to be set later.
 
@@ -337,7 +333,7 @@ def build_cr_from_csr(
 
     # DER-encode the CertRequest and calculate its signature
     der_cert_request = encoder.encode(cert_request)
-    signature = sign_data(der_cert_request, signing_key, hash_alg=hash_alg)
+    signature = cryptoutils.sign_data(der_cert_request, signing_key, hash_alg=hash_alg)
 
     popo_key = rfc4211.POPOSigningKey().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 1))
     popo_key["signature"] = univ.BitString().fromOctetString(signature)
@@ -406,7 +402,7 @@ def build_cert_conf(
     sig_algorithm = (cert["signature"]["algorithm"])
     hash_alg = get_hash_from_signature_oid(sig_algorithm)
     der_cert = encode_to_der(cert)
-    hash = compute_hash(hash_alg, der_cert)
+    hash = cryptoutils.compute_hash(hash_alg, der_cert)
 
     cert_status = rfc9480.CertStatus()
     cert_status["certHash"] = univ.OctetString(hash)
@@ -422,7 +418,6 @@ def build_cert_conf(
 
 
 
-@not_keyword
 def encode_to_der(asn1_structure: pyasn1.type.base.Asn1ItemBase) -> bytes:
     """DER-encode a pyasn1 data structure."""
     return encoder.encode(asn1_structure)
@@ -652,8 +647,8 @@ def try_to_log_pkimessage(data):
         parsed = parse_pki_message(data)
     except:
         logging.info("Cannot prettyPrint this, it does not seem to be a valid PKIMessage")
-
-    logging.info(parsed.prettyPrint())
+    else:
+        logging.info(parsed.prettyPrint())
 
 
 def modify_csr_cn(
@@ -772,12 +767,12 @@ def _prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.S
 
         for file in glob.glob(path, recursive=recursive):
             raw = utils.load_and_decode_pem_file(file)
-            cert = parse_certificate(raw)
+            cert = certutils.parse_certificate(raw)
             extra_certs_wrapper.append(cert)
 
     elif os.path.isfile(path):
         raw = utils.load_and_decode_pem_file(path)
-        cert = parse_certificate(raw)
+        cert = certutils.parse_certificate(raw)
         extra_certs_wrapper.append(cert)
 
     return extra_certs_wrapper
