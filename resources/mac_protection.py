@@ -73,7 +73,7 @@ def _prepare_password_based_mac_parameters(
     return pbm_parameter
 
 
-def _prepare_pbmac1_parameters(salt: Optional[bytes]=None, iterations=100, length=32, hash_alg="sha256"):
+def _prepare_pbmac1_parameters(salt: Optional[bytes] = None, iterations=100, length=32, hash_alg="sha256"):
     """Prepares the PBMAC1 pyasn1 `rfc8018.PBMAC1_params`. Used for the `rfc9480.PKIMessage` structure Protection.
        PBKDF2 with HMAC as message authentication scheme is used.
 
@@ -89,21 +89,21 @@ def _prepare_pbmac1_parameters(salt: Optional[bytes]=None, iterations=100, lengt
     hmac_alg = get_hash_name_to_oid(f"hmac-{hash_alg}")
 
     outer_params = rfc8018.PBMAC1_params()
-    outer_params['keyDerivationFunc'] = rfc8018.AlgorithmIdentifier()
+    outer_params["keyDerivationFunc"] = rfc8018.AlgorithmIdentifier()
 
     pbkdf2_params = rfc8018.PBKDF2_params()
-    pbkdf2_params['salt']['specified'] = univ.OctetString(salt)
-    pbkdf2_params['iterationCount'] = iterations
-    pbkdf2_params['keyLength'] = length
-    pbkdf2_params['prf'] = rfc8018.AlgorithmIdentifier()
-    pbkdf2_params['prf']['algorithm'] = hmac_alg
-    pbkdf2_params['prf']['parameters'] = univ.Null()
+    pbkdf2_params["salt"]["specified"] = univ.OctetString(salt)
+    pbkdf2_params["iterationCount"] = iterations
+    pbkdf2_params["keyLength"] = length
+    pbkdf2_params["prf"] = rfc8018.AlgorithmIdentifier()
+    pbkdf2_params["prf"]["algorithm"] = hmac_alg
+    pbkdf2_params["prf"]["parameters"] = univ.Null()
 
-    outer_params['keyDerivationFunc']['algorithm'] = rfc8018.id_PBKDF2
-    outer_params['keyDerivationFunc']['parameters'] = pbkdf2_params
+    outer_params["keyDerivationFunc"]["algorithm"] = rfc8018.id_PBKDF2
+    outer_params["keyDerivationFunc"]["parameters"] = pbkdf2_params
 
-    outer_params['messageAuthScheme']['algorithm'] = hmac_alg
-    outer_params['messageAuthScheme']['parameters'] = univ.Null()
+    outer_params["messageAuthScheme"]["algorithm"] = hmac_alg
+    outer_params["messageAuthScheme"]["parameters"] = univ.Null()
 
     return outer_params
 
