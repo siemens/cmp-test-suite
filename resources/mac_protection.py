@@ -73,7 +73,7 @@ def _prepare_password_based_mac_parameters(
     return pbm_parameter
 
 
-def _prepare_pbmac1_parameters(salt: Optional[bytes] = None, iterations=100, length=32, hash_alg="sha256"):
+def _prepare_pbmac1_parameters(salt: Optional[bytes] = None, iterations=100, length=32, hash_alg="sha256") -> rfc8018.PBMAC1_params:
     """Prepares the PBMAC1 pyasn1 `rfc8018.PBMAC1_params`. Used for the `rfc9480.PKIMessage` structure Protection.
        PBKDF2 with HMAC as message authentication scheme is used.
 
@@ -82,7 +82,7 @@ def _prepare_pbmac1_parameters(salt: Optional[bytes] = None, iterations=100, len
                        Default is 100.
     :param length: int The desired length of the derived key in bytes. Default is 32 bytes.
     :param hash_alg: str the name of the to use with HMAC.
-    :return:
+    :return:  A `pyasn1_alt_module. rfc8018.PBMAC1_params` object populated
     """
     salt = salt or os.urandom(16)
 
@@ -210,7 +210,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
     """Computes the `pyasn1 rfc9480.PKIMessage` protection.
     :param pki_message: `pyasn1 rfc9480.PKIMessage` object.
     :param password: bytes a symmetric password to protect the message.
-    :return:
+    :return: bytes the computed signature.
     """
     protected_part = rfc9480.ProtectedPart()
     protected_part["header"] = pki_message["header"]
@@ -314,9 +314,8 @@ def _compute_client_dh_protection(
 
     :return: `bytes` - The computed protection value for the PKIMessage.
     """
-    # Private key of the Client.
 
-    # assumes x448and x25519
+    # assumes x448 and x25519
     # certificate is the Server on.
     if certificate is not None and private_key is not None:
         shared_secret = private_key.exchange(certificate.public_key())
