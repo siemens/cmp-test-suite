@@ -4,7 +4,8 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, ed25519, ed448
 from pyasn1.type import univ
-from pyasn1_alt_modules import rfc9481, rfc8017, rfc5480, rfc8018, rfc9480
+from pyasn1_alt_modules import rfc9481, rfc8017, rfc5480, rfc8018, rfc9480, rfc3370
+from pyasn1_alt_modules.rfc3370 import hMAC_SHA1
 from robot.api.deco import not_keyword
 
 from typingutils import PrivateKey
@@ -43,6 +44,7 @@ ECDSA_SHA_OID_2_NAME = {
 # These mappings facilitate the identification of the specific HMAC-SHA algorithm
 # used for MAC (Message Authentication Code) protection algorithms for the PKIMessage.
 HMAC_SHA_OID_2_NAME = {
+    rfc3370.hMAC_SHA1: "hmac-sha1",
     rfc9481.id_hmacWithSHA224: "hmac-sha224",
     rfc9481.id_hmacWithSHA256: "hmac-sha256",
     rfc9481.id_hmacWithSHA384: "hmac-sha384",
