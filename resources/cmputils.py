@@ -217,7 +217,6 @@ def _prepare_implicit_confirm_general_info_structure() -> univ.SequenceOf:
 def _prepare_pki_message(
     sender="tests@example.com",
     recipient="testr@example.com",
-    protection="pbmac1",
     omit_fields=None,
     transaction_id=None,
     sender_nonce=None,
@@ -293,26 +292,6 @@ def _prepare_pki_message(
             explicitTag=Tag(tagClassContext, tagFormatSimple, 3)
         )
 
-    if "protection" not in omit_fields:
-        prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
-
-        if protection == "pbmac1":
-            prot_alg_id["algorithm"] = rfc8018.id_PBMAC1
-            pbmac1_parameters = _prepare_pbmac1_parameters(salt=None, iterations=262144, length=32, hash_alg="sha512")
-            prot_alg_id["parameters"] = pbmac1_parameters
-
-        elif protection == "password-based-mac":
-            prot_alg_id["algorithm"] = rfc4210.id_PasswordBasedMac
-            pbm_parameters = _prepare_password_based_mac_parameters(salt=None, iterations=1000, hash_alg="sha256")
-            prot_alg_id["parameters"] = pbm_parameters
-
-        elif protection == "signature":
-            # TODO this depends on the signature algorithm, which implies we'd have to pass in the key or some
-            # information about it
-            pass
-
-        pki_header["protectionAlg"] = prot_alg_id
-
     if "generalInfo" not in omit_fields and implicit_confirm:
         # If implicitConfirm is used, it is featured in the `generalInfo` field of the structure
         general_info = _prepare_implicit_confirm_general_info_structure()
@@ -368,7 +347,8 @@ def build_p10cr_from_csr(
     pki_body["p10cr"]["signature"] = csr["signature"]
 
     pki_message["body"] = pki_body
-    pki_message["extra_certs"] = _prepare_extra_certs(extra_certs)
+    if extra_certs is not None:
+       pki_message["extra_certs"] = _prepare_extra_certs_from_path(extra_certs)
 
     return pki_message
 
@@ -398,7 +378,6 @@ def build_cr_from_csr(
     pki_message = _prepare_pki_message(
         sender=sender,
         recipient=recipient,
-        protection=protection,
         omit_fields=omit_fields,
         transaction_id=transaction_id,
         sender_nonce=sender_nonce,
@@ -496,7 +475,6 @@ def build_cert_conf(
     pki_message = _prepare_pki_message(
         sender=sender,
         recipient=recipient,
-        protection=protection,
         omit_fields=omit_fields,
         transaction_id=transaction_id,
         sender_nonce=sender_nonce,
