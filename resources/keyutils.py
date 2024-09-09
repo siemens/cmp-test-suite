@@ -3,8 +3,9 @@ It is designed to facilitate key management by offering simple methods to create
 store them and retrieve them when needed.
 
 """
+from typing import Optional
 
-from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat import backends
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import (
     ec,
@@ -17,13 +18,10 @@ from cryptography.hazmat.primitives.asymmetric import (
     rsa,
 )
 
-
+from oid_mapping import get_curve_instance
 from typingutils import PrivateKey, PublicKey
 
 
-# already implemented. in next Merge.
-def get_curve():
-    raise NotImplementedError()
 
 
 def save_key(key, path, passphrase=b"11111"):
