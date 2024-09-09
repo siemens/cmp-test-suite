@@ -3,34 +3,29 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 
 import pyasn1.type.base
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, univ, useful
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
-from pyasn1_alt_modules import rfc2459, rfc2986, rfc4210, rfc4211, rfc5280, rfc5480, rfc6402, rfc8018, rfc9480
+from pyasn1_alt_modules import rfc2459, rfc2986, rfc4210, rfc4211, rfc5280, rfc5480, rfc6402, rfc9480
 from pyasn1_alt_modules.rfc2314 import Attributes, Signature, SignatureAlgorithmIdentifier
 from pyasn1_alt_modules.rfc2459 import Attribute, AttributeValue, Extension, Extensions, GeneralName
 from pyasn1_alt_modules.rfc2511 import CertTemplate
 
-# from utils import load_and_decode_pem_file
+
 import utils
-from asn1utils import get_asn1_value
 from certutils import parse_certificate
 from test_suite_enums import PKIStatus
 from cryptoutils import (
     compute_hash,
-    compute_hmac,
-    compute_password_based_mac,
-    compute_pbmac1,
-    get_alg_oid_from_key_hash,
-    get_hash_from_signature_oid,
-    get_sig_oid_from_key_hash,
-    sign_data,
+    sign_data
 )
 
+from oid_mapping import get_alg_oid_from_key_hash, get_hash_from_signature_oid, get_sig_oid_from_key_hash, \
+    get_hash_name_to_oid
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
 sys.set_int_max_str_digits(0)
