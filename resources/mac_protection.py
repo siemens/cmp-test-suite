@@ -1,6 +1,6 @@
 """Provides functionality to prepare the `pyasn1` `rfc9480.PKIMessage` protection: AlgorithmIdentifier
 field and computes the PKIProtection.
-"""
+"""  # noqa: D205
 
 import logging
 import os
@@ -137,14 +137,14 @@ def _prepare_dh_based_mac(hash_alg: str = "sha1") -> rfc4210.DHBMParameter:
     return param
 
 
-def _apply_cert_pkimessage_protection(
+def _apply_cert_pkimessage_protection(  # noqa: D205
     pki_message: rfc9480.PKIMessage,
     private_key: PrivateKey,
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
 ):
     """Ensure that a `pyasn1 rfc9480.PKIMessage` protected by a signature has
-    the certificate as the first entry in the `extraCerts` field.
+    the certificate as the first entry in the `extraCerts` field. # noqa: D205
 
     This function ensures that the first certificate in the PKIMessage's `extraCerts` field
     is the CMP-Protection certificate. If a certificate is provided, it checks that the
@@ -211,6 +211,7 @@ def _apply_cert_pkimessage_protection(
 
 def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: bytes) -> bytes:
     """Compute the `pyasn1 rfc9480.PKIMessage` protection.
+
     :param pki_message: `pyasn1 rfc9480.PKIMessage` object.
     :param password: bytes a symmetric password to protect the message.
     :return: bytes the computed signature.
@@ -496,6 +497,7 @@ def apply_pki_message_protection(  # noqa: D417
     **params,
 ) -> rfc9480.PKIMessage:
     """Prepare the PKI protection for the PKIMessage algorithm.
+
     Includes: Checks if the certificate is the first in the `PKIMessage` `extraCerts` field!
               If Provided, otherwise adds a self-signed Certificate!
     Excludes:  Certificate checks!
@@ -574,7 +576,7 @@ def apply_pki_message_protection(  # noqa: D417
     return pki_message
 
 
-def verify_pki_protection(  # noqa: D417
+def verify_pki_protection(  # noqa: D417, D205
     pki_message: rfc9480.PKIMessage,
     private_key: Optional[PrivateKey] = None,
     password: Optional[Union[bytes, str]] = None,

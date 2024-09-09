@@ -3,7 +3,7 @@ OID (Object Identifier) mappings for signature and hash algorithms, symmetric an
 (Public Key Infrastructure) message protections. It includes functions to retrieve OIDs for specific cryptographic
 algorithms, create cryptographic instances, and perform lookups between human-readable algorithm names and their
 corresponding OIDs.
-"""
+"""  # noqa: D205
 
 from typing import Dict
 
@@ -186,7 +186,7 @@ def get_hash_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
 
 
 @not_keyword
-def get_curve_instance(curve_name: str) -> ec.EllipticCurve:
+def get_curve_instance(curve_name: str) -> ec.EllipticCurve:  # noqa: D205
     """Retrieve an instance of an elliptic curve based on its name.
     Used for generating an Ecc Private Key on the named curve.
 
@@ -236,7 +236,7 @@ def get_alg_oid_from_key_hash(key: PrivateKey, hash_alg: str) -> univ.ObjectIden
 @not_keyword
 def get_sig_oid_from_key_hash(alg_oid, hash_alg):
     """Determine the OID of a signature algorithm given by the OID of the asymmetric algorithm and the name of the
-    hashing function used in the signature
+    hashing function used in the signature. # noqa: D205
 
     :param: alg_oid: pyasn1.type.univ.ObjectIdentifier, OID of asymmetric algorithm
     :param: hash_alg: str, name of hashing algorithm, e.g., 'sha256'

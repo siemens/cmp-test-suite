@@ -1,6 +1,6 @@
 """Defines Enums for use with the Certificate Management Protocol.
 These Enums make the test cases more readable for users of the test suite and facilitate comparisons and switches in the CMP protocol handling code.
-"""
+"""  # noqa: D205
 
 from enum import Enum, auto
 
@@ -33,9 +33,9 @@ class ProtectionAlgorithm(Enum):
         return [member.name.lower() for member in cls]
 
     @staticmethod
-    def get(value: str) -> "ProtectionAlgorithm":
+    def get(value: str) -> "ProtectionAlgorithm":  # noqa: D205
         """Return the ProtectionAlgorithm enum member that matches the provided value.
-        The matching is case-insensitive.
+        The matching is case-insensitive. # noqa: D205
 
         Args:
             value (str): The name of the enum member to get.
