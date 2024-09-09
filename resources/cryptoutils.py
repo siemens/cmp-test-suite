@@ -9,116 +9,13 @@ from cryptography.hazmat.primitives import hashes, hmac, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa, dh, ed25519, ed448, dsa, x25519, x448, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.x509.oid import NameOID
 from pyasn1_alt_modules import rfc9481
 from robot.api.deco import not_keyword
 
-from oid_mapping import NAME_MAP
+from oid_mapping import NAME_MAP, hash_name_to_instance, get_alg_oid_from_key_hash, get_sig_oid_from_key_hash, get_hash_from_signature_oid
 
 from keyutils import generate_key
 from typingutils import PrivateKey, PrivateKeySig
-
-
-
-# map OIDs of signature algorithms to the stringified names of hash functions
-# used in the signature; this is needed to compute the certificate has for
-# certConfirm messages, since it must contain the hash of the certificate,
-# computed with the same algorithm as the one in the signature
-OID_HASH_MAP = {
-    "1.2.840.113549.1.1.5": "sha1",  # sha1-with-rsa-signature
-    "1.2.840.113549.1.1.11": "sha256",  # sha256WithRSAEncryption
-    "1.2.840.113549.1.1.12": "sha384",  # sha384WithRSAEncryption
-    "1.2.840.113549.1.1.13": "sha512",  # sha512WithRSAEncryption
-    "1.2.840.10045.4.3.1": "sha224",  # ecdsa-with-SHA224
-    "1.2.840.10045.4.3.2": "sha256",  # ecdsa-with-SHA256
-    "1.2.840.10045.4.3.3": "sha384",  # ecdsa-with-SHA384
-    "1.2.840.10045.4.3.4": "sha512",  # ecdsa-with-SHA512
-}
-
-HASH_NAME_OBJ_MAP = {
-    "sha1": hashes.SHA1(),
-    "sha224": hashes.SHA224(),
-    "sha256": hashes.SHA256(),
-    "sha384": hashes.SHA384(),
-    "sha512": hashes.SHA512(),
-}
-
-# Map of tuples (asymmetric algorithm OID, hash algorithm name) to the OID of a signature algorithm, e.g.
-# ('1.2.840.113549.1.1.1', 'sha256') -> '1.2.840.113549.1.1.11', i.e. (RSA, SHA256) -> sha256WithRSAEncryption
-# The OIDs are taken from pyasn1-alt-modules, so they are not strings, but rather univ.Oid objects (which can be
-# stringified, if necessary). This is needed when creating the `popo` (ProofOfPossession) structure for CRMF.
-OID_SIG_HASH_MAP = {
-    (rfc9481.rsaEncryption, "sha256"): rfc9481.sha256WithRSAEncryption,
-    (rfc9481.rsaEncryption, "sha384"): rfc9481.sha384WithRSAEncryption,
-    (rfc9481.rsaEncryption, "sha512"): rfc9481.sha512WithRSAEncryption,
-}
-
-
-def get_alg_oid_from_key_hash(key, hash_alg):
-    """Find the pyasn1 oid given the hazmat key instance and a name of a hashing algorithm
-
-    :param key: cryptography.hazmat.primitives.asymmetric, key instance
-    :param hash_alg: str, name of hashing algorithm, e.g., 'sha256'
-    :return: pyasn1.type.univ.ObjectIdentifier of signature algorithm
-    """
-    if isinstance(key, rsa.RSAPrivateKey):
-        if hash_alg == "sha256":
-            return rfc9481.sha256WithRSAEncryption
-        elif hash_alg == "sha384":
-            return rfc9481.sha384WithRSAEncryption
-        elif hash_alg == "sha512":
-            return rfc9481.sha512WithRSAEncryption
-
-    elif isinstance(key, ec.ECDSA):
-        if hash_alg == "sha256":
-            return rfc9481.ecdsa_with_SHA256
-        elif hash_alg == "sha384":
-            return rfc9481.ecdsa_with_SHA384
-        elif hash_alg == "sha512":
-            return rfc9481.ecdsa_with_SHA512
-
-    raise ValueError(f"Unsupported signature algorithm for ({key}, {hash_alg})")
-
-
-def get_sig_oid_from_key_hash(alg_oid, hash_alg):
-    """Determine the OID of a signature algorithm given by the OID of the asymmetric algorithm and the name of the
-    hashing function used in the signature
-
-    :param: alg_oid: pyasn1.type.univ.ObjectIdentifier, OID of asymmetric algorithm
-    :param: hash_alg: str, name of hashing algorithm, e.g., 'sha256'
-    :returns: pyasn1.type.univ.ObjectIdentifier of signature algorithm,
-              e.g., '1.2.840.113549.1.1.11' (i.e., sha256WithRSAEncryption)
-    """
-    try:
-        return OID_SIG_HASH_MAP[(alg_oid, hash_alg)]
-    except KeyError:
-        raise ValueError(
-            f"Unsupported signature algorithm for ({alg_oid}, {hash_alg}), " f"see cryptoutils.OID_SIG_HASH_MAP"
-        )
-
-
-def get_hash_from_signature_oid(oid):
-    """Determine the name of a hashing function used in a signature algorithm given by its oid
-
-    :param oid: str, OID of signing algorithm
-    :return: str, name of hashing algorithm, e.g., 'sha256'
-    """
-    try:
-        return OID_HASH_MAP[oid]
-    except KeyError:
-        raise ValueError(f"Unknown signature algorithm OID {oid}, " f"check OID_HASH_MAP in cryptoutils.py")
-
-
-def hash_name_to_instance(alg):
-    """Return an instance of a hash algorithm object based on its name
-
-    :param alg: str, name of hashing algorithm, e.g., 'sha256'
-    :return: cryptography.hazmat.primitives.hashes
-    """
-    try:
-        return HASH_NAME_OBJ_MAP[alg]
-    except KeyError:
-        raise ValueError(f"Unsupported hash algorithm: {alg}")
 
 
 @not_keyword
