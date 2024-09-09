@@ -72,10 +72,22 @@ OID_HASH_MAP.update(SHA_OID_2_NAME)
 
 # Updating the main dictionary with RSA and ECDSA OIDs
 # to check quickly if a given OID is supported by the Test-Suite
-SUPPORTED_MAC_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {rfc9481.id_Ed25519: "ed25519", rfc9481.id_Ed448: "ed448"}
-SUPPORTED_MAC_OID_2_NAME.update(RSA_SHA_OID_2_NAME)
-SUPPORTED_MAC_OID_2_NAME.update(ECDSA_SHA_OID_2_NAME)
-SUPPORTED_MAC_OID_2_NAME.update(AES_GMAC_OID_2_NAME)
+SUPPORTED_SIG_MAC_OIDS = {rfc9481.id_Ed25519: "ed25519", rfc9481.id_Ed448: "ed448"}
+SUPPORTED_SIG_MAC_OIDS.update(RSA_SHA_OID_2_NAME)
+SUPPORTED_SIG_MAC_OIDS.update(ECDSA_SHA_OID_2_NAME)
+
+
+SYMMETRIC_PROT_ALGO = {}
+SYMMETRIC_PROT_ALGO.update({rfc8018.id_PBMAC1 : "pbmac1",
+                            rfc9480.id_DHBasedMac: "dh_based_mac",
+                            rfc9480.id_PasswordBasedMac: "password_based_mac"})
+
+SYMMETRIC_PROT_ALGO.update(HMAC_SHA_OID_2_NAME)
+SYMMETRIC_PROT_ALGO.update(AES_GMAC_OID_2_NAME)
+
+SUPPORTED_MAC_OID_2_NAME = {}
+SUPPORTED_MAC_OID_2_NAME.update(SUPPORTED_SIG_MAC_OIDS)
+SUPPORTED_MAC_OID_2_NAME.update(SYMMETRIC_PROT_ALGO)
 
 # reverse the dictionary to get OIDs with names
 # to perform lookups for getting PKIMessage Protection AlgorithmIdentifier
