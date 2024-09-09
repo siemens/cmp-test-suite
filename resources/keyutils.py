@@ -165,35 +165,43 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
 
     return private_key
 
+def load_private_key_from_file(filepath: str, password: Optional[str] = "11111") -> PrivateKey:
+    """Load Private Key From File.
 
-def load_private_key_from_file(filepath: str, password: str = None) -> PrivateKey:
-    """Load a cryptographic Private key from a PEM file.
+    Loads a cryptographic private key from a PEM-encoded file.
 
     Arguments:
-    ---------
-        filepath (str): The path to the file containing the PEM-encoded key.
-        password (str, optional): The password to decrypt the key file, if it is encrypted. Defaults to None.
+    - `filepath` (str): The path to the file containing the PEM-encoded key.
+    - `password` (str, optional): The password to decrypt the key file, if it is encrypted. Defaults to "11111".
+      For raw key formats such as `x448` and `x25519`, set the password to `"x448"` or `"x25519"` to indicate
+      that these raw keys should be loaded.
 
     Returns:
-    -------
-        PrivateKey: An instance of the loaded key, such as `RSAPrivateKey`.
+    - `PrivateKey`: An instance of the loaded key, such as `RSAPrivateKey`, `X448PrivateKey`, or `X25519PrivateKey`.
 
     Raises:
-    ------
-        FileNotFoundError: If the File does not exist.
+    - `FileNotFoundError`: If the file does not exist.
 
-    Example:
-    -------
-        | ${key}= | Load Private Key From File | rsa | /path/to/key.pem | password123 |
+    Examples:
+    | ${key}= | Load Private Key From File | /path/to/key.pem | password123 |
+    | ${x448_key}= | Load Private Key From File | /path/to/x448_key.pem | x448 |
+    | ${x25519_key}= | Load Private Key From File | /path/to/x25519_key.pem | x25519 |
 
     """
-    with open(filepath, "rb") as pem_file:
-        pem_data = pem_file.read()
+
+    pem_data = open(filepath, "rb").read()
+
+    if password == "x448":
+        return x448.X448PrivateKey.from_private_bytes(data=pem_data)
+    elif password  == "x25519":
+        return x25519.X25519PrivateKey.from_private_bytes(data=pem_data)
+
+    password = password if not password else password.encode("utf-8")
 
     private_key = serialization.load_pem_private_key(
         pem_data,
-        password=password,  # your password if the key is encrypted
-        backend=default_backend(),
+        password=password,
+        backend=backends.default_backend(),
     )
     return private_key
 
