@@ -284,7 +284,8 @@ def _generate_private_dh_from_key(password: str, other_party_key: Union[dh.DHPri
     return private_key
 
 
-def do_dh_key_exchange_password_based(password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]) -> bytes:
+def do_dh_key_exchange_password_based(# noqa: D417
+        password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]) -> bytes:
     """Performs a Diffie-Hellman key exchange to derive a shared secret key based on a password.
 
     Arguments:
@@ -352,7 +353,8 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     aes_gcm.finalize()  # Finalize to get the authentication tag
     return aes_gcm.tag
 
-def generate_cert_from_private_key(private_key: PrivateKey, common_name: Optional[str] = "CN=Hans",
+def generate_cert_from_private_key(# noqa: D417
+        private_key: PrivateKey, common_name: Optional[str] = "CN=Hans",
                                    hash_alg: Optional[str] = "sha256") -> x509.Certificate:
     """Generates a self-signed x509 certificate from a provided private key.
 
