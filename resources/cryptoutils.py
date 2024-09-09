@@ -13,7 +13,7 @@ from robot.api.deco import not_keyword
 
 from oid_mapping import NAME_MAP, hash_name_to_instance
 
-from keyutils import generate_key
+import keyutils
 from typingutils import PrivateKey, PrivSignCertKey, PrivateKeySig
 
 
@@ -250,9 +250,9 @@ def generate_signed_csr(  # noqa: D417
 
     """
     if key is None:
-        key = generate_key(algorithm="rsa", length=2048)
+        key = keyutils.generate_key(algorithm="rsa", length=2048)
     elif isinstance(key, str):
-        key = generate_key(algorithm=key, **params)
+        key = keyutils.generate_key(algorithm=key, **params)
     elif isinstance(key, PrivateKey):
         pass
     else:
@@ -274,7 +274,7 @@ def _generate_private_dh_from_key(password: str, other_party_key: Union[dh.DHPri
     """
     parameters = other_party_key.parameters().parameter_numbers()
 
-    private_key: dh.DHPrivateKey = generate_key(
+    private_key: dh.DHPrivateKey = keyutils.generate_key(
         algorithm="dh",
         p=parameters.p,
         g=parameters.g,
