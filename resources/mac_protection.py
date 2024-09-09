@@ -125,13 +125,13 @@ def _prepare_dh_based_mac(hash_alg: str = "sha1") -> rfc4210.DHBMParameter:
     alg_id_mac = rfc5280.AlgorithmIdentifier()
 
     alg_id_owf["algorithm"] = get_hash_name_to_oid(hash_alg)
-    alg_id_owf["param"] = univ.Null()
+    alg_id_owf["parameters"] = univ.Null()
 
     alg_id_mac["algorithm"] = get_hash_name_to_oid(f"hmac-{hash_alg}")
     alg_id_mac["parameters"] = univ.Null()
 
+    param["owf"] = alg_id_owf
     param["mac"] = alg_id_mac
-    param["ofw"] = alg_id_owf
     return param
 
 
