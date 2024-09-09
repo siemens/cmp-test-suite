@@ -1,13 +1,13 @@
 """Some utility functions for various tasks and a place to store functions that do not belong anywhere else."""
 
 import base64
-import logging
 import datetime
+import logging
 import re
 from base64 import b64decode, b64encode
 from collections import Counter
 from itertools import combinations
-from typing import Any, Union, List
+from typing import Any, List, Union
 
 from pyasn1.type import base
 
@@ -24,7 +24,6 @@ def nonces_must_be_diverse(nonces: List[bytes], minimal_hamming_distance: Strint
     :returns: nothing, but will raise a ValueError if at least two nonces are not diverse enough; the checker stops at
               the first violation it finds.
     """
-
     minimal_hamming_distance = int(minimal_hamming_distance)
 
     for nonce1, nonce2 in combinations(nonces, 2):
@@ -112,7 +111,6 @@ def decode_pem_string(data: Union[bytes, str]) -> bytes:
     :param data: (str, bytes) the data to decode.
     :return: bytes The decoded DER-encoded bytes extracted from the PEM input
     """
-
     if type(data) is bytes:
         data = data.decode("ascii")
 
@@ -217,7 +215,7 @@ def pem_to_der(pem_data: Union[str, bytes]) -> bytes:
     return der_data
 
 
-def subtract_date_from_date(response_time, request_time, verbose=False) -> int:
+def subtract_date_from_date(response_time, request_time, verbose=False) -> int:  # noqa: D417
     """
     Subtract Date From Date
 
@@ -233,8 +231,8 @@ def subtract_date_from_date(response_time, request_time, verbose=False) -> int:
 
     Example:
     | Subtract Date From Date | ${response_time} | ${request_time} | verbose=${True} |
-    """
 
+    """
     # Convert string dates to datetime objects
     response_dt = datetime.datetime.strptime(response_time, "%Y-%m-%d %H:%M:%S")
     request_dt = datetime.datetime.strptime(request_time, "%Y-%m-%d %H:%M:%S")

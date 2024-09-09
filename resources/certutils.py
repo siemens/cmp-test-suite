@@ -11,7 +11,6 @@ from pyasn1.codec.der import decoder
 from pyasn1_alt_modules import rfc9480
 from robot.api.deco import not_keyword
 
-
 # TODO for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False
 

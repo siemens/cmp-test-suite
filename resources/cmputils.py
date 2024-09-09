@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import List, Optional
 
 import pyasn1.type.base
 from pyasn1.codec.der import decoder, encoder
@@ -15,13 +15,11 @@ from pyasn1_alt_modules.rfc2314 import Attributes, Signature, SignatureAlgorithm
 from pyasn1_alt_modules.rfc2459 import Attribute, AttributeValue, Extension, Extensions, GeneralName
 from pyasn1_alt_modules.rfc2511 import CertTemplate
 
-import utils
 import certutils
-from test_suite_enums import PKIStatus
 import cryptoutils
-
+import utils
 from oid_mapping import get_hash_from_signature_oid, get_sig_oid_from_key_hash
-
+from test_suite_enums import PKIStatus
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -246,7 +244,8 @@ def build_p10cr_from_csr(
     :param extra_certs: string of a filepath or a directory to load certificate from.
     :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMessage
 
-    :returns: pyasn1 PKIMessage structure with a body set to p10cr"""
+    :returns: pyasn1 PKIMessage structure with a body set to p10cr
+    """
     pki_message = _prepare_pki_message(
         sender=sender,
         recipient=recipient,
@@ -633,7 +632,6 @@ def try_to_log_pkimessage(data):
     :param data: bytes, str or pyasn1 - something that is assumed to be a PKIMessage structure, either DER-encoded or
                  a pyasn1 object.
     """
-
     if isinstance(data, base.Asn1Item):
         logging.info(data.prettyPrint())
         return

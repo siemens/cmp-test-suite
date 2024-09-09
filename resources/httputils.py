@@ -1,7 +1,7 @@
 import requests
 from pyasn1.error import PyAsn1Error
+
 import cmputils
-from cmputils import encode_to_der as encoder_to_der
 
 
 def http_response_contains_pki_message(data: requests.Response) -> False:  # noqa: D417

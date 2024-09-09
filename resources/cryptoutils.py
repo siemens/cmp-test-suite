@@ -1,20 +1,19 @@
 import datetime
 import logging
 import os
-from typing import Tuple, Union, Optional
+from typing import Optional, Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, rsa, dh, ed25519, ed448, dsa, x25519, x448, padding
+from cryptography.hazmat.primitives.asymmetric import dh, dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from robot.api.deco import not_keyword
 
-from oid_mapping import NAME_MAP, hash_name_to_instance
-
 import keyutils
-from typingutils import PrivateKey, PrivSignCertKey, PrivateKeySig
+from oid_mapping import NAME_MAP, hash_name_to_instance
+from typingutils import PrivateKey, PrivateKeySig, PrivSignCertKey
 
 
 @not_keyword
@@ -103,7 +102,6 @@ def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -
         | Sign Data | ${data} | ${private_key} | sha256 |
 
     """
-
     if isinstance(hash_alg, hashes.HashAlgorithm):
         pass
     elif hash_alg is not None:
@@ -324,7 +322,6 @@ def do_dh_key_exchange_password_based(  # noqa: D417
     | ${shared_secret} = | Do DH Key Exchange Password Based | password=my_password | other_party_key=${public_key} |
 
     """
-
     private_key = _generate_private_dh_from_key(password, other_party_key)
 
     if isinstance(other_party_key, dh.DHPublicKey):
@@ -353,7 +350,6 @@ def compute_dh_based_mac(
                      Defaults to "sha1".
     :return: A byte sequence representing the computed HMAC of the input data using the derived key.
     """
-
     if isinstance(password, str):
         shared_key = do_dh_key_exchange_password_based(password=password, other_party_key=key)
     else:
@@ -407,8 +403,8 @@ def generate_cert_from_private_key(  # noqa: D417
     | ${private_key} | Generate Key | algorithm=rsa | length=2048 |
     | ${certificate} | Generate Cert From Private Key | ${private_key} | CN=Hans |
     | ${certificate} | Generate Cert From Private Key | ${private_key} | CN=Hans | ${sign_key} |
-    """
 
+    """
     # Define the certificate subject and issuer
     subject = issuer = parse_common_name_from_str(common_name)
 

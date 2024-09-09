@@ -9,14 +9,14 @@ from typing import Optional
 from cryptography.hazmat import backends
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import (
-    ec,
-    ed25519,
-    ed448,
-    dsa,
-    x25519,
-    x448,
     dh,
+    dsa,
+    ec,
+    ed448,
+    ed25519,
     rsa,
+    x448,
+    x25519,
 )
 
 from oid_mapping import get_curve_instance
@@ -112,8 +112,8 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
     | ${private_key}= | Generate Key | algorithm=rsa | length=2048 |
     | ${private_key}= | Generate Key | algorithm=dh | length=2048 |
     | ${private_key}= | Generate Key | algorithm=ecdsa | curve=secp384r1 |
-    """
 
+    """
     algorithm = algorithm.lower()
     backend = backends.default_backend()
 
@@ -190,7 +190,6 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     | ${x25519_key}= | Load Private Key From File | /path/to/x25519_key.pem | x25519 |
 
     """
-
     pem_data = open(filepath, "rb").read()
 
     if password == "x448":

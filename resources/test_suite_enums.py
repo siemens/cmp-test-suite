@@ -49,6 +49,7 @@ class ProtectionAlgorithm(Enum):
 
         Raises:
             ValueError: If the value does not match any enum member.
+
         """
         value_upper = value.replace("-", "_").upper()
 

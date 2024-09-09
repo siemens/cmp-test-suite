@@ -4,44 +4,43 @@ Provides functionality to prepare the `pyasn1` `rfc9480.PKIMessage` protection: 
 
 import logging
 import os
-from typing import Union, Optional
+from typing import Optional, Union
 
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
-from pyasn1.codec.der import encoder
-from pyasn1.type import univ, constraint
-from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
-from pyasn1_alt_modules import rfc9044, rfc5280, rfc8018, rfc4210, rfc9480, rfc9481
-
 from cryptography.hazmat.primitives import serialization
+from pyasn1.codec.der import encoder
+from pyasn1.type import constraint, univ
+from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
+from pyasn1_alt_modules import rfc4210, rfc5280, rfc8018, rfc9044, rfc9480, rfc9481
 
 import certutils
 import cmputils
-from cmputils import _prepare_extra_certs
-from cryptoutils import do_dh_key_exchange_password_based
 import cryptoutils
+import verifyingutils
+from cmputils import _prepare_extra_certs
+from cryptoutils import (
+    compute_gmac,
+    compute_hash,
+    compute_hmac,
+    compute_password_based_mac,
+    compute_pbmac1,
+    do_dh_key_exchange_password_based,
+    sign_data,
+)
 from oid_mapping import (
-    get_alg_oid_from_key_hash,
-    get_hash_name_to_oid,
-    HMAC_SHA_OID_2_NAME,
-    SUPPORTED_SIG_MAC_OIDS,
-    get_hash_from_signature_oid,
-    SHA_OID_2_NAME,
-    SYMMETRIC_PROT_ALGO,
     AES_GMAC_NAME_2_OID,
     AES_GMAC_OID_2_NAME,
+    HMAC_SHA_OID_2_NAME,
+    SHA_OID_2_NAME,
+    SUPPORTED_SIG_MAC_OIDS,
+    SYMMETRIC_PROT_ALGO,
+    get_alg_oid_from_key_hash,
+    get_hash_from_signature_oid,
+    get_hash_name_to_oid,
 )
 from test_suite_enums import ProtectionAlgorithm
-from cryptoutils import (
-    compute_hash,
-    compute_pbmac1,
-    compute_gmac,
-    compute_password_based_mac,
-    sign_data,
-    compute_hmac,
-)
 from typingutils import PrivateKey, PrivSignCertKey
-import verifyingutils
 
 
 def _prepare_password_based_mac_parameters(
@@ -319,7 +318,6 @@ def _compute_client_dh_protection(
 
     :return: `bytes` - The computed protection value for the PKIMessage.
     """
-
     # assumes x448 and x25519
     # certificate is the Server on.
     if certificate is not None and private_key is not None:
@@ -362,7 +360,6 @@ def _compute_pkimessage_protection(
     :returns:
         bytes: The computed protection value for the `PKIMessage`.
     """
-
     protected_part = rfc9480.ProtectedPart()
     protected_part["header"] = pki_message["header"]
     protected_part["body"] = pki_message["body"]
@@ -416,7 +413,6 @@ def _prepare_pki_message_protection_field(
 
     :return: Returns the protected `pyasn1_alt_module.rfc9480.PKIMessage` object.
     """
-
     prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
 
     protection_type = ProtectionAlgorithm.get(protection)
@@ -607,7 +603,6 @@ def verify_pki_protection(  # noqa: D417
           in the `extraCerts` field of the `PKIMessage`, as per RFC 9483, Section 3.3.
 
     """
-
     protection_value: bytes = pki_message["protection"].asOctets()
 
     prot_alg_id = pki_message["header"]["protectionAlg"]

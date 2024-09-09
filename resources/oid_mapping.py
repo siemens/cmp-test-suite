@@ -1,10 +1,10 @@
 from typing import Dict
 
-from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import rsa, ec, ed25519, ed448
+from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa
+from cryptography.x509.oid import NameOID
 from pyasn1.type import univ
-from pyasn1_alt_modules import rfc9481, rfc8017, rfc5480, rfc8018, rfc9480, rfc3370
+from pyasn1_alt_modules import rfc3370, rfc5480, rfc8017, rfc8018, rfc9480, rfc9481
 from robot.api.deco import not_keyword
 
 from typingutils import PrivateKey
@@ -167,7 +167,6 @@ def get_hash_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
                       or "hmac-sha256"
     :return: pyasn1.type.univ.ObjectIdentifier
     """
-
     hash_name = hash_name.lower().replace("_", "-").strip()
 
     if hash_name in OID_HASH_MAP.values():
@@ -188,7 +187,6 @@ def get_curve_instance(curve_name: str) -> ec.EllipticCurve:
     :raises ValueError: If the specified curve name is not supported.
     :return: `cryptography.hazmat.primitives.ec` EllipticCurve instance.
     """
-
     if curve_name not in CURVE_NAMES_TO_INSTANCES:
         raise ValueError(f"The Curve: {curve_name} is not Supported!")
 
@@ -237,7 +235,6 @@ def get_sig_oid_from_key_hash(alg_oid, hash_alg):
     :param: hash_alg: str, name of hashing algorithm, e.g., 'sha256'
     :returns: pyasn1.type.univ.ObjectIdentifier of signature algorithm, e.g., '1.2.840.113549.1.1.11' (i.e., sha256WithRSAEncryption)
     """
-
     try:
         return OID_SIG_HASH_MAP[(alg_oid, hash_alg)]
     except KeyError:
@@ -251,7 +248,8 @@ def get_hash_from_signature_oid(oid: univ.ObjectIdentifier) -> str:
     """Determine the name of a hashing function used in a signature algorithm given by its oid
 
     :param oid: `pyasn1 univ.ObjectIdentifier`, OID of signing algorithm
-    :return: str, name of hashing algorithm, e.g., 'sha256'"""
+    :return: str, name of hashing algorithm, e.g., 'sha256'
+    """
     try:
         tmp = OID_HASH_MAP[oid]
         return tmp
@@ -264,7 +262,8 @@ def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
     """Return an instance of a hash algorithm object based on its name
 
     :param alg: str, name of hashing algorithm, e.g., 'sha256'
-    :return: cryptography.hazmat.primitives.hashes"""
+    :return: cryptography.hazmat.primitives.hashes
+    """
     try:
         # to also get the hash function with rsa-sha1 and so on.
         if "-" in alg:

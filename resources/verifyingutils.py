@@ -1,22 +1,26 @@
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519, ed448, dsa, x25519, x448, rsa, padding
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
 from robot.api.deco import not_keyword
 
 from oid_mapping import hash_name_to_instance
 from typingutils import PublicKeySig
 
 
-def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, hash_alg: str = None) -> None:
+def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, hash_alg: str = None) -> None:  # noqa: D417
     """ ""Verify a digital signature using the provided public key, data and hash algorithm.
+
     Supports: (ECDSA, ED448, ED25519, RSA, DSA).
 
     Args:
-        `public_key` (cryptography.hazmat.primitives.asymmetric): The public key object used to verify the signature.
+        `public_key` (cryptography.hazmat.primitives.asymmetric): The public key object used to
+                      verify the signature.
         `signature` (bytes): The digital signature to be verified, provided as a byte sequence.
         `data` (bytes): The original data that was signed, provided as a byte sequence.
-        `hash_alg` (Optional str ): An optional string representing the name of the hash algorithm to be used for verification
-                                  (e.g., "sha256"). If not specified, the default algorithm for the given key type is used.
+        `hash_alg` (Optional str ): An optional string representing the name of the hash algorithm
+                                   to be used for verification
+                                  (e.g., "sha256"). If not specified, the default algorithm for the
+                                   given key type is used.
 
     Key Types and Verification:
         - `RSAPublicKey`: Verifies using PKCS1v15 padding and the provided hash algorithm.
@@ -33,7 +37,6 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
         | Verify Signature | ${public_key} | ${signature} | ${data} | sha256 |
 
     """
-
     if isinstance(hash_alg, hashes.HashAlgorithm):
         pass
     elif hash_alg is not None:
@@ -53,7 +56,8 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
         public_key.verify(signature, data, hash_alg)
     elif isinstance(public_key, (x25519.X25519PublicKey, x448.X448PublicKey)):
         raise ValueError(
-            f"Key type '{type(public_key).__name__}' is not used for signing or verifying signatures. It is used for key exchange."
+            f"Key type '{type(public_key).__name__}' is not used for signing or verifying signatures."
+            f"It is used for key exchange."
         )
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key).__name__}.")
@@ -70,7 +74,6 @@ def verify_cert_signature(certificate: x509.Certificate):
     :raises InvalidSignature:
         If the certificate's signature is not valid when verified against the provided or extracted public key.
     """
-
     verify_signature(
         public_key=certificate.public_key(),
         signature=certificate.signature,
@@ -90,7 +93,6 @@ def verify_csr_signature(csr: x509.CertificateSigningRequest):
     :raises InvalidSignature:
         If the csr's signature is not valid when verified against the provided or extracted public key.
     """
-
     verify_signature(
         public_key=csr.public_key(),
         signature=csr.signature,
