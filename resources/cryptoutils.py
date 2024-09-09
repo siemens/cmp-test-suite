@@ -9,13 +9,12 @@ from cryptography.hazmat.primitives import hashes, hmac, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa, dh, ed25519, ed448, dsa, x25519, x448, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from pyasn1_alt_modules import rfc9481
 from robot.api.deco import not_keyword
 
 from oid_mapping import NAME_MAP, hash_name_to_instance
 
 from keyutils import generate_key
-from typingutils import PrivateKey, PrivateKeySig
+from typingutils import PrivateKey, PrivSignCertKey, PrivateKeySig
 
 
 @not_keyword
@@ -356,13 +355,16 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
 
 def generate_cert_from_private_key(# noqa: D417
         private_key: PrivateKey, common_name: Optional[str] = "CN=Hans",
-                                   hash_alg: Optional[str] = "sha256") -> x509.Certificate:
+                                   hash_alg: Optional[str] = "sha256",
+        sign_key: Optional[PrivSignCertKey] = None) -> x509.Certificate:
     """Generates a self-signed x509 certificate from a provided private key.
 
     Args:
-        private_key (PrivateKey): The private key to use for certificate generation.
+        private_key (PrivateKey): The private key to use for certificate public Key generation.
         common_name (str, optional): The common name in OpenSSL notation. Defaults to "CN=Hans".
         hash_alg (str, optional): The name of the hash function to use for signing the certificate. Defaults to "sha256".
+        sign_key (`cryptography.hazmat.primitives.asymmetric Private Key` object):
+         The private key to sign the certificate.
 
     Returns:
     `cryptography.x509.Certificate`: The generated self-signed x509 certificate.
@@ -373,6 +375,7 @@ def generate_cert_from_private_key(# noqa: D417
     Examples:
     | ${private_key} | Generate Key | algorithm=rsa | length=2048 |
     | ${certificate} | Generate Cert From Private Key | ${private_key} | CN=Hans |
+    | ${certificate} | Generate Cert From Private Key | ${private_key} | CN=Hans | ${sign_key} |
     """
 
     # Define the certificate subject and issuer
@@ -381,6 +384,9 @@ def generate_cert_from_private_key(# noqa: D417
     if not isinstance(private_key, PrivateKey):
         raise ValueError("Needs a `cryptography.hazmat.primitives.asymmetric PrivateKey` object for generating a "
                          "self-singed `cryptography.x509.Certificate`")
+
+
+    sign_key = sign_key or private_key
 
     # Create the certificate builder
     cert_builder = (
@@ -393,29 +399,31 @@ def generate_cert_from_private_key(# noqa: D417
         .not_valid_after(datetime.datetime.now() + datetime.timedelta(days=365))
     )
 
-    if isinstance(private_key, ec.EllipticCurvePrivateKey):
+    if isinstance(sign_key, ec.EllipticCurvePrivateKey):
         hash_alg = hash_name_to_instance(hash_alg)
 
         # Sign the certificate with the private key
         certificate = cert_builder.sign(
-            private_key=private_key,
+            private_key=sign_key,
             algorithm=hash_alg
         )
-    elif isinstance(private_key, rsa.RSAPrivateKey):
+    elif isinstance(sign_key, rsa.RSAPrivateKey):
         hash_alg = hash_name_to_instance(hash_alg)
         certificate = cert_builder.sign(
-            private_key=private_key,
+            private_key=sign_key,
             algorithm=hash_alg,
             rsa_padding=padding.PKCS1v15()
         )
 
-    elif isinstance(private_key, (ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)):
+    elif isinstance(sign_key, (ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)):
         certificate = cert_builder.sign(
-            private_key=private_key,
+            private_key=sign_key,
             algorithm=None
         )
 
     else:
-        raise ValueError("Unsupported to sign a Certificate!")
+        raise ValueError(f"Unsupported to sign a Certificate!: {type(sign_key)}")
 
     return certificate
+
+
