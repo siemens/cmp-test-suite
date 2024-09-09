@@ -428,20 +428,30 @@ def _prepare_pki_message_protection_field(
     return pki_message
 
 
-def apply_pki_message_protection(
-        pki_message: rfc9480.PKIMessage,
-        protection: str,
-        password: Optional[str] = None,
-        private_key: Optional[PrivateKey] = None,
+def apply_pki_message_protection(  # noqa: D417
+    pki_message: rfc9480.PKIMessage,
+    protection: str,
+    password: Optional[str] = None,
+    private_key: Optional[PrivateKey] = None,
+    certificate: Optional[x509.Certificate] = None,
+    cert_num: Optional[int] = None,
+    sign_key: Optional[PrivSignCertKey] = None,
 ) -> rfc9480.PKIMessage:
     """
     Prepares the PKI protection for the PKIMessage algorithm.
+    Includes: Checks if the certificate is the first in the `PKIMessage` `extraCerts` field!
+              If Provided, otherwise adds a self-signed Certificate!
+    Excludes:  Certificate checks!
 
     Arguments:
-    - `pki_message`: `pyasn1_alt_module.rfc9480.PKIMessage` object. which has a set `pyasn1_alt_module.rfc9480.PKIBody`
+    - `pki_message`: `pyasn1_alt_module.rfc9480.PKIMessage` object. which has a set `pyasn1_alt_module.rfc9480.PKIBody and PKIHeader`
     - `protection`: String representing the type of protection.
     - `password`: String representing a shared secret or a server private key for DHBasedMac (default is None).
-    - `private_key`: `cryptography` ``PrivateKey`` object, used for signing or DHBasedMac (default is None).
+    - `private_key`: `cryptography` `PrivateKey` object, used for signing or DHBasedMac (default is None).
+    - `certificate`: a `pyasn1` ` rfc9480.CMPCertificate` or  `cryptography` `x509.Certificate` object.
+                     The certificate used for verifying of the Signature. If provided.
+    - `cert_num`: int the number of the certificate used for signing the inside the
+                  `pyasn1_alt_module.rfc9480.PKIMessage`
 
     Returns:
     - `rfc9480.PKIMessage`: The PKIMessage object with the applied protection.
@@ -449,20 +459,40 @@ def apply_pki_message_protection(
     Raises:
     - ValueError | If the `PKIMessage` body is not set or is not a value. |
 
-
     Example:
     | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | pbmac1    | ${SECRET}       |
     | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | aes-gmac  | ${SECRET}       |
     | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | signature | private_key=${PRIVATE_KEY}  |
-    | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | dh | private_key=${PRIVATE_KEY}  password={PASSWORD}|
+    | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | dh | private_key=${PRIVATE_KEY}  password={PASSWORD}  |
+    | ${protected_message}= | Apply PKI Message Protection | ${PKI_MESSAGE} | dh | private_key=${PRIVATE_KEY_X448} | certificate={X448_CERT}  |
 
     """
     if not pki_message["body"].isValue:
         raise ValueError("PKI Message body needs to be a value!")
 
-    return _prepare_pki_message_protection_field(
+    if (password or private_key) is None:
+        raise ValueError("Either a password, private key must be provided for PKIMessage structure Protection")
+
+    pki_message = _prepare_pki_message_protection_field(
         pki_message=pki_message,
         protection=protection,
-        password=password,
         private_key=private_key,
     )
+
+    if cert_num is not None and certificate is not None:
+        raise ValueError("Either choose to provide the Certificate or " "provide a Number to Extract the certificate.")
+
+    if cert_num is not None:
+        certificate = pki_message["extraCerts"][cert_num]
+        certificate = encode_to_der(certificate)
+        certificate = x509.load_der_x509_certificate(certificate)
+
+    protection_value = _compute_pkimessage_protection(
+        pki_message=pki_message, password=password, private_key=private_key, certificate=certificate, sign_key=sign_key
+    )
+    wrapped_protection = (
+        rfc9480.PKIProtection()
+        .fromOctetString(protection_value)
+        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
+    )
+    pki_message["protection"] = wrapped_protection
