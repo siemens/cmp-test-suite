@@ -135,6 +135,77 @@ def _prepare_dh_based_mac(hash_alg: str = "sha1") -> rfc4210.DHBMParameter:
     return param
 
 
+def _apply_cert_pkimessage_protection(
+    pki_message: rfc9480.PKIMessage,
+    private_key: PrivateKey,
+    certificate: Optional[x509.Certificate] = None,
+    sign_key: Optional[PrivSignCertKey] = None,
+):
+    """Ensures that a `pyasn1 rfc9480.PKIMessage` protected by a signature has
+    the certificate as the first entry in the `extraCerts` field.
+
+    This function ensures that the first certificate in the PKIMessage's `extraCerts` field
+    is the CMP-Protection certificate. If a certificate is provided, it checks that the
+    first certificate matches the provided CMP-Protection certificate. If no certificate is
+    provided, it generates a new one using the given private key and optional signing key.
+
+    :param pki_message: `pyasn1 rfc9480.PKIMessage` The PKIMessage object to which the certificate
+                         protection is to be applied.
+    :param private_key:  The private key used for signing or generating a certificate.
+    :param certificate: (Optional) `cryptography.x509.Certificate` object. A certificate to use as
+                        the CMP-Protection certificate. If provided, it is checked against the
+                        first certificate in the PKIMessage.
+    :param sign_key:    (Optional) PrivSignCertKey (Optional) A signing key to use for generating a new certificate.
+
+    :raises ValueError: If the first certificate in `extraCerts` is not the CMP-Protection certificate
+                        as specified in RFC 9483, Section 3.3, or if there is a signature verification failure.
+    :return: None
+    """
+    if certificate is not None:
+        raw = certificate.public_bytes(serialization.Encoding.DER)
+        certificate = parse_certificate(raw)
+        if not pki_message["extraCerts"].hasValue():
+            pki_message["extraCerts"] = _prepare_extra_certs([certificate])
+        else:
+            #  RFC 9483, Section 3.3, the first certificate must be the CMP-Protection certificate.
+            if pki_message["extraCerts"][0] != certificate:
+                logging.warning(
+                    f"First Cert in PKIMessage: {pki_message['extraCerts'][0].prettyPrint()}"
+                    f"Certificate Provided: {certificate.prettyPrint()}"
+                )
+                raise ValueError(
+                    "The first certificate has to be the CMP-Protection certificate as specified in RFC 9483, Section 3.3."
+                )
+
+    elif not pki_message["extraCerts"].hasValue():
+        # contains no Certificates so a new one is added.
+        certificate = generate_cert_from_private_key(private_key=private_key, sign_key=sign_key)
+        raw = certificate.public_bytes(serialization.Encoding.DER)
+        certificate = parse_certificate(raw)
+        pki_message["extraCerts"] = _prepare_extra_certs([certificate])
+
+    else:
+        # init a byte sequence to sign and then verify.
+        data = b"12345678910111213141516"
+
+        cert = pki_message["extraCerts"][0]
+        certificate = encode_to_der(cert)
+        certificate = x509.load_der_x509_certificate(certificate)
+        signature = sign_data(key=private_key, data=data, hash_alg=certificate.signature_hash_algorithm)
+
+        try:
+            verify_signature(
+                public_key=certificate.public_key(),
+                signature=signature,
+                data=data,
+                hash_alg=certificate.signature_hash_algorithm,
+            )
+        except InvalidSignature:
+            raise ValueError(
+                "The first certificate has to be the CMP-Protection certificate as specified in RFC 9483, Section 3.3."
+            )
+
+
 def _prepare_pki_message_protection_field(
         pki_message: rfc9480.PKIMessage,
         protection: str,
