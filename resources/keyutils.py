@@ -59,7 +59,7 @@ def save_key(key: PrivateKey, path, passphrase: Optional[str] = "11111"):
         # DH only supports PKCS8 serialization
         format_ = serialization.PrivateFormat.PKCS8
 
-    elif isinstance(key, (x448.X448PrivateKey, x25519.X25519PrivateKey)):
+    elif isinstance(key, (x448.X448PrivateKey, x25519.X25519PrivateKey, ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)):
         encoding_ = serialization.Encoding.Raw
         format_ = serialization.PrivateFormat.Raw
         encrypt_algo = serialization.NoEncryption()
@@ -173,7 +173,7 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     - `filepath` (str): The path to the file containing the PEM-encoded key.
     - `password` (str, optional): The password to decrypt the key file, if it is encrypted. Defaults to "11111".
       For raw key formats such as `x448` and `x25519`, set the password to `"x448"` or `"x25519"` to indicate
-      that these raw keys should be loaded.
+      that these raw keys should be loaded. (also for ed-versions).
 
     Returns:
     - `PrivateKey`: An instance of the loaded key, such as `RSAPrivateKey`, `X448PrivateKey`, or `X25519PrivateKey`.
@@ -195,6 +195,11 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     elif password  == "x25519":
         return x25519.X25519PrivateKey.from_private_bytes(data=pem_data)
 
+    elif password == "ed448":
+        return ed448.Ed448PrivateKey.from_private_bytes(data=pem_data)
+    elif password  == "ed25519":
+        return ed25519.Ed25519PrivateKey.from_private_bytes(data=pem_data)
+
     password = password if not password else password.encode("utf-8")
 
     private_key = serialization.load_pem_private_key(
@@ -205,29 +210,41 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     return private_key
 
 
-# TODO test
-def load_public_key_from_file(filepath: str) -> PublicKey:
-    """Load a cryptographic Public key from a PEM file.
+def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
+    """Load Public Key From File.
+
+    Loads a cryptographic public key from a PEM-encoded file. Supports various key types and formats,
+    including PEM and raw formats for `x448` and `x25519` keys.
 
     Arguments:
-    ---------
-        filepath (str): The path to the file containing the PEM-encoded key.
+    - `filepath` (str): The path to the file containing the PEM-encoded public key.
 
     Returns:
-    -------
-        PublicKey: An instance of the loaded key, such as `RSAPublicKey`.
+    - `PublicKey`: An instance of the loaded public key, such as `RSAPublicKey`, `X448PublicKey`, or `X25519PublicKey`.
 
     Raises:
-    ------
-        FileNotFoundError: If the File does not exist.
+    - `FileNotFoundError`: If the file does not exist.
+    - `ValueError`: If the file content is not a valid public key format.
 
-    Example:
-    -------
-        | ${key}= | Load Public Key From File | rsa | /path/to/key.pem
+    Examples:
+    | ${public_key}= | Load Public Key From File | /path/to/public_key.pem |
+    | ${x448_key}= | Load Public Key From File | /path/to/x448_public_key.raw |
+    | ${x25519_key}= | Load Public Key From File | /path/to/x25519_public_key.raw |
 
     """
     with open(filepath, "rb") as pem_file:
         pem_data = pem_file.read()
 
-    public_key = serialization.load_pem_public_key(pem_data, backend=backends.default_backend())
+
+    if key_type == "x448":
+        return x448.X448PublicKey.from_public_bytes(data=pem_data)
+    elif key_type  == "x25519":
+        return x25519.X25519PublicKey.from_public_bytes(data=pem_data)
+
+    elif key_type == "ed448":
+        return ed448.Ed448PublicKey.from_public_bytes(data=pem_data)
+    elif key_type  == "ed25519":
+        return ed25519.Ed25519PublicKey.from_public_bytes(data=pem_data)
+    else:
+        public_key = serialization.load_pem_public_key(pem_data, backend=backends.default_backend())
     return public_key
