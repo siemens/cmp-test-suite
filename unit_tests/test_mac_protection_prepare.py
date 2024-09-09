@@ -63,10 +63,10 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         # certificate does not match the private key.
         private_key = generate_key()
 
-        _apply_cert_pkimessage_protection(self.pki_message, private_key, certificate=None)
 
         # because it did not find a matching Certificate.
-        self.assertTrue(len(self.pki_message["extraCerts"]) == 2)
+        with (self.assertRaises(ValueError)):
+            _apply_cert_pkimessage_protection(self.pki_message, private_key, certificate=None)
 
 
 if __name__ == "__main__":
