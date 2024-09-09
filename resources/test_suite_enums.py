@@ -20,11 +20,13 @@ class PKIStatus(Enum):
 # used for the switch-cases on the PKIMessage ProtectionAlgorithm
 class ProtectionAlgorithm(Enum):
     HMAC = auto()
+    HMAC_sha256 = auto()
     PBMAC1 = auto()
     PASSWORD_BASED_MAC = auto()
     AES_GMAC = auto()  # default 256
     SIGNATURE = auto()
     DH = auto()
+    CERT = auto()
 
     @classmethod
     def get_names_lowercase(cls):
