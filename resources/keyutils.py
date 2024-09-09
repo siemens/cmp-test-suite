@@ -206,6 +206,7 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     return private_key
 
 
+# TODO test
 def load_public_key_from_file(filepath: str) -> PublicKey:
     """Load a cryptographic Public key from a PEM file.
 
@@ -229,5 +230,5 @@ def load_public_key_from_file(filepath: str) -> PublicKey:
     with open(filepath, "rb") as pem_file:
         pem_data = pem_file.read()
 
-    public_key = serialization.load_pem_public_key(pem_data, backend=default_backend())
+    public_key = serialization.load_pem_public_key(pem_data, backend=backends.default_backend())
     return public_key
