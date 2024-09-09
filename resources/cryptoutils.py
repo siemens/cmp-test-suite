@@ -128,23 +128,6 @@ def hash_name_to_instance(alg):
         raise ValueError(f"Unsupported hash algorithm: {alg}")
 
 
-def save_key(key, path, passphrase=b"11111"):
-    """Save key to a file
-
-    :param key: cryptography.hazmat.primitives.asymmetric, key you want to save
-    :param path: str, where to save it
-    :param passphrase: optional str, password to use for encrypting the key
-    """
-    with open(path, "wb") as f:
-        f.write(
-            key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.TraditionalOpenSSL,
-                encryption_algorithm=serialization.BestAvailableEncryption(passphrase),
-            )
-        )
-
-
 @not_keyword
 def parse_common_name_from_str(common_name: str) -> x509.Name:
     """Parse a string representing common name attributes (e.g., "C=DE,ST=Bavaria,L=Munich,O=CMP Lab")
