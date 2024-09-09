@@ -524,3 +524,95 @@ def apply_pki_message_protection(  # noqa: D417
         .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
     )
     pki_message["protection"] = wrapped_protection
+    return pki_message
+
+
+def verify_pki_protection(  # noqa: D417
+    pki_message: rfc9480.PKIMessage,
+    private_key: Optional[PrivateKey] = None,
+    password: Optional[Union[bytes, str]] = None,
+):
+    """Verify the PKIProtection of the given pyasn1 rfc9480.PKIMessage to ensure the integrity and authenticity of the message.
+
+    Args:
+        pki_message (`pyasn1 rfc9480.PKIMessage`): The `PKIMessage` object whose protection needs to be verified.
+        private_key (Optional PrivateKey): The private key of the server or client. For Diffie-Hellman-based protection,
+                                            this is needed to compute the shared secret. If the protection algorithm is
+                                            signature-based, the private key is not required.
+        password (Optional[Union[bytes, str]]): The shared secret for symmetric or Diffie-Hellman-based protection. This
+                                                is used for computing the derived keys for verifying the protection value.
+
+    Raises:
+        InvalidSignature: If the signature-based protection verification fails due to a mismatched signature.
+        ValueError: If the protection algorithm is unsupported or if the computed protection value does not match the
+                    expected value, indicating tampering or data corruption.
+
+    Returns:
+        None
+
+    Example:
+        verify_pki_protection(pki_message=my_pki_message, private_key=my_private_key, password="my_secret")
+
+    Note:
+        - If the `PKIMessage` uses a Diffie-Hellman-based MAC (`DHBasedMac`) for protection, either the `private_key`
+          or both a password and another key must be provided.
+        - If the protection algorithm is signature-based, the certificate used for signing must be the first certificate
+          in the `extraCerts` field of the `PKIMessage`, as per RFC 9483, Section 3.3.
+
+    """
+
+    protection_value: bytes = pki_message["protection"].asOctets()
+
+    prot_alg_id = pki_message["header"]["protectionAlg"]
+    protection_type_oid = prot_alg_id["algorithm"]
+
+    # Extract protected part for verification
+    protected_part = rfc9480.ProtectedPart()
+    protected_part["header"] = pki_message["header"]
+    protected_part["body"] = pki_message["body"]
+    encoded: bytes = encoder.encode(protected_part)
+
+    if protection_type_oid == rfc9480.id_DHBasedMac:
+        if not pki_message["extraCerts"].hasValue():
+            # handling dh
+            password = do_dh_key_exchange_password_based(password=password, other_party_key=private_key)
+
+        else:
+            # handling x448 and x25519.
+            certificate = pki_message["extraCerts"][0]
+            certificate = encode_to_der(certificate)
+            certificate = x509.load_der_x509_certificate(certificate)
+            if private_key is not None:
+                password = private_key.exchange(certificate.public_key())
+            else:
+                raise ValueError(
+                    "Either needs a passwort and (`cryptography.hazmat.primitives.asymmetric.dh` private key or public key) to perform DH or needs a "
+                    "`cryptography.hazmat.primitives.asymmetric (x448.X448PrivateKey, x25519.X25519PrivateKey)-object`"
+                )
+
+        expected_protection_value = _compute_symmetric_protection(pki_message, password)
+
+    elif protection_type_oid in SYMMETRIC_PROT_ALGO:
+        expected_protection_value = _compute_symmetric_protection(pki_message, password)
+
+    elif protection_type_oid in SUPPORTED_SIG_MAC_OIDS:
+        certificate = pki_message["extraCerts"][0]
+        certificate = encode_to_der(certificate)
+        certificate = x509.load_der_x509_certificate(certificate)
+
+        # Raises an InvalidSignature Exception.
+        verify_signature(
+            data=encoded,
+            signature=protection_value,
+            public_key=certificate.public_key(),
+            hash_alg=certificate.signature_hash_algorithm,
+        )
+        return
+
+    else:
+        raise ValueError(f"Unsupported protection algorithm for verification : {protection_type_oid}.")
+
+    if protection_value != expected_protection_value:
+        raise ValueError(
+            f"PKIMessage Protection should be:" f" {expected_protection_value.hex()} but was: {protection_value.hex()}"
+        )
