@@ -17,7 +17,6 @@ from pyasn1_alt_modules import rfc4210, rfc5280, rfc8018, rfc9044, rfc9480, rfc9
 import certutils
 import cmputils
 import cryptoutils
-import verifyingutils
 from cmputils import _prepare_extra_certs
 from cryptoutils import (
     compute_gmac,
@@ -196,7 +195,7 @@ def _apply_cert_pkimessage_protection(
         signature = sign_data(key=private_key, data=data, hash_alg=certificate.signature_hash_algorithm)
 
         try:
-            verifyingutils.verify_signature(
+            certutils.verify_signature(
                 public_key=certificate.public_key(),
                 signature=signature,
                 data=data,
@@ -643,7 +642,7 @@ def verify_pki_protection(  # noqa: D417
         certificate = x509.load_der_x509_certificate(certificate)
 
         # Raises an InvalidSignature Exception.
-        verifyingutils.verify_signature(
+        certutils.verify_signature(
             data=encoded,
             signature=protection_value,
             public_key=certificate.public_key(),
