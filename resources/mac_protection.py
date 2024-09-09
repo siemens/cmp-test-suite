@@ -337,6 +337,62 @@ def _compute_client_dh_protection(
 
 
 def _compute_pkimessage_protection(
+    pki_message: rfc9480.PKIMessage,
+    password: Optional[str] = None,
+    private_key: Optional[PrivateKey] = None,
+    certificate: Optional[x509.Certificate] = None,
+    sign_key: Optional[PrivSignCertKey] = None,
+) -> bytes:
+    """Computes the protection value for a given `pyasn1` `rfc9480.PKIMessage` based on the specified protection algorithm.
+    :param pki_message: `pyasn1_alt_module.rfc9480.PKIMessage` object to compute the signature about.
+    :param password: A string representing a shared secret or a Server Private Key for DHBasedMac.
+    :param private_key (Optional PrivateKey): The private key used for signature-based protection or DH-based MAC computation.
+    :param certificate:  A certificate used as the CMP-Protection certificate for signature-based protection. Only used for Key-Agreement.
+    :param sign_key:  sign_key (Optional PrivSignCertKey): A signing key used for generating a new certificate if needed.
+    :raises:
+        ValueError: If the protection algorithm OID is not supported or required parameters are not provided.
+    :returns:
+        bytes: The computed protection value for the `PKIMessage`.
+    """
+
+    protected_part = rfc9480.ProtectedPart()
+    protected_part["header"] = pki_message["header"]
+    protected_part["body"] = pki_message["body"]
+
+    protection_type_oid = pki_message["header"]["protectionAlg"]["algorithm"]
+    encoded = encoder.encode(protected_part)
+
+    if protection_type_oid == rfc9480.id_DHBasedMac:
+        return _compute_client_dh_protection(
+            pki_message=pki_message,
+            private_key=private_key,
+            certificate=certificate,
+            password=password,
+            sign_key=sign_key,
+        )
+
+    elif protection_type_oid in SYMMETRIC_PROT_ALGO:
+        return _compute_symmetric_protection(pki_message=pki_message, password=password)
+
+    elif protection_type_oid in SUPPORTED_SIG_MAC_OIDS:
+        if protection_type_oid in {rfc9481.id_Ed25519, rfc9481.id_Ed448}:
+            hash_alg = None
+        else:
+            # gets sha Algorithm.
+            hash_alg = get_hash_from_signature_oid(oid=protection_type_oid).split("-")[1]
+
+        protection_value = sign_data(data=encoded, key=private_key, hash_alg=hash_alg)
+
+        # either generates a fresh one or adds the certificate for now.
+        _apply_cert_pkimessage_protection(
+            pki_message=pki_message, private_key=private_key, certificate=certificate, sign_key=sign_key
+        )
+        return protection_value
+
+    else:
+        raise ValueError(f"Unsupported PKIMessage Protection oid: {protection_type_oid}")
+
+
 def _prepare_pki_message_protection_field(
         pki_message: rfc9480.PKIMessage,
         protection: str,
