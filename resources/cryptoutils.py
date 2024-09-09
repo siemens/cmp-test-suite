@@ -5,7 +5,7 @@ from typing import Tuple, Union, Optional
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, dh, ed25519, ed448, dsa, x25519, x448
+from cryptography.hazmat.primitives.asymmetric import ec, rsa, dh, ed25519, ed448, dsa, x25519, x448, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.x509.oid import NameOID
@@ -203,38 +203,40 @@ def generate_csr(common_name: str = None, subjectAltName=None):
     return csr
 
 
-def sign_data(data: bytes, private_key: PrivateKeySig, hash_alg: Optional[str] = None) -> bytes:
+def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -> bytes:
     """Sign the given data with a given private key, using a specified hashing algorithm.
 
     :param data: bytes the data to sign.
-    :param private_key: A `cryptography.hazmat.primitives.asymmetric` PrivateKey object.
+    :param key: A `cryptography.hazmat.primitives.asymmetric` PrivateKey object.
     :param hash_alg: optional str name of the hash function to use
-    :return:
+    :return: bytes the singed data.
     """
-    # Determine the hash algorithm instance, if applicable
-    if hash_alg is not None:
+
+    if isinstance(hash_alg, hashes.HashAlgorithm):
+        pass
+    elif hash_alg is not None:
         hash_alg = hash_name_to_instance(hash_alg)
 
     # isinstance(ed448.Ed448PrivateKey.generate(), EllipticCurvePrivateKey) → False
     # so can check in this Order.
-    if isinstance(private_key, ec.EllipticCurvePrivateKey):
-        if not hash_alg:
-            raise ValueError("Elliptic Curve signatures require a hash algorithm.")
-        return private_key.sign(data, ec.ECDSA(hash_alg))
-    elif isinstance(private_key, ed25519.Ed25519PrivateKey):
-        return private_key.sign(data)
-    elif isinstance(private_key, ed448.Ed448PrivateKey):
-        return private_key.sign(data)
-    elif isinstance(private_key, dsa.DSAPrivateKey):
+    if isinstance(key, ec.EllipticCurvePrivateKey):
+        return key.sign(data, ec.ECDSA(hash_alg))
+    elif isinstance(key, rsa.RSAPrivateKey):
+        return key.sign(data, padding.PKCS1v15(), hash_alg)
+    elif isinstance(key, ed25519.Ed25519PrivateKey):
+        return key.sign(data)
+    elif isinstance(key, ed448.Ed448PrivateKey):
+        return key.sign(data)
+    elif isinstance(key, dsa.DSAPrivateKey):
         if not hash_alg:
             raise ValueError("DSA signatures require a hash algorithm.")
-        return private_key.sign(data, hash_alg)
-    elif isinstance(private_key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
+        return key.sign(data, hash_alg)
+    elif isinstance(key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
         raise ValueError(
-            f"Key type '{type(private_key).__name__}' is not used for signing or verifying signatures. It is used for key exchange."
+            f"Key type '{type(key).__name__}' is not used for signing or verifying signatures. It is used for key exchange."
         )
     else:
-        raise ValueError(f"Unsupported private key type: {type(private_key).__name__}.")
+        raise ValueError(f"Unsupported private key type: {type(key).__name__}.")
 
 
 def sign_csr(csr, key, hash_alg="sha256"):
