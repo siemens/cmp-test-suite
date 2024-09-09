@@ -626,8 +626,8 @@ if __name__ == "__main__":
 # its output of this one requires fewer clicks in the reports.
 def try_to_log_pkimessage(data):
     """Given the input data and assuming it is a DER-encoded PKIMessage, try to decode it and log the ASN1 structure
-    in a human-readable way. Will also accept inputs that are pyasn1 objects or strings, for the convenience of invocation
-    from RF tests.
+    in a human-readable way. Will also accept inputs that are pyasn1 objects or strings, for the convenience
+    of invocation from RF tests.
 
     :param data: bytes, str or pyasn1 - something that is assumed to be a PKIMessage structure, either DER-encoded or
                  a pyasn1 object.

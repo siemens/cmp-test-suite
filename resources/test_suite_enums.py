@@ -1,5 +1,4 @@
-"""
-Defines Enums for use with the Certificate Management Protocol.
+"""Defines Enums for use with the Certificate Management Protocol.
 These Enums make the test cases more readable for users of the test suite and facilitate comparisons and switches in the CMP protocol handling code.
 """
 
@@ -54,5 +53,6 @@ class ProtectionAlgorithm(Enum):
             return ProtectionAlgorithm[value_upper]
         except KeyError:
             raise ValueError(
-                f"'{value}' is not a valid ProtectionAlgorithm. Available values are: {', '.join(ProtectionAlgorithm.get_names_lowercase())}."
+                f"'{value}' is not a valid ProtectionAlgorithm. Available values are:"
+                f" {', '.join(ProtectionAlgorithm.get_names_lowercase())}."
             )

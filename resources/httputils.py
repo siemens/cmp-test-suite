@@ -1,3 +1,4 @@
+"""provides a utility function for handling HTTP responses."""
 import requests
 from pyasn1.error import PyAsn1Error
 
@@ -26,7 +27,7 @@ def http_response_contains_pki_message(data: requests.Response) -> False:  # noq
         return None
 
     try:
-        _, _ = cmputils.parse_pki_message(data.content)
+        cmputils.parse_pki_message(data.content)
         return True
     except PyAsn1Error:
         return False

@@ -176,7 +176,8 @@ def _apply_cert_pkimessage_protection(
                     f"Certificate Provided: {certificate.prettyPrint()}"
                 )
                 raise ValueError(
-                    "The first certificate has to be the CMP-Protection certificate as specified in RFC 9483, Section 3.3."
+                    "The first certificate has to be the CMP-Protection certificate as specified "
+                    "in RFC 9483, Section 3.3."
                 )
 
     elif not pki_message["extraCerts"].hasValue():

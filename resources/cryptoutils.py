@@ -1,3 +1,5 @@
+"""
+"""
 import datetime
 import logging
 import os
@@ -123,7 +125,8 @@ def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -
         return key.sign(data, hash_alg)
     elif isinstance(key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
         raise ValueError(
-            f"Key type '{type(key).__name__}' is not used for signing or verifying signatures. It is used for key exchange."
+            f"Key type '{type(key).__name__}' is not used for signing or verifying signatures. "
+            f"It is used for key exchange."
         )
     else:
         raise ValueError(f"Unsupported private key type: {type(key).__name__}.")
@@ -388,7 +391,8 @@ def generate_cert_from_private_key(  # noqa: D417
     Args:
         private_key (PrivateKey): The private key to use for certificate public Key generation.
         common_name (str, optional): The common name in OpenSSL notation. Defaults to "CN=Hans".
-        hash_alg (str, optional): The name of the hash function to use for signing the certificate. Defaults to "sha256".
+        hash_alg (str, optional): The name of the hash function to use for signing the certificate.
+                 Defaults to "sha256".
         sign_key (`cryptography.hazmat.primitives.asymmetric Private Key` object):
          The private key to sign the certificate.
 

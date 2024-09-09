@@ -80,7 +80,8 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
 def generate_key(algorithm="rsa", **params) -> PrivateKey:
     """Generate a cryptographic key based on the specified algorithm.
 
-    This function supports generating keys for various cryptographic algorithms including RSA, DSA, ECDSA, ECDH, Ed25519, DH, and AES.
+    This function supports generating keys for various cryptographic algorithms including
+    RSA, DSA, ECDSA, ECDH, Ed25519, DH, and AES.
     Depending on the selected algorithm, additional parameters can be provided to customize the key generation.
 
     Arguments:
@@ -95,14 +96,16 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
         - For "rsa" and "dsa":
             - length (int , str): The length of the key to generate, in bits. Default is 2048.
         - For "ecdsa" or "ecdh":
-            - curve (str): An elliptic curve instance from `cryptography.hazmat.primitives.asymmetric.ec`. Default is `secp256r1`.
+            - curve (str): An elliptic curve instance from `cryptography.hazmat.primitives.asymmetric.ec`.
+                          Default is `secp256r1`.
         - For "dh":
             - g (int): The generator for DH key generation. Default is 2.
             - secret_scalar (int): the private key value for DH key generation. If not provided, one is generated.
             - length (int , str): The length of the modulus to generate if `p` is not provided. Default is 2048.
 
     Returns:
-    - private_key (object): The generated private key. For "aes", this will be a raw byte string representing the symmetric key.
+    - private_key (object): The generated private key. For "aes", this will be a raw byte string
+                            representing the symmetric key.
 
     Raises:
     - ValueError: If the specified algorithm is not supported or if invalid parameters are provided.
@@ -219,6 +222,8 @@ def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
 
     Arguments:
     - `filepath` (str): The path to the file containing the PEM-encoded public key.
+    - `key_type` (optional str): the type of the key. needed for x448 and x25519. (also ed-versions)
+
 
     Returns:
     - `PublicKey`: An instance of the loaded public key, such as `RSAPublicKey`, `X448PublicKey`, or `X25519PublicKey`.
