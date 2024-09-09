@@ -329,12 +329,13 @@ def compute_dh_based_mac(data: bytes, password: Union[str, dh.DHPublicKey], key:
     """
 
     if isinstance(password, str):
-        shared_key = do_dh_key_exchange(password=password, key=key)
+        shared_key = do_dh_key_exchange_password_based(password=password, other_party_key=key)
     else:
         shared_key = key.exchange(password)
 
     key = compute_hash(data=shared_key, alg_name=hash_alg)
     return compute_hmac(data=data, key=key, hash_alg=hash_alg)
+
 
 def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     """
