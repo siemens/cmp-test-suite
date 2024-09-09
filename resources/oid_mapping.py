@@ -1,3 +1,9 @@
+"""Provides utilities for working with cryptographic operations and data structures, specifically focusing on
+OID (Object Identifier) mappings for signature and hash algorithms, symmetric and asymmetric cryptography, and PKI
+(Public Key Infrastructure) message protections. It includes functions to retrieve OIDs for specific cryptographic
+algorithms, create cryptographic instances, and perform lookups between human-readable algorithm names and their
+corresponding OIDs.
+"""
 from typing import Dict
 
 from cryptography.hazmat.primitives import hashes
@@ -161,7 +167,7 @@ CURVE_NAMES_TO_INSTANCES = {
 
 @not_keyword
 def get_hash_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
-    """Performs a lookup for the provided hash name.
+    """Perform a lookup for the provided hash name.
 
     :param hash_name: A string representing the hash name to look up. Example hash names could be "sha256"
                       or "hmac-sha256"

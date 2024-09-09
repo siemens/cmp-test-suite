@@ -5,7 +5,7 @@ import logging
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding, ec, ed25519, ed448, dsa, x25519, x448
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
 from pkilint import loader, report
 from pkilint.pkix import certificate, extension, name
 from pkilint.validation import ValidationFindingSeverity
@@ -15,7 +15,6 @@ from robot.api.deco import not_keyword
 
 from oid_mapping import hash_name_to_instance
 from typingutils import PublicKeySig
-
 
 # TODO for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False

@@ -288,7 +288,7 @@ def generate_signed_csr(  # noqa: D417
 def _generate_private_dh_from_key(
     password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
 ) -> dh.DHPrivateKey:
-    """Generates a `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey` based on the parsed password.
+    """Generate a `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey` based on the parsed password.
     Used to perform a DH Key-Agreement with a provided password.
 
     :param password: str password which one of the parties uses as secret DH-Key.
@@ -309,7 +309,7 @@ def _generate_private_dh_from_key(
 def do_dh_key_exchange_password_based(  # noqa: D417
     password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
 ) -> bytes:
-    """Performs a Diffie-Hellman key exchange to derive a shared secret key based on a password.
+    """Perform a Diffie-Hellman key exchange to derive a shared secret key based on a password.
 
     Arguments:
     - `password`: A string used to derive the DH private key for the server or local party.
@@ -339,7 +339,7 @@ def do_dh_key_exchange_password_based(  # noqa: D417
 def compute_dh_based_mac(
     data: bytes, password: Union[str, dh.DHPublicKey], key: dh.DHPrivateKey, hash_alg: str = "sha1"
 ) -> bytes:
-    """Computes a Message Authentication Code (MAC) using a Diffie-Hellman (DH) based shared secret.
+    """Compute a Message Authentication Code (MAC) using a Diffie-Hellman (DH) based shared secret.
     Derives a shared Secret, hashes the key and then computes te HMAC.
 
     :param data: The input data to be authenticated, given as a byte sequence.
@@ -361,8 +361,7 @@ def compute_dh_based_mac(
 
 @not_keyword
 def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
-    """
-    Computes the AES-GMAC (Galois Message Authentication Code) for given data.
+    """Compute the AES-GMAC (Galois Message Authentication Code) for given data.
 
     :param key: The encryption key (16, 24, or 32 bytes for AES-128, AES-192, AES-256)
     :param nonce: Initialization vector (must be 12 bytes for GCM mode)
@@ -384,7 +383,7 @@ def generate_cert_from_private_key(  # noqa: D417
     hash_alg: Optional[str] = "sha256",
     sign_key: Optional[PrivSignCertKey] = None,
 ) -> x509.Certificate:
-    """Generates a self-signed x509 certificate from a provided private key.
+    """Generate a self-signed x509 certificate from a provided private key.
 
     Args:
         private_key (PrivateKey): The private key to use for certificate public Key generation.

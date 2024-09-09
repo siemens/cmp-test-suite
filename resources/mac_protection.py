@@ -45,7 +45,7 @@ from typingutils import PrivateKey, PrivSignCertKey
 def _prepare_password_based_mac_parameters(
     salt: Optional[bytes] = None, iterations=1000, hash_alg="sha256"
 ) -> rfc9480.PBMParameter:
-    """Prepares password-based-mac protection with the pyasn1 `rfc8018.PBMParameter` structure.
+    """Prepare password-based-mac protection with the pyasn1 `rfc8018.PBMParameter` structure.
 
     :param salt: optional bytes, salt to use for the password-based-mac protection, if not given, will generate 16 random bytes
     :param iterations: optional int, number of iterations of the OWF (hashing) to perform
@@ -75,7 +75,7 @@ def _prepare_password_based_mac_parameters(
 def _prepare_pbmac1_parameters(
     salt: Optional[bytes] = None, iterations=100, length=32, hash_alg="sha256"
 ) -> rfc8018.PBMAC1_params:
-    """Prepares the PBMAC1 pyasn1 `rfc8018.PBMAC1_params`. Used for the `rfc9480.PKIMessage` structure Protection.
+    """Prepare the PBMAC1 pyasn1 `rfc8018.PBMAC1_params`. Used for the `rfc9480.PKIMessage` structure Protection.
        PBKDF2 with HMAC as message authentication scheme is used.
 
     :param salt: Optional bytes for uniqueness.
@@ -110,7 +110,7 @@ def _prepare_pbmac1_parameters(
 
 
 def _prepare_dh_based_mac(hash_alg: str = "sha1") -> rfc4210.DHBMParameter:
-    """Prepares a Diffie-Hellman Based MAC (Message Authentication Code) parameter structure.
+    """Prepare a Diffie-Hellman Based MAC (Message Authentication Code) parameter structure.
 
     The structure uses a One-Way Hash Function (OWF) to hash the Diffie-Hellman (DH) shared secret to derive a key,
     which is then used to compute the Message Authentication Code (MAC) with the specified MAC algorithm.
@@ -142,7 +142,7 @@ def _apply_cert_pkimessage_protection(
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
 ):
-    """Ensures that a `pyasn1 rfc9480.PKIMessage` protected by a signature has
+    """Ensure that a `pyasn1 rfc9480.PKIMessage` protected by a signature has
     the certificate as the first entry in the `extraCerts` field.
 
     This function ensures that the first certificate in the PKIMessage's `extraCerts` field
@@ -300,7 +300,7 @@ def _compute_client_dh_protection(
     sign_key: Optional[PrivSignCertKey] = None,
     exclude_cert: bool = False,
 ) -> bytes:
-    """Computes the DH-protection value for a `pyasn1 rfc9480.PKIMessage` on the client side.
+    """Compute the DH-protection value for a `pyasn1 rfc9480.PKIMessage` on the client side.
 
     Can also be x448 or x25519 but needs a sign key for it.
 
@@ -347,7 +347,7 @@ def _compute_pkimessage_protection(
     sign_key: Optional[PrivSignCertKey] = None,
     exclude_cert: bool = False,
 ) -> bytes:
-    """Computes the protection value for a given `pyasn1` `rfc9480.PKIMessage` based on the specified protection algorithm.
+    """Compute the protection value for a given `pyasn1` `rfc9480.PKIMessage` based on the specified protection algorithm.
     :param pki_message: `pyasn1_alt_module.rfc9480.PKIMessage` object to compute the signature about.
     :param password: A string representing a shared secret or a Server Private Key for DHBasedMac.
     :param private_key (Optional PrivateKey): The private key used for signature-based protection or DH-based MAC computation.
@@ -490,8 +490,7 @@ def apply_pki_message_protection(  # noqa: D417
     extra_certs: Optional[str] = None,
     **params,
 ) -> rfc9480.PKIMessage:
-    """
-    Prepares the PKI protection for the PKIMessage algorithm.
+    """Prepare the PKI protection for the PKIMessage algorithm.
     Includes: Checks if the certificate is the first in the `PKIMessage` `extraCerts` field!
               If Provided, otherwise adds a self-signed Certificate!
     Excludes:  Certificate checks!

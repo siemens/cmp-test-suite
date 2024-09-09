@@ -78,8 +78,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
 
 
 def generate_key(algorithm="rsa", **params) -> PrivateKey:
-    """
-    Generates a cryptographic key based on the specified algorithm.
+    """Generate a cryptographic key based on the specified algorithm.
 
     This function supports generating keys for various cryptographic algorithms including RSA, DSA, ECDSA, ECDH, Ed25519, DH, and AES.
     Depending on the selected algorithm, additional parameters can be provided to customize the key generation.

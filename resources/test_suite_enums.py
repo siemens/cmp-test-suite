@@ -6,7 +6,7 @@ These Enums make the test cases more readable for users of the test suite and fa
 from enum import Enum, auto
 
 
-# The values are as described in RFC 4210 CMP, Page 32, and RFC 9480 CMP Updates, Pages 35 and 36.
+# The values are as described in RFC 4210 CMP, Section 5.2.3, and RFC 9480 CMP Updates, Appendix A.
 class PKIStatus(Enum):
     accepted = 0
     grantedWithMods = 1
@@ -30,15 +30,12 @@ class ProtectionAlgorithm(Enum):
 
     @classmethod
     def get_names_lowercase(cls):
-        """
-        Returns the names of all enum members in lowercase.
-        """
+        """Return the names of all enum members in lowercase."""
         return [member.name.lower() for member in cls]
 
     @staticmethod
     def get(value: str) -> "ProtectionAlgorithm":
-        """
-        Returns the ProtectionAlgorithm enum member that matches the provided value.
+        """Return the ProtectionAlgorithm enum member that matches the provided value.
         The matching is case-insensitive.
 
         Args:

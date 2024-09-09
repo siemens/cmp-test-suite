@@ -238,7 +238,7 @@ def build_p10cr_from_csr(
     implicit_confirm=False,
     extra_certs: str = None,
 ):
-    """Creates a pyasn1 p10cr pkiMessage from a pyasn1 PKCS10 CSR
+    """Create a pyasn1 p10cr pkiMessage from a pyasn1 PKCS10 CSR
 
     :param csr: rfc6402.CertificationRequest
     :param extra_certs: string of a filepath or a directory to load certificate from.
@@ -743,7 +743,7 @@ def _prepare_extra_certs(certs: List[rfc9480.CMPCertificate]) -> univ.SequenceOf
 
 
 def _prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.SequenceOf:
-    """Loads certificates from a file or directory and returns a `univ.SequenceOf` structure.
+    """Load certificates from a file or directory and returns a `univ.SequenceOf` structure.
 
     :param path: A string representing a single file path or a directory where the certificates are stored.
     :param recursive: A boolean that, if True, searches recursively through the directory.
