@@ -14,6 +14,8 @@ from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from pyasn1_alt_modules import rfc2986, rfc9480
 
 # Type alias for supported private key types
@@ -24,6 +26,8 @@ PrivateKey = Union[
     DHPrivateKey,
     Ed25519PrivateKey,
     Ed448PrivateKey,
+    X25519PrivateKey,
+    X448PrivateKey
 ]
 # Type alias for supported public key types
 PublicKey = Union[
@@ -33,6 +37,8 @@ PublicKey = Union[
     DHPublicKey,
     Ed25519PublicKey,
     Ed448PrivateKey,
+    X25519PublicKey,
+    X448PublicKey
 ]
 
 
