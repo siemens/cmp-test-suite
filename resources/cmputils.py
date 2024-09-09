@@ -410,7 +410,7 @@ def build_cert_conf(
         implicit_confirm=implicit_confirm,
     )
 
-    sig_algorithm = str(cert["signature"]["algorithm"])
+    sig_algorithm = (cert["signature"]["algorithm"])
     hash_alg = get_hash_from_signature_oid(sig_algorithm)
     der_cert = encode_to_der(cert)
     hash = compute_hash(hash_alg, der_cert)
