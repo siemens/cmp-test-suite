@@ -578,7 +578,7 @@ def verify_pki_protection(  # noqa: D417
     pki_message: rfc9480.PKIMessage,
     private_key: Optional[PrivateKey] = None,
     password: Optional[Union[bytes, str]] = None,
-): # noqa D205
+):  # noqa D205
     """Verify the PKIProtection of the given pyasn1 rfc9480.PKIMessage to ensure the integrity and
     authenticity of the message.
 

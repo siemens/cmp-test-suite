@@ -1,4 +1,5 @@
 """provides a utility function for handling HTTP responses."""
+
 import requests
 from pyasn1.error import PyAsn1Error
 
