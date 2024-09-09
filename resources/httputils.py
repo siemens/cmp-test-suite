@@ -1,8 +1,7 @@
 import requests
 from pyasn1.error import PyAsn1Error
-
-from cmputils import parse_pki_message
-
+import cmputils
+from cmputils import encode_to_der as encoder_to_der
 
 def http_response_contains_pki_message(data: requests.Response) -> False:  # noqa: D417
     """Check if a server returned a `rfc9480.PKIMessage` on failure.
@@ -26,7 +25,7 @@ def http_response_contains_pki_message(data: requests.Response) -> False:  # noq
         return None
 
     try:
-        parse_pki_message(data.content)
+        _, _ = cmputils.parse_pki_message(data.content)
         return True
     except PyAsn1Error:
         return False
