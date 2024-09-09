@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicK
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey, DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
-from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey, Ed448PublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
@@ -36,7 +36,7 @@ PublicKey = Union[
     DSAPublicKey,
     DHPublicKey,
     Ed25519PublicKey,
-    Ed448PrivateKey,
+    Ed448PublicKey,
     X25519PublicKey,
     X448PublicKey
 ]
@@ -58,7 +58,18 @@ PublicKeySig = Union[
     DSAPublicKey,
     DHPublicKey,
     Ed25519PublicKey,
-    Ed448PrivateKey
+]
+
+# These `cryptography` keys can be used to sign a certificate.
+# For signature protection, a certificate is required in the
+# first position of the `pyasn1 rfc9480.PKIMessage` `extraCerts` field.
+# To ensure the correct keys are used, this type is introduced.
+PrivSignCertKey = Union[
+    RSAPrivateKey,
+    EllipticCurvePrivateKey,
+    DSAPrivateKey,
+    Ed25519PrivateKey,
+    Ed448PrivateKey,
 ]
 
 
