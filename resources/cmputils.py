@@ -744,29 +744,23 @@ def _generate_pki_message_fail_info(fail_info: Optional[str] = None) -> rfc9480.
     return pki_msg
 
 
-def get_cert_from_pki_message(pki_message: rfc9480.PKIMessage, cert_number: int = 0) -> rfc9480.CMPCertificate:
-    """Extract a certificate from a pyasn1 `rfc9480.PKIMessage` object.
 
-    :param pki_message: pyasn1 `rfc9480.PkiMessage`
-    :param cert_number: optional int, index of certificate to extract, will only extract the first certificate
-                        from the sequence by default
-
-    :raises ValueError: If the "extra_certs" field is not present in the PKIMessage or
-                        if the cert_number index is out of range.
-    :return:    pyasn1 object representing a certificate `rfc9480.CMPCertificate`
-    """
-
-    if not pki_message["extra_certs"].hasValue():
-        raise ValueError("PKIMessage does not contains Certificates!")
+def _prepare_extra_certs(certs: List[rfc9480.CMPCertificate]) -> univ.SequenceOf:
 
 
-    extra_certs: univ.SequenceOf = pki_message["extra_certs"]
-    if cert_number < len(extra_certs):
-        raise ValueError("Certificates index out of range!")
+    extra_certs_wrapper: univ.SequenceOf = (
+        univ.SequenceOf(componentType=rfc9480.CMPCertificate())
+        .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX))
+        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
+    )
 
 
-    return pki_message["extra_certs"][cert_number]def _prepare_extra_certs(path: str, recursive: bool = False) -> univ.SequenceOf:
-def _prepare_extra_certs(path: str, recursive: bool = False) -> univ.SequenceOf:
+    extra_certs_wrapper.extend(certs)
+
+    return extra_certs_wrapper
+
+
+def _prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.SequenceOf:
     """Loads certificates from a file or directory and returns a `univ.SequenceOf` structure.
 
     :param path: A string representing a single file path or a directory where the certificates are stored.
