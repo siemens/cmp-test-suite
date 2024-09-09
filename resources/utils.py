@@ -2,6 +2,7 @@
 
 import base64
 import logging
+import datetime
 import re
 from base64 import b64decode, b64encode
 from collections import Counter
@@ -214,3 +215,36 @@ def pem_to_der(pem_data: Union[str, bytes]) -> bytes:
     der_data = base64.b64decode(pem_body)
 
     return der_data
+
+
+def subtract_date_from_date(response_time, request_time, verbose=False) -> int:
+    """
+    Subtract Date From Date
+
+    Subtracts the request time from the response time and returns the time difference.
+
+    Arguments:
+    - `response_time`: The end date and time (format: 'YYYY-MM-DD HH:MM:SS').
+    - `request_time`: The start date and time (format: 'YYYY-MM-DD HH:MM:SS').
+    - `verbose`: If set to `True`, logs the difference in seconds.
+
+    Returns:
+    - int: Time difference in seconds.
+
+    Example:
+    | Subtract Date From Date | ${response_time} | ${request_time} | verbose=${True} |
+    """
+
+    # Convert string dates to datetime objects
+    response_dt = datetime.datetime.strptime(response_time, "%Y-%m-%d %H:%M:%S")
+    request_dt = datetime.datetime.strptime(request_time, "%Y-%m-%d %H:%M:%S")
+
+    # Calculate the difference between the two dates
+    time_difference = response_dt - request_dt
+
+    # Return the result based on the verbose flag
+    if verbose:
+        logging.info(f"Time difference is {time_difference}.")
+        return time_difference.total_seconds()
+    else:
+        return time_difference.total_seconds()
