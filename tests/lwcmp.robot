@@ -6,6 +6,7 @@ Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/cmputils.py
 Library     ../resources/keyutils.py
+Library     ../resources/mac_protection.py
 Library     OperatingSystem
 Library     Collections
 
@@ -50,7 +51,7 @@ Server must issue a certificate when a correct p10cr is sent
     [Documentation]    When a correct p10cr is sent to the server, it must issue a certificate
     [Tags]    positive  rfc9483  p10cr
     ${pki_message}=     Load and refresh PKIMessage from file    data/example-rufus-01-p10cr.pem
-    ${protected_pki_message}=     Protect Pkimessage Pbmac1    ${pki_message}    ${PRESHARED_SECRET}
+    ${protected_pki_message}=     Apply pki message protection    ${pki_message}    protection=pbmac1    password=${PRESHARED_SECRET}
     ${encoded}=  Encode To Der    ${protected_pki_message}
     ${response}=  Exchange data with CA    ${encoded}
 
@@ -63,14 +64,14 @@ Server must issue a certificate when a correct p10cr is sent
 Response PKIMessage header must include all required fields
     [Documentation]    Check that the PKIMessage coming from the server includes all the required fields
     [Tags]    headers   p10cr   ak
-    ${csr_signed}    ${key}=    Generate Signed Csr    CN=Hans Mustermann
+    ${csr_signed}    ${key}=    Generate Signed CSR    common_name=${DEFAULT_X509NAME}
     Log             ${csr_signed}
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
 
     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
 
-    ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
+    ${protected_p10cr}=     Apply pki message protection    ${p10cr}    protection=pbmac1    password=${PRESHARED_SECRET}
     Log Asn1    ${protected_p10cr}
 
     ${encoded}=  Encode To Der    ${protected_p10cr}
@@ -103,7 +104,7 @@ CA must issue certificate via p10cr without implicitConfirm
     [Tags]    headers   p10cr   ak
     ${parsed_csr}=     Load and parse example CSR
     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${False}
-    ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
+    ${protected_p10cr}=     Apply pki message protection    ${p10cr}    protection=pbmac1    password=${PRESHARED_SECRET}
     Log Asn1    ${protected_p10cr}
 
     # send initial request
@@ -117,7 +118,7 @@ CA must issue certificate via p10cr without implicitConfirm
     # prepare confirmation message by extracting the certifiate and getting the needed data from it
     ${cert}=    Get Cert From Pki Message    ${pki_message}
     ${conf_message}=    Build Cert Conf    ${cert}
-    ${protected_conf_message}=     Protect Pkimessage Pbmac1    ${conf_message}    ${PRESHARED_SECRET}
+    ${protected_conf_message}=     Apply pki message protection    ${conf_message}    protection=pbmac1    password=${PRESHARED_SECRET}
     ${encoded}=  Encode To Der    ${protected_conf_message}
     Log Base64    ${encoded}
     ${response}=  Exchange data with CA    ${encoded}
@@ -131,8 +132,8 @@ CA must support p10cr with password-based-mac protection
     [Documentation]    Check that the CA can handle a p10cr that is protected with a password-based-mac
     [Tags]    headers   p10cr   ak
     ${parsed_csr}=     Load and parse example CSR
-    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}     protection=password-based-mac
-    ${protected_p10cr}=     Protect Pkimessage password based mac    ${p10cr}    ${PRESHARED_SECRET}
+    ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
+    ${protected_p10cr}=     Apply pki message protection    ${p10cr}    protection=password_based_mac    password=${PRESHARED_SECRET}
     Log Asn1    ${protected_p10cr}
 
     ${encoded}=  Encode To Der    ${protected_p10cr}
@@ -164,14 +165,14 @@ CA must support cr with implicitConfirm and PBMAC1 protection
     [Tags]    headers   cr  ak
     # even though we compute the signature ourselves in `Build Cr From Csr`, we still need to sign the CSR here,
     # because that's how the cryptography.hazmat API works
-    ${csr_signed}    ${key}=    Generate Signed Csr    CN=Hans Mustermann
+    ${csr_signed}    ${key}=    Generate Signed CSR    common_name=${DEFAULT_X509NAME}
     Log             ${csr_signed}
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
 
     ${pki_message}=    Build Cr From Csr    ${parsed_csr}    ${key}       sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
 
-    ${protected_pki_message}=     Protect Pkimessage Pbmac1    ${pki_message}    ${PRESHARED_SECRET}
+    ${protected_pki_message}=     Apply pki message protection    ${pki_message}    protection=pbmac1    password=${PRESHARED_SECRET}
     Log Asn1    ${protected_pki_message}
 
     ${encoded}=  Encode To Der    ${protected_pki_message}
@@ -203,13 +204,13 @@ CA must reject requests with signature protection but without extraCerts
     [Tags]    headers   cr  ak
     # even though we compute the signature ourselves in `Build Cr From Csr`, we still need to sign the CSR here,
     # because that's how the cryptography.hazmat API works
-    ${csr_signed}    ${key}=    Generate Signed Csr    CN=Hans Mustermann
+    ${csr_signed}    ${key}=    Generate Signed CSR    common_name=${DEFAULT_X509NAME}
     Log             ${csr_signed}
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
 
     ${pki_message}=    Build Cr From Csr    ${parsed_csr}    ${key}       sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
-    ${protected_pki_message}=     Protect Pkimessage with signature    ${pki_message}    ${key}
+    ${protected_pki_message}=     Apply pki message protection    pki_message=${pki_message}    protection=signature    private_key=${key}
     Log Asn1    ${protected_pki_message}
 
     ${encoded}=  Encode To Der    ${protected_pki_message}
@@ -246,13 +247,13 @@ CA must support requests with signature protection
     [Tags]    headers   cr  ak
     # even though we compute the signature ourselves in `Build Cr From Csr`, we still need to sign the CSR here,
     # because that's how the cryptography.hazmat API works
-    ${csr_signed}    ${key} =    Generate Signed Csr    CN=Hans Mustermann
+    ${csr_signed}    ${key}=    Generate Signed CSR    common_name=${DEFAULT_X509NAME}
     Log             ${csr_signed}
     ${decoded_csr}=    Decode PEM string    ${csr_signed}
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
 
     ${pki_message}=    Build Cr From Csr    ${parsed_csr}    ${key}       sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
-    ${protected_pki_message}=     Protect Pkimessage with signature    ${pki_message}    ${key}      extra_certs=data/dummy-cert.pem
+    ${protected_pki_message}=     Apply pki message protection    ${pki_message}    protection=signature    private_key=${key}
     Log Asn1    ${protected_pki_message}
 
     ${encoded}=  Encode To Der    ${protected_pki_message}
