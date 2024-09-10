@@ -730,6 +730,7 @@ def _generate_pki_message_fail_info(fail_info: Optional[str] = None) -> rfc9480.
     pki_msg["body"]["error"].setComponentByName("pKIStatusInfo", value)
     return pki_msg
 
+
 @not_keyword
 def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
     """Build the pyasn1 `rfc9480.PKIMessage extraCerts` filed with a list containing `rfc9480.CMPCertificate`.

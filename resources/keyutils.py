@@ -1,6 +1,7 @@
 """Provides utility functions for generating, saving, and loading cryptographic keys.
 It is designed to facilitate key management by offering simple methods to create new keys,
-store them and retrieve them when needed."""
+store them and retrieve them when needed.
+"""
 
 from typing import Optional
 
@@ -61,8 +62,6 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
     elif isinstance(
         key, (x448.X448PrivateKey, x25519.X25519PrivateKey, ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)
     ):
-
-
         data = key.private_bytes(
             encoding=serialization.Encoding.Raw,
             format=serialization.PrivateFormat.Raw,
@@ -200,7 +199,6 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     | ${x25519_key}= | Load Private Key From File | /path/to/x25519_key.pem | x25519 |
 
     """
-
     if password in ["x448", "x25519", "ed448", "ed25519"]:
         with open(filepath, "r") as pem_file:
             pem_data = pem_file.read()
@@ -209,7 +207,6 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     else:
         with open(filepath, "rb") as pem_file:
             pem_data = pem_file.read()
-
 
     if password == "x448":
         return x448.X448PrivateKey.from_private_bytes(data=pem_data)

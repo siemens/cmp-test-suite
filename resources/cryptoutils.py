@@ -14,7 +14,7 @@ from typing import Optional, Tuple, Union
 
 import cryptography.x509
 from cryptography import x509
-from  cryptography.hazmat import backends
+from cryptography.hazmat import backends
 from cryptography.hazmat.primitives import hashes, hmac, serialization
 from cryptography.hazmat.primitives.asymmetric import dh, dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -151,7 +151,6 @@ def sign_csr(csr, key, hash_alg="sha256"):
     hash_alg_instance = hash_name_to_instance(hash_alg)
     csr_out = csr.sign(key, hash_alg_instance)
     return csr_out.public_bytes(serialization.Encoding.PEM)
-
 
 
 def compute_hmac(data, key, hash_alg="sha256"):
@@ -340,7 +339,6 @@ def do_dh_key_exchange_password_based(  # noqa: D417
         logging.info(f"DH shared secret: {shared_key.hex()}")
         return shared_key
 
-
     other_public_key = private_key.public_key()
 
     shared_key = private_key.exchange(other_public_key)
@@ -388,13 +386,14 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     aes_gcm.finalize()  # Finalize to get the authentication tag
     return aes_gcm.tag
 
+
 def generate_certificate(  # noqa: D417
     private_key: PrivateKey,
     common_name: Optional[str] = "CN=Hans",
     hash_alg: Optional[str] = "sha256",
     sign_key: Optional[PrivSignCertKey] = None,
     issuer_cert: Optional[x509.Certificate] = None,
-    **params
+    **params,
 ) -> x509.Certificate:
     """Generate a self-signed x509 certificate from a provided private key.
 
@@ -418,7 +417,6 @@ def generate_certificate(  # noqa: D417
     | ${certificate} | Generate Certificate | ${private_key} | CN=Hans | ${sign_key} |
 
     """
-
     if not isinstance(private_key, PrivateKey):
         raise ValueError(
             "Needs a `cryptography.hazmat.primitives.asymmetric PrivateKey` object for generating a "
@@ -435,18 +433,21 @@ def generate_certificate(  # noqa: D417
 
     issuer = parse_common_name_from_str(common_name)
     if options:
-        cert_builder = _build_cert(public_key=private_key.public_key(),issuer=issuer, **options)
+        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer, **options)
     else:
-        cert_builder = _build_cert(public_key=private_key.public_key(),issuer=issuer)
+        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer)
 
     return _sign_cert_builder(cert_builder=cert_builder, sign_key=sign_key, hash_alg=hash_alg)
 
 
-def generate_signed_cert(issuer_cert: x509.Certificate, issuer_private_key: PrivSignCertKey,
-                         private_key: PrivateKey,
-                         common_name: Optional[str] = "CN=Hans",
-                         hash_alg: Optional[str] = "sha256", **params) -> x509.Certificate:
-
+def generate_signed_cert(
+    issuer_cert: x509.Certificate,
+    issuer_private_key: PrivSignCertKey,
+    private_key: PrivateKey,
+    common_name: Optional[str] = "CN=Hans",
+    hash_alg: Optional[str] = "sha256",
+    **params,
+) -> x509.Certificate:
     """Create a signed X.509 certificate using an issuer certificate and its corresponding private key.
 
     :param issuer_cert: `cryptography.x509.Certificate` object
@@ -475,16 +476,23 @@ def generate_signed_cert(issuer_cert: x509.Certificate, issuer_private_key: Priv
             options[x] = params[x]
 
     if options:
-        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer_cert.issuer, subject=subject, **options)
+        cert_builder = _build_cert(
+            public_key=private_key.public_key(), issuer=issuer_cert.issuer, subject=subject, **options
+        )
     else:
         cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer_cert.issuer, subject=subject)
 
     return _sign_cert_builder(cert_builder=cert_builder, sign_key=issuer_private_key, hash_alg=hash_alg)
 
 
-def _build_cert(public_key, issuer: x509.Name,subject: x509.Name = None,
-                serial_number: Optional[int] = None, days: int = 365,
-                not_valid_before: Optional[datetime.datetime] = None) -> cryptography.x509.CertificateBuilder:
+def _build_cert(
+    public_key,
+    issuer: x509.Name,
+    subject: x509.Name = None,
+    serial_number: Optional[int] = None,
+    days: int = 365,
+    not_valid_before: Optional[datetime.datetime] = None,
+) -> cryptography.x509.CertificateBuilder:
     """Create a certificate builder for X.509 certificate using a public key, issuer, subject, and a validity period.
 
     :param public_key: `cryptography.hazmat.primitives.asymmetric` public key object
@@ -492,17 +500,16 @@ def _build_cert(public_key, issuer: x509.Name,subject: x509.Name = None,
     :param issuer: `cryptography.x509.Name` object the issuer's distinguished name.
     :param subject:  optional `cryptography.x509.Name` object the subject's distinguished name.
     :param serial_number:
-        An optional integer representing the serial number of the certificate. If not provided, a random serial number 
+        An optional integer representing the serial number of the certificate. If not provided, a random serial number
         is generated using `x509.random_serial_number()`.
     :param days: int representing the number of days for which the certificate is valid.
         Defaults to 365 days.
     :param not_valid_before:
-        An optional `datetime` object representing the start date and time when the certificate becomes valid. 
+        An optional `datetime` object representing the start date and time when the certificate becomes valid.
         If not provided, the current date and time is used.
 
     :return: `cryptography.x509.CertificateBuilder`
     """
-
     if subject is None:
         subject = issuer
 
@@ -528,7 +535,9 @@ def _build_cert(public_key, issuer: x509.Name,subject: x509.Name = None,
     return cert_builder
 
 
-def _sign_cert_builder(cert_builder: x509.CertificateBuilder, sign_key: Optional[PrivSignCertKey], hash_alg: Optional[str] = None) -> cryptography.x509.Certificate:
+def _sign_cert_builder(
+    cert_builder: x509.CertificateBuilder, sign_key: Optional[PrivSignCertKey], hash_alg: Optional[str] = None
+) -> cryptography.x509.Certificate:
     """Sign a `cryptography.x509.CertificateBuilder` object with a provided key to sign and a hash algorithm.
 
     :param cert_builder: `cryptography.x509.CertificateBuilder`
@@ -536,7 +545,6 @@ def _sign_cert_builder(cert_builder: x509.CertificateBuilder, sign_key: Optional
     :param hash_alg: optional str the name of the hash function to use for signing the certificate.
     :return: a `cryptography.x509.Certificate` object
     """
-
     if isinstance(sign_key, ec.EllipticCurvePrivateKey):
         hash_alg = hash_name_to_instance(hash_alg)
         # Sign the certificate with the private key

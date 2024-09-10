@@ -9,7 +9,6 @@ from typing import Optional, Union
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import dh
 from pyasn1.codec.der import encoder
 from pyasn1.type import constraint, univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
@@ -186,7 +185,9 @@ def add_cert_to_pkimessage_used_by_protection(
 
     elif not pki_message["extraCerts"].hasValue():
         # contains no Certificates so a new one is added.
-        certificate = cryptoutils.generate_certificate(private_key=private_key, sign_key=sign_key, issuer_cert=issuer_cert)
+        certificate = cryptoutils.generate_certificate(
+            private_key=private_key, sign_key=sign_key, issuer_cert=issuer_cert
+        )
         raw = certificate.public_bytes(serialization.Encoding.DER)
         certificate = certutils.parse_certificate(raw)
         pki_message["extraCerts"] = prepare_extra_certs([certificate])
@@ -235,7 +236,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
 
     elif protection_type_oid == rfc8018.id_PBMAC1:
-        #prot_params is of type: `rfc8018.PBMAC1_params`
+        # prot_params is of type: `rfc8018.PBMAC1_params`
         salt = prot_params["keyDerivationFunc"]["parameters"]["salt"]["specified"].asOctets()
         iterations = int(prot_params["keyDerivationFunc"]["parameters"]["iterationCount"])
         length = int(prot_params["keyDerivationFunc"]["parameters"]["keyLength"])
@@ -348,7 +349,11 @@ def _compute_pkimessage_protection(
 
         if not exclude_cert:
             add_cert_to_pkimessage_used_by_protection(
-                pki_message=pki_message, private_key=private_key, certificate=certificate, sign_key=sign_key, issuer_cert=signer_cert
+                pki_message=pki_message,
+                private_key=private_key,
+                certificate=certificate,
+                sign_key=sign_key,
+                issuer_cert=signer_cert,
             )
         return protection_value
 
@@ -498,7 +503,7 @@ def protect_pki_message(  # noqa: D417 undocumented-param
         private_key=private_key,
         certificate=certificate,
         sign_key=sign_key,
-        exclude_cert=exclude_cert
+        exclude_cert=exclude_cert,
     )
     wrapped_protection = (
         rfc9480.PKIProtection()

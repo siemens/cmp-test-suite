@@ -152,7 +152,6 @@ def verify_cert_signature(certificate: x509.Certificate, issuer_cert: Optional[x
     :raises ValueError:
         If `issuer_cert` is provided but does not match the `certificate`'s issuer.
     """
-
     pub_key = certificate.public_key()
 
     if issuer_cert is not None:
