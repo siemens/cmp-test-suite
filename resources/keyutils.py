@@ -228,7 +228,7 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     return private_key
 
 
-def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
+def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:  # noqa D417 #undocumented-param
     """Load Public Key From File.
 
     Load a cryptographic public key from a PEM-encoded file

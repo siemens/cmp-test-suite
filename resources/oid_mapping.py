@@ -240,7 +240,8 @@ def get_sig_oid_from_key_hash(alg_oid, hash_alg):
 
     :param: alg_oid: pyasn1.type.univ.ObjectIdentifier, OID of asymmetric algorithm
     :param: hash_alg: str, name of hashing algorithm, e.g., 'sha256'
-    :returns: pyasn1.type.univ.ObjectIdentifier of signature algorithm, e.g., '1.2.840.113549.1.1.11' (i.e., sha256WithRSAEncryption)
+    :returns: pyasn1.type.univ.ObjectIdentifier of signature algorithm, e.g.,
+    '1.2.840.113549.1.1.11' (i.e., sha256WithRSAEncryption)
     """
     try:
         return OID_SIG_HASH_MAP[(alg_oid, hash_alg)]
