@@ -232,7 +232,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
 
     elif protection_type_oid == rfc8018.id_PBMAC1:
-        prot_params: rfc8018.PBMAC1_params
+        #prot_params is of type: `rfc8018.PBMAC1_params`
         salt = prot_params["keyDerivationFunc"]["parameters"]["salt"]["specified"].asOctets()
         iterations = int(prot_params["keyDerivationFunc"]["parameters"]["iterationCount"])
         length = int(prot_params["keyDerivationFunc"]["parameters"]["keyLength"])
@@ -353,7 +353,7 @@ def _compute_pkimessage_protection(
 ) -> bytes:
     """Compute the protection value for a given `pyasn1` `rfc9480.PKIMessage` based on the specified
         protection algorithm.
-    :param pki_message: `pyasn1_alt_module.rfc9480.PKIMessage` object to compute the signature about.
+    :param pki_message: `rfc9480.PKIMessage` object to compute the signature about.
     :param password: A string representing a shared secret or a Server Private Key for DHBasedMac.
     :param private_key (Optional PrivateKey): The private key used for signature-based protection
                                               or DH-based MAC computation.
