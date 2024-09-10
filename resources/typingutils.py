@@ -40,8 +40,8 @@ PublicKey = Union[
 ]
 
 
-# Keys which can be used for Signing and Verification of a Signature.
-# Used to make sure that only the right keys are allowed for Singing.
+# Keys which can be used for signing and verification of a signature.
+# They are used to ensure that only authorized keys are used for signing.
 PrivateKeySig = Union[
     RSAPrivateKey,
     EllipticCurvePrivateKey,
