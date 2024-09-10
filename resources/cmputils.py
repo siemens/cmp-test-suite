@@ -265,7 +265,7 @@ def build_p10cr_from_csr(
 
     pki_message["body"] = pki_body
     if extra_certs is not None:
-        pki_message["extra_certs"] = _prepare_extra_certs_from_path(extra_certs)
+        pki_message["extra_certs"] = prepare_extra_certs_from_path(extra_certs)
 
     return pki_message
 
@@ -748,7 +748,7 @@ def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
     return extra_certs_wrapper
 
 
-def _prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.SequenceOf:
+def prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.SequenceOf:
     """Load certificates from a file or directory and returns a `univ.SequenceOf` structure.
 
     :param path: A string representing a single file path or a directory where the certificates are stored.
