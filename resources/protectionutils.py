@@ -9,6 +9,7 @@ from typing import Optional, Union
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import dh
 from pyasn1.codec.der import encoder
 from pyasn1.type import constraint, univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
@@ -143,6 +144,7 @@ def add_cert_to_pkimessage_used_by_protection(
     private_key: PrivateKey,
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
+    issuer_cert: Optional[x509.Certificate] = None,
 ):
     """Ensure that a `pyasn1 rfc9480.PKIMessage` protected by a signature has
     the certificate as the first entry in the `extraCerts` field. # noqa: D205
@@ -152,14 +154,15 @@ def add_cert_to_pkimessage_used_by_protection(
     first certificate matches the provided CMP-Protection certificate. If no certificate is
     provided, it generates a new one using the given private key and optional signing key.
 
+
     :param pki_message: `pyasn1 rfc9480.PKIMessage` The PKIMessage object to which the certificate
                          protection is to be applied.
     :param private_key:  The private key used for signing or generating a certificate.
-    :param certificate: (Optional) `cryptography.x509.Certificate` object. A certificate to use as
+    :param certificate: optional `cryptography.x509.Certificate` object. A certificate to use as
                         the CMP-Protection certificate. If provided, it is checked against the
                         first certificate in the PKIMessage.
-    :param sign_key:    (Optional) PrivSignCertKey (Optional) A signing key to use for generating a new certificate.
-
+    :param sign_key:    optional PrivSignCertKey (Optional) A signing key to use for generating a new certificate.
+    :param issuer_cert: optional `cryptography.x509.Certificate` Certificate of the signer.
     :raises ValueError: If the first certificate in `extraCerts` is not the CMP-Protection certificate
                         as specified in RFC 9483, Section 3.3, or if there is a signature verification failure.
     :return: None
@@ -296,59 +299,13 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         raise ValueError(f"Unsupported Symmetric Mac Protection! : {protection_type_oid}")
 
 
-def _compute_client_dh_protection(
-    pki_message: rfc9480.PKIMessage,
-    password: Optional[str] = None,
-    private_key: Optional[PrivateKey] = None,
-    certificate: Optional[x509.Certificate] = None,
-    sign_key: Optional[PrivSignCertKey] = None,
-    exclude_cert: bool = False,
-) -> bytes:
-    """Compute the DH-protection value for a `pyasn1 rfc9480.PKIMessage` on the client side.
-
-    Can also be x448 or x25519 but needs a sign key for it.
-
-    :param pki_message: `pyasn1 rfc9480.PKIMessage` - The PKIMessage object to which the protection
-                        value is to be computed.
-    :param password: (Optional) A string representing a shared secret or a server private key for DH-based MAC.
-    :param private_key: (Optional) `cryptography.PrivateKey` - The private key used for signature-based protection.
-    :param certificate: (Optional) `cryptography.x509.Certificate` - A certificate to use as the CMP-Protection
-                                certificate if a certificate-based protection is required.
-    :param sign_key: (Optional) `PrivSignCertKey` - A signing key to use for generating a new certificate if needed.
-    :param exclude_cert: bool - exclude generating a certificate from the private key provided.
-
-    :raises ValueError: If the PKIMessage protection algorithm OID is not supported.
-
-    :return: `bytes` - The computed protection value for the PKIMessage.
-    """
-    # assumes x448 and x25519
-    # certificate is the Server on.
-    if certificate is not None and private_key is not None:
-        shared_secret = private_key.exchange(certificate.public_key())
-        # adds own Public Certificate to the PKIMessage.
-        if not exclude_cert:
-            add_cert_to_pkimessage_used_by_protection(pki_message=pki_message, private_key=private_key, sign_key=sign_key)
-        # assumes shared secret for DH.
-        return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
-
-    elif certificate is None:
-        # handles DH.
-        shared_secret = do_dh_key_exchange_password_based(password=password, peer_key=private_key)
-        # DH has no Certificate.
-        return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
-
-    elif certificate is not None and password is not None:
-        raise NotImplementedError("")
-
-    raise ValueError("DH based Password needs a private key and a password or a Certificate and a Private key.")
-
-
 def _compute_pkimessage_protection(
     pki_message: rfc9480.PKIMessage,
     password: Optional[str] = None,
     private_key: Optional[PrivateKey] = None,
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
+    signer_cert: Optional[x509.Certificate] = None,
     exclude_cert: bool = False,
 ) -> bytes:
     """Compute the protection value for a given `pyasn1` `rfc9480.PKIMessage` based on the specified
@@ -374,14 +331,8 @@ def _compute_pkimessage_protection(
     encoded = encoder.encode(protected_part)
 
     if protection_type_oid == rfc9480.id_DHBasedMac:
-        return _compute_client_dh_protection(
-            pki_message=pki_message,
-            private_key=private_key,
-            certificate=certificate,
-            password=password,
-            sign_key=sign_key,
-            exclude_cert=exclude_cert,
-        )
+        shared_secret = do_dh_key_exchange_password_based(password=password, peer_key=private_key)
+        return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
 
     elif protection_type_oid in SYMMETRIC_PROT_ALGO:
         return _compute_symmetric_protection(pki_message=pki_message, password=password)
