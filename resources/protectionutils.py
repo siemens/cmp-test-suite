@@ -545,21 +545,6 @@ def protect_pki_message(  # noqa: D417 undocumented-param
         pki_message=pki_message, protection=protection, private_key=private_key, **params
     )
 
-    # exclude generating a certificate from the private key provided.
-    exclude_cert = False
-
-    if cert_num is not None and certificate is not None:
-        raise ValueError("Either choose to provide the Certificate or " "provide a Number to Extract the certificate.")
-
-    if cert_num is not None:
-        certificate = pki_message["extraCerts"][cert_num]
-        certificate = cmputils.encode_to_der(certificate)
-        certificate = x509.load_der_x509_certificate(certificate)
-        exclude_cert = True
-
-    if extra_certs is not None:
-        exclude_cert = True
-
     protection_value = _compute_pkimessage_protection(
         pki_message=pki_message,
         password=password,
