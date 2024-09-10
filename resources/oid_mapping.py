@@ -3,7 +3,7 @@ OID (Object Identifier) mappings for signature and hash algorithms, symmetric an
 (Public Key Infrastructure) message protections. It includes functions to retrieve OIDs for specific cryptographic
 algorithms, create cryptographic instances, and perform lookups between human-readable algorithm names and their
 corresponding OIDs.
-"""  # noqa: D205
+"""
 
 from typing import Dict
 
