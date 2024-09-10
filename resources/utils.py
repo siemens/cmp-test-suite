@@ -1,10 +1,10 @@
 """Some utility functions for various tasks and a place to store functions that do not belong anywhere else."""
 
 import base64
-import datetime
 import logging
 import re
 from base64 import b64decode, b64encode
+from collections import Counter
 from itertools import combinations
 from typing import Any, List, Union
 
@@ -212,32 +212,3 @@ def pem_to_der(pem_data: Union[str, bytes]) -> bytes:
     der_data = base64.b64decode(pem_body)
 
     return der_data
-
-
-def subtract_date_from_date_to_sec(end_time, start_time, verbose=False) -> datetime.timedelta:  # noqa: D417 #undocumented-param
-    """Subtract Date From Date.
-
-    Arguments:
-    - `start_time`: The end date and time (format: 'YYYY-MM-DD HH:MM:SS').
-    - `end_time`: The start date and time (format: 'YYYY-MM-DD HH:MM:SS').
-    - `verbose`: If set to `True`, logs the difference in seconds.
-
-    Returns:
-    - `timedelta`: `datetime.timedelta`object. get seconds, with ".seconds".
-
-    Example:
-    | Subtract Date From Date | ${response_time} | ${request_time} | verbose=${True} |
-
-    """
-    # Convert string dates to datetime objects
-    response_dt = datetime.datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
-    request_dt = datetime.datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-
-    # Calculate the difference between the two dates
-    time_difference = response_dt - request_dt
-
-    # Return the result based on the verbose flag
-    if verbose:
-        logging.info(f"Time difference is {time_difference}.")
-
-    return time_difference
