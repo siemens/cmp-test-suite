@@ -28,10 +28,10 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
     Saves a private key to a specified file path. The key can be encrypted with a passphrase
     or saved without encryption.
 
-    Args:
-        key (cryptography.hazmat.primitives.asymmetric): The private key object to save.
-        path (str): The file path where the key will be saved.
-        passphrase (Optional[str]): An optional passphrase used to encrypt the key. If set to None,
+    Arguments:
+        - `key` (cryptography.hazmat.primitives.asymmetric): The private key object to save.
+        - `path` (str): The file path where the key will be saved.
+        - `passphrase` (str, optional): An optional passphrase used to encrypt the key. If set to None,
                                     the key will be saved without encryption. Defaults to "11111".
 
     Key Types and Formats:
@@ -40,7 +40,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
         - Other key types: Serialized in Traditional OpenSSL format (PEM encoding).
 
     Raises:
-        TypeError: If the provided key is not a valid private key object.
+        - TypeError: If the provided key is not a valid private key object.
 
     Example:
         | Save Key | ${key} | /path/to/save/key.pem | password123 |
@@ -84,7 +84,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
 
 
 def generate_key(algorithm="rsa", **params) -> PrivateKey:
-    """Generate a cryptographic key based on the specified algorithm.
+    """Generate a `cryptography` key based on the specified algorithm.
 
     This function supports generating keys for various cryptographic algorithms including
     RSA, DSA, ECDSA, ECDH, Ed25519, DH, and AES.
@@ -179,7 +179,7 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
 def load_private_key_from_file(filepath: str, password: Optional[str] = "11111") -> PrivateKey:
     """Load Private Key From File.
 
-    Loads a cryptographic private key from a PEM-encoded file, or Hex-String for x448, ed448, x25519, ed25519 keys.
+    Loads a `cryptography` private key from a PEM-encoded file, or Hex-String for x448, ed448, x25519, ed25519 keys.
 
     Arguments:
     - `filepath` (str): The path to the file containing the PEM-encoded key.
