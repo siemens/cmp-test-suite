@@ -13,7 +13,7 @@ import os
 from typing import Optional, Tuple, Union
 
 from cryptography import x509
-from cryptography.hazmat.backends import default_backend
+from  cryptography.hazmat import backends
 from cryptography.hazmat.primitives import hashes, hmac, serialization
 from cryptography.hazmat.primitives.asymmetric import dh, dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -379,7 +379,7 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     :return: The computed MAC (authentication tag)
     """
     # Create AES cipher in GCM mode for MAC computation
-    aes_gcm = Cipher(algorithms.AES(key), modes.GCM(nonce), backend=default_backend()).encryptor()
+    aes_gcm = Cipher(algorithms.AES(key), modes.GCM(nonce), backend=backends.default_backend()).encryptor()
 
     # Authenticate data and return the authentication tag
     aes_gcm.authenticate_additional_data(data)
