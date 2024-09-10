@@ -431,59 +431,19 @@ def generate_certificate(  # noqa: D417
         if x in params:
             options[x] = params[x]
 
-    issuer = parse_common_name_from_str(common_name)
-    if options:
-        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer, **options)
+
+    if issuer_cert:
+        issuer = issuer_cert.issuer
+        subject = parse_common_name_from_str(common_name)
     else:
-        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer)
+         issuer = subject = parse_common_name_from_str(common_name)
+
+    if options:
+        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer, subject=subject,  **options)
+    else:
+        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer, subject=subject)
 
     return _sign_cert_builder(cert_builder=cert_builder, sign_key=sign_key, hash_alg=hash_alg)
-
-
-def generate_signed_cert(
-    issuer_cert: x509.Certificate,
-    issuer_private_key: PrivSignCertKey,
-    private_key: PrivateKey,
-    common_name: Optional[str] = "CN=Hans",
-    hash_alg: Optional[str] = "sha256",
-    **params,
-) -> x509.Certificate:
-    """Create a signed X.509 certificate using an issuer certificate and its corresponding private key.
-
-    :param issuer_cert: `cryptography.x509.Certificate` object
-        The certificate of the issuer, used to set the issuer fields of the generated certificate.
-    :param issuer_private_key: Private key object (`PrivSignCertKey`) used to sign the new certificate.
-    :param private_key: `cryptography.hazmat.primitives.asymmetric` private key object
-        The private key for the new certificate being generated.
-    :param common_name: optional str the common name in OpenSSL notation.
-        Defaults to "CN=Hans".
-    :param hash_alg: optional str the name of the hash function to use for signing the certificate.
-        Defaults to "sha256".
-    :param params: additional parameters for customizing the certificate.
-        Possible options include:
-        - `serial_number` (int): A custom serial number for the certificate.
-        - `days` (int): Number of days the certificate is valid from the `not_valid_before` date.
-        - `not_valid_before` (`datetime`): The starting date and time when the certificate becomes valid.
-
-    :return: `cryptography.x509.Certificate`
-    """
-    subject = parse_common_name_from_str(common_name)
-
-    options = {}
-
-    for x in ["serial_number", "days", "not_valid_before", "days"]:
-        if x in params:
-            options[x] = params[x]
-
-    if options:
-        cert_builder = _build_cert(
-            public_key=private_key.public_key(), issuer=issuer_cert.issuer, subject=subject, **options
-        )
-    else:
-        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer_cert.issuer, subject=subject)
-
-    return _sign_cert_builder(cert_builder=cert_builder, sign_key=issuer_private_key, hash_alg=hash_alg)
-
 
 def _build_cert(
     public_key,
