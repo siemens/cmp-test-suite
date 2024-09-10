@@ -385,7 +385,7 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     aes_gcm.finalize()  # Finalize to get the authentication tag
     return aes_gcm.tag
 
-
+# TODO update params with next merge after adding validation logic.
 def generate_certificate(  # noqa: D417 # undocumented-param
     private_key: PrivateKey,
     common_name: Optional[str] = "CN=Hans",
