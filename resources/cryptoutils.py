@@ -387,7 +387,7 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     return aes_gcm.tag
 
 
-def generate_certificate(  # noqa: D417
+def generate_certificate(  # noqa: D417 # undocumented-param
     private_key: PrivateKey,
     common_name: Optional[str] = "CN=Hans",
     hash_alg: Optional[str] = "sha256",
@@ -395,7 +395,7 @@ def generate_certificate(  # noqa: D417
     issuer_cert: Optional[x509.Certificate] = None,
     **params,
 ) -> x509.Certificate:
-    """Generate a self-signed x509 certificate from a provided private key.
+    """Generate a x509 certificate either self-signed or with a
 
     Args:
         private_key (PrivateKey): The private key to use for certificate public Key generation.
@@ -403,7 +403,9 @@ def generate_certificate(  # noqa: D417
         hash_alg (str, optional): The name of the hash function to use for signing the certificate.
                  Defaults to "sha256".
         sign_key (`cryptography.hazmat.primitives.asymmetric Private Key` object):
-         The private key to sign the certificate.
+                The private key to sign the certificate.
+        issuer_cert (`cryptography.x509.Certificate`, optional):
+                the certificate of the issuer.
 
     Returns:
     `cryptography.x509.Certificate`: The generated self-signed x509 certificate.
@@ -414,7 +416,7 @@ def generate_certificate(  # noqa: D417
     Examples:
     | ${private_key} | Generate Key | algorithm=rsa | length=2048 |
     | ${certificate} | Generate Certificate | ${private_key} | CN=Hans |
-    | ${certificate} | Generate Certificate | ${private_key} | CN=Hans | ${sign_key} |
+    | ${certificate} | Generate Certificate | ${private_key} | CN=Hans | sign_key=${sign_key} | issuer_cert=${issuer_cert}
 
     """
     if not isinstance(private_key, PrivateKey):
