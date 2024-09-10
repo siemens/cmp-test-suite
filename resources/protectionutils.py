@@ -183,7 +183,7 @@ def add_cert_to_pkimessage_used_by_protection(
 
     elif not pki_message["extraCerts"].hasValue():
         # contains no Certificates so a new one is added.
-        certificate = cryptoutils.generate_cert_from_private_key(private_key=private_key, sign_key=sign_key)
+        certificate = cryptoutils.generate_certificate(private_key=private_key, sign_key=sign_key, issuer_cert=issuer_cert)
         raw = certificate.public_bytes(serialization.Encoding.DER)
         certificate = certutils.parse_certificate(raw)
         pki_message["extraCerts"] = prepare_extra_certs([certificate])
