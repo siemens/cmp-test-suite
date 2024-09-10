@@ -61,9 +61,17 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
     elif isinstance(
         key, (x448.X448PrivateKey, x25519.X25519PrivateKey, ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)
     ):
-        encoding_ = serialization.Encoding.Raw
-        format_ = serialization.PrivateFormat.Raw
-        encrypt_algo = serialization.NoEncryption()
+
+        data = key.private_bytes(
+            encoding=encoding_,
+            format=format_,
+            encryption_algorithm=encrypt_algo,
+        ).hex()
+
+        with open(path, "w") as f:
+            f.write(data)
+
+        return
 
     with open(path, "wb") as f:
         f.write(
