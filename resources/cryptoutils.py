@@ -405,6 +405,9 @@ def generate_certificate(  # noqa: D417 # undocumented-param
                 The private key to sign the certificate.
         - issuer_cert (`cryptography.x509.Certificate`, optional): the certificate of the issuer.
 
+    **params:
+          - "serial_number", "days", "not_valid_before", "days"
+
     Returns:
         - `cryptography.x509.Certificate`: The generated self-signed x509 certificate.
 
