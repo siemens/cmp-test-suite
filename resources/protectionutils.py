@@ -190,7 +190,7 @@ def add_cert_to_pkimessage_used_by_protection(
 
     else:
         # init a byte sequence to sign and then verify.
-        data = b"12345678910111213141516"
+        data = b"test_if_keypair_matches"
 
         cert = pki_message["extraCerts"][0]
         certificate = cmputils.encode_to_der(cert)
