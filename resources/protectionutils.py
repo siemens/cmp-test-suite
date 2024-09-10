@@ -1,6 +1,6 @@
 """Provides functionality to prepare the `pyasn1` `rfc9480.PKIMessage` protection: AlgorithmIdentifier
 field and computes the PKIProtection.
-"""  # noqa: D205
+"""
 
 import logging
 import os
@@ -38,7 +38,7 @@ from oid_mapping import (
     get_hash_from_signature_oid,
     get_hash_name_to_oid,
 )
-from test_suite_enums import ProtectionAlgorithm
+from suiteenums import ProtectionAlgorithm
 from typingutils import PrivateKey, PrivSignCertKey
 
 
@@ -485,7 +485,7 @@ def _prepare_pki_message_protection_field(
     return pki_message
 
 
-def apply_pki_message_protection(  # noqa: D417
+def apply_pki_message_protection(  # noqa: D417 undocumented-param
     pki_message: rfc9480.PKIMessage,
     protection: str,
     password: Optional[str] = None,
@@ -580,7 +580,7 @@ def verify_pki_protection(  # noqa: D417, D205
     pki_message: rfc9480.PKIMessage,
     private_key: Optional[PrivateKey] = None,
     password: Optional[Union[bytes, str]] = None,
-):  # noqa D205
+):
     """Verify the PKIProtection of the given pyasn1 rfc9480.PKIMessage to ensure the integrity and
     authenticity of the message.
 
