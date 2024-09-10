@@ -177,10 +177,11 @@ def compute_hmac(data, key, hash_alg="sha256"):
 def compute_pbmac1(data: bytes, key: Union[str, bytes], iterations=262144, salt=None, length=32, hash_alg="sha256"):
     """Compute HMAC for the given data using specified key.
 
+    :param length: int output length of PBKDF2.
     :param iterations: int number of iterations for PBKDF2
     :param data: bytes, data to be hashed.
     :param key: bytes, key to use for the HMAC.
-    :param salt:
+    :param salt: bytes salt value for PBKDF2.
     :param hash_alg: optional str, name of the hash algorithm to use.
 
     :returns: bytes, the HMAC signature
