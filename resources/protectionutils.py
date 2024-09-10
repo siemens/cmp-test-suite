@@ -485,7 +485,7 @@ def _prepare_pki_message_protection_field(
     return pki_message
 
 
-def apply_pki_message_protection(  # noqa: D417 undocumented-param
+def protect_pki_message(  # noqa: D417 undocumented-param
     pki_message: rfc9480.PKIMessage,
     protection: str,
     password: Optional[str] = None,
