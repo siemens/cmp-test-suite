@@ -22,7 +22,6 @@ from cmputils import prepare_extra_certs
 from cryptoutils import (
     compute_gmac,
     compute_hash,
-    compute_hmac,
     compute_password_based_mac,
     compute_pbmac1,
     do_dh_key_exchange_password_based,
@@ -230,7 +229,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
     if protection_type_oid in HMAC_SHA_OID_2_NAME:
         # gets the sha-Algorithm
         hash_alg = HMAC_SHA_OID_2_NAME.get(protection_type_oid).split("-")[1]
-        return compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
+        return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
 
     elif protection_type_oid == rfc8018.id_PBMAC1:
         prot_params: rfc8018.PBMAC1_params
@@ -292,7 +291,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         prot_params: rfc9480.DHBMParameter
         hash_alg: str = SHA_OID_2_NAME[prot_params["owf"]["algorithm"]]
         password = compute_hash(alg_name=hash_alg, data=password)
-        return compute_hmac(key=password, data=encoded)
+        return cryptoutils.compute_hmac(key=password, data=encoded)
     else:
         raise ValueError(f"Unsupported Symmetric Mac Protection! : {protection_type_oid}")
 
