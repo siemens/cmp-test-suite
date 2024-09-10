@@ -152,7 +152,7 @@ def sign_csr(csr, key, hash_alg="sha256"):
     return csr_out.public_bytes(serialization.Encoding.PEM)
 
 
-@not_keyword
+
 def compute_hmac(data, key, hash_alg="sha256"):
     """Compute HMAC for the given data using specified key.
 
@@ -387,11 +387,14 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     return aes_gcm.tag
 
 
+
+
 def generate_cert_from_private_key(  # noqa: D417
     private_key: PrivateKey,
     common_name: Optional[str] = "CN=Hans",
     hash_alg: Optional[str] = "sha256",
     sign_key: Optional[PrivSignCertKey] = None,
+    **params
 ) -> x509.Certificate:
     """Generate a self-signed x509 certificate from a provided private key.
 
@@ -426,15 +429,21 @@ def generate_cert_from_private_key(  # noqa: D417
 
     sign_key = sign_key or private_key
 
+    serial_number = int(params.get("serial_number", x509.random_serial_number()))
+    days = int(params.get("days", 365))
+
+    # TODO change in the future.
+    not_valid_before = params.get("not_valid_before", datetime.datetime.now())
+
     # Create the certificate builder
     cert_builder = (
         x509.CertificateBuilder()
         .subject_name(subject)
         .issuer_name(issuer)
         .public_key(private_key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.datetime.now())
-        .not_valid_after(datetime.datetime.now() + datetime.timedelta(days=365))
+        .serial_number(serial_number)
+        .not_valid_before(not_valid_before)
+        .not_valid_after(datetime.datetime.now() + datetime.timedelta(days=days))
     )
 
     if isinstance(sign_key, ec.EllipticCurvePrivateKey):

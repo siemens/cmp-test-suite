@@ -170,7 +170,7 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
 def load_private_key_from_file(filepath: str, password: Optional[str] = "11111") -> PrivateKey:
     """Load Private Key From File.
 
-    Loads a cryptographic private key from a PEM-encoded file, or Raw for x448, ed448, x25519, ed25519 keys.
+    Loads a cryptographic private key from a PEM-encoded file, or Hex-String for x448, ed448, x25519, ed25519 keys.
 
     Arguments:
     - `filepath` (str): The path to the file containing the PEM-encoded key.
@@ -190,8 +190,15 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     | ${x25519_key}= | Load Private Key From File | /path/to/x25519_key.pem | x25519 |
 
     """
-    with open(filepath, "rb") as pem_file:
-        pem_data = pem_file.read()
+
+    if password in ["x448", "x25519", "ed448", "ed25519"]:
+        with open(filepath, "r") as pem_file:
+            pem_data = pem_file.read()
+
+        pem_data = bytes.fromhex(pem_data)
+    else:
+        with open(filepath, "rb") as pem_file:
+            pem_data = pem_file.read()
 
 
     if password == "x448":
@@ -238,8 +245,14 @@ def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
     | ${x25519_key}= | Load Public Key From File | /path/to/x25519_public_key.raw |
 
     """
-    with open(filepath, "rb") as pem_file:
-        pem_data = pem_file.read()
+    if key_type in ["x448", "x25519", "ed448", "ed25519"]:
+        with open(filepath, "r") as pem_file:
+            pem_data = pem_file.read()
+
+        pem_data = bytes.fromhex(pem_data)
+    else:
+        with open(filepath, "rb") as pem_file:
+            pem_data = pem_file.read()
 
     if key_type == "x448":
         return x448.X448PublicKey.from_public_bytes(data=pem_data)
