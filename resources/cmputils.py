@@ -286,7 +286,7 @@ def build_cr_from_csr(
     """Create a PKIMessage of type CR, given a CSR and a signing key
 
     :param csr: pyasn1 rfc6402.CertificationRequest
-    :param signing_key: cryptography.hazmat.primitives.asymmetric key object
+    :param signing_key: cryptography.hazmat.primitives.asymmetric key object to sign the PKIMessage.
     :param hash_alg: optional str, name of the hashing algorithm to use for proof of possession (sha256 by default)
     :param cert_req_id: optional int, value for certReqId, 0 by default
 
