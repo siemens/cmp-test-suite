@@ -1,6 +1,7 @@
 """Some wrapper-tools for validating an X509 cert by invoking other software, e.g., OpenSSL, pkilint."""
 
 import logging
+from typing import Optional
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -136,19 +137,31 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
 
 
 @not_keyword
-def verify_cert_signature(certificate: x509.Certificate):
-    """Verify the digital signature of an X.509 certificate using the provided or extracted public key.
+def verify_cert_signature(certificate: x509.Certificate, issuer_cert: Optional[x509.Certificate] = None):
+    """Verify the digital signature of an X.509 certificate.
 
-    :param certificate: `cryptography.x509.Certificate`
-    :param certificate:
-        The certificate to verify, represented in a type that can be cast to an X.509 certificate object.
-        It should be in a DER-encoded form compatible with the `x509.Certificate` type.
+    With the provided issuer's public key or the certificate's own public key if it is self-signed.
+
+    :param certificate: `cryptography.x509.Certificate` which is verified.
+
+    :param issuer_cert: optional `cryptography.x509.Certificate` which is verified.
+           used for verification. If provided, the `issuer_cert` must match the `certificate`'s issuer.
 
     :raises InvalidSignature:
         If the certificate's signature is not valid when verified against the provided or extracted public key.
+    :raises ValueError:
+        If `issuer_cert` is provided but does not match the `certificate`'s issuer.
     """
+
+    pub_key = certificate.public_key()
+
+    if issuer_cert is not None:
+        pub_key = issuer_cert.public_key()
+        if issuer_cert.subject != certificate.issuer:
+            raise ValueError("The provided issuer certificate does not match the certificate's issuer.")
+
     verify_signature(
-        public_key=certificate.public_key(),
+        public_key=pub_key,
         signature=certificate.signature,
         data=certificate.tbs_certificate_bytes,
         hash_alg=certificate.signature_hash_algorithm,
@@ -157,14 +170,12 @@ def verify_cert_signature(certificate: x509.Certificate):
 
 @not_keyword
 def verify_csr_signature(csr: x509.CertificateSigningRequest):
-    """Verify the digital signature of an X.509 CSR using the provided or extracted public key.
+    """Verify the digital signature of an X509 CSR using the public key extracted from the CSR.
 
-    :param csr:
-        The Certificate Signing Request to verify, represented in a type that can be cast to an X.509 CSR object.
-        It should be in a DER-encoded form compatible with the `x509.Certificate` type.
+    :param csr: `cryptography.x509.CertificateSigningRequest` representing the CSR to verify.
 
     :raises InvalidSignature:
-        If the csr's signature is not valid when verified against the provided or extracted public key.
+        If the CSR's signature is not valid.
     """
     verify_signature(
         public_key=csr.public_key(),
