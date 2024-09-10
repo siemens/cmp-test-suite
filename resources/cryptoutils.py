@@ -1,4 +1,4 @@
-"""Provides a collection of functions and classes for cryptographic operations such as key generation,
+"""Collection of functions and classes for cryptographic operations such as key generation,
 signing data, computing hashes, generating Certificate Signing Requests (CSRs), signing CSRs, performing
 Diffie-Hellman (DH) key exchanges, and generating x509 certificates.The module leverages the `cryptography`
 library to support various cryptographic primitives including RSA,
