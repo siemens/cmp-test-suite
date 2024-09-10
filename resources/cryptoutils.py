@@ -177,6 +177,7 @@ def compute_hmac(data, key, hash_alg="sha256"):
 def compute_pbmac1(data: bytes, key: Union[str, bytes], iterations=262144, salt=None, length=32, hash_alg="sha256"):
     """Compute HMAC for the given data using specified key.
 
+    :param iterations: int number of iterations for PBKDF2
     :param data: bytes, data to be hashed.
     :param key: bytes, key to use for the HMAC.
     :param salt:
@@ -447,6 +448,7 @@ def generate_certificate(  # noqa: D417 # undocumented-param
 
     return _sign_cert_builder(cert_builder=cert_builder, sign_key=sign_key, hash_alg=hash_alg)
 
+
 def _build_cert(
     public_key,
     issuer: x509.Name,
@@ -455,7 +457,7 @@ def _build_cert(
     days: int = 365,
     not_valid_before: Optional[datetime.datetime] = None,
 ) -> cryptography.x509.CertificateBuilder:
-    """Create a certificate builder for X.509 certificate using a public key, issuer, subject, and a validity period.
+    """Create a `cryptography.x509.CertificateBuilder` using a public key, issuer, subject, and a validity period.
 
     :param public_key: `cryptography.hazmat.primitives.asymmetric` public key object
         The public key to associate with the certificate.
