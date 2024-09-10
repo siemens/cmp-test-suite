@@ -12,6 +12,7 @@ import logging
 import os
 from typing import Optional, Tuple, Union
 
+import cryptography.x509
 from cryptography import x509
 from  cryptography.hazmat import backends
 from cryptography.hazmat.primitives import hashes, hmac, serialization
@@ -311,7 +312,7 @@ def _generate_private_dh_from_key(
         algorithm="dh",
         p=parameters.p,
         g=parameters.g,
-        secret_scalar=int.from_bytes(password.encode("utf-8")),
+        secret_scalar=int.from_bytes(password.encode("utf-8"), byteorder="big"),
     )
     return private_key
 
@@ -339,7 +340,8 @@ def do_dh_key_exchange_password_based(  # noqa: D417
         logging.info(f"DH shared secret: {shared_key.hex()}")
         return shared_key
 
-    other_public_key: dh.DHPublicKey = private_key.public_key()
+
+    other_public_key = private_key.public_key()
 
     shared_key = private_key.exchange(other_public_key)
     logging.info(f"DH shared secret: {shared_key.hex()}")
