@@ -192,8 +192,8 @@ def add_cert_to_pkimessage_used_by_protection(
         # init a byte sequence to sign and then verify.
         data = b"test_if_keypair_matches"
 
-        cert = pki_message["extraCerts"][0]
-        certificate = cmputils.encode_to_der(cert)
+        certificate = pki_message["extraCerts"][0]
+        certificate = cmputils.encode_to_der(certificate)
         certificate = x509.load_der_x509_certificate(certificate)
         signature = sign_data(key=private_key, data=data, hash_alg=certificate.signature_hash_algorithm)
 
