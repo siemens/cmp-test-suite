@@ -170,7 +170,7 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
 def load_private_key_from_file(filepath: str, password: Optional[str] = "11111") -> PrivateKey:
     """Load Private Key From File.
 
-    Loads a cryptographic private key from a PEM-encoded file.
+    Loads a cryptographic private key from a PEM-encoded file, or Raw for x448, ed448, x25519, ed25519 keys.
 
     Arguments:
     - `filepath` (str): The path to the file containing the PEM-encoded key.
@@ -190,7 +190,9 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     | ${x25519_key}= | Load Private Key From File | /path/to/x25519_key.pem | x25519 |
 
     """
-    pem_data = open(filepath, "rb").read()
+    with open(filepath, "rb") as pem_file:
+        pem_data = pem_file.read()
+
 
     if password == "x448":
         return x448.X448PrivateKey.from_private_bytes(data=pem_data)
@@ -215,11 +217,11 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
 def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
     """Load Public Key From File.
 
-    Loads a cryptographic public key from a PEM-encoded file. Supports various key types and formats,
-    including PEM and raw formats for `x448` and `x25519` keys.
+    Load a cryptographic public key from a PEM-encoded file
+    unless it is a x448, ed448, x25519, or ed25519 key. Then the raw format is used.
 
     Arguments:
-    - `filepath` (str): The path to the file containing the PEM-encoded public key.
+    - `filepath` (str): the path to the file containing the key data.
     - `key_type` (optional str): the type of the key. needed for x448 and x25519. (also ed-versions)
 
 
