@@ -23,9 +23,7 @@ from cryptoutils import (
     compute_gmac,
     compute_hash,
     compute_password_based_mac,
-    compute_pbmac1,
-    do_dh_key_exchange_password_based,
-    sign_data,
+    compute_pbmac1
 )
 from oid_mapping import (
     AES_GMAC_NAME_2_OID,
@@ -146,24 +144,23 @@ def add_cert_to_pkimessage_used_by_protection(
     issuer_cert: Optional[x509.Certificate] = None,
 ):
     """Ensure that a `pyasn1 rfc9480.PKIMessage` protected by a signature has
-    the certificate as the first entry in the `extraCerts` field. # noqa: D205
+    the CMP-Protection certificate as the first entry in the `extraCerts`
 
-    This function ensures that the first certificate in the PKIMessage's `extraCerts` field
-    is the CMP-Protection certificate. If a certificate is provided, it checks that the
-    first certificate matches the provided CMP-Protection certificate. If no certificate is
-    provided, it generates a new one using the given private key and optional signing key.
 
+    If a certificate is provided, it checks that the first certificate matches the provided CMP-Protection certificate.
+    If no `certificate` is provided, it generates a new one using the given `private_key`
+    and optional `sign_key` and `issuer_cert`.
 
     :param pki_message: `pyasn1 rfc9480.PKIMessage` The PKIMessage object to which the certificate
                          protection is to be applied.
-    :param private_key:  The private key used for signing or generating a certificate.
+    :param private_key:  The private key used to signing the structure.
     :param certificate: optional `cryptography.x509.Certificate` object. A certificate to use as
-                        the CMP-Protection certificate. If provided, it is checked against the
-                        first certificate in the PKIMessage.
-    :param sign_key:    optional PrivSignCertKey (Optional) A signing key to use for generating a new certificate.
-    :param issuer_cert: optional `cryptography.x509.Certificate` Certificate of the signer.
-    :raises ValueError: If the first certificate in `extraCerts` is not the CMP-Protection certificate
-                        as specified in RFC 9483, Section 3.3, or if there is a signature verification failure.
+                        the CMP-Protection certificate.
+    :param sign_key:    optional PrivSignCertKey A signing key to use for generating a new certificate.
+    :param issuer_cert: optional `cryptography.x509.Certificate`
+                        Certificate used for generating a new certificate if no `certificate` is provided.
+    :raises ValueError: If the first certificate in `extraCerts` is not the CMP-Protection certificate as specified in
+        RFC 9483, Section 3.3, or if there is a signature verification failure
     :return: None
     """
     if certificate is not None:
@@ -201,7 +198,7 @@ def add_cert_to_pkimessage_used_by_protection(
         certificate = pki_message["extraCerts"][0]
         certificate = cmputils.encode_to_der(certificate)
         certificate = x509.load_der_x509_certificate(certificate)
-        signature = sign_data(key=private_key, data=data, hash_alg=certificate.signature_hash_algorithm)
+        signature = cryptoutils.sign_data(key=private_key, data=data, hash_alg=certificate.signature_hash_algorithm)
 
         try:
             certutils.verify_signature(
@@ -313,13 +310,15 @@ def _compute_pkimessage_protection(
 ) -> bytes:
     """Compute the protection value for a given `pyasn1` `rfc9480.PKIMessage` based on the specified
         protection algorithm.
+
+
     :param pki_message: `rfc9480.PKIMessage` object to compute the signature about.
     :param password: A string representing a shared secret or a Server Private Key for DHBasedMac.
-    :param private_key (Optional PrivateKey): The private key used for signature-based protection
+    :param private_key: optional PrivateKey The private key used for signature-based protection
                                               or DH-based MAC computation.
     :param certificate:  A certificate used as the CMP-Protection certificate for signature-based protection.
-                         Only used for Key-Agreement.
-    :param sign_key:  (Optional PrivSignCertKey): A signing key used for generating a new certificate if needed.
+                         if signature is the protection type includes a self-signed certificate.
+    :param sign_key:  optional PrivSignCertKey: A signing key used for generating a new certificate if needed.
     :param exclude_cert:  bool exclude generating a certificate from the private key provided.
     :raises:
         ValueError: If the protection algorithm OID is not supported or required parameters are not provided.
@@ -334,7 +333,7 @@ def _compute_pkimessage_protection(
     encoded = encoder.encode(protected_part)
 
     if protection_type_oid == rfc9480.id_DHBasedMac:
-        shared_secret = do_dh_key_exchange_password_based(password=password, peer_key=private_key)
+        shared_secret = cryptoutils.do_dh_key_exchange_password_based(password=password, peer_key=private_key)
         return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
 
     elif protection_type_oid in SYMMETRIC_PROT_ALGO:
@@ -347,7 +346,7 @@ def _compute_pkimessage_protection(
             # gets sha Algorithm.
             hash_alg = get_hash_from_signature_oid(oid=protection_type_oid).split("-")[1]
 
-        protection_value = sign_data(data=encoded, key=private_key, hash_alg=hash_alg)
+        protection_value = cryptoutils.sign_data(data=encoded, key=private_key, hash_alg=hash_alg)
 
         if not exclude_cert:
             add_cert_to_pkimessage_used_by_protection(
@@ -443,6 +442,7 @@ def _prepare_pki_message_protection_field(
     return pki_message
 
 
+# TODO add decorator for salt
 def protect_pki_message(  # noqa: D417 undocumented-param
     pki_message: rfc9480.PKIMessage,
     protection: str,
@@ -456,21 +456,21 @@ def protect_pki_message(  # noqa: D417 undocumented-param
     """Prepare the PKI protection for the PKIMessage algorithm.
 
     Includes: Checks if the certificate is the first in the `PKIMessage` `extraCerts` field!
-              If Provided, otherwise adds a self-signed Certificate!
+              If Provided, otherwise adds a Certificate!
     Excludes:  Certificate checks!
 
     Arguments:
     - `pki_message`: `pyasn1_alt_module.rfc9480.PKIMessage` object. which has a set
                       `pyasn1_alt_module.rfc9480.PKIBody and PKIHeader`
-    - `protection`: String representing the type of protection.
-    - `password`: String representing a shared secret or a server private key for DHBasedMac (default is None).
+    - `protection`: string representing the type of protection.
+    - `password`: string representing a shared secret (default is None).
     - `private_key`: `cryptography` `PrivateKey` object, used for signing or DHBasedMac (default is None).
     - `certificate`: a `pyasn1` ` rfc9480.CMPCertificate` or  `cryptography` `x509.Certificate` object.
                      The certificate used for verifying of the Signature. If provided.
     - `exclude_cert`: bool indicates if for signing a certificate should be added.
                       used for negative testing.
     - `**params`:
-                 salt: str hex representation without 0x. used for pbmac1, pbm or aes-gmac.
+                 salt: bytes used for pbmac1, pbm or aes-gmac.
                  iterations: (str, int)  Number of iterations to be used for KDF.
                  length: (str, int) Length of the output for pbmac1.
                  hash_al: str name of the owf to be used. exp. "sha256".
@@ -486,7 +486,6 @@ def protect_pki_message(  # noqa: D417 undocumented-param
     | ${prot_msg}= | Apply PKI Message Protection | ${PKI_MESSAGE} | aes-gmac  | ${SECRET}       |
     | ${prot_msg}= | Apply PKI Message Protection | ${PKI_MESSAGE} | signature | private_key=${KEY}  |
     | ${prot_msg}= | Apply PKI Message Protection | ${PKI_MESSAGE} | dh | private_key=${KEY}  password={PASSWORD}  |
-    | ${prot_msg}= | Apply PKI Message Protection | ${PKI_MESSAGE} | dh | ${KEY_X448} | certificate={X448_CERT}  |
 
     """
     if not pki_message["body"].isValue:
@@ -521,28 +520,29 @@ def verify_pki_protection(  # noqa: D417, D205
     private_key: Optional[PrivateKey] = None,
     password: Optional[Union[bytes, str]] = None,
 ):
-    """Verify the PKIProtection of the given pyasn1 rfc9480.PKIMessage to ensure the integrity and
-    authenticity of the message.
+    """Verify the PKIProtection of the given `pyasn1 rfc9480.PKIMessage` to ensure the integrity.
 
-    Args:
-        pki_message (`pyasn1 rfc9480.PKIMessage`): The `PKIMessage` object whose protection needs to be verified.
-        private_key (Optional PrivateKey): The private key of the server or client. For Diffie-Hellman-based protection,
-                                            this is needed to compute the shared secret. If the protection algorithm is
-                                            signature-based, the private key is not required.
-        password (Optional[Union[bytes, str]]): The shared secret for symmetric or Diffie-Hellman-based protection. This
-                                                is used for computing the derived keys for verifying
-                                                the protection value.
+    Arguments:
+    - `pki_message` (`pyasn1 rfc9480.PKIMessage`): The `PKIMessage` object whose protection needs to be verified.
+    - `private_key` (Optional PrivateKey): The private key of the server or client. For Diffie-Hellman-based protection,
+                                        this is needed to compute the shared secret. If the protection algorithm is
+                                        signature-based, the private key is not required.
+    - `password` (Optional[Union[bytes, str]]): The shared secret for symmetric or Diffie-Hellman-based protection. This
+                                            is used for computing the derived keys for verifying
+                                            the protection value.
 
     Raises:
-        InvalidSignature: If the signature-based protection verification fails due to a mismatched signature.
-        ValueError: If the protection algorithm is unsupported or if the computed protection value does not match the
+        - InvalidSignature: If the signature-based protection verification fails due to a mismatched signature.
+        - ValueError: If the protection algorithm is unsupported or if the computed protection value does not match the
                     expected value, indicating tampering or data corruption.
 
     Returns:
-        None
+        - None
 
     Example:
-        verify_pki_protection(pki_message=my_pki_message, private_key=my_private_key, password="my_secret")
+    | Verify PKI Message Protection | ${PKI_MESSAGE} | ${private_key}    | ${SECRET}    |
+    | Verify PKI Message Protection | ${PKI_MESSAGE} | ${private_key}    |
+    | Verify PKI Message Protection | ${PKI_MESSAGE} | password=${SECRET}    |
 
     Note:
         - If the `PKIMessage` uses a Diffie-Hellman-based MAC (`DHBasedMac`) for protection, either the `private_key`
@@ -563,7 +563,7 @@ def verify_pki_protection(  # noqa: D417, D205
     encoded: bytes = encoder.encode(protected_part)
 
     if protection_type_oid == rfc9480.id_DHBasedMac:
-        password = do_dh_key_exchange_password_based(password=password, peer_key=private_key)
+        password = cryptoutils.do_dh_key_exchange_password_based(password=password, peer_key=private_key)
         expected_protection_value = _compute_symmetric_protection(pki_message, password)
 
     elif protection_type_oid in SYMMETRIC_PROT_ALGO:
