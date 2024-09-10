@@ -334,7 +334,7 @@ def _compute_client_dh_protection(
 
     elif certificate is None:
         # handles DH.
-        shared_secret = do_dh_key_exchange_password_based(password=password, other_party_key=private_key)
+        shared_secret = do_dh_key_exchange_password_based(password=password, peer_key=private_key)
         # DH has no Certificate.
         return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
 
@@ -627,7 +627,7 @@ def verify_pki_protection(  # noqa: D417, D205
     if protection_type_oid == rfc9480.id_DHBasedMac:
         if not pki_message["extraCerts"].hasValue():
             # handling dh
-            password = do_dh_key_exchange_password_based(password=password, other_party_key=private_key)
+            password = do_dh_key_exchange_password_based(password=password, peer_key=private_key)
 
         else:
             # handling x448 and x25519.

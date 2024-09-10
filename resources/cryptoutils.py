@@ -317,7 +317,7 @@ def _generate_private_dh_from_key(
 
 
 def do_dh_key_exchange_password_based(  # noqa: D417
-    password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
+    password: str, peer_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
 ) -> bytes:
     """Perform a Diffie-Hellman key exchange to derive a shared secret key based on a password.
 
@@ -332,10 +332,10 @@ def do_dh_key_exchange_password_based(  # noqa: D417
     | ${shared_secret} = | Do DH Key Exchange Password Based | password=my_password | other_party_key=${public_key} |
 
     """
-    private_key = _generate_private_dh_from_key(password, other_party_key)
+    private_key = _generate_private_dh_from_key(password, peer_key)
 
-    if isinstance(other_party_key, dh.DHPublicKey):
-        shared_key = private_key.exchange(other_party_key)
+    if isinstance(peer_key, dh.DHPublicKey):
+        shared_key = private_key.exchange(peer_key)
         logging.info(f"DH shared secret: {shared_key.hex()}")
         return shared_key
 
@@ -355,13 +355,13 @@ def compute_dh_based_mac(
     :param data: The input data to be authenticated, given as a byte sequence.
     :param password: str or `cryptography` `dh.DHPublicKey` A string password used to generate the Server's secret Key
                      or a provided Public key.
-    :param key: A `cryptography` `dh.DHPrivateKey` object. Which represents the client's Secret.
+    :param key: A `cryptography` `dh.DHPrivateKey` object. Which represents the client's secret.
     :param hash_alg: (str) The name of the hash algorithm to be used for key derivation and HMAC computation.
                      Defaults to "sha1".
     :return: A byte sequence representing the computed HMAC of the input data using the derived key.
     """
     if isinstance(password, str):
-        shared_key = do_dh_key_exchange_password_based(password=password, other_party_key=key)
+        shared_key = do_dh_key_exchange_password_based(password=password, peer_key=key)
     else:
         shared_key = key.exchange(password)
 
