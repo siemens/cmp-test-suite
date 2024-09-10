@@ -40,8 +40,7 @@ doc:
 	python -m robot.libdoc resources/certutils.py doc/certutils.html
 	python -m robot.libdoc resources/httputils.py doc/httputils.html
 	python -m robot.libdoc resources/keyutils.py doc/keyutils.html
-	python -m robot.libdoc resources/verifyingutils.py doc/verifyingutils.html
-	python -m robot.libdoc resources/mac_protection.py doc/macprotection.html
+	python -m robot.libdoc resources/protectionutils.py doc/protectionutils.html
 	python -m robot.testdoc tests/ doc/tests-suites.html
 
 autoformat:
