@@ -60,7 +60,7 @@ class TestPKIMessageProtection(unittest.TestCase):
 
 
     def test_sig_rsa(self):
-        private_key = load_private_key_from_file("data/private-key-rsa.pem", password=None)
+        private_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         certificate = generate_cert_from_private_key(private_key=private_key, common_name="CN=Hans", hash_alg="sha256")
         protected_msg = protect_pki_message(pki_message=self.pki_message,
                                             certificate=certificate,
@@ -72,7 +72,7 @@ class TestPKIMessageProtection(unittest.TestCase):
 
     def test_sig_ed25519(self):
 
-        private_key =  load_private_key_from_file("data/private-key-ed25519.pem", "ed25519")
+        private_key =  load_private_key_from_file("data/keys/private-key-ed25519.pem", "ed25519")
 
         certificate = generate_cert_from_private_key(private_key=private_key,
                                                      common_name="CN=Hans",
@@ -89,7 +89,7 @@ class TestPKIMessageProtection(unittest.TestCase):
 
 
     def test_sig_ecdsa(self):
-        private_key = load_private_key_from_file("data/private-key-ecdsa.pem")
+        private_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
         certificate = generate_cert_from_private_key(private_key=private_key,
                                                      common_name="CN=Hans",
                                                      hash_alg="sha256")
@@ -103,7 +103,7 @@ class TestPKIMessageProtection(unittest.TestCase):
         verify_pki_protection(pki_message=protected_msg, private_key=None)
 
     def test_sig_ecdsa_without_cert(self):
-        private_key = load_private_key_from_file("data/private-key-ecdsa.pem")
+        private_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
         protected_msg = protect_pki_message(pki_message=self.pki_message,
                                             certificate=None,
                                             private_key=private_key,
@@ -118,11 +118,11 @@ class TestPKIMessageProtection(unittest.TestCase):
 
 
         client_private_key: x448.X448PrivateKey = load_private_key_from_file(
-            "data/client_x448_key.pem", "x448")
+            "data/keys/client_x448_key.raw", "x448")
         server_private_key: x448.X448PrivateKey = load_private_key_from_file(
-            "data/server_x448_key.pem", "x448")
+            "data/keys/server_x448_key.raw", "x448")
 
-        sign_key = load_private_key_from_file("data/private-key-ed25519.pem", "ed25519")
+        sign_key = load_private_key_from_file("data/keys/private-key-ed25519.pem", "ed25519")
         server_cert = generate_cert_from_private_key(private_key=server_private_key, sign_key=sign_key)
 
         protected_msg = protect_pki_message(pki_message=self.pki_message,
