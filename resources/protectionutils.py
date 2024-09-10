@@ -13,6 +13,7 @@ from pyasn1.codec.der import encoder
 from pyasn1.type import constraint, univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
 from pyasn1_alt_modules import rfc4210, rfc5280, rfc8018, rfc9044, rfc9480, rfc9481
+from robot.api.deco import not_keyword
 
 import certutils
 import cmputils
@@ -137,7 +138,8 @@ def _prepare_dh_based_mac(hash_alg: str = "sha1") -> rfc4210.DHBMParameter:
     return param
 
 
-def _apply_cert_pkimessage_protection(  # noqa: D205
+@not_keyword
+def add_cert_to_pkimessage_used_by_protection(
     pki_message: rfc9480.PKIMessage,
     private_key: PrivateKey,
     certificate: Optional[x509.Certificate] = None,
@@ -326,7 +328,7 @@ def _compute_client_dh_protection(
         shared_secret = private_key.exchange(certificate.public_key())
         # adds own Public Certificate to the PKIMessage.
         if not exclude_cert:
-            _apply_cert_pkimessage_protection(pki_message=pki_message, private_key=private_key, sign_key=sign_key)
+            add_cert_to_pkimessage_used_by_protection(pki_message=pki_message, private_key=private_key, sign_key=sign_key)
         # assumes shared secret for DH.
         return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
 
@@ -396,7 +398,7 @@ def _compute_pkimessage_protection(
 
         if not exclude_cert:
             # either generates a fresh one or adds the certificate.
-            _apply_cert_pkimessage_protection(
+            add_cert_to_pkimessage_used_by_protection(
                 pki_message=pki_message, private_key=private_key, certificate=certificate, sign_key=sign_key
             )
         return protection_value

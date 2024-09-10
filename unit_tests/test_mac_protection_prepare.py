@@ -5,7 +5,7 @@ import certutils
 from resources.certutils import parse_certificate
 from resources.cmputils import prepare_extra_certs, build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_cert_from_private_key
-from resources.protectionutils import _apply_cert_pkimessage_protection
+from resources.protectionutils import add_cert_to_pkimessage_used_by_protection
 from resources.utils import decode_pem_string
 
 from keyutils import generate_key
@@ -28,7 +28,7 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         """Test if a Certificate can be created with a `cryptography` PrivateKey
         and then if the Certificate can be added to a `pyasn1 rfc9480.PKIMessage`.
         """
-        _apply_cert_pkimessage_protection(self.pki_message, self.private_key, certificate=None)
+        add_cert_to_pkimessage_used_by_protection(self.pki_message, self.private_key, certificate=None)
 
         self.assertTrue(self.pki_message["extraCerts"].hasValue())
         self.assertTrue(len(self.pki_message["extraCerts"]) == 1)
@@ -36,7 +36,7 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
 
     def test_with_certificate_and_empty_extraCerts(self):
         """Test if a provided Certificate can be added to a `pyasn1 rfc9480.PKIMessage`,which is used for the Protection."""
-        _apply_cert_pkimessage_protection(self.pki_message, self.private_key, self.certificate_crypto_lib)
+        add_cert_to_pkimessage_used_by_protection(self.pki_message, self.private_key, self.certificate_crypto_lib)
         self.assertTrue(self.pki_message["extraCerts"].hasValue())
         self.assertTrue(len(self.pki_message["extraCerts"]) == 1)
 
@@ -53,7 +53,7 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         certificate = parse_certificate(raw)
         self.pki_message["extraCerts"] = prepare_extra_certs([certificate])
 
-        _apply_cert_pkimessage_protection(self.pki_message, self.private_key, certificate=self.certificate_crypto_lib)
+        add_cert_to_pkimessage_used_by_protection(self.pki_message, self.private_key, certificate=self.certificate_crypto_lib)
 
         self.assertTrue(self.pki_message["extraCerts"].hasValue())
         self.assertTrue(
@@ -80,7 +80,7 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
 
         # because it did not find a matching Certificate.
         with (self.assertRaises(ValueError)):
-            _apply_cert_pkimessage_protection(self.pki_message, private_key, certificate=None)
+            add_cert_to_pkimessage_used_by_protection(self.pki_message, private_key, certificate=None)
 
 
 if __name__ == "__main__":
