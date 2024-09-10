@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 
 from cryptography import x509
-from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat import backends
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
 from pkilint import loader, report
@@ -39,11 +39,12 @@ def validate_certificate_openssl(data):
     :returns bool: True if loading was without errors, otherwise False
     """
     try:
-        _certificate = x509.load_der_x509_certificate(data, default_backend())
+        _certificate = x509.load_der_x509_certificate(data, backends.default_backend())
     except Exception as e:
         message = f"Certificate validation with openssl failed: {e}"
         logging.error(message)
         raise ValueError(message)
+
 
 
 def validate_certificate_pkilint(data):
@@ -85,12 +86,12 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
 
     Supports: (ECDSA, ED448, ED25519, RSA, DSA).
 
-    Args:
-        `public_key` (cryptography.hazmat.primitives.asymmetric): The public key object used to
+    Arguments:
+        - `public_key` (cryptography.hazmat.primitives.asymmetric): The public key object used to
                       verify the signature.
-        `signature` (bytes): signature data.
-        `data` (bytes): The original data that was signed, provided as a byte sequence.
-        `hash_alg` (Optional str ): An string representing the name of the hash algorithm
+        - `signature` (bytes): signature data.
+        - `data` (bytes): The original data that was signed, provided as a byte sequence.
+        - `hash_alg` (Optional str ): An string representing the name of the hash algorithm
                                    to be used for verification
                                   (e.g., "sha256"). If not specified, the default algorithm for the
                                    given key type is used.
@@ -103,8 +104,8 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
         - Unsupported key types (e.g., `X25519PublicKey`, `X448PublicKey`): Raises an error.
 
     Raises:
-        InvalidSignature: If the signature is invalid.
-        ValueError: If an unsupported key type is provided.
+        - InvalidSignature: If the signature is invalid.
+        - ValueError: If an unsupported key type is provided.
 
     Example:
         | Verify Signature | ${public_key} | ${signature} | ${data} | sha256 |
