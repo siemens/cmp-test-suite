@@ -14,6 +14,7 @@ from pyasn1_alt_modules import rfc2459, rfc2986, rfc4210, rfc4211, rfc5280, rfc5
 from pyasn1_alt_modules.rfc2314 import Attributes, Signature, SignatureAlgorithmIdentifier
 from pyasn1_alt_modules.rfc2459 import Attribute, AttributeValue, Extension, Extensions, GeneralName
 from pyasn1_alt_modules.rfc2511 import CertTemplate
+from robot.api.deco import not_keyword
 
 import certutils
 import cryptoutils
@@ -729,8 +730,13 @@ def _generate_pki_message_fail_info(fail_info: Optional[str] = None) -> rfc9480.
     pki_msg["body"]["error"].setComponentByName("pKIStatusInfo", value)
     return pki_msg
 
+@not_keyword
+def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
+    """Build the pyasn1 `rfc9480.PKIMessage extraCerts` filed with a list containing `rfc9480.CMPCertificate`.
 
-def _prepare_extra_certs(certs: List[rfc9480.CMPCertificate]) -> univ.SequenceOf:
+    :param certs: A list with `rfc9480.CMPCertificate`
+    :return: An `univ.SequenceOf` object filled with `rfc9480.CMPCertificate` instances.
+    """
     extra_certs_wrapper: univ.SequenceOf = (
         univ.SequenceOf(componentType=rfc9480.CMPCertificate())
         .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX))

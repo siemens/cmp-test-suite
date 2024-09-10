@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives.asymmetric import x448
 
 from protectionutils import protect_pki_message, verify_pki_protection
 from resources.certutils import parse_certificate
-from resources.cmputils import _prepare_extra_certs, build_p10cr_from_csr, parse_csr
+from resources.cmputils import prepare_extra_certs, build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_cert_from_private_key
 from resources.utils import decode_pem_string
 

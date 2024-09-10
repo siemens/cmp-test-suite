@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import serialization
 
 import certutils
 from resources.certutils import parse_certificate
-from resources.cmputils import _prepare_extra_certs, build_p10cr_from_csr, parse_csr
+from resources.cmputils import prepare_extra_certs, build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_cert_from_private_key
 from resources.protectionutils import _apply_cert_pkimessage_protection
 from resources.utils import decode_pem_string
@@ -51,7 +51,7 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         self.assertTrue(len(self.pki_message["extraCerts"]) == 0)
         raw = self.certificate_crypto_lib.public_bytes(serialization.Encoding.DER)
         certificate = parse_certificate(raw)
-        self.pki_message["extraCerts"] = _prepare_extra_certs([certificate])
+        self.pki_message["extraCerts"] = prepare_extra_certs([certificate])
 
         _apply_cert_pkimessage_protection(self.pki_message, self.private_key, certificate=self.certificate_crypto_lib)
 
@@ -71,7 +71,7 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         """Check if a new certificate is generated, if a different Private Key is provided."""
         raw = self.certificate_crypto_lib.public_bytes(serialization.Encoding.DER)
         certificate = parse_certificate(raw)
-        self.pki_message["extraCerts"] = _prepare_extra_certs([certificate])
+        self.pki_message["extraCerts"] = prepare_extra_certs([certificate])
 
         # Generate a new key so that the public key of the
         # certificate does not match the private key.

@@ -17,7 +17,7 @@ from pyasn1_alt_modules import rfc4210, rfc5280, rfc8018, rfc9044, rfc9480, rfc9
 import certutils
 import cmputils
 import cryptoutils
-from cmputils import _prepare_extra_certs
+from cmputils import prepare_extra_certs
 from cryptoutils import (
     compute_gmac,
     compute_hash,
@@ -167,7 +167,7 @@ def _apply_cert_pkimessage_protection(  # noqa: D205
         raw = certificate.public_bytes(serialization.Encoding.DER)
         certificate = certutils.parse_certificate(raw)
         if not pki_message["extraCerts"].hasValue():
-            pki_message["extraCerts"] = _prepare_extra_certs([certificate])
+            pki_message["extraCerts"] = prepare_extra_certs([certificate])
         else:
             #  RFC 9483, Section 3.3, the first certificate must be the CMP-Protection certificate.
             if pki_message["extraCerts"][0] != certificate:
@@ -185,7 +185,7 @@ def _apply_cert_pkimessage_protection(  # noqa: D205
         certificate = cryptoutils.generate_cert_from_private_key(private_key=private_key, sign_key=sign_key)
         raw = certificate.public_bytes(serialization.Encoding.DER)
         certificate = certutils.parse_certificate(raw)
-        pki_message["extraCerts"] = _prepare_extra_certs([certificate])
+        pki_message["extraCerts"] = prepare_extra_certs([certificate])
 
     else:
         # init a byte sequence to sign and then verify.
