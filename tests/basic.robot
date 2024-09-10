@@ -6,7 +6,7 @@ Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/keyutils.py
 Library     ../resources/cmputils.py
-Library     protectionutils.py
+Library      ../resources/protectionutils.py
 Library     ../resources/httputils.py
 
 
