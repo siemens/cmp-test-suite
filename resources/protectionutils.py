@@ -347,9 +347,8 @@ def _compute_pkimessage_protection(
         protection_value = sign_data(data=encoded, key=private_key, hash_alg=hash_alg)
 
         if not exclude_cert:
-            # either generates a fresh one or adds the certificate.
             add_cert_to_pkimessage_used_by_protection(
-                pki_message=pki_message, private_key=private_key, certificate=certificate, sign_key=sign_key
+                pki_message=pki_message, private_key=private_key, certificate=certificate, sign_key=sign_key, issuer_cert=signer_cert
             )
         return protection_value
 
@@ -360,7 +359,7 @@ def _compute_pkimessage_protection(
 def _prepare_pki_message_protection_field(
     pki_message: rfc9480.PKIMessage, protection: str, private_key: Optional[PrivateKey] = None, **params
 ) -> rfc9480.PKIMessage:
-    """Preparse the pki protection for the PKIMessage algorithm
+    """Prepare the pki protection for the PKIMessage algorithm
 
     :param pki_message: `pyasn1_alt_module.rfc9480.PKIMessage`
     :param protection: A string representing the type of Protection.
@@ -443,9 +442,8 @@ def protect_pki_message(  # noqa: D417 undocumented-param
     password: Optional[str] = None,
     private_key: Optional[PrivateKey] = None,
     certificate: Optional[x509.Certificate] = None,
-    cert_num: Optional[int] = None,
     sign_key: Optional[PrivSignCertKey] = None,
-    extra_certs: Optional[str] = None,
+    exclude_cert: bool = False,
     **params,
 ) -> rfc9480.PKIMessage:
     """Prepare the PKI protection for the PKIMessage algorithm.
@@ -462,15 +460,13 @@ def protect_pki_message(  # noqa: D417 undocumented-param
     - `private_key`: `cryptography` `PrivateKey` object, used for signing or DHBasedMac (default is None).
     - `certificate`: a `pyasn1` ` rfc9480.CMPCertificate` or  `cryptography` `x509.Certificate` object.
                      The certificate used for verifying of the Signature. If provided.
-    - `cert_num`: int the number of the certificate used for signing the inside the
-                  `pyasn1_alt_module.rfc9480.PKIMessage`
+    - `exclude_cert`: bool indicates if for signing a certificate should be added.
+                      used for negative testing.
     - `**params`:
                  salt: str hex representation without 0x. used for pbmac1, pbm or aes-gmac.
                  iterations: (str, int)  Number of iterations to be used for KDF.
                  length: (str, int) Length of the output for pbmac1.
                  hash_al: str name of the owf to be used. exp. "sha256".
-
-
 
     Returns:
     - `rfc9480.PKIMessage`: The PKIMessage object with the applied protection.
@@ -502,7 +498,7 @@ def protect_pki_message(  # noqa: D417 undocumented-param
         private_key=private_key,
         certificate=certificate,
         sign_key=sign_key,
-        exclude_cert=exclude_cert,
+        exclude_cert=exclude_cert
     )
     wrapped_protection = (
         rfc9480.PKIProtection()
@@ -560,24 +556,7 @@ def verify_pki_protection(  # noqa: D417, D205
     encoded: bytes = encoder.encode(protected_part)
 
     if protection_type_oid == rfc9480.id_DHBasedMac:
-        if not pki_message["extraCerts"].hasValue():
-            # handling dh
-            password = do_dh_key_exchange_password_based(password=password, peer_key=private_key)
-
-        else:
-            # handling x448 and x25519.
-            certificate = pki_message["extraCerts"][0]
-            certificate = cmputils.encode_to_der(certificate)
-            certificate = x509.load_der_x509_certificate(certificate)
-            if private_key is not None:
-                password = private_key.exchange(certificate.public_key())
-            else:
-                raise ValueError(
-                    "Either needs a passwort and (`cryptography.hazmat.primitives.asymmetric.dh` "
-                    "private key or public key) to perform DH or needs a "
-                    "`cryptography.hazmat.primitives.asymmetric (x448.X448PrivateKey, x25519.X25519PrivateKey)-object`"
-                )
-
+        password = do_dh_key_exchange_password_based(password=password, peer_key=private_key)
         expected_protection_value = _compute_symmetric_protection(pki_message, password)
 
     elif protection_type_oid in SYMMETRIC_PROT_ALGO:
