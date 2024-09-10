@@ -1,5 +1,7 @@
 import unittest
 from cryptography.hazmat.primitives import serialization
+
+import certutils
 from resources.certutils import parse_certificate
 from resources.cmputils import _prepare_extra_certs, build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_cert_from_private_key
@@ -17,7 +19,8 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         csr = parse_csr(csr)
         pki_message = build_p10cr_from_csr(csr)
 
-        cls.certificate_crypto = generate_cert_from_private_key(private_key=private_key, common_name="CN=Hans")
+        # a `cryptography.x509.Certificate` object
+        cls.certificate_crypto_lib = generate_cert_from_private_key(private_key=private_key, common_name="CN=Hans")
         cls.pki_message = pki_message
         cls.private_key = private_key
 
@@ -30,22 +33,27 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         self.assertTrue(self.pki_message["extraCerts"].hasValue())
         self.assertTrue(len(self.pki_message["extraCerts"]) == 1)
 
+
     def test_with_certificate_and_empty_extraCerts(self):
         """Test if a provided Certificate can be added to a `pyasn1 rfc9480.PKIMessage`,which is used for the Protection."""
-        _apply_cert_pkimessage_protection(self.pki_message, self.private_key, self.certificate_crypto)
+        _apply_cert_pkimessage_protection(self.pki_message, self.private_key, self.certificate_crypto_lib)
         self.assertTrue(self.pki_message["extraCerts"].hasValue())
         self.assertTrue(len(self.pki_message["extraCerts"]) == 1)
 
+        raw = self.certificate_crypto_lib.public_bytes(serialization.Encoding.DER)
+        certificate = certutils.parse_certificate(raw)
+
+        self.assertEqual(self.pki_message["extraCerts"][0], certificate)
+
+
     def test_with_certificate_and_same_extraCerts(self):
-        """Checks if a certificate is already present in the "extraCerts" field.
-        Ensures that if the certificate is already included, it is not added again.
-        """
+        """check if the same certificate is present in the structure more than once."""
         self.assertTrue(len(self.pki_message["extraCerts"]) == 0)
-        raw = self.certificate_crypto.public_bytes(serialization.Encoding.DER)
+        raw = self.certificate_crypto_lib.public_bytes(serialization.Encoding.DER)
         certificate = parse_certificate(raw)
         self.pki_message["extraCerts"] = _prepare_extra_certs([certificate])
 
-        _apply_cert_pkimessage_protection(self.pki_message, self.private_key, certificate=self.certificate_crypto)
+        _apply_cert_pkimessage_protection(self.pki_message, self.private_key, certificate=self.certificate_crypto_lib)
 
         self.assertTrue(self.pki_message["extraCerts"].hasValue())
         self.assertTrue(
@@ -53,9 +61,15 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
             f"Length of PKIMessage ExtraCerts is : {len(self.pki_message['extraCerts'])}",
         )
 
+        raw = self.certificate_crypto_lib.public_bytes(serialization.Encoding.DER)
+        certificate = certutils.parse_certificate(raw)
+
+        self.assertEqual(self.pki_message["extraCerts"][0], certificate)
+
+
     def test_extraCerts_and_wrong_private_key(self):
         """Check if a new certificate is generated, if a different Private Key is provided."""
-        raw = self.certificate_crypto.public_bytes(serialization.Encoding.DER)
+        raw = self.certificate_crypto_lib.public_bytes(serialization.Encoding.DER)
         certificate = parse_certificate(raw)
         self.pki_message["extraCerts"] = _prepare_extra_certs([certificate])
 
