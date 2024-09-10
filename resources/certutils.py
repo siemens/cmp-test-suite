@@ -169,7 +169,7 @@ def verify_cert_signature(certificate: x509.Certificate, issuer_cert: Optional[x
 
 @not_keyword
 def verify_csr_signature(csr: x509.CertificateSigningRequest):
-    """Verify the digital signature of an X509 CSR using the public key extracted from the CSR.
+    """Verify the digital signature of an self-signed X509 CSR object using the public key extracted from the CSR.
 
     :param csr: `cryptography.x509.CertificateSigningRequest` representing the CSR to verify.
 
