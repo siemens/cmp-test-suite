@@ -193,7 +193,9 @@ def add_cert_to_pkimessage_used_by_protection(
         pki_message["extraCerts"] = prepare_extra_certs([certificate])
 
     else:
-        # init a byte sequence to sign and then verify.
+        # The first certificate must be a CMP-Protection Certificate.
+        # To ensure the sign key for the PKIMessage structure and
+        # public key in the certificate matches. the following `data` is signed.
         data = b"test_if_keypair_matches"
 
         certificate = pki_message["extraCerts"][0]
