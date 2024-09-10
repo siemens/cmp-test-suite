@@ -433,20 +433,52 @@ def generate_cert_from_private_key(  # noqa: D417
 
     serial_number = int(params.get("serial_number", x509.random_serial_number()))
     days = int(params.get("days", 365))
+def _build_cert(public_key, issuer: x509.Name,subject: x509.Name = None,
+                serial_number: Optional[int] = None, days: int = 365,
+                not_valid_before: Optional[datetime.datetime] = None) -> cryptography.x509.CertificateBuilder:
+    """Create a certificate builder for X.509 certificate using a public key, issuer, subject, and a validity period.
 
-    # TODO change in the future.
-    not_valid_before = params.get("not_valid_before", datetime.datetime.now())
+    :param public_key: `cryptography.hazmat.primitives.asymmetric` public key object
+        The public key to associate with the certificate.
+    :param issuer: `cryptography.x509.Name` object the issuer's distinguished name.
+    :param subject:  optional `cryptography.x509.Name` object the subject's distinguished name.
+    :param serial_number:
+        An optional integer representing the serial number of the certificate. If not provided, a random serial number 
+        is generated using `x509.random_serial_number()`.
+    :param days: int representing the number of days for which the certificate is valid.
+        Defaults to 365 days.
+    :param not_valid_before:
+        An optional `datetime` object representing the start date and time when the certificate becomes valid. 
+        If not provided, the current date and time is used.
+
+    :return: `cryptography.x509.CertificateBuilder`
+    """
+
+    if subject is None:
+        subject = issuer
+
+    if serial_number is None:
+        serial_number = x509.random_serial_number()
+
+    days = int(days)
+
+    # TODO change in the future. may allow str
+    if not not_valid_before:
+        not_valid_before = datetime.datetime.now()
 
     # Create the certificate builder
     cert_builder = (
         x509.CertificateBuilder()
         .subject_name(subject)
         .issuer_name(issuer)
-        .public_key(private_key.public_key())
+        .public_key(public_key)
         .serial_number(serial_number)
         .not_valid_before(not_valid_before)
-        .not_valid_after(datetime.datetime.now() + datetime.timedelta(days=days))
+        .not_valid_after(not_valid_before + datetime.timedelta(days=days))
     )
+    return cert_builder
+
+
 
     if isinstance(sign_key, ec.EllipticCurvePrivateKey):
         hash_alg = hash_name_to_instance(hash_alg)
