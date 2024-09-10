@@ -477,16 +477,13 @@ def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
     """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
 
     Arguments:
-    ---------
-        data (bytes): The raw input data to be parsed.
+        - data (bytes): The raw input data to be parsed.
 
     Returns:
-    -------
-        pyasn1 parsed object: Represents the PKIMessage structure.
+        - pyasn1 parsed object: Represents the PKIMessage structure.
 
     Raises:
-    ------
-        ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
+        - ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
 
     """
     try:
@@ -630,7 +627,8 @@ def try_to_log_pkimessage(data):
     in a human-readable way. Will also accept inputs that are pyasn1 objects or strings, for the convenience
     of invocation from RF tests.
 
-    :param data: bytes, str or pyasn1 - something that is assumed to be a PKIMessage structure, either DER-encoded or
+    Arguments:
+      - `data`: bytes, str or pyasn1 - something that is assumed to be a PKIMessage structure, either DER-encoded or
                  a pyasn1 object.
     """
     if isinstance(data, base.Asn1Item):
@@ -655,17 +653,14 @@ def modify_csr_cn(
     Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
     Arguments:
-    ---------
-        csr: pyasn1 `rfc9480.CertificationRequest` object.
-        new_cn: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
+        - `csr` pyasn1 `rfc9480.CertificationRequest` object.
+        - `new_cn` The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
 
     Returns:
-    -------
-         returns the modified `rfc9480.CertificationRequest` object.
+         - returns the modified `rfc9480.CertificationRequest` object.
 
     Raises:
-    ------
-        ValueError: If no Common Name (CN) is found in the CSR.
+        - ValueError: If no Common Name (CN) is found in the CSR.
 
     """
     # Access the subject field from the CSR, which contains the RDNSequence.
@@ -748,7 +743,7 @@ def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
 
     return extra_certs_wrapper
 
-
+@not_keyword
 def prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.SequenceOf:
     """Load certificates from a file or directory and returns a `univ.SequenceOf` structure.
 
