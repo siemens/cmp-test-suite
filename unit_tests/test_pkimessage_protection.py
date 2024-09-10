@@ -3,7 +3,7 @@ import unittest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import x448
 
-from mac_protection import apply_pki_message_protection, verify_pki_protection
+from protectionutils import apply_pki_message_protection, verify_pki_protection
 from resources.certutils import parse_certificate
 from resources.cmputils import _prepare_extra_certs, build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_cert_from_private_key

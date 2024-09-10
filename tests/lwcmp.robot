@@ -6,7 +6,7 @@ Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/cmputils.py
 Library     ../resources/keyutils.py
-Library     ../resources/mac_protection.py
+Library     protectionutils.py
 Library     OperatingSystem
 Library     Collections
 

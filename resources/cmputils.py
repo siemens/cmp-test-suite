@@ -19,7 +19,7 @@ import certutils
 import cryptoutils
 import utils
 from oid_mapping import get_hash_from_signature_oid, get_sig_oid_from_key_hash
-from test_suite_enums import PKIStatus
+from suiteenums import PKIStatus
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.

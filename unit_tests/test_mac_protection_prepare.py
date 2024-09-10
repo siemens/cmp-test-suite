@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import serialization
 from resources.certutils import parse_certificate
 from resources.cmputils import _prepare_extra_certs, build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_cert_from_private_key
-from resources.mac_protection import _apply_cert_pkimessage_protection
+from resources.protectionutils import _apply_cert_pkimessage_protection
 from resources.utils import decode_pem_string
 
 from keyutils import generate_key
