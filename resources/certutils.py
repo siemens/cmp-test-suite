@@ -88,9 +88,9 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
     Args:
         `public_key` (cryptography.hazmat.primitives.asymmetric): The public key object used to
                       verify the signature.
-        `signature` (bytes): The digital signature to be verified, provided as a byte sequence.
+        `signature` (bytes): signature data.
         `data` (bytes): The original data that was signed, provided as a byte sequence.
-        `hash_alg` (Optional str ): An optional string representing the name of the hash algorithm
+        `hash_alg` (Optional str ): An string representing the name of the hash algorithm
                                    to be used for verification
                                   (e.g., "sha256"). If not specified, the default algorithm for the
                                    given key type is used.
