@@ -388,14 +388,12 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     aes_gcm.finalize()  # Finalize to get the authentication tag
     return aes_gcm.tag
 
-
-
-
-def generate_cert_from_private_key(  # noqa: D417
+def generate_certificate(  # noqa: D417
     private_key: PrivateKey,
     common_name: Optional[str] = "CN=Hans",
     hash_alg: Optional[str] = "sha256",
     sign_key: Optional[PrivSignCertKey] = None,
+    issuer_cert: Optional[x509.Certificate] = None,
     **params
 ) -> x509.Certificate:
     """Generate a self-signed x509 certificate from a provided private key.
@@ -416,12 +414,10 @@ def generate_cert_from_private_key(  # noqa: D417
 
     Examples:
     | ${private_key} | Generate Key | algorithm=rsa | length=2048 |
-    | ${certificate} | Generate Cert From Private Key | ${private_key} | CN=Hans |
-    | ${certificate} | Generate Cert From Private Key | ${private_key} | CN=Hans | ${sign_key} |
+    | ${certificate} | Generate Certificate | ${private_key} | CN=Hans |
+    | ${certificate} | Generate Certificate | ${private_key} | CN=Hans | ${sign_key} |
 
     """
-    # Define the certificate subject and issuer
-    subject = issuer = parse_common_name_from_str(common_name)
 
     if not isinstance(private_key, PrivateKey):
         raise ValueError(
@@ -431,8 +427,61 @@ def generate_cert_from_private_key(  # noqa: D417
 
     sign_key = sign_key or private_key
 
-    serial_number = int(params.get("serial_number", x509.random_serial_number()))
-    days = int(params.get("days", 365))
+    options = {}
+
+    for x in ["serial_number", "days", "not_valid_before", "days"]:
+        if x in params:
+            options[x] = params[x]
+
+    issuer = parse_common_name_from_str(common_name)
+    if options:
+        cert_builder = _build_cert(public_key=private_key.public_key(),issuer=issuer, **options)
+    else:
+        cert_builder = _build_cert(public_key=private_key.public_key(),issuer=issuer)
+
+    return _sign_cert_builder(cert_builder=cert_builder, sign_key=sign_key, hash_alg=hash_alg)
+
+
+def generate_signed_cert(issuer_cert: x509.Certificate, issuer_private_key: PrivSignCertKey,
+                         private_key: PrivateKey,
+                         common_name: Optional[str] = "CN=Hans",
+                         hash_alg: Optional[str] = "sha256", **params) -> x509.Certificate:
+
+    """Create a signed X.509 certificate using an issuer certificate and its corresponding private key.
+
+    :param issuer_cert: `cryptography.x509.Certificate` object
+        The certificate of the issuer, used to set the issuer fields of the generated certificate.
+    :param issuer_private_key: Private key object (`PrivSignCertKey`) used to sign the new certificate.
+    :param private_key: `cryptography.hazmat.primitives.asymmetric` private key object
+        The private key for the new certificate being generated.
+    :param common_name: optional str the common name in OpenSSL notation.
+        Defaults to "CN=Hans".
+    :param hash_alg: optional str the name of the hash function to use for signing the certificate.
+        Defaults to "sha256".
+    :param params: additional parameters for customizing the certificate.
+        Possible options include:
+        - `serial_number` (int): A custom serial number for the certificate.
+        - `days` (int): Number of days the certificate is valid from the `not_valid_before` date.
+        - `not_valid_before` (`datetime`): The starting date and time when the certificate becomes valid.
+
+    :return: `cryptography.x509.Certificate`
+    """
+    subject = parse_common_name_from_str(common_name)
+
+    options = {}
+
+    for x in ["serial_number", "days", "not_valid_before", "days"]:
+        if x in params:
+            options[x] = params[x]
+
+    if options:
+        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer_cert.issuer, subject=subject, **options)
+    else:
+        cert_builder = _build_cert(public_key=private_key.public_key(), issuer=issuer_cert.issuer, subject=subject)
+
+    return _sign_cert_builder(cert_builder=cert_builder, sign_key=issuer_private_key, hash_alg=hash_alg)
+
+
 def _build_cert(public_key, issuer: x509.Name,subject: x509.Name = None,
                 serial_number: Optional[int] = None, days: int = 365,
                 not_valid_before: Optional[datetime.datetime] = None) -> cryptography.x509.CertificateBuilder:
