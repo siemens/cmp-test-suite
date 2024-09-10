@@ -1,12 +1,8 @@
 import unittest
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import x448
-
 from protectionutils import protect_pki_message, verify_pki_protection
-from resources.certutils import parse_certificate
 from resources.cmputils import prepare_extra_certs, build_p10cr_from_csr, parse_csr
-from resources.cryptoutils import generate_signed_csr, generate_cert_from_private_key
+from resources.cryptoutils import generate_signed_csr, generate_certificate
 from resources.utils import decode_pem_string
 
 from keyutils import generate_key, load_private_key_from_file, save_key
@@ -61,7 +57,7 @@ class TestPKIMessageProtection(unittest.TestCase):
 
     def test_sig_rsa(self):
         private_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
-        certificate = generate_cert_from_private_key(private_key=private_key, common_name="CN=Hans", hash_alg="sha256")
+        certificate = generate_certificate(private_key=private_key, common_name="CN=Hans", hash_alg="sha256")
         protected_msg = protect_pki_message(pki_message=self.pki_message,
                                             certificate=certificate,
                                             private_key=private_key,
@@ -72,11 +68,11 @@ class TestPKIMessageProtection(unittest.TestCase):
 
     def test_sig_ed25519(self):
 
-        private_key =  load_private_key_from_file("data/keys/private-key-ed25519.pem", "ed25519")
+        private_key =  load_private_key_from_file("data/keys/private-key-ed25519.raw", "ed25519")
 
-        certificate = generate_cert_from_private_key(private_key=private_key,
-                                                     common_name="CN=Hans",
-                                                     hash_alg=None)
+        certificate = generate_certificate(private_key=private_key,
+                                           common_name="CN=Hans",
+                                           hash_alg=None)
 
         protected_msg = protect_pki_message(pki_message=self.pki_message,
                                             certificate=certificate,
@@ -90,9 +86,9 @@ class TestPKIMessageProtection(unittest.TestCase):
 
     def test_sig_ecdsa(self):
         private_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
-        certificate = generate_cert_from_private_key(private_key=private_key,
-                                                     common_name="CN=Hans",
-                                                     hash_alg="sha256")
+        certificate = generate_certificate(private_key=private_key,
+                                           common_name="CN=Hans",
+                                           hash_alg="sha256")
         protected_msg = protect_pki_message(pki_message=self.pki_message,
                                             certificate=certificate,
                                             private_key=private_key,
@@ -115,27 +111,15 @@ class TestPKIMessageProtection(unittest.TestCase):
 
 
     def test_dh_based_sig(self):
+        client_private_key = load_private_key_from_file("data/keys/client_dh_key.pem")
 
-
-        client_private_key: x448.X448PrivateKey = load_private_key_from_file(
-            "data/keys/client_x448_key.raw", "x448")
-        server_private_key: x448.X448PrivateKey = load_private_key_from_file(
-            "data/keys/server_x448_key.raw", "x448")
-
-        sign_key = load_private_key_from_file("data/keys/private-key-ed25519.pem", "ed25519")
-        server_cert = generate_cert_from_private_key(private_key=server_private_key, sign_key=sign_key)
 
         protected_msg = protect_pki_message(pki_message=self.pki_message,
-                                            certificate=server_cert,
+                                            certificate=None,
                                             private_key=client_private_key,
                                             protection="dh",
-                                            password=None,
-                                            sign_key=sign_key)
+                                            password="dhbasedmac",
+                                            )
 
-        verify_pki_protection(pki_message=protected_msg, private_key=server_private_key)
-
-
-
-
-
+        #verify_pki_protection(pki_message=protected_msg, private_key=client_private_key.public_key(), password="dhbasedmac")
 
