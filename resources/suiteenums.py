@@ -1,6 +1,6 @@
-"""Defines Enums for use with the Certificate Management Protocol.
+"""Enums for use with the Certificate Management Protocol.
 These Enums make the test cases more readable for users of the test suite and facilitate comparisons and switches in the CMP protocol handling code.
-"""  # noqa: D205
+"""
 
 from enum import Enum, auto
 
@@ -18,7 +18,7 @@ class PKIStatus(Enum):
 
 # used for the switch-cases on the PKIMessage ProtectionAlgorithm
 class ProtectionAlgorithm(Enum):
-    HMAC = auto()
+    HMAC = auto() # default 256
     HMAC_sha256 = auto()
     PBMAC1 = auto()
     PASSWORD_BASED_MAC = auto()
@@ -33,9 +33,9 @@ class ProtectionAlgorithm(Enum):
         return [member.name.lower() for member in cls]
 
     @staticmethod
-    def get(value: str) -> "ProtectionAlgorithm":  # noqa: D205
+    def get(value: str) -> "ProtectionAlgorithm":
         """Return the ProtectionAlgorithm enum member that matches the provided value.
-        The matching is case-insensitive. # noqa: D205
+        The matching is case-insensitive.
 
         Args:
             value (str): The name of the enum member to get.
