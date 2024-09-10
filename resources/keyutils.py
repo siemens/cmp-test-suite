@@ -22,7 +22,7 @@ from typingutils import PrivateKey, PublicKey
 
 
 def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
-    """Save a `cryptographic` `PrivateKey` object to a file.
+    """Save a `cryptography` `PrivateKey` object to a file.
 
     Saves a private key to a specified file path. The key can be encrypted with a passphrase
     or saved without encryption.
