@@ -1,5 +1,5 @@
-"""Provides functionality to prepare the `pyasn1` `rfc9480.PKIMessage` protection: AlgorithmIdentifier
-field and computes the PKIProtection.
+"""Functionality to prepare the `pyasn1` `rfc9480.PKIMessage` protectionAlg: AlgorithmIdentifier field
+and computes the PKIProtection.
 """
 
 import logging
@@ -19,12 +19,7 @@ import certutils
 import cmputils
 import cryptoutils
 from cmputils import prepare_extra_certs
-from cryptoutils import (
-    compute_gmac,
-    compute_hash,
-    compute_password_based_mac,
-    compute_pbmac1
-)
+from cryptoutils import compute_gmac, compute_hash, compute_password_based_mac, compute_pbmac1
 from oid_mapping import (
     AES_GMAC_NAME_2_OID,
     AES_GMAC_OID_2_NAME,
@@ -49,7 +44,7 @@ def _prepare_password_based_mac_parameters(
                  if not given, will generate 16 random bytes
     :param iterations: optional int, number of iterations of the OWF (hashing) to perform
     :param hash_alg: optional str, name of hashing algorithm to use, "sha256" by default.
-    :return: pyasn1 rfc9480.PBMParameter structure.
+    :return: `pyasn1 rfc9480.PBMParameter` structure.
     """
     salt = salt or os.urandom(16)
 
@@ -77,11 +72,11 @@ def _prepare_pbmac1_parameters(
     """Prepare the PBMAC1 pyasn1 `rfc8018.PBMAC1_params`. Used for the `rfc9480.PKIMessage` structure Protection.
        PBKDF2 with HMAC as message authentication scheme is used.
 
-    :param salt: Optional bytes for uniqueness.
+    :param salt: optional bytes for uniqueness.
     :param iterations: The number of iterations to be used in the PBKDF2 key derivation function.
                        Default is 100.
     :param length: int The desired length of the derived key in bytes. Default is 32 bytes.
-    :param hash_alg: str the name of the to use with HMAC.
+    :param hash_alg: str the name of the to use with HMAC. Default is "sha256".
     :return:  A `pyasn1_alt_module. rfc8018.PBMAC1_params` object populated
     """
     salt = salt or os.urandom(16)
@@ -115,7 +110,7 @@ def _prepare_dh_based_mac(hash_alg: str = "sha1") -> rfc4210.DHBMParameter:
     which is then used to compute the Message Authentication Code (MAC) with the specified MAC algorithm.
 
     :param hash_alg: A string representation the hash algorithm to be used for the
-                     one-way-function (OWF). Defaults to "sha1"
+                     one-way-function (OWF). Default is "sha1"
     :return: A `pyasn1_alt_module.rfc4210.DHBMParameter` object populated with the algorithm identifiers for the
              specified hash and MAC algorithm.
     """
@@ -143,8 +138,8 @@ def add_cert_to_pkimessage_used_by_protection(
     sign_key: Optional[PrivSignCertKey] = None,
     issuer_cert: Optional[x509.Certificate] = None,
 ):
-    """Ensure that a `pyasn1 rfc9480.PKIMessage` protected by a signature has
-    the CMP-Protection certificate as the first entry in the `extraCerts`
+    """Ensure that a `pyasn1 rfc9480.PKIMessage` protected by a signature has a
+    CMP-Protection certificate as the first entry in the `extraCerts`.
 
 
     If a certificate is provided, it checks that the first certificate matches the provided CMP-Protection certificate.
@@ -308,20 +303,19 @@ def _compute_pkimessage_protection(
     signer_cert: Optional[x509.Certificate] = None,
     exclude_cert: bool = False,
 ) -> bytes:
-    """Compute the protection value for a given `pyasn1` `rfc9480.PKIMessage` based on the specified
-        protection algorithm.
-
+    """Compute the protection for a given `pyasn1 rfc9480.PKIMessage` based on the specified protection algorithm.
 
     :param pki_message: `rfc9480.PKIMessage` object to compute the signature about.
-    :param password: A string representing a shared secret or a Server Private Key for DHBasedMac.
+    :param password: A string representing a shared secret or a server private key for DHBasedMac.
     :param private_key: optional PrivateKey The private key used for signature-based protection
                                               or DH-based MAC computation.
     :param certificate:  A certificate used as the CMP-Protection certificate for signature-based protection.
                          if signature is the protection type includes a self-signed certificate.
     :param sign_key:  optional PrivSignCertKey: A signing key used for generating a new certificate if needed.
-    :param exclude_cert:  bool exclude generating a certificate from the private key provided.
+    :param exclude_cert:  bool exclude generating a certificate for signature protection.
     :raises:
-        ValueError: If the protection algorithm OID is not supported or required parameters are not provided.
+        ValueError: If the protection algorithm OID is not supported or required parameters are not provided
+                   or is the first certificate in the `PKIMessage extraCerts` is not the signature certificate.
     :returns:
         bytes: The computed protection value for the `PKIMessage`.
     """
@@ -365,7 +359,7 @@ def _compute_pkimessage_protection(
 def _prepare_pki_message_protection_field(
     pki_message: rfc9480.PKIMessage, protection: str, private_key: Optional[PrivateKey] = None, **params
 ) -> rfc9480.PKIMessage:
-    """Prepare the pki protection for the PKIMessage algorithm
+    """Prepare the pki protection for the PKIMessage algorithm.
 
     :param pki_message: `pyasn1_alt_module.rfc9480.PKIMessage`
     :param protection: A string representing the type of Protection.
@@ -455,9 +449,11 @@ def protect_pki_message(  # noqa: D417 undocumented-param
 ) -> rfc9480.PKIMessage:
     """Prepare the PKI protection for the PKIMessage algorithm.
 
-    Includes: Checks if the certificate is the first in the `PKIMessage` `extraCerts` field!
-              If Provided, otherwise adds a Certificate!
-    Excludes:  Certificate checks!
+    Includes:
+         - Checks if the certificate is the first in the `PKIMessage` `extraCerts` field!
+              If Provided, otherwise adds a Certificate! Unless `exclude_cert` is set to `True`
+    Excludes:
+         - Certificate checks!
 
     Arguments:
     - `pki_message`: `pyasn1_alt_module.rfc9480.PKIMessage` object. which has a set
@@ -545,10 +541,10 @@ def verify_pki_protection(  # noqa: D417, D205
     | Verify PKI Message Protection | ${PKI_MESSAGE} | password=${SECRET}    |
 
     Note:
-        - If the `PKIMessage` uses a Diffie-Hellman-based MAC (`DHBasedMac`) for protection, either the `private_key`
-          or both a password and another key must be provided.
+        - If the `PKIMessage` uses a Diffie-Hellman-based MAC (`DHBasedMac`) for protection, both the `private_key`
+          and a password must be provided.
         - If the protection algorithm is signature-based, the certificate used for signing must be the first certificate
-          in the `extraCerts` field of the `PKIMessage`, as per RFC 9483, Section 3.3.
+          in the `extraCerts` field of the `PKIMessage`, as per RFC 9483, Section 3.3. (is tested)
 
     """
     protection_value: bytes = pki_message["protection"].asOctets()

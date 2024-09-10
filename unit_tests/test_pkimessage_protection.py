@@ -1,11 +1,11 @@
 import unittest
 
 from protectionutils import protect_pki_message, verify_pki_protection
-from resources.cmputils import prepare_extra_certs, build_p10cr_from_csr, parse_csr
+from resources.cmputils import build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_certificate
 from resources.utils import decode_pem_string
 
-from keyutils import generate_key, load_private_key_from_file, save_key
+from keyutils import load_private_key_from_file
 
 PASSWORD = bytes.fromhex("AA" * 32)
 

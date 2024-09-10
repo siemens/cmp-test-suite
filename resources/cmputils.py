@@ -743,6 +743,7 @@ def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
 
     return extra_certs_wrapper
 
+
 @not_keyword
 def prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.SequenceOf:
     """Load certificates from a file or directory and returns a `univ.SequenceOf` structure.

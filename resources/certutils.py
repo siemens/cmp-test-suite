@@ -46,7 +46,6 @@ def validate_certificate_openssl(data):
         raise ValueError(message)
 
 
-
 def validate_certificate_pkilint(data):
     """Validate a certificate using the pkilint tool.
 

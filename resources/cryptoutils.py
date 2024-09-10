@@ -343,6 +343,7 @@ def do_dh_key_exchange_password_based(  # noqa: D417
     logging.info(f"DH shared secret: {shared_key.hex()}")
     return shared_key
 
+
 @not_keyword
 def compute_dh_based_mac(
     data: bytes, password: Union[str, dh.DHPublicKey], key: dh.DHPrivateKey, hash_alg: str = "sha1"
@@ -464,7 +465,7 @@ def _build_cert(
     :param days: int representing the number of days for which the certificate is valid.
         Defaults to 365 days.
     :param not_valid_before:
-        An optional `datetime` object representing the start date and time when the certificate becomes valid.
+        An optional `datetime.datetime` object representing the start date and time when the certificate becomes valid.
         If not provided, the current date and time is used.
 
     :return: `cryptography.x509.CertificateBuilder`
