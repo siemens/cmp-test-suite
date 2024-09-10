@@ -139,6 +139,7 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
 def verify_cert_signature(certificate: x509.Certificate):
     """Verify the digital signature of an X.509 certificate using the provided or extracted public key.
 
+    :param certificate: `cryptography.x509.Certificate`
     :param certificate:
         The certificate to verify, represented in a type that can be cast to an X.509 certificate object.
         It should be in a DER-encoded form compatible with the `x509.Certificate` type.
