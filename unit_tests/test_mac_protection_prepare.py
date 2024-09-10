@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives import serialization
 import certutils
 from resources.certutils import parse_certificate
 from resources.cmputils import prepare_extra_certs, build_p10cr_from_csr, parse_csr
-from resources.cryptoutils import generate_signed_csr, generate_cert_from_private_key
+from resources.cryptoutils import generate_signed_csr, generate_certificate
 from resources.protectionutils import add_cert_to_pkimessage_used_by_protection
 from resources.utils import decode_pem_string
 
@@ -20,7 +20,7 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         pki_message = build_p10cr_from_csr(csr)
 
         # a `cryptography.x509.Certificate` object
-        cls.certificate_crypto_lib = generate_cert_from_private_key(private_key=private_key, common_name="CN=Hans")
+        cls.certificate_crypto_lib = generate_certificate(private_key=private_key, common_name="CN=Hans")
         cls.pki_message = pki_message
         cls.private_key = private_key
 
