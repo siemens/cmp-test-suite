@@ -35,7 +35,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
 
     Key Types and Formats:
         - `DHPrivateKey`: Serialized in PKCS8 format.
-        - `X448PrivateKey` and `X25519PrivateKey`: Serialized in Raw format (cannot be encrypted).
+        - `X448PrivateKey` and `X25519PrivateKey`: Serialized as Hex String (cannot be encrypted).
         - Other key types: Serialized in Traditional OpenSSL format (PEM encoding).
 
     Raises:
@@ -167,6 +167,7 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
                 x=secret_scalar,
                 public_numbers=dh.DHPublicNumbers(pow(g, secret_scalar, p), parameters.parameter_numbers()),
             )
+            private_key = private_key.private_key()
         else:
             private_key = parameters.generate_private_key()
 
@@ -185,7 +186,7 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     - `filepath` (str): The path to the file containing the PEM-encoded key.
     - `password` (str, optional): The password to decrypt the key file, if it is encrypted. Defaults to "11111".
       For raw key formats such as `x448` and `x25519`, set the password to `"x448"` or `"x25519"` to indicate
-      that these raw keys should be loaded. (also for ed-versions).
+      that these hex string keys should be loaded. (also for ed-versions).
 
     Returns:
     - `PrivateKey`: An instance of the loaded key, such as `RSAPrivateKey`, `X448PrivateKey`, or `X25519PrivateKey`.
