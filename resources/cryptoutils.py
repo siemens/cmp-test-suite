@@ -479,10 +479,17 @@ def _build_cert(public_key, issuer: x509.Name,subject: x509.Name = None,
     return cert_builder
 
 
+def _sign_cert_builder(cert_builder: x509.CertificateBuilder, sign_key: Optional[PrivSignCertKey], hash_alg: Optional[str] = None) -> cryptography.x509.Certificate:
+    """Sign a `cryptography.x509.CertificateBuilder` object with a provided key to sign and a hash algorithm.
+
+    :param cert_builder: `cryptography.x509.CertificateBuilder`
+    :param sign_key: `cryptography.hazmat.primitives.asymmetric PrivSignCertKey` object.
+    :param hash_alg: optional str the name of the hash function to use for signing the certificate.
+    :return: a `cryptography.x509.Certificate` object
+    """
 
     if isinstance(sign_key, ec.EllipticCurvePrivateKey):
         hash_alg = hash_name_to_instance(hash_alg)
-
         # Sign the certificate with the private key
         certificate = cert_builder.sign(private_key=sign_key, algorithm=hash_alg)
     elif isinstance(sign_key, rsa.RSAPrivateKey):
