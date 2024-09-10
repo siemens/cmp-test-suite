@@ -1,6 +1,6 @@
 """Provides utility functions for generating, saving, and loading cryptographic keys.
 It is designed to facilitate key management by offering simple methods to create new keys,
-store them and retrieve them when needed."""  # noqa: D205
+store them and retrieve them when needed."""
 
 from typing import Optional
 
