@@ -112,7 +112,7 @@ class TestCmpUtils(unittest.TestCase):
 
     def test_build_cr(self):
         csr = self.csr_object
-        raw_key = open('data/private-key-rsa.pem', 'rb').read()
+        raw_key = open('data/keys/private-key-rsa.pem', 'rb').read()
         private_key = load_pem_private_key(raw_key, password=None)
         pki_message = cmputils.build_cr_from_csr(csr, private_key, hash_alg="sha256", cert_req_id=1945)
         # print(pki_message.prettyPrint())
