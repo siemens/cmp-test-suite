@@ -37,7 +37,7 @@ from oid_mapping import (
     SYMMETRIC_PROT_ALGO,
     get_alg_oid_from_key_hash,
     get_hash_from_signature_oid,
-    get_hash_name_to_oid,
+    sha_or_sha_name_to_oid,
 )
 from suiteenums import ProtectionAlgorithm
 from typingutils import PrivateKey, PrivSignCertKey
@@ -56,8 +56,8 @@ def _prepare_password_based_mac_parameters(
     """
     salt = salt or os.urandom(16)
 
-    hmac_alg_oid = get_hash_name_to_oid(f"hmac-{hash_alg}")
-    hash_alg_oid = get_hash_name_to_oid(hash_alg)
+    hmac_alg_oid = sha_or_sha_name_to_oid(f"hmac-{hash_alg}")
+    hash_alg_oid = sha_or_sha_name_to_oid(hash_alg)
 
     pbm_parameter = rfc9480.PBMParameter()
     pbm_parameter["salt"] = univ.OctetString(salt).subtype(subtypeSpec=constraint.ValueSizeConstraint(0, 128))
@@ -89,7 +89,7 @@ def _prepare_pbmac1_parameters(
     """
     salt = salt or os.urandom(16)
 
-    hmac_alg = get_hash_name_to_oid(f"hmac-{hash_alg}")
+    hmac_alg = sha_or_sha_name_to_oid(f"hmac-{hash_alg}")
 
     outer_params = rfc8018.PBMAC1_params()
     outer_params["keyDerivationFunc"] = rfc8018.AlgorithmIdentifier()
@@ -127,10 +127,10 @@ def _prepare_dh_based_mac(hash_alg: str = "sha1") -> rfc4210.DHBMParameter:
     alg_id_owf = rfc5280.AlgorithmIdentifier()
     alg_id_mac = rfc5280.AlgorithmIdentifier()
 
-    alg_id_owf["algorithm"] = get_hash_name_to_oid(hash_alg)
+    alg_id_owf["algorithm"] = sha_or_sha_name_to_oid(hash_alg)
     alg_id_owf["parameters"] = univ.Null()
 
-    alg_id_mac["algorithm"] = get_hash_name_to_oid(f"hmac-{hash_alg}")
+    alg_id_mac["algorithm"] = sha_or_sha_name_to_oid(f"hmac-{hash_alg}")
     alg_id_mac["parameters"] = univ.Null()
 
     param["owf"] = alg_id_owf

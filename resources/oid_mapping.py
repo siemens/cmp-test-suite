@@ -167,7 +167,7 @@ CURVE_NAMES_TO_INSTANCES = {
 
 
 @not_keyword
-def get_hash_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
+def sha_or_sha_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
     """Perform a lookup for the provided hash name.
 
     :param hash_name: A string representing the hash name to look up. Example hash names could be "sha256"
@@ -258,8 +258,7 @@ def get_hash_from_signature_oid(oid: univ.ObjectIdentifier) -> str:
     :return: str, name of hashing algorithm, e.g., 'sha256'
     """
     try:
-        tmp = OID_HASH_MAP[oid]
-        return tmp
+        return OID_HASH_MAP[oid]
     except KeyError:
         raise ValueError(f"Unknown signature algorithm OID {oid}, " f"check OID_HASH_MAP in cryptoutils.py")
 
