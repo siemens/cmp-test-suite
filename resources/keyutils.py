@@ -62,10 +62,11 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
         key, (x448.X448PrivateKey, x25519.X25519PrivateKey, ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)
     ):
 
+
         data = key.private_bytes(
-            encoding=encoding_,
-            format=format_,
-            encryption_algorithm=encrypt_algo,
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption(),
         ).hex()
 
         with open(path, "w") as f:
