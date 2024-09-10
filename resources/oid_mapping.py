@@ -167,7 +167,7 @@ CURVE_NAMES_TO_INSTANCES = {
 
 
 @not_keyword
-def sha_or_sha_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
+def sha_alg_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
     """Perform a lookup for the provided hash name.
 
     :param hash_name: A string representing the hash name to look up. Example hash names could be "sha256"
