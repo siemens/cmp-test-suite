@@ -398,7 +398,7 @@ def generate_certificate(  # noqa: D417 # undocumented-param
 
     Arguments:
         - private_key (PrivateKey): The private key to use for certificate public Key generation.
-        common_name (str, optional): The common name in OpenSSL notation. Defaults to "CN=Hans".
+        - common_name (str, optional): The common name in OpenSSL notation. Defaults to "CN=Hans".
         - hash_alg (str, optional): The name of the hash function to use for signing the certificate.
                  Defaults to "sha256".
         - sign_key (`cryptography.hazmat.primitives.asymmetric Private Key` object):
