@@ -20,9 +20,8 @@ stages:
 # Check code style, formatting, import sort order, etc.
 basics:
   stage: Code style
-  allow_failure: true  # for now, but we will gradually raise the bar
   script:
-    - ruff check --fix
+    - ruff check
   tags:
     - LINUX-DOCKER
 
@@ -38,10 +37,12 @@ pylint:
 
 Check Typing:
   stage: type-check
+  needs:
+    # this is a rather expensive check, so we only run it if the others are OK
+    - basics
+    - pylint
   before_script:
-    - pip install -r requirements.txt
     - pip install pyright==1.1.379
-
   script:
     - pyright
   allow_failure: true
