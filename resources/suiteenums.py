@@ -7,7 +7,7 @@ comparisons and switches in the CMP protocol handling code.
 from enum import Enum, auto
 
 
-class PKIStatus(Enum):
+class PKIStatus(Enum):  # pylint: disable=C0103  # so the names follow the RFC
     """Identifiers for PKIStatus values in CMP responses, see RFC 9480 Appendix A"""
 
     accepted = 0
