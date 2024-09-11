@@ -359,20 +359,20 @@ def compute_dh_based_mac(
 
 
 @not_keyword
-def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
+def compute_gmac(data: bytes, key: bytes, iv: bytes) -> bytes:
     """Compute the AES-GMAC (Galois Message Authentication Code) for given data.
 
     :param key: The encryption key (16, 24, or 32 bytes for AES-128, AES-192, AES-256)
-    :param nonce: Initialization vector (must be 12 bytes for GCM mode)
+    :param iv: Initialization vector (must be 12 bytes for GCM mode)
     :param data: Data to authenticate
     :return: The computed MAC (authentication tag)
     """
     # Create AES cipher in GCM mode for MAC computation
-    aes_gcm = Cipher(algorithms.AES(key), modes.GCM(nonce), backend=backends.default_backend()).encryptor()
+    aes_gcm = Cipher(algorithms.AES(key), modes.GCM(iv), backend=backends.default_backend()).encryptor()
 
     # Authenticate data and return the authentication tag
     aes_gcm.authenticate_additional_data(data)
-    aes_gcm.finalize()  # Finalize to get the authentication tag
+    aes_gcm.finalize()
     return aes_gcm.tag
 
 
