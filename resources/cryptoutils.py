@@ -330,12 +330,9 @@ def do_dh_key_exchange_password_based(  # noqa: D417
 
     if isinstance(peer_key, dh.DHPublicKey):
         shared_key = private_key.exchange(peer_key)
-        logging.info(f"DH shared secret: {shared_key.hex()}")
-        return shared_key
-
-    other_public_key = private_key.public_key()
-
-    shared_key = private_key.exchange(other_public_key)
+    else:
+        other_public_key = private_key.public_key()
+        shared_key = private_key.exchange(other_public_key)
     logging.info(f"DH shared secret: {shared_key.hex()}")
     return shared_key
 
