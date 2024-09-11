@@ -4,6 +4,8 @@ store them and retrieve them when needed.
 """
 
 from typing import Optional
+import base64
+import re
 
 from cryptography.hazmat import backends
 from cryptography.hazmat.primitives import serialization
@@ -22,8 +24,26 @@ from oid_mapping import get_curve_instance
 from typingutils import PrivateKey, PublicKey
 
 
+
+def _add_armour(raw: str) -> str:
+    """Add PEM armour to x448, ed448, ed25519 and x25519 to ensure all keys are in PEM format.
+
+    :param raw: str, unarmoured input data
+    :returns: str, armoured data with PEM headers and footers "-----BEGIN PRIVATE KEY-----"
+    """
+    pem_header = "-----BEGIN PRIVATE KEY-----\n"
+    pem_footer = "\n-----END PRIVATE KEY-----"
+    pem_data = pem_header + raw + pem_footer
+    return pem_data
+
+def _strip_armour(data: str):
+    """Strip the Added PEM Header."""
+    data = re.sub("-----BEGIN .*?-----", "", data)
+    data = re.sub("-----END .*?-----", "", data)
+    return data.replace("\n", "")
+
 def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
-    """Save a `cryptography` `PrivateKey` object to a file.
+    """Save a `cryptography` `PrivateKey` object to a file, in PEM format.
 
     Saves a private key to a specified file path. The key can be encrypted with a passphrase
     or saved without encryption.
@@ -36,8 +56,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
 
     Key Types and Formats:
         - `DHPrivateKey`: Serialized in PKCS8 format.
-        - `X448PrivateKey` and `X25519PrivateKey`: Serialized as Hex String (cannot be encrypted).
-        - Other key types: Serialized in Traditional OpenSSL format (PEM encoding).
+        - `X448PrivateKey` and `X25519PrivateKey` and ed versions: (cannot be encrypted).
 
     Raises:
         - TypeError: If the provided key is not a valid private key object.
@@ -66,7 +85,10 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
             encoding=serialization.Encoding.Raw,
             format=serialization.PrivateFormat.Raw,
             encryption_algorithm=serialization.NoEncryption(),
-        ).hex()
+        )
+
+        base64_encoded = (base64.b64encode(data).decode("utf-8"))
+        data = _add_armour(base64_encoded)
 
         with open(path, "w") as f:
             f.write(data)
@@ -176,16 +198,16 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
     return private_key
 
 
-def load_private_key_from_file(filepath: str, password: Optional[str] = "11111") -> PrivateKey:
+def load_private_key_from_file(filepath: str, password: Optional[str] = "11111", key_type: str = None) -> PrivateKey:
     """Load Private Key From File.
 
-    Loads a `cryptography` private key from a PEM-encoded file, or Hex-String for x448, ed448, x25519, ed25519 keys.
+    Loads a `cryptography` private key from a PEM-encoded file.
 
     Arguments:
     - `filepath` (str): The path to the file containing the PEM-encoded key.
     - `password` (str, optional): The password to decrypt the key file, if it is encrypted. Defaults to "11111".
-      For raw key formats such as `x448` and `x25519`, set the password to `"x448"` or `"x25519"` to indicate
-      that these hex string keys should be loaded. (also for ed-versions).
+      `x448` and `x25519` and ed versions do not support encryption.
+    - `key_type` (optional str): the type of the key. needed for x448 and x25519. (also ed-versions)
 
     Returns:
     - `PrivateKey`: An instance of the loaded key, such as `RSAPrivateKey`, `X448PrivateKey`, or `X25519PrivateKey`.
@@ -199,23 +221,24 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     | ${x25519_key}= | Load Private Key From File | /path/to/x25519_key.pem | x25519 |
 
     """
-    if password in ["x448", "x25519", "ed448", "ed25519"]:
+    if key_type in ["x448", "x25519", "ed448", "ed25519"]:
         with open(filepath, "r") as pem_file:
             pem_data = pem_file.read()
 
-        pem_data = bytes.fromhex(pem_data)
+        pem_data = _strip_armour(pem_data).encode("utf-8")
+        pem_data = base64.b64decode(pem_data)
     else:
         with open(filepath, "rb") as pem_file:
             pem_data = pem_file.read()
 
-    if password == "x448":
+    if key_type == "x448":
         return x448.X448PrivateKey.from_private_bytes(data=pem_data)
-    elif password == "x25519":
+    elif key_type == "x25519":
         return x25519.X25519PrivateKey.from_private_bytes(data=pem_data)
 
-    elif password == "ed448":
+    elif key_type == "ed448":
         return ed448.Ed448PrivateKey.from_private_bytes(data=pem_data)
-    elif password == "ed25519":
+    elif key_type == "ed25519":
         return ed25519.Ed25519PrivateKey.from_private_bytes(data=pem_data)
 
     password = password if not password else password.encode("utf-8")
@@ -231,13 +254,11 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
 def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:  # noqa D417 #undocumented-param
     """Load Public Key From File.
 
-    Load a cryptographic public key from a PEM-encoded file
-    unless it is a x448, ed448, x25519, or ed25519 key. Then the raw format is used.
+    Load a cryptographic public key from a PEM-encoded file.
 
     Arguments:
     - `filepath` (str): the path to the file containing the key data.
     - `key_type` (optional str): the type of the key. needed for x448 and x25519. (also ed-versions)
-
 
     Returns:
     - `PublicKey`: An instance of the loaded public key, such as `RSAPublicKey`, `X448PublicKey`, or `X25519PublicKey`.
@@ -256,7 +277,8 @@ def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
         with open(filepath, "r") as pem_file:
             pem_data = pem_file.read()
 
-        pem_data = bytes.fromhex(pem_data)
+        pem_data = _strip_armour(pem_data).encode("utf-8")
+        pem_data = base64.b64decode(pem_data)
     else:
         with open(filepath, "rb") as pem_file:
             pem_data = pem_file.read()
