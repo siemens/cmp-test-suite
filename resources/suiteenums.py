@@ -57,8 +57,8 @@ class ProtectionAlgorithm(Enum):
 
         try:
             return ProtectionAlgorithm[value_upper]
-        except KeyError:
+        except KeyError as err:
             raise ValueError(
                 f"'{value}' is not a valid ProtectionAlgorithm. Available values are:"
                 f" {', '.join(ProtectionAlgorithm.get_names_lowercase())}."
-            )
+            ) from err

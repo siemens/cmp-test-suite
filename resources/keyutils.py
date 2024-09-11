@@ -222,12 +222,12 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111",
 
     if key_type == "x448":
         return x448.X448PrivateKey.from_private_bytes(data=pem_data)
-    elif key_type == "x25519":
+    if key_type == "x25519":
         return x25519.X25519PrivateKey.from_private_bytes(data=pem_data)
 
-    elif key_type == "ed448":
+    if key_type == "ed448":
         return ed448.Ed448PrivateKey.from_private_bytes(data=pem_data)
-    elif key_type == "ed25519":
+    if key_type == "ed25519":
         return ed25519.Ed25519PrivateKey.from_private_bytes(data=pem_data)
 
     password = password if not password else password.encode("utf-8")

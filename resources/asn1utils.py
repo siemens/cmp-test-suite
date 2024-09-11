@@ -127,9 +127,9 @@ def get_asn1_value(asn1_obj, query):
         if len(available_keys) == 1:
             report += f", try `{traversed_so_far}.{available_keys[0]}`"
         report += f"\n> Underlying error: {err}"
-        raise ValueError(report)
-    else:
-        return asn1_obj
+        raise ValueError(report) from err
+
+    return asn1_obj
 
 
 def get_asn1_value_as_string(asn1_obj, query):
@@ -290,14 +290,13 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
     if isinstance(bit_indices, int):
         return _is_bit_set_in_bitstring(asn1_bitstring=asn1_bitstring, bit_index=bit_indices, exclusive=exclusive)
 
-    elif isinstance(bit_indices, str):
+    if isinstance(bit_indices, str):
         # allows not only int to be parsed but also the correct human-readable-names.
         if bit_indices.replace(",", "").strip(" ").isdigit():
             if "," in bit_indices:
                 values = [int(x) for x in bit_indices.strip(" ").split(",")]
                 return _is_either_bit_set_in_bitstring(asn1_bitstring, values, exclusive=exclusive)
-            else:
-                return _is_bit_set_in_bitstring(asn1_bitstring, int(bit_indices.strip()), exclusive=exclusive)
+            return _is_bit_set_in_bitstring(asn1_bitstring, int(bit_indices.strip()), exclusive=exclusive)
         else:
             # gets the names of as single values.
             values = bit_indices.strip(" ").split(",")
@@ -305,7 +304,7 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
             names = list(asn1_bitstring.namedValues.keys())
             try:
                 bit_indices = [names.index(val) for val in values]
-            except ValueError:
-                raise ValueError(f"Provided names: {values} but allowed are: {names}")
+            except ValueError as err:
+                raise ValueError(f"Provided names: {values} but allowed are: {names}") from err
 
             return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)

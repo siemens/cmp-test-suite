@@ -75,9 +75,9 @@ def log_asn1(pyasn1_obj: base.Asn1Type):
 
 def log_base64(data: Union[bytes, str]):
     """Log some data as a base64 encoded string, this is useful for binary payloads."""
-    if type(data) is bytes:
+    if isinstance(data) is bytes:
         logging.info(b64encode(data))
-    elif type(data) is str:
+    elif isinstance(data) is str:
         logging.info(b64encode(data.encode("ascii")))
 
 
@@ -91,8 +91,7 @@ def manipulate_first_byte(data: bytes) -> bytes:
     """
     if data[0] == 0:
         return b"\x01" + data[1:]
-    else:
-        return b"\x00" + data[1:]
+    return b"\x00" + data[1:]
 
 
 def buffer_length_must_be_at_least(data: bytes, length: Strint) -> None:
@@ -112,7 +111,7 @@ def decode_pem_string(data: Union[bytes, str]) -> bytes:
     :param data: (str, bytes) the data to decode.
     :return: bytes The decoded DER-encoded bytes extracted from the PEM input
     """
-    if type(data) is bytes:
+    if isinstance(data) is bytes:
         data = data.decode("ascii")
 
     raw = data.splitlines()
@@ -121,7 +120,7 @@ def decode_pem_string(data: Union[bytes, str]) -> bytes:
     for line in raw:
         if line.startswith("#"):  # remove comments
             continue
-        elif line.strip() == "":  # remove blank lines
+        if line.strip() == "":  # remove blank lines
             continue
         else:
             filtered_lines.append(line)
@@ -148,13 +147,13 @@ def load_and_decode_pem_file(path):
     # normally it should always have a header/trailer (aka "armour"), but we'll be tolerant to that.
 
     filtered_lines = []
-    with open(path, "r") as f:
+    with open(path, "r", encoding='ascii') as f:
         raw = f.readlines()
         # first do some cosmetic filtering
         for line in raw:
             if line.startswith("#"):  # remove comments
                 continue
-            elif line.strip() == "":  # remove blank lines
+            if line.strip() == "":  # remove blank lines
                 continue
             else:
                 filtered_lines.append(line)

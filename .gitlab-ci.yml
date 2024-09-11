@@ -30,11 +30,8 @@ basics:
 # A more thorough analysis of the code
 pylint:
   stage: Static analysis
-  # because pylint is very strict, for now we allow this check to fail,
-  # but in the future we should strive towards making pylint 100% happy
-  allow_failure: true
   script:
-    - pylint resources
+    - pylint --fail-under=9.38 resources
   tags:
     - LINUX-DOCKER
 

@@ -43,7 +43,7 @@ def validate_certificate_openssl(data):
     except Exception as e:
         message = f"Certificate validation with openssl failed: {e}"
         logging.error(message)
-        raise ValueError(message)
+        raise ValueError(message) from e
 
 
 def validate_certificate_pkilint(data):
@@ -69,15 +69,6 @@ def validate_certificate_pkilint(data):
     if findings_count > 0:
         issues = report.ReportGeneratorPlaintext(results, ValidationFindingSeverity.WARNING).generate()
         raise ValueError(issues)
-
-
-if __name__ == "__main__":
-    raw_cert = open(r"cert.cer", "rb").read()
-    result = validate_certificate_pkilint(raw_cert)
-    print(result)
-
-    result = validate_certificate_openssl(raw_cert)
-    print(result)
 
 
 def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, hash_alg: str = None) -> None:  # noqa: D417
@@ -137,23 +128,23 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
 
 
 @not_keyword
-def verify_cert_signature(certificate: x509.Certificate, issuer_pub_key: Optional[PublicKeySig] = None):
+def verify_cert_signature(cert: x509.Certificate, issuer_pub_key: Optional[PublicKeySig] = None):
     """Verify the signature of an X.509 certificate.
 
     Uses the issuer's public key, or the certificate's own public key if it is self-signed.
 
-    :param certificate: `cryptography.x509.Certificate` which is verified.
+    :param cert: `cryptography.x509.Certificate` which is verified.
     :param issuer_pub_key: optional PublicKeySig used for verification.
 
     :raises InvalidSignature: If the certificate's signature is not valid.
     """
-    pub_key = issuer_pub_key or certificate.public_key()
+    pub_key = issuer_pub_key or cert.public_key()
 
     verify_signature(
         public_key=pub_key,
-        signature=certificate.signature,
-        data=certificate.tbs_certificate_bytes,
-        hash_alg=certificate.signature_hash_algorithm,
+        signature=cert.signature,
+        data=cert.tbs_certificate_bytes,
+        hash_alg=cert.signature_hash_algorithm,
     )
 
 

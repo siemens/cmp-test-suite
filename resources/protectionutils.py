@@ -220,7 +220,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         hash_alg = HMAC_SHA_OID_2_NAME.get(protection_type_oid).split("-")[1]
         return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
 
-    elif protection_type_oid == rfc8018.id_PBMAC1:
+    if protection_type_oid == rfc8018.id_PBMAC1:
         # prot_params is of type: `rfc8018.PBMAC1_params`
         salt = prot_params["keyDerivationFunc"]["parameters"]["salt"]["specified"].asOctets()
         iterations = int(prot_params["keyDerivationFunc"]["parameters"]["iterationCount"])
@@ -240,7 +240,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
             hash_alg=hash_alg,
         )
 
-    elif protection_type_oid == rfc4210.id_PasswordBasedMac:
+    if protection_type_oid == rfc4210.id_PasswordBasedMac:
         prot_params: rfc9480.PBMParameter
         salt = prot_params["salt"].asOctets()
         iterations = int(prot_params["iterationCount"])
@@ -250,12 +250,12 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
             data=encoded, key=password, iterations=iterations, salt=salt, hash_alg=hash_alg
         )
 
-    elif protection_type_oid in AES_GMAC_OID_2_NAME:
+    if protection_type_oid in AES_GMAC_OID_2_NAME:
         nonce = prot_params["nonce"].asOctets()
         password = password.encode("utf-8") if isinstance(password, str) else password
         return compute_gmac(data=encoded, key=password, iv=nonce)
 
-    elif protection_type_oid == rfc8018.id_PBMAC1:
+    if protection_type_oid == rfc8018.id_PBMAC1:
         prot_params: rfc8018.PBMAC1_params
         salt = prot_params["keyDerivationFunc"]["parameters"]["salt"]["specified"].asOctets()
         iterations = int(prot_params["keyDerivationFunc"]["parameters"]["iterationCount"])
@@ -275,7 +275,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
             hash_alg=hash_alg,
         )
 
-    elif rfc9480.id_DHBasedMac:
+    if rfc9480.id_DHBasedMac:
         prot_params: rfc9480.DHBMParameter
         hash_alg: str = SHA_OID_2_NAME[prot_params["owf"]["algorithm"]]
         password = compute_hash(alg_name=hash_alg, data=password)
@@ -319,10 +319,10 @@ def _compute_pkimessage_protection(
         shared_secret = cryptoutils.do_dh_key_exchange_password_based(password=password, peer_key=private_key)
         return _compute_symmetric_protection(pki_message=pki_message, password=shared_secret)
 
-    elif protection_type_oid in SYMMETRIC_PROT_ALGO:
+    if protection_type_oid in SYMMETRIC_PROT_ALGO:
         return _compute_symmetric_protection(pki_message=pki_message, password=password)
 
-    elif protection_type_oid in SUPPORTED_SIG_MAC_OIDS:
+    if protection_type_oid in SUPPORTED_SIG_MAC_OIDS:
         if protection_type_oid in {rfc9481.id_Ed25519, rfc9481.id_Ed448}:
             hash_alg = None
         else:
@@ -341,8 +341,7 @@ def _compute_pkimessage_protection(
             )
         return protection_value
 
-    else:
-        raise ValueError(f"Unsupported PKIMessage Protection oid: {protection_type_oid}")
+    raise ValueError(f"Unsupported PKIMessage Protection oid: {protection_type_oid}")
 
 
 def _prepare_pki_message_protection_field(
@@ -405,10 +404,8 @@ def _prepare_pki_message_protection_field(
         if private_key is None:
             raise ValueError("private_key must be provided for PKIMessage structure Protection")
 
-        elif not isinstance(private_key, PrivateKey):
-            raise ValueError(
-                "private_key must be an instance of PrivateKey, but is of type: {}.".format(type(private_key))
-            )
+        if not isinstance(private_key, PrivateKey):
+            raise ValueError(f"private_key must be an instance of PrivateKey, but is of type: {type(private_key)}.")
 
         prot_alg_id["algorithm"] = get_alg_oid_from_key_hash(key=private_key, hash_alg=params.get("hash_alg", "sha256"))
         prot_alg_id["parameters"] = univ.Null()

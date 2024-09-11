@@ -7,7 +7,6 @@ import sys
 from datetime import datetime, timezone
 from typing import List, Optional
 
-import pyasn1.type.base
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, univ, useful
@@ -93,7 +92,7 @@ def build_cmp_revoke_request(
     crl_entry_details = Extensions()
     crl_reason = Extension()
     crl_reason.setComponentByName("extnID", univ.ObjectIdentifier((2, 5, 29, 21)))  # 2.5.29.21 CRL reason
-    crl_reason.setComponentByName("extnValue", REASON_UNSPECIFIED)
+    crl_reason.setComponentByName("extnValue", reason)
     crl_entry_details.setComponentByPosition(0, crl_reason)
 
     rev_details.setComponentByName("crl_entry_details", crl_entry_details)
@@ -418,7 +417,7 @@ def build_cert_conf(
     return pki_message
 
 
-def encode_to_der(asn1_structure: pyasn1.type.base.Asn1ItemBase) -> bytes:
+def encode_to_der(asn1_structure: base.Asn1ItemBase) -> bytes:
     """DER-encode a pyasn1 data structure."""
     return encoder.encode(asn1_structure)
 
@@ -489,7 +488,7 @@ def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
         # Suppress detailed pyasn1 error messages; they are typically too verbose and
         # not helpful for non-pyasn1 experts. If debugging is needed, retrieve the server's
         # response from Robot Framework's log and manually pass it into this function.
-        raise ValueError("Failed to parse PKIMessage: %s ..." % str(err)[:100])
+        raise ValueError(f"Failed to parse PKIMessage: {str(err)[:100]} ...") from err
 
     return pki_message
 
@@ -551,7 +550,7 @@ def patch_transaction_id(pki_message, new_id=None, prefix=None):
                    so it can be passed directly from RobotFramework tests
     :returns: a pyasn1 PKIMessage structure with the updated transactionId
     """
-    if type(pki_message) is bytes:
+    if isinstance(pki_message) is bytes:
         pki_message = parse_pki_message(pki_message)
 
     new_id = new_id or os.urandom(16)
@@ -571,7 +570,7 @@ def patch_message_time(pki_message, new_time=None):
                         automatically, this is to make it easier to use this function in RobotFramework
     :param new_time: optional datetime, time to use for the messageTime field, will use the current time by default
     """
-    if type(pki_message) is bytes:
+    if isinstance(pki_message) is bytes:
         pki_message = parse_pki_message(pki_message)
 
     new_time = new_time or datetime.now(timezone.utc)

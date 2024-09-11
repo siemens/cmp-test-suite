@@ -13,7 +13,6 @@ import logging
 import os
 from typing import Optional, Tuple, Union
 
-import cryptography.x509
 from cryptography import x509
 from cryptography.hazmat import backends
 from cryptography.hazmat.primitives import hashes, hmac, serialization
@@ -117,17 +116,17 @@ def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -
     # so can check in this Order.
     if isinstance(key, ec.EllipticCurvePrivateKey):
         return key.sign(data, ec.ECDSA(hash_alg))
-    elif isinstance(key, rsa.RSAPrivateKey):
+    if isinstance(key, rsa.RSAPrivateKey):
         return key.sign(data, padding.PKCS1v15(), hash_alg)
-    elif isinstance(key, ed25519.Ed25519PrivateKey):
+    if isinstance(key, ed25519.Ed25519PrivateKey):
         return key.sign(data)
-    elif isinstance(key, ed448.Ed448PrivateKey):
+    if isinstance(key, ed448.Ed448PrivateKey):
         return key.sign(data)
-    elif isinstance(key, dsa.DSAPrivateKey):
+    if isinstance(key, dsa.DSAPrivateKey):
         if not hash_alg:
             raise ValueError("DSA signatures require a hash algorithm.")
         return key.sign(data, hash_alg)
-    elif isinstance(key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
+    if isinstance(key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
         raise ValueError(
             f"Key type '{type(key).__name__}' is not used for signing or verifying signatures. "
             f"It is used for key exchange."
@@ -160,7 +159,7 @@ def compute_hmac(data, key, hash_alg="sha256"):
     """
     hash_alg_instance = hash_name_to_instance(hash_alg)
 
-    if type(key) is str:
+    if isinstance(key) is str:
         key = key.encode("utf-8")
 
     h = hmac.HMAC(key, hash_alg_instance)
@@ -184,7 +183,7 @@ def compute_pbmac1(data: bytes, key: Union[str, bytes], iterations=262144, salt=
     """
     hash_alg_instance = hash_name_to_instance(hash_alg)
 
-    if type(key) is str:
+    if isinstance(key) is str:
         key = key.encode("utf-8")
 
     salt = salt or os.urandom(16)
@@ -232,7 +231,7 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
     """
     salt = salt or os.urandom(16)
 
-    if type(key) is str:
+    if isinstance(key) is str:
         key = key.encode("utf-8")
 
     initial_input = key + salt
@@ -451,7 +450,7 @@ def _build_cert(
     serial_number: Optional[int] = None,
     days: int = 365,
     not_valid_before: Optional[datetime.datetime] = None,
-) -> cryptography.x509.CertificateBuilder:
+) -> x509.CertificateBuilder:
     """Create a `cryptography.x509.CertificateBuilder` using a public key, issuer, subject, and a validity period.
 
     :param public_key: `cryptography.hazmat.primitives.asymmetric` public key to associate with the certificate.
@@ -490,7 +489,7 @@ def _build_cert(
 
 def _sign_cert_builder(
     cert_builder: x509.CertificateBuilder, sign_key: Optional[PrivSignCertKey], hash_alg: Optional[str] = None
-) -> cryptography.x509.Certificate:
+) -> x509.Certificate:
     """Sign a `cryptography.x509.CertificateBuilder` object with a provided key to sign and a hash algorithm.
 
     :param cert_builder: `cryptography.x509.CertificateBuilder`
