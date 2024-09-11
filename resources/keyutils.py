@@ -23,24 +23,21 @@ from oid_mapping import get_curve_instance
 from typingutils import PrivateKey, PublicKey
 
 
-def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
-    """Save a `cryptography.PrivateKey` to a file, optionally encrypting it with a passphrase.
+def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):  # noqa: D417 for RF docs
+    """Save a private key to a file, optionally encrypting it with a passphrase.
 
     Arguments:
     ---------
-        - `key` (cryptography.hazmat.primitives.asymmetric): The private key object to save.
-        - `path` (str): The file path where the key will be saved.
-        - `passphrase` (str, optional): An optional passphrase used to encrypt the key. If set to None,
-                                    the key will be saved without encryption. Defaults to "11111".
+        - `key`: The private key object to save.
+        - `path`: The file path where the key will be saved.
+        - `passphrase`: Optional passphrase to encrypt the key. If None, save without encryption. Defaults to "11111".
 
     Key Types and Formats:
         - `DHPrivateKey`: Serialized in PKCS8 format.
         - `X448PrivateKey` and `X25519PrivateKey`: Serialized as Hex String (cannot be encrypted).
         - Other key types: Serialized in Traditional OpenSSL format (PEM encoding).
 
-    Raises:
-    ------
-        - TypeError: If the provided key is not a valid private key object.
+    Raises: `TypeError` if the provided key is not a valid private key object.
 
     Example:
     -------
