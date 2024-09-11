@@ -23,10 +23,10 @@ from cryptography.hazmat.primitives.asymmetric import (
 from oid_mapping import get_curve_instance
 from typingutils import PrivateKey, PublicKey
 
-
+from utils import load_and_decode_pem_file
 
 def _add_armour(raw: str) -> str:
-    """Add PEM armour to x448, ed448, ed25519 and x25519 to ensure all keys are in PEM format.
+    """Add PEM armour for private keys.
 
     :param raw: str, unarmoured input data
     :returns: str, armoured data with PEM headers and footers "-----BEGIN PRIVATE KEY-----"
@@ -35,12 +35,6 @@ def _add_armour(raw: str) -> str:
     pem_footer = "\n-----END PRIVATE KEY-----"
     pem_data = pem_header + raw + pem_footer
     return pem_data
-
-def _strip_armour(data: str):
-    """Strip the Added PEM Header."""
-    data = re.sub("-----BEGIN .*?-----", "", data)
-    data = re.sub("-----END .*?-----", "", data)
-    return data.replace("\n", "")
 
 def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
     """Save a `cryptography` `PrivateKey` object to a file, in PEM format.
@@ -54,7 +48,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
         - `passphrase` (str, optional): An optional passphrase used to encrypt the key. If set to None,
                                     the key will be saved without encryption. Defaults to "11111".
 
-    Key Types and Formats:
+    Notes:
         - `DHPrivateKey`: Serialized in PKCS8 format.
         - `X448PrivateKey` and `X25519PrivateKey` and ed versions: (cannot be encrypted).
 
@@ -217,16 +211,12 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111",
 
     Examples:
     | ${key}= | Load Private Key From File | /path/to/key.pem | password123 |
-    | ${x448_key}= | Load Private Key From File | /path/to/x448_key.pem | x448 |
-    | ${x25519_key}= | Load Private Key From File | /path/to/x25519_key.pem | x25519 |
+    | ${x448_key}= | Load Private Key From File | /path/to/x448_key.pem | key_type=x448 |
+    | ${x25519_key}= | Load Private Key From File | /path/to/ed25519_key.pem | key_type=ed25519 | |
 
     """
     if key_type in ["x448", "x25519", "ed448", "ed25519"]:
-        with open(filepath, "r") as pem_file:
-            pem_data = pem_file.read()
-
-        pem_data = _strip_armour(pem_data).encode("utf-8")
-        pem_data = base64.b64decode(pem_data)
+        pem_data = load_and_decode_pem_file(filepath)
     else:
         with open(filepath, "rb") as pem_file:
             pem_data = pem_file.read()
@@ -269,16 +259,12 @@ def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
 
     Examples:
     | ${public_key}= | Load Public Key From File | /path/to/public_key.pem |
-    | ${x448_key}= | Load Public Key From File | /path/to/x448_public_key.raw |
-    | ${x25519_key}= | Load Public Key From File | /path/to/x25519_public_key.raw |
+    | ${x448_key}= | Load Public Key From File | /path/to/x448_public_key.pem | key_type=x448 |
+    | ${x25519_key}= | Load Public Key From File | /path/to/ed25519_public_key.pem |  key_type=ed25519 |
 
     """
     if key_type in ["x448", "x25519", "ed448", "ed25519"]:
-        with open(filepath, "r") as pem_file:
-            pem_data = pem_file.read()
-
-        pem_data = _strip_armour(pem_data).encode("utf-8")
-        pem_data = base64.b64decode(pem_data)
+        pem_data = load_and_decode_pem_file(filepath)
     else:
         with open(filepath, "rb") as pem_file:
             pem_data = pem_file.read()
