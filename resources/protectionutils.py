@@ -450,6 +450,7 @@ def protect_pki_message(  # noqa: D417 undocumented-param
          - Certificate checks!
 
     Arguments:
+    ---------
     - `pki_message`: `rfc9480.PKIMessage` where the body and header are set.
     - `protection`: string representing the type of protection.
     - `password`: string representing a shared secret (default is None).
@@ -465,12 +466,15 @@ def protect_pki_message(  # noqa: D417 undocumented-param
                  hash_alg: str name of the owf to be used. ex: "sha256".
 
     Returns:
+    -------
     - `rfc9480.PKIMessage`: The PKIMessage object with the applied protection.
 
     Raises:
+    ------
     - ValueError | If the `PKIMessage` body is not set or is not a value. |
 
     Example:
+    -------
     | ${prot_msg}= | Protect PKI Message | ${PKI_MESSAGE} | pbmac1    | ${SECRET}       |
     | ${prot_msg}= | Protect PKI Message | ${PKI_MESSAGE} | aes-gmac  | ${SECRET}       |
     | ${prot_msg}= | Protect PKI Message | ${PKI_MESSAGE} | signature | private_key=${KEY}  |
@@ -512,6 +516,7 @@ def verify_pki_message_protection(  # noqa: D417, D205
     """Verify the PKIProtection of the given `rfc9480.PKIMessage`.
 
     Arguments:
+    ---------
     - `pki_message`: The `PKIMessage` object whose protection needs to be verified.
     - `private_key`: The private key of the server or client. For Diffie-Hellman-based protection, this is needed to
                      compute the shared secret. If the protection algorithm is signature-based, the private key is
@@ -520,19 +525,23 @@ def verify_pki_message_protection(  # noqa: D417, D205
                   derived keys for verifying the protection value.
 
     Raises:
+    ------
         - InvalidSignature: If the signature-based protection verification fails due to a mismatched signature.
         - ValueError: If the protection algorithm is unsupported or if the computed protection value does not match the
                     expected value, indicating tampering or data corruption.
 
     Returns:
+    -------
         - None
 
     Example:
+    -------
     | Verify PKI Message Protection | ${PKI_MESSAGE} | ${private_key}    | ${SECRET}    |
     | Verify PKI Message Protection | ${PKI_MESSAGE} | ${private_key}    |
     | Verify PKI Message Protection | ${PKI_MESSAGE} | password=${SECRET}    |
 
     Note:
+    ----
         - If the `PKIMessage` uses a Diffie-Hellman-based MAC (`DHBasedMac`) for protection, both the `private_key`
           and a password must be provided.
         - If the protection algorithm is signature-based, the certificate used for signing must be the first certificate

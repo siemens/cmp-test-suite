@@ -91,6 +91,7 @@ def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -
     Supports ECDSA, ED448, ED25519, RSA, and DSA.
 
     Arguments:
+    ---------
         - `data`: The data to be signed.
         - `key`: The private key object used to sign the data.
         - `hash_alg`: An optional string representing the name of the hash algorithm to be used for signing
@@ -103,12 +104,15 @@ def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -
         - `DSAPrivateKey`: Signs using the provided hash algorithm. Requires a hash algorithm.
 
     Returns:
+    -------
        - bytes The signed data as a byte sequence.
 
     Raises:
+    ------
         - ValueError: If an unsupported key type is provided or if the required hash algorithm is not specified.
 
     Example:
+    -------
         | Sign Data | ${data} | ${private_key} | sha256 |
 
     """
@@ -257,6 +261,7 @@ def generate_signed_csr(  # noqa: D417
     algorithm (e.g., "rsa") with additional parameters. If a `PrivateKey` object is provided, it is used directly.
 
     Arguments:
+    ---------
     - `common_name`: The common name (CN) to include in the CSR.
     - `key`: Optional. The private key to use for signing the CSR. Can be one of:
         - A `PrivateKey` object from the cryptography library.
@@ -265,13 +270,16 @@ def generate_signed_csr(  # noqa: D417
     - `params`: Additional keyword arguments to customize key generation when `key` is a string.
 
     Returns:
+    -------
     - `csr_signed`: The signed CSR in bytes.
     - `key`: The private key used for signing, as a cryptography library Key-Object.
 
     Raises:
+    ------
     - `ValueError`: If the provided key is neither a valid key generation algorithm string nor a `PrivateKey` object.
 
     Example:
+    -------
     | ${csr_signed} | ${private_key} = | Generate Signed CSR | CN=Joe | rsa | length=2048 |
 
     """
@@ -316,13 +324,16 @@ def do_dh_key_exchange_password_based(  # noqa: D417
     """Perform a Diffie-Hellman key exchange to derive a shared secret key based on a password.
 
     Arguments:
+    ---------
     - `password`: A string used to derive the DH private key for the server or local party.
     - `peer_key`: A `cryptography` `dh.DHPrivateKey` or `dh.DHPublicKey` object representing the other party's key.
 
     Returns:
+    -------
     - `bytes`: Shared secret key derived from the Diffie-Hellman key exchange.
 
     Example:
+    -------
     | ${shared_secret} = | Do DH Key Exchange Password Based | password=my_password | peer_key=${public_key} |
 
     """
@@ -388,6 +399,7 @@ def generate_certificate(  # noqa: D417 # undocumented-param
     """Generate an X.509 certificate, either self-signed or using a provided private key.
 
     Arguments:
+    ---------
         - private_key: The private key to use for certificate public Key generation.
         - common_name: The common name in OpenSSL notation. Defaults to "CN=Hans".
         - hash_alg: Name of the hash function to use for signing the certificate. Defaults to "sha256".
@@ -398,12 +410,15 @@ def generate_certificate(  # noqa: D417 # undocumented-param
           - "serial_number", "days", "not_valid_before", "days"
 
     Returns:
+    -------
         - `cryptography.x509.Certificate`: The generated self-signed x509 certificate.
 
     Raises:
+    ------
         - ValueError: If the private key is not supported for certificate signing.
 
     Examples:
+    --------
     | ${private_key}= | Generate Key | algorithm=rsa | length=2048 |
     | ${certificate}= | Generate Certificate | ${private_key} | CN=Hans |
     | ${certificate}= | Generate Certificate | ${private_key} | CN=Hans | sign_key=${sign_key} | issuer_cert=${issuer_cert} |

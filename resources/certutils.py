@@ -86,6 +86,7 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
     Supports: (ECDSA, ED448, ED25519, RSA, DSA).
 
     Arguments:
+    ---------
         - `public_key`: The public key used to verify the signature.
         - `signature`: signature data.
         - `data`: The original data that was signed.
@@ -100,10 +101,12 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
         - Unsupported key types (e.g., `X25519PublicKey`, `X448PublicKey`): Raises an error.
 
     Raises:
+    ------
         - InvalidSignature: If the signature is invalid.
         - ValueError: If an unsupported key type is provided.
 
     Example:
+    -------
         | Verify Signature | ${public_key} | ${signature} | ${data} | sha256 |
 
     """

@@ -26,6 +26,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
     """Save a `cryptography.PrivateKey` object to a file, optionally encrypting it with a passphrase.
 
     Arguments:
+    ---------
         - `key` (cryptography.hazmat.primitives.asymmetric): The private key object to save.
         - `path` (str): The file path where the key will be saved.
         - `passphrase` (str, optional): An optional passphrase used to encrypt the key. If set to None,
@@ -37,9 +38,11 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
         - Other key types: Serialized in Traditional OpenSSL format (PEM encoding).
 
     Raises:
+    ------
         - TypeError: If the provided key is not a valid private key object.
 
     Example:
+    -------
         | Save Key | ${key} | /path/to/save/key.pem | password123 |
 
     """
@@ -88,6 +91,7 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
     Depending on the selected algorithm, additional parameters can be provided to customize the key generation.
 
     Arguments:
+    ---------
     - algorithm (str): The cryptographic algorithm to use for key generation.
       Supported values include:
         - "rsa": RSA key pair generation (default).
@@ -107,13 +111,16 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
             - length (int , str): The length of the modulus to generate if `p` is not provided. Default is 2048.
 
     Returns:
+    -------
     - private_key (object): The generated private key. For "aes", this will be a raw byte string
                             representing the symmetric key.
 
     Raises:
+    ------
     - ValueError: If the specified algorithm is not supported or if invalid parameters are provided.
 
     Examples:
+    --------
     | ${private_key}= | Generate Key | algorithm=rsa | length=2048 |
     | ${private_key}= | Generate Key | algorithm=dh | length=2048 |
     | ${private_key}= | Generate Key | algorithm=ecdsa | curve=secp384r1 |
@@ -177,18 +184,22 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     """Load a private key from a PEM-encoded file, or a hex-string (for x448, ed448, x25519, ed25519 keys).
 
     Arguments:
+    ---------
     - `filepath` (str): The path to the file containing the key.
     - `password` (str, optional): The password to decrypt the key file, if it is encrypted. Defaults to "11111".
       For raw key formats such as `x448` and `x25519`, set the password to `"x448"` or `"x25519"` to indicate
       that these hex string keys should be loaded. (also for ed-versions).
 
     Returns:
+    -------
     - `PrivateKey`: An instance of the loaded key, such as `RSAPrivateKey`, `X448PrivateKey`, or `X25519PrivateKey`.
 
     Raises:
+    ------
     - `FileNotFoundError`: If the file does not exist.
 
     Examples:
+    --------
     | ${key}= | Load Private Key From File | /path/to/key.pem | password123 |
     | ${x448_key}= | Load Private Key From File | /path/to/x448_key.pem | x448 |
     | ${x25519_key}= | Load Private Key From File | /path/to/x25519_key.pem | x25519 |
@@ -230,18 +241,22 @@ def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
     unless it is a x448, ed448, x25519, or ed25519 key. Then the raw format is used.
 
     Arguments:
+    ---------
     - `filepath` (str): the path to the file containing the key data.
     - `key_type` (optional str): the type of the key. needed for x448 and x25519. (also ed-versions)
 
 
     Returns:
+    -------
     - `PublicKey`: An instance of the loaded public key, such as `RSAPublicKey`, `X448PublicKey`, or `X25519PublicKey`.
 
     Raises:
+    ------
     - `FileNotFoundError`: If the file does not exist.
     - `ValueError`: If the file content is not a valid public key format.
 
     Examples:
+    --------
     | ${public_key}= | Load Public Key From File | /path/to/public_key.pem |
     | ${x448_key}= | Load Public Key From File | /path/to/x448_public_key.raw |
     | ${x25519_key}= | Load Public Key From File | /path/to/x25519_public_key.raw |

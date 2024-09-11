@@ -477,12 +477,15 @@ def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
     """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
 
     Arguments:
+    ---------
         - data (bytes): The raw input data to be parsed.
 
     Returns:
+    -------
         - pyasn1 parsed object: Represents the PKIMessage structure.
 
     Raises:
+    ------
         - ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
 
     """
@@ -628,8 +631,10 @@ def try_to_log_pkimessage(data):
     of invocation from RF tests.
 
     Arguments:
+    ---------
       - `data`: bytes, str or pyasn1 - something that is assumed to be a PKIMessage structure, either DER-encoded or
                  a pyasn1 object.
+
     """
     if isinstance(data, base.Asn1Item):
         logging.info(data.prettyPrint())
@@ -653,13 +658,16 @@ def modify_csr_cn(
     Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
     Arguments:
+    ---------
         - `csr` pyasn1 `rfc9480.CertificationRequest` object.
         - `new_cn` The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
 
     Returns:
+    -------
          - returns the modified `rfc9480.CertificationRequest` object.
 
     Raises:
+    ------
         - ValueError: If no Common Name (CN) is found in the CSR.
 
     """

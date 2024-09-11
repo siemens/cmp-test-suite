@@ -39,12 +39,15 @@ class ProtectionAlgorithm(Enum):
         The matching is case-insensitive.
 
         Args:
+        ----
             value (str): The name of the enum member to get.
 
         Returns:
+        -------
             ProtectionAlgorithm: The corresponding enum member.
 
         Raises:
+        ------
             ValueError: If the value does not match any enum member.
 
         """
