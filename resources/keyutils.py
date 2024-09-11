@@ -23,7 +23,7 @@ from cryptography.hazmat.primitives.asymmetric import (
 from oid_mapping import get_curve_instance
 from typingutils import PrivateKey, PublicKey
 
-from utils import load_and_decode_pem_file
+import utils
 
 def _add_armour(raw: str) -> str:
     """Add PEM armour for private keys.
@@ -216,7 +216,7 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111",
 
     """
     if key_type in ["x448", "x25519", "ed448", "ed25519"]:
-        pem_data = load_and_decode_pem_file(filepath)
+        pem_data = utils.load_and_decode_pem_file(filepath)
     else:
         with open(filepath, "rb") as pem_file:
             pem_data = pem_file.read()
@@ -264,7 +264,7 @@ def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:
 
     """
     if key_type in ["x448", "x25519", "ed448", "ed25519"]:
-        pem_data = load_and_decode_pem_file(filepath)
+        pem_data = utils.load_and_decode_pem_file(filepath)
     else:
         with open(filepath, "rb") as pem_file:
             pem_data = pem_file.read()
