@@ -1,19 +1,18 @@
 import unittest
 from cryptography.hazmat.primitives import serialization
 
-import certutils
 from resources.certutils import parse_certificate
 from resources.cmputils import prepare_extra_certs, build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_certificate
 from resources.protectionutils import add_cert_to_pkimessage_used_by_protection
 from resources.utils import decode_pem_string
 
-from keyutils import generate_key
+from resources.keyutils import generate_key
 
 
 class TestPrepareCertPKIMessageProtection(unittest.TestCase):
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         csr, private_key = generate_signed_csr(common_name="CN=Hans")
         csr = decode_pem_string(csr)
         csr = parse_csr(csr)
@@ -40,7 +39,7 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         self.assertTrue(len(self.pki_message["extraCerts"]) == 1)
 
         raw = self.certificate.public_bytes(serialization.Encoding.DER)
-        certificate = certutils.parse_certificate(raw)
+        certificate = parse_certificate(raw)
 
         self.assertEqual(self.pki_message["extraCerts"][0], certificate)
 
@@ -60,7 +59,7 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
         )
 
         raw = self.certificate.public_bytes(serialization.Encoding.DER)
-        certificate = certutils.parse_certificate(raw)
+        certificate = parse_certificate(raw)
 
         self.assertEqual(self.pki_message["extraCerts"][0], certificate)
 

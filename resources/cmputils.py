@@ -432,7 +432,7 @@ def csr_attach_signature(csr: rfc6402.CertificationRequest, signature: bytes) ->
     sig_alg_id["parameters"] = parameters
 
     # take the raw signature and turn it into a BitString representations
-    signature = Signature("'%s'H" % "".join("%02X" % ord(c) for c in signature))
+    signature = Signature("'%s'H" % "".join("%02X" % c for c in signature))
 
     csr["signature"] = signature
     csr["signatureAlgorithm"] = sig_alg_id
@@ -550,7 +550,7 @@ def patch_transaction_id(pki_message, new_id=None, prefix=None):
                    so it can be passed directly from RobotFramework tests
     :returns: a pyasn1 PKIMessage structure with the updated transactionId
     """
-    if isinstance(pki_message) is bytes:
+    if isinstance(pki_message, bytes):
         pki_message = parse_pki_message(pki_message)
 
     new_id = new_id or os.urandom(16)
@@ -570,7 +570,7 @@ def patch_message_time(pki_message, new_time=None):
                         automatically, this is to make it easier to use this function in RobotFramework
     :param new_time: optional datetime, time to use for the messageTime field, will use the current time by default
     """
-    if isinstance(pki_message) is bytes:
+    if isinstance(pki_message, bytes):
         pki_message = parse_pki_message(pki_message)
 
     new_time = new_time or datetime.now(timezone.utc)

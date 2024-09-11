@@ -182,8 +182,7 @@ def sha_alg_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
             if hash_name == value:
                 return key
 
-    else:
-        raise ValueError(f"Hash name is not supported: {hash_name}")
+    raise ValueError(f"Hash name is not supported: {hash_name}")
 
 
 @not_keyword

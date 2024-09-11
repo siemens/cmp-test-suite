@@ -49,7 +49,8 @@ autoformat:
 verify:
 	ruff check .
 	pylint .
-	safety check
+	PYTHONPATH=./resources pyright
+	# on Windows Powershell: `$env:PYTHONPATH = "./resources"; pyright`
 
 verifyformat:
 	ruff check .

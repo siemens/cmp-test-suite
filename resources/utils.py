@@ -75,9 +75,9 @@ def log_asn1(pyasn1_obj: base.Asn1Type):
 
 def log_base64(data: Union[bytes, str]):
     """Log some data as a base64 encoded string, this is useful for binary payloads."""
-    if isinstance(data) is bytes:
+    if isinstance(data, bytes):
         logging.info(b64encode(data))
-    elif isinstance(data) is str:
+    elif isinstance(data, str):
         logging.info(b64encode(data.encode("ascii")))
 
 
@@ -111,7 +111,7 @@ def decode_pem_string(data: Union[bytes, str]) -> bytes:
     :param data: (str, bytes) the data to decode.
     :return: bytes The decoded DER-encoded bytes extracted from the PEM input
     """
-    if isinstance(data) is bytes:
+    if isinstance(data, bytes):
         data = data.decode("ascii")
 
     raw = data.splitlines()

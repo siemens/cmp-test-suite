@@ -159,7 +159,7 @@ def compute_hmac(data, key, hash_alg="sha256"):
     """
     hash_alg_instance = hash_name_to_instance(hash_alg)
 
-    if isinstance(key) is str:
+    if isinstance(key, str):
         key = key.encode("utf-8")
 
     h = hmac.HMAC(key, hash_alg_instance)
@@ -183,7 +183,7 @@ def compute_pbmac1(data: bytes, key: Union[str, bytes], iterations=262144, salt=
     """
     hash_alg_instance = hash_name_to_instance(hash_alg)
 
-    if isinstance(key) is str:
+    if isinstance(key, str):
         key = key.encode("utf-8")
 
     salt = salt or os.urandom(16)
@@ -231,7 +231,7 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
     """
     salt = salt or os.urandom(16)
 
-    if isinstance(key) is str:
+    if isinstance(key, str):
         key = key.encode("utf-8")
 
     initial_input = key + salt

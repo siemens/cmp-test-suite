@@ -10,7 +10,7 @@ from resources.utils import load_and_decode_pem_file
 
 class TestASN1Utils(unittest.TestCase):
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         raw = load_and_decode_pem_file('data/cmp-sample-reject.pem')
         cls.asn1_object = parse_pki_message(raw)
 

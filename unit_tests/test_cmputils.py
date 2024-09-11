@@ -13,7 +13,7 @@ from resources.utils import load_and_decode_pem_file, decode_pem_string
 
 class TestCmpUtils(unittest.TestCase):
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         raw_csr = load_and_decode_pem_file('data/example-csr.pem')
         cls.csr_object = cmputils.parse_csr(raw_csr)
 

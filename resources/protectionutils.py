@@ -217,7 +217,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
     encoded = encoder.encode(protected_part)
 
     if protection_type_oid in HMAC_SHA_OID_2_NAME:
-        hash_alg = HMAC_SHA_OID_2_NAME.get(protection_type_oid).split("-")[1]
+        hash_alg = HMAC_SHA_OID_2_NAME[protection_type_oid].split("-")[1]
         return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
 
     if protection_type_oid == rfc8018.id_PBMAC1:
@@ -229,7 +229,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         hmac_alg = prot_params["messageAuthScheme"]["algorithm"]
 
         # gets the sha-Algorithm
-        hash_alg = HMAC_SHA_OID_2_NAME.get(hmac_alg).split("-")[1]
+        hash_alg = HMAC_SHA_OID_2_NAME[hmac_alg].split("-")[1]
 
         return compute_pbmac1(
             data=encoded,
@@ -245,7 +245,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         salt = prot_params["salt"].asOctets()
         iterations = int(prot_params["iterationCount"])
 
-        hash_alg = HMAC_SHA_OID_2_NAME.get(prot_params["mac"]["algorithm"]).split("-")[1]
+        hash_alg = HMAC_SHA_OID_2_NAME[prot_params["mac"]["algorithm"]].split("-")[1]
         return compute_password_based_mac(
             data=encoded, key=password, iterations=iterations, salt=salt, hash_alg=hash_alg
         )
@@ -264,7 +264,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         outer_params: rfc8018.PBKDF2_params = prot_params["keyDerivationFunc"]["parameters"]
         hmac_alg = outer_params["messageAuthScheme"]["algorithm"]
 
-        hash_alg = HMAC_SHA_OID_2_NAME.get(hmac_alg).split("-")[1]
+        hash_alg = HMAC_SHA_OID_2_NAME[hmac_alg].split("-")[1]
 
         return compute_pbmac1(
             data=encoded,

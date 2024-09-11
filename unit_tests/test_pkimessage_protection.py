@@ -1,18 +1,18 @@
 import unittest
 
-from protectionutils import protect_pki_message, verify_pki_protection
+from resources.protectionutils import protect_pki_message, verify_pki_message_protection
 from resources.cmputils import build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_certificate
 from resources.utils import decode_pem_string
 
-from keyutils import load_private_key_from_file
+from resources.keyutils import load_private_key_from_file
 
 PASSWORD = bytes.fromhex("AA" * 32)
 
 class TestPKIMessageProtection(unittest.TestCase):
 
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         csr, private_key = generate_signed_csr(common_name="CN=Hans")
         csr = decode_pem_string(csr)
         csr = parse_csr(csr)
@@ -27,7 +27,7 @@ class TestPKIMessageProtection(unittest.TestCase):
                                             protection="hmac",
                                             password=PASSWORD)
 
-        verify_pki_protection(pki_message=protected_msg, password=PASSWORD)
+        verify_pki_message_protection(pki_message=protected_msg, password=PASSWORD)
 
 
     def test_gmac_protection(self):
@@ -35,7 +35,7 @@ class TestPKIMessageProtection(unittest.TestCase):
                                             protection="aes-gmac",
                                             password=PASSWORD)
 
-        verify_pki_protection(pki_message=protected_msg, password=PASSWORD)
+        verify_pki_message_protection(pki_message=protected_msg, password=PASSWORD)
 
 
 
@@ -44,7 +44,7 @@ class TestPKIMessageProtection(unittest.TestCase):
                                             protection="password_based_mac",
                                             password=PASSWORD)
 
-        verify_pki_protection(pki_message=protected_msg, password=PASSWORD)
+        verify_pki_message_protection(pki_message=protected_msg, password=PASSWORD)
 
 
     def test_pbmac1_protection(self):
@@ -52,7 +52,7 @@ class TestPKIMessageProtection(unittest.TestCase):
                                             protection="pbmac1",
                                             password=PASSWORD)
 
-        verify_pki_protection(pki_message=protected_msg, password=PASSWORD)
+        verify_pki_message_protection(pki_message=protected_msg, password=PASSWORD)
 
 
     def test_sig_rsa(self):
@@ -64,7 +64,7 @@ class TestPKIMessageProtection(unittest.TestCase):
                                             protection="signature",
                                             password=None)
 
-        verify_pki_protection(pki_message=protected_msg, private_key=private_key)
+        verify_pki_message_protection(pki_message=protected_msg, private_key=private_key)
 
     def test_sig_ed25519(self):
 
@@ -81,7 +81,7 @@ class TestPKIMessageProtection(unittest.TestCase):
                                             password=None)
 
 
-        verify_pki_protection(pki_message=protected_msg, private_key=private_key)
+        verify_pki_message_protection(pki_message=protected_msg, private_key=private_key)
 
 
     def test_sig_ecdsa(self):
@@ -96,7 +96,7 @@ class TestPKIMessageProtection(unittest.TestCase):
                                             password=None)
 
         # verifies with self-signed certificate, generate inside apply_pki_ if not provided.
-        verify_pki_protection(pki_message=protected_msg, private_key=None)
+        verify_pki_message_protection(pki_message=protected_msg, private_key=None)
 
     def test_sig_ecdsa_without_cert(self):
         private_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
@@ -107,7 +107,7 @@ class TestPKIMessageProtection(unittest.TestCase):
                                             password=None)
 
         # verifies with self-signed certificate, generate inside apply_pki_ if not provided.
-        verify_pki_protection(pki_message=protected_msg, private_key=None)
+        verify_pki_message_protection(pki_message=protected_msg, private_key=None)
 
 
     def test_dh_based_sig(self):
