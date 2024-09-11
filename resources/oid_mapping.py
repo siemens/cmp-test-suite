@@ -1,6 +1,7 @@
-"""Provides utilities for working with cryptographic operations and data structures, specifically focusing on
-OID (Object Identifier) mappings for signature and hash algorithms, symmetric and asymmetric cryptography, and PKI
-(Public Key Infrastructure) message protections. It includes functions to retrieve OIDs for specific cryptographic
+"""Utilities for working with cryptographic operations and data structures.
+
+Specifically focusing on OID (Object Identifier) mappings for signature and hash algorithms, symmetric and asymmetric
+cryptography, and PKI message protections. It includes functions to retrieve OIDs for specific cryptographic
 algorithms, create cryptographic instances, and perform lookups between human-readable algorithm names and their
 corresponding OIDs.
 """
@@ -186,9 +187,8 @@ def sha_alg_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
 
 
 @not_keyword
-def get_curve_instance(curve_name: str) -> ec.EllipticCurve:  # noqa: D205
+def get_curve_instance(curve_name: str) -> ec.EllipticCurve:
     """Retrieve an instance of an elliptic curve based on its name.
-    Used for generating an Ecc Private Key on the named curve.
 
     :param curve_name: A string name of the elliptic curve to retrieve.
     :raises ValueError: If the specified curve name is not supported.
@@ -235,8 +235,7 @@ def get_alg_oid_from_key_hash(key: PrivateKey, hash_alg: str) -> univ.ObjectIden
 
 @not_keyword
 def get_sig_oid_from_key_hash(alg_oid, hash_alg):
-    """Determine the OID of a signature algorithm given by the OID of the asymmetric algorithm and the name of the
-    hashing function used in the signature. # noqa: D205
+    """Get the OID of a signature algorithm given the OID of the asymmetric algorithm and the hash function name.
 
     :param: alg_oid: pyasn1.type.univ.ObjectIdentifier, OID of asymmetric algorithm
     :param: hash_alg: str, name of hashing algorithm, e.g., 'sha256'

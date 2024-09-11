@@ -1,4 +1,5 @@
-"""Provides type aliases to enhance code readability, maintainability, and type safety.
+"""Type aliases to enhance code readability, maintainability, and type safety.
+
 Type aliases are used to create descriptive names for commonly used types, making the codebase
 easier to understand and work with.
 """

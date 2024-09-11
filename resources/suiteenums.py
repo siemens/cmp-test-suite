@@ -1,4 +1,5 @@
 """Enums for use with the Certificate Management Protocol.
+
 These Enums make the test cases more readable for users of the test suite and facilitate
 comparisons and switches in the CMP protocol handling code.
 """
@@ -6,8 +7,9 @@ comparisons and switches in the CMP protocol handling code.
 from enum import Enum, auto
 
 
-# The values are as described in RFC 4210 CMP, Section 5.2.3, and RFC 9480 CMP Updates, Appendix A.
 class PKIStatus(Enum):
+    """Identifiers for PKIStatus values in CMP responses, see RFC 9480 Appendix A"""
+
     accepted = 0
     grantedWithMods = 1
     rejection = 2
@@ -17,8 +19,9 @@ class PKIStatus(Enum):
     keyUpdateWarning = 6
 
 
-# used for the switch-cases on the PKIMessage ProtectionAlgorithm
 class ProtectionAlgorithm(Enum):
+    """Identifiers for ProtectionAlgorithm options used in a PKIMessage."""
+
     HMAC = auto()  # default 256
     HMAC_sha256 = auto()
     PBMAC1 = auto()
@@ -35,8 +38,7 @@ class ProtectionAlgorithm(Enum):
 
     @staticmethod
     def get(value: str) -> "ProtectionAlgorithm":
-        """Return the ProtectionAlgorithm enum member that matches the provided value.
-        The matching is case-insensitive.
+        """Return the ProtectionAlgorithm enum member that matches the provided value (case-insensitive).
 
         Args:
         ----

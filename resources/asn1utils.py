@@ -197,15 +197,12 @@ def get_asn1_value_as_der(asn1_obj, query):
 
 @not_keyword
 def _is_bit_set_in_bitstring(asn1_bitstring: BitString, bit_index: Strint, exclusive: bool = True) -> bool:
-    """Check if a single bit is set in a BitString `pyasn1` `BitString` object.
-    Either exclusive or not.
+    """Check if a bit is set in a `univ.BitString`, optionally ensure it is the only bit set.
 
     :param asn1_bitstring:
     :param bit_index:
-    :param exclusive: `bool` indicating if only one bit must be set (`True`)
-          or if any of them can be set (`False`).Default is `True`.
-    :return:`True` if the specified bit is set according to the `exclusive`
-          parameter; otherwise, `False`.
+    :param exclusive: If True, ensure that no other bits are set except the one at `bit_index`
+    :return:`True` if the check passes, otherwise `False`.
     """
     # Convert the bit index to an integer
     bit_index = int(bit_index)

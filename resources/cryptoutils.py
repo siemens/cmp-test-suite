@@ -1,7 +1,8 @@
-"""Functions and classes for cryptographic operations such as key generation,
-signing data, computing hashes, generating Certificate Signing Requests (CSRs), signing CSRs, performing
-Diffie-Hellman (DH) key exchanges, and generating x509 certificates. The module leverages the `cryptography`
-library to support various cryptographic primitives including RSA,
+"""Functions and classes for cryptographic operations.
+
+Provided primitives are: key generation, signing data, computing hashes, generating Certificate Signing Requests (CSRs),
+signing CSRs, performing Diffie-Hellman (DH) key exchanges, and generating x509 certificates. The module leverages the
+`cryptography` library to support various cryptographic primitives including RSA,
 Elliptic Curve (EC), Ed25519, Ed448, DSA, and DH key types. Additionally, it offers functions for
 hash-based message authentication codes (HMAC), Galois Message Authentication Codes (GMAC),
 and password-based key derivation (PBKDF2).
@@ -28,11 +29,9 @@ from typingutils import PrivateKey, PrivateKeySig, PrivSignCertKey
 
 @not_keyword
 def parse_common_name_from_str(common_name: str) -> x509.Name:
-    """Parse a string representing common name attributes (e.g., "C=DE,ST=Bavaria,L=Munich,O=CMP Lab")
-    and converts it into an `x509.Name` object that can be used for X.509 certificate generation
+    """Parse a string representing common name attributes, convert it to `x509.Name` for X.509 certificate generation.
 
-    :param common_name: str, common name in OpenSSL notation, e.g.,
-    "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
+    :param common_name: str, common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,CN=Joe Mustermann"
     :returns: x509.Name
     """
     items = common_name.strip().split(",")
@@ -86,13 +85,10 @@ def generate_csr(common_name: str = None, subjectAltName=None):
 
 
 def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -> bytes:
-    """Sign the given data with a given private key, using a specified hashing algorithm.
-
-    Supports ECDSA, ED448, ED25519, RSA, and DSA.
+    """Sign `data` with a private key, using a specified hashing algorithm. Supports ECDSA, ED448, ED25519, RSA, DSA.
 
     Arguments:
     ---------
-        - `data`: The data to be signed.
         - `key`: The private key object used to sign the data.
         - `hash_alg`: An optional string representing the name of the hash algorithm to be used for signing
                       (e.g., "sha256"). If not specified, the default algorithm for the given key type is used.
@@ -244,7 +240,7 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
         key = key.encode("utf-8")
 
     initial_input = key + salt
-    for i in range(iterations):
+    for _i in range(iterations):
         initial_input = compute_hash(hash_alg, initial_input)
 
     signature = compute_hmac(data=data, key=initial_input, hash_alg=hash_alg)
@@ -421,7 +417,7 @@ def generate_certificate(  # noqa: D417 # undocumented-param
     --------
     | ${private_key}= | Generate Key | algorithm=rsa | length=2048 |
     | ${certificate}= | Generate Certificate | ${private_key} | CN=Hans |
-    | ${certificate}= | Generate Certificate | ${private_key} | CN=Hans | sign_key=${sign_key} | issuer_cert=${issuer_cert} |
+    | ${certificate}= | Generate Certificate | ${private_key} | CN=Hans | sign_key=${sign_key} | issuer_cert=${cert} |
 
     """
     if not isinstance(private_key, PrivateKey):

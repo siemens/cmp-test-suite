@@ -1,6 +1,4 @@
-"""Functionality to prepare the `rfc9480.PKIMessage` protectionAlg field
-and compute the PKIProtection.
-"""
+"""Utilities that generate and parse protection-related structures in PKIMessage."""
 
 import logging
 import os
@@ -38,7 +36,7 @@ from typingutils import PrivateKey, PrivSignCertKey
 def _prepare_password_based_mac_parameters(
     salt: Optional[bytes] = None, iterations=1000, hash_alg="sha256"
 ) -> rfc9480.PBMParameter:
-    """Prepare password-based-mac protection with the `rfc8018.PBMParameter` structure.
+    """Prepare `rfc8018.PBMParameter` structure for password-based-mac protection in PKIMessage.
 
     :param salt: optional bytes, salt to use for the password-based-mac protection,
                  if not given, will generate 16 random bytes
@@ -69,8 +67,7 @@ def _prepare_password_based_mac_parameters(
 def _prepare_pbmac1_parameters(
     salt: Optional[bytes] = None, iterations=100, length=32, hash_alg="sha256"
 ) -> rfc8018.PBMAC1_params:
-    """Prepare the PBMAC1 `rfc8018.PBMAC1_params`. Used for the `rfc9480.PKIMessage` protection.
-       PBKDF2 with HMAC as message authentication scheme is used.
+    """Prepare the PBMAC1 `rfc8018.PBMAC1_params`, for `rfc9480.PKIMessage` protection, using PBKDF2 with HMAC.
 
     :param salt: optional bytes for uniqueness.
     :param iterations: The number of iterations to be used in the PBKDF2 key derivation function.
@@ -138,9 +135,7 @@ def add_cert_to_pkimessage_used_by_protection(
     sign_key: Optional[PrivSignCertKey] = None,
     issuer_cert: Optional[x509.Certificate] = None,
 ):
-    """Ensure that a `rfc9480.PKIMessage` protected by a signature has a
-    CMP-Protection certificate as the first entry in the `extraCerts`.
-
+    """Ensure that `extraCerts` of a signature-protected `rfc9480.PKIMessage` starts with a CMP-Protection certificate.
 
     If a certificate is provided, it checks that the first certificate matches the provided CMP-Protection certificate.
     If no `certificate` is provided, it generates a new one using the given `private_key`
@@ -285,8 +280,8 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         hash_alg: str = SHA_OID_2_NAME[prot_params["owf"]["algorithm"]]
         password = compute_hash(alg_name=hash_alg, data=password)
         return cryptoutils.compute_hmac(key=password, data=encoded)
-    else:
-        raise ValueError(f"Unsupported Symmetric Mac Protection! : {protection_type_oid}")
+
+    raise ValueError(f"Unsupported Symmetric Mac Protection! : {protection_type_oid}")
 
 
 def _compute_pkimessage_protection(

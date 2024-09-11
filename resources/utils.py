@@ -15,7 +15,8 @@ from typingutils import Strint
 
 def nonces_must_be_diverse(nonces: List[bytes], minimal_hamming_distance: Strint = 10):
     """Check that a list of nonces are diverse enough, by computing the Hamming distance between them.
-    Nonces will be right-padded with 0x00 if their lengths are different. # noqa: D205
+
+    Nonces will be right-padded with 0x00 if their lengths are different.
 
     :param nonces: list of bytes, nonces to check
     :param minimal_hamming_distance: stringified int, the minimum hamming distance between any two nonces; stringified

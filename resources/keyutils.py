@@ -1,5 +1,6 @@
-"""Provides utility functions for generating, saving, and loading cryptographic keys.
-It is designed to facilitate key management by offering simple methods to create new keys,
+"""Utility functions for generating, saving, and loading cryptographic keys.
+
+Designed to facilitate key management by offering simple methods to create new keys,
 store them and retrieve them when needed.
 """
 
@@ -23,7 +24,7 @@ from typingutils import PrivateKey, PublicKey
 
 
 def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
-    """Save a `cryptography.PrivateKey` object to a file, optionally encrypting it with a passphrase.
+    """Save a `cryptography.PrivateKey` to a file, optionally encrypting it with a passphrase.
 
     Arguments:
     ---------
