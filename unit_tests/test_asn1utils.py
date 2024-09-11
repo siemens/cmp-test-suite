@@ -17,8 +17,8 @@ class TestASN1Utils(unittest.TestCase):
         default_str = "0" * 26
         default_str_list = list(default_str)
         # Change the characters at the desired indices
-        default_str_list[1] = "1" # change to badPOP
-        default_str_list[9] = "1" # badMessageCheck
+        default_str_list[1] = "1"  # change to badPOP
+        default_str_list[9] = "1"  # badMessageCheck
         default_str = "".join(default_str_list)
 
         # not exclusive bit string for test_is_bit_set and test_is_bit_set_with_human_readable_names.

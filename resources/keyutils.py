@@ -23,10 +23,7 @@ from typingutils import PrivateKey, PublicKey
 
 
 def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):
-    """Save a `cryptography` `PrivateKey` object to a file.
-
-    Saves a private key to a specified file path. The key can be encrypted with a passphrase
-    or saved without encryption.
+    """Save a `cryptography.PrivateKey` object to a file, optionally encrypting it with a passphrase.
 
     Arguments:
         - `key` (cryptography.hazmat.primitives.asymmetric): The private key object to save.
@@ -177,12 +174,10 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
 
 
 def load_private_key_from_file(filepath: str, password: Optional[str] = "11111") -> PrivateKey:
-    """Load Private Key From File.
-
-    Loads a `cryptography` private key from a PEM-encoded file, or Hex-String for x448, ed448, x25519, ed25519 keys.
+    """Load a private key from a PEM-encoded file, or a hex-string (for x448, ed448, x25519, ed25519 keys).
 
     Arguments:
-    - `filepath` (str): The path to the file containing the PEM-encoded key.
+    - `filepath` (str): The path to the file containing the key.
     - `password` (str, optional): The password to decrypt the key file, if it is encrypted. Defaults to "11111".
       For raw key formats such as `x448` and `x25519`, set the password to `"x448"` or `"x25519"` to indicate
       that these hex string keys should be loaded. (also for ed-versions).

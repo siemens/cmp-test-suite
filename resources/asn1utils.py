@@ -233,15 +233,13 @@ def _is_either_bit_set_in_bitstring(
     bit_indices: List[int],
     exclusive: bool = True,
 ) -> bool:
-    """Check if one of the provided bit indices are set in a `pyasn1` `univ.BitString` object.
-    Either exclusive or not.
+    """Check if one of the provided bit indices are set in a `univ.BitString` object. Either exclusive or not.
 
-    :param asn1_bitstring: `pyasn1` `univ.BitString` object.
-    :param bit_indices: Indices a List of allowed Positions to be set.
+    :param asn1_bitstring: `univ.BitString` object.
+    :param bit_indices: list of allowed positions to be set.
     :param exclusive: `bool` indicating if only one of the indices must be `True`
-          or if any or all of them can be set to `False`.Default is `True`.
-    :return: `True` if the specified bit or bits are set according to the `exclusive`
-          parameter; otherwise, `False`.
+          or if any or all of them can be set to `False`. Default is `True`.
+    :return: `True` if the specified bit or bits are set according to the `exclusive` parameter; otherwise, `False`.
     """
     logging.info(tuple(asn1_bitstring))
     for i in bit_indices:
@@ -254,19 +252,17 @@ def _is_either_bit_set_in_bitstring(
 def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool = True) -> bool:  # noqa: D417
     """Verify if a specific bit or bits are set within a given `BitString` object.
 
-    This function checks if a specific bit or bits, defined by their indices or names,
-    are set within a provided `BitString` object. It supports both integer index
-    and named bit indices (comma-separated). The check can be performed either
-    exclusively or non-exclusively, depending on the `exclusive` parameter.
+    It supports both integer index and named bit indices (which can be comma-separated). The check can be
+    performed either exclusively or non-exclusively, depending on the `exclusive` parameter.
 
     Arguments:
     ---------
-        - asn1_bitstring: A `pyasn1` `univ.BitString` object to be checked.
+        - asn1_bitstring: A `univ.BitString` object to be checked.
         - bit_indices: A `str` representing the bit index or indices to check.
           This can be:
             - An integer index for a single bit check.
-            - A comma-separated string of integers for multiple bit indices.
-            - A comma-separated string of human-readable bit names.
+            - A comma-separated string of integers for multiple bit indices, e.g., "1, 9".
+            - A comma-separated string of human-readable bit names, e.g., "duplicateCertReq, badPOP".
         - exclusive: A `bool` indicating if only one bit must be set (`True`)
           or if any of them can be set (`False`). Default is `True`.
 
@@ -278,7 +274,7 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
     Raises:
     ------
         - ValueError: If any of the provided human-readable names are not part of the options.
-        - ValueError: If a `pyasn1` `schema` object is provided.
+        - ValueError: If the input is not a `BitString` object.
 
     Examples:
     --------
@@ -314,6 +310,6 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
             try:
                 bit_indices = [names.index(val) for val in values]
             except ValueError:
-                raise ValueError(f"Provided names: {values} but allowed Are: {names}")
+                raise ValueError(f"Provided names: {values} but allowed are: {names}")
 
             return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)

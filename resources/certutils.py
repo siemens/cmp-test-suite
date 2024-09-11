@@ -86,14 +86,11 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
     Supports: (ECDSA, ED448, ED25519, RSA, DSA).
 
     Arguments:
-        - `public_key` (cryptography.hazmat.primitives.asymmetric): The public key object used to
-                      verify the signature.
-        - `signature` (bytes): signature data.
-        - `data` (bytes): The original data that was signed, provided as a byte sequence.
-        - `hash_alg` (Optional str ): An string representing the name of the hash algorithm
-                                   to be used for verification
-                                  (e.g., "sha256"). If not specified, the default algorithm for the
-                                   given key type is used.
+        - `public_key`: The public key used to verify the signature.
+        - `signature`: signature data.
+        - `data`: The original data that was signed.
+        - `hash_alg`: Name of the hash algorithm used for verification (e.g., "sha256"). If not specified, the default
+                      algorithm for the given key type is used.
 
     Key Types and Verification:
         - `RSAPublicKey`: Verifies using PKCS1v15 padding and the provided hash algorithm.
@@ -138,15 +135,14 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
 
 @not_keyword
 def verify_cert_signature(certificate: x509.Certificate, issuer_pub_key: Optional[PublicKeySig] = None):
-    """Verify the digital signature of an X.509 certificate.
+    """Verify the signature of an X.509 certificate.
 
-    With the provided issuer's public key or the certificate's own public key if it is self-signed.
+    Uses the issuer's public key, or the certificate's own public key if it is self-signed.
 
     :param certificate: `cryptography.x509.Certificate` which is verified.
     :param issuer_pub_key: optional PublicKeySig used for verification.
 
-    :raises InvalidSignature:
-        If the certificate's signature is not valid when verified against the provided or extracted public key.
+    :raises InvalidSignature: If the certificate's signature is not valid.
     """
     pub_key = issuer_pub_key or certificate.public_key()
 
@@ -160,12 +156,10 @@ def verify_cert_signature(certificate: x509.Certificate, issuer_pub_key: Optiona
 
 @not_keyword
 def verify_csr_signature(csr: x509.CertificateSigningRequest):
-    """Verify the digital signature of an self-signed X509 CSR object using the public key extracted from the CSR.
+    """Verify the signature of an X509 CSR using the public key extracted from the CSR.
 
     :param csr: `cryptography.x509.CertificateSigningRequest` representing the CSR to verify.
-
-    :raises InvalidSignature:
-        If the CSR's signature is not valid.
+    :raises InvalidSignature: If the CSR's signature is not valid.
     """
     verify_signature(
         public_key=csr.public_key(),

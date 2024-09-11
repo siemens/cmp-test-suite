@@ -60,10 +60,11 @@ def nonces_must_be_unique(nonces: List[bytes]):
         raise ValueError(f"Nonces are not unique! Repeated nonces with counts: {repeated_nonces}")
 
 
-def log_asn1(pyasn1_obj: base.Asn1Type):  # noqa: D205
-    """Log a pyasn1 object as a string for debugging purposes. For convenience, it will gracefully
-    ignore objects that are not pyasn1, so that the function can be invoked from RobotFramework
-    scenarios without having to check the type of the object first.
+def log_asn1(pyasn1_obj: base.Asn1Type):
+    """Log a pyasn1 object as a string for debugging purposes.
+
+    For convenience, it will gracefully ignore objects that are not pyasn1, so that the function can be invoked from
+    RobotFramework scenarios without having to check the type of the object first.
     """
     if isinstance(pyasn1_obj, base.Asn1Type):
         logging.info(pyasn1_obj.prettyPrint())

@@ -728,7 +728,7 @@ def _generate_pki_message_fail_info(fail_info: Optional[str] = None) -> rfc9480.
 
 @not_keyword
 def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
-    """Build the pyasn1 `rfc9480.PKIMessage extraCerts` filed with a list containing `rfc9480.CMPCertificate`.
+    """Build the pyasn1 `rfc9480.PKIMessage.extraCerts` field with a list of `rfc9480.CMPCertificate`.
 
     :param certs: A list with `rfc9480.CMPCertificate`
     :return: An `univ.SequenceOf` object filled with `rfc9480.CMPCertificate` instances.
@@ -746,10 +746,10 @@ def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
 
 @not_keyword
 def prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.SequenceOf:
-    """Load certificates from a file or directory and returns a `univ.SequenceOf` structure.
+    """Load certificates from a file or directory and return a `univ.SequenceOf` structure tagged for use in PKIMessage.
 
-    :param path: A string representing a single file path or a directory where the certificates are stored.
-    :param recursive: A boolean that, if True, searches recursively through the directory.
+    :param path: Path to a file or a directory where the certificates are stored.
+    :param recursive: If True, searches recursively through the directory.
     :return: An `univ.SequenceOf` object filled with `rfc9480.CMPCertificate` instances.
     """
     extra_certs_wrapper = (

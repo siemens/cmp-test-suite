@@ -1,6 +1,6 @@
-"""Collection of functions and classes for cryptographic operations such as key generation,
+"""Functions and classes for cryptographic operations such as key generation,
 signing data, computing hashes, generating Certificate Signing Requests (CSRs), signing CSRs, performing
-Diffie-Hellman (DH) key exchanges, and generating x509 certificates.The module leverages the `cryptography`
+Diffie-Hellman (DH) key exchanges, and generating x509 certificates. The module leverages the `cryptography`
 library to support various cryptographic primitives including RSA,
 Elliptic Curve (EC), Ed25519, Ed448, DSA, and DH key types. Additionally, it offers functions for
 hash-based message authentication codes (HMAC), Galois Message Authentication Codes (GMAC),
@@ -88,13 +88,13 @@ def generate_csr(common_name: str = None, subjectAltName=None):
 def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -> bytes:
     """Sign the given data with a given private key, using a specified hashing algorithm.
 
-    Supports ECDSA, ED448, ED25519, RSA, and DSA key types for signing.
+    Supports ECDSA, ED448, ED25519, RSA, and DSA.
 
     Arguments:
-        - `data` (bytes): The data to be signed, provided as a byte sequence.
-        - `key` (cryptography.hazmat.primitives.asymmetric): The private key object used to sign the data.
-        - `hash_alg` (Optional[str]): An optional string representing the name of the hash algorithm to be used for signing
-                                  (e.g., "sha256"). If not specified, the default algorithm for the given key type is used.
+        - `data`: The data to be signed.
+        - `key`: The private key object used to sign the data.
+        - `hash_alg`: An optional string representing the name of the hash algorithm to be used for signing
+                      (e.g., "sha256"). If not specified, the default algorithm for the given key type is used.
 
     Key Types and Signing:
         - `EllipticCurvePrivateKey`: Signs using ECDSA with the provided hash algorithm.
@@ -251,10 +251,7 @@ def compute_password_based_mac(data, key, iterations=1000, salt=None, hash_alg="
 def generate_signed_csr(  # noqa: D417
     common_name: str, key: Union[PrivateKey, str, None] = None, **params
 ) -> Tuple[bytes, PrivateKey]:
-    """Generate Signed CSR.
-
-    Generates a signed Certificate Signing Request (CSR) for a given common name (CN).
-    Optionally, use a specified private key or generate a new one if none is provided.
+    """Generate signed CSR for a given common name (CN).
 
     If a key is not provided, a new RSA key is generated. If a string is provided, it is used as the key generation
     algorithm (e.g., "rsa") with additional parameters. If a `PrivateKey` object is provided, it is used directly.
@@ -264,7 +261,7 @@ def generate_signed_csr(  # noqa: D417
     - `key`: Optional. The private key to use for signing the CSR. Can be one of:
         - A `PrivateKey` object from the cryptography library.
         - A string representing the key generation algorithm (e.g., "rsa").
-        - `None` (default). If `None`, a new RSA key is generated.
+        - `None` (default): a new RSA key is generated.
     - `params`: Additional keyword arguments to customize key generation when `key` is a string.
 
     Returns:
@@ -275,7 +272,7 @@ def generate_signed_csr(  # noqa: D417
     - `ValueError`: If the provided key is neither a valid key generation algorithm string nor a `PrivateKey` object.
 
     Example:
-    | ${csr_signed} | ${private_key} = | Generate Signed CSR | example.com | rsa | length=2048 |
+    | ${csr_signed} | ${private_key} = | Generate Signed CSR | CN=Joe | rsa | length=2048 |
 
     """
     if key is None:
@@ -285,7 +282,7 @@ def generate_signed_csr(  # noqa: D417
     elif isinstance(key, PrivateKey):
         pass
     else:
-        raise ValueError("the provided key must be either be the name of the generate key or a private key")
+        raise ValueError("`key` must be either an algorithm name or a private key")
 
     csr = generate_csr(common_name=common_name)
     csr_signed = sign_csr(csr=csr, key=key)
@@ -294,16 +291,15 @@ def generate_signed_csr(  # noqa: D417
 
 
 def _generate_private_dh_from_key(
-    password: str, other_party_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
+    password: str, peer_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
 ) -> dh.DHPrivateKey:
-    """Generate a `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey` based on the parsed password.
-    Used to perform a DH Key-Agreement with a provided password.
+    """Generate a `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey` based on the password.
 
     :param password: str password which one of the parties uses as secret DH-Key.
-    :param other_party_key: `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey or DHPublicKey
+    :param peer_key: `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey or DHPublicKey
     :return: `cryptography.hazmat.primitives.asymmetric.dh.DHPrivateKey` object
     """
-    parameters = other_party_key.parameters().parameter_numbers()
+    parameters = peer_key.parameters().parameter_numbers()
 
     private_key: dh.DHPrivateKey = keyutils.generate_key(
         algorithm="dh",
@@ -324,7 +320,7 @@ def do_dh_key_exchange_password_based(  # noqa: D417
     - `peer_key`: A `cryptography` `dh.DHPrivateKey` or `dh.DHPublicKey` object representing the other party's key.
 
     Returns:
-    - `bytes`: A byte sequence representing the shared secret key derived from the Diffie-Hellman key exchange.
+    - `bytes`: Shared secret key derived from the Diffie-Hellman key exchange.
 
     Example:
     | ${shared_secret} = | Do DH Key Exchange Password Based | password=my_password | peer_key=${public_key} |
@@ -349,15 +345,12 @@ def compute_dh_based_mac(
     data: bytes, password: Union[str, dh.DHPublicKey], key: dh.DHPrivateKey, hash_alg: str = "sha1"
 ) -> bytes:
     """Compute a Message Authentication Code (MAC) using a Diffie-Hellman (DH) based shared secret.
-    Derives a shared Secret, hashes the key and then computes te HMAC.
 
     :param data: The input data to be authenticated, given as a byte sequence.
-    :param password: str or `cryptography` `dh.DHPublicKey` A string password used to generate the Server's secret Key
-                     or a provided Public key.
-    :param key: A `cryptography` `dh.DHPrivateKey` object. Which represents the client's secret.
-    :param hash_alg: (str) The name of the hash algorithm to be used for key derivation and HMAC computation.
-                     Defaults to "sha1".
-    :return: A byte sequence representing the computed HMAC of the input data using the derived key.
+    :param password: A string used to generate the server's secret key or a provided public key.
+    :param key: A `cryptography.dh.DHPrivateKey` object, which represents the client's secret.
+    :param hash_alg: Name of the hash algorithm for key derivation and HMAC computation. Defaults to "sha1".
+    :return: The computed HMAC of the input data using the derived key.
     """
     if isinstance(password, str):
         shared_key = do_dh_key_exchange_password_based(password=password, peer_key=key)
@@ -385,6 +378,7 @@ def compute_gmac(data: bytes, key: bytes, nonce: bytes) -> bytes:
     aes_gcm.finalize()  # Finalize to get the authentication tag
     return aes_gcm.tag
 
+
 # TODO update params with next merge after adding validation logic.
 def generate_certificate(  # noqa: D417 # undocumented-param
     private_key: PrivateKey,
@@ -397,13 +391,11 @@ def generate_certificate(  # noqa: D417 # undocumented-param
     """Generate an X.509 certificate, either self-signed or using a provided private key.
 
     Arguments:
-        - private_key (PrivateKey): The private key to use for certificate public Key generation.
-        - common_name (str, optional): The common name in OpenSSL notation. Defaults to "CN=Hans".
-        - hash_alg (str, optional): The name of the hash function to use for signing the certificate.
-                 Defaults to "sha256".
-        - sign_key (`cryptography.hazmat.primitives.asymmetric Private Key` object):
-                The private key to sign the certificate.
-        - issuer_cert (`cryptography.x509.Certificate`, optional): the certificate of the issuer.
+        - private_key: The private key to use for certificate public Key generation.
+        - common_name: The common name in OpenSSL notation. Defaults to "CN=Hans".
+        - hash_alg: Name of the hash function to use for signing the certificate. Defaults to "sha256".
+        - sign_key: The private key to sign the certificate.
+        - issuer_cert: the certificate of the issuer.
 
     **params:
           - "serial_number", "days", "not_valid_before", "days"
@@ -415,9 +407,9 @@ def generate_certificate(  # noqa: D417 # undocumented-param
         - ValueError: If the private key is not supported for certificate signing.
 
     Examples:
-    | ${private_key} | Generate Key | algorithm=rsa | length=2048 |
-    | ${certificate} | Generate Certificate | ${private_key} | CN=Hans |
-    | ${certificate} | Generate Certificate | ${private_key} | CN=Hans | sign_key=${sign_key} | issuer_cert=${issuer_cert} |
+    | ${private_key}= | Generate Key | algorithm=rsa | length=2048 |
+    | ${certificate}= | Generate Certificate | ${private_key} | CN=Hans |
+    | ${certificate}= | Generate Certificate | ${private_key} | CN=Hans | sign_key=${sign_key} | issuer_cert=${issuer_cert} |
 
     """
     if not isinstance(private_key, PrivateKey):
@@ -458,18 +450,12 @@ def _build_cert(
 ) -> cryptography.x509.CertificateBuilder:
     """Create a `cryptography.x509.CertificateBuilder` using a public key, issuer, subject, and a validity period.
 
-    :param public_key: `cryptography.hazmat.primitives.asymmetric` public key object
-        The public key to associate with the certificate.
-    :param issuer: `cryptography.x509.Name` object the issuer's distinguished name.
-    :param subject:  optional `cryptography.x509.Name` object the subject's distinguished name.
-    :param serial_number:
-        An optional integer representing the serial number of the certificate. If not provided, a random serial number
-        is generated using `x509.random_serial_number()`.
-    :param days: int representing the number of days for which the certificate is valid.
-        Defaults to 365 days.
-    :param not_valid_before:
-        An optional `datetime.datetime` object representing the start date and time when the certificate becomes valid.
-        If not provided, the current date and time is used.
+    :param public_key: `cryptography.hazmat.primitives.asymmetric` public key to associate with the certificate.
+    :param issuer: issuer's distinguished name.
+    :param subject:  optional, subject's distinguished name.
+    :param serial_number: serial number of the certificate. If not provided, will be set to a random number.
+    :param days: number of days for which the certificate is valid. Defaults to 365 days.
+    :param not_valid_before: start date and time when the certificate becomes valid (defaults to the current time).
 
     :return: `cryptography.x509.CertificateBuilder`
     """
@@ -510,8 +496,8 @@ def _sign_cert_builder(
     """
     if isinstance(sign_key, ec.EllipticCurvePrivateKey):
         hash_alg = hash_name_to_instance(hash_alg)
-        # Sign the certificate with the private key
         certificate = cert_builder.sign(private_key=sign_key, algorithm=hash_alg)
+
     elif isinstance(sign_key, rsa.RSAPrivateKey):
         hash_alg = hash_name_to_instance(hash_alg)
         certificate = cert_builder.sign(private_key=sign_key, algorithm=hash_alg, rsa_padding=padding.PKCS1v15())
@@ -520,6 +506,6 @@ def _sign_cert_builder(
         certificate = cert_builder.sign(private_key=sign_key, algorithm=None)
 
     else:
-        raise ValueError(f"Unsupported to sign a Certificate!: {type(sign_key)}")
+        raise ValueError(f"Unsupported to sign a certificate!: {type(sign_key)}")
 
     return certificate
