@@ -45,10 +45,6 @@ unit-tests:
 
 pyright:
   stage: type-check
-  needs:
-    # this is a rather expensive check, so we only run it if the others are OK
-    - basics
-    - pylint
   before_script:
     - pip install pyright==1.1.380
   script:
