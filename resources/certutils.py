@@ -137,27 +137,18 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
 
 
 @not_keyword
-def verify_cert_signature(certificate: x509.Certificate, issuer_cert: Optional[x509.Certificate] = None):
+def verify_cert_signature(certificate: x509.Certificate, issuer_pub_key: Optional[PublicKeySig] = None):
     """Verify the digital signature of an X.509 certificate.
 
     With the provided issuer's public key or the certificate's own public key if it is self-signed.
 
     :param certificate: `cryptography.x509.Certificate` which is verified.
-
-    :param issuer_cert: optional `cryptography.x509.Certificate` which is verified.
-           used for verification. If provided, the `issuer_cert` must match the `certificate`'s issuer.
+    :param issuer_pub_key: optional PublicKeySig used for verification.
 
     :raises InvalidSignature:
         If the certificate's signature is not valid when verified against the provided or extracted public key.
-    :raises ValueError:
-        If `issuer_cert` is provided but does not match the `certificate`'s issuer.
     """
-    pub_key = certificate.public_key()
-
-    if issuer_cert is not None:
-        pub_key = issuer_cert.public_key()
-        if issuer_cert.subject != certificate.issuer:
-            raise ValueError("The provided issuer certificate does not match the certificate's issuer.")
+    pub_key = issuer_pub_key or certificate.public_key()
 
     verify_signature(
         public_key=pub_key,
