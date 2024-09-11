@@ -306,7 +306,7 @@ def _compute_pkimessage_protection(
     """Compute the protection for a given `pyasn1 rfc9480.PKIMessage` based on the specified protection algorithm.
 
     :param pki_message: `rfc9480.PKIMessage` object to compute the signature about.
-    :param password: A string representing a shared secret or a server private key for DHBasedMac.
+    :param password: A string representing a shared secret. For DHBasedMac used as a scalar, to derive the secret key.
     :param private_key: optional PrivateKey The private key used for signature-based protection
                                               or DH-based MAC computation.
     :param certificate:  A certificate used as the CMP-Protection certificate for signature-based protection.
