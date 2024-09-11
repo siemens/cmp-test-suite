@@ -503,7 +503,7 @@ def protect_pki_message(  # noqa: D417 undocumented-param
     return pki_message
 
 
-def verify_pki_message_protection(  # noqa: D417, D205
+def verify_pki_message_protection(  # noqa: D417
     pki_message: rfc9480.PKIMessage,
     private_key: Optional[PrivateKey] = None,
     password: Optional[Union[bytes, str]] = None,

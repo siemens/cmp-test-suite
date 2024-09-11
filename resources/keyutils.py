@@ -4,9 +4,8 @@ Designed to facilitate key management by offering simple methods to create new k
 store them and retrieve them when needed.
 """
 
-from typing import Optional
 import base64
-import re
+from typing import Optional
 
 from cryptography.hazmat import backends
 from cryptography.hazmat.primitives import serialization
@@ -21,10 +20,10 @@ from cryptography.hazmat.primitives.asymmetric import (
     x25519,
 )
 
+import utils
 from oid_mapping import get_curve_instance
 from typingutils import PrivateKey, PublicKey
 
-import utils
 
 def _add_armour(raw: str) -> str:
     """Add PEM armour for private keys.
@@ -47,6 +46,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):  
         - `passphrase`: Optional passphrase to encrypt the key. If None, save without encryption. Defaults to "11111".
 
     Notes:
+    -----
         - `DHPrivateKey`: Serialized in PKCS8 format.
         - `X448PrivateKey` and `X25519PrivateKey` and ed versions: (cannot be encrypted).
 
@@ -193,16 +193,15 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417 for RF 
     return private_key
 
 
-def load_private_key_from_file(filepath: str, password: Optional[str] = "11111", key_type: str = None) -> PrivateKey:
+def load_private_key_from_file(filepath: str, password: Optional[str] = "11111", key_type: str = None) -> PrivateKey:  # noqa: D417 for RF docs
     """Load Private Key From File.
 
-    Loads a `cryptography` private key from a PEM-encoded file.
-
     Arguments:
-    - `filepath` (str): The path to the file containing the PEM-encoded key.
-    - `password` (str, optional): The password to decrypt the key file, if it is encrypted. Defaults to "11111".
-      `x448` and `x25519` and ed versions do not support encryption.
-    - `key_type` (optional str): the type of the key. needed for x448 and x25519. (also ed-versions)
+    ---------
+        - `filepath`: The path to the file containing the PEM-encoded key.
+        - `password`: The password to decrypt the key file, if it is encrypted. Defaults to "11111".
+          `x448` and `x25519` and ed versions do not support encryption.
+        - `key_type`: the type of the key, needed for x448 and x25519. (also ed-versions)
 
     Returns: An instance of the loaded key, such as `RSAPrivateKey`, `X448PrivateKey`, or `X25519PrivateKey`.
 
