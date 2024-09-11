@@ -472,19 +472,15 @@ def csr_extend_subject(csr, rdn):
 
 
 def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
-    """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
+    """Parse input data to PKIMessage structure and return resulting object.
 
     Arguments:
     ---------
-        - data (bytes): The raw input data to be parsed.
+        data: The raw input data to be parsed.
 
-    Returns:
-    -------
-        - pyasn1 parsed object: Represents the PKIMessage structure.
+    Returns: `rfc9480.PKIMessage` structure.
 
-    Raises:
-    ------
-        - ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
+    Raises: `ValueError` if the input cannot be correctly parsed into a PKIMessage.
 
     """
     try:
@@ -619,15 +615,14 @@ def add_implicit_confirm(pki_message):
 
 # this is a Python implementation of the RobotFramework keyword `Try to Log PKIMessage as ASN1`. Viewing
 # the output of this one requires fewer clicks in the reports.
-def try_to_log_pkimessage(data):
+def try_to_log_pkimessage(data):  # noqa: D417 for RF docs
     """Try to decode a DER-encoded PKIMessage and log the ASN1 structure in a human-readable way.
 
     Will also accept inputs that are pyasn1 objects or strings, for the convenience of invocation from RF tests.
 
     Arguments:
     ---------
-      - `data`: bytes, str or pyasn1 - something that is assumed to be a PKIMessage structure, either DER-encoded or
-                 a pyasn1 object.
+        - `data`: something that is assumed to be a PKIMessage structure, either DER-encoded or a pyasn1 object.
 
     """
     if isinstance(data, base.Asn1Item):
@@ -645,23 +640,19 @@ def try_to_log_pkimessage(data):
         logging.info(parsed.prettyPrint())
 
 
-def modify_csr_cn(
+def modify_csr_cn(  # noqa: D417 for RF docs
     csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Hans Mustermann"
 ) -> rfc9480.CertificationRequest:
-    """Modify the Common Name (CN) in a CSR. Expects a CN to be present, otherwise, raises a ValueError.
+    """Modify the Common Name (CN) in a CSR.
 
     Arguments:
     ---------
-        - `csr` pyasn1 `rfc9480.CertificationRequest` object.
-        - `new_cn` The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
+        - `csr`: `rfc9480.CertificationRequest` object.
+        - `new_cn`: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
 
-    Returns:
-    -------
-         - returns the modified `rfc9480.CertificationRequest` object.
+    Returns: The modified `rfc9480.CertificationRequest` object.
 
-    Raises:
-    ------
-        - ValueError: If no Common Name (CN) is found in the CSR.
+    Raises: `ValueError` if no Common Name (CN) is found in the CSR.
 
     """
     # Access the subject field from the CSR, which contains the RDNSequence.

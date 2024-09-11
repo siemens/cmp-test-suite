@@ -81,41 +81,40 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):  
         )
 
 
-def generate_key(algorithm="rsa", **params) -> PrivateKey:
+def generate_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417 for RF docs
     """Generate a `cryptography` key based on the specified algorithm.
 
-    This function supports generating keys for various cryptographic algorithms including
-    RSA, DSA, ECDSA, ECDH, Ed25519, DH, and AES.
-    Depending on the selected algorithm, additional parameters can be provided to customize the key generation.
+    This function supports generating keys for various cryptographic algorithms including RSA, DSA, ECDSA, ECDH,
+    Ed25519, and DH. Depending on the selected algorithm, additional parameters can be provided.
 
     Arguments:
     ---------
-    - algorithm (str): The cryptographic algorithm to use for key generation.
-      Supported values include:
-        - "rsa": RSA key pair generation (default).
-        - "dsa": DSA key pair generation.
-        - "ecdsa" or "ecdh": Elliptic Curve key pair generation.
-        - "ed25519": Ed25519 key pair generation.
-        - "dh": Diffie-Hellman key pair generation.
-    - **params: Additional parameters specific to the algorithm.
+        - `algorithm`: The cryptographic algorithm to use for key generation.
+        - `**params`: Additional parameters specific to the algorithm.
+
+    Supported algorithms:
+    ---------------------
+        - "rsa": RSA (default).
+        - "dsa": DSA.
+        - "ecdsa" or "ecdh": Elliptic Curve.
+        - "ed25519": Ed25519.
+        - "dh": Diffie-Hellman.
+
+    Additional Parameters:
+    ----------------------
         - For "rsa" and "dsa":
             - length (int , str): The length of the key to generate, in bits. Default is 2048.
         - For "ecdsa" or "ecdh":
-            - curve (str): An elliptic curve instance from `cryptography.hazmat.primitives.asymmetric.ec`.
-                          Default is `secp256r1`.
+            - curve (str): Curve name, see `cryptography.hazmat.primitives.asymmetric.ec`. Default is `secp256r1`.
         - For "dh":
             - g (int): The generator for DH key generation. Default is 2.
             - secret_scalar (int): the private key value for DH key generation. If not provided, one is generated.
             - length (int , str): The length of the modulus to generate if `p` is not provided. Default is 2048.
 
-    Returns:
-    -------
-    - private_key (object): The generated private key. For "aes", this will be a raw byte string
-                            representing the symmetric key.
 
-    Raises:
-    ------
-    - ValueError: If the specified algorithm is not supported or if invalid parameters are provided.
+    Returns: The generated private key.
+
+    Raises: `ValueError` if the specified algorithm is not supported or if invalid parameters are provided.
 
     Examples:
     --------
@@ -183,18 +182,14 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
 
     Arguments:
     ---------
-    - `filepath` (str): The path to the file containing the key.
-    - `password` (str, optional): The password to decrypt the key file, if it is encrypted. Defaults to "11111".
+    filepath: The path to the file containing the key.
+    password: The password to decrypt the key file, if it is encrypted. Defaults to "11111".
       For raw key formats such as `x448` and `x25519`, set the password to `"x448"` or `"x25519"` to indicate
       that these hex string keys should be loaded. (also for ed-versions).
 
-    Returns:
-    -------
-    - `PrivateKey`: An instance of the loaded key, such as `RSAPrivateKey`, `X448PrivateKey`, or `X25519PrivateKey`.
+    Returns: An instance of the loaded key, such as `RSAPrivateKey`, `X448PrivateKey`, or `X25519PrivateKey`.
 
-    Raises:
-    ------
-    - `FileNotFoundError`: If the file does not exist.
+    Raises: `FileNotFoundError` if the file does not exist.
 
     Examples:
     --------
@@ -232,21 +227,19 @@ def load_private_key_from_file(filepath: str, password: Optional[str] = "11111")
     return private_key
 
 
-def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:  # noqa D417 #undocumented-param
-    """Load Public Key From File.
+def load_public_key_from_file(filepath: str, key_type: str = None) -> PublicKey:  # noqa: D417 for RF docs
+    """Load public key from file.
 
     Load a cryptographic public key from a PEM-encoded file
     unless it is a x448, ed448, x25519, or ed25519 key. Then the raw format is used.
 
     Arguments:
     ---------
-    - `filepath` (str): the path to the file containing the key data.
-    - `key_type` (optional str): the type of the key. needed for x448 and x25519. (also ed-versions)
+        - `filepath`: the path to the file containing the key data.
+        - `key_type`: the type of the key, needed for x448 and x25519 (also ed-versions).
 
 
-    Returns:
-    -------
-    - `PublicKey`: An instance of the loaded public key, such as `RSAPublicKey`, `X448PublicKey`, or `X25519PublicKey`.
+    Returns: An instance of the loaded public key, such as `RSAPublicKey`, `X448PublicKey`, or `X25519PublicKey`.
 
     Raises:
     ------

@@ -6,7 +6,7 @@ from pyasn1.error import PyAsn1Error
 import cmputils
 
 
-def http_response_contains_pki_message(data: requests.Response) -> False:  # noqa: D417
+def http_response_contains_pki_message(data: requests.Response) -> False:  # noqa: D417 for RF docs
     """Check if a server returned a `rfc9480.PKIMessage` on failure.
 
     The server might respond with an error status code, and in such cases,

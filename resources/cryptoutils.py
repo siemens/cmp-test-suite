@@ -84,28 +84,24 @@ def generate_csr(common_name: str = None, subjectAltName=None):
     return csr
 
 
-def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -> bytes:
+def sign_data(data: bytes, key: PrivateKeySig, hash_alg: Optional[str] = None) -> bytes:  # noqa: D417 for RF docs
     """Sign `data` with a private key, using a specified hashing algorithm. Supports ECDSA, ED448, ED25519, RSA, DSA.
 
     Arguments:
     ---------
+        - `data`: The data to be signed.
         - `key`: The private key object used to sign the data.
-        - `hash_alg`: An optional string representing the name of the hash algorithm to be used for signing
-                      (e.g., "sha256"). If not specified, the default algorithm for the given key type is used.
+        - `hash_alg`: Hash algorithm for signing (e.g., "sha256"). If not given, use default algorithm for the key type.
 
     Key Types and Signing:
-        - `EllipticCurvePrivateKey`: Signs using ECDSA with the provided hash algorithm.
-        - `RSAPrivateKey`: Signs using PKCS1v15 padding and the provided hash algorithm.
-        - `Ed25519PrivateKey` and `Ed448PrivateKey`: Signs without a hash algorithm.
-        - `DSAPrivateKey`: Signs using the provided hash algorithm. Requires a hash algorithm.
+        - `EllipticCurvePrivateKey`: ECDSA
+        - `RSAPrivateKey`: RSA with PKCS1v15 padding
+        - `Ed25519PrivateKey` and `Ed448PrivateKey`: No hashing algorithm needs to be provided
+        - `DSAPrivateKey`: DSA
 
-    Returns:
-    -------
-       - bytes The signed data as a byte sequence.
+    Returns: The signed data as a byte sequence.
 
-    Raises:
-    ------
-        - ValueError: If an unsupported key type is provided or if the required hash algorithm is not specified.
+    Raises: `ValueError` if an unsupported key type is provided or if the required hash algorithm is not specified.
 
     Example:
     -------

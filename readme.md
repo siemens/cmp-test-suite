@@ -99,6 +99,9 @@ convert automatically to whatever makes sense, and accept either format at the i
 ## Documenting tests
 Point to the section of the RFC where the requirement is discussed, include a relevant quote.
 
+## Documenting Python keywords
+Due to a discrepancy between the style expected by `ruff` and the one used by RobotFramework, we sometimes ignore `ruff`. Such places are marked with `# noqa: D417 for RF docs`, because these Python functions need to look good in the RobotFramework documentation.
+
 ## Tagging tests
 TODO Use the RFC
 
