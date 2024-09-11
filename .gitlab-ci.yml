@@ -15,6 +15,7 @@ stages:
   - type-check
   - Code style
   - Static analysis
+  - Unit tests
 
 
 # Check code style, formatting, import sort order, etc.
@@ -31,6 +32,13 @@ pylint:
   stage: Static analysis
   script:
     - pylint --fail-under=9.38 resources
+  tags:
+    - LINUX-DOCKER
+
+unit-tests:
+  stage: Unit tests
+  script:
+    - PYTHONPATH=./resources python -m unittest discover -s unit_tests
   tags:
     - LINUX-DOCKER
 
