@@ -103,7 +103,7 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
     """Generate a `cryptography` key based on the specified algorithm.
 
     This function supports generating keys for various cryptographic algorithms including
-    RSA, DSA, ECDSA, ECDH, Ed25519, DH, and AES.
+    RSA, DSA, ECDSA, ECDH, Ed25519, DH.
     Depending on the selected algorithm, additional parameters can be provided to customize the key generation.
 
     Arguments:
@@ -126,8 +126,7 @@ def generate_key(algorithm="rsa", **params) -> PrivateKey:
             - length (int , str): The length of the modulus to generate if `p` is not provided. Default is 2048.
 
     Returns:
-    - private_key (object): The generated private key. For "aes", this will be a raw byte string
-                            representing the symmetric key.
+    - `private_key` (`cryptography.hazmat.primitives.asymmetric`): The generated private key.
 
     Raises:
     - ValueError: If the specified algorithm is not supported or if invalid parameters are provided.
