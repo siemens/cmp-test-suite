@@ -18,7 +18,7 @@ from robot.api.deco import not_keyword
 import certutils
 import cmputils
 import cryptoutils
-from cmputils import prepare_extra_certs
+from cmputils import prepare_extra_certs, encode_to_der
 from cryptoutils import compute_gmac, compute_hash, compute_password_based_mac, compute_pbmac1
 from oid_mapping import (
     AES_GMAC_NAME_2_OID,
@@ -159,16 +159,20 @@ def add_cert_to_pkimessage_used_by_protection(
     :return: None
     """
     if certificate is not None:
-        raw = certificate.public_bytes(serialization.Encoding.DER)
-        certificate = certutils.parse_certificate(raw)
+
         if not pki_message["extraCerts"].hasValue():
-            pki_message["extraCerts"] = prepare_extra_certs([certificate])
+            raw = certificate.public_bytes(serialization.Encoding.DER)
+            py_asn1_certificate = certutils.parse_certificate(raw)
+            pki_message["extraCerts"] = prepare_extra_certs([py_asn1_certificate])
         else:
+            der_cert = encode_to_der(pki_message["extraCerts"][0])
+            first_cert = x509.load_der_x509_certificate(der_cert)
+
             #  RFC 9483, Section 3.3, the first certificate must be the CMP-Protection certificate.
-            if pki_message["extraCerts"][0] != certificate:
+            if first_cert != certificate:
                 logging.warning(
                     f"First Cert in PKIMessage: {pki_message['extraCerts'][0].prettyPrint()}"
-                    f"Certificate Provided: {certificate.prettyPrint()}"
+                    f"Certificate Provided: {py_asn1_certificate.prettyPrint()}"
                 )
                 raise ValueError(
                     "The first certificate has to be the CMP-Protection certificate as specified "

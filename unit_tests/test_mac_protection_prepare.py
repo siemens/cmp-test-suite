@@ -1,7 +1,10 @@
 import unittest
+
+from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
 import certutils
+from cmputils import encode_to_der
 from resources.certutils import parse_certificate
 from resources.cmputils import prepare_extra_certs, build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_certificate
@@ -61,10 +64,10 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
             f"Length of PKIMessage ExtraCerts is : {len(self.pki_message['extraCerts'])}",
         )
 
-        raw = self.certificate_crypto_lib.public_bytes(serialization.Encoding.DER)
-        certificate = certutils.parse_certificate(raw)
+        der_cert = encode_to_der((self.pki_message['extraCerts'][0]))
+        first_cert = x509.load_der_x509_certificate(der_cert)
 
-        self.assertEqual(self.pki_message["extraCerts"][0], certificate)
+        self.assertEqual(self.certificate_crypto_lib, first_cert)
 
 
     def test_extraCerts_and_wrong_private_key(self):
