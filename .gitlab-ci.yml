@@ -12,10 +12,10 @@ before_script:
 
 
 stages:
-  - type-check
   - Code style
   - Static analysis
   - Unit tests
+  - type-check
 
 
 # Check code style, formatting, import sort order, etc.
