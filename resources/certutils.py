@@ -1,7 +1,7 @@
 """Some wrapper-tools for validating an X509 cert by invoking other software, e.g., OpenSSL, pkilint."""
 
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from cryptography import x509
 from cryptography.hazmat import backends
@@ -71,7 +71,8 @@ def validate_certificate_pkilint(data):
         raise ValueError(issues)
 
 
-def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, hash_alg: str = None) -> None:  # noqa: D417
+def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes,
+                     hash_alg: Optional[Union[str, hashes.HashAlgorithm]] = None) -> None:  # noqa: D417
     """Verify a digital signature using the provided public key, data and hash algorithm.
 
     Supports: (ECDSA, ED448, ED25519, RSA, DSA).
