@@ -14,14 +14,15 @@ select = [
 ]
 [format]
 docstring-code-format = true
-exclude = ["D213", "D212", "D211"]
+exclude = ["D213", "D212", "D211", "D200"]
 indent-style = "space"
 #skip-magic-trailing-comma = true
 
+# D200 fits-on-one-line
+# D211 no-blank-line-before-class
+# D212 multi-line-summary-first-line
+# D213 multi-line-summary-second-line
 # D400 First line should end with a period
 # D415 ends-in-punctuation
-# D213 multi-line-summary-second-line
-# D212 multi-line-summary-first-line
-# D211 no-blank-line-before-class
 # because of RF # fixable with # noqa: D417 on the function.
 # spaces and D203, 211 are incompatible.

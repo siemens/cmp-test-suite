@@ -2,6 +2,8 @@ import unittest
 
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
+from resources import keyutils
+from resources import oid_mapping
 # from resources import asn1utils
 from resources import cmputils
 from resources import cryptoutils
@@ -11,7 +13,7 @@ from resources.utils import load_and_decode_pem_file, decode_pem_string
 
 class TestCmpUtils(unittest.TestCase):
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         raw_csr = load_and_decode_pem_file('data/example-csr.pem')
         cls.csr_object = cmputils.parse_csr(raw_csr)
 
@@ -64,14 +66,14 @@ class TestCmpUtils(unittest.TestCase):
         serial_number = str(cert['serialNumber'])
         self.assertEqual("7286628116517592062", serial_number)
 
-        sig_algorithm = str(cert['signature']['algorithm'])
-        self.assertEqual('1.2.840.113549.1.1.5', sig_algorithm)
+        sig_algorithm = (cert['signature']['algorithm'])
+        self.assertEqual('1.2.840.113549.1.1.5', str(sig_algorithm))
 
-        hash_alg_name = cryptoutils.get_hash_from_signature_oid(sig_algorithm)
-        self.assertEqual('sha1', hash_alg_name)
+        hash_alg_name = oid_mapping.get_hash_from_signature_oid(sig_algorithm)
+        self.assertEqual('sha1', hash_alg_name.split("-")[1])
 
     def test_build_p10cr_without_attributes(self):
-        keypair = cryptoutils.generate_key("rsa")
+        keypair = keyutils.generate_key("rsa")
         csr = cryptoutils.generate_csr("CN=Hans")
         signed_csr = cryptoutils.sign_csr(csr, keypair)
         asn1_csr = cmputils.parse_csr(decode_pem_string(signed_csr))
@@ -83,7 +85,7 @@ class TestCmpUtils(unittest.TestCase):
     def test_build_p10cr(self):
         # TODO this is just an easy way to test the function, but it's not a real test
         # in pycharm select `unittest` from the dropdown and press shift+f9, set breakpoints where needed
-        keypair = cryptoutils.generate_key("rsa")
+        keypair = keyutils.generate_key("rsa")
         csr = cryptoutils.generate_csr("CN=Hans")
         signed_csr = cryptoutils.sign_csr(csr, keypair)
         asn1_csr = cmputils.parse_csr(decode_pem_string(signed_csr))
@@ -110,7 +112,7 @@ class TestCmpUtils(unittest.TestCase):
 
     def test_build_cr(self):
         csr = self.csr_object
-        raw_key = open('data/private-key-rsa.pem', 'rb').read()
+        raw_key = open('data/keys/private-key-rsa.pem', 'rb').read()
         private_key = load_pem_private_key(raw_key, password=None)
         pki_message = cmputils.build_cr_from_csr(csr, private_key, hash_alg="sha256", cert_req_id=1945)
         # print(pki_message.prettyPrint())

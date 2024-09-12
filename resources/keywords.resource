@@ -3,15 +3,15 @@ ${environment}    cloudpki
 #${environment}    local
 
 *** Settings ***
+Documentation        Keywords often used for the Testsing.
 Resource         ../config/${environment}.robot
-#Resource         ../config/local.robot
-#Resource         ../config/local.robot
-
+# Resource         ../config/local.robot
+# Resource         ../config/local.robot
 
 Library   RequestsLibrary
-Library   OperatingSystem
-Library   DateTime
 Library   Collections
+Library   DateTime
+Library   OperatingSystem
 Library   ../resources/asn1utils.py
 Library   ../resources/cryptoutils.py
 Library   ../resources/cmputils.py
@@ -94,7 +94,7 @@ Response time must be fresh
 
     ${delta_verbose}=   Subtract Date From Date    ${response_time}    ${request_time}     verbose
     ${delta}=           Subtract Date From Date    ${response_time}    ${request_time}
-    Should Be True      ${delta} < ${tolerance}    Time between request and response exceeds tolerance
+    Should Be True      ${delta.seconds} < ${tolerance}    Time between request and response exceeds tolerance
 
 
 Protection algorithms must match
@@ -106,6 +106,7 @@ Protection algorithms must match
     ${response_algo}=   Get Asn1 Value    ${response}   header.protectionAlg.algorithm
     Should be equal     ${request_algo}   ${response_algo}      Protection algorithm mismatch, we sent ${request_algo}, we got ${response_algo}
     # TODO also check the parameters, if any
+
 
 
 Protection must be valid
@@ -120,8 +121,8 @@ SenderNonce must be at least 128 bits long
     [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
     ...                Ref: 3.1. General Description of the CMP Message Header
     [Tags]    crypto
-    [Arguments]         ${pki_message}
-    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}   header.senderNonce
+    [Arguments]    ${pki_message}
+    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
     # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
     # Buffer length must be at least    ${sender_nonce}    32
     # 16 bytes is 128 bits
@@ -165,7 +166,7 @@ Generate Key and CSR
      ...                                 However, if multiple indices are provided, only one of them can be set.
      ...
      ...                Example Usage:
-     ...                | ${data}   ${key}=    Generate Key and CSR    | ${key_algo_name}    | ${key_params}    |    ${CN}
+     ...                | ${data}   ${key}=    Generate Key and CSR    | ${key_algo_name}    |    ${CN}    |    ${key_params}
      ...
      [Arguments]        ${key_algo_name}    ${CN}    ${key_params}
      ${key}=    Generate key    ${key_algo_name}    ${key_params}
@@ -199,7 +200,7 @@ PKIMessage Has Set Failure Bits
     ...                                 However, if multiple indices are provided, only one of them can be set.
     ...
     ...                Example Usage:
-    ...                | ${bit_status}=    PKIMessage Has Set Failure Bits    | ${pki_message}    | ${badAlg}    |    ${exclusive}
+    ...                | ${bit_status}=    PKIMessage Has Set Failure Bits    | ${pki_message}    | badAlg    |    ${exclusive}
     ...
     [Arguments]        ${pki_message}     ${bit_indices_or_index}    ${exclusive}=${True}
     ${pki_header}=       asn1utils.Get asn1 value   ${pki_message}    header

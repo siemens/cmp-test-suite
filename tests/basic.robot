@@ -6,6 +6,8 @@ Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/keyutils.py
 Library     ../resources/cmputils.py
+Library      ../resources/protectionutils.py
+Library     ../resources/httputils.py
 
 
 
@@ -45,7 +47,7 @@ CA must issue a certificate when we send a valid p10cr request
     ${request_pki_message}=  Patch message time    ${request_pki_message}
     # NOTE that we are patching the transaction id so the message looks like a new one
     ${request_pki_message}=  Patch transaction id    ${request_pki_message}     prefix=11111111111111111111
-    ${protected_p10cr}=     Protect Pkimessage password based mac    ${request_pki_message}    ${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
+    ${protected_p10cr}=     protect_pki_message    pki_message=${request_pki_message}    protection=password_based_mac    password=${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
     ${der_pkimessage}=  Encode To Der    ${protected_p10cr}
 
     ${response}=  Exchange data with CA    ${der_pkimessage}
@@ -74,7 +76,7 @@ CA must reject a valid p10cr request if the transactionId is not new
     ${request_pki_message}=  Patch transaction id    ${request_pki_message}     0123456789012345678901234567891
     ${request_pki_message}=  Add implicit confirm    ${request_pki_message}
 #    xxx
-    ${protected_p10cr}=     Protect Pkimessage password based mac    ${request_pki_message}    ${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
+    ${protected_p10cr}=     protect_pki_message    pki_message=${request_pki_message}    protection=password_based_mac    password=${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
     ${encoded}=  Encode To Der    ${protected_p10cr}
     ${response}=  Exchange data with CA    ${encoded}
 
@@ -103,27 +105,27 @@ CA must reject a valid p10cr request if the transactionId is not new
 CA must reject request when the CSR signature is invalid
      [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
      [Tags]    csr    negative   crypto    robot:skip-on-failure
-     ${csr_signed}    ${key}=    Generate Signed Csr    ${DEFAULT_X509NAME}
+     ${csr_signed}    ${key}=    Generate signed csr    ${DEFAULT_X509NAME}
      ${data}=    Decode pem string   ${csr_signed}
      # needs to be changed so that it is still a Valid Asn1 Structure
      ${data}=    Parse Csr    ${data}
      ${modified_csr_der}=    Modify Csr cn  ${data}    Hans MustermanNG11
      Log base64       ${modified_csr_der}
      ${p10cr}=    Build P10cr From Csr    ${modified_csr_der}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
-     ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
+     ${protected_p10cr}=     protect_pki_message    ${p10cr}    protection=Pbmac1    password=${PRESHARED_SECRET}
      Log Asn1    ${protected_p10cr}
      ${encoded}=  Encode To Der    ${protected_p10cr}
      ${response}=  Exchange data with CA    ${encoded}
      # checks if the Implementation returns a Status Code or a Status Code with a PKI Message
 
-     ${contains_msg}=    request_contains_pki_message    ${response}
+     ${contains_msg}=    Http response contains pki message    ${response}
      # TODO ADD Http Check! Status Code and No PKIMessage
      IF    ${contains_msg}
      #TODO needs to decided if the message should return badPOP or badMessageCheck
      ${pkimessage}=    Parse pki message    ${response.content}
      PKIMessage Has Set Failure Bits    ${pkimessage}    badPOP,badMessageCheck    exclusive=${1}
      END
-     Run Keyword IF    not ${contains_msg}    LOG  "The Server Response did not Contained a PKI Message"
+     IF    not ${contains_msg}    LOG  "The Server Response did not Contained a PKI Message"
 
 
 
@@ -135,7 +137,7 @@ CA must reject request when the csr is sent again
     ${request_pki_message}=  Patch message time    ${request_pki_message}
     # NOTE that we are patching the transaction id so the message looks like a new one
     ${request_pki_message}=  Patch transaction id    ${request_pki_message}     prefix=11111111111111111111
-    ${protected_p10cr}=     Protect Pkimessage password based mac    ${request_pki_message}    ${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
+    ${protected_p10cr}=     protect_pki_message    pki_message=${request_pki_message}    protection=password_based_mac    password=${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
     ${der_pkimessage}=  Encode To Der    ${protected_p10cr}
 
     ${response}=  Exchange data with CA    ${der_pkimessage}

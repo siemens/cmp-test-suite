@@ -5,7 +5,7 @@ from resources import cryptoutils
 
 class TestCryptoUtils(unittest.TestCase):
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         # used for testing PBMAC1
         cls.predefined_salt = b'1234567890abcdef'
 

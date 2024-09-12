@@ -3,9 +3,9 @@ import unittest
 import cryptography.exceptions
 from cryptography import x509
 
+import certutils
 import cmputils
-import verifyingutils
-from cmputils import encode_to_der, parse_csr
+from cmputils import encode_to_der, parse_csr, modify_csr_cn
 from cryptoutils import generate_signed_csr
 from utils import decode_pem_string
 
@@ -27,7 +27,7 @@ class TestUtils(unittest.TestCase):
         # to check that the signature before was correct.
         csr_signed = x509.load_pem_x509_csr(csr)
         #verify if the certificate is correct
-        verifyingutils.verify_csr_signature(csr_signed)
+        certutils.verify_csr_signature(csr_signed)
 
         # Modify the common name (CN) in the CSR to "Hans MusterMann"
         # returns DER Encoded data
@@ -35,7 +35,12 @@ class TestUtils(unittest.TestCase):
         modified_csr = cmputils.modify_csr_cn(csr, new_cn="Hans MusterMann")
 
         modified_csr = x509.load_der_x509_csr(encode_to_der(modified_csr))
+
+        self.assertNotEqual(modified_csr, csr_signed)
+
         # Verify the signature of the modified CSR
         with self.assertRaises(cryptography.exceptions.InvalidSignature):
-            verifyingutils.verify_csr_signature(modified_csr)
+            certutils.verify_csr_signature(modified_csr)
+
+
 

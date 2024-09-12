@@ -1,10 +1,12 @@
+"""Utility for handing HTTP responses."""
+
 import requests
 from pyasn1.error import PyAsn1Error
 
-from cmputils import parse_pki_message
+import cmputils
 
 
-def http_response_contains_pki_message(data: requests.Response) -> False:  # noqa: D417
+def http_response_contains_pki_message(data: requests.Response) -> bool:  # noqa: D417 for RF docs
     """Check if a server returned a `rfc9480.PKIMessage` on failure.
 
     The server might respond with an error status code, and in such cases,
@@ -23,10 +25,10 @@ def http_response_contains_pki_message(data: requests.Response) -> False:  # noq
 
     """
     if not data.content:
-        return None
+        return False
 
     try:
-        parse_pki_message(data.content)
+        cmputils.parse_pki_message(data.content)
         return True
     except PyAsn1Error:
         return False

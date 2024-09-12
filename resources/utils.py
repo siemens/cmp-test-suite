@@ -6,7 +6,7 @@ import re
 from base64 import b64decode, b64encode
 from collections import Counter
 from itertools import combinations
-from typing import Any, Union, List
+from typing import Any, List, Union
 
 from pyasn1.type import base
 
@@ -14,8 +14,9 @@ from typingutils import Strint
 
 
 def nonces_must_be_diverse(nonces: List[bytes], minimal_hamming_distance: Strint = 10):
-    """Check that a list of nonces are diverse enough, by computing the Hamming distance between them. Nonces will be
-    right-padded with 0x00 if their lengths are different.
+    """Check that a list of nonces are diverse enough, by computing the Hamming distance between them.
+
+    Nonces will be right-padded with 0x00 if their lengths are different.
 
     :param nonces: list of bytes, nonces to check
     :param minimal_hamming_distance: stringified int, the minimum hamming distance between any two nonces; stringified
@@ -23,7 +24,6 @@ def nonces_must_be_diverse(nonces: List[bytes], minimal_hamming_distance: Strint
     :returns: nothing, but will raise a ValueError if at least two nonces are not diverse enough; the checker stops at
               the first violation it finds.
     """
-
     minimal_hamming_distance = int(minimal_hamming_distance)
 
     for nonce1, nonce2 in combinations(nonces, 2):
@@ -62,9 +62,10 @@ def nonces_must_be_unique(nonces: List[bytes]):
 
 
 def log_asn1(pyasn1_obj: base.Asn1Type):
-    """Log a pyasn1 object as a string for debugging purposes. For convenience, it will gracefully
-    ignore objects that are not pyasn1, so that the function can be invoked from RobotFramework
-    scenarios without having to check the type of the object first.
+    """Log a pyasn1 object as a string for debugging purposes.
+
+    For convenience, it will gracefully ignore objects that are not pyasn1, so that the function can be invoked from
+    RobotFramework scenarios without having to check the type of the object first.
     """
     if isinstance(pyasn1_obj, base.Asn1Type):
         logging.info(pyasn1_obj.prettyPrint())
@@ -74,9 +75,9 @@ def log_asn1(pyasn1_obj: base.Asn1Type):
 
 def log_base64(data: Union[bytes, str]):
     """Log some data as a base64 encoded string, this is useful for binary payloads."""
-    if type(data) is bytes:
+    if isinstance(data, bytes):
         logging.info(b64encode(data))
-    elif type(data) is str:
+    elif isinstance(data, str):
         logging.info(b64encode(data.encode("ascii")))
 
 
@@ -90,8 +91,7 @@ def manipulate_first_byte(data: bytes) -> bytes:
     """
     if data[0] == 0:
         return b"\x01" + data[1:]
-    else:
-        return b"\x00" + data[1:]
+    return b"\x00" + data[1:]
 
 
 def buffer_length_must_be_at_least(data: bytes, length: Strint) -> None:
@@ -111,8 +111,7 @@ def decode_pem_string(data: Union[bytes, str]) -> bytes:
     :param data: (str, bytes) the data to decode.
     :return: bytes The decoded DER-encoded bytes extracted from the PEM input
     """
-
-    if type(data) is bytes:
+    if isinstance(data, bytes):
         data = data.decode("ascii")
 
     raw = data.splitlines()
@@ -121,7 +120,7 @@ def decode_pem_string(data: Union[bytes, str]) -> bytes:
     for line in raw:
         if line.startswith("#"):  # remove comments
             continue
-        elif line.strip() == "":  # remove blank lines
+        if line.strip() == "":  # remove blank lines
             continue
         else:
             filtered_lines.append(line)
@@ -148,13 +147,13 @@ def load_and_decode_pem_file(path):
     # normally it should always have a header/trailer (aka "armour"), but we'll be tolerant to that.
 
     filtered_lines = []
-    with open(path, "r") as f:
+    with open(path, "r", encoding="ascii") as f:
         raw = f.readlines()
         # first do some cosmetic filtering
         for line in raw:
             if line.startswith("#"):  # remove comments
                 continue
-            elif line.strip() == "":  # remove blank lines
+            if line.strip() == "":  # remove blank lines
                 continue
             else:
                 filtered_lines.append(line)
