@@ -36,6 +36,7 @@ def _add_armour(raw: str) -> str:
     pem_data = pem_header + raw + pem_footer
     return pem_data
 
+
 def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):  # noqa: D417 for RF docs
     """Save a private key to a file, optionally encrypting it with a passphrase.
 
@@ -79,7 +80,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Optional[str] = "11111"):  
             encryption_algorithm=serialization.NoEncryption(),
         )
 
-        base64_encoded = (base64.b64encode(data).decode("utf-8"))
+        base64_encoded = base64.b64encode(data).decode("utf-8")
         data = _add_armour(base64_encoded)
 
         with open(path, "w") as f:

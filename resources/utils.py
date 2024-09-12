@@ -147,7 +147,7 @@ def load_and_decode_pem_file(path):
     # normally it should always have a header/trailer (aka "armour"), but we'll be tolerant to that.
 
     filtered_lines = []
-    with open(path, "r", encoding='ascii') as f:
+    with open(path, "r", encoding="ascii") as f:
         raw = f.readlines()
         # first do some cosmetic filtering
         for line in raw:

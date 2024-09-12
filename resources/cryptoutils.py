@@ -289,9 +289,7 @@ def generate_signed_csr(  # noqa: D417
     return csr_signed, key
 
 
-def _generate_private_dh_from_key(
-    password: str, peer_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
-) -> dh.DHPrivateKey:
+def _generate_private_dh_from_key(password: str, peer_key: Union[dh.DHPrivateKey, dh.DHPublicKey]) -> dh.DHPrivateKey:
     """Generate a `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey` based on the password.
 
     :param password: str password which one of the parties uses as secret DH-Key.

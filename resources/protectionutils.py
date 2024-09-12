@@ -153,18 +153,15 @@ def add_cert_to_pkimessage_used_by_protection(
     :return: None
     """
     if certificate is not None:
-
         if not pki_message["extraCerts"].hasValue():
             raw = certificate.public_bytes(serialization.Encoding.DER)
             certificate = certutils.parse_certificate(raw)
             pki_message["extraCerts"] = prepare_extra_certs([certificate])
         else:
-
             first_cert = x509.load_der_x509_certificate(encode_to_der(pki_message["extraCerts"][0]))
             #  RFC 9483, Section 3.3, the first certificate must be the CMP-Protection certificate.
             if first_cert != certificate:
-                other_cert = certutils.parse_certificate(
-                    certificate.public_bytes(serialization.Encoding.DER))
+                other_cert = certutils.parse_certificate(certificate.public_bytes(serialization.Encoding.DER))
                 logging.warning(
                     f"First Cert in PKIMessage: {pki_message['extraCerts'][0].prettyPrint()}"
                     f"Certificate Provided: {other_cert.prettyPrint()}"
