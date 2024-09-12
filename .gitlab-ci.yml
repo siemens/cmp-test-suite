@@ -12,41 +12,59 @@ before_script:
 
 
 stages:
-  - type-check
+  - Unit tests
   - Code style
   - Static analysis
+  - type-check
+  - RF style check
 
 
 # Check code style, formatting, import sort order, etc.
 basics:
   stage: Code style
-  allow_failure: true  # for now, but we will gradually raise the bar
   script:
-    - ruff check --fix
+    - ruff check
   tags:
     - LINUX-DOCKER
 
+# Check code style, formatting, import sort order, etc.
+rf:
+  stage: RF style check
+  before_script:
+    - pip install robotframework-robocop==5.4.0
+  script:
+    - robocop --report rules_by_error_type
+
+  allow_failure: true
+  tags:
+    - LINUX-DOCKER
 
 # A more thorough analysis of the code
 pylint:
   stage: Static analysis
-  # because pylint is very strict, for now we allow this check to fail,
-  # but in the future we should strive towards making pylint 100% happy
-  allow_failure: true
   script:
-    - pylint resources
+    - pylint --fail-under=9.38 resources
+  tags:
+    - LINUX-DOCKER
+
+unit-tests:
+  stage: Unit tests
+  script:
+    - PYTHONPATH=./resources python -m unittest discover -s unit_tests
   tags:
     - LINUX-DOCKER
 
 
-Check Typing:
+pyright:
   stage: type-check
   before_script:
-    - pip install -r requirements.txt
-    - pip install pyright==1.1.379
-
+    - pip install pyright==1.1.380
   script:
-    - pyright
-  allow_failure: true
+    # update 73 after fixing the current issues; for now we just try to make
+    # sure we won't be adding new ones
+    - export ERRORS=$(PYTHONPATH=./resources pyright ./resources | tail -n 1 | grep -o '^[0-9]*')
+    - '[ -z "$ERRORS" ] && ERRORS=0'  # Set ERRORS to 0 if it is empty
+    - '[ "$ERRORS" -lt 85 ] 2>/dev/null && echo "Success." || (echo "Failure. Error count:" && exit 1)'
   tags:
     - LINUX-DOCKER
+

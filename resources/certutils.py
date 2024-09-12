@@ -1,7 +1,7 @@
 """Some wrapper-tools for validating an X509 cert by invoking other software, e.g., OpenSSL, pkilint."""
 
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from cryptography import x509
 from cryptography.hazmat import backends
@@ -43,7 +43,7 @@ def validate_certificate_openssl(data):
     except Exception as e:
         message = f"Certificate validation with openssl failed: {e}"
         logging.error(message)
-        raise ValueError(message)
+        raise ValueError(message) from e
 
 
 def validate_certificate_pkilint(data):
@@ -71,29 +71,20 @@ def validate_certificate_pkilint(data):
         raise ValueError(issues)
 
 
-if __name__ == "__main__":
-    raw_cert = open(r"cert.cer", "rb").read()
-    result = validate_certificate_pkilint(raw_cert)
-    print(result)
-
-    result = validate_certificate_openssl(raw_cert)
-    print(result)
-
-
-def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, hash_alg: str = None) -> None:  # noqa: D417
+def verify_signature(# noqa: D417
+    public_key: PublicKeySig, signature: bytes, data: bytes, hash_alg: Optional[Union[str, hashes.HashAlgorithm]] = None
+) -> None:
     """Verify a digital signature using the provided public key, data and hash algorithm.
 
     Supports: (ECDSA, ED448, ED25519, RSA, DSA).
 
     Arguments:
-        - `public_key` (cryptography.hazmat.primitives.asymmetric): The public key object used to
-                      verify the signature.
-        - `signature` (bytes): signature data.
-        - `data` (bytes): The original data that was signed, provided as a byte sequence.
-        - `hash_alg` (Optional str ): An string representing the name of the hash algorithm
-                                   to be used for verification
-                                  (e.g., "sha256"). If not specified, the default algorithm for the
-                                   given key type is used.
+    ---------
+        - `public_key`: The public key used to verify the signature.
+        - `signature`: signature data.
+        - `data`: The original data that was signed.
+        - `hash_alg`: Name of the hash algorithm used for verification (e.g., "sha256"). If not specified, the default
+                      algorithm for the given key type is used.
 
     Key Types and Verification:
         - `RSAPublicKey`: Verifies using PKCS1v15 padding and the provided hash algorithm.
@@ -103,10 +94,12 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
         - Unsupported key types (e.g., `X25519PublicKey`, `X448PublicKey`): Raises an error.
 
     Raises:
+    ------
         - InvalidSignature: If the signature is invalid.
         - ValueError: If an unsupported key type is provided.
 
     Example:
+    -------
         | Verify Signature | ${public_key} | ${signature} | ${data} | sha256 |
 
     """
@@ -137,35 +130,32 @@ def verify_signature(public_key: PublicKeySig, signature: bytes, data: bytes, ha
 
 
 @not_keyword
-def verify_cert_signature(certificate: x509.Certificate, issuer_pub_key: Optional[PublicKeySig] = None):
-    """Verify the digital signature of an X.509 certificate.
+def verify_cert_signature(cert: x509.Certificate, issuer_pub_key: Optional[PublicKeySig] = None):
+    """Verify the signature of an X.509 certificate.
 
-    With the provided issuer's public key or the certificate's own public key if it is self-signed.
+    Uses the issuer's public key, or the certificate's own public key if it is self-signed.
 
-    :param certificate: `cryptography.x509.Certificate` which is verified.
+    :param cert: `cryptography.x509.Certificate` which is verified.
     :param issuer_pub_key: optional PublicKeySig used for verification.
 
-    :raises InvalidSignature:
-        If the certificate's signature is not valid when verified against the provided or extracted public key.
+    :raises InvalidSignature: If the certificate's signature is not valid.
     """
-    pub_key = issuer_pub_key or certificate.public_key()
+    pub_key = issuer_pub_key or cert.public_key()
 
     verify_signature(
         public_key=pub_key,
-        signature=certificate.signature,
-        data=certificate.tbs_certificate_bytes,
-        hash_alg=certificate.signature_hash_algorithm,
+        signature=cert.signature,
+        data=cert.tbs_certificate_bytes,
+        hash_alg=cert.signature_hash_algorithm,
     )
 
 
 @not_keyword
 def verify_csr_signature(csr: x509.CertificateSigningRequest):
-    """Verify the digital signature of an self-signed X509 CSR object using the public key extracted from the CSR.
+    """Verify the signature of an X509 CSR using the public key extracted from the CSR.
 
     :param csr: `cryptography.x509.CertificateSigningRequest` representing the CSR to verify.
-
-    :raises InvalidSignature:
-        If the CSR's signature is not valid.
+    :raises InvalidSignature: If the CSR's signature is not valid.
     """
     verify_signature(
         public_key=csr.public_key(),

@@ -7,8 +7,9 @@ Library     ../resources/asn1utils.py
 Library     ../resources/cmputils.py
 Library     ../resources/keyutils.py
 Library      ../resources/protectionutils.py
-Library     OperatingSystem
 Library     Collections
+Library     OperatingSystem
+
 
 Suite Setup    Initialize Global Variables
 
@@ -282,7 +283,7 @@ CA must support requests with signature protection
 
     Response time must be fresh               ${protected_pki_message}      ${pki_message}
     Protection algorithms must match          ${protected_pki_message}      ${pki_message}
-    Protection must be valid                  ${pki_message}
+    Protection Must Be Valid                  ${pki_message}
 
 
 

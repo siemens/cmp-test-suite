@@ -1,3 +1,5 @@
+"""Utilities for generating and parsing CMP-related data structures."""
+
 import glob
 import logging
 import os
@@ -5,7 +7,6 @@ import sys
 from datetime import datetime, timezone
 from typing import List, Optional
 
-import pyasn1.type.base
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, univ, useful
@@ -49,7 +50,8 @@ PKISTATUS_REVOCATION_NOTIFICATION = 5
 PKISTATUS_KEY_UPDATE_WARNING = 6
 
 
-def build_cmp_revive_request(serial_number, sender="test-cmp-cli@example.com", recipient="test-cmp-srv@example.com"):
+def build_cmp_revive_request(serial_number, sender="test-cli@test.com", recipient="test-srv@test.com"):  # noqa: D103
+    # No docstring, this is just a wrapper
     return build_cmp_revoke_request(serial_number, sender=sender, recipient=recipient, reason=REASON_REMOVE_FROM_CRL)
 
 
@@ -57,6 +59,7 @@ def build_cmp_revoke_request(
     serial_number, sender="test-cmp-cli@example.com", recipient="test-cmp-srv@example.com", reason=REASON_UNSPECIFIED
 ):
     """Create a certificate revocation request, based on the given serial#
+
     :param serial_number: str, serial number of certificate to revoke
     :param sender: optional str, sender to use in the request
     :param recipient: optional str, recipient of the request
@@ -89,7 +92,7 @@ def build_cmp_revoke_request(
     crl_entry_details = Extensions()
     crl_reason = Extension()
     crl_reason.setComponentByName("extnID", univ.ObjectIdentifier((2, 5, 29, 21)))  # 2.5.29.21 CRL reason
-    crl_reason.setComponentByName("extnValue", REASON_UNSPECIFIED)
+    crl_reason.setComponentByName("extnValue", reason)
     crl_entry_details.setComponentByPosition(0, crl_reason)
 
     rev_details.setComponentByName("crl_entry_details", crl_entry_details)
@@ -110,9 +113,7 @@ def build_cmp_revoke_request(
 
 
 def _prepare_implicit_confirm_general_info_structure() -> univ.SequenceOf:
-    """Prepare the `generalInfo` field of a PKIHeader structure to
-    request the implicitConfirm feature from the server.
-    """
+    """Prepare the `generalInfo` field of a PKIHeader to request implicitConfirm from the server."""
     implicit_confirm = rfc9480.InfoTypeAndValue()
     implicit_confirm["infoType"] = rfc9480.id_it_implicitConfirm
     implicit_confirm["infoValue"] = univ.Null("")
@@ -416,15 +417,13 @@ def build_cert_conf(
     return pki_message
 
 
-def encode_to_der(asn1_structure: pyasn1.type.base.Asn1ItemBase) -> bytes:
+def encode_to_der(asn1_structure: base.Asn1ItemBase) -> bytes:
     """DER-encode a pyasn1 data structure."""
     return encoder.encode(asn1_structure)
 
 
 def csr_attach_signature(csr: rfc6402.CertificationRequest, signature: bytes) -> rfc6402.CertificationRequest:
-    """Attach a signature, provided as a buffer of raw data, to a pyasn1 `rfc6402.CertificationRequest`
-    object and return the signed pyasn1 CSR object.
-    """
+    """Attach a signature, provided as a buffer of raw data, to a `rfc6402.CertificationRequest`."""
     sig_alg_id = SignatureAlgorithmIdentifier()
     algorithm = rfc5480.sha1WithRSAEncryption
     parameters = encoder.encode(univ.Null())  # no params are used
@@ -433,7 +432,7 @@ def csr_attach_signature(csr: rfc6402.CertificationRequest, signature: bytes) ->
     sig_alg_id["parameters"] = parameters
 
     # take the raw signature and turn it into a BitString representations
-    signature = Signature("'%s'H" % "".join("%02X" % ord(c) for c in signature))
+    signature = Signature("'%s'H" % "".join("%02X" % c for c in signature))
 
     csr["signature"] = signature
     csr["signatureAlgorithm"] = sig_alg_id
@@ -464,9 +463,7 @@ def csr_add_extensions(csr: rfc6402.CertificationRequest, extensions) -> rfc6402
 
 
 def csr_extend_subject(csr, rdn):
-    """Extend the SubjectName in a pyasn1-structured CSR with a
-    pyasn1 RelativeDistinguishedName structure
-    """
+    """Extend the SubjectName in a pyasn1-structured CSR with a pyasn1 RelativeDistinguishedName structure"""
     original_subject = csr["certificationRequestInfo"]["subject"][0]
     current_length = len(original_subject)
     original_subject[current_length] = rdn
@@ -474,16 +471,15 @@ def csr_extend_subject(csr, rdn):
 
 
 def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
-    """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
+    """Parse input data to PKIMessage structure and return resulting object.
 
     Arguments:
-        - data (bytes): The raw input data to be parsed.
+    ---------
+        data: The raw input data to be parsed.
 
-    Returns:
-        - pyasn1 parsed object: Represents the PKIMessage structure.
+    Returns: `rfc9480.PKIMessage` structure.
 
-    Raises:
-        - ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
+    Raises: `ValueError` if the input cannot be correctly parsed into a PKIMessage.
 
     """
     try:
@@ -492,7 +488,7 @@ def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
         # Suppress detailed pyasn1 error messages; they are typically too verbose and
         # not helpful for non-pyasn1 experts. If debugging is needed, retrieve the server's
         # response from Robot Framework's log and manually pass it into this function.
-        raise ValueError("Failed to parse PKIMessage: %s ..." % str(err)[:100])
+        raise ValueError(f"Failed to parse PKIMessage: {str(err)[:100]} ...") from err
 
     return pki_message
 
@@ -514,9 +510,8 @@ def get_cmp_response_type(pki_message):
 
 
 def get_cert_from_pki_message(pki_message, cert_number=0):
-    """Extract the actual certificate from a pyasn1-object
-    #representing a response to a CSR, which contains the
-    PKIMessage structure with the issued certificate.
+    """Extract certificate from a PKIMessage
+
     :param pki_message: pyasn1 PkiMessage
     :param cert_number: optional int, index of certificate to extract, will only extract the first certificate
                         from the sequence by default
@@ -542,9 +537,10 @@ def parse_csr(raw_csr: bytes) -> rfc6402.CertificationRequest:
 
 
 def patch_transaction_id(pki_message, new_id=None, prefix=None):
-    """Patches the transactionId of a PKIMessage structure with a new ID, this is useful when you load a request
-    from a file and send it multiple times to the CA. It would normally reject it because the transactionId is
-    repeated - hence the patching.
+    """Patch the transactionId of a PKIMessage structure with a new ID.
+
+    This is useful when you load a request from a file and send it multiple times to the CA. It would normally reject
+    it because the transactionId is repeated - hence the patching.
 
     :param pki_message: pyasn1 PKIMessage structure, but raw DER-encoded blobs are also accepted, will be converted
                         automatically, this is to make it easier to use this function in RobotFramework
@@ -554,7 +550,7 @@ def patch_transaction_id(pki_message, new_id=None, prefix=None):
                    so it can be passed directly from RobotFramework tests
     :returns: a pyasn1 PKIMessage structure with the updated transactionId
     """
-    if type(pki_message) is bytes:
+    if isinstance(pki_message, bytes):
         pki_message = parse_pki_message(pki_message)
 
     new_id = new_id or os.urandom(16)
@@ -568,14 +564,13 @@ def patch_transaction_id(pki_message, new_id=None, prefix=None):
 
 
 def patch_message_time(pki_message, new_time=None):
-    """Patches the messageTime field of a PKIMessage structure with a new time,
-    or the current time if none is provided
+    """Patch the messageTime field of a PKIMessage structure with a new time, or the current time if none is provided.
 
     :param pki_message: pyasn1 PKIMessage structure, but raw DER-encoded blobs are also accepted, will be converted
                         automatically, this is to make it easier to use this function in RobotFramework
     :param new_time: optional datetime, time to use for the messageTime field, will use the current time by default
     """
-    if type(pki_message) is bytes:
+    if isinstance(pki_message, bytes):
         pki_message = parse_pki_message(pki_message)
 
     new_time = new_time or datetime.now(timezone.utc)
@@ -604,8 +599,9 @@ def find_oid_in_general_info(pki_message, oid):
 
 
 def add_implicit_confirm(pki_message):
-    """Set the generalInfo part of a PKIMessage header to a structure that contains implicitConfirm; overriding
-    other parts of generalInfo, if any!
+    """Set the generalInfo part of a PKIMessage header to a structure that contains implicitConfirm.
+
+    If generalInfo contains other parts, they will be overwritten!
 
     :param pki_message: pyasn1 object representing a PKIMessage
     :returns: updated pyasn1 object
@@ -616,20 +612,17 @@ def add_implicit_confirm(pki_message):
     return pki_message
 
 
-if __name__ == "__main__":
-    pass
-
-
 # this is a Python implementation of the RobotFramework keyword `Try to Log PKIMessage as ASN1`. Viewing
-# its output of this one requires fewer clicks in the reports.
-def try_to_log_pkimessage(data):
-    """Given the input data and assuming it is a DER-encoded PKIMessage, try to decode it and log the ASN1 structure
-    in a human-readable way. Will also accept inputs that are pyasn1 objects or strings, for the convenience
-    of invocation from RF tests.
+# the output of this one requires fewer clicks in the reports.
+def try_to_log_pkimessage(data):  # noqa: D417 for RF docs
+    """Try to decode a DER-encoded PKIMessage and log the ASN1 structure in a human-readable way.
+
+    Will also accept inputs that are pyasn1 objects or strings, for the convenience of invocation from RF tests.
 
     Arguments:
-      - `data`: bytes, str or pyasn1 - something that is assumed to be a PKIMessage structure, either DER-encoded or
-                 a pyasn1 object.
+    ---------
+        - `data`: something that is assumed to be a PKIMessage structure, either DER-encoded or a pyasn1 object.
+
     """
     if isinstance(data, base.Asn1Item):
         logging.info(data.prettyPrint())
@@ -640,27 +633,25 @@ def try_to_log_pkimessage(data):
 
     try:
         parsed = parse_pki_message(data)
-    except:
+    except ValueError:
         logging.info("Cannot prettyPrint this, it does not seem to be a valid PKIMessage")
     else:
         logging.info(parsed.prettyPrint())
 
 
-def modify_csr_cn(
+def modify_csr_cn(  # noqa: D417 for RF docs
     csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Hans Mustermann"
 ) -> rfc9480.CertificationRequest:
     """Modify the Common Name (CN) in a CSR.
-    Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
     Arguments:
-        - `csr` pyasn1 `rfc9480.CertificationRequest` object.
-        - `new_cn` The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
+    ---------
+        - `csr`: `rfc9480.CertificationRequest` object.
+        - `new_cn`: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
 
-    Returns:
-         - returns the modified `rfc9480.CertificationRequest` object.
+    Returns: The modified `rfc9480.CertificationRequest` object.
 
-    Raises:
-        - ValueError: If no Common Name (CN) is found in the CSR.
+    Raises: `ValueError` if no Common Name (CN) is found in the CSR.
 
     """
     # Access the subject field from the CSR, which contains the RDNSequence.
@@ -728,7 +719,7 @@ def _generate_pki_message_fail_info(fail_info: Optional[str] = None) -> rfc9480.
 
 @not_keyword
 def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
-    """Build the pyasn1 `rfc9480.PKIMessage extraCerts` filed with a list containing `rfc9480.CMPCertificate`.
+    """Build the pyasn1 `rfc9480.PKIMessage.extraCerts` field with a list of `rfc9480.CMPCertificate`.
 
     :param certs: A list with `rfc9480.CMPCertificate`
     :return: An `univ.SequenceOf` object filled with `rfc9480.CMPCertificate` instances.
@@ -746,10 +737,10 @@ def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
 
 @not_keyword
 def prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.SequenceOf:
-    """Load certificates from a file or directory and returns a `univ.SequenceOf` structure.
+    """Load certificates from a file or directory and return a `univ.SequenceOf` structure tagged for use in PKIMessage.
 
-    :param path: A string representing a single file path or a directory where the certificates are stored.
-    :param recursive: A boolean that, if True, searches recursively through the directory.
+    :param path: Path to a file or a directory where the certificates are stored.
+    :param recursive: If True, searches recursively through the directory.
     :return: An `univ.SequenceOf` object filled with `rfc9480.CMPCertificate` instances.
     """
     extra_certs_wrapper = (

@@ -26,6 +26,7 @@ unittest:
 	# adjust path such that the unit tests can be started from the root directory, to make it easier to load
 	# example files from data/
 	PYTHONPATH=./resources python -m unittest discover -s unit_tests
+	# On Windows Powershell: `$env:PYTHONPATH = "./resources"; python -m unittest discover -s unit_tests`
 
 check_ejbca:
 ifeq ($(env), ejbca)
@@ -49,7 +50,8 @@ autoformat:
 verify:
 	ruff check .
 	pylint .
-	safety check
+	PYTHONPATH=./resources pyright
+	# on Windows Powershell: `$env:PYTHONPATH = "./resources"; pyright`
 
 verifyformat:
 	ruff check .

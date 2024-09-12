@@ -125,7 +125,7 @@ CA must reject request when the CSR signature is invalid
      ${pkimessage}=    Parse pki message    ${response.content}
      PKIMessage Has Set Failure Bits    ${pkimessage}    badPOP,badMessageCheck    exclusive=${1}
      END
-     Run Keyword IF    not ${contains_msg}    LOG  "The Server Response did not Contained a PKI Message"
+     IF    not ${contains_msg}    LOG  "The Server Response did not Contained a PKI Message"
 
 
 
