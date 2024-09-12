@@ -55,7 +55,3 @@ pyright:
     - '[ "$ERRORS" -lt 70 ] 2>/dev/null && echo "Success." || (echo "Failure. Error count:" && exit 1)'
   tags:
     - LINUX-DOCKER
-  needs:  # it is a rather expensive check, run it only after the others
-    - basics
-    - pylint
-    - unit-tests
