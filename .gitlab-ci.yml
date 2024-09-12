@@ -50,7 +50,7 @@ pyright:
   script:
     # update 73 after fixing the current issues; for now we just try to make
     # sure we won't be adding new ones
-    - export ERRORS=$(PYTHONPATH=./resources pyright | tail -n 1 | grep -o '^[0-9]*')
+    - export ERRORS=$(PYTHONPATH=./resources pyright ./resources | tail -n 1 | grep -o '^[0-9]*')
     - '[ -z "$ERRORS" ] && ERRORS=0'  # Set ERRORS to 0 if it is empty
     - '[ "$ERRORS" -lt 70 ] 2>/dev/null && echo "Success." || (echo "Failure. Error count:" && exit 1)'
   tags:
