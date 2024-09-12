@@ -12,7 +12,7 @@ PASSWORD = bytes.fromhex("AA" * 32)
 class TestPKIMessageProtection(unittest.TestCase):
 
     @classmethod
-    def setUpClass(cls):
+    def setUp(cls):
         csr, private_key = generate_signed_csr(common_name="CN=Hans")
         csr = decode_pem_string(csr)
         csr = parse_csr(csr)

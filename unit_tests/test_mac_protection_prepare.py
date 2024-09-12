@@ -1,6 +1,10 @@
+import copy
 import unittest
+
+from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
+from cmputils import encode_to_der
 from resources.certutils import parse_certificate
 from resources.cmputils import prepare_extra_certs, build_p10cr_from_csr, parse_csr
 from resources.cryptoutils import generate_signed_csr, generate_certificate
@@ -12,7 +16,7 @@ from resources.keyutils import generate_key
 
 class TestPrepareCertPKIMessageProtection(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUp(cls):
         csr, private_key = generate_signed_csr(common_name="CN=Hans")
         csr = decode_pem_string(csr)
         csr = parse_csr(csr)
@@ -46,11 +50,14 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
     def test_with_certificate_and_same_extraCerts(self):
         """Check if the same certificate is present in the structure more than once."""
         self.assertTrue(len(self.pki_message["extraCerts"]) == 0)
-        raw = self.certificate.public_bytes(serialization.Encoding.DER)
+        tmp = copy.deepcopy(self.certificate)
+        raw = tmp.public_bytes(serialization.Encoding.DER)
         certificate = parse_certificate(raw)
         self.pki_message["extraCerts"] = prepare_extra_certs([certificate])
 
-        add_cert_to_pkimessage_used_by_protection(self.pki_message, self.private_key, certificate=self.certificate)
+        add_cert_to_pkimessage_used_by_protection(self.pki_message,
+                                                  self.private_key,
+                                                  certificate=self.certificate)
 
         self.assertTrue(self.pki_message["extraCerts"].hasValue())
         self.assertTrue(
@@ -58,10 +65,11 @@ class TestPrepareCertPKIMessageProtection(unittest.TestCase):
             f"Length of PKIMessage ExtraCerts is : {len(self.pki_message['extraCerts'])}",
         )
 
-        raw = self.certificate.public_bytes(serialization.Encoding.DER)
-        certificate = parse_certificate(raw)
+        first_certificate = x509.load_der_x509_certificate(
+            encode_to_der(self.pki_message["extraCerts"][0])
+        )
 
-        self.assertEqual(self.pki_message["extraCerts"][0], certificate)
+        self.assertEqual(first_certificate, self.certificate)
 
     def test_extraCerts_and_wrong_private_key(self):
         """Check if a new certificate is generated, if a different private key is provided."""
