@@ -52,7 +52,6 @@ pyright:
     # sure we won't be adding new ones
     - export ERRORS=$(PYTHONPATH=./resources pyright | tail -n 1 | grep -o '^[0-9]*')
     - '[ -z "$ERRORS" ] && ERRORS=0'  # Set ERRORS to 0 if it is empty
-    - echo "Error count: $ERRORS"
     - '[ "$ERRORS" -lt 70 ] 2>/dev/null && echo "Success." || (echo "Failure." && exit 1)'
   tags:
     - LINUX-DOCKER
