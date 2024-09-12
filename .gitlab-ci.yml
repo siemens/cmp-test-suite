@@ -16,6 +16,7 @@ stages:
   - Code style
   - Static analysis
   - type-check
+  - RF style check
 
 
 # Check code style, formatting, import sort order, etc.
@@ -26,6 +27,17 @@ basics:
   tags:
     - LINUX-DOCKER
 
+# Check code style, formatting, import sort order, etc.
+rf:
+  stage: RF style check
+  before_script:
+    - pip install robotframework-robocop==5.4.0
+  script:
+    - robocop --report rules_by_error_type
+
+  allow_failure: true
+  tags:
+    - LINUX-DOCKER
 
 # A more thorough analysis of the code
 pylint:
@@ -55,3 +67,4 @@ pyright:
     - '[ "$ERRORS" -lt 85 ] 2>/dev/null && echo "Success." || (echo "Failure. Error count:" && exit 1)'
   tags:
     - LINUX-DOCKER
+
