@@ -3,15 +3,15 @@ ${environment}    cloudpki
 #${environment}    local
 
 *** Settings ***
+Documentation        Keywords often used for the Testsing.
 Resource         ../config/${environment}.robot
-#Resource         ../config/local.robot
-#Resource         ../config/local.robot
-
+# Resource         ../config/local.robot
+# Resource         ../config/local.robot
 
 Library   RequestsLibrary
-Library   OperatingSystem
-Library   DateTime
 Library   Collections
+Library   DateTime
+Library   OperatingSystem
 Library   ../resources/asn1utils.py
 Library   ../resources/cryptoutils.py
 Library   ../resources/cmputils.py
@@ -121,8 +121,8 @@ SenderNonce must be at least 128 bits long
     [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
     ...                Ref: 3.1. General Description of the CMP Message Header
     [Tags]    crypto
-    [Arguments]         ${pki_message}
-    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}   header.senderNonce
+    [Arguments]    ${pki_message}
+    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
     # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
     # Buffer length must be at least    ${sender_nonce}    32
     # 16 bytes is 128 bits
