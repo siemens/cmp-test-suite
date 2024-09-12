@@ -2,8 +2,8 @@ import unittest
 
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
-import keyutils
-import oid_mapping
+from resources import keyutils
+from resources import oid_mapping
 # from resources import asn1utils
 from resources import cmputils
 from resources import cryptoutils

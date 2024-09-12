@@ -154,9 +154,8 @@ def add_cert_to_pkimessage_used_by_protection(
     """
     if certificate is not None:
         if not pki_message["extraCerts"].hasValue():
-            raw = certificate.public_bytes(serialization.Encoding.DER)
-            certificate = certutils.parse_certificate(raw)
-            pki_message["extraCerts"] = prepare_extra_certs([certificate])
+            asn1_cert = certutils.parse_certificate(certificate.public_bytes(serialization.Encoding.DER))
+            pki_message["extraCerts"] = prepare_extra_certs([asn1_cert])
         else:
             first_cert = x509.load_der_x509_certificate(encode_to_der(pki_message["extraCerts"][0]))
             #  RFC 9483, Section 3.3, the first certificate must be the CMP-Protection certificate.
@@ -188,8 +187,8 @@ def add_cert_to_pkimessage_used_by_protection(
 
         certificate = pki_message["extraCerts"][0]
         certificate = cmputils.encode_to_der(certificate)
-        certificate = x509.load_der_x509_certificate(certificate)
-        signature = cryptoutils.sign_data(key=private_key, data=data, hash_alg=certificate.signature_hash_algorithm)
+        crypto_lib_cert = x509.load_der_x509_certificate(certificate)
+        signature = cryptoutils.sign_data(key=private_key, data=data, hash_alg=crypto_lib_cert.signature_hash_algorithm)
 
         try:
             certutils.verify_signature(
@@ -223,7 +222,6 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
 
     if protection_type_oid == rfc8018.id_PBMAC1:
-        # prot_params is of type: `rfc8018.PBMAC1_params`
         salt = prot_params["keyDerivationFunc"]["parameters"]["salt"]["specified"].asOctets()
         iterations = int(prot_params["keyDerivationFunc"]["parameters"]["iterationCount"])
         length = int(prot_params["keyDerivationFunc"]["parameters"]["keyLength"])
@@ -243,7 +241,6 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         )
 
     if protection_type_oid == rfc4210.id_PasswordBasedMac:
-        prot_params: rfc9480.PBMParameter
         salt = prot_params["salt"].asOctets()
         iterations = int(prot_params["iterationCount"])
 
@@ -258,7 +255,6 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         return compute_gmac(data=encoded, key=password, iv=nonce)
 
     if protection_type_oid == rfc8018.id_PBMAC1:
-        prot_params: rfc8018.PBMAC1_params
         salt = prot_params["keyDerivationFunc"]["parameters"]["salt"]["specified"].asOctets()
         iterations = int(prot_params["keyDerivationFunc"]["parameters"]["iterationCount"])
         length = int(prot_params["keyDerivationFunc"]["parameters"]["keyLength"])
@@ -278,7 +274,6 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         )
 
     if rfc9480.id_DHBasedMac:
-        prot_params: rfc9480.DHBMParameter
         hash_alg: str = SHA_OID_2_NAME[prot_params["owf"]["algorithm"]]
         password = compute_hash(alg_name=hash_alg, data=password)
         return cryptoutils.compute_hmac(key=password, data=encoded)
@@ -428,7 +423,7 @@ def _prepare_pki_message_protection_field(
 def protect_pki_message(  # noqa: D417 undocumented-param
     pki_message: rfc9480.PKIMessage,
     protection: str,
-    password: Optional[str] = None,
+    password: Optional[str, bytes] = None,
     private_key: Optional[PrivateKey] = None,
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
