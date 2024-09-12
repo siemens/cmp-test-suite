@@ -50,6 +50,6 @@ pyright:
   script:
     # update 73 after fixing the current issues; for now we just try to make
     # sure we won't be adding new ones
-    - PYTHONPATH=./resources pyright;
+    - PYTHONPATH=./resources pyright ./resources;
   tags:
     - LINUX-DOCKER
