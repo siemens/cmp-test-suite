@@ -16,7 +16,7 @@ from robot.api.deco import not_keyword
 import certutils
 import cmputils
 import cryptoutils
-from cmputils import prepare_extra_certs, encode_to_der
+from cmputils import encode_to_der, prepare_extra_certs
 from cryptoutils import compute_gmac, compute_hash, compute_password_based_mac, compute_pbmac1
 from oid_mapping import (
     AES_GMAC_NAME_2_OID,
