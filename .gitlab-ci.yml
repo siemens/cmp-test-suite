@@ -12,9 +12,9 @@ before_script:
 
 
 stages:
+  - Unit tests
   - Code style
   - Static analysis
-  - Unit tests
   - type-check
 
 

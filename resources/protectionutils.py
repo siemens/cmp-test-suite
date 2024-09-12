@@ -192,10 +192,10 @@ def add_cert_to_pkimessage_used_by_protection(
 
         try:
             certutils.verify_signature(
-                public_key=certificate.public_key(),
+                public_key=crypto_lib_cert.public_key(),
                 signature=signature,
                 data=data,
-                hash_alg=certificate.signature_hash_algorithm,
+                hash_alg=crypto_lib_cert.signature_hash_algorithm,
             )
         except InvalidSignature:
             raise ValueError("The first certificate must be the CMP-Protection certificate, see RFC 9483, Section 3.3.")
