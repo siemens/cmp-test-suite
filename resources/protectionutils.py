@@ -419,11 +419,11 @@ def _prepare_pki_message_protection_field(
     return pki_message
 
 
-# TODO add decorator for salt
+# TODO add decorator for salt and password.
 def protect_pki_message(  # noqa: D417 undocumented-param
     pki_message: rfc9480.PKIMessage,
     protection: str,
-    password: Optional[str, bytes] = None,
+    password: Optional[Union[str, bytes]] = None,
     private_key: Optional[PrivateKey] = None,
     certificate: Optional[x509.Certificate] = None,
     sign_key: Optional[PrivSignCertKey] = None,
