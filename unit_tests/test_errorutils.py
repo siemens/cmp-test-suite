@@ -35,6 +35,9 @@ class TestUtils(unittest.TestCase):
         modified_csr = cmputils.modify_csr_cn(csr, new_cn="Hans MusterMann")
 
         modified_csr = x509.load_der_x509_csr(encode_to_der(modified_csr))
+
+        self.assertNotEqual(modified_csr, csr_signed)
+
         # Verify the signature of the modified CSR
         with self.assertRaises(cryptography.exceptions.InvalidSignature):
             certutils.verify_csr_signature(modified_csr)
