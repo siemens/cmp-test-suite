@@ -50,9 +50,10 @@ pyright:
   script:
     # update 73 after fixing the current issues; for now we just try to make
     # sure we won't be adding new ones
-        run_pyright_check: |
-          ERRORS=$(PYTHONPATH=./resources pyright | tail -n 1 | grep -o '^[0-9]*'); [ -z "$ERRORS" ] && ERRORS=0; echo "Error count: $ERRORS"; [ "$ERRORS" -lt 70 ] 2>/dev/null && echo "Success." || (echo "Failure." && exit 1)
-
+    - export ERRORS=$(PYTHONPATH=./resources pyright | tail -n 1 | grep -o '^[0-9]*')
+        - '[ -z "$ERRORS" ] && ERRORS=0'  # Set ERRORS to 0 if it is empty
+        - echo "Error count: $ERRORS"
+        - '[ "$ERRORS" -lt 70 ] 2>/dev/null && echo "Success." || (echo "Failure." && exit 1)'
   tags:
     - LINUX-DOCKER
   needs:  # it is a rather expensive check, run it only after the others
