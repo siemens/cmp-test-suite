@@ -52,7 +52,7 @@ Server must issue a certificate when a correct p10cr is sent
     [Documentation]    When a correct p10cr is sent to the server, it must issue a certificate
     [Tags]    positive  rfc9483  p10cr
     ${pki_message}=     Load and refresh PKIMessage from file    data/example-rufus-01-p10cr.pem
-    ${protected_pki_message}=     protect_pki_message    ${pki_message}    protection=pbmac1    password=${PRESHARED_SECRET}
+    ${protected_pki_message}=     Protect Pki Message    ${pki_message}    protection=pbmac1    password=${PRESHARED_SECRET}
     ${encoded}=  Encode To Der    ${protected_pki_message}
     ${response}=  Exchange data with CA    ${encoded}
 
@@ -72,7 +72,7 @@ Response PKIMessage header must include all required fields
 
     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
 
-    ${protected_p10cr}=     protect_pki_message    ${p10cr}    protection=pbmac1    password=${PRESHARED_SECRET}
+    ${protected_p10cr}=     Protect Pki Message    ${p10cr}    protection=pbmac1    password=${PRESHARED_SECRET}
     Log Asn1    ${protected_p10cr}
 
     ${encoded}=  Encode To Der    ${protected_p10cr}
@@ -105,7 +105,7 @@ CA must issue certificate via p10cr without implicitConfirm
     [Tags]    headers   p10cr   ak
     ${parsed_csr}=     Load and parse example CSR
     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${False}
-    ${protected_p10cr}=     protect_pki_message    ${p10cr}    protection=pbmac1    password=${PRESHARED_SECRET}
+    ${protected_p10cr}=     Protect Pki Message    ${p10cr}    protection=pbmac1    password=${PRESHARED_SECRET}
     Log Asn1    ${protected_p10cr}
 
     # send initial request
@@ -119,7 +119,7 @@ CA must issue certificate via p10cr without implicitConfirm
     # prepare confirmation message by extracting the certifiate and getting the needed data from it
     ${cert}=    Get Cert From Pki Message    ${pki_message}
     ${conf_message}=    Build Cert Conf    ${cert}
-    ${protected_conf_message}=     protect_pki_message    ${conf_message}    protection=pbmac1    password=${PRESHARED_SECRET}
+    ${protected_conf_message}=     Protect Pki Message    ${conf_message}    protection=pbmac1    password=${PRESHARED_SECRET}
     ${encoded}=  Encode To Der    ${protected_conf_message}
     Log Base64    ${encoded}
     ${response}=  Exchange data with CA    ${encoded}
@@ -134,7 +134,7 @@ CA must support p10cr with password-based-mac protection
     [Tags]    headers   p10cr   ak
     ${parsed_csr}=     Load and parse example CSR
     ${p10cr}=    Build P10cr From Csr    ${parsed_csr}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
-    ${protected_p10cr}=     protect_pki_message    ${p10cr}    protection=password_based_mac    password=${PRESHARED_SECRET}
+    ${protected_p10cr}=     Protect Pki Message    ${p10cr}    protection=password_based_mac    password=${PRESHARED_SECRET}
     Log Asn1    ${protected_p10cr}
 
     ${encoded}=  Encode To Der    ${protected_p10cr}
@@ -173,7 +173,7 @@ CA must support cr with implicitConfirm and PBMAC1 protection
 
     ${pki_message}=    Build Cr From Csr    ${parsed_csr}    ${key}       sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
 
-    ${protected_pki_message}=     protect_pki_message    ${pki_message}    protection=pbmac1    password=${PRESHARED_SECRET}
+    ${protected_pki_message}=     Protect Pki Message    ${pki_message}    protection=pbmac1    password=${PRESHARED_SECRET}
     Log Asn1    ${protected_pki_message}
 
     ${encoded}=  Encode To Der    ${protected_pki_message}
@@ -211,7 +211,7 @@ CA must reject requests with signature protection but without extraCerts
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
 
     ${pki_message}=    Build Cr From Csr    ${parsed_csr}    ${key}       sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
-    ${protected_pki_message}=     protect_pki_message    pki_message=${pki_message}    protection=signature    private_key=${key}
+    ${protected_pki_message}=     Protect Pki Message    pki_message=${pki_message}    protection=signature    private_key=${key}
     Log Asn1    ${protected_pki_message}
 
     ${encoded}=  Encode To Der    ${protected_pki_message}
@@ -254,7 +254,7 @@ CA must support requests with signature protection
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
 
     ${pki_message}=    Build Cr From Csr    ${parsed_csr}    ${key}       sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
-    ${protected_pki_message}=     protect_pki_message    ${pki_message}    protection=signature    private_key=${key}
+    ${protected_pki_message}=     Protect Pki Message    ${pki_message}    protection=signature    private_key=${key}
     Log Asn1    ${protected_pki_message}
 
     ${encoded}=  Encode To Der    ${protected_pki_message}
