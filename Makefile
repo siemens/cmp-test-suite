@@ -12,7 +12,7 @@ help:
 
 # By default, run the tests against the local environment from config/local.robot
 # You can override it, e.g., `make test env=cloudpki`
-env ?= local
+env ?= cloudpki
 test: check_ejbca
 	robot --outputdir=out --variable environment:$(env) tests
 
