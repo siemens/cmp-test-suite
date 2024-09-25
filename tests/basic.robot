@@ -62,7 +62,9 @@ CA must issue a certificate when we send a valid p10cr request
     Should be equal     ${response_status}    accepted      We expected status `accepted`, but got ${response_status}
 
     # TODO check the remaining part for correctness
-    ${der_cert}=    Get Asn1 value as DER    ${response_pki_message}    body.cp.response/0.certifiedKeyPair.certOrEncCert.certificate.tbsCertificate
+    ${cert}=    Get Asn1 value    ${response_pki_message}    body.cp.response/0.certifiedKeyPair.certOrEncCert.certificate
+    ${cert}=    Transform tagged certificate to certificate    ${cert}
+    ${der_cert}=    Encode to der    ${cert}
     Certificate must be valid    ${der_cert}
 
 CA must reject a valid p10cr request if the transactionId is not new
@@ -71,11 +73,14 @@ CA must reject a valid p10cr request if the transactionId is not new
     [Tags]    csr    p10cr  negative
     ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
     ${request_pki_message}=  Parse Pki Message    ${der_pkimessage}
+    Try to log pkimessage    ${request_pki_message}
     # first we send a good request, ensuring the time is fresh and the transactionId is new
     ${request_pki_message}=  Patch message time    ${request_pki_message}
     ${request_pki_message}=  Patch transaction id    ${request_pki_message}     0123456789012345678901234567891
     ${request_pki_message}=  Add implicit confirm    ${request_pki_message}
 #    xxx
+    Try to log pkimessage    ${request_pki_message}
+
     ${protected_p10cr}=     protect_pki_message    pki_message=${request_pki_message}    protection=password_based_mac    password=${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
     ${encoded}=  Encode To Der    ${protected_p10cr}
     ${response}=  Exchange data with CA    ${encoded}

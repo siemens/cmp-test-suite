@@ -49,6 +49,39 @@ PKISTATUS_REVOCATION_WARNING = 4
 PKISTATUS_REVOCATION_NOTIFICATION = 5
 PKISTATUS_KEY_UPDATE_WARNING = 6
 
+def transform_tagged_certificate_to_certificate(certificate: rfc9480.CMPCertificate) -> rfc9480.CMPCertificate:
+    """Transform a tagged `rfc9480.Certificate` into an `rfc9480.CMPCertificate` without a tag.
+
+    This function extracts the `tbsCertificate`, `signatureAlgorithm`, and `signature` from an `rfc9480.Certificate`
+    and converts them parses them into the new `rfc9480.CMPCertificate` object.
+
+    Arguments:
+    ---------
+    - `certificate` (rfc9480.CMPCertificate): The `pyasn1` certificate to be transformed.
+
+    Returns:
+    -------
+    - `rfc9480.CMPCertificate`: The transformed certificate in the `rfc9480.CMPCertificate` format.
+
+    Example:
+    -------
+    | ${cert} | Transform Tagged Certificate to Certificate | ${cert} |
+
+    """
+    tbs_certificate = encode_to_der(certificate.getComponentByName('tbsCertificate'))
+    signature_algorithm = encode_to_der(certificate.getComponentByName('signatureAlgorithm'))
+    signature = encode_to_der(certificate.getComponentByName('signature'))
+
+    new_cert = rfc9480.CMPCertificate()
+
+    decoded_signature, _ = decoder.decode(signature, asn1spec=univ.BitString())
+
+    new_cert.setComponentByName("tbsCertificate", decoder.decode(tbs_certificate, asn1Spec=rfc5280.TBSCertificate())[0])
+    new_cert.setComponentByName("signatureAlgorithm", decoder.decode(signature_algorithm, asn1Spec=rfc5280.AlgorithmIdentifier())[0])
+    new_cert.setComponentByName("signature", decoded_signature)
+
+    return new_cert
+
 
 def build_cmp_revive_request(serial_number, sender="test-cli@test.com", recipient="test-srv@test.com"):  # noqa: D103
     # No docstring, this is just a wrapper

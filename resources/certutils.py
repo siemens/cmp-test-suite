@@ -32,7 +32,7 @@ def parse_certificate(data: bytes) -> rfc9480.CMPCertificate:
     return cert
 
 
-def validate_certificate_openssl(data):
+def validate_certificate_openssl(data) -> bool:
     """Validate a certificate by attempting to load it with the cryptography library, which invokes OpenSSL underneath.
 
     :param data: bytes, DER-encoded X509 certificate.
@@ -40,10 +40,12 @@ def validate_certificate_openssl(data):
     """
     try:
         _certificate = x509.load_der_x509_certificate(data, backends.default_backend())
+        return True
     except Exception as e:
         message = f"Certificate validation with openssl failed: {e}"
         logging.error(message)
         raise ValueError(message) from e
+
 
 
 def validate_certificate_pkilint(data):
