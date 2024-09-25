@@ -211,7 +211,7 @@ CA must reject requests with signature protection but without extraCerts
     ${parsed_csr}=     Parse Csr    ${decoded_csr}
 
     ${pki_message}=    Build Cr From Csr    ${parsed_csr}    ${key}       sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
-    ${protected_pki_message}=     Protect Pki Message    pki_message=${pki_message}    protection=signature    private_key=${key}
+    ${protected_pki_message}=     Protect Pki Message    pki_message=${pki_message}    protection=signature    private_key=${key}    exclude_cert=True
     Log Asn1    ${protected_pki_message}
 
     ${encoded}=  Encode To Der    ${protected_pki_message}
@@ -241,7 +241,6 @@ CA must reject requests with signature protection but without extraCerts
     Response time must be fresh               ${protected_pki_message}      ${pki_message}
     Protection algorithms must match          ${protected_pki_message}      ${pki_message}
     Protection must be valid                  ${pki_message}
-
 
 CA must support requests with signature protection
     [Documentation]    Check that the server can handle CRMF requests with implicitConfirm and signature protection

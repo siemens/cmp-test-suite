@@ -94,7 +94,7 @@ Response time must be fresh
 
     ${delta_verbose}=   Subtract Date From Date    ${response_time}    ${request_time}     verbose
     ${delta}=           Subtract Date From Date    ${response_time}    ${request_time}
-    Should Be True      ${delta.seconds} < ${tolerance}    Time between request and response exceeds tolerance
+    Should Be True      ${delta} < ${tolerance}    Time between request and response exceeds tolerance
 
 
 Protection algorithms must match
