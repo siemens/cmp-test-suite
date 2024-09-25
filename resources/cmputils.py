@@ -20,7 +20,7 @@ from robot.api.deco import not_keyword
 import certutils
 import cryptoutils
 import utils
-from oid_mapping import get_hash_from_signature_oid, get_sig_oid_from_key_hash
+import oid_mapping
 from suiteenums import PKIStatus
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
@@ -340,7 +340,7 @@ def build_cr_from_csr(
 
     # patch the algorithm inside algorithmIdentifier, instead of re-creating the structure from scratch
     popo_key["algorithmIdentifier"] = csr["certificationRequestInfo"]["subjectPublicKeyInfo"]["algorithm"].clone()
-    popo_sig_oid = get_sig_oid_from_key_hash(
+    popo_sig_oid = oid_mapping.get_sig_oid_from_key_hash(
         csr["certificationRequestInfo"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"], hash_alg
     )
     popo_key["algorithmIdentifier"]["algorithm"] = popo_sig_oid
@@ -400,7 +400,7 @@ def build_cert_conf(
     )
 
     sig_algorithm = cert["signature"]["algorithm"]
-    hash_alg = get_hash_from_signature_oid(sig_algorithm)
+    hash_alg = oid_mapping.get_hash_from_signature_oid(sig_algorithm)
     der_cert = encode_to_der(cert)
     hash = cryptoutils.compute_hash(hash_alg, der_cert)
 

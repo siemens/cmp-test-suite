@@ -16,8 +16,6 @@ from robot.api.deco import not_keyword
 import certutils
 import cmputils
 import cryptoutils
-from cmputils import encode_to_der, prepare_extra_certs
-from cryptoutils import compute_gmac, compute_hash, compute_password_based_mac, compute_pbmac1
 from oid_mapping import (
     AES_GMAC_NAME_2_OID,
     AES_GMAC_OID_2_NAME,
@@ -155,9 +153,9 @@ def add_cert_to_pkimessage_used_by_protection(
     if certificate is not None:
         if not pki_message["extraCerts"].hasValue():
             asn1_cert = certutils.parse_certificate(certificate.public_bytes(serialization.Encoding.DER))
-            pki_message["extraCerts"] = prepare_extra_certs([asn1_cert])
+            pki_message["extraCerts"] = cmputils.prepare_extra_certs([asn1_cert])
         else:
-            first_cert = x509.load_der_x509_certificate(encode_to_der(pki_message["extraCerts"][0]))
+            first_cert = x509.load_der_x509_certificate(cmputils.encode_to_der(pki_message["extraCerts"][0]))
             #  RFC 9483, Section 3.3, the first certificate must be the CMP-Protection certificate.
             if first_cert != certificate:
                 other_cert = certutils.parse_certificate(certificate.public_bytes(serialization.Encoding.DER))
@@ -177,7 +175,7 @@ def add_cert_to_pkimessage_used_by_protection(
         )
         raw = certificate.public_bytes(serialization.Encoding.DER)
         certificate = certutils.parse_certificate(raw)
-        pki_message["extraCerts"] = prepare_extra_certs([certificate])
+        pki_message["extraCerts"] = cmputils.prepare_extra_certs([certificate])
 
     else:
         # The first certificate must be a CMP-Protection Certificate.
@@ -231,7 +229,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         # gets the sha-Algorithm
         hash_alg = HMAC_SHA_OID_2_NAME[hmac_alg].split("-")[1]
 
-        return compute_pbmac1(
+        return cryptoutils.compute_pbmac1(
             data=encoded,
             key=password,
             iterations=iterations,
@@ -245,14 +243,14 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
         iterations = int(prot_params["iterationCount"])
 
         hash_alg = HMAC_SHA_OID_2_NAME[prot_params["mac"]["algorithm"]].split("-")[1]
-        return compute_password_based_mac(
+        return cryptoutils.compute_password_based_mac(
             data=encoded, key=password, iterations=iterations, salt=salt, hash_alg=hash_alg
         )
 
     if protection_type_oid in AES_GMAC_OID_2_NAME:
         nonce = prot_params["nonce"].asOctets()
         password = password.encode("utf-8") if isinstance(password, str) else password
-        return compute_gmac(data=encoded, key=password, iv=nonce)
+        return cryptoutils.compute_gmac(data=encoded, key=password, iv=nonce)
 
     if protection_type_oid == rfc8018.id_PBMAC1:
         salt = prot_params["keyDerivationFunc"]["parameters"]["salt"]["specified"].asOctets()
@@ -264,7 +262,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
 
         hash_alg = HMAC_SHA_OID_2_NAME[hmac_alg].split("-")[1]
 
-        return compute_pbmac1(
+        return cryptoutils.compute_pbmac1(
             data=encoded,
             key=password,
             iterations=iterations,
@@ -275,7 +273,7 @@ def _compute_symmetric_protection(pki_message: rfc9480.PKIMessage, password: byt
 
     if rfc9480.id_DHBasedMac:
         hash_alg: str = SHA_OID_2_NAME[prot_params["owf"]["algorithm"]]
-        password = compute_hash(alg_name=hash_alg, data=password)
+        password = cryptoutils.compute_hash(alg_name=hash_alg, data=password)
         return cryptoutils.compute_hmac(key=password, data=encoded)
 
     raise ValueError(f"Unsupported Symmetric Mac Protection! : {protection_type_oid}")
