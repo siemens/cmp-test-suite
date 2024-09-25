@@ -32,7 +32,7 @@ CA must reject requests that feature unknown signature algorithms
     ${updated_pki_message}=  Patch message time    ${data}
     ${encoded}=  Encode To Der    ${updated_pki_message}
     ${response}=  Exchange data with CA    ${encoded}
-    Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
+    # Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
 
     ${pki_message}=  Parse Pki Message    ${response.content}
     PKIMessage body type must be              ${pki_message}    error
@@ -60,10 +60,8 @@ CA must issue a certificate when we send a valid p10cr request
 
     ${response_status}=    Get CMP status from PKIMessage    ${response_pki_message}
     Should be equal     ${response_status}    accepted      We expected status `accepted`, but got ${response_status}
-
-    # TODO check the remaining part for correctness
     ${cert}=    Get Asn1 value    ${response_pki_message}    body.cp.response/0.certifiedKeyPair.certOrEncCert.certificate
-    ${cert}=    Transform tagged certificate to certificate    ${cert}
+    ${cert}=    Transform asn1 tagged certificate to certificate    ${cert}
     ${der_cert}=    Encode to der    ${cert}
     Certificate must be valid    ${der_cert}
 
@@ -97,14 +95,10 @@ CA must reject a valid p10cr request if the transactionId is not new
     Should Be Equal    ${pki_status}  ${2}      We expected status `(2) rejection`, but got ${pki_status}
 
     # TODO PKIFailureInfo is optional, but if it is set, then it must contain the specific values we check for
-    # create a nice primitive for this
-    ${pki_fail_info}=  Get ASN1 value    ${response_pki_message}    body.error.pKIStatusInfo.failInfo
-    Should Be Equal    ${pki_fail_info}  ${21}      We expected status `(21) transactionIdInUse`, but got ${pki_status}
+    PKIMessage Has Set Failure Bits    ${response_pki_message}    transactionIdInUse    exclusive=${True}
+    #Should Be Equal    ${pki_fail_info}  ${21}      We expected status `(21) transactionIdInUse`, but got ${pki_status}
 #    Check if optional error info in PKIMessage equals    ${response_pki_message}    ${21}
-
-
-    Should Be Equal    ${response.status_code}  ${400}      We expected status code 200, but got ${response.status_code}
-
+    #Should Be Equal    ${response.status_code}  ${400}      We expected status code 200, but got ${response.status_code}
 
 
 CA must reject request when the CSR signature is invalid

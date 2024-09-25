@@ -49,7 +49,8 @@ PKISTATUS_REVOCATION_WARNING = 4
 PKISTATUS_REVOCATION_NOTIFICATION = 5
 PKISTATUS_KEY_UPDATE_WARNING = 6
 
-def transform_tagged_certificate_to_certificate(certificate: rfc9480.CMPCertificate) -> rfc9480.CMPCertificate:
+# TODO get Alex approve!
+def transform_asn1_tagged_certificate_to_certificate(certificate: rfc9480.CMPCertificate) -> rfc9480.CMPCertificate:
     """Transform a tagged `rfc9480.Certificate` into an `rfc9480.CMPCertificate` without a tag.
 
     This function extracts the `tbsCertificate`, `signatureAlgorithm`, and `signature` from an `rfc9480.Certificate`
@@ -65,9 +66,11 @@ def transform_tagged_certificate_to_certificate(certificate: rfc9480.CMPCertific
 
     Example:
     -------
-    | ${cert} | Transform Tagged Certificate to Certificate | ${cert} |
+    | ${cert} | Transform ASN1 Tagged Certificate to Certificate | ${cert} |
 
     """
+
+    # can not be tagged if valid input.
     tbs_certificate = encode_to_der(certificate.getComponentByName('tbsCertificate'))
     signature_algorithm = encode_to_der(certificate.getComponentByName('signatureAlgorithm'))
     signature = encode_to_der(certificate.getComponentByName('signature'))
@@ -643,6 +646,7 @@ def add_implicit_confirm(pki_message):
     general_info = _prepare_implicit_confirm_general_info_structure()
     pki_message["header"]["generalInfo"] = general_info
     return pki_message
+
 
 
 # this is a Python implementation of the RobotFramework keyword `Try to Log PKIMessage as ASN1`. Viewing
