@@ -58,7 +58,7 @@ unit-tests:
 pyright:
   stage: type-check
   before_script:
-    - pip install pyright==1.1.380
+    - pip install pyright==1.1.385
   script:
     # update 73 after fixing the current issues; for now we just try to make
     # sure we won't be adding new ones
