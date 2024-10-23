@@ -494,6 +494,13 @@ def protect_pki_message(  # noqa: D417 undocumented-param
     pki_message["protection"] = wrapped_protection
     return pki_message
 
+@not_keyword
+def extract_protected_part(pki_message: rfc9480.PKIMessage) -> bytes:  # noqa: D417 undocumented-param
+    """Extract the protected part of a PKIMessage structure."""
+    protected_part = rfc9480.ProtectedPart()
+    protected_part["header"] = pki_message["header"]
+    protected_part["body"] = pki_message["body"]
+    return encoder.encode(protected_part)
 
 def verify_pki_message_protection(  # noqa: D417
     pki_message: rfc9480.PKIMessage,
@@ -540,11 +547,7 @@ def verify_pki_message_protection(  # noqa: D417
     prot_alg_id = pki_message["header"]["protectionAlg"]
     protection_type_oid = prot_alg_id["algorithm"]
 
-    # Extract protected part for verification
-    protected_part = rfc9480.ProtectedPart()
-    protected_part["header"] = pki_message["header"]
-    protected_part["body"] = pki_message["body"]
-    encoded: bytes = encoder.encode(protected_part)
+    encoded = extract_protected_part(pki_message)
 
     if protection_type_oid == rfc9480.id_DHBasedMac:
         password = cryptoutils.do_dh_key_exchange_password_based(password=password, peer_key=private_key)
