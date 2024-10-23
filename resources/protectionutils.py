@@ -557,16 +557,14 @@ def verify_pki_message_protection(  # noqa: D417
         expected_protection_value = _compute_symmetric_protection(pki_message, password)
 
     elif protection_type_oid in SUPPORTED_SIG_MAC_OIDS:
-        certificate = pki_message["extraCerts"][0]
-        certificate = cmputils.encode_to_der(certificate)
-        certificate = x509.load_der_x509_certificate(certificate)
-
         # Raises an InvalidSignature Exception.
-        certutils.verify_signature(
-            data=encoded,
-            signature=protection_value,
-            public_key=certificate.public_key(),
-            hash_alg=certificate.signature_hash_algorithm,
+        alg_id = pki_message["header"]["protectionAlg"]["algorithm"]
+        hash_alg = None
+        if alg_id not in {rfc9481.id_Ed25519, rfc9481.id_Ed448}:
+            hash_alg = get_hash_from_signature_oid(pki_message["header"]["protectionAlg"]["algorithm"]).split("-")[1]
+
+        verify_asn1_sig(
+            asn1cert=pki_message["extraCerts"][0], data=encoded, signature=protection_value, hash_alg=hash_alg
         )
         return
 
@@ -577,3 +575,23 @@ def verify_pki_message_protection(  # noqa: D417
         raise ValueError(
             f"PKIMessage Protection should be:" f" {expected_protection_value.hex()} but was: {protection_value.hex()}"
         )
+
+@not_keyword
+def verify_asn1_sig(asn1cert: rfc9480.CMPCertificate, data: bytes, signature: bytes, hash_alg: str) -> None:
+    """Verify the signature of a pyasn1 CMPCertificate.
+
+    :param asn1cert: pyasn1 CMPCertificate from which to extract the public key.
+    :param data: The data to verify.
+    :param signature: the signature to verify against.
+    :param hash_alg: The hash algorithm to use for signature verification (e.g., "sha256").
+    :raises InvalidSignature: If the signature is invalid.
+    """
+    certificate = encoder.encode(asn1cert)
+    certificate = x509.load_der_x509_certificate(certificate)
+    pub_key = certificate.public_key() # type: ignore
+    certutils.verify_signature(
+        data=data,
+        signature=signature,
+        public_key=pub_key,
+        hash_alg=hash_alg,
+    )
