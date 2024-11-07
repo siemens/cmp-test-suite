@@ -96,7 +96,7 @@ CA must reject a valid p10cr request if the transactionId is not new
 #    Check if optional error info in PKIMessage equals    ${response_pki_message}    ${21}
 
 
-    Should Be Equal    ${response.status_code}  ${400}      We expected status code 200, but got ${response.status_code}
+    Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
 
 
 
