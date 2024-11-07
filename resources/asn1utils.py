@@ -1,5 +1,5 @@
-"""Contains generic primitives for querying PyASN1 objects using ASN1Path,
-a notation similar to XPath for XML or JSONPath for JSON.
+"""Generic primitives for querying PyASN1 objects using ASN1Path, a notation similar to
+XPath for XML or JSONPath for JSON.
 
 The primitives are meant to be invoked from RobotFramework test cases, hence the notation
 is a compact, single string.
@@ -48,8 +48,11 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 |      AttributeTypeAndValue:
 |       type=2.5.4.10
 """
-
+import argparse
 import logging
+import pathlib
+import re
+from base64 import b64decode
 from typing import List
 
 from pyasn1.codec.der import decoder, encoder
@@ -317,3 +320,77 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
                 raise ValueError(f"Provided names: {values} but allowed Are: {names}")
 
             return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)
+
+
+def validate_structure(value):
+    """
+    Validate the `structure` argument, it must be of the form rfc****.ClassName.
+
+    :param value: str, the structure argument to validate
+    :returns: str, the validated structure
+    :raises argparse.ArgumentTypeError: if the structure is invalid
+    """
+    pattern = r'^rfc\d+\.[A-Z][a-zA-Z]+$'
+    if not re.match(pattern, value):
+        raise argparse.ArgumentTypeError(f"Invalid ASN1 structure path: {value}")
+    return value
+
+def validate_query(value):
+    if value.count(':') > 1:
+        raise argparse.ArgumentTypeError("Invalid query, only one cast is allowed at most")
+
+
+
+    pattern = r'^[a-zA-Z]+$'
+    if not re.match(pattern, value):
+        raise argparse.ArgumentTypeError(f"Invalid ASN1Path query: {value}")
+    return value
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Query ASN1 structures using ASN1Path notation')
+    parser.add_argument('filepath', type=pathlib.Path, help='Path to the file that contains the raw data, use `-` for stdin')
+    parser.add_argument('structure', type=validate_structure, help='RFC and structure to use for schema, e.g., rfc4210.PKIMessage')
+    parser.add_argument('query', type=str, help='The query in ASN1Path notation')
+    parser.add_argument('--inform', type=str, choices=['raw', 'base64', 'der', 'ber', 'hex'], default='raw', help='The format of the input data')
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    rfc, target_class_name = args.structure.split('.')
+    target_class = __import__(f'pyasn1_alt_modules.{rfc}', fromlist=[target_class_name])
+
+    if args.filepath == '-':
+        raw_data = sys.stdin.read()
+    else:
+        raw_data = args.filepath.read_bytes()
+
+    if args.inform == 'base64':
+        raw_data = b64decode(raw_data)
+    elif args.inform == 'hex':
+        raw_data = bytes.fromhex(raw_data)
+
+    pyasn1_class = getattr(target_class, target_class_name)
+    specific_decoder = decoder if args.inform in ('der', 'raw') else ber_decoder
+
+    parsed_data, _rest = specific_decoder.decode(raw_data, asn1Spec=pyasn1_class())
+
+    if ':' in args.query:
+        query, cast = args.query.split(':')
+    else:
+        query = args.query
+        cast = 'str'
+
+    if cast not in ('str', 'int', 'bytes', 'der', 'datetime'):
+        raise ValueError(f"Invalid cast type: {cast}")
+
+    result = get_asn1_value(parsed_data, query)
+    if cast == 'datetime':
+        print(result.asDateTime)
+    elif cast == 'str':
+        print(result.prettyPrint())
+    elif cast == 'int':
+        print(int(result))
+    elif cast == 'bytes':
+        print(result.asOctets())
+    else:
+        print(result)
