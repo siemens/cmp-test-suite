@@ -14,8 +14,8 @@ Several usage scenarios are possible:
 
 What makes this test suite unique is the high-level notation it is written in, making the reports and test scenarios
 readable not only to software engineers, but also to PKI experts without programming experience. Another key benefit is
-the emphasis on replicability - sending someone a test report is sufficient for them to understand exactly what was sent
-to the server and how the responses were processed.
+the emphasis on replicability - a test report is sufficient for someone to understand exactly what was transmitted to
+the server and how the responses were processed.
 
 
 # Configuration
