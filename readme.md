@@ -54,8 +54,7 @@ To use this approach, adjust the command line arguments to `--variable environme
 
 Prerequisites:
 - Linux or WSL (in this case, ensure to use the Linux filesystem).
-- Docker
-- [compose compose v2](https://github.com/docker/compose)
+- Docker with [compose](https://github.com/docker/compose)
 
 
 ## Other useful commands
