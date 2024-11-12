@@ -17,6 +17,8 @@ readable not only to software engineers, but also to PKI experts without program
 the emphasis on replicability - a test report is sufficient for someone to understand exactly what was transmitted to
 the server and how the responses were processed.
 
+The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the project.
+
 
 # Configuration
 Create a Python virtual environment by installing the dependencies from `requirements.txt`:
