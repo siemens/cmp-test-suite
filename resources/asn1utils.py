@@ -51,9 +51,11 @@ import argparse
 import logging
 import pathlib
 import re
+import sys
 from base64 import b64decode
 from typing import List
 
+from pyasn1.codec.ber import decoder as ber_decoder
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type.univ import BitString
 from robot.api.deco import not_keyword
@@ -283,10 +285,6 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
         | Is Bit Set | ${failInfo} | 1, 9                | ${True} |
 
     """
-    logging.info(f"exclusive: {exclusive} {type(exclusive)}")
-    logging.info(f"type: {type(asn1_bitstring)}")
-    logging.info(f"input: {bit_indices} type: {type(bit_indices)}")
-
     if not asn1_bitstring.isValue:
         raise ValueError("The Provided BitString has not set a Value!")
 
@@ -300,17 +298,17 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
                 values = [int(x) for x in bit_indices.strip(" ").split(",")]
                 return _is_either_bit_set_in_bitstring(asn1_bitstring, values, exclusive=exclusive)
             return _is_bit_set_in_bitstring(asn1_bitstring, int(bit_indices.strip()), exclusive=exclusive)
-        else:
-            # gets the names of as single values.
-            values = bit_indices.strip(" ").split(",")
-            # gets the indices to the corresponding human-readable-names.
-            names = list(asn1_bitstring.namedValues.keys())
-            try:
-                bit_indices = [names.index(val) for val in values]
-            except ValueError as err:
-                raise ValueError(f"Provided names: {values} but allowed are: {names}") from err
 
-            return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)
+        # gets the names of as single values.
+        values = bit_indices.strip(" ").split(",")
+        # gets the indices to the corresponding human-readable-names.
+        names = list(asn1_bitstring.namedValues.keys())
+        try:
+            bit_indices = [names.index(val) for val in values]
+        except ValueError as err:
+            raise ValueError(f"Provided names: {values} but allowed are: {names}") from err
+
+        return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)
 
 
 def validate_structure(value):
@@ -327,22 +325,32 @@ def validate_structure(value):
     return value
 
 def validate_query(value):
+    """
+    Validate the `query` argument, it must be of the form rfc****.ClassName.
+
+    :param value: str, the asn1path query argument to validate
+    :returns: str, the validated query
+    :raises argparse.ArgumentTypeError: if the format of the query is invalid
+    """
     if value.count(':') > 1:
         raise argparse.ArgumentTypeError("Invalid query, only one cast is allowed at most")
-
-
 
     pattern = r'^[a-zA-Z]+$'
     if not re.match(pattern, value):
         raise argparse.ArgumentTypeError(f"Invalid ASN1Path query: {value}")
     return value
 
-if __name__ == '__main__':
+
+def main():
+    """Wrap the command-line interface"""
     parser = argparse.ArgumentParser(description='Query ASN1 structures using ASN1Path notation')
-    parser.add_argument('filepath', type=pathlib.Path, help='Path to the file that contains the raw data, use `-` for stdin')
-    parser.add_argument('structure', type=validate_structure, help='RFC and structure to use for schema, e.g., rfc4210.PKIMessage')
+    parser.add_argument('filepath', type=pathlib.Path, help='Path to the file that contains the raw data,'
+                                                            ' use `-` for stdin')
+    parser.add_argument('structure', type=validate_structure, help='RFC and structure to use for schema,'
+                                                                   ' e.g., rfc4210.PKIMessage')
     parser.add_argument('query', type=str, help='The query in ASN1Path notation')
-    parser.add_argument('--inform', type=str, choices=['raw', 'base64', 'der', 'ber', 'hex'], default='raw', help='The format of the input data')
+    parser.add_argument('--inform', type=str, choices=['raw', 'base64', 'der', 'ber', 'hex'],
+                        default='raw', help='The format of the input data')
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG)
@@ -385,3 +393,7 @@ if __name__ == '__main__':
         print(result.asOctets())
     else:
         print(result)
+
+
+if __name__ == '__main__':
+    main()
