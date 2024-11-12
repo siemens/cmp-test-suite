@@ -10,15 +10,15 @@ from resources.utils import load_and_decode_pem_file
 
 class TestASN1Utils(unittest.TestCase):
     @classmethod
-    def setUp(cls):
+    def setUpClass(cls):
         raw = load_and_decode_pem_file('data/cmp-sample-reject.pem')
         cls.asn1_object = parse_pki_message(raw)
 
         default_str = "0" * 26
         default_str_list = list(default_str)
         # Change the characters at the desired indices
-        default_str_list[1] = "1" # change to badPOP
-        default_str_list[9] = "1" # badMessageCheck
+        default_str_list[1] = "1"  # change to badPOP
+        default_str_list[9] = "1"  # badMessageCheck
         default_str = "".join(default_str_list)
 
         # not exclusive bit string for test_is_bit_set and test_is_bit_set_with_human_readable_names.

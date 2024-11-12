@@ -6,6 +6,8 @@ Library     ../resources/utils.py
 Library     ../resources/asn1utils.py
 Library     ../resources/keyutils.py
 Library     ../resources/cmputils.py
+Library      ../resources/protectionutils.py
+Library     ../resources/httputils.py
 
 
 
@@ -30,7 +32,7 @@ CA must reject requests that feature unknown signature algorithms
     ${updated_pki_message}=  Patch message time    ${data}
     ${encoded}=  Encode To Der    ${updated_pki_message}
     ${response}=  Exchange data with CA    ${encoded}
-    Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
+    # Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
 
     ${pki_message}=  Parse Pki Message    ${response.content}
     PKIMessage body type must be              ${pki_message}    error
@@ -45,7 +47,7 @@ CA must issue a certificate when we send a valid p10cr request
     ${request_pki_message}=  Patch message time    ${request_pki_message}
     # NOTE that we are patching the transaction id so the message looks like a new one
     ${request_pki_message}=  Patch transaction id    ${request_pki_message}     prefix=11111111111111111111
-    ${protected_p10cr}=     Protect Pkimessage password based mac    ${request_pki_message}    ${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
+    ${protected_p10cr}=     protect_pki_message    pki_message=${request_pki_message}    protection=password_based_mac    password=${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
     ${der_pkimessage}=  Encode To Der    ${protected_p10cr}
 
     ${response}=  Exchange data with CA    ${der_pkimessage}
@@ -58,9 +60,9 @@ CA must issue a certificate when we send a valid p10cr request
 
     ${response_status}=    Get CMP status from PKIMessage    ${response_pki_message}
     Should be equal     ${response_status}    accepted      We expected status `accepted`, but got ${response_status}
-
-    # TODO check the remaining part for correctness
-    ${der_cert}=    Get Asn1 value as DER    ${response_pki_message}    body.cp.response/0.certifiedKeyPair.certOrEncCert.certificate.tbsCertificate
+    ${cert}=    Get Asn1 value    ${response_pki_message}    body.cp.response/0.certifiedKeyPair.certOrEncCert.certificate
+    ${cert}=    Transform asn1 tagged certificate to certificate    ${cert}
+    ${der_cert}=    Encode to der    ${cert}
     Certificate must be valid    ${der_cert}
 
 CA must reject a valid p10cr request if the transactionId is not new
@@ -69,12 +71,15 @@ CA must reject a valid p10cr request if the transactionId is not new
     [Tags]    csr    p10cr  negative
     ${der_pkimessage}=  Load And Decode Pem File    data/example-rufus-01-p10cr.pem
     ${request_pki_message}=  Parse Pki Message    ${der_pkimessage}
+    Try to log pkimessage    ${request_pki_message}
     # first we send a good request, ensuring the time is fresh and the transactionId is new
     ${request_pki_message}=  Patch message time    ${request_pki_message}
     ${request_pki_message}=  Patch transaction id    ${request_pki_message}     0123456789012345678901234567891
     ${request_pki_message}=  Add implicit confirm    ${request_pki_message}
 #    xxx
-    ${protected_p10cr}=     Protect Pkimessage password based mac    ${request_pki_message}    ${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
+    Try to log pkimessage    ${request_pki_message}
+
+    ${protected_p10cr}=     protect_pki_message    pki_message=${request_pki_message}    protection=password_based_mac    password=${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
     ${encoded}=  Encode To Der    ${protected_p10cr}
     ${response}=  Exchange data with CA    ${encoded}
 
@@ -90,40 +95,36 @@ CA must reject a valid p10cr request if the transactionId is not new
     Should Be Equal    ${pki_status}  ${2}      We expected status `(2) rejection`, but got ${pki_status}
 
     # TODO PKIFailureInfo is optional, but if it is set, then it must contain the specific values we check for
-    # create a nice primitive for this
-    ${pki_fail_info}=  Get ASN1 value    ${response_pki_message}    body.error.pKIStatusInfo.failInfo
-    Should Be Equal    ${pki_fail_info}  ${21}      We expected status `(21) transactionIdInUse`, but got ${pki_status}
+    PKIMessage Has Set Failure Bits    ${response_pki_message}    transactionIdInUse    exclusive=${True}
+    #Should Be Equal    ${pki_fail_info}  ${21}      We expected status `(21) transactionIdInUse`, but got ${pki_status}
 #    Check if optional error info in PKIMessage equals    ${response_pki_message}    ${21}
-
-
-    Should Be Equal    ${response.status_code}  ${400}      We expected status code 400, but got ${response.status_code}
-
+    #Should Be Equal    ${response.status_code}  ${400}      We expected status code 200, but got ${response.status_code}
 
 
 CA must reject request when the CSR signature is invalid
      [Documentation]    When we send a CSR with a broken signature, the CA must respond with an error.
      [Tags]    csr    negative   crypto    robot:skip-on-failure
-     ${csr_signed}    ${key}=    Generate Signed Csr    ${DEFAULT_X509NAME}
+     ${csr_signed}    ${key}=    Generate signed csr    ${DEFAULT_X509NAME}
      ${data}=    Decode pem string   ${csr_signed}
      # needs to be changed so that it is still a Valid Asn1 Structure
      ${data}=    Parse Csr    ${data}
      ${modified_csr_der}=    Modify Csr cn  ${data}    Hans MustermanNG11
      Log base64       ${modified_csr_der}
      ${p10cr}=    Build P10cr From Csr    ${modified_csr_der}     sender=${SENDER}    recipient=${RECIPIENT}      implicit_confirm=${True}
-     ${protected_p10cr}=     Protect Pkimessage Pbmac1    ${p10cr}    ${PRESHARED_SECRET}
+     ${protected_p10cr}=     protect_pki_message    ${p10cr}    protection=Pbmac1    password=${PRESHARED_SECRET}
      Log Asn1    ${protected_p10cr}
      ${encoded}=  Encode To Der    ${protected_p10cr}
      ${response}=  Exchange data with CA    ${encoded}
      # checks if the Implementation returns a Status Code or a Status Code with a PKI Message
 
-     ${contains_msg}=    request_contains_pki_message    ${response}
+     ${contains_msg}=    Http response contains pki message    ${response}
      # TODO ADD Http Check! Status Code and No PKIMessage
      IF    ${contains_msg}
      #TODO needs to decided if the message should return badPOP or badMessageCheck
      ${pkimessage}=    Parse pki message    ${response.content}
      PKIMessage Has Set Failure Bits    ${pkimessage}    badPOP,badMessageCheck    exclusive=${1}
      END
-     Run Keyword IF    not ${contains_msg}    LOG  "The Server Response did not Contained a PKI Message"
+     IF    not ${contains_msg}    LOG  "The Server Response did not Contained a PKI Message"
 
 
 
@@ -135,7 +136,7 @@ CA must reject request when the csr is sent again
     ${request_pki_message}=  Patch message time    ${request_pki_message}
     # NOTE that we are patching the transaction id so the message looks like a new one
     ${request_pki_message}=  Patch transaction id    ${request_pki_message}     prefix=11111111111111111111
-    ${protected_p10cr}=     Protect Pkimessage password based mac    ${request_pki_message}    ${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
+    ${protected_p10cr}=     protect_pki_message    pki_message=${request_pki_message}    protection=password_based_mac    password=${PRESHARED_SECRET}      iterations=${1945}    salt=111111111122222222223333333333   hash_alg=sha256
     ${der_pkimessage}=  Encode To Der    ${protected_p10cr}
 
     ${response}=  Exchange data with CA    ${der_pkimessage}

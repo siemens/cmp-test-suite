@@ -1,33 +1,27 @@
+"""Utilities for generating and parsing CMP-related data structures."""
+
+import glob
 import logging
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
-import pyasn1.type.base
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, univ, useful
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed, tagFormatSimple
-from pyasn1_alt_modules import rfc2459, rfc2986, rfc4210, rfc4211, rfc5280, rfc5480, rfc6402, rfc8018, rfc9480
+from pyasn1_alt_modules import rfc2459, rfc2986, rfc4210, rfc4211, rfc5280, rfc5480, rfc6402, rfc9480
 from pyasn1_alt_modules.rfc2314 import Attributes, Signature, SignatureAlgorithmIdentifier
 from pyasn1_alt_modules.rfc2459 import Attribute, AttributeValue, Extension, Extensions, GeneralName
 from pyasn1_alt_modules.rfc2511 import CertTemplate
+from robot.api.deco import not_keyword
 
-# from utils import load_and_decode_pem_file
+import certutils
+import cryptoutils
 import utils
-from certutils import parse_certificate
-from cmp_enums import PKIStatus
-from cryptoutils import (
-    compute_hash,
-    compute_hmac,
-    compute_password_based_mac,
-    compute_pbmac1,
-    get_alg_oid_from_key_hash,
-    get_hash_from_signature_oid,
-    get_sig_oid_from_key_hash,
-    sign_data,
-)
+import oid_mapping
+from suiteenums import PKIStatus
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -55,8 +49,45 @@ PKISTATUS_REVOCATION_WARNING = 4
 PKISTATUS_REVOCATION_NOTIFICATION = 5
 PKISTATUS_KEY_UPDATE_WARNING = 6
 
+# TODO get Alex approve!
+def transform_asn1_tagged_certificate_to_certificate(certificate: rfc9480.CMPCertificate) -> rfc9480.CMPCertificate:
+    """Transform a tagged `rfc9480.Certificate` into an `rfc9480.CMPCertificate` without a tag.
 
-def build_cmp_revive_request(serial_number, sender="test-cmp-cli@example.com", recipient="test-cmp-srv@example.com"):
+    This function extracts the `tbsCertificate`, `signatureAlgorithm`, and `signature` from an `rfc9480.Certificate`
+    and converts them parses them into the new `rfc9480.CMPCertificate` object.
+
+    Arguments:
+    ---------
+    - `certificate` (rfc9480.CMPCertificate): The `pyasn1` certificate to be transformed.
+
+    Returns:
+    -------
+    - `rfc9480.CMPCertificate`: The transformed certificate in the `rfc9480.CMPCertificate` format.
+
+    Example:
+    -------
+    | ${cert} | Transform ASN1 Tagged Certificate to Certificate | ${cert} |
+
+    """
+
+    # can not be tagged if valid input.
+    tbs_certificate = encode_to_der(certificate.getComponentByName('tbsCertificate'))
+    signature_algorithm = encode_to_der(certificate.getComponentByName('signatureAlgorithm'))
+    signature = encode_to_der(certificate.getComponentByName('signature'))
+
+    new_cert = rfc9480.CMPCertificate()
+
+    decoded_signature, _ = decoder.decode(signature, asn1spec=univ.BitString())
+
+    new_cert.setComponentByName("tbsCertificate", decoder.decode(tbs_certificate, asn1Spec=rfc5280.TBSCertificate())[0])
+    new_cert.setComponentByName("signatureAlgorithm", decoder.decode(signature_algorithm, asn1Spec=rfc5280.AlgorithmIdentifier())[0])
+    new_cert.setComponentByName("signature", decoded_signature)
+
+    return new_cert
+
+
+def build_cmp_revive_request(serial_number, sender="test-cli@test.com", recipient="test-srv@test.com"):  # noqa: D103
+    # No docstring, this is just a wrapper
     return build_cmp_revoke_request(serial_number, sender=sender, recipient=recipient, reason=REASON_REMOVE_FROM_CRL)
 
 
@@ -64,6 +95,7 @@ def build_cmp_revoke_request(
     serial_number, sender="test-cmp-cli@example.com", recipient="test-cmp-srv@example.com", reason=REASON_UNSPECIFIED
 ):
     """Create a certificate revocation request, based on the given serial#
+
     :param serial_number: str, serial number of certificate to revoke
     :param sender: optional str, sender to use in the request
     :param recipient: optional str, recipient of the request
@@ -96,7 +128,7 @@ def build_cmp_revoke_request(
     crl_entry_details = Extensions()
     crl_reason = Extension()
     crl_reason.setComponentByName("extnID", univ.ObjectIdentifier((2, 5, 29, 21)))  # 2.5.29.21 CRL reason
-    crl_reason.setComponentByName("extnValue", REASON_UNSPECIFIED)
+    crl_reason.setComponentByName("extnValue", reason)
     crl_entry_details.setComponentByPosition(0, crl_reason)
 
     rev_details.setComponentByName("crl_entry_details", crl_entry_details)
@@ -116,84 +148,8 @@ def build_cmp_revoke_request(
     return pki_message
 
 
-def _prepare_password_based_mac_parameters(
-    salt: Optional[bytes] = None, iterations: int = 1000, hash_alg: str = "sha256"
-) -> rfc9480.PBMParameter:
-    """Construct the pyasn1 structures required for using password-based-mac protection.
-
-    :param salt: Optional bytes, salt to use for the password-based-mac protection,
-                 if not given, will generate 16 random bytes
-    :param iterations: optional int, number of iterations of the OWF (hashing) to perform
-    :param hash_alg: optional str, name of hashing algorithm to use, "sha256" by default
-    :return: pyasn1 rfc9480.PBMParameter structure
-    """
-    salt = salt or os.urandom(16)
-
-    match hash_alg:
-        case "sha256":
-            hmac_alg_oid = rfc8018.id_hmacWithSHA256
-            hash_alg_oid = rfc5480.id_sha256
-        case "sha384":
-            hmac_alg_oid = rfc8018.id_hmacWithSHA384
-            hash_alg_oid = rfc5480.id_sha384
-        case "sha512":
-            hmac_alg_oid = rfc8018.id_hmacWithSHA512
-            hash_alg_oid = rfc5480.id_sha512
-        case _:
-            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
-
-    pbm_parameter = rfc9480.PBMParameter()
-    pbm_parameter["salt"] = univ.OctetString(salt).subtype(subtypeSpec=constraint.ValueSizeConstraint(0, 128))
-    pbm_parameter["iterationCount"] = iterations
-
-    pbm_parameter["owf"] = rfc8018.AlgorithmIdentifier()
-    pbm_parameter["owf"]["algorithm"] = hash_alg_oid
-    pbm_parameter["owf"]["parameters"] = univ.Null()
-
-    pbm_parameter["mac"] = rfc8018.AlgorithmIdentifier()
-    pbm_parameter["mac"]["algorithm"] = hmac_alg_oid
-    pbm_parameter["mac"]["parameters"] = univ.Null()
-
-    return pbm_parameter
-
-
-def _prepare_pbmac1_parameters(salt=None, iterations=1, length=32, hash_alg="sha256"):
-    salt = salt or os.urandom(16)
-
-    match hash_alg:
-        case "sha256":
-            hmac_alg = rfc8018.id_hmacWithSHA256
-        case "sha384":
-            hmac_alg = rfc8018.id_hmacWithSHA384
-        case "sha512":
-            hmac_alg = rfc8018.id_hmacWithSHA512
-        case _:
-            raise ValueError(f"Unsupported hash algorithm: {hash_alg}")
-
-    outer_params = rfc8018.PBMAC1_params()
-    outer_params["keyDerivationFunc"] = rfc8018.AlgorithmIdentifier()
-
-    pbkdf2_params = rfc8018.PBKDF2_params()
-    pbkdf2_params["salt"]["specified"] = univ.OctetString(salt)
-    pbkdf2_params["iterationCount"] = iterations
-    pbkdf2_params["keyLength"] = length
-    pbkdf2_params["prf"] = rfc8018.AlgorithmIdentifier()
-    pbkdf2_params["prf"]["algorithm"] = hmac_alg
-    pbkdf2_params["prf"]["parameters"] = univ.Null()
-
-    outer_params["keyDerivationFunc"]["algorithm"] = rfc8018.id_PBKDF2
-    outer_params["keyDerivationFunc"]["parameters"] = pbkdf2_params
-
-    outer_params["messageAuthScheme"]["algorithm"] = hmac_alg
-    outer_params["messageAuthScheme"]["parameters"] = univ.Null()
-
-    return outer_params
-
-
 def _prepare_implicit_confirm_general_info_structure() -> univ.SequenceOf:
-    """Prepare the `generalInfo` field of a PKIHeader structure to
-    request the implicitConfirm feature from the server.
-    """
+    """Prepare the `generalInfo` field of a PKIHeader to request implicitConfirm from the server."""
     implicit_confirm = rfc9480.InfoTypeAndValue()
     implicit_confirm["infoType"] = rfc9480.id_it_implicitConfirm
     implicit_confirm["infoValue"] = univ.Null("")
@@ -215,13 +171,11 @@ def _prepare_implicit_confirm_general_info_structure() -> univ.SequenceOf:
 def _prepare_pki_message(
     sender="tests@example.com",
     recipient="testr@example.com",
-    protection="pbmac1",
     omit_fields=None,
     transaction_id=None,
     sender_nonce=None,
     recip_nonce=None,
     implicit_confirm=False,
-    extra_certs=None,
 ):
     """Prepare the skeleton structure of a PKIMessage, with the body to be set later.
 
@@ -291,26 +245,6 @@ def _prepare_pki_message(
             explicitTag=Tag(tagClassContext, tagFormatSimple, 3)
         )
 
-    if "protection" not in omit_fields:
-        prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
-
-        if protection == "pbmac1":
-            prot_alg_id["algorithm"] = rfc8018.id_PBMAC1
-            pbmac1_parameters = _prepare_pbmac1_parameters(salt=None, iterations=262144, length=32, hash_alg="sha512")
-            prot_alg_id["parameters"] = pbmac1_parameters
-
-        elif protection == "password-based-mac":
-            prot_alg_id["algorithm"] = rfc4210.id_PasswordBasedMac
-            pbm_parameters = _prepare_password_based_mac_parameters(salt=None, iterations=1000, hash_alg="sha256")
-            prot_alg_id["parameters"] = pbm_parameters
-
-        elif protection == "signature":
-            # TODO this depends on the signature algorithm, which implies we'd have to pass in the key or some
-            # information about it
-            pass
-
-        pki_header["protectionAlg"] = prot_alg_id
-
     if "generalInfo" not in omit_fields and implicit_confirm:
         # If implicitConfirm is used, it is featured in the `generalInfo` field of the structure
         general_info = _prepare_implicit_confirm_general_info_structure()
@@ -332,27 +266,27 @@ def _prepare_pki_message(
 
 
 def build_p10cr_from_csr(
-    csr,
-    sender="tests@example.com",
-    recipient="testr@example.com",
-    protection="pbmac1",
-    omit_fields=None,
+    csr: rfc6402.CertificationRequest,
+    sender: str = "tests@example.com",
+    recipient: str = "testr@example.com",
+    omit_fields: str = None,
     transaction_id=None,
     sender_nonce=None,
     recip_nonce=None,
     implicit_confirm=False,
+    extra_certs: str = None,
 ):
-    """Create a pyasn1 p10cr `rfc9480.PKIMessage` from a pyasn1 PKCS10 CSR.
+    """Create a pyasn1 p10cr pkiMessage from a pyasn1 PKCS10 CSR
 
-    :param csr: pyasn1 `rfc6402.CertificationRequest`
-    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMEssage
+    :param csr: rfc6402.CertificationRequest
+    :param extra_certs: string of a filepath or a directory to load certificate from.
+    :param omit_fields: optional str, comma-separated list of field names not to include in the resulting PKIMessage
 
     :returns: pyasn1 PKIMessage structure with a body set to p10cr
     """
     pki_message = _prepare_pki_message(
         sender=sender,
         recipient=recipient,
-        protection=protection,
         omit_fields=omit_fields,
         transaction_id=transaction_id,
         sender_nonce=sender_nonce,
@@ -367,6 +301,9 @@ def build_p10cr_from_csr(
     pki_body["p10cr"]["signature"] = csr["signature"]
 
     pki_message["body"] = pki_body
+    if extra_certs is not None:
+        pki_message["extra_certs"] = prepare_extra_certs_from_path(extra_certs)
+
     return pki_message
 
 
@@ -377,7 +314,6 @@ def build_cr_from_csr(
     cert_req_id=0,
     sender="tests@example.com",
     recipient="testr@example.com",
-    protection="pbmac1",
     omit_fields=None,
     transaction_id=None,
     sender_nonce=None,
@@ -387,7 +323,7 @@ def build_cr_from_csr(
     """Create a PKIMessage of type CR, given a CSR and a signing key
 
     :param csr: pyasn1 rfc6402.CertificationRequest
-    :param signing_key: cryptography.hazmat.primitives.asymmetric key object
+    :param signing_key: cryptography.hazmat.primitives.asymmetric key object to sign the PKIMessage.
     :param hash_alg: optional str, name of the hashing algorithm to use for proof of possession (sha256 by default)
     :param cert_req_id: optional int, value for certReqId, 0 by default
 
@@ -396,7 +332,6 @@ def build_cr_from_csr(
     pki_message = _prepare_pki_message(
         sender=sender,
         recipient=recipient,
-        protection=protection,
         omit_fields=omit_fields,
         transaction_id=transaction_id,
         sender_nonce=sender_nonce,
@@ -434,14 +369,14 @@ def build_cr_from_csr(
 
     # DER-encode the CertRequest and calculate its signature
     der_cert_request = encoder.encode(cert_request)
-    signature = sign_data(der_cert_request, signing_key, hash_alg=hash_alg)
+    signature = cryptoutils.sign_data(der_cert_request, signing_key, hash_alg=hash_alg)
 
     popo_key = rfc4211.POPOSigningKey().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 1))
     popo_key["signature"] = univ.BitString().fromOctetString(signature)
 
     # patch the algorithm inside algorithmIdentifier, instead of re-creating the structure from scratch
     popo_key["algorithmIdentifier"] = csr["certificationRequestInfo"]["subjectPublicKeyInfo"]["algorithm"].clone()
-    popo_sig_oid = get_sig_oid_from_key_hash(
+    popo_sig_oid = oid_mapping.get_sig_oid_from_key_hash(
         csr["certificationRequestInfo"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"], hash_alg
     )
     popo_key["algorithmIdentifier"]["algorithm"] = popo_sig_oid
@@ -477,7 +412,6 @@ def build_cert_conf(
     cert_req_id=-1,
     sender="tests@example.com",
     recipient="testr@example.com",
-    protection="pbmac1",
     omit_fields=None,
     transaction_id=None,
     sender_nonce=None,
@@ -494,7 +428,6 @@ def build_cert_conf(
     pki_message = _prepare_pki_message(
         sender=sender,
         recipient=recipient,
-        protection=protection,
         omit_fields=omit_fields,
         transaction_id=transaction_id,
         sender_nonce=sender_nonce,
@@ -502,10 +435,10 @@ def build_cert_conf(
         implicit_confirm=implicit_confirm,
     )
 
-    sig_algorithm = str(cert["signature"]["algorithm"])
-    hash_alg = get_hash_from_signature_oid(sig_algorithm)
+    sig_algorithm = cert["signature"]["algorithm"]
+    hash_alg = oid_mapping.get_hash_from_signature_oid(sig_algorithm)
     der_cert = encode_to_der(cert)
-    hash = compute_hash(hash_alg, der_cert)
+    hash = cryptoutils.compute_hash(hash_alg, der_cert)
 
     cert_status = rfc9480.CertStatus()
     cert_status["certHash"] = univ.OctetString(hash)
@@ -520,157 +453,13 @@ def build_cert_conf(
     return pki_message
 
 
-def protect_pkimessage_hmac(pki_message, password):
-    """Protects a PKIMessage with a HMAC, based on a password, returning the updated pyasn1 PKIMessage structure
-    :param pki_message: pyasn1 PKIMessage
-    :param password: optional str, password to use for calculating the HMAC protection
-    :returns: pyasn1 PKIMessage structure with the prorection included
-    """
-    protected_part = rfc9480.ProtectedPart()
-    protected_part["header"] = pki_message["header"]
-    protected_part["body"] = pki_message["body"]
-
-    encoded = encoder.encode(protected_part)
-    protection = compute_hmac(encoded, password, hash_alg="sha512")
-    wrapped_protection = (
-        rfc9480.PKIProtection()
-        .fromOctetString(protection)
-        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
-    )
-    pki_message["protection"] = wrapped_protection
-    return pki_message
-
-
-def protect_pkimessage_pbmac1(pki_message, password, iterations=262144, salt=None, length=32, hash_alg="sha512"):
-    """Protects a PKIMessage with a PBMAC1, based on a password, returning the updated pyasn1 PKIMessage structure
-    :param pki_message: pyasn1 PKIMessage
-    :param password: optional str, password to use for calculating the HMAC protection
-    :returns: pyasn1 PKIMessage structure with the protection included
-    """
-    # Prepare the parameters for protectionAlg to update the header, because the incoming pki_message may have another
-    # type of protection, or no protection at all.
-    prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
-
-    prot_alg_id["algorithm"] = rfc8018.id_PBMAC1
-    pbmac1_parameters = _prepare_pbmac1_parameters(salt=salt, iterations=iterations, length=length, hash_alg=hash_alg)
-    prot_alg_id["parameters"] = pbmac1_parameters
-
-    pki_message["header"]["protectionAlg"] = prot_alg_id
-
-    protected_part = rfc9480.ProtectedPart()
-    protected_part["header"] = pki_message["header"]
-    protected_part["body"] = pki_message["body"]
-
-    encoded = encoder.encode(protected_part)
-    protection = compute_pbmac1(encoded, password, iterations=iterations, salt=salt, length=length, hash_alg=hash_alg)
-    wrapped_protection = (
-        rfc9480.PKIProtection()
-        .fromOctetString(protection)
-        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
-    )
-    pki_message["protection"] = wrapped_protection
-    return pki_message
-
-
-def protect_pkimessage_password_based_mac(pki_message, password, iterations=1000, salt=None, hash_alg="sha256"):
-    """Protects a PKIMessage with a password-based-mac (defined in RFC 4210), based on a password, returning
-    the updated pyasn1 PKIMessage structure
-
-    :param pki_message: pyasn1 PKIMessage to protect
-    :param password: optional, password to use for calculating the password-based-mac protection
-    :returns: pyasn1 PKIMessage structure with the protection included
-    """
-    if type(salt) is str:
-        # if it came as a string, it was passed directly through RobotFramework; we accept that and transform it
-        # to have better readability in RF test cases
-        salt = bytes(salt, "utf-8")
-
-    # If protection parameters are already set in the message, we have to override that
-    # because sometimes we're dealing not with messages we produced ourselves, but with messages
-    # loaded from somewhere else as a template
-    prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
-    prot_alg_id["algorithm"] = rfc4210.id_PasswordBasedMac
-    pbm_parameters = _prepare_password_based_mac_parameters(salt=salt, iterations=iterations, hash_alg=hash_alg)
-    prot_alg_id["parameters"] = pbm_parameters
-    pki_message["header"]["protectionAlg"] = prot_alg_id
-
-    protected_part = rfc9480.ProtectedPart()
-    protected_part["header"] = pki_message["header"]
-    protected_part["body"] = pki_message["body"]
-
-    encoded = encoder.encode(protected_part)
-    protection = compute_password_based_mac(encoded, password, iterations=iterations, salt=salt, hash_alg=hash_alg)
-
-    wrapped_protection = (
-        rfc9480.PKIProtection()
-        .fromOctetString(protection)
-        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
-    )
-    pki_message["protection"] = wrapped_protection
-    return pki_message
-
-
-def protect_pkimessage_with_signature(pki_message, signing_key, extra_certs=None, hash_alg="sha256"):
-    """Protects a PKIMessage with a signature, returning the updated pyasn1 PKIMessage structure.
-
-    :param pki_message: pyasn1 PKIMessage to protect
-    :param signing_key: cryptography.hazmat.primitives.asymmetric key object to use for signing
-    :param hash_alg: optional str, name of the hashing algorithm to use with the signature (sha256 by default)
-    :returns: pyasn1 PKIMessage structure with the protection included
-    """
-    # Prepare the parameters for protectionAlg to update the header, because the incoming pki_message may have another
-    # type of protection, or no protection at all.
-    prot_alg_id = rfc5280.AlgorithmIdentifier().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
-
-    prot_alg_id["algorithm"] = get_alg_oid_from_key_hash(signing_key, hash_alg)
-
-    # TODO create different parameter structures depending on what the signing key is
-    parameters = univ.Null("")
-    prot_alg_id["parameters"] = parameters
-
-    pki_message["header"]["protectionAlg"] = prot_alg_id
-
-    protected_part = rfc9480.ProtectedPart()
-    protected_part["header"] = pki_message["header"]
-    protected_part["body"] = pki_message["body"]
-
-    encoded = encoder.encode(protected_part)
-    protection = sign_data(encoded, signing_key, hash_alg)
-
-    wrapped_protection = (
-        rfc9480.PKIProtection()
-        .fromOctetString(protection)
-        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
-    )
-    pki_message["protection"] = wrapped_protection
-
-    # TODO: add extraCerts here
-    # - if it is a path string - load it and parse it
-    # - it could also be the raw DER-encoded or PEM-encoded bytes; for now we assume it is a path
-    if extra_certs:
-        raw = utils.load_and_decode_pem_file(extra_certs)
-        cert = parse_certificate(raw)
-        extra_certs_wrapper = (
-            univ.SequenceOf(componentType=rfc9480.CMPCertificate())
-            .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX))
-            .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
-        )
-        extra_certs_wrapper.append(cert)
-
-        pki_message["extraCerts"] = extra_certs_wrapper
-
-    return pki_message
-
-
-def encode_to_der(asn1_structure: pyasn1.type.base.Asn1ItemBase) -> bytes:
+def encode_to_der(asn1_structure: base.Asn1ItemBase) -> bytes:
     """DER-encode a pyasn1 data structure."""
     return encoder.encode(asn1_structure)
 
 
 def csr_attach_signature(csr: rfc6402.CertificationRequest, signature: bytes) -> rfc6402.CertificationRequest:
-    """Attach a signature, provided as a buffer of raw data, to a pyasn1 `rfc6402.CertificationRequest`
-    object and return the signed pyasn1 CSR object.
-    """
+    """Attach a signature, provided as a buffer of raw data, to a `rfc6402.CertificationRequest`."""
     sig_alg_id = SignatureAlgorithmIdentifier()
     algorithm = rfc5480.sha1WithRSAEncryption
     parameters = encoder.encode(univ.Null())  # no params are used
@@ -679,7 +468,7 @@ def csr_attach_signature(csr: rfc6402.CertificationRequest, signature: bytes) ->
     sig_alg_id["parameters"] = parameters
 
     # take the raw signature and turn it into a BitString representations
-    signature = Signature("'%s'H" % "".join("%02X" % ord(c) for c in signature))
+    signature = Signature("'%s'H" % "".join("%02X" % c for c in signature))
 
     csr["signature"] = signature
     csr["signatureAlgorithm"] = sig_alg_id
@@ -710,9 +499,7 @@ def csr_add_extensions(csr: rfc6402.CertificationRequest, extensions) -> rfc6402
 
 
 def csr_extend_subject(csr, rdn):
-    """Extend the SubjectName in a pyasn1-structured CSR with a
-    pyasn1 RelativeDistinguishedName structure
-    """
+    """Extend the SubjectName in a pyasn1-structured CSR with a pyasn1 RelativeDistinguishedName structure"""
     original_subject = csr["certificationRequestInfo"]["subject"][0]
     current_length = len(original_subject)
     original_subject[current_length] = rdn
@@ -720,19 +507,15 @@ def csr_extend_subject(csr, rdn):
 
 
 def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
-    """Parse input data to PKIMessage structure and return a pyasn1 parsed object.
+    """Parse input data to PKIMessage structure and return resulting object.
 
     Arguments:
     ---------
-        data (bytes): The raw input data to be parsed.
+        data: The raw input data to be parsed.
 
-    Returns:
-    -------
-        pyasn1 parsed object: Represents the PKIMessage structure.
+    Returns: `rfc9480.PKIMessage` structure.
 
-    Raises:
-    ------
-        ValueError: If the input is not of type `bytes` and cannot be cast to `bytes`.
+    Raises: `ValueError` if the input cannot be correctly parsed into a PKIMessage.
 
     """
     try:
@@ -741,7 +524,7 @@ def parse_pki_message(data: bytes) -> rfc9480.PKIMessage:
         # Suppress detailed pyasn1 error messages; they are typically too verbose and
         # not helpful for non-pyasn1 experts. If debugging is needed, retrieve the server's
         # response from Robot Framework's log and manually pass it into this function.
-        raise ValueError("Failed to parse PKIMessage: %s ..." % str(err)[:100])
+        raise ValueError(f"Failed to parse PKIMessage: {str(err)[:100]} ...") from err
 
     return pki_message
 
@@ -763,9 +546,8 @@ def get_cmp_response_type(pki_message):
 
 
 def get_cert_from_pki_message(pki_message, cert_number=0):
-    """Extract the actual certificate from a pyasn1-object
-    #representing a response to a CSR, which contains the
-    PKIMessage structure with the issued certificate.
+    """Extract certificate from a PKIMessage
+
     :param pki_message: pyasn1 PkiMessage
     :param cert_number: optional int, index of certificate to extract, will only extract the first certificate
                         from the sequence by default
@@ -791,9 +573,10 @@ def parse_csr(raw_csr: bytes) -> rfc6402.CertificationRequest:
 
 
 def patch_transaction_id(pki_message, new_id=None, prefix=None):
-    """Patches the transactionId of a PKIMessage structure with a new ID, this is useful when you load a request
-    from a file and send it multiple times to the CA. It would normally reject it because the transactionId is
-    repeated - hence the patching.
+    """Patch the transactionId of a PKIMessage structure with a new ID.
+
+    This is useful when you load a request from a file and send it multiple times to the CA. It would normally reject
+    it because the transactionId is repeated - hence the patching.
 
     :param pki_message: pyasn1 PKIMessage structure, but raw DER-encoded blobs are also accepted, will be converted
                         automatically, this is to make it easier to use this function in RobotFramework
@@ -803,7 +586,7 @@ def patch_transaction_id(pki_message, new_id=None, prefix=None):
                    so it can be passed directly from RobotFramework tests
     :returns: a pyasn1 PKIMessage structure with the updated transactionId
     """
-    if type(pki_message) is bytes:
+    if isinstance(pki_message, bytes):
         pki_message = parse_pki_message(pki_message)
 
     new_id = new_id or os.urandom(16)
@@ -817,14 +600,13 @@ def patch_transaction_id(pki_message, new_id=None, prefix=None):
 
 
 def patch_message_time(pki_message, new_time=None):
-    """Patches the messageTime field of a PKIMessage structure with a new time,
-    or the current time if none is provided
+    """Patch the messageTime field of a PKIMessage structure with a new time, or the current time if none is provided.
 
     :param pki_message: pyasn1 PKIMessage structure, but raw DER-encoded blobs are also accepted, will be converted
                         automatically, this is to make it easier to use this function in RobotFramework
     :param new_time: optional datetime, time to use for the messageTime field, will use the current time by default
     """
-    if type(pki_message) is bytes:
+    if isinstance(pki_message, bytes):
         pki_message = parse_pki_message(pki_message)
 
     new_time = new_time or datetime.now(timezone.utc)
@@ -853,8 +635,9 @@ def find_oid_in_general_info(pki_message, oid):
 
 
 def add_implicit_confirm(pki_message):
-    """Set the generalInfo part of a PKIMessage header to a structure that contains implicitConfirm; overriding
-    other parts of generalInfo, if any!
+    """Set the generalInfo part of a PKIMessage header to a structure that contains implicitConfirm.
+
+    If generalInfo contains other parts, they will be overwritten!
 
     :param pki_message: pyasn1 object representing a PKIMessage
     :returns: updated pyasn1 object
@@ -865,21 +648,19 @@ def add_implicit_confirm(pki_message):
     return pki_message
 
 
-if __name__ == "__main__":
-    pass
-
 
 # this is a Python implementation of the RobotFramework keyword `Try to Log PKIMessage as ASN1`. Viewing
-# its output of this one requires fewer clicks in the reports.
-def try_to_log_pkimessage(data):
-    """Given the input data and assuming it is a DER-encoded PKIMessage, try to decode it and log the ASN1 structure
-    in a human-readable way. Will also accept inputs that are pyasn1 objects or strings, for the convenience of invocation
-    from RF tests.
+# the output of this one requires fewer clicks in the reports.
+def try_to_log_pkimessage(data):  # noqa: D417 for RF docs
+    """Try to decode a DER-encoded PKIMessage and log the ASN1 structure in a human-readable way.
 
-    :param data: bytes, str or pyasn1 - something that is assumed to be a PKIMessage structure, either DER-encoded or
-                 a pyasn1 object.
+    Will also accept inputs that are pyasn1 objects or strings, for the convenience of invocation from RF tests.
+
+    Arguments:
+    ---------
+        - `data`: something that is assumed to be a PKIMessage structure, either DER-encoded or a pyasn1 object.
+
     """
-
     if isinstance(data, base.Asn1Item):
         logging.info(data.prettyPrint())
         return
@@ -889,30 +670,25 @@ def try_to_log_pkimessage(data):
 
     try:
         parsed = parse_pki_message(data)
-    except:
+    except ValueError:
         logging.info("Cannot prettyPrint this, it does not seem to be a valid PKIMessage")
+    else:
+        logging.info(parsed.prettyPrint())
 
-    logging.info(parsed.prettyPrint())
 
-
-def modify_csr_cn(
+def modify_csr_cn(  # noqa: D417 for RF docs
     csr: rfc9480.CertificationRequest, new_cn: Optional[str] = "Hans Mustermann"
 ) -> rfc9480.CertificationRequest:
     """Modify the Common Name (CN) in a CSR.
-    Expects a CN to be present in the certificate; otherwise, raises a ValueError.
 
     Arguments:
     ---------
-        csr: pyasn1 `rfc9480.CertificationRequest` object.
-        new_cn: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
+        - `csr`: `rfc9480.CertificationRequest` object.
+        - `new_cn`: The new Common Name (CN) to be set. Defaults to "Hans Mustermann".
 
-    Returns:
-    -------
-         returns the modified `rfc9480.CertificationRequest` object.
+    Returns: The modified `rfc9480.CertificationRequest` object.
 
-    Raises:
-    ------
-        ValueError: If no Common Name (CN) is found in the CSR.
+    Raises: `ValueError` if no Common Name (CN) is found in the CSR.
 
     """
     # Access the subject field from the CSR, which contains the RDNSequence.
@@ -976,3 +752,49 @@ def _generate_pki_message_fail_info(fail_info: Optional[str] = None) -> rfc9480.
     value = _generate_pki_status_info(bit_string=fail_info, info_type=PKIStatus.rejection)
     pki_msg["body"]["error"].setComponentByName("pKIStatusInfo", value)
     return pki_msg
+
+
+@not_keyword
+def prepare_extra_certs(certs: List[rfc9480.CMPCertificate]):
+    """Build the pyasn1 `rfc9480.PKIMessage.extraCerts` field with a list of `rfc9480.CMPCertificate`.
+
+    :param certs: A list with `rfc9480.CMPCertificate`
+    :return: An `univ.SequenceOf` object filled with `rfc9480.CMPCertificate` instances.
+    """
+    extra_certs_wrapper: univ.SequenceOf = (
+        univ.SequenceOf(componentType=rfc9480.CMPCertificate())
+        .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX))
+        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
+    )
+
+    extra_certs_wrapper.extend(certs)
+
+    return extra_certs_wrapper
+
+
+@not_keyword
+def prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.SequenceOf:
+    """Load certificates from a file or directory and return a `univ.SequenceOf` structure tagged for use in PKIMessage.
+
+    :param path: Path to a file or a directory where the certificates are stored.
+    :param recursive: If True, searches recursively through the directory.
+    :return: An `univ.SequenceOf` object filled with `rfc9480.CMPCertificate` instances.
+    """
+    extra_certs_wrapper = (
+        univ.SequenceOf(componentType=rfc9480.CMPCertificate())
+        .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, rfc9480.MAX))
+        .subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 1))
+    )
+
+    if os.path.isdir(path):
+        for file in glob.glob(path, recursive=recursive):
+            raw = utils.load_and_decode_pem_file(file)
+            cert = certutils.parse_certificate(raw)
+            extra_certs_wrapper.append(cert)
+
+    elif os.path.isfile(path):
+        raw = utils.load_and_decode_pem_file(path)
+        cert = certutils.parse_certificate(raw)
+        extra_certs_wrapper.append(cert)
+
+    return extra_certs_wrapper

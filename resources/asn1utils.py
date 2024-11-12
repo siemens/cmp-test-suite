@@ -1,5 +1,4 @@
-"""Generic primitives for querying PyASN1 objects using ASN1Path, a notation similar to
-XPath for XML or JSONPath for JSON.
+"""Generic primitives for querying PyASN1 objects using ASN1Path, a notation similar to XPath for XML.
 
 The primitives are meant to be invoked from RobotFramework test cases, hence the notation
 is a compact, single string.
@@ -131,9 +130,9 @@ def get_asn1_value(asn1_obj, query):
         if len(available_keys) == 1:
             report += f", try `{traversed_so_far}.{available_keys[0]}`"
         report += f"\n> Underlying error: {err}"
-        raise ValueError(report)
-    else:
-        return asn1_obj
+        raise ValueError(report) from err
+
+    return asn1_obj
 
 
 def get_asn1_value_as_string(asn1_obj, query):
@@ -201,15 +200,12 @@ def get_asn1_value_as_der(asn1_obj, query):
 
 @not_keyword
 def _is_bit_set_in_bitstring(asn1_bitstring: BitString, bit_index: Strint, exclusive: bool = True) -> bool:
-    """Check if a single bit is set in a BitString `pyasn1` `BitString` object.
-    Either exclusive or not.
+    """Check if a bit is set in a `univ.BitString`, optionally ensure it is the only bit set.
 
     :param asn1_bitstring:
     :param bit_index:
-    :param exclusive: `bool` indicating if only one bit must be set (`True`)
-          or if any of them can be set (`False`).Default is `True`.
-    :return:`True` if the specified bit is set according to the `exclusive`
-          parameter; otherwise, `False`.
+    :param exclusive: If True, ensure that no other bits are set except the one at `bit_index`
+    :return:`True` if the check passes, otherwise `False`.
     """
     # Convert the bit index to an integer
     bit_index = int(bit_index)
@@ -236,15 +232,13 @@ def _is_either_bit_set_in_bitstring(
     bit_indices: List[int],
     exclusive: bool = True,
 ) -> bool:
-    """Check if one of the provided bit indices are set in a `pyasn1` `univ.BitString` object.
-    Either exclusive or not.
+    """Check if one of the provided bit indices are set in a `univ.BitString` object. Either exclusive or not.
 
-    :param asn1_bitstring: `pyasn1` `univ.BitString` object.
-    :param bit_indices: Indices a List of allowed Positions to be set.
+    :param asn1_bitstring: `univ.BitString` object.
+    :param bit_indices: list of allowed positions to be set.
     :param exclusive: `bool` indicating if only one of the indices must be `True`
-          or if any or all of them can be set to `False`.Default is `True`.
-    :return: `True` if the specified bit or bits are set according to the `exclusive`
-          parameter; otherwise, `False`.
+          or if any or all of them can be set to `False`. Default is `True`.
+    :return: `True` if the specified bit or bits are set according to the `exclusive` parameter; otherwise, `False`.
     """
     logging.info(tuple(asn1_bitstring))
     for i in bit_indices:
@@ -257,19 +251,17 @@ def _is_either_bit_set_in_bitstring(
 def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool = True) -> bool:  # noqa: D417
     """Verify if a specific bit or bits are set within a given `BitString` object.
 
-    This function checks if a specific bit or bits, defined by their indices or names,
-    are set within a provided `BitString` object. It supports both integer index
-    and named bit indices (comma-separated). The check can be performed either
-    exclusively or non-exclusively, depending on the `exclusive` parameter.
+    It supports both integer index and named bit indices (which can be comma-separated). The check can be
+    performed either exclusively or non-exclusively, depending on the `exclusive` parameter.
 
     Arguments:
     ---------
-        - asn1_bitstring: A `pyasn1` `univ.BitString` object to be checked.
+        - asn1_bitstring: A `univ.BitString` object to be checked.
         - bit_indices: A `str` representing the bit index or indices to check.
           This can be:
             - An integer index for a single bit check.
-            - A comma-separated string of integers for multiple bit indices.
-            - A comma-separated string of human-readable bit names.
+            - A comma-separated string of integers for multiple bit indices, e.g., "1, 9".
+            - A comma-separated string of human-readable bit names, e.g., "duplicateCertReq, badPOP".
         - exclusive: A `bool` indicating if only one bit must be set (`True`)
           or if any of them can be set (`False`). Default is `True`.
 
@@ -281,7 +273,7 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
     Raises:
     ------
         - ValueError: If any of the provided human-readable names are not part of the options.
-        - ValueError: If a `pyasn1` `schema` object is provided.
+        - ValueError: If the input is not a `BitString` object.
 
     Examples:
     --------
@@ -301,14 +293,13 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
     if isinstance(bit_indices, int):
         return _is_bit_set_in_bitstring(asn1_bitstring=asn1_bitstring, bit_index=bit_indices, exclusive=exclusive)
 
-    elif isinstance(bit_indices, str):
+    if isinstance(bit_indices, str):
         # allows not only int to be parsed but also the correct human-readable-names.
         if bit_indices.replace(",", "").strip(" ").isdigit():
             if "," in bit_indices:
                 values = [int(x) for x in bit_indices.strip(" ").split(",")]
                 return _is_either_bit_set_in_bitstring(asn1_bitstring, values, exclusive=exclusive)
-            else:
-                return _is_bit_set_in_bitstring(asn1_bitstring, int(bit_indices.strip()), exclusive=exclusive)
+            return _is_bit_set_in_bitstring(asn1_bitstring, int(bit_indices.strip()), exclusive=exclusive)
         else:
             # gets the names of as single values.
             values = bit_indices.strip(" ").split(",")
@@ -316,8 +307,8 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
             names = list(asn1_bitstring.namedValues.keys())
             try:
                 bit_indices = [names.index(val) for val in values]
-            except ValueError:
-                raise ValueError(f"Provided names: {values} but allowed Are: {names}")
+            except ValueError as err:
+                raise ValueError(f"Provided names: {values} but allowed are: {names}") from err
 
             return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)
 
