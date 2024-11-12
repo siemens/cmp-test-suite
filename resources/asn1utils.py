@@ -51,9 +51,11 @@ import argparse
 import logging
 import pathlib
 import re
+import sys
 from base64 import b64decode
 from typing import List
 
+from pyasn1.codec.ber import decoder as ber_decoder
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type.univ import BitString
 from robot.api.deco import not_keyword
@@ -327,10 +329,15 @@ def validate_structure(value):
     return value
 
 def validate_query(value):
+    """
+    Validate the `query` argument, it must be of the form rfc****.ClassName.
+
+    :param value: str, the asn1path query argument to validate
+    :returns: str, the validated query
+    :raises argparse.ArgumentTypeError: if the format of the query is invalid
+    """
     if value.count(':') > 1:
         raise argparse.ArgumentTypeError("Invalid query, only one cast is allowed at most")
-
-
 
     pattern = r'^[a-zA-Z]+$'
     if not re.match(pattern, value):
@@ -339,10 +346,13 @@ def validate_query(value):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Query ASN1 structures using ASN1Path notation')
-    parser.add_argument('filepath', type=pathlib.Path, help='Path to the file that contains the raw data, use `-` for stdin')
-    parser.add_argument('structure', type=validate_structure, help='RFC and structure to use for schema, e.g., rfc4210.PKIMessage')
+    parser.add_argument('filepath', type=pathlib.Path, help='Path to the file that contains the raw data,'
+                                                            ' use `-` for stdin')
+    parser.add_argument('structure', type=validate_structure, help='RFC and structure to use for schema,'
+                                                                   ' e.g., rfc4210.PKIMessage')
     parser.add_argument('query', type=str, help='The query in ASN1Path notation')
-    parser.add_argument('--inform', type=str, choices=['raw', 'base64', 'der', 'ber', 'hex'], default='raw', help='The format of the input data')
+    parser.add_argument('--inform', type=str, choices=['raw', 'base64', 'der', 'ber', 'hex'],
+                        default='raw', help='The format of the input data')
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG)

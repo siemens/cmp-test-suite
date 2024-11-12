@@ -19,8 +19,8 @@ from robot.api.deco import not_keyword
 
 import certutils
 import cryptoutils
-import utils
 import oid_mapping
+import utils
 from suiteenums import PKIStatus
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
@@ -50,11 +50,11 @@ PKISTATUS_REVOCATION_NOTIFICATION = 5
 PKISTATUS_KEY_UPDATE_WARNING = 6
 
 # TODO get Alex approve!
-def transform_asn1_tagged_certificate_to_certificate(certificate: rfc9480.CMPCertificate) -> rfc9480.CMPCertificate:
+def transform_asn1_tagged_certificate_to_certificate(certificate: rfc9480.CMPCertificate) -> rfc9480.CMPCertificate:  # noqa: D417 for RF docs
     """Transform a tagged `rfc9480.Certificate` into an `rfc9480.CMPCertificate` without a tag.
 
     This function extracts the `tbsCertificate`, `signatureAlgorithm`, and `signature` from an `rfc9480.Certificate`
-    and converts them parses them into the new `rfc9480.CMPCertificate` object.
+    and converts them to a new `rfc9480.CMPCertificate` object.
 
     Arguments:
     ---------
@@ -69,7 +69,6 @@ def transform_asn1_tagged_certificate_to_certificate(certificate: rfc9480.CMPCer
     | ${cert} | Transform ASN1 Tagged Certificate to Certificate | ${cert} |
 
     """
-
     # can not be tagged if valid input.
     tbs_certificate = encode_to_der(certificate.getComponentByName('tbsCertificate'))
     signature_algorithm = encode_to_der(certificate.getComponentByName('signatureAlgorithm'))
@@ -80,7 +79,8 @@ def transform_asn1_tagged_certificate_to_certificate(certificate: rfc9480.CMPCer
     decoded_signature, _ = decoder.decode(signature, asn1spec=univ.BitString())
 
     new_cert.setComponentByName("tbsCertificate", decoder.decode(tbs_certificate, asn1Spec=rfc5280.TBSCertificate())[0])
-    new_cert.setComponentByName("signatureAlgorithm", decoder.decode(signature_algorithm, asn1Spec=rfc5280.AlgorithmIdentifier())[0])
+    new_cert.setComponentByName("signatureAlgorithm", decoder.decode(signature_algorithm,
+                                                                     asn1Spec=rfc5280.AlgorithmIdentifier())[0])
     new_cert.setComponentByName("signature", decoded_signature)
 
     return new_cert
