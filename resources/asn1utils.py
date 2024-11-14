@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Generic primitives for querying PyASN1 objects using ASN1Path, a notation similar to XPath for XML.
+"""Primitives for querying PyASN1 objects using ASN1Path, a notation similar to XPath for XML.
 
 The primitives are meant to be invoked from RobotFramework test cases, hence the notation
 is a compact, single string.

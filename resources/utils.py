@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Some utility functions for various tasks and a place to store functions that do not belong anywhere else."""
+"""Utilities for various tasks and a place to store functions that do not belong elsewhere."""
 
 import base64
 import logging

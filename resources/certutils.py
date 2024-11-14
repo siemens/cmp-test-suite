@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Some wrapper-tools for validating an X509 cert by invoking other software, e.g., OpenSSL, pkilint."""
+"""Validate X509 certificates by invoking other software, e.g., OpenSSL, pkilint."""
 
 import logging
 from typing import Optional, Union
