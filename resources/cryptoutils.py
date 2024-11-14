@@ -1,3 +1,8 @@
+# Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: 2024 SPDX-FileCopyrightText:
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Functions and classes for cryptographic operations.
 
 Provided primitives are: key generation, signing data, computing hashes, generating Certificate Signing Requests (CSRs),

@@ -1,3 +1,7 @@
+# Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 *** Settings ***
 Documentation    Resource file to access local docker EJBCA .
 

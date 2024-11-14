@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Some wrapper-tools for validating an X509 cert by invoking other software, e.g., OpenSSL, pkilint."""
 
 import logging

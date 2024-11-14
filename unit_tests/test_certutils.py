@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import unittest
 
 from resources.certutils import parse_certificate, validate_certificate_pkilint, validate_certificate_openssl

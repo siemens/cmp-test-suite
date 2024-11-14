@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Some utility functions for various tasks and a place to store functions that do not belong anywhere else."""
 
 import base64

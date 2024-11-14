@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 image: python:3.11.2
 
 variables:
@@ -8,7 +12,7 @@ variables:
 
 before_script:
   - pip install -r requirements.txt
-  - pip install ruff pylint
+  - pip install ruff pylint reuse
 
 
 stages:
@@ -26,6 +30,14 @@ basics:
     - ruff check
   tags:
     - LINUX-DOCKER
+
+license-check:
+  stage: Code style
+  script:
+    - reuse lint
+  tags:
+    - LINUX-DOCKER
+
 
 # Check code style, formatting, import sort order, etc.
 rf:

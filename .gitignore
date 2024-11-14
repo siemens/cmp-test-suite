@@ -1,5 +1,6 @@
-# Created by https://www.toptal.com/developers/gitignore/api/python,robotframework
-# Edit at https://www.toptal.com/developers/gitignore?templates=python,robotframework
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
 
 .idea/
 
@@ -181,6 +182,13 @@ output.xml
 report.html
 selenium-screenshot-*.png
 
-# End of https://www.toptal.com/developers/gitignore/api/python,robotframework
 /venv-cmp-tests/
 /tmp/
+
+
+# auto-generated documentation won't be a part of the repository because it
+# would include foreign code
+doc/
+
+# exclude binary file that contains an EJBCA docker image
+data/EJBCA/*.tar.gz

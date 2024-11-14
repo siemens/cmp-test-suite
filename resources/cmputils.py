@@ -1,3 +1,8 @@
+# Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: 2024 SPDX-FileCopyrightText:
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Utilities for generating and parsing CMP-related data structures."""
 
 import glob

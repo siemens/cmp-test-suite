@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 help:
 	@echo  'Commands:'
 	@echo  '  test         - Run all compliance tests (results will be in out/)'

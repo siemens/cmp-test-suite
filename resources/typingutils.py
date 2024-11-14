@@ -1,3 +1,8 @@
+# Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: 2024 SPDX-FileCopyrightText:
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Type aliases to enhance code readability, maintainability, and type safety.
 
 Type aliases are used to create descriptive names for commonly used types, making the codebase

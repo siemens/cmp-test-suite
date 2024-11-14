@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Overview
 The CMP test suite is a tool for verifying implementations of the Certificate Management Protocol (CMP). It generates
 CMP requests, sends them to the server and checks if responses match expectations. The results are logged in a report,

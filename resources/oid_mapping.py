@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Utilities for working with cryptographic operations and data structures.
 
 Specifically focusing on OID (Object Identifier) mappings for signature and hash algorithms, symmetric and asymmetric
