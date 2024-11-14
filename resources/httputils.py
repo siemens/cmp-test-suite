@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Utility for handing HTTP responses."""
+"""Utility for handling HTTP responses."""
 
 import requests
 from pyasn1.error import PyAsn1Error

@@ -46,12 +46,13 @@ doc:
 	python -m robot.libdoc resources/httputils.py doc/httputils.html
 	python -m robot.libdoc resources/keyutils.py doc/keyutils.html
 	python -m robot.libdoc resources/protectionutils.py doc/protectionutils.html
-	python -m robot.testdoc tests/ doc/tests-suites.html
+	python -m robot.testdoc tests/ doc/test-suites.html
 
 autoformat:
 	ruff check --fix .
 
 verify:
+	reuse lint
 	ruff check .
 	pylint .
 	PYTHONPATH=./resources pyright
