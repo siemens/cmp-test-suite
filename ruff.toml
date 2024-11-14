@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 src = ["resources"]
 exclude = ["venv*", "unit_tests", "config", "tests", "doc"]
 line-length = 120

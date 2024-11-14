@@ -1,3 +1,7 @@
+# Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 *** Settings ***
 Documentation     An example resource file with configuration options that are meant for use on your local development
 ...               system. Use this file as a template when adapting the tests to a specific environment.

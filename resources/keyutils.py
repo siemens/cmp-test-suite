@@ -1,3 +1,8 @@
+# Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: 2024 SPDX-FileCopyrightText:
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Utility functions for generating, saving, and loading cryptographic keys.
 
 Designed to facilitate key management by offering simple methods to create new keys,

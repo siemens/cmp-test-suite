@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Overview
 The CMP test suite is a tool for verifying implementations of the Certificate Management Protocol (CMP). It generates
 CMP requests, sends them to the server and checks if responses match expectations. The results are logged in a report,
@@ -54,8 +60,7 @@ To use this approach, adjust the command line arguments to `--variable environme
 
 Prerequisites:
 - Linux or WSL (in this case, ensure to use the Linux filesystem).
-- Docker
-- [compose compose v2](https://github.com/docker/compose)
+- Docker with [compose](https://github.com/docker/compose)
 
 
 ## Other useful commands

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 image: python:3.11.2
 
 variables:
@@ -8,15 +12,13 @@ variables:
 
 before_script:
   - pip install -r requirements.txt
-  - pip install ruff pylint
+  - pip install ruff pylint reuse
 
 
 stages:
   - Unit tests
   - Code style
   - Static analysis
-  - type-check
-  - RF style check
 
 
 # Check code style, formatting, import sort order, etc.
@@ -27,9 +29,18 @@ basics:
   tags:
     - LINUX-DOCKER
 
-# Check code style, formatting, import sort order, etc.
-rf:
-  stage: RF style check
+# Check for license headers in each file
+license-check:
+  stage: Code style
+  script:
+    - reuse lint
+  tags:
+    - LINUX-DOCKER
+
+
+# Check Robot Framework code style
+robot-framework:
+  stage: Code style
   before_script:
     - pip install robotframework-robocop==5.4.0
   script:
@@ -56,7 +67,7 @@ unit-tests:
 
 
 pyright:
-  stage: type-check
+  stage: Static analysis
   before_script:
     - pip install pyright==1.1.385
   script:

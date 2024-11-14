@@ -1,4 +1,7 @@
 #!/usr/bin/make
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
 
 EJBCA_HOST = 127.0.0.1
 EJBCA_HTTPS_PORT = 6443

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Enums for use with the Certificate Management Protocol.
 
 These Enums make the test cases more readable for users of the test suite and facilitate

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 *** Settings ***
 Documentation        General tests for CMP logic, not necessarily specific to the lightweight profile
 Resource    ../resources/keywords.resource
