@@ -19,8 +19,6 @@ stages:
   - Unit tests
   - Code style
   - Static analysis
-  - type-check
-  - RF style check
 
 
 # Check code style, formatting, import sort order, etc.
@@ -31,6 +29,7 @@ basics:
   tags:
     - LINUX-DOCKER
 
+# Check for license headers in each file
 license-check:
   stage: Code style
   script:
@@ -39,9 +38,9 @@ license-check:
     - LINUX-DOCKER
 
 
-# Check code style, formatting, import sort order, etc.
-rf:
-  stage: RF style check
+# Check Robot Framework code style
+robot-framework:
+  stage: Code style
   before_script:
     - pip install robotframework-robocop==5.4.0
   script:
@@ -68,7 +67,7 @@ unit-tests:
 
 
 pyright:
-  stage: type-check
+  stage: Static analysis
   before_script:
     - pip install pyright==1.1.385
   script:
