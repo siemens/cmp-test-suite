@@ -1,0 +1,27 @@
+FROM ubuntu:22.04
+
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip python3-venv openssl libssl-dev cmake git && \
+    apt-get clean
+
+# Set up a virtual environment, because "pip install" is not allowed.
+WORKDIR /app
+RUN python3 -m venv /app/venv
+
+COPY requirements.txt /app/requirements.txt
+RUN /app/venv/bin/pip install --upgrade pip && \
+    /app/venv/bin/pip install -r /app/requirements.txt
+
+# Build and install liboqs-python
+RUN git clone --depth=1 https://github.com/open-quantum-safe/liboqs-python && \
+    cd liboqs-python && \
+    /app/venv/bin/pip install . && \
+    cd ..
+
+RUN openssl version
+RUN /app/venv/bin/python3 --version
+RUN /app/venv/bin/pip freeze
+RUN uname -a
+COPY . /app
+
+CMD ["sh", "-c", "/app/venv/bin/python3 -m unittest discover -s unit_tests"]
