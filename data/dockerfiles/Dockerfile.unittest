@@ -24,4 +24,4 @@ RUN /app/venv/bin/pip freeze
 RUN uname -a
 COPY . /app
 
-CMD ["sh", "-c", "/app/venv/bin/python3 -m unittest discover -s unit_tests"]
+CMD ["sh", "-c", "PYTHONPATH=./resources /app/venv/bin/python3 -m unittest discover -s unit_tests"]
