@@ -11,7 +11,7 @@ from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc9480
 
-import pq_logic
+
 from pq_logic.hybrid_sig.catalyst_logic import verify_catalyst_signature, verify_catalyst_signature_migrated
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPublicKey
 from pq_logic.pq_compute_utils import verify_signature
