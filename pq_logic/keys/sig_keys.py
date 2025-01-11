@@ -11,6 +11,8 @@ from typing import Optional, Union
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from pyasn1.codec.der import encoder
+
+from pq_logic.fips.fips204 import ML_DSA
 from resources.oid_mapping import compute_hash, sha_alg_name_to_oid
 
 from pq_logic.fips import fips204, fips205
@@ -26,7 +28,7 @@ try:
     import oqs
 except ImportError:
     logging.info("PQ support is disabled.")
-    pass
+    oqs = None
 
 
 class MLDSAPublicKey(PQSignaturePublicKey):
@@ -41,6 +43,18 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         - `verify(signature, data)`: Verify a signature for provided data.
 
     """
+
+    def _init(self, sig_alg: str, public_key: bytes) -> None:
+        """Initialize the ML-DSA public key.
+
+        :param sig_alg: The signature algorithm name.
+        :param public_key: The public key bytes.
+        :return: The initialized ML-DSA public key.
+        """
+
+        self._check_name(sig_alg)
+        self.ml_class = ML_DSA(sig_alg)
+        self._public_key_bytes = public_key
 
     def verify(
         self,
