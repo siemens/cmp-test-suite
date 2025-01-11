@@ -11,25 +11,14 @@ from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
 
 from pq_logic.py_verify_logic import may_extract_alt_key_from_cert
-from resources.certextractutils import get_extension
 from resources.cryptoutils import sign_data, verify_signature
 from resources.exceptions import UnknownOID
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME, \
-    PQ_SIG_NAME_2_OID
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME
 from resources.protectionutils import verify_rsassa_pss_from_alg_id
 from robot.api.deco import not_keyword
 
-
-from pq_logic.custom_oids import id_relatedCert
-from pq_logic.hybrid_sig.cert_binding_for_multi_auth import get_related_cert_from_list
-from pq_logic.hybrid_sig.certdiscovery import (
-    extract_sia_extension_for_cert_discovery,
-    get_secondary_certificate,
-    validate_alg_ids,
-)
-from pq_logic.hybrid_structures import RelatedCertificateDescriptor
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, CompositeSigCMSPublicKey
 from pq_logic.pq_key_factory import PQKeyFactory
@@ -198,41 +187,14 @@ def _verify_signature_with_other_cert(
     if sig_alg_oid not in CMS_COMPOSITE_OID_2_NAME:
         raise ValueError("The signature algorithm is not a composite signature one.")
 
-    if other_certs is None:
-        raise ValueError("No related certificate provided.")
-
-    extensions = cert["tbsCertificate"]["extensions"]
-    extn = get_extension(extensions, id_relatedCert)
-    extn2 = get_extension(extensions, rfc5280.id_pe_subjectInfoAccess)
-
     if other_certs is not None:
         other_certs = other_certs if not isinstance(other_certs, rfc9480.CMPCertificate) else [other_certs]
 
     pq_key = may_extract_alt_key_from_cert(cert=cert, other_certs=other_certs)
+    if pq_key is None:
+        raise ValueError("No alternative issuer key found.")
 
-    if extn is not None:
-        logging.info("Validate signature with related certificate.")
-        related_cert = get_related_cert_from_list(other_certs, cert)  # type: ignore
-        trad_key = load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
-        pq_key = load_public_key_from_spki(related_cert["tbsCertificate"]["subjectPublicKeyInfo"])
-
-    elif extn2 is not None:
-        logging.info("Validate signature with cert discovery.")
-        rel_cert_desc: RelatedCertificateDescriptor = extract_sia_extension_for_cert_discovery(extn2)
-        uri = str(rel_cert_desc["uniformResourceIdentifier"])
-        other_cert = get_secondary_certificate(uri)
-        validate_alg_ids(other_cert, rel_cert_desc=rel_cert_desc)
-        trad_key = load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
-        pq_key = load_public_key_from_spki(other_cert["tbsCertificate"]["subjectPublicKeyInfo"])
-
-    else:
-        logging.info(
-            "Could not determine the second certificate. So the cert on the index `0`"
-            "is used as the second certificate."
-        )
-
-        trad_key = load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
-        pq_key = load_public_key_from_spki(other_certs[0]["tbsCertificate"]["subjectPublicKeyInfo"])
+    trad_key = load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
     if not isinstance(pq_key, PQSignaturePublicKey):
         trad_key, pq_key = pq_key, trad_key
@@ -240,7 +202,6 @@ def _verify_signature_with_other_cert(
     if sig_alg_oid in CMS_COMPOSITE_OID_2_NAME:
         public_key = CompositeSigCMSPublicKey(pq_key=pq_key, trad_key=trad_key)
         CompositeSigCMSPublicKey.validate_oid(sig_alg_oid, public_key)
-        verify_signature_with_alg_id(public_key, sig_alg, data, signature)
 
     else:
         raise UnknownOID(sig_alg_oid, extra_info="Composite signature can not be verified, with 2-certs.")

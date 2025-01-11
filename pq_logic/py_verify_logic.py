@@ -18,7 +18,6 @@ from pq_logic.hybrid_sig.catalyst_logic import id_ce_subjectAltPublicKeyInfo, \
 from pq_logic.hybrid_sig.certdiscovery import extract_sia_extension_for_cert_discovery, get_secondary_certificate, \
     validate_alg_ids
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import validate_alt_pub_key_extn, validate_alt_sig_extn
-from pq_logic.hybrid_structures import RelatedCertificateDescriptor
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPublicKey
 from pq_logic.pq_compute_utils import verify_signature_with_alg_id
