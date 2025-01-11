@@ -8,12 +8,12 @@ from unittest.mock import patch
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import (
-    build_sun_hybrid_composite_csr,
     convert_cert_to_target_form,
     sun_csr_to_cert,
     validate_alt_pub_key_extn,
     validate_alt_sig_extn,
 )
+from unit_tests.pq_workflow_exp import build_sun_hybrid_composite_csr
 from pq_logic.custom_oids import id_altSubPubKeyExt, id_altSignatureExt
 from pq_logic.hybrid_structures import AltSignatureExt
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey
