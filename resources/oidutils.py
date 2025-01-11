@@ -624,8 +624,6 @@ PQ_NAME_2_OID.update(PQ_SIG_NAME_2_OID)
 PQ_NAME_2_OID.update(FRODOKEM_NAME_2_OID)
 PQ_OID_2_NAME = {y: x for x, y in PQ_NAME_2_OID.items()}
 
-# TODO change to actual OID.
-
 
 KEM_OID_2_NAME = {y: x for x, y in PQ_KEM_NAME_2_OID.items()}
 KEM_OID_2_NAME.update(FRODOKEM_OID_2_NAME)
@@ -633,3 +631,8 @@ KEM_OID_2_NAME.update(MCELIECE_OID_2_NAME)
 KEM_OID_2_NAME.update(CHEMPAT_OID_2_NAME)
 KEM_OID_2_NAME.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
 KEM_OID_2_NAME.update(COMPOSITE_KEM_OID_2_NAME)
+
+
+ALL_KNOWN_PROTECTION_OIDS.update(PQ_OID_2_NAME)
+ALL_KNOWN_PROTECTION_OIDS.update(KEM_OID_2_NAME)
+ALL_KNOWN_PROTECTION_OIDS.update({rfc9481.rsaEncryption : "rsa_encryption"})
