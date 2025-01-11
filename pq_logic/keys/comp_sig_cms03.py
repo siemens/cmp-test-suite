@@ -18,6 +18,7 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280
 from resources import oid_mapping
+from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import get_curve_instance, sha_alg_name_to_oid
 from resources.oidutils import (
     ALL_POSS_COMBINATIONS,
@@ -138,12 +139,14 @@ def _get_trad_name(
     ],
     use_padding: bool = False,
     curve: Optional[str] = None,
+    length: Optional[int] = None,
 ) -> str:
     """Retrieve the traditional algorithm name based on the key type.
 
     :param trad_key: The traditional key object.
     :param use_padding: Whether to use RSA-PSS padding.
     :param curve: Optional curve name for EC keys.
+    :param length: Optional key length for RSA keys.
     :return: The traditional algorithm name.
     :raise ValueError: If the composite key mapping is unsupported.
     """
@@ -151,7 +154,7 @@ def _get_trad_name(
         actual_curve = curve or trad_key.curve.name
         trad_name = f"ecdsa-{actual_curve}"
     elif isinstance(trad_key, (rsa.RSAPublicKey, rsa.RSAPrivateKey)):
-        key_size = trad_key.key_size
+        key_size = length or trad_key.key_size
         trad_name = f"rsa{key_size}"
         if use_padding:
             trad_name += "-pss"
@@ -171,6 +174,7 @@ def get_oid_cms_composite_signature(
     trad_key: Union[ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey, ec.EllipticCurvePrivateKey, rsa.RSAPrivateKey],
     use_pss: bool = False,
     pre_hash: bool = False,
+    length: Optional[int] = None,
 ) -> univ.ObjectIdentifier:
     """Retrieve the OID for a composite signature, using a stringified version of the key name.
 
@@ -181,10 +185,14 @@ def get_oid_cms_composite_signature(
     :return: The OID representing the composite signature configuration.
     :raises KeyError: If the OID cannot be resolved.
     """
-    stringified_trad_name = _get_trad_name(trad_key, use_padding=use_pss)
+    stringified_trad_name = _get_trad_name(trad_key, use_padding=use_pss, length=length)
     to_add = "" if not pre_hash else "hash-"
     oid_base = f"{to_add}{ml_dsa_name}-{stringified_trad_name}"
-    return CMS_COMPOSITE_NAME_2_OID[oid_base]
+    oid = CMS_COMPOSITE_NAME_2_OID.get(oid_base)
+    if oid is None:
+        raise InvalidKeyCombination(f"Invalid composite signature combination: {oid_base}")
+
+    return oid
 
 
 class CompositeSigCMSPublicKey(AbstractCompositeSigPublicKey):
@@ -261,14 +269,18 @@ class CompositeSigCMSPublicKey(AbstractCompositeSigPublicKey):
         :param use_pss: Whether RSA-PSS padding was used during signing.
         :param pre_hash: Whether the data was pre-hashed before signing.
         :return: True if the signature is valid, False otherwise.
+        :raises ValueError: If the context length exceeds 255 bytes.
+        :raises BadAsn1Data: If extra data is present after decoding the signature.
+        :raises InvalidSignature: If the signature is invalid.
         """
         if len(ctx) > 255:
             raise ValueError("Context length exceeds 255 bytes")
 
-        if ctx != b"":
-            raise NotImplementedError("Context verification is not implemented")
+        decoded_signature, rest = decoder.decode(signature, asn1Spec=CompositeSignatureValue())
 
-        decoded_signature = decoder.decode(signature, asn1Spec=CompositeSignatureValue())[0]
+        if rest:
+            raise BadAsn1Data("CompositeSignatureValue")
+
         mldsa_sig = decoded_signature[0].asOctets()
         trad_sig = decoded_signature[1].asOctets()
 
@@ -392,11 +404,16 @@ class CompositeSigCMSPrivateKey(AbstractCompositeSigPrivateKey):
 
     def get_oid(self, use_padding: bool = False, pre_hash: bool = False) -> univ.ObjectIdentifier:
         """Return the Object Identifier for the composite signature."""
+
+        if isinstance(self.trad_key, rsa.RSAPrivateKey):
+            length = min(max(self.trad_key.key_size, 2048), 4096)
+
         return get_oid_cms_composite_signature(
             self.pq_key.name,
             self.trad_key,  # type: ignore
             use_pss=use_padding,
             pre_hash=pre_hash,
+            length=length,
         )
 
     def _get_hash_name(

@@ -221,7 +221,6 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
     ------------------
         - "xwing"
         - "composite-sig"
-        - "composite-sig-old" (old draft without signing with context.)
 
     Additional Parameters:
     ----------------------

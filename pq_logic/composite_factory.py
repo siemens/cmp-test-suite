@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa
-from resources import keyutils
+from resources import keyutils, oid_mapping
 from resources.typingutils import Strint
 from typing import Optional
 
@@ -67,6 +67,47 @@ class CompositeKeyFactory:
     """
 
     @staticmethod
+    def from_keys(algorithm: str, pq_key, trad_key):
+        """Create a composite key from existing keys.
+
+        :param pq_key: The post-quantum key.
+        :param trad_key: The traditional key.
+        :return: A composite key.
+        """
+
+        if algorithm == "composite-sig":
+            if pq_key is None and trad_key is None:
+                raise ValueError("Either a pq_key or trad_key must be provided, to generate a composite key.")
+
+            if pq_key is None:
+                if isinstance(trad_key, rsa.RSAPrivateKey):
+                    length = min(max(trad_key.key_size, 2048), 4096)
+                    curve = None
+                    trad_name = "rsa"
+                elif isinstance(trad_key, ec.EllipticCurvePrivateKey):
+                    length = None
+                    curve = trad_key.curve.name
+                    trad_name = "ecdsa"
+                else:
+                    length = None
+                    curve = None
+                CompositeKeyFactory.generate_comp_sig_key(
+                    pq_name=None, trad_name=trad_name, length=length, curve=curve
+                )
+            if trad_key is None:
+                pq_name = pq_key.name
+                return CompositeKeyFactory.generate_comp_sig_key(
+                    pq_name=pq_name,
+                )
+
+            return CompositeSigCMSPrivateKey(pq_key, trad_key)
+        else:
+            raise NotImplementedError(f"Unsupported hybrid algorithm: {algorithm}")
+
+
+
+
+    @staticmethod
     def generate_hybrid_key(
         algorithm: str,
         pq_name: Optional[str] = None,
@@ -84,11 +125,6 @@ class CompositeKeyFactory:
             return XWingPrivateKey.generate()
         elif algorithm == "composite_sig":
             return CompositeKeyFactory.generate_comp_sig_key(
-                pq_name=pq_name, trad_name=trad_name, length=length, curve=curve
-            )
-
-        elif algorithm == "composite_old":
-            return CompositeKeyFactory.generate_comp_sig_old(
                 pq_name=pq_name, trad_name=trad_name, length=length, curve=curve
             )
 

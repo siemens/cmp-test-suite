@@ -23,7 +23,6 @@ from pq_logic.keys.comp_sig_cms03 import (
 )
 from pq_logic.keys.composite_kem_pki import parse_public_keys
 from pq_logic.keys.kem_keys import MLKEMPublicKey
-from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
 from pq_logic.keys.xwing import XWingPrivateKey, XWingPublicKey
 from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_oids import COMPOSITE_KEM_OID_2_NAME
@@ -54,6 +53,11 @@ class CombinedKeyFactory:
         elif PQKeyFactory.may_be_pq_alg(algorithm=algorithm):
             return PQKeyFactory.generate_pq_key(algorithm=algorithm)
         elif algorithm == "composite-sig":
+
+            if kwargs.get("trad_key") is not None or kwargs.get("pq_key") is not None:
+                return CompositeKeyFactory.from_keys(algorithm=algorithm, pq_key=kwargs.get("pq_key"), trad_key=kwargs.get("trad_key"))
+
+
             return CompositeKeyFactory.generate_comp_sig_key(**kwargs)
         else:
             options = "".join(CombinedKeyFactory.list_supported_keys())

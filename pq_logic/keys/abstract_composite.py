@@ -20,6 +20,8 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280
 from pyasn1_alt_modules.rfc5958 import OneAsymmetricKey
+
+from pq_logic.tmp_oids import PURE_OID_TO_HASH
 from resources.oid_mapping import get_curve_instance, hash_name_to_instance
 
 
@@ -472,7 +474,7 @@ class AbstractCompositeSigPrivateKey(AbstractCompositePrivateKey, ABC):
 
             return self.trad_key.sign(data=data, signature_algorithm=ec.ECDSA(hash_instance))
         else:
-            raise ValueError()
+            raise ValueError(f"CompositeSigPrivateKey: Unsupported traditional private key type.: {type(self.trad_key).__name__}")
 
     @abstractmethod
     def sign(self, data: bytes, hash_alg: Optional[str] = None) -> bytes:

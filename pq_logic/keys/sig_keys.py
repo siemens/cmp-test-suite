@@ -142,6 +142,38 @@ class MLDSAPublicKey(PQSignaturePublicKey):
 class MLDSAPrivateKey(PQSignaturePrivateKey):
     """Represents an ML-DSA private key."""
 
+    def _init(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
+        """Initialize the ML-DSA private key.
+
+        :param sig_alg: The signature algorithm name.
+        :param private_bytes: The private key bytes.
+        :param public_key: The public key bytes.
+        :return: The initialized ML-DSA private key.
+        """
+
+        if oqs is not None:
+            super().__init__(sig_alg=sig_alg, private_bytes=private_bytes, public_key=public_key)
+        else:
+            logging.info("ML-DSA Key generation is done with pure python.")
+            self._check_name(sig_alg)
+            self.sig_alg = sig_alg
+            self.ml_class = ML_DSA(sig_alg)
+
+            if private_bytes is None:
+                self._public_key, self._private_key = self.ml_class.keygen_internal(xi=os.urandom(32))
+            else:
+                self._private_key = private_bytes
+                self._public_key = public_key
+
+    @classmethod
+    def key_gen(cls, name: str, seed: bytes = None):
+        """Generate a MLDSAPrivateKey."""
+        if seed is None:
+            seed = os.urandom(32)
+
+        _public_key, _private_key = ML_DSA(name).keygen_internal(xi=seed)
+        return cls(sig_alg=name, private_bytes=_private_key, public_key=_public_key)
+
     def _get_key_name(self) -> bytes:
         """Return the name of the key, to save it in a file as PEM-header."""
         return b"ML-DSA"
