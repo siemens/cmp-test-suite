@@ -22,7 +22,9 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
-from pyasn1_alt_modules.rfc9215 import id_ca
+
+from pq_logic.custom_oids import id_altSubPubKeyHashAlgAttr, id_altSubPubKeyLocAttr, id_altSigValueHashAlgAttr, \
+    id_altSigValueLocAttr, id_altSubPubKeyExt, id_altSignatureExt
 from resources.certbuildutils import build_csr, prepare_sig_alg_id, prepare_tbs_certificate, prepare_validity
 from resources.certextractutils import get_extension
 from resources.certutils import load_public_key_from_cert
@@ -46,18 +48,8 @@ from pq_logic.keys.comp_sig_cms03 import (
 from pq_logic.pq_compute_utils import sign_data_with_alg_id, verify_signature_with_alg_id
 from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH
 
-id_sun = univ.ObjectIdentifier(f"{id_ca}.1")
-
-# CSR
-id_altSubPubKeyHashAlgAttr = univ.ObjectIdentifier(f"{id_sun}.2")
-id_altSubPubKeyLocAttr = univ.ObjectIdentifier(f"{id_sun}.3")
-id_altSigValueHashAlgAttr = univ.ObjectIdentifier(f"{id_sun}.4")
-id_altSigValueLocAttr = univ.ObjectIdentifier(f"{id_sun}.5")
 
 
-# x509
-id_altSubPubKeyExt = univ.ObjectIdentifier(f"{id_sun}.6")
-id_altSignatureExt = univ.ObjectIdentifier(f"{id_sun}.7")
 
 
 def _hash_public_key(public_key, hash_alg: str) -> bytes:

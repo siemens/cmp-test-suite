@@ -20,9 +20,23 @@ from pyasn1_alt_modules.rfc9215 import id_ca
 
 # TODO fix to Correct OIDs!!!
 
-id_test_suite_alg = f"{id_ca}.9996"
 
-id_Chempat = f"{id_test_suite_alg}.5"
+# Define the OID for the test suite oids.
+id_test_suite_oid = f"{id_ca}.9996"
+
+# Define the OID for the hybrid KEM test suite.
+id_hybrid_kems_test_suite = f"{id_test_suite_oid}.9.1"
+
+# Define the OID for the hybrid signature test suite.
+id_hybrid_sig_test_suite = f"{id_test_suite_oid}.9.2"
+
+# Define the OID for the hybrid CompositeKEM which done with KEM`s which are not
+# inside the ML-KEM draft.
+id_composite_kem_test_suite = f"{id_hybrid_kems_test_suite}.9.1"
+
+# Define the OID for the Chempat test suite.
+id_Chempat = f"{id_hybrid_kems_test_suite}.2"
+
 id_Chempat_X25519_sntrup761 = univ.ObjectIdentifier(f"{id_Chempat}.1")
 id_Chempat_X25519_mceliece348864 = univ.ObjectIdentifier(f"{id_Chempat}.2")
 id_Chempat_X25519_mceliece460896 = univ.ObjectIdentifier(f"{id_Chempat}.3")
@@ -62,16 +76,32 @@ CHEMPAT_OID_2_NAME = {
 }
 
 
-id_X25519Kyber768Draft00 = f"{id_test_suite_alg}.6"
 
 
 # used inside cert-binding-for-multiple-authentication.
+id_hybrid_sig_multi_auth = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.2")
 
-tba = 9997
-id_relatedCert = univ.ObjectIdentifier(f"{id_ca}.{tba}")
-id_aa_relatedCertRequest = univ.ObjectIdentifier(f"{id_aa}.{tba -1}")
-id_mod_related_cert = univ.ObjectIdentifier(f"{id_aa}.{tba - 2}")
+id_relatedCert = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{1}")
+id_aa_relatedCertRequest = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{2}")
+id_mod_related_cert = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{3}")
 
 # used inside the cert discovery methode.
-id_ad_certDiscovery = univ.ObjectIdentifier(f"{id_ca}.{tba-3}")
-id_ad_relatedCertificateDescriptor = univ.ObjectIdentifier(f"{id_ca}.{tba - 4}")
+
+id_hybrid_sig_cert_binding = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.2")
+
+id_ad_certDiscovery = univ.ObjectIdentifier(f"{id_hybrid_sig_cert_binding}.{1}")
+id_ad_relatedCertificateDescriptor = univ.ObjectIdentifier(f"{id_hybrid_sig_cert_binding}.{2}")
+
+# OIDs used for the sun-hybrid signature methode.
+
+id_hybrid_sun = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.3")
+
+# CSR
+id_altSubPubKeyHashAlgAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.2")
+id_altSubPubKeyLocAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.3")
+
+# x509
+id_altSigValueHashAlgAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.4")
+id_altSigValueLocAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.5")
+id_altSubPubKeyExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.6")
+id_altSignatureExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.7")

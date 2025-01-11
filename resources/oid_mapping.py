@@ -45,7 +45,7 @@ from resources.oidutils import (
 )
 from resources.typingutils import PrivateKey
 
-key_class_mapping = {
+KEY_CLASS_MAPPING = {
     "RSAPrivateKey": "rsa",
     "RSAPublicKey": "rsa",
     "EllipticCurvePrivateKey": "ecdsa",
@@ -81,7 +81,7 @@ def get_signing_oid(key, hash_alg: Optional[str], use_pss: bool = False) -> Opti
     """
     oid = None
     type_name = key.__class__.__name__
-    key_type = key_class_mapping.get(type_name, "")
+    key_type = KEY_CLASS_MAPPING.get(type_name, "")
     if hash_alg is not None:
         name = key_type + "-" + hash_alg
         if use_pss:
