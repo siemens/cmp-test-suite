@@ -21,7 +21,7 @@ from resources import asn1utils
 
 # TODO refactor.
 
-
+@not_keyword
 def get_extension(
     extensions: rfc9480.Extensions,
     oid: univ.ObjectIdentifier,

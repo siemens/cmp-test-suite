@@ -9,12 +9,15 @@ from typing import Sequence, Union, Optional
 
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
+
+from pq_logic.py_verify_logic import may_extract_alt_key_from_cert
 from resources.certextractutils import get_extension
 from resources.cryptoutils import sign_data, verify_signature
 from resources.exceptions import UnknownOID
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME, \
+    PQ_SIG_NAME_2_OID
 from resources.protectionutils import verify_rsassa_pss_from_alg_id
 from robot.api.deco import not_keyword
 
@@ -84,11 +87,11 @@ def verify_signature_with_alg_id(public_key, alg_id: rfc9480.AlgorithmIdentifier
         public_key.verify(data=data, signature=signature, use_pss=use_pss, pre_hash=pre_hash)
 
     elif oid in RSASSA_PSS_OID_2_NAME:
-        return verify_rsassa_pss_from_alg_id(public_key, data=data, signature=signature, alg_id=alg_id)
+        return verify_rsassa_pss_from_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
 
-    elif oid in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
+    elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
         hash_alg = get_hash_from_oid(oid, only_hash=True)
-        verify_signature(public_key, signature=signature, data=data, hash_alg=hash_alg)
+        verify_signature(public_key=public_key, signature=signature, data=data, hash_alg=hash_alg)
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key).__name__}.")
 
@@ -192,6 +195,9 @@ def _verify_signature_with_other_cert(
     """
     sig_alg_oid = sig_alg["algorithm"]
 
+    if sig_alg_oid not in CMS_COMPOSITE_OID_2_NAME:
+        raise ValueError("The signature algorithm is not a composite signature one.")
+
     if other_certs is None:
         raise ValueError("No related certificate provided.")
 
@@ -199,7 +205,10 @@ def _verify_signature_with_other_cert(
     extn = get_extension(extensions, id_relatedCert)
     extn2 = get_extension(extensions, rfc5280.id_pe_subjectInfoAccess)
 
-    # TODO fix try to validate both.
+    if other_certs is not None:
+        other_certs = other_certs if not isinstance(other_certs, rfc9480.CMPCertificate) else [other_certs]
+
+    pq_key = may_extract_alt_key_from_cert(cert=cert, other_certs=other_certs)
 
     if extn is not None:
         logging.info("Validate signature with related certificate.")
@@ -210,7 +219,6 @@ def _verify_signature_with_other_cert(
     elif extn2 is not None:
         logging.info("Validate signature with cert discovery.")
         rel_cert_desc: RelatedCertificateDescriptor = extract_sia_extension_for_cert_discovery(extn2)
-
         uri = str(rel_cert_desc["uniformResourceIdentifier"])
         other_cert = get_secondary_certificate(uri)
         validate_alg_ids(other_cert, rel_cert_desc=rel_cert_desc)
@@ -258,17 +266,32 @@ def verify_signature_with_hybrid_cert(
     :param cert: The certificate may contain a composite signature key or a single key.
     :param other_certs: A single certificate or a sequence of certificates to extract
     the related certificate from.
-    :raises ValueError: If the related certificate is not provided.
+    :raises ValueError: If the alternative key cannot be obtained.
     :raises UnknownOID: If the signature algorithm OID is not supported.
     :raises InvalidSignature: If the signature verification fails.
+    :raises ValueError: If the `cert` contains a PQ signature algorithm.
+    It Should be a traditional algorithm for migration strategy.
     """
-    if sig_alg["algorithm"] in CMS_COMPOSITE_OID_2_NAME:
-        public_key = CompositeSigCMSPublicKey.from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
-        if not isinstance(public_key, CompositeSigCMSPublicKey):
-            _verify_signature_with_other_cert(cert, sig_alg, data, signature, other_certs=other_certs)
-            return
 
-        CompositeSigCMSPublicKey.validate_oid(sig_alg["algorithm"], public_key)
+    if sig_alg["algorithm"] not in CMS_COMPOSITE_OID_2_NAME:
+        raise ValueError("The signature algorithm is not a composite signature.")
+
+    cert_sig_alg = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]
+    if cert_sig_alg in MSG_SIG_ALG:
+        logging.info("The certificate contains a traditional signature algorithm.")
+        _verify_signature_with_other_cert(cert, sig_alg, data, signature, other_certs=other_certs)
+        return
+
+    elif cert_sig_alg in PQ_OID_2_NAME:
+        raise ValueError("The certificate contains a post-quantum signature algorithm."
+                          "please use traditional signature algorithm"
+                          "because the migration should test use case of "
+                          "having the certificate with traditional signature algorithm.")
+
+    elif cert_sig_alg in CMS_COMPOSITE_OID_2_NAME:
+        logging.info("The certificate contains a composite signature algorithm.")
+        public_key = CompositeSigCMSPublicKey.from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+        CompositeSigCMSPublicKey.validate_oid(cert_sig_alg, public_key)
         verify_signature_with_alg_id(public_key, sig_alg, data, signature)
 
     else:
