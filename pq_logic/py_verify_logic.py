@@ -12,6 +12,8 @@ from pq_logic.pq_compute_utils import verify_signature_with_alg_id
 from resources.certutils import load_public_key_from_cert
 from resources.typingutils import PublicKeySig
 
+from pyasn1_alt_modules import rfc9480
+from pyasn1.codec.der import encoder
 
 # TODO fix to include CRL-Verification
 # currently only works for PQ and traditional signatures.
