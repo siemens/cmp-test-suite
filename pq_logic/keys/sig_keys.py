@@ -8,12 +8,10 @@ import logging
 import os
 from typing import Optional, Union
 
-import slhdsa
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from pyasn1.codec.der import encoder
 from resources.oid_mapping import compute_hash, sha_alg_name_to_oid
-from slhdsa import KeyPair, PublicKey
 
 from pq_logic.fips import fips204, fips205
 from pq_logic.fips.fips205 import SLH_DSA
