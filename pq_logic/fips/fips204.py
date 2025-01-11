@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
+from typing import Optional, Tuple
 
 #   fips204.py
 #   2024-08-16  Markku-Juhani O. Saarinen <mjos@iki.fi> See LICENSE.
@@ -290,10 +291,11 @@ ML_DSA_PARAM = {
 
 
 class ML_DSA:
-    def __init__(self, param="ml-dsa-65"):
+    def __init__(self, param: str="ml-dsa-65"):
         """Initialize the class with parameters."""
         if param not in ML_DSA_PARAM:
-            raise ValueError
+            raise ValueError(f"The parameter set is not supported.: {param}."
+                             f"Supported parameter sets are: {ML_DSA_PARAM.keys()}")
         self.q = ML_DSA_Q
         self.n = ML_DSA_N
         (self.d, self.tau, self.lam, self.gam1, self.gam2, self.k, self.ell, self.eta, self.beta, self.omega) = (
@@ -325,11 +327,21 @@ class ML_DSA:
     #   Algorithm 3, ML-DSA.Verify(pk, M, sigma, ctx)
     #   XXX: Not covered by test vectors.
 
-    def verify(self, pk, m, sig, ctx, param=None):
-        if param != None:
+    def verify(self, pk: bytes, m: bytes, sig: bytes, ctx: bytes, param: Optional[str] = None):
+        """Verify the signature.
+
+        :param pk: The public key.
+        :param m: The message to verify.
+        :param sig: The signature to verify.
+        :param ctx: The context relevant to the signature.
+        :param param: Optional the name of the ML-DSA version in lowercase.
+        (e.g., "ml-dsa-44", "ml-dsa-65", "ml-dsa-87")
+        :return:
+        """
+        if param is not None:
             self.__init__(param)
         if len(ctx) > 255:
-            return False
+            raise ValueError("The length of the context is greater than 255.")
 
         mp = self.integer_to_bytes(0, 1) + self.integer_to_bytes(len(ctx), 1) + ctx + m
         return self.verify_internal(pk, mp, sig)
@@ -390,8 +402,15 @@ class ML_DSA:
 
     #   Algorithm 6, ML-DSA.KeyGen_internal(xi)
 
-    def keygen_internal(self, xi, param=None):
-        if param != None:
+    def keygen_internal(self, xi: bytes, param: Optional[str]=None) -> Tuple[bytes, bytes]:
+        """Generate the key pair.
+
+        :param xi: The seed for the key pair.
+        :param param: The name of the ML-DSA version in lowercase.
+        (e.g., "ml-dsa-44", "ml-dsa-65", "ml-dsa-87")
+        :return: The public key and the secret key.
+        """
+        if param is not None:
             self.__init__(param)
         # print('# keygen_internal()', param)
         # print('# seed:', xi.hex())
@@ -434,8 +453,19 @@ class ML_DSA:
 
     #   Algorithm 7, ML-DSA.Sign_internal(sk, M', rnd)
 
-    def sign_internal(self, sk, mp, rnd, param=None):
-        if param != None:
+    def sign_internal(self, sk: bytes, mp: bytes, rnd: bytes, param: Optional[str] = None) -> bytes:
+        """The internal function to sign the message.
+
+        The prefix bytes and the extra information are set in the corresponding functions.
+
+        :param sk: The secret key to sign the message.
+        :param mp: The message to sign.
+        :param rnd: A random value.
+        :param param: The name of the ML-DSA version in lowercase.
+        (e.g., "ml-dsa-44", "ml-dsa-65", "ml-dsa-87")
+        :return: The signature.
+        """
+        if param is not None:
             self.__init__(param)
 
         (rho, kk, tr, s1, s2, t0) = self.sk_decode(sk)
@@ -537,8 +567,19 @@ class ML_DSA:
 
     #   Algorithm 8, ML-DSA.Verify_internal(pk, M', sigma)
 
-    def verify_internal(self, pk, mp, sig, param=None):
-        if param != None:
+    def verify_internal(self, pk, mp, sig, param: Optional[str] = None) -> bool:
+        """The internal function to verify the signature.
+
+        Verify the already prepared signature, which includes the prefix bytes and the extra information.
+
+        :param pk: The public key.
+        :param mp: The message to verify.
+        :param sig: The signature to verify.
+        :param param: The name of the ML-DSA version in lowercase.
+        (e.g., "ml-dsa-44", "ml-dsa-65", "ml-dsa-87")
+        :return: True if the signature is valid, False otherwise.
+        """
+        if param is not None:
             self.__init__(param)
 
         (rho, t1) = self.pk_decode(pk)
@@ -547,7 +588,7 @@ class ML_DSA:
         # print('# t1:', t1)
         # print('# cTilde:', ct.hex())
         # print('# z:', z)
-        if h == None:
+        if h is None:
             return False
 
         ah = self.expand_a(rho)
