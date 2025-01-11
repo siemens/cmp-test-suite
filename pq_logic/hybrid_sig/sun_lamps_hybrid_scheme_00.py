@@ -31,7 +31,6 @@ from resources.convertutils import copy_asn1_certificate
 from resources.cryptoutils import sign_data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME
 from resources.protectionutils import prepare_sha_alg_id
 from resources.utils import get_openssl_name_notation
 
@@ -615,24 +614,6 @@ def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: 
 
 
 # TODO fix to allow alternative to be either PQ or traditional key
-def _may_extract_alt_key_from_cert(cert: rfc9480.CMPCertificate):
-    """May extract the alternative public key from a certificate.
-
-    :param cert: The certificate from which to extract the alternative public key.
-    :return: The extracted alternative public key.
-    """
-    spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
-    oid = spki["algorithm"]["algorithm"]
-    if oid in CMS_COMPOSITE_OID_2_NAME:
-        public_key = CompositeSigCMSPublicKey.from_spki(spki)
-        CompositeSigCMSPublicKey.validate_oid(oid, public_key)
-        return CompositeSigCMSPublicKey.pq_key
-    else:
-        # MUST either use cert-discovery or multi-bind or chameleon.
-        raise NotImplementedError("Currently the CA certificate must be a composite signature cert.")
-
-
-
 
 
 ###################
