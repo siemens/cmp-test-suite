@@ -8,7 +8,7 @@ from unittest.mock import patch
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import (
-    build_crs_composite,
+    build_sun_hybrid_composite_csr,
     convert_cert_to_target_form,
     sun_csr_to_cert,
     validate_alt_pub_key_extn,
@@ -61,7 +61,7 @@ class TestSunHybridScheme(unittest.TestCase):
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
 
-        self.csr = build_crs_composite(
+        self.csr = build_sun_hybrid_composite_csr(
             signing_key=self.composite_key,
             common_name=self.common_name,
             pub_key_hash_alg="sha256",
@@ -77,7 +77,7 @@ class TestSunHybridScheme(unittest.TestCase):
         WHEN the extension is validated.
         THEN the extension is correctly validated.
         """
-        csr = build_crs_composite(
+        csr = build_sun_hybrid_composite_csr(
             signing_key=self.composite_key,
             common_name=self.common_name,
             pub_key_hash_alg="sha256",
@@ -106,7 +106,7 @@ class TestSunHybridScheme(unittest.TestCase):
         WHEN a CSR is built with the composite key and arguments for the attributes,
         THEN the CSR is correctly built.
         """
-        csr = build_crs_composite(
+        csr = build_sun_hybrid_composite_csr(
             signing_key=self.composite_key,
             common_name=self.common_name,
             pub_key_hash_alg="sha256",
@@ -129,7 +129,7 @@ class TestSunHybridScheme(unittest.TestCase):
         WHEN the CSR signature is verified,
         THEN the signature is correctly verified.
         """
-        csr = build_crs_composite(
+        csr = build_sun_hybrid_composite_csr(
             signing_key=self.composite_key,
             common_name=self.common_name,
             pub_key_hash_alg="sha256",
@@ -146,7 +146,7 @@ class TestSunHybridScheme(unittest.TestCase):
         WHEN a certificate is issued from the CSR,
         THEN the certificate is correctly issued.
         """
-        csr = build_crs_composite(
+        csr = build_sun_hybrid_composite_csr(
             signing_key=self.composite_key,
             common_name=self.common_name,
             pub_key_hash_alg="sha256",
@@ -178,7 +178,7 @@ class TestSunHybridScheme(unittest.TestCase):
             self.public_key_bytes,
 
         ]
-        csr = build_crs_composite(
+        csr = build_sun_hybrid_composite_csr(
             signing_key=self.composite_key,
             common_name=self.common_name,
             pub_key_hash_alg="sha256",
@@ -204,7 +204,7 @@ class TestSunHybridScheme(unittest.TestCase):
         WHEN the certificate is converted to form 4,
         THEN the certificate is correctly converted.
         """
-        csr = build_crs_composite(
+        csr = build_sun_hybrid_composite_csr(
             signing_key=self.composite_key,
             common_name=self.common_name,
             pub_key_hash_alg="sha256",
