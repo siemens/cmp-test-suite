@@ -18,7 +18,7 @@ from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_N
 from resources.protectionutils import verify_rsassa_pss_from_alg_id
 from robot.api.deco import not_keyword
 
-from pq_logic import hybrid_oidutils
+
 from pq_logic.custom_oids import id_relatedCert
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import get_related_cert_from_list
 from pq_logic.hybrid_sig.certdiscovery import (
@@ -262,7 +262,7 @@ def verify_signature_with_hybrid_cert(
     :raises UnknownOID: If the signature algorithm OID is not supported.
     :raises InvalidSignature: If the signature verification fails.
     """
-    if sig_alg["algorithm"] in CMS_COMPOSITE_OID_2_NAME or sig_alg in hybrid_oidutils.composite_alg_info:
+    if sig_alg["algorithm"] in CMS_COMPOSITE_OID_2_NAME:
         public_key = CompositeSigCMSPublicKey.from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
         if not isinstance(public_key, CompositeSigCMSPublicKey):
             _verify_signature_with_other_cert(cert, sig_alg, data, signature, other_certs=other_certs)

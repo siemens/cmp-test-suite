@@ -22,7 +22,7 @@ from pyasn1_alt_modules import rfc5280
 from pyasn1_alt_modules.rfc5958 import OneAsymmetricKey
 from resources.oid_mapping import get_curve_instance, hash_name_to_instance
 
-from pq_logic.hybrid_oidutils import composite_alg_info
+
 from pq_logic.hybrid_structures import (
     CompositeSignaturePrivateKeyAsn1,
     CompositeSignaturePublicKeyAsn1,
@@ -394,45 +394,15 @@ class AbstractCompositeSigPublicKey(AbstractCompositePublicKey, ABC):
         """Verify a signature."""
         pass
 
-    @classmethod
-    def from_spki(cls, spki: rfc5280.SubjectPublicKeyInfo):
+    @abstractmethod
+    def from_spki(self, spki: rfc5280.SubjectPublicKeyInfo):
         """
         Load a CompositePublicKey from an SPKI structure.
 
         :param spki: rfc5280.SubjectPublicKeyInfo structure.
         :return: CompositePublicKey instance.
         """
-        oid = spki["algorithm"]["algorithm"]
-        alg_info = composite_alg_info[oid]
-        ml_dsa_name = alg_info["ml_dsa_name"]
-        curve_name = alg_info["curve_name"]
-        trad_alg_name = alg_info["trad_alg_name"]
-
-        obj, rest = decoder.decode(spki["subjectPublicKey"].asOctets(), CompositeSignaturePublicKeyAsn1())
-        if rest != b"":
-            raise ValueError("Extra data after decoding public key")
-
-        pq_pub_bytes = obj[0].asOctets()
-        trad_pub_bytes = obj[1].asOctets()
-
-        pq_pub = MLDSAPublicKey(
-            public_key=pq_pub_bytes,
-            sig_alg=ml_dsa_name.upper(),
-        )
-
-        if trad_alg_name == "ecdsa":
-            curve = get_curve_instance(curve_name)
-            trad_pub = ec.EllipticCurvePublicKey.from_encoded_point(curve, trad_pub_bytes)
-        elif trad_alg_name == "ed448":
-            trad_pub = ed448.Ed448PublicKey.from_public_bytes(trad_pub_bytes)
-
-        elif trad_alg_name == "ed25519":
-            trad_pub = ed25519.Ed25519PublicKey.from_public_bytes(trad_pub_bytes)
-
-        else:
-            trad_pub = serialization.load_der_public_key(trad_pub_bytes)
-
-        return cls(pq_pub, trad_pub)
+        pass
 
 
 class AbstractCompositeSigPrivateKey(AbstractCompositePrivateKey, ABC):

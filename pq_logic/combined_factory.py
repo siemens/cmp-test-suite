@@ -11,12 +11,11 @@ from pyasn1_alt_modules import rfc5280, rfc5958
 from resources.oid_mapping import get_curve_instance
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, PQ_OID_2_NAME, XWING_OID_STR
 
-import pq_logic.hybrid_oidutils
+
 from pq_logic.composite_factory import CompositeKeyFactory
 
-from pq_logic.hybrid_oidutils import composite_alg_info
+
 from pq_logic.hybrid_structures import (
-    CompositeSignaturePrivateKeyAsn1,
     CompositeSignaturePublicKeyAsn1,
 )
 from pq_logic.keys.comp_sig_cms03 import (
@@ -78,8 +77,6 @@ class CombinedKeyFactory:
             subject_public_key = spki["subjectPublicKey"].asOctets()
             return XWingPublicKey.from_public_bytes(subject_public_key)
 
-        if oid in pq_logic.hybrid_oidutils.composite_alg_info:
-            return CombinedKeyFactory.from_spki_composite(spki=spki)
 
         return serialization.load_der_public_key(encoder.encode(spki))
 
@@ -155,50 +152,3 @@ class CombinedKeyFactory:
         der_data = encoder.encode(one_asym_key)
         return parse_key_from_one_asym_key(der_data)
 
-    @staticmethod
-    def from_spki_composite(spki: rfc5280.SubjectPublicKeyInfo):
-        """
-        Load a CompositePublicKey from an SPKI structure.
-
-        :param spki: rfc5280.SubjectPublicKeyInfo structure.
-        :return: Instance of the appropriate CompositePublicKey subclass.
-        """
-        oid = spki["algorithm"]["algorithm"]
-        alg_info = pq_logic.hybrid_oidutils.composite_alg_info[oid]
-        ml_dsa_name = alg_info["ml_dsa_name"]
-        trad_alg_name = alg_info["trad_alg_name"]
-        curve_name = alg_info.get("curve_name")
-
-        # Decode the composite public key
-        obj, rest = decoder.decode(spki["subjectPublicKey"].asOctets(), CompositeSignaturePublicKeyAsn1())
-        if rest != b"":
-            raise ValueError("Extra data after decoding public key")
-
-        pq_pub_bytes = obj[0].asOctets()
-        trad_pub_bytes = obj[1].asOctets()
-
-        # Create the MLDSA public key
-        pq_pub = MLDSAPublicKey(
-            public_key=pq_pub_bytes,
-            sig_alg=ml_dsa_name,
-        )
-
-        if trad_alg_name == "ecdsa":
-            curve = get_curve_instance(curve_name)
-            trad_pub = ec.EllipticCurvePublicKey.from_encoded_point(curve, trad_pub_bytes)
-
-        elif trad_alg_name == "ed448":
-            trad_pub = ed448.Ed448PublicKey.from_public_bytes(trad_pub_bytes)
-
-        elif trad_alg_name == "ed25519":
-            trad_pub = ed25519.Ed25519PublicKey.from_public_bytes(trad_pub_bytes)
-
-        elif trad_alg_name == "rsa":
-            trad_pub = serialization.load_der_public_key(trad_pub_bytes)
-            if not isinstance(trad_pub, rsa.RSAPublicKey):
-                raise ValueError("The traditional public key is not a valid RSA key.")
-
-        else:
-            raise ValueError(f"Unsupported traditional public key type: {trad_alg_name}")
-
-        return ExpiredCompositeSigPublicKey(pq_pub, trad_pub)
