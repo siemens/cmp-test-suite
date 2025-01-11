@@ -27,14 +27,12 @@ from pq_logic.custom_oids import id_altSubPubKeyHashAlgAttr, id_altSubPubKeyLocA
     id_altSigValueLocAttr, id_altSubPubKeyExt, id_altSignatureExt
 from resources.certbuildutils import build_csr, prepare_sig_alg_id, prepare_tbs_certificate, prepare_validity
 from resources.certextractutils import get_extension
-from resources.certutils import load_public_key_from_cert
 from resources.convertutils import copy_asn1_certificate
 from resources.cryptoutils import sign_data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME
 from resources.protectionutils import prepare_sha_alg_id
-from resources.typingutils import PublicKeySig
 from resources.utils import get_openssl_name_notation
 
 from pq_logic.combined_factory import CombinedKeyFactory
@@ -47,9 +45,6 @@ from pq_logic.keys.comp_sig_cms03 import (
 )
 from pq_logic.pq_compute_utils import sign_data_with_alg_id, verify_signature_with_alg_id
 from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH
-
-
-
 
 
 def _hash_public_key(public_key, hash_alg: str) -> bytes:
@@ -126,7 +121,7 @@ def prepare_alt_sig_value_loc_attr(location: str) -> rfc2986.Attribute:
     return attr
 
 
-def prepare_all_csr_attributes(
+def prepare_sun_hybrid_csr_attributes(
     pub_key_hash_alg: Optional[str] = None,
     pub_key_location: Optional[str] = None,
     sig_hash_alg: Optional[str] = None,
@@ -162,7 +157,7 @@ def prepare_all_csr_attributes(
 #############
 
 
-def prepare_alt_sub_pub_key_ext(
+def prepare_sun_hybrid_alt_sub_pub_key_ext(
     public_key: rsa.RSAPublicKey,
     by_val: bool,
     hash_alg: Optional[str] = None,
@@ -215,7 +210,7 @@ def prepare_alt_sub_pub_key_ext(
     return extension
 
 
-def prepare_alt_signature_ext(
+def prepare_sun_hybrid_alt_signature_ext(
     signature: bytes,
     by_val: bool,
     alt_sig_algorithm: rfc9480.AlgorithmIdentifier,
@@ -271,7 +266,7 @@ def prepare_alt_signature_ext(
     return extension
 
 
-def build_crs_composite(
+def build_sun_hybrid_composite_csr(
     signing_key: Optional[CompositeSigCMSPrivateKey] = None,
     common_name: str = "CN=Hans Mustermann",
     pub_key_hash_alg: Optional[str] = None,
@@ -307,7 +302,7 @@ def build_crs_composite(
     # Step 4 and 5
     # Currently is always the PQ-Key the firsts key to
     # it is assumed to be the first key, and the alternative key is the traditional key.
-    attributes = prepare_all_csr_attributes(
+    attributes = prepare_sun_hybrid_csr_attributes(
         pub_key_hash_alg=pub_key_hash_alg,
         sig_value_location=sig_value_location,
         pub_key_location=pub_key_location,
@@ -333,7 +328,7 @@ def build_crs_composite(
 ###################
 
 
-def _extract_vals_from_attr(csr: rfc6402.CertificationRequest) -> Dict:
+def _extract_sun_hybrid_attrs_from_csr(csr: rfc6402.CertificationRequest) -> Dict:
     """Extract values of specific attributes from a CSR.
 
     :param csr: The CSR from which attribute values will be extracted.
@@ -383,7 +378,7 @@ def sun_csr_to_cert(
 
     oid = csr["signatureAlgorithm"]["algorithm"]
 
-    data: dict = _extract_vals_from_attr(csr)
+    data: dict = _extract_sun_hybrid_attrs_from_csr(csr)
 
     if data["pub_key_hash_id"] is None:
         data["pub_key_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or "sha256"
@@ -447,11 +442,11 @@ def _prepare_pre_tbs_certificate(
     :raises ValueError: If required parameters are missing or invalid.
     """
     # Compute a hash by hashing pk_2
-    extn_alt_pub = prepare_alt_sub_pub_key_ext(
+    extn_alt_pub = prepare_sun_hybrid_alt_sub_pub_key_ext(
         composite_key.trad_key, hash_alg=pub_key_hash_id, by_val=False, location=pub_key_loc
     )
     # Prepare pk_2 for Form1
-    extn_alt_pub2 = prepare_alt_sub_pub_key_ext(
+    extn_alt_pub2 = prepare_sun_hybrid_alt_sub_pub_key_ext(
         public_key=composite_key.trad_key, hash_alg=pub_key_hash_id, by_val=True, location=pub_key_loc
     )
 
@@ -475,11 +470,11 @@ def _prepare_pre_tbs_certificate(
     signature = sign_data(key=alt_private_key, data=data, hash_alg=sig_hash_id)
     sig_alg_id = prepare_sig_alg_id(signing_key=alt_private_key, hash_alg=sig_hash_id, use_rsa_pss=False)
 
-    extn_alt_sig = prepare_alt_signature_ext(
+    extn_alt_sig = prepare_sun_hybrid_alt_signature_ext(
         signature=signature, by_val=False, hash_alg=sig_hash_id, alt_sig_algorithm=sig_alg_id, location=sig_loc
     )
 
-    extn_alt_sig2 = prepare_alt_signature_ext(
+    extn_alt_sig2 = prepare_sun_hybrid_alt_signature_ext(
         signature=signature, by_val=True, hash_alg=sig_hash_id, alt_sig_algorithm=sig_alg_id, location=sig_loc
     )
 
@@ -637,31 +632,7 @@ def _may_extract_alt_key_from_cert(cert: rfc9480.CMPCertificate):
         raise NotImplementedError("Currently the CA certificate must be a composite signature cert.")
 
 
-# TODO fix to either extract
-def verify_sun_hybrid_cert(
-    cert: rfc9480.CMPCertificate,
-    issuer_cert: rfc9480.CMPCertificate,
-    alt_issuer_key: Optional[PublicKeySig] = None,
-    check_alt_sig: bool = True,
-):
-    """Verify a Sun hybrid certificate.
 
-    Validates the primary and alternative signatures in a certificate.
-
-    :param cert: The SUN hybrid certificate to verify.
-    :param issuer_cert: The issuer's certificate for verifying the main signature.
-    :param check_alt_sig: Whether to validate the alternative signature (default: True).
-    :raises ValueError: If validation fails for the certificate or its extensions.
-    """
-    alt_pub_key = validate_alt_pub_key_extn(cert)
-    if check_alt_sig:
-        validate_alt_sig_extn(cert, alt_pub_key, alt_issuer_key)
-
-    public_key = load_public_key_from_cert(issuer_cert)
-    data = encoder.encode(cert["tbsCertificate"])
-    alg_id = cert["tbsCertificate"]["signature"]
-    signature = cert["signature"].asOctets()
-    verify_signature_with_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
 
 
 ###################
@@ -721,7 +692,7 @@ def parse_alt_sig_extension(cert: rfc9480.CMPCertificate, to_by_val: bool) -> rf
     else:
         new_signature = current_signature
 
-    new_extension = prepare_alt_signature_ext(
+    new_extension = prepare_sun_hybrid_alt_signature_ext(
         signature=new_signature,
         by_val=to_by_val,
         alt_sig_algorithm=decoded_ext["altSigAlgorithm"],
@@ -781,7 +752,7 @@ def parse_alt_sub_pub_key_extension(cert: rfc9480.CMPCertificate, to_by_val: boo
         public_key = fetch_value_from_location(loc)
         public_key = _process_public_key(public_key)
 
-    new_extension = prepare_alt_sub_pub_key_ext(
+    new_extension = prepare_sun_hybrid_alt_sub_pub_key_ext(
         public_key=public_key,
         by_val=to_by_val,
         hash_alg=hash_alg,
