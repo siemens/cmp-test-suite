@@ -9,4 +9,3 @@ robotframework==7.1.1
 pkilint==0.12.3
 pycryptodome==3.21.0
 robotframework-requests==0.9.7
-SLH-DSA==0.1.3
