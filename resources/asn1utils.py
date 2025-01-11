@@ -51,31 +51,60 @@ A few points to make it easier to navigate through PyASN1's own stringified nota
 |      AttributeTypeAndValue:
 |       type=2.5.4.10
 """
-import argparse
-import logging
-import pathlib
-import re
-import sys
-from base64 import b64decode
-from typing import List
 
-from pyasn1.codec.ber import decoder as ber_decoder
+import logging
+from datetime import datetime
+from typing import Any, List, Optional, Union
+
 from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import base, univ
 from pyasn1.type.univ import BitString
 from robot.api.deco import not_keyword
 
-from typingutils import Strint
+from resources.typingutils import Strint
 
 
-def asn1_must_contain_fields(data, fields: str):
+def asn1_must_have_values_set(asn1_obj: base.Asn1Type, queries: str):  # noqa D417 undocumented-param
+    """Verify that the given ASN.1 structure contains values for the specified queries.
+
+    Arguments:
+    ---------
+        - `asn1_obj`: The `pyasn1` structure to check.
+        - `queries`: A string that represents a comma-separated list of queries to check, if a value is present.
+
+    Raises:
+    ------
+        - `ValueError`: If the required fields are not present or if they are not set.
+
+    Examples:
+    --------
+    | Asn1 Must Have Values Set | ${asn1} | header,body,soul |
+    | Asn1 Must Have Values Set | ${asn1} | header.recipNonce, body.nested/0, soul |
+
+    """
+    fields_entries = [item.strip() for item in queries.split(",")]
+    for entry in fields_entries:
+        try:
+            tmp = get_asn1_value(asn1_obj, entry)
+            if not tmp.isValue:
+                obj_name = type(tmp).__name__
+                logging.debug("%s", asn1_obj.prettyPrint())
+                raise ValueError(f"The pyasn1 object: `{obj_name}` did not had a value set for the query: '{entry}'.")
+        except KeyError:
+            raise ValueError(f"The query '{entry}' is not present in the structure.")
+
+
+def asn1_must_contain_fields(data: base.Asn1Type, fields: str):  # noqa D417 undocumented-param
     """Verify that the given ASN.1 structure contains the specified fields.
 
-    `data` is the pyasn1 structure to check.
-    `fields` is a string that represents a comma-separated list field names to check for in the ASN.1 structure. Spaces
-    in this string will be ignored.
+    Arguments:
+    ---------
+        - `data`: The `pyasn1` structure to check.
+        - `fields` is a string that represents a comma-separated list field names to check for in the ASN.1 structure.
+         Spaces in this string will be ignored.
 
-    Example:
-    -------
+    Examples:
+    --------
     | Asn1 Must Contain Fields | ${asn1} | header,body,soul |
     | Asn1 Must Contain Fields | ${asn1} | header, body ,   soul |
 
@@ -86,10 +115,10 @@ def asn1_must_contain_fields(data, fields: str):
     # :param fields: str, comma-separated list of field names that must be present. NOTE that we're not passing it as a
     #                list of str, this is syntactic sugar for invocation from within RobotFramework tests.
     # :returns: None, raise ValueError of the required fields are not present"""
-    present_fields = list(data)
+    present_fields = list(data)  # type: ignore
     absent_fields = []
-    fields = [item.strip() for item in fields.split(",")]
-    for entry in fields:
+    fields_entries = [item.strip() for item in fields.split(",")]
+    for entry in fields_entries:
         if entry not in present_fields:
             absent_fields.append(entry)
 
@@ -97,13 +126,32 @@ def asn1_must_contain_fields(data, fields: str):
         raise ValueError(f"The following required fields were absent: {absent_fields}")
 
 
-def get_asn1_value(asn1_obj, query):
-    """Extract a value from a complex PyASN1 structure by specifying its path in ASN1Path notation.
+def get_asn1_value(asn1_obj: base.Asn1Type, query: str):  # noqa D417 undocumented-param
+    """Extract a value from a complex `pyasn1` structure by specifying its path in ASN1Path notation.
 
-    :param asn1_obj: pyasn1 object, the structure you want to query
-    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
-                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
-    :returns: pyasn1 object, the value you were looking for; or will raise a ValueError with details
+    This function allows you to extract a value from a nested pyasn1 object by specifying the path
+    using dot-notation or a combination of dot and slash notation (for sequences).
+
+    Arguments:
+    ---------
+        - `asn1_obj`: The pyasn1 object structure you want to query.
+        - `query`: The path to the value you want to extract, given as a dot-notation.
+
+    Returns:
+    -------
+        - The extracted pyasn1 object based on the query path.
+
+    Raises:
+    ------
+        - `ValueError`: If the traversal of the path fails or if the path is invalid, an informative
+          error message is raised that includes details about the step where the error occurred and
+          the available keys at that level.
+
+    Examples:
+    --------
+    | ${pyasn1_value}= | Get Asn1 Value | ${asn1_obj} | query=header.sender.directoryName.rdnSequence/0 |
+    | ${pyasn1_value}= | Get Asn1 Value | ${asn1_obj} | query=header.sender.directoryName.rdnSequence/0/0.value |
+
     """
     keys = query.split(".")
 
@@ -141,64 +189,138 @@ def get_asn1_value(asn1_obj, query):
     return asn1_obj
 
 
-def get_asn1_value_as_string(asn1_obj, query):
-    """Wrap get_asn1_value to return a plain string
+def get_asn1_value_as_string(asn1_obj: base.Asn1Type, query: str, decode: bool = False):  # noqa D417 undocumented-param
+    """Retrieve a value from a pyasn1 object and return it as a string.
 
-    :param asn1_obj: pyasn1 object, the structure you want to query
-    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
-                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
-    :returns: str, the value you were looking for as a string; or will raise a ValueError with details.
+    :Arguments:
+    ---------
+        - `asn1_obj`: The pyasn1 object to query.
+        - `query`: The path to the value you want to extract, given as dot-notation (e.g.,
+          'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value').
+        - `decode`: If `True`, the result is decoded before returning. Defaults to `False`.
+
+
+    Returns
+    -------
+        - The extracted value as a string.
+
+    Raises
+    ------
+        - `ValueError` if the value cannot be found. Will raise a ValueError with details.
+
+
+    Examples
+    --------
+    | ${str_val}= | Get ASN1 Value As String | ${asn1_obj} | query=header.sender.directoryName.rdnSequence/0 | \
+    decode=False |
+    | ${str_val}= | Get ASN1 Value As String | ${asn1_obj} | query=header.sender.directoryName.rdnSequence/0/0.value |
+
     """
     result = get_asn1_value(asn1_obj, query)
-    decoded, _rest = decoder.decode(result)
-    return decoded.prettyPrint()
+    if decode:
+        result, _rest = decoder.decode(result)
+    return result.prettyPrint()
 
 
-def get_asn1_value_as_number(asn1_obj, query):
-    """Wrap get_asn1_value to return an integer
+def get_asn1_value_as_number(asn1_obj: base.Asn1Type, query: str) -> int:  # noqa D417 undocumented-param
+    """Retrieve a value from a pyasn1 object and return it as an integer.
 
-    :param asn1_obj: pyasn1 object, the structure you want to query
-    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
-                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
-    :returns: int, the value you were looking for as an integer; or will raise a ValueError with details.
+    Arguments:
+    ---------
+        - `asn1_obj`: The pyasn1 object to query.
+        - `query`: The path to the value you want to extract, given as dot-notation.
+
+    Returns:
+    -------
+        - The extracted value as an integer.
+
+    Raises:
+    ------
+        - `ValueError` if the value cannot be found. Will raise a ValueError with details.
+
+    Examples:
+    --------
+    | ${int_val}= | Get Asn1 Value As Number | ${asn1_obj} | query=header.sender.directoryName.rdnSequence/0/0.value |
+    | ${int_val}= | Get Asn1 Value As Number | ${asn1_obj} | query=body.rp.status/0.status/0.status |
+
     """
     result = get_asn1_value(asn1_obj, query)
     decoded, _rest = decoder.decode(result)
     return int(decoded)
 
 
-def get_asn1_value_as_bytes(asn1_obj, query):
-    """Wrap get_asn1_value to return an integer
+def get_asn1_value_as_bytes(asn1_obj: base.Asn1Type, query: str) -> bytes:  # noqa D417 undocumented-param
+    """Retrieve a value from a pyasn1 object and return it as bytes.
 
-    :param asn1_obj: pyasn1 object, the structure you want to query
-    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
-                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
-    :returns: bytes, the value you were looking for as bytes; or will raise a ValueError with details.
+    Arguments:
+    ---------
+        - `asn1_obj`: The pyasn1 object to query.
+        - `query`: The path to the value you want to extract, given as dot-notation (e.g., 'header.senderKID').
+
+    Returns:
+    -------
+        - The extracted value as bytes.
+
+    Raises:
+    ------
+        - `ValueError`: If the value cannot be found.
+
+    Examples:
+    --------
+    | ${bytes_val}= | Get Asn1 Value As Bytes | ${asn1_obj} | query=header.senderKID |
+    | ${bytes_val}= | Get Asn1 Value As Bytes | ${asn1_obj} | query=header.transactionID |
+
     """
     result = get_asn1_value(asn1_obj, query)
-    # decoded, _rest = decoder.decode(result)
     return result.asOctets()
 
 
-def get_asn1_value_as_datetime(asn1_obj, query):
-    """Wrap get_asn1_value to return a DateTime object
+def get_asn1_value_as_datetime(  # noqa D417 undocumented-param
+    asn1_obj: base.Asn1Type, query: str
+) -> datetime:
+    """Retrieve a value from a pyasn1 object and return it as a python `datetime.datetime` object.
 
-    :param asn1_obj: pyasn1 object, the structure you want to query
-    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
-                 'header.messageTime'
-    :returns: DateTime, the value you requested; or will raise a ValueError with details.
+    Arguments:
+    ---------
+        - `asn1_obj`: The pyasn1 object to query.
+        - `query`: The path to the value you want to extract, given as dot-notation (e.g., 'header.messageTime').
+
+    Returns:
+    -------
+        - The extracted value as a `datetime.datetime` object.
+
+    Examples:
+    --------
+    | ${datetime_val}= | Get Asn1 Value As Datetime | ${asn1_obj} | query=header.messageTime |
+    | ${datetime_val}= | Get Asn1 Value As Datetime | ${asn1_obj} | query=tbsCertificate.validity.notBefore.UtcNow |
+
     """
     result = get_asn1_value(asn1_obj, query)
-    return result.asDateTime
+    return result.asDateTime  # type: ignore
 
 
-def get_asn1_value_as_der(asn1_obj, query):
-    """Wrap get_asn1_value to return a DER-encoded version of the queried value
+def get_asn1_value_as_der(asn1_obj: base.Asn1Type, query: str) -> bytes:  # noqa D417 undocumented-param
+    """Retrieve a value from a pyasn1 object and return it as a DER-encoded byte sequence.
 
-    :param asn1_obj: pyasn1 object, the structure you want to query
-    :param query: str, the path to the value you want to extract, given as a dot-notation, e.g.,
-                 'header.sender.directoryName.rdnSequence/0', or 'header.sender.directoryName.rdnSequence/0/0.value'
-    :returns: bytes, the DER-encoded bytes of the value you were looking for; or will raise a ValueError with details.
+    Arguments:
+    ---------
+        - `asn1_obj`: The pyasn1 object to query.
+        - `query` (str): The path to the value you want to extract, given as dot-notation.
+
+
+    Returns:
+    -------
+        - The extracted value as a DER-encoded `bytes` object.
+
+    Raises:
+    ------
+        - `ValueError`: If the value cannot be found.
+
+    Examples:
+    --------
+    | ${der_data}= | Get ASN1 Value As DER | ${asn1_obj} | query=header.sender.directoryName.rdnSequence/0/0.value |
+    | ${der_data}= | Get ASN1 Value As DER | ${asn1_obj} | query=extraCerts |
+
     """
     result = get_asn1_value(asn1_obj, query)
     return encoder.encode(result)
@@ -232,7 +354,6 @@ def _is_bit_set_in_bitstring(asn1_bitstring: BitString, bit_index: Strint, exclu
         return False
 
 
-@not_keyword
 def _is_either_bit_set_in_bitstring(
     asn1_bitstring: BitString,
     bit_indices: List[int],
@@ -254,7 +375,11 @@ def _is_either_bit_set_in_bitstring(
     return False
 
 
-def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool = True) -> bool:  # noqa: D417
+def is_bit_set(  # noqa D417 undocumented-param
+    asn1_bitstring: BitString,
+    bit_indices: Strint,
+    exclusive: bool = True,
+) -> bool:
     """Verify if a specific bit or bits are set within a given `BitString` object.
 
     It supports both integer index and named bit indices (which can be comma-separated). The check can be
@@ -262,8 +387,8 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
 
     Arguments:
     ---------
-        - asn1_bitstring: A `univ.BitString` object to be checked.
-        - bit_indices: A `str` representing the bit index or indices to check.
+        - asn1_bitstring: A `pyasn1` `BitString` object to be checked.
+        - bit_indices: A string representing the bit index or indices to check.
           This can be:
             - An integer index for a single bit check.
             - A comma-separated string of integers for multiple bit indices, e.g., "1, 9".
@@ -283,12 +408,16 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
 
     Examples:
     --------
-        | Is Bit Set | ${failInfo} | 26                  | ${True} |
-        | Is Bit Set | ${failInfo} | ${26}               | ${True} |
-        | Is Bit Set | ${failInfo} | duplicateCertReq    | ${True} |
-        | Is Bit Set | ${failInfo} | 1, 9                | ${True} |
+    | ${is_equal}= | Is Bit Set | ${failInfo} | 26 | ${True} |
+    | ${is_equal}= | Is Bit Set | ${failInfo} | ${26}  | ${True} |
+    | ${is_equal}= | Is Bit Set | ${failInfo} | duplicateCertReq  | ${True} |
+    | ${is_equal}= | Is Bit Set | ${failInfo} | 1, 9  | ${True} |
 
     """
+    logging.info("exclusive: %s ", str(exclusive))
+    logging.info("type %s: ", type(asn1_bitstring))
+    logging.info("input: %s type: %s", bit_indices, type(bit_indices))
+
     if not asn1_bitstring.isValue:
         raise ValueError("The Provided BitString has not set a Value!")
 
@@ -308,96 +437,185 @@ def is_bit_set(asn1_bitstring: BitString, bit_indices: Strint, exclusive: bool =
         # gets the indices to the corresponding human-readable-names.
         names = list(asn1_bitstring.namedValues.keys())
         try:
-            bit_indices = [names.index(val) for val in values]
+            bit_indices = [names.index(val.strip()) for val in values]  # type: ignore
         except ValueError as err:
             raise ValueError(f"Provided names: {values} but allowed are: {names}") from err
 
-        return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)
+        return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)  # type: ignore
+
+    raise ValueError("Expected to get either an int or a string as input, for `bit_indices`!")
 
 
-def validate_structure(value):
+@not_keyword
+def get_set_bitstring_names(asn1_bitstring: univ.BitString) -> str:
+    """Retrieve the set bit names from a pyasn1 `BitString` object.
+
+    :param asn1_bitstring: The pyasn1 `BitString` to extract names from.
+    :return: A comma-separated string of names corresponding to the set bits.
     """
-    Validate the `structure` argument, it must be of the form rfc****.ClassName.
+    binary_string = asn1_bitstring.asBinary()
+    options = list(asn1_bitstring.namedValues.keys())
+    names = []
+    for i, name in enumerate(options):
+        if len(binary_string) == i:
+            break
+        if binary_string[i] == "1":
+            names.append(name)
+    return ", ".join(names)
 
-    :param value: str, the structure argument to validate
-    :returns: str, the validated structure
-    :raises argparse.ArgumentTypeError: if the structure is invalid
+
+@not_keyword
+def asn1_names_to_bitstring(asn1object: Union[univ.BitString, type], values: str) -> univ.BitString:
+    """Return a `univ.BitString` object with provided values.
+
+    :param asn1object: calls object to generate from.
+    :param values: The human-readable name of the value to set.
+    :return:
     """
-    pattern = r'^rfc\d+\.[A-Z][a-zA-Z]+$'
-    if not re.match(pattern, value):
-        raise argparse.ArgumentTypeError(f"Invalid ASN1 structure path: {value}")
-    return value
+    # starts from zero! and 'dict_keyiterator' has no len()
+    bit_string = ["0"] * (len(list(asn1object.namedValues.keys())) + 1)
 
-def validate_query(value):
+    names = list(asn1object.namedValues.keys())
+
+    for value in values.strip(" ").split(","):
+        value = value.strip()
+        if value not in names:
+            raise ValueError(f"Provided name: {value} but allowed are: {names}")
+        ind = names.index(value)
+        bit_string[ind] = "1"
+
+    reversed_str = "".join(bit_string[::-1]).lstrip("0")[::-1]  # to only set needed values.
+    if isinstance(asn1object, type):
+        return asn1object(f"'{reversed_str}'B")
+
+    return type(asn1object)(f"'{reversed_str}'B")
+
+
+@not_keyword
+def asn1_get_named_value(asn1_object, value_name: str) -> Any:
+    """Return the value with a human-readable representation.
+
+    :param asn1_object:  The `pyasn1` object to search for the named value.
+    :param value_name: The human-readable name of the value to retrieve.
+    :return: The `pyasn1` value corresponding to the provided `value_name`.
+    :raises ValueError: If the `value_name` is not found in the `pyasn1` object's named values,
+                        a `ValueError` is raised with a list of allowed name
     """
-    Validate the `query` argument, it must be of the form rfc****.ClassName.
+    for name, value in asn1_object.namedValues.items():
+        if name == value_name:
+            if isinstance(asn1_object, type):
+                # if is true something like rfc9480.PKIStatus was given so it will return the encoded value.
+                # only internal use, for more information look at the Unittests.
+                return asn1_object(value)
+            return value
 
-    :param value: str, the asn1path query argument to validate
-    :returns: str, the validated query
-    :raises argparse.ArgumentTypeError: if the format of the query is invalid
+    names = list(asn1_object.namedValues.keys())
+    raise ValueError(f"Provided name: {value_name} but allowed are: {names} \nis of type: {type(asn1_object)}")
+
+
+@not_keyword
+def asn1_compare_named_integer(asn1_integer: univ.Integer, value: str) -> bool:  # noqa D417 undocumented-param
+    """Check if the provided `pyasn` Integer matches the human-readable representation.
+
+    :param asn1_integer: An `pyasn` Integer with named values.
+    :param value: The human-readable string representing the named value to compare against.
+    :return: True if the integer matches the named value, False otherwise.
     """
-    if value.count(':') > 1:
-        raise argparse.ArgumentTypeError("Invalid query, only one cast is allowed at most")
+    names = list(asn1_integer.namedValues.keys())
 
-    pattern = r'^[a-zA-Z]+$'
-    if not re.match(pattern, value):
-        raise argparse.ArgumentTypeError(f"Invalid ASN1Path query: {value}")
-    return value
+    if value in names:
+        int_value = names.index(value.strip(" "))
+        return int_value == int(asn1_integer)
+
+    raise ValueError(f"Provided name: {value} but allowed are: {names}")
 
 
-def main():
-    """Wrap the command-line interface"""
-    parser = argparse.ArgumentParser(description='Query ASN1 structures using ASN1Path notation')
-    parser.add_argument('filepath', type=pathlib.Path, help='Path to the file that contains the raw data,'
-                                                            ' use `-` for stdin')
-    parser.add_argument('structure', type=validate_structure, help='RFC and structure to use for schema,'
-                                                                   ' e.g., rfc4210.PKIMessage')
-    parser.add_argument('query', type=str, help='The query in ASN1Path notation')
-    parser.add_argument('--inform', type=str, choices=['raw', 'base64', 'der', 'ber', 'hex'],
-                        default='raw', help='The format of the input data')
-    args = parser.parse_args()
+def asn1_compare_named_values(  # noqa D417 undocumented-param
+    asn1_object: base.Asn1Type,
+    values: str,
+    exclusive: bool = True,
+    raise_exception: bool = False,
+    query: Optional[str] = None,
+) -> bool:
+    """Verify if specific human-readable representations of values are set for `pyasn1` named object.
 
-    logging.basicConfig(level=logging.DEBUG)
+    It supports both integer index and named bit indices (which can be comma-separated). The check can be
+    performed either exclusively or non-exclusively, depending on the `exclusive` parameter.
 
-    rfc, target_class_name = args.structure.split('.')
-    target_class = __import__(f'pyasn1_alt_modules.{rfc}', fromlist=[target_class_name])
+    Arguments:
+    ---------
+        - asn1_object: A  pyasn1 `univ.Integer` or `univ.BitString` object to be checked.
+        - values: A `str` a human-readable representation of the values.
+          This can be:
+            - An integer index for a single bit check.
+            - A comma-separated string of integers for multiple bit indices, e.g., "1, 9".
+            - A comma-separated string of human-readable bit names, e.g., "duplicateCertReq, badPOP".
+        - exclusive: A `bool` indicating if only one bit must be set (`True`)
+          or if any of them can be set (`False`). Default is `True`.
+        - `raise_exception`: If `True`, raises a `ValueError` if the comparison fails. Default is `False`.
+        - `query`: The path to the value in the ASN.1 object if nested. Uses dot-notation for the path.
 
-    if args.filepath == '-':
-        raw_data = sys.stdin.read()
+    Raises:
+    ------
+        - `ValueError`: If `raise_exception` is set to `True` and the specified value(s) are not found or do not match.
+
+
+    Returns:
+    -------
+        - `True` if the specified values or bits are set according to the `exclusive`
+          parameter; otherwise, `False`.
+
+    Examples:
+    --------
+    | ${result}= | Asn1 Compare Named Values | ${asn1_object} | values=duplicateCertReq | exclusive=True |
+    | ${result}= | Asn1 Compare Named Values | ${asn1_object} | values=1, 9 | exclusive=False |
+
+    """
+    if query is not None:
+        asn1_object = get_asn1_value(asn1_object, query=query)  # type: ignore
+
+    if isinstance(asn1_object, univ.BitString):
+        result = is_bit_set(asn1_object, values, exclusive=exclusive)
+
+    elif isinstance(asn1_object, univ.Integer):
+        vals = values.strip(" ").split(",")
+
+        tmp = [asn1_compare_named_integer(asn1_integer=asn1_object, value=value.strip(" ")) for value in vals]
+        result = sum(tmp)
+        if result == 0:
+            result = False
+        else:
+            result = exclusive
     else:
-        raw_data = args.filepath.read_bytes()
+        other_asn1_object = asn1_get_named_value(asn1_object=asn1_object.__class__, value_name=values)  # type: ignore
+        result = other_asn1_object == asn1_object
 
-    if args.inform == 'base64':
-        raw_data = b64decode(raw_data)
-    elif args.inform == 'hex':
-        raw_data = bytes.fromhex(raw_data)
+    if not result:
+        if raise_exception:
+            ex = " (exclusive)" if exclusive else ""
+            raise ValueError(f"{asn1_object.__class__.__name__} and {values} and different!{ex}")
+        return result
 
-    pyasn1_class = getattr(target_class, target_class_name)
-    specific_decoder = decoder if args.inform in ('der', 'raw') else ber_decoder
-
-    parsed_data, _rest = specific_decoder.decode(raw_data, asn1Spec=pyasn1_class())
-
-    if ':' in args.query:
-        query, cast = args.query.split(':')
-    else:
-        query = args.query
-        cast = 'str'
-
-    if cast not in ('str', 'int', 'bytes', 'der', 'datetime'):
-        raise ValueError(f"Invalid cast type: {cast}")
-
-    result = get_asn1_value(parsed_data, query)
-    if cast == 'datetime':
-        print(result.asDateTime)
-    elif cast == 'str':
-        print(result.prettyPrint())
-    elif cast == 'int':
-        print(int(result))
-    elif cast == 'bytes':
-        print(result.asOctets())
-    else:
-        print(result)
+    return result
 
 
-if __name__ == '__main__':
-    main()
+def encode_to_der(  # noqa D417 undocumented-param
+    asn1_structure: base.Asn1ItemBase,
+) -> bytes:
+    """DER-encode a `pyasn1` data structure.
+
+    Arguments:
+    ---------
+        - `asn1_structure`: The `pyasn1` data structure to be encoded.
+
+    Returns:
+    -------
+       - The DER-encoded bytes of the pyasn1 structure.
+
+    Examples:
+    --------
+    | ${der_bytes}= | Encode To Der | ${asn1_structure} |
+    | ${der_bytes}= | Encode To Der | asn1_structure=${pki_message} |
+
+    """
+    return encoder.encode(asn1_structure)

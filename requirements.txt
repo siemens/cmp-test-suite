@@ -2,9 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-cryptography==43.0.1
+cryptography==44.0.0
 pyasn1==0.5.1
 pyasn1-alt-modules==0.4.5
-robotframework==7.1
-pkilint==0.9.10
-robotframework-requests==0.9.6
+robotframework==7.1.1
+pkilint==0.12.3
+pycryptodome==3.21.0
+robotframework-requests==0.9.7
+SLH-DSA==0.1.3

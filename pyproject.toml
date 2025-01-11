@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[tool.robotidy]
+diff = true
+overwrite = false
+verbose = true
+separator = "space"
+spacecount = 4
+line_length = 120
+lineseparator = "native"
+skip_gitignore = false
+ignore_git_dir = false
+src = [
+    "./resources/keywords.resource",
+    "./tests"
+]
+configure = [
+    "AddMissingEnd:enabled=True",
+    "NormalizeSeparators:enabled=True",
+    "DiscardEmptySections:enabled=True",
+    "MergeAndOrderSections:enabled=True",
+    "RemoveEmptySettings:enabled=True",
+    "ReplaceEmptyValues:enabled=False",
+    "ReplaceWithVAR:enabled=True",
+    "NormalizeAssignments:enabled=True",
+    "GenerateDocumentation:enabled=False",
+    "OrderSettings:enabled=True",
+    "OrderSettingsSection:enabled=True",
+    "NormalizeTags:enabled=False", # maybe set to true.
+    "OrderTags:enabled=True",
+    "RenameVariables:enabled=False",
+    "IndentNestedKeywords:enabled=True",
+    "AlignSettingsSection:enabled=True",
+    "AlignVariablesSection:enabled=True",
+    "AlignTemplatedTestCases:enabled=False",
+    "AlignTestCasesSection:alignment_type=auto",
+    "AlignKeywordsSection:enabled=False",
+    "NormalizeNewLines:enabled=True",
+    "NormalizeSectionHeaderName:enabled=True",
+    "NormalizeSettingName:enabled=True",
+    "ReplaceRunKeywordIf:enabled=True",
+    "SplitTooLongLine:split_on_every_setting_arg =True",
+    "SmartSortKeywords:enabled=False",
+    "RenameTestCases:enabled=False",
+    "RenameKeywords:enabled=True",
+    "ReplaceReturns:enabled=True",
+    "ReplaceBreakContinue:enabled=True",
+    "InlineIf:enabled=True",
+    "Translate:enabled=False",
+    "NormalizeComments:enabled=True",
+    "RenameKeywords:replace_pattern=Cmp:replace_to=CMP",
+    "RenameKeywords:replace_pattern=cmp:replace_to=CMP",
+    "RenameKeywords:replace_pattern=TransactionID:replace_to=transactionID",
+    "RenameKeywords:replace_pattern=SenderNonce:replace_to=senderNonce",
+    "RenameKeywords:replace_pattern=SenderKID:replace_to=senderKID",
+    "RenameKeywords:replace_pattern=RecipNonce:replace_to=recipNonce",
+    "RenameKeywords:replace_pattern=MessageTime:replace_to=messageTime",
+    "RenameKeywords:replace_pattern=GeneralInfo:replace_to=generalInfo",
+    "RenameKeywords:replace_pattern=ProtectionAlg:replace_to=protectionAlg",
+]

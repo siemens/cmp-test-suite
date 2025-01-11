@@ -9,9 +9,8 @@ Type aliases are used to create descriptive names for commonly used types, makin
 easier to understand and work with.
 """
 
-from typing import Tuple, Union
+from typing import Union
 
-from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey, DSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
@@ -20,7 +19,15 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
-from pyasn1_alt_modules import rfc2986, rfc9480
+from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey
+from pq_logic.keys.abstract_pq import (
+    PQKEMPublicKey,
+    PQPrivateKey,
+    PQPublicKey,
+    PQSignaturePrivateKey,
+    PQSignaturePublicKey,
+)
+from pyasn1_alt_modules import rfc9480
 
 # Type alias for supported private key types
 PrivateKey = Union[
@@ -32,6 +39,8 @@ PrivateKey = Union[
     Ed448PrivateKey,
     X25519PrivateKey,
     X448PrivateKey,
+    PQPrivateKey,
+    AbstractHybridRawPrivateKey,
 ]
 # Type alias for supported public key types
 PublicKey = Union[
@@ -43,6 +52,9 @@ PublicKey = Union[
     Ed448PublicKey,
     X25519PublicKey,
     X448PublicKey,
+    PQPublicKey,
+    PQKEMPublicKey,
+    PQSignaturePublicKey,
 ]
 
 
@@ -55,6 +67,7 @@ PrivateKeySig = Union[
     DHPrivateKey,
     Ed25519PrivateKey,
     Ed448PrivateKey,
+    PQSignaturePrivateKey,
 ]
 PublicKeySig = Union[
     RSAPublicKey,
@@ -62,6 +75,8 @@ PublicKeySig = Union[
     DSAPublicKey,
     DHPublicKey,
     Ed25519PublicKey,
+    Ed448PublicKey,
+    PQSignaturePublicKey,
 ]
 
 # These `cryptography` keys can be used to sign a certificate.
@@ -76,34 +91,36 @@ PrivSignCertKey = Union[
     Ed448PrivateKey,
 ]
 
-
-# those types are Alias for the option a function can have.
-CsrType = Union[bytes, x509.CertificateSigningRequest, rfc2986.CertificationRequest]
-CertType = Union[bytes, x509.Certificate, rfc9480.Certificate]
-
-# If a certificate is generated, a tuple is returned with the following type.
-# Introduced for Developer for Better Readability.
-CertGenRet = Tuple[x509.Certificate, PrivateKey]
-
-
-# A Value which can be parsed to a function.
-# So that a PKIMessage does not need to be in pyasn1 format, but
-# the raw bytes are also allowed to be parsed.
-# Convince for the user
-PKIMsgType = Union[rfc9480.PKIMessage, bytes]
-
-
-# This is a "stringified int", to make it easier to pass numeric data
+# This is a "stringified integer", to make it easier to pass numeric data
 # to RobotFramework keywords. Normally, if you want
 # to pass an integer, you have to write it as `${45}` - which hinders readability.
 # With a stringified integer, we provide
 # some syntactic sugar, enabling both notations: `${45}` and `45`.
 Strint = Union[str, int]
 
-
 # At different stages of RobotFramework tests we deal with
-# certificates in various forms, e.g., DER-encoded bytes,
-# PEM-encoded strings, pyasn1 structures, etc. This type
+# certificates in forms, e.g., pyasn1 structures, or filepaths. This type
 # is used in functions that can accept either of these formats
 # and will transform them internally, as required.
-AnyCert = Union[bytes, x509.Certificate, rfc9480.Certificate, str]
+CertObjOrPath = Union[rfc9480.Certificate, str]
+
+
+# The `KGAKeyTypes` includes all private key types supported
+# for operations in the Key Generation Authority (KGA) logic.
+# This type ensures that only compatible private keys are used
+# for key exchange and key encipherment.
+EnvDataPrivateKey = Union[RSAPrivateKey, Ed25519PrivateKey, Ed448PrivateKey, EllipticCurvePrivateKey, PQKEMPublicKey]
+
+# The `ECDHPrivKeyTypes` includes all private key types supported
+# for ECDH operations. This type ensures that only compatible
+# private keys are used in ECDH-related operations.
+# Used in Key Generation Authority logic to make sure the key agreement
+# used the correct type.
+ECDHPrivKeyTypes = Union[EllipticCurvePrivateKey, X25519PrivateKey, X448PrivateKey]
+
+# The `ECDHPubKeyTypes` includes all public key types supported
+# for ECDH operations. This type ensures that only compatible
+# public keys are used in ECDH-related operations.
+# Used in Key Generation Authority logic to make sure the key agreement
+# used the correct type.
+ECDHPubKeyTypes = Union[EllipticCurvePublicKey, X25519PublicKey, X448PublicKey]

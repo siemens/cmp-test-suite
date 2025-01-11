@@ -10,165 +10,87 @@ algorithms, create cryptographic instances, and perform lookups between human-re
 corresponding OIDs.
 """
 
-from typing import Dict
+import logging
+from typing import Optional, Union
 
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa
-from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, rsa
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
+from pq_logic.tmp_oids import (
+    CMS_COMPOSITE_OID_2_HASH,
+    id_MLKEM768_ECDH_brainpoolP256r1,
+    id_MLKEM768_ECDH_P384,
+    id_MLKEM768_RSA2048,
+    id_MLKEM768_RSA3072,
+    id_MLKEM768_RSA4096,
+    id_MLKEM768_X25519,
+    id_MLKEM1024_ECDH_brainpoolP384r1,
+    id_MLKEM1024_ECDH_P384,
+    id_MLKEM1024_X448,
+)
 from pyasn1.type import univ
-from pyasn1_alt_modules import rfc3370, rfc5480, rfc8017, rfc8018, rfc9480, rfc9481
+from pyasn1_alt_modules import rfc9481
+from pyasn1_alt_modules.rfc5480 import id_dsa_with_sha256
 from robot.api.deco import not_keyword
 
-from typingutils import PrivateKey
-
-AES_GMAC_NAME_2_OID = {
-    "aes128_gmac": rfc9481.id_aes128_GMAC,
-    "aes192_gmac": rfc9481.id_aes192_GMAC,
-    "aes256_gmac": rfc9481.id_aes256_GMAC,
-    "aes-gmac": rfc9481.id_aes256_GMAC,
-    "aes_gmac": rfc9481.id_aes256_GMAC,
-}
-
-
-AES_GMAC_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
-    rfc9481.id_aes128_GMAC: "aes128_gmac",
-    rfc9481.id_aes192_GMAC: "aes192_gmac",
-    rfc9481.id_aes256_GMAC: "aes256_gmac",
-}
-
-
-RSA_SHA_OID_2_NAME = {
-    rfc8017.sha1WithRSAEncryption: "rsa-sha1",
-    rfc9481.sha224WithRSAEncryption: "rsa-sha224",
-    rfc9481.sha256WithRSAEncryption: "rsa-sha256",
-    rfc9481.sha384WithRSAEncryption: "rsa-sha384",
-    rfc9481.sha512WithRSAEncryption: "rsa-sha512",
-}
-
-ECDSA_SHA_OID_2_NAME = {
-    rfc9481.ecdsa_with_SHA224: "ecdsa-sha224",
-    rfc9481.ecdsa_with_SHA256: "ecdsa-sha256",
-    rfc9481.ecdsa_with_SHA384: "ecdsa-sha384",
-    rfc9481.ecdsa_with_SHA512: "ecdsa-sha512",
-}
-
-# These mappings facilitate the identification of the specific HMAC-SHA algorithm
-# used for MAC (Message Authentication Code) protection algorithms for the PKIMessage.
-HMAC_SHA_OID_2_NAME = {
-    rfc3370.hMAC_SHA1: "hmac-sha1",
-    rfc9481.id_hmacWithSHA224: "hmac-sha224",
-    rfc9481.id_hmacWithSHA256: "hmac-sha256",
-    rfc9481.id_hmacWithSHA384: "hmac-sha384",
-    rfc9481.id_hmacWithSHA512: "hmac-sha512",
-}
-
-
-# Used for preparing Signature Protection of the PKIMessage.
-SHA_OID_2_NAME = {
-    rfc5480.id_sha1: "sha1",
-    rfc5480.id_sha224: "sha224",
-    rfc5480.id_sha256: "sha256",
-    rfc5480.id_sha384: "sha384",
-    rfc5480.id_sha512: "sha512",
-}
-# SHA3 -> id-sha3-224 OID ::= { hashAlgs 7}
-
-# map OIDs of signature algorithms to the names of the hash functions
-# used in the signature; this is needed to compute the certificate has for
-# certConfirm messages, since it must contain the hash of the certificate,
-# computed with the same algorithm as the one in the signature
-OID_HASH_MAP: Dict[univ.ObjectIdentifier, str] = {}
-OID_HASH_MAP.update(RSA_SHA_OID_2_NAME)
-OID_HASH_MAP.update(ECDSA_SHA_OID_2_NAME)
-OID_HASH_MAP.update(HMAC_SHA_OID_2_NAME)
-OID_HASH_MAP.update(SHA_OID_2_NAME)
-
-
-# Updating the main dictionary with RSA and ECDSA OIDs
-# to check quickly if a given OID is supported by the Test-Suite
-SUPPORTED_SIG_MAC_OIDS = {rfc9481.id_Ed25519: "ed25519", rfc9481.id_Ed448: "ed448"}
-SUPPORTED_SIG_MAC_OIDS.update(RSA_SHA_OID_2_NAME)
-SUPPORTED_SIG_MAC_OIDS.update(ECDSA_SHA_OID_2_NAME)
-
-
-SYMMETRIC_PROT_ALGO = {}
-SYMMETRIC_PROT_ALGO.update(
-    {
-        rfc8018.id_PBMAC1: "pbmac1",
-        rfc9480.id_DHBasedMac: "dh_based_mac",
-        rfc9480.id_PasswordBasedMac: "password_based_mac",
-    }
+from resources.oidutils import (
+    ALL_KNOWN_PROTECTION_OIDS,
+    ALLOWED_HASH_TYPES,
+    CURVE_NAMES_TO_INSTANCES,
+    ML_DSA_OID_2_NAME,
+    OID_HASH_MAP,
+    OID_HASH_NAME_2_OID,
+    PQ_NAME_2_OID,
+    SUPPORTED_MAC_NAME_2_OID, PQ_OID_2_NAME, PQ_SIG_PRE_HASH_OID_2_NAME,
 )
+from resources.typingutils import PrivateKey
 
-SYMMETRIC_PROT_ALGO.update(HMAC_SHA_OID_2_NAME)
-SYMMETRIC_PROT_ALGO.update(AES_GMAC_OID_2_NAME)
-
-SUPPORTED_MAC_OID_2_NAME = {}
-SUPPORTED_MAC_OID_2_NAME.update(SUPPORTED_SIG_MAC_OIDS)
-SUPPORTED_MAC_OID_2_NAME.update(SYMMETRIC_PROT_ALGO)
-
-# reverse the dictionary to get OIDs with names
-# to perform lookups for getting PKIMessage Protection AlgorithmIdentifier
-SUPPORTED_MAC_NAME_2_OID = {y: x for x, y in SUPPORTED_MAC_OID_2_NAME.items()}
-
-# map strings used in OpenSSL-like common name notation to objects of NameOID types that
-# cryptography.x509 uses internally
-NAME_MAP = {
-    "C": NameOID.COUNTRY_NAME,
-    "ST": NameOID.STATE_OR_PROVINCE_NAME,
-    "L": NameOID.LOCALITY_NAME,
-    "O": NameOID.ORGANIZATION_NAME,
-    "CN": NameOID.COMMON_NAME,
+key_class_mapping = {
+    "RSAPrivateKey": "rsa",
+    "RSAPublicKey": "rsa",
+    "EllipticCurvePrivateKey": "ecdsa",
+    "EllipticCurvePublicKey": "ecdsa",
+    "ECPrivateKey": "ecdsa",
+    "ECPublicKey": "ecdsa",
+    "DSAPrivateKey": "dsa",
+    "DSAPublicKey": "dsa",
+    "Ed25519PrivateKey": "ed25519",
+    "Ed25519PublicKey": "ed25519",
+    "Ed448PrivateKey": "ed448",
+    "Ed448PublicKey": "ed448",
+    "X25519PrivateKey": "x25519",
+    "X25519PublicKey": "x25519",
+    "X448PrivateKey": "x448",
+    "X448PublicKey": "x448",
 }
 
-# Used to get the hash instances with their respective names.
-# This is used to make it easier for users to parse and select hash algorithms by name.
-# These hash instances are typically used for signing purposes, computing message digests,
-# or for MAC (Message Authentication Code) protection algorithms such as HMAC.
-ALLOWED_HASH_TYPES = {
-    "sha1": hashes.SHA1(),
-    "sha224": hashes.SHA224(),
-    "sha256": hashes.SHA256(),
-    "sha384": hashes.SHA384(),
-    "sha512": hashes.SHA512(),
+extra_data = {
+    "rsa-sha256-pss": rfc9481.id_RSASSA_PSS,
+    "rsa-shake128-pss": rfc9481.id_RSASSA_PSS_SHAKE128,
+    "rsa-shake256-pss": rfc9481.id_RSASSA_PSS_SHAKE256,
 }
 
 
-# Map of tuples (asymmetric algorithm OID, hash algorithm name) to the OID of a signature algorithm, e.g.
-# ('1.2.840.113549.1.1.1', 'sha256') -> '1.2.840.113549.1.1.11', i.e. (RSA, SHA256) -> sha256WithRSAEncryption
-# The OIDs are taken from pyasn1-alt-modules, so they are not strings, but rather univ.Oid objects (which can be
-# stringified, if necessary). This is needed when creating the `popo` (ProofOfPossession) structure for CRMF.
-OID_SIG_HASH_MAP = {
-    (rfc9481.rsaEncryption, "sha256"): rfc9481.sha256WithRSAEncryption,
-    (rfc9481.rsaEncryption, "sha384"): rfc9481.sha384WithRSAEncryption,
-    (rfc9481.rsaEncryption, "sha512"): rfc9481.sha512WithRSAEncryption,
-}
+def get_signing_oid(key, hash_alg: Optional[str], use_pss: bool = False) -> Optional[univ.ObjectIdentifier]:
+    """Retrieve the OID for a signature algorithm based on the key and hash algorithm.
 
-# Saves the supported Curves to Perform a Lookup for key Generation.
-CURVE_NAMES_TO_INSTANCES = {
-    "secp192r1": ec.SECP192R1(),  # NIST P-192
-    "prime192v1": ec.SECP192R1(),  # NIST P-192 (alias)
-    "secp224r1": ec.SECP224R1(),  # NIST P-224
-    "prime224v1": ec.SECP224R1(),  # NIST P-224 (alias)
-    "secp256r1": ec.SECP256R1(),  # NIST P-256
-    "prime256v1": ec.SECP256R1(),  # NIST P-256 (alias)
-    "secp384r1": ec.SECP384R1(),  # NIST P-384
-    "secp521r1": ec.SECP521R1(),  # NIST P-521
-    "secp256k1": ec.SECP256K1(),  # SECG curve over a 256 bit prime field (used in Bitcoin)
-    "sect163k1": ec.SECT163K1(),  # SECG/WTLS curve over a 163 bit binary field
-    "sect163r2": ec.SECT163R2(),  # SECG curve over a 163 bit binary field
-    "sect233k1": ec.SECT233K1(),  # SECG curve over a 233 bit binary field
-    "sect233r1": ec.SECT233R1(),  # SECG curve over a 233 bit binary field
-    "sect283k1": ec.SECT283K1(),  # SECG curve over a 283 bit binary field
-    "sect283r1": ec.SECT283R1(),  # SECG curve over a 283 bit binary field
-    "sect409k1": ec.SECT409K1(),  # SECG curve over a 409 bit binary field
-    "sect409r1": ec.SECT409R1(),  # SECG curve over a 409 bit binary field
-    "sect571k1": ec.SECT571K1(),  # SECG curve over a 571 bit binary field
-    "sect571r1": ec.SECT571R1(),  # SECG curve over a 571 bit binary field
-    "brainpoolP256r1": ec.BrainpoolP256R1(),  # Brainpool curve over a 256 bit prime field
-    "brainpoolP384r1": ec.BrainpoolP384R1(),  # Brainpool curve over a 384 bit prime field
-    "brainpoolP512r1": ec.BrainpoolP512R1(),  # Brainpool curve over a 512 bit prime field
-}
+    :param key: The private key instance.
+    :param hash_alg: The hash algorithm to map to the signature OID.
+    :param use_pss: Whether to use RSA-PSS padding. Default is `False`.
+    :return: The OID of the signature algorithm or `None` if not found.
+    """
+    oid = None
+    type_name = key.__class__.__name__
+    key_type = key_class_mapping.get(type_name, "")
+    if hash_alg is not None:
+        name = key_type + "-" + hash_alg
+        if use_pss:
+            name += "-pss"
+        oid = extra_data.get(name)
+
+    else:
+        name = key_type
+    return oid or OID_HASH_NAME_2_OID.get(name) or SUPPORTED_MAC_NAME_2_OID.get(key_type)
 
 
 @not_keyword
@@ -177,7 +99,7 @@ def sha_alg_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
 
     :param hash_name: A string representing the hash name to look up. Example hash names could be "sha256"
                       or "hmac-sha256"
-    :return: pyasn1.type.univ.ObjectIdentifier
+    :return: The corresponding `pyasn1` OID.
     """
     hash_name = hash_name.lower().replace("_", "-").strip()
 
@@ -204,74 +126,43 @@ def get_curve_instance(curve_name: str) -> ec.EllipticCurve:
 
 
 @not_keyword
-def get_alg_oid_from_key_hash(key: PrivateKey, hash_alg: str) -> univ.ObjectIdentifier:
-    """Find the pyasn1 oid given the hazmat key instance and a name of a hashing algorithm
+def get_hash_from_oid(oid: univ.ObjectIdentifier, only_hash: bool = False) -> Union[str, None]:
+    """Determine the name of a hashing function used in a signature algorithm given by its oid.
 
-    :param key: cryptography.hazmat.primitives.asymmetric, key instance
-    :param hash_alg: str, name of hashing algorithm, e.g., 'sha256'
-    :return: pyasn1.type.univ.ObjectIdentifier of signature algorithm
+    :param oid: `pyasn1 univ.ObjectIdentifier`, OID of signing algorithm
+    :param only_hash: A flag indicating if only the hash name shall be returned if one is contained.
+    :return: name of hashing algorithm, e.g., 'sha256' or `None`, if the
+    signature algorithm does not use one.
     """
-    if isinstance(key, rsa.RSAPrivateKey):
-        if hash_alg == "sha256":
-            return rfc9481.sha256WithRSAEncryption
-        if hash_alg == "sha384":
-            return rfc9481.sha384WithRSAEncryption
-        if hash_alg == "sha512":
-            return rfc9481.sha512WithRSAEncryption
+    if oid in {rfc9481.id_Ed25519, rfc9481.id_Ed448}:
+        return None
 
-    elif isinstance(key, ec.EllipticCurvePrivateKey):
-        if hash_alg == "sha256":
-            return rfc9481.ecdsa_with_SHA256
-        if hash_alg == "sha384":
-            return rfc9481.ecdsa_with_SHA384
-        if hash_alg == "sha512":
-            return rfc9481.ecdsa_with_SHA512
-
-    elif isinstance(key, ed25519.Ed25519PrivateKey):
-        return SUPPORTED_MAC_NAME_2_OID["ed448"]
-
-    elif isinstance(key, ed448.Ed448PrivateKey):
-        return SUPPORTED_MAC_NAME_2_OID["ed448"]
-
-    raise ValueError(f"Unsupported signature algorithm for ({key}, {hash_alg})")
+    if oid in CMS_COMPOSITE_OID_2_HASH:
+        return CMS_COMPOSITE_OID_2_HASH[oid]
 
 
-@not_keyword
-def get_sig_oid_from_key_hash(alg_oid, hash_alg):
-    """Get the OID of a signature algorithm given the OID of the asymmetric algorithm and the hash function name.
-
-    :param: alg_oid: pyasn1.type.univ.ObjectIdentifier, OID of asymmetric algorithm
-    :param: hash_alg: str, name of hashing algorithm, e.g., 'sha256'
-    :returns: pyasn1.type.univ.ObjectIdentifier of signature algorithm, e.g.,
-    '1.2.840.113549.1.1.11' (i.e., sha256WithRSAEncryption)
-    """
     try:
-        return OID_SIG_HASH_MAP[(alg_oid, hash_alg)]
+
+        if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
+            return PQ_SIG_PRE_HASH_OID_2_NAME[oid].split("-")[-1]
+
+        if oid in PQ_OID_2_NAME:
+            return None
+
+        return OID_HASH_MAP[oid] if not only_hash else OID_HASH_MAP[oid].split("-")[1]
     except KeyError as err:
+        name = may_return_oid_to_name(oid)
         raise ValueError(
-            f"Unsupported signature algorithm for ({alg_oid}, {hash_alg}), see cryptoutils.OID_SIG_HASH_MAP"
+            f"Unknown signature algorithm OID {oid}: {name}, check OID_HASH_MAP in cryptoutils.py"
         ) from err
 
 
 @not_keyword
-def get_hash_from_signature_oid(oid: univ.ObjectIdentifier) -> str:
-    """Determine the name of a hashing function used in a signature algorithm given by its oid
-
-    :param oid: `pyasn1 univ.ObjectIdentifier`, OID of signing algorithm
-    :return: str, name of hashing algorithm, e.g., 'sha256'
-    """
-    try:
-        return OID_HASH_MAP[oid]
-    except KeyError as err:
-        raise ValueError(f"Unknown signature algorithm OID {oid}, check OID_HASH_MAP in cryptoutils.py") from err
-
-
-@not_keyword
 def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
-    """Return an instance of a hash algorithm object based on its name
+    """Return an instance of a hash algorithm object based on its name.
 
-    :param alg: str, name of hashing algorithm, e.g., 'sha256'
-    :return: cryptography.hazmat.primitives.hashes
+    :param alg: The name of hashing algorithm, e.g., 'sha256'
+    :return: `cryptography.hazmat.primitives.hashes`
     """
     try:
         # to also get the hash function with rsa-sha1 and so on.
@@ -281,3 +172,172 @@ def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
         return ALLOWED_HASH_TYPES[alg]
     except KeyError as err:
         raise ValueError(f"Unsupported hash algorithm: {alg}") from err
+
+
+@not_keyword
+def may_return_oid_to_name(oid: univ.ObjectIdentifier) -> str:
+    """Check if the oid is Known and then returns a human-readable representation, or the dotted string.
+
+    :param oid: The OID to perform the lookup for.
+    :return: Either a human-readable name or the OID as dotted string.
+    """
+    return ALL_KNOWN_PROTECTION_OIDS.get(oid, str(oid))
+
+
+def get_oid_composite(
+    ml_kem_name: str, trad_key: Union[ed448.Ed448PrivateKey, ec.EllipticCurvePrivateKey, rsa.RSAPrivateKey]
+):
+    """Get the OID for a composite key based on the ML-KEM name and the traditional key.
+
+    :param ml_kem_name:
+    :param trad_key:
+    :return:
+    """
+    oid_mapping = {
+        ("MLKEM768", rsa.RSAPrivateKey): {
+            2048: id_MLKEM768_RSA2048,
+            3072: id_MLKEM768_RSA3072,
+            4096: id_MLKEM768_RSA4096,
+        },
+        ("MLKEM768", ec.EllipticCurvePrivateKey): {
+            "secp384r1": id_MLKEM768_ECDH_P384,
+            "brainpoolP256r1": id_MLKEM768_ECDH_brainpoolP256r1,
+        },
+        ("MLKEM768", ed448.Ed448PrivateKey): id_MLKEM768_X25519,
+        ("MLKEM1024", ec.EllipticCurvePrivateKey): {
+            "secp384r1": id_MLKEM1024_ECDH_P384,
+            "brainpoolP384r1": id_MLKEM1024_ECDH_brainpoolP384r1,
+        },
+        ("MLKEM1024", ed448.Ed448PrivateKey): id_MLKEM1024_X448,
+    }
+
+    # Determine the traditional key type and retrieve the corresponding OID
+    if isinstance(trad_key, rsa.RSAPrivateKey):
+        key_size = trad_key.key_size
+        return oid_mapping.get((ml_kem_name, rsa.RSAPrivateKey), {}).get(key_size, None)
+    if isinstance(trad_key, ec.EllipticCurvePrivateKey):
+        curve_name = trad_key.curve.name
+        return oid_mapping.get((ml_kem_name, ec.EllipticCurvePrivateKey), {}).get(curve_name, None)
+    if isinstance(trad_key, ed448.Ed448PrivateKey):
+        return oid_mapping.get((ml_kem_name, ed448.Ed448PrivateKey), None)
+
+    raise ValueError("Unsupported traditional key type.")
+
+
+@not_keyword
+def get_rsa_pss_oid(hash_alg: str = "sha256") -> univ.ObjectIdentifier:
+    """Get the RSA-PSS key hash OID for the given hash algorithm.
+
+    :param hash_alg: The hash algorithm to map to the RSA-PSS signature OID.
+    Supported values: "shake128", "shake256". Default is "sha256".
+    (`id-RSASSA-PSS`)
+    :return: None or the matching ObjectIdentifier.
+    """
+    if hash_alg == "shake128":
+        alg_oid = rfc9481.id_RSASSA_PSS_SHAKE128
+    elif hash_alg == "shake256":
+        alg_oid = rfc9481.id_RSASSA_PSS_SHAKE256
+    else:
+        alg_oid = rfc9481.id_RSASSA_PSS
+
+    return alg_oid
+
+
+@not_keyword
+def get_rsa_key_hash_oid(hash_alg: str, use_pss: bool = False) -> Optional[univ.ObjectIdentifier]:
+    """Get the RSA key hash OID for the given hash algorithm.
+
+    :param hash_alg: str, the hash algorithm to map to the RSA signature OID.
+    Supported values: "sha256", "sha384", "sha512".
+    :return: None or the matching ObjectIdentifier.
+    """
+    if use_pss:
+        return get_rsa_pss_oid(hash_alg=hash_alg)
+
+    alg_oid = None
+    if hash_alg == "sha256":
+        alg_oid = rfc9481.sha256WithRSAEncryption
+    elif hash_alg == "sha384":
+        alg_oid = rfc9481.sha384WithRSAEncryption
+    elif hash_alg == "sha512":
+        alg_oid = rfc9481.sha512WithRSAEncryption
+
+    return alg_oid
+
+
+@not_keyword
+def get_ec_key_hash_oid(hash_alg: str):
+    """Get the ECDSA key hash OID for the given hash algorithm.
+
+    :param hash_alg: str, the hash algorithm to map to the ECDSA signature OID.
+    Supported values: "sha256", "sha384", "sha512".
+    :return: None or the matching ObjectIdentifier.
+    """
+    alg_oid = None
+    if hash_alg == "sha256":
+        alg_oid = rfc9481.ecdsa_with_SHA256
+    elif hash_alg == "sha384":
+        alg_oid = rfc9481.ecdsa_with_SHA384
+    elif hash_alg == "sha512":
+        alg_oid = rfc9481.ecdsa_with_SHA512
+    elif hash_alg == "shake128":
+        alg_oid = rfc9481.id_ecdsa_with_shake128
+    elif hash_alg == "shake256":
+        alg_oid = rfc9481.id_ecdsa_with_shake256
+
+    return alg_oid
+
+
+@not_keyword
+def get_alg_oid_from_key_hash(
+    key: PrivateKey, hash_alg: str, use_pss: bool = False, use_prehashed: bool = False
+) -> univ.ObjectIdentifier:
+    """Find the pyasn1 oid given the hazmat key instance and a name of a hashing algorithm.
+
+    Only used for single key algorithms, not for composite keys.
+
+    :param key: The private key instance.
+    :param hash_alg: Name of hashing algorithm, e.g., 'sha256'
+    :param use_pss: Flag to use RSA-PSS padding. Default is False.
+    :param use_prehashed: Flag to use prehashed key. Default is False.
+    :return: The OID of the signature algorithm.
+    """
+    if isinstance(key, dsa.DSAPrivateKey):
+        logging.info("Remember to only use with Negative Testing!")
+        if hash_alg == "sha256":
+            return id_dsa_with_sha256
+        raise ValueError("DSA is only allowed with sha256!")
+
+    alg_oid = get_signing_oid(key, hash_alg, use_pss=use_pss)
+
+    if isinstance(key, PQSignaturePrivateKey) and alg_oid is None:
+
+        hash_alg = key.check_hash_alg(hash_alg)
+
+        name = key.name
+        if hash_alg is not None:
+            name += "-" + hash_alg
+
+        return PQ_NAME_2_OID[name]
+
+    # if isinstance(key, AbstractCompositeSigPrivateKey):
+    #    alg_oid = key.get_oid(used_padding=use_pss, prehash=use_prehashed)
+
+    if alg_oid is not None:
+        return alg_oid
+
+    raise ValueError(f"Unsupported signature algorithm for ({type(key).__name__}, {hash_alg})")
+
+
+@not_keyword
+def compute_hash(alg_name: str, data: bytes) -> bytes:
+    """Calculate the hash of data using an algorithm given by its name.
+
+    :param alg_name: The Name of algorithm, e.g., 'sha256', see HASH_NAME_OBJ_MAP.
+    :param data: The buffer we want to hash.
+    :return: The resulting hash.
+    """
+    hash_class = hash_name_to_instance(alg_name)
+    digest = hashes.Hash(hash_class)
+    digest.update(data)
+    return digest.finalize()

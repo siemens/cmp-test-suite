@@ -1,0 +1,838 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
+"""Convertible Forms with Multiple Keys and Signatures For Use In Internet X.509 Certificates.
+
+https://datatracker.ietf.org/doc/draft-sun-lamps-hybrid-scheme/
+
+Based on version:
+https://www.ietf.org/archive/id/draft-sun-lamps-hybrid-scheme-00.html
+
+
+"""
+
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
+import requests
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import char, tag, univ
+from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
+from pyasn1_alt_modules.rfc9215 import id_ca
+from resources.certbuildutils import build_csr, prepare_sig_alg_id, prepare_tbs_certificate, prepare_validity
+from resources.certextractutils import get_extension
+from resources.certutils import load_public_key_from_cert
+from resources.convertutils import copy_asn1_certificate
+from resources.cryptoutils import sign_data
+from resources.keyutils import load_public_key_from_spki
+from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME
+from resources.protectionutils import prepare_sha_alg_id
+from resources.typingutils import PublicKeySig
+from resources.utils import get_openssl_name_notation
+
+from pq_logic.combined_factory import CombinedKeyFactory
+from pq_logic.hybrid_structures import AltSignatureExt, AltSubPubKeyExt, UniformResourceIdentifier
+from pq_logic.keys.comp_sig_cms03 import (
+    CompositeSigCMSPrivateKey,
+    CompositeSigCMSPublicKey,
+    compute_hash,
+    get_oid_cms_composite_signature,
+)
+from pq_logic.pq_compute_utils import sign_data_with_alg_id, verify_signature_with_alg_id
+from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH
+
+id_sun = univ.ObjectIdentifier(f"{id_ca}.1")
+
+# CSR
+id_altSubPubKeyHashAlgAttr = univ.ObjectIdentifier(f"{id_sun}.2")
+id_altSubPubKeyLocAttr = univ.ObjectIdentifier(f"{id_sun}.3")
+id_altSigValueHashAlgAttr = univ.ObjectIdentifier(f"{id_sun}.4")
+id_altSigValueLocAttr = univ.ObjectIdentifier(f"{id_sun}.5")
+
+
+# x509
+id_altSubPubKeyExt = univ.ObjectIdentifier(f"{id_sun}.6")
+id_altSignatureExt = univ.ObjectIdentifier(f"{id_sun}.7")
+
+
+def _hash_public_key(public_key, hash_alg: str) -> bytes:
+    """Hash a public key using the specified hash algorithm.
+
+    :param public_key: The public key to hash.
+    :param hash_alg: The hash algorithm name (e.g., "sha256").
+    :return: The computed hash as bytes.
+    :raises ValueError: If the hash algorithm is invalid.
+    """
+    public_key_der = public_key.public_bytes(
+        encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+
+    return compute_hash(hash_alg, public_key_der)
+
+
+##############
+# CSR
+#############
+
+
+def prepare_alt_sub_pub_key_hash_alg_attr(hash_alg: str) -> rfc2986.Attribute:
+    """Prepare the Alternative Subject Public Key Hash Algorithm Attribute.
+
+    :param hash_alg: The hash algorithm name (e.g., "sha256").
+    :return: `Attribute` representing the altSubPubKeyHashAlgAttr.
+    """
+    if not hash_alg:
+        raise ValueError("hash_alg must not be None.")
+
+    attr = rfc2986.Attribute()
+    attr["type"] = id_altSubPubKeyHashAlgAttr
+    attr["values"][0] = prepare_sha_alg_id(hash_alg)
+    return attr
+
+
+def prepare_alt_sub_pub_key_loc_attr(location: str) -> rfc2986.Attribute:
+    """Prepare the Alternative Subject Public Key Location Attribute.
+
+    :param location: URI string representing the location of the alternative public key.
+    :return: `Attribute` representing the altSubPubKeyLocAttr.
+    """
+    attr = rfc2986.Attribute()
+    attr["type"] = id_altSubPubKeyLocAttr
+    attr["values"][0] = encoder.encode(char.IA5String(location))
+    return attr
+
+
+def prepare_alt_sig_value_hash_alg_attr(hash_alg: str) -> rfc2986.Attribute:
+    """Prepare the Alternative Signature Value Hash Algorithm Attribute.
+
+    :param hash_alg: The hash algorithm name (e.g., "sha256").
+    :return: `Attribute` representing the altSigValueHashAlgAttr.
+    """
+    if not hash_alg:
+        raise ValueError("hash_alg must not be None.")
+
+    attr = rfc2986.Attribute()
+    attr["type"] = id_altSigValueHashAlgAttr
+    attr["values"][0] = prepare_sha_alg_id(hash_alg)
+    return attr
+
+
+def prepare_alt_sig_value_loc_attr(location: str) -> rfc2986.Attribute:
+    """Prepare the Alternative Signature Value Location Attribute.
+
+    :param location: URI string representing the location of the alternative signature.
+    :return: `Attribute` representing the altSigValueLocAttr.
+    """
+    attr = rfc2986.Attribute()
+    attr["type"] = id_altSigValueLocAttr
+    attr["values"][0] = char.IA5String(location)
+    return attr
+
+
+def prepare_all_csr_attributes(
+    pub_key_hash_alg: Optional[str] = None,
+    pub_key_location: Optional[str] = None,
+    sig_hash_alg: Optional[str] = None,
+    sig_value_location: Optional[str] = None,
+) -> List[rfc2986.Attribute]:
+    """Prepare all alternative public key and signature attributes.
+
+    :param pub_key_hash_alg: AlgorithmIdentifier for the public key hash algorithm (optional).
+    :param pub_key_location: URI string for the alternative public key location (optional).
+    :param sig_hash_alg: AlgorithmIdentifier for the signature hash algorithm (optional).
+    :param sig_value_location: URI string for the alternative signature location (optional).
+    :return: List of rfc2986.Attribute objects.
+    """
+    attributes = []
+
+    if pub_key_hash_alg is not None:
+        attributes.append(prepare_alt_sub_pub_key_hash_alg_attr(pub_key_hash_alg))
+
+    if pub_key_location is not None:
+        attributes.append(prepare_alt_sub_pub_key_loc_attr(pub_key_location))
+
+    if sig_hash_alg is not None:
+        attributes.append(prepare_alt_sig_value_hash_alg_attr(sig_hash_alg))
+
+    if sig_value_location is not None:
+        attributes.append(prepare_alt_sig_value_loc_attr(sig_value_location))
+
+    return attributes
+
+
+##############
+# X.509
+#############
+
+
+def prepare_alt_sub_pub_key_ext(
+    public_key: rsa.RSAPublicKey,
+    by_val: bool,
+    hash_alg: Optional[str] = None,
+    location: Optional[str] = None,
+    critical: bool = False,
+) -> rfc5280.Extension:
+    """Prepare the `AltSubPubKeyExt` as an rfc5280.Extension.
+
+    :param public_key: Cryptography RSA public key representing the alternative public key or its hash value.
+    :param by_val: Boolean indicating byVal. If True, the public_key contains the actual key value.
+                    If False, the public_key contains the hash of the alternative public key.
+    :param hash_alg: The hash algorithm name (e.g., "sha256"). Required if by_val is False.
+    :param location: Optional URI string representing the location of the alternative public key.
+    :return: `Extension` instance representing the AltSubPubKeyExt.
+    :raises ValueError: If inputs are invalid (e.g., missing required fields).
+    """
+    public_key_der = public_key.public_bytes(
+        encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+
+    obj, _ = decoder.decode(public_key_der, rfc5280.SubjectPublicKeyInfo())
+
+    # If byVal is False, calculate the hash of the public key
+    if not by_val:
+        if not hash_alg:
+            raise ValueError("hash_alg must be provided when byVal is False.")
+        public_key_der = compute_hash(alg_name=hash_alg, data=public_key_der)
+
+    alt_sub_pub_key_ext = AltSubPubKeyExt()
+    alt_sub_pub_key_ext["byVal"] = by_val
+    alt_sub_pub_key_ext["altAlgorithm"] = obj["algorithm"]
+
+    # plainOrHash stores the alternative public key or its hash value. When byVal is FALSE,
+    # the plainOrHash field stores the hash value of the alternative public key.
+    # When byVal is TRUE, plainOrHash stores the actual value of alternative public key
+    alt_sub_pub_key_ext["plainOrHash"] = univ.BitString.fromOctetString(public_key_der)
+
+    if hash_alg:
+        alt_sub_pub_key_ext["hashAlg"]["algorithm"] = sha_alg_name_to_oid(hash_alg)
+
+    if location is not None:
+        alt_sub_pub_key_ext["location"] = UniformResourceIdentifier(location)
+
+    ext_value = encoder.encode(alt_sub_pub_key_ext)
+    extension = rfc5280.Extension()
+    extension["extnID"] = id_altSubPubKeyExt
+    # MUST be non-critical
+    extension["critical"] = critical
+    extension["extnValue"] = univ.OctetString(ext_value)
+    return extension
+
+
+def prepare_alt_signature_ext(
+    signature: bytes,
+    by_val: bool,
+    alt_sig_algorithm: rfc9480.AlgorithmIdentifier,
+    hash_alg: Optional[str] = None,
+    location: Optional[str] = None,
+    critical: bool = False,
+) -> rfc5280.Extension:
+    """
+    Prepare the `AltSignatureExt` as an rfc5280.Extension.
+
+    :param signature: Bytes representing the alternative signature or its hash value.
+    :param by_val: Boolean indicating byVal. If True, the signature contains the actual signature value.
+                   If False, the signature contains the hash of the alternative signature.
+    :param alt_sig_algorithm: AlgorithmIdentifier for the alternative signature algorithm.
+    :param hash_alg: The hash algorithm name (e.g., "sha256"). Required if by_val is False.
+    :param location: Optional URI string representing the location of the alternative signature.
+    :param critical: Whether the extension is critical.
+    :return: rfc5280.Extension instance representing the AltSignatureExt.
+    :raises ValueError: If inputs are invalid (e.g., missing required fields).
+    """
+    # Input validation
+    if not signature:
+        raise ValueError("signature must not be empty.")
+    if not by_val and hash_alg is None:
+        raise ValueError("hash_alg must be provided when by_val is False.")
+
+    # If byVal is False, calculate the hash of the signature
+    if not by_val:
+        if not hash_alg:
+            raise ValueError("hash_alg must be provided when byVal is False.")
+        signature = compute_hash(hash_alg, signature)
+
+    alt_signature_ext = AltSignatureExt()
+    alt_signature_ext["byVal"] = by_val
+    alt_signature_ext["plainOrHash"] = univ.BitString.fromOctetString(signature)
+    alt_signature_ext["altSigAlgorithm"] = alt_sig_algorithm
+
+    if hash_alg is not None or not by_val:
+        alg_id = prepare_sha_alg_id(hash_alg=hash_alg)
+        alt_signature_ext["hashAlg"] = alg_id
+
+    if location is not None:
+        alt_signature_ext["location"] = char.IA5String(location)
+
+    ext_value = encoder.encode(alt_signature_ext)
+
+    extension = rfc5280.Extension()
+    extension["extnID"] = id_altSignatureExt
+    # MUST be non-critical
+    extension["critical"] = critical
+    extension["extnValue"] = univ.OctetString(ext_value)
+
+    return extension
+
+
+def build_crs_composite(
+    signing_key: Optional[CompositeSigCMSPrivateKey] = None,
+    common_name: str = "CN=Hans Mustermann",
+    pub_key_hash_alg: Optional[str] = None,
+    pub_key_location: Optional[str] = None,
+    sig_hash_alg: Optional[str] = None,
+    sig_value_location: Optional[str] = None,
+    use_rsa_pss: bool = True,
+) -> rfc6402.CertificationRequest:
+    """
+    Create a CSR with composite signatures, supporting two public keys and multiple CSR attributes.
+
+    :param signing_key: CompositeSigCMSPrivateKey, which holds both traditional and post-quantum keys.
+    :param common_name: The subject common name for the CSR.
+    :param pub_key_hash_alg: Hash algorithm for the alternative public key.
+    :param pub_key_location: URI for the alternative public key.
+    :param sig_hash_alg: Hash algorithm for the alternative signature.
+    :param sig_value_location: URI for the alternative signature.
+    :param use_rsa_pss: Whether to use RSA-PSS for traditional keys.
+    :return: CertificationRequest object with composite signature.
+    """
+    signing_key = signing_key or CompositeSigCMSPrivateKey.generate(pq_name="ml-dsa-44", trad_param="ec")
+
+    csr = build_csr(signing_key, common_name=common_name, exclude_signature=True, use_rsa_pss=use_rsa_pss)
+    sig_alg_id = rfc5280.AlgorithmIdentifier()
+
+    domain_oid = get_oid_cms_composite_signature(
+        signing_key.pq_key.name,
+        signing_key.trad_key,  # type: ignore
+        use_pss=use_rsa_pss,
+        pre_hash=False,
+    )
+
+    # Step 4 and 5
+    # Currently is always the PQ-Key the firsts key to
+    # it is assumed to be the first key, and the alternative key is the traditional key.
+    attributes = prepare_all_csr_attributes(
+        pub_key_hash_alg=pub_key_hash_alg,
+        sig_value_location=sig_value_location,
+        pub_key_location=pub_key_location,
+        sig_hash_alg=sig_hash_alg,
+    )
+
+    sig_alg_id["algorithm"] = domain_oid
+
+    csr["certificationRequestInfo"]["attributes"].extend(attributes)
+
+    der_data = encoder.encode(csr["certificationRequestInfo"])
+    signature = sign_data_with_alg_id(key=signing_key, alg_id=sig_alg_id, data=der_data)
+
+    csr["signatureAlgorithm"] = sig_alg_id
+    csr["signature"] = univ.BitString.fromOctetString(signature)
+
+    csr, _ = decoder.decode(encoder.encode(csr), rfc6402.CertificationRequest())
+    return csr
+
+
+###################
+# Server Side
+###################
+
+
+def _extract_vals_from_attr(csr: rfc6402.CertificationRequest) -> Dict:
+    """Extract values of specific attributes from a CSR.
+
+    :param csr: The CSR from which attribute values will be extracted.
+    :return: A dictionary with attribute OIDs as keys and their corresponding values.
+    """
+    attribute_map = {
+        id_altSubPubKeyHashAlgAttr: "pub_key_hash_id",
+        id_altSubPubKeyLocAttr: "pub_key_loc",
+        id_altSigValueHashAlgAttr: "sig_hash_id",
+        id_altSigValueLocAttr: "sig_loc",
+    }
+
+    extracted_values = {x: None for x in attribute_map.values()}
+
+    for attribute in csr["certificationRequestInfo"]["attributes"]:
+        oid = attribute["attrType"]
+
+        if oid == id_altSubPubKeyHashAlgAttr or oid == id_altSigValueHashAlgAttr:
+            alg_id, _ = decoder.decode(attribute["attrValues"][0].asOctets(), rfc9480.AlgorithmIdentifier())
+            key = attribute_map[oid]
+            extracted_values[key] = alg_id
+
+        elif oid in attribute_map:
+            key = attribute_map[oid]
+            extracted_values[key] = decoder.decode(attribute["attrValues"][0].asOctets())[0].prettyPrint()
+
+    return extracted_values
+
+
+def sun_csr_to_cert(
+    csr: rfc6402.CertificationRequest,
+    issuer_private_key,
+    alt_private_key,
+    issuer_cert: Optional[rfc9480.CMPCertificate] = None,
+    hash_alg: str = "sha256",
+) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
+    """Convert a CSR to a certificate, with the sun hybrid methode.
+
+    :param csr: The CSR to convert.
+    :param issuer_cert:
+    :param issuer_private_key: The private key of the issuer for signing.
+    :param alt_private_key: The certificate of the issuer.Optional alternative private key for creating AltSignatureExt.
+    :param hash_alg: Hash algorithm for signing the certificate (e.g., "sha256").
+    :return: The build certificate object.
+    """
+    public_key = CompositeSigCMSPublicKey.from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
+
+    oid = csr["signatureAlgorithm"]["algorithm"]
+
+    data: dict = _extract_vals_from_attr(csr)
+
+    if data["pub_key_hash_id"] is None:
+        data["pub_key_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or "sha256"
+    else:
+        data["pub_key_hash_id"] = get_hash_from_oid(data["pub_key_hash_id"]["algorithm"])
+
+    if data["sig_hash_id"] is None:
+        data["sig_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or "sha256"
+    else:
+        data["sig_hash_id"] = get_hash_from_oid(data["sig_hash_id"]["algorithm"])
+
+    not_before = datetime.now()
+    not_after = datetime.now() + timedelta(days=365)
+    validity = prepare_validity(not_before=not_before, not_after=not_after)
+    cert_form4, ext_sig, ext_pub = _prepare_pre_tbs_certificate(
+        public_key,
+        alt_private_key=alt_private_key,
+        issuer_private_key=issuer_private_key,
+        csr=csr,
+        validity=validity,
+        hash_alg=hash_alg,
+        issuer_cert=issuer_cert,
+        **data,
+    )
+
+    cert_form1 = copy_asn1_certificate(cert_form4)
+
+    # build Form1
+    cert_form1["tbsCertificate"]["extensions"] = _patch_extensions(cert_form1["tbsCertificate"]["extensions"], ext_sig)
+    cert_form1["tbsCertificate"]["extensions"] = _patch_extensions(cert_form1["tbsCertificate"]["extensions"], ext_pub)
+
+    return cert_form4, cert_form1
+
+
+def _prepare_pre_tbs_certificate(
+    composite_key: CompositeSigCMSPublicKey,
+    issuer_private_key,
+    alt_private_key,
+    issuer_cert: Optional[rfc9480.CMPCertificate],
+    csr: rfc6402.CertificationRequest,
+    pub_key_hash_id: str,
+    sig_hash_id: str,
+    validity: rfc5280.Validity,
+    hash_alg: str,
+    pub_key_loc: Optional[str],
+    sig_loc: Optional[str],
+):
+    """Prepare a `TBSCertificate` structure with alternative public key and signature extensions.
+
+    :param composite_key: The composite key containing both the primary and alternative keys.
+    :param issuer_private_key: The issuer's private key for signing the certificate.
+    :param alt_private_key: The alternative private key used for the alternative signature.
+    :param csr: The certificate signing request from which to construct the certificate.
+    :param pub_key_hash_id: The hash algorithm identifier for hashing the alternative public key.
+    :param sig_hash_id: The hash algorithm identifier for hashing the alternative signature.
+    :param hash_alg: The hash algorithm used for signing the TBSCertificate.
+    :param validity: The validity object for the certificate.
+    :param pub_key_loc: An optional URI representing the location of the alternative public key.
+    :param sig_loc: An optional URI representing the location of the alternative signature.
+    :return: A fully prepared TBSCertificate wrapped in a certificate structure.
+    :raises ValueError: If required parameters are missing or invalid.
+    """
+    # Compute a hash by hashing pk_2
+    extn_alt_pub = prepare_alt_sub_pub_key_ext(
+        composite_key.trad_key, hash_alg=pub_key_hash_id, by_val=False, location=pub_key_loc
+    )
+    # Prepare pk_2 for Form1
+    extn_alt_pub2 = prepare_alt_sub_pub_key_ext(
+        public_key=composite_key.trad_key, hash_alg=pub_key_hash_id, by_val=True, location=pub_key_loc
+    )
+
+    # After creating an AltSubPubKeyExt extension, an issuer constructs a TBSCertificate
+    # object from attributes in the given
+    # CSR following existing standards, e.g., [RFC2986] and [RFC5280].
+    # The constructed TBSCertificate object is the preTbsCertificate field, which MUST
+    # inlude the created AltSubPubKeyExt extension.
+
+    subject = get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
+    tbs_cert = prepare_tbs_certificate(
+        subject=subject,
+        signing_key=issuer_private_key,
+        issuer_cert=issuer_cert,
+        public_key=composite_key.pq_key,  # Construct a SubjectPublicKeyInfo object from pk_1
+        validity=validity,
+        hash_alg=hash_alg,
+    )
+
+    data = encoder.encode(tbs_cert)
+    signature = sign_data(key=alt_private_key, data=data, hash_alg=sig_hash_id)
+    sig_alg_id = prepare_sig_alg_id(signing_key=alt_private_key, hash_alg=sig_hash_id, use_rsa_pss=False)
+
+    extn_alt_sig = prepare_alt_signature_ext(
+        signature=signature, by_val=False, hash_alg=sig_hash_id, alt_sig_algorithm=sig_alg_id, location=sig_loc
+    )
+
+    extn_alt_sig2 = prepare_alt_signature_ext(
+        signature=signature, by_val=True, hash_alg=sig_hash_id, alt_sig_algorithm=sig_alg_id, location=sig_loc
+    )
+
+    # As of Section 4.3.1:
+    # Both are independent extensions.
+    tbs_cert["extensions"].append(extn_alt_pub)
+
+    # as of 4.3.2:
+    # Sign the preTbsCertificate constructed in Section 4.3.1 with the issuer's
+    # alternative private key to obtain the alternative signature.
+    tbs_cert["extensions"].append(extn_alt_sig)
+
+    # Sign with the first public key.
+    final_tbs_cert_data = encoder.encode(tbs_cert)
+    signature = sign_data(key=issuer_private_key, data=final_tbs_cert_data, hash_alg=hash_alg)
+    sig_alg_id = prepare_sig_alg_id(signing_key=issuer_private_key, hash_alg=hash_alg, use_rsa_pss=False)
+
+    cert = rfc9480.CMPCertificate()
+    cert["tbsCertificate"] = tbs_cert
+    cert["signature"] = univ.BitString.fromOctetString(signature)
+    cert["signatureAlgorithm"] = sig_alg_id
+
+    return cert, extn_alt_sig2, extn_alt_pub2
+
+
+def fetch_value_from_location(location: str) -> Optional[bytes]:
+    """Fetch the actual value from a location (e.g., URL) if provided.
+
+    :param location: The URI or location to fetch the value from.
+    :return: The fetched value as bytes:
+    :raise: ValueError, if the data can not be fetched.
+    """
+    if not location:
+        return None
+    try:
+        response = requests.get(location)
+        response.raise_for_status()
+        return response.content
+    except Exception as e:
+        raise ValueError(f"Failed to fetch value from {location}: {e}")
+
+
+def validate_alt_pub_key_extn(cert: rfc9480.CMPCertificate):
+    """Validate the `AltSubPubKeyExt` extension in a certificate.
+
+    Ensures that the AltSubPubKeyExt extension in the certificate is valid
+    and that the hash of the alternative public key matches the expected value.
+
+    :param cert: The certificate to validate.
+    :return: The loaded alternative public key if the extension is valid.
+    :raises ValueError: If the extension is missing, critical, or invalid.
+    """
+    decoded_ext = None
+
+    for ext in cert["tbsCertificate"]["extensions"]:
+        if ext["extnID"] == id_altSubPubKeyExt:
+            decoded_ext, _ = decoder.decode(ext["extnValue"].asOctets(), AltSubPubKeyExt())
+            if ext["critical"]:
+                raise ValueError("The extension MUST not be critical.")
+            break
+
+    if decoded_ext is None:
+        raise ValueError("The `AltSubPubKeyExt` was not inside the certificate.")
+
+    if decoded_ext["byVal"]:
+        raise ValueError("MUST be in Form 4 for verification.")
+
+    location = decoded_ext["location"]
+    actual_value = fetch_value_from_location(str(location)) if location.isValue else None
+    public_key = _process_public_key(actual_value)
+
+    hash_alg_oid = decoded_ext["hashAlg"]["algorithm"]
+    hash_alg = get_hash_from_oid(hash_alg_oid)
+    logging.info(f"Alt Public key: {public_key}")
+    logging.info(f"hash alg: {hash_alg}")
+
+    computed_hash = _hash_public_key(public_key, hash_alg=hash_alg)
+
+    if computed_hash != decoded_ext["plainOrHash"].asOctets():
+        raise ValueError(
+            f"Hash mismatch for ByReference extension:\n"
+            f" Found: {decoded_ext['plainOrHash'].asOctets().hex()}\n"
+            f" Computed: {computed_hash.hex()}"
+        )
+
+    spki, _ = decoder.decode(actual_value, rfc5280.SubjectPublicKeyInfo())
+
+    if spki["algorithm"] != decoded_ext["altAlgorithm"]:
+        raise ValueError("The algorithm is not the same as inside the `AltSubPubKeyExt` structure")
+
+    return CombinedKeyFactory.load_public_key_from_spki(spki)
+
+
+def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: Optional[bytes] = None):
+    """Validate the `AltSignatureExt` extension in a certificate.
+
+    Verifies the alternative signature in the AltSignatureExt extension
+    against the pre-tbsCertificate data.
+
+    :param cert: The certificate to validate.
+    :param alt_pub_key: The alternative public key used to verify the signature.
+    :param signature: The alternative signature which can be cached.
+    :raises ValueError: If the extension is missing, critical, or invalid.
+    """
+    old_extensions = cert["tbsCertificate"]["extensions"]
+
+    cert["tbsCertificate"]["extensions"] = rfc5280.Extensions().subtype(
+        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3)
+    )
+    new_extn = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
+
+    decoded_ext = None
+    for x in old_extensions:
+        if x["extnID"] == id_altSignatureExt:
+            decoded_ext, _ = decoder.decode(x["extnValue"].asOctets(), AltSignatureExt())
+            if x["critical"]:
+                raise ValueError("The extension MUST not be critical.")
+            continue
+        elif x["extnID"] == id_altSubPubKeyExt:
+            continue
+        else:
+            new_extn.append(x)
+
+    cert["tbsCertificate"]["extensions"] = new_extn
+
+    data = encoder.encode(cert["tbsCertificate"])
+
+    if signature is None:
+        signature = fetch_value_from_location(decoded_ext["location"]) if decoded_ext["location"].isValue else None
+    sig_alg_id = decoded_ext["altSigAlgorithm"]
+
+    hash_alg = get_hash_from_oid(decoded_ext["hashAlg"]["algorithm"])
+    hashed_sig = decoded_ext["plainOrHash"].asOctets()
+    if not hashed_sig == compute_hash(hash_alg, signature):
+        raise ValueError("The fetched signature was invalid!")
+
+    verify_signature_with_alg_id(alg_id=sig_alg_id, public_key=alt_pub_key, data=data, signature=signature)
+
+
+# TODO fix to allow alternative to be either PQ or traditional key
+def _may_extract_alt_key_from_cert(cert: rfc9480.CMPCertificate):
+    """May extract the alternative public key from a certificate.
+
+    :param cert: The certificate from which to extract the alternative public key.
+    :return: The extracted alternative public key.
+    """
+    spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
+    oid = spki["algorithm"]["algorithm"]
+    if oid in CMS_COMPOSITE_OID_2_NAME:
+        public_key = CompositeSigCMSPublicKey.from_spki(spki)
+        CompositeSigCMSPublicKey.validate_oid(oid, public_key)
+        return CompositeSigCMSPublicKey.pq_key
+    else:
+        # MUST either use cert-discovery or multi-bind or chameleon.
+        raise NotImplementedError("Currently the CA certificate must be a composite signature cert.")
+
+
+# TODO fix to either extract
+def verify_sun_hybrid_cert(
+    cert: rfc9480.CMPCertificate,
+    issuer_cert: rfc9480.CMPCertificate,
+    alt_issuer_key: Optional[PublicKeySig] = None,
+    check_alt_sig: bool = True,
+):
+    """Verify a Sun hybrid certificate.
+
+    Validates the primary and alternative signatures in a certificate.
+
+    :param cert: The SUN hybrid certificate to verify.
+    :param issuer_cert: The issuer's certificate for verifying the main signature.
+    :param check_alt_sig: Whether to validate the alternative signature (default: True).
+    :raises ValueError: If validation fails for the certificate or its extensions.
+    """
+    alt_pub_key = validate_alt_pub_key_extn(cert)
+    if check_alt_sig:
+        validate_alt_sig_extn(cert, alt_pub_key, alt_issuer_key)
+
+    public_key = load_public_key_from_cert(issuer_cert)
+    data = encoder.encode(cert["tbsCertificate"])
+    alg_id = cert["tbsCertificate"]["signature"]
+    signature = cert["signature"].asOctets()
+    verify_signature_with_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
+
+
+###################
+# Example Workflow
+###################
+
+# is inside the "unit_tests" folder.
+
+
+def _patch_extensions(extensions: rfc9480.Extensions, extension: rfc5280.Extension) -> rfc9480.Extensions:
+    """Replace or update an extension in the given list of extensions.
+
+    :param extensions: The `Extensions` structure to modify.
+    :param extension: The extension to update.
+    :return: The update `Extensions` structure.
+    :raises ValueError: If the specified extension does not exist in the original structure.
+    """
+    for i, ext in enumerate(extensions):
+        if ext["extnID"] == extension["extnID"]:
+            extensions[i] = extension
+            return extensions
+
+    raise ValueError("The extension was not inside the `Extensions` structure.")
+
+
+def parse_alt_sig_extension(cert: rfc9480.CMPCertificate, to_by_val: bool) -> rfc9480.CMPCertificate:
+    """Parse and convert the AltSignatureExt extension in the given certificate.
+
+    Converts the extension to either ByValue or ByReference format as specified.
+
+    :param cert: The certificate containing the AltSignatureExt.
+    :param to_by_val: Boolean indicating whether to convert to ByValue (True) or ByReference (False).
+    :return: The modified certificate with the updated AltSignatureExt.
+    :raises ValueError: If the AltSignatureExt is missing or invalid.
+    """
+    extensions = cert["tbsCertificate"]["extensions"]
+    extension = get_extension(extensions, id_altSignatureExt, must_be_non_crit=True)
+    if not extension:
+        raise ValueError("AltSignatureExt not found in the provided extensions.")
+
+    decoded_ext, _ = decoder.decode(extension["extnValue"].asOctets(), AltSignatureExt())
+
+    if to_by_val == decoded_ext["byVal"]:
+        return cert
+
+    hash_alg = get_hash_from_oid(decoded_ext["hashAlg"]["algorithm"])
+    current_signature = decoded_ext["plainOrHash"].asOctets()
+    location = str(decoded_ext["location"]) if decoded_ext["location"].isValue else None
+
+    if to_by_val:
+        if not location:
+            raise ValueError("Location is required to fetch the signature for ByValue conversion.")
+        fetched_signature = fetch_value_from_location(location)
+        if not fetched_signature:
+            raise ValueError(f"Failed to fetch signature from location: {location}")
+        new_signature = fetched_signature
+    else:
+        new_signature = current_signature
+
+    new_extension = prepare_alt_signature_ext(
+        signature=new_signature,
+        by_val=to_by_val,
+        alt_sig_algorithm=decoded_ext["altSigAlgorithm"],
+        hash_alg=hash_alg,
+        location=location,
+        critical=extension["critical"],
+    )
+    cert["tbsCertificate"]["extensions"] = _patch_extensions(extensions, new_extension)
+
+    return cert
+
+
+def _process_public_key(data: bytes):
+    """Process the public key from the given bytes, in any sun hybrid form (1-4).
+
+    :param data: The DER encoded public key.
+    :return: The loaded public key object.
+    """
+    obj, rest = decoder.decode(data, rfc5280.SubjectPublicKeyInfo())
+    if rest != b"":
+        raise ValueError("Decoding of the public key had trailing data.")
+    return load_public_key_from_spki(obj)
+
+
+def parse_alt_sub_pub_key_extension(cert: rfc9480.CMPCertificate, to_by_val: bool) -> rfc9480.CMPCertificate:
+    """Parse and convert the AltSubPubKeyExt extension in the given certificate.
+
+    Converts the extension to either ByValue or ByReference format as specified.
+
+    :param cert: The certificate containing the AltSubPubKeyExt.
+    :param to_by_val: Boolean indicating whether to convert to ByValue (True) or ByReference (False).
+    :return: The modified certificate with the updated AltSubPubKeyExt.
+    :raises ValueError: If the AltSubPubKeyExt is missing or invalid.
+    """
+    extensions = cert["tbsCertificate"]["extensions"]
+    extension = get_extension(extensions, id_altSubPubKeyExt, must_be_non_crit=True)
+    if not extension:
+        raise ValueError("AltSignatureExt not found in the provided extensions.")
+
+    decoded_ext, _ = decoder.decode(extension["extnValue"].asOctets(), AltSubPubKeyExt())
+
+    if to_by_val == decoded_ext["byVal"]:
+        return cert
+
+    hash_alg = get_hash_from_oid(decoded_ext["hashAlg"]["algorithm"])
+    public_key = decoded_ext["plainOrHash"].asOctets()
+    loc = None if not decoded_ext["location"].isValue else str(decoded_ext["location"])
+
+    if not to_by_val:
+        if not loc:
+            raise ValueError("Location is required to fetch the public key for ByValue conversion.")
+
+        public_key = _process_public_key(public_key)
+        logging.info("used hash alg %s", hash_alg)
+
+    else:
+        public_key = fetch_value_from_location(loc)
+        public_key = _process_public_key(public_key)
+
+    new_extension = prepare_alt_sub_pub_key_ext(
+        public_key=public_key,
+        by_val=to_by_val,
+        hash_alg=hash_alg,
+        location=loc,
+        critical=extension["critical"],
+    )
+
+    cert["tbsCertificate"]["extensions"] = _patch_extensions(extensions, new_extension)
+
+    return cert
+
+
+def convert_cert_to_target_form(cert, target_form: str):
+    """Convert the AltSubPubKeyExt and AltSignatureExt extensions inside a certificate to a specified form.
+
+    First updates the alternative subject public key extension and then the alt signature extensions.
+
+    :param cert: The certificate to modify.
+    :param target_form: Target form, one of: "Form1", "Form2", "Form3", or "Form4".
+    :return: The modified certificate with updated extensions.
+    :raises ValueError: If the target form is invalid or the required extensions are missing.
+    """
+    # -------------------------------------- #
+    # AltSubKeyValueExt    AltSignatureExt   #
+    # -------------------------------------- #
+    # Form 1     ByValue         ByValue     #
+    # Form 2     ByValue         ByReference #
+    # Form 3     ByReference     ByValue     #
+    # Form 4     ByReference     ByReference #
+    # -------------------------------------- #
+    form_map = {
+        "Form1": (True, True),
+        "Form2": (True, False),
+        "Form3": (False, True),
+        "Form4": (False, False),
+    }
+
+    if target_form not in form_map:
+        raise ValueError("Invalid target form. Use 'Form1', 'Form2', 'Form3', or 'Form4'.")
+
+    to_by_val_alt_sub_pub, to_by_val_alt_sig = form_map[target_form]
+
+    cert = parse_alt_sub_pub_key_extension(cert, to_by_val_alt_sub_pub)
+    cert = parse_alt_sig_extension(cert, to_by_val_alt_sig)
+
+    return cert

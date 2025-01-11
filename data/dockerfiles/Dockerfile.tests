@@ -1,0 +1,20 @@
+FROM debian:12
+
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip python3-venv openssl && \
+    apt-get clean
+
+# Set up a virtual environment, because "pip install" is not allowed.
+WORKDIR /app
+RUN python3 -m venv /app/venv
+
+COPY requirements.txt /app/requirements.txt
+RUN /app/venv/bin/pip install --upgrade pip && \
+    /app/venv/bin/pip install -r /app/requirements.txt
+
+
+COPY . /app --exclude=venv* __pycache__ .git
+
+RUN openssl version
+# Update to use port and ip-address
+CMD ["sh", "-c", "/app/venv/bin/python3 -m robot --outputdir=out --variable environment:cloudpki tests"]
