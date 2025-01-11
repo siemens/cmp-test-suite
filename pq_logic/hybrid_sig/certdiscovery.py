@@ -135,7 +135,7 @@ def extract_sia_extension_for_cert_discovery(
     other_name = access_description["accessLocation"]["otherName"]
 
     if other_name["type-id"] != id_ad_relatedCertificateDescriptor:
-        raise ValueError()
+        raise ValueError("The `type-id` should match `id_ad_relatedCertificateDescriptor`.")
 
     obj, _ = decoder.decode(other_name["value"], RelatedCertificateDescriptor())
 
