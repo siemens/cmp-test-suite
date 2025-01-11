@@ -192,3 +192,4 @@ doc/
 
 # exclude binary file that contains an EJBCA docker image
 data/EJBCA/*.tar.gz
+/data/pqc-certificates/
