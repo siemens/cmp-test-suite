@@ -27,7 +27,7 @@ from resources.oidutils import SLH_DSA_NAME_2_OID_PRE_HASH
 try:
     import oqs
 except ImportError:
-    logging.info("PQ support is disabled.")
+    logging.info("liboqs support is disabled.")
     oqs = None
 
 
@@ -88,7 +88,7 @@ class MLDSAPublicKey(PQSignaturePublicKey):
             sig = ml_.verify(pk=self.public_bytes_raw(), sig=signature, m=data, ctx=ctx)
 
 
-        elif hash_alg is not None:
+        else:
             oid = encoder.encode(sha_alg_name_to_oid(hash_alg))
 
             if not is_prehashed:
@@ -142,7 +142,7 @@ class MLDSAPublicKey(PQSignaturePublicKey):
 class MLDSAPrivateKey(PQSignaturePrivateKey):
     """Represents an ML-DSA private key."""
 
-    def _init(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
+    def _initialize(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
         """Initialize the ML-DSA private key.
 
         :param sig_alg: The signature algorithm name.
@@ -152,7 +152,7 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
         """
 
         if oqs is not None:
-            super().__init__(sig_alg=sig_alg, private_bytes=private_bytes, public_key=public_key)
+            super()._initialize(sig_alg=sig_alg, private_bytes=private_bytes, public_key=public_key)
         else:
             logging.info("ML-DSA Key generation is done with pure python.")
             self._check_name(sig_alg)
@@ -312,7 +312,7 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
 
     """
 
-    def _init(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
+    def _initialize(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
         self.sig_alg = sig_alg.replace("_", "-")
 
         self._slh_class: SLH_DSA = fips205.SLH_DSA_PARAMS[self.sig_alg]

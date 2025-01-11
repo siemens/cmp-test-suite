@@ -20,9 +20,20 @@ and format.
 - `generate(kem_alg: str)`: Generate a new private key for the specified algorithm.
 - `_check_name(name: str)`: Validate the provided algorithm name.
 """
+import logging
+import os
+from typing import Optional, Tuple
 
+from pq_logic.fips.fips203 import ML_KEM
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
+
+try:
+    import oqs
+except ImportError:
+    logging.info("liboqs support is disabled.")
+    oqs = None
+
 
 ##########################
 # ML-KEM
@@ -31,6 +42,22 @@ from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 
 class MLKEMPublicKey(PQKEMPublicKey):
     """Represents an ML-KEM public key."""
+
+
+    def _initialize(self, kem_alg: str, public_key: bytes):
+        """Initialize the ML-KEM public key.
+
+        :param kem_alg: Algorithm name to use (e.g., "ml-kem-512").
+        :param public_key: Public key as raw bytes.
+        """
+
+        if oqs is not None:
+            super()._initialize(kem_alg=kem_alg, public_key=public_key)
+        else:
+            self._check_name(kem_alg)
+            self.kem_alg = kem_alg
+            self.ml_class = ML_KEM(kem_alg)
+            self._public_key_bytes = public_key
 
     @property
     def name(self) -> str:
@@ -55,12 +82,43 @@ class MLKEMPublicKey(PQKEMPublicKey):
         key = cls(kem_alg=name, public_key=data)
         return key
 
+    def encaps(self) -> Tuple[bytes, bytes]:
+        """Encapsulate a shared secret using the public key."""
+
+        if oqs is not None:
+            return super().encaps()
+        else:
+            return self.ml_class.encaps_internal(ek=self._public_key_bytes, m=os.urandom(32))
+
+
 
 class MLKEMPrivateKey(PQKEMPrivateKey):
     """Represents an ML-KEM private key.
 
     This class provides functionality for validating, managing, and using ML-KEM private keys.
     """
+
+    def _initialize(self, kem_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None):
+        """Initialize the ML-KEM private key.
+
+        :param kem_alg: Algorithm name to use (e.g., "ml-kem-512").
+        :param private_bytes: Private key as raw bytes.
+        :param public_key: Public key as raw bytes.
+        """
+        if oqs is not None:
+            super()._initialize(kem_alg=kem_alg, private_bytes=private_bytes, public_key=public_key)
+        else:
+            logging.info("ML-DSA Key generation is done with pure python.")
+            self._check_name(kem_alg)
+            self.kem_alg = kem_alg
+            self.ml_class = ML_KEM(kem_alg)
+
+            if private_bytes is None:
+                d, z = os.urandom(32), os.urandom(32)
+                self._public_key, self._private_key = self.ml_class.keygen_internal(d=d, z=z)
+            else:
+                self._private_key = private_bytes
+                self._public_key = public_key
 
     def _get_key_name(self) -> bytes:
         return b"ML-KEM"
@@ -124,6 +182,17 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
         """
         key = cls(kem_alg=name, private_bytes=data)
         return key
+
+    def decaps(self, ct: bytes) -> bytes:
+        """Decapsulate a shared secret using the private key.
+
+        :param ct: The ciphertext to decapsulate the shared secret from.
+        :return: The shared secret.
+        """
+        if oqs is not None:
+            return super().decaps(ct)
+        else:
+            return self.ml_class.decaps_internal(dk=self._private_key, c=ct)
 
 
 ##########################

@@ -299,13 +299,19 @@ ML_KEM_ZETA_MUL = [ (17 ** (2*bitrev7(i) + 1)) % self.q for i in range(128) ]
 
 
 class ML_KEM:
-    def __init__(self, param="ml-kem-768"):
-        """Initialize the class with parameters."""
+    def __init__(self, param: str = "ml-kem-768"):
+        """Initialize the class with parameters.
+
+        :param param: The ML-KEM version to use.
+        """
+        param = param.lower()
         if param not in ML_KEM_PARAM:
-            raise ValueError
+            raise ValueError(f"The ML-KEM parameter is not valid: {param}. "
+                             f"A valid parameter is one of {list(ML_KEM_PARAM.keys())}")
         self.q = 3329
         self.n = 256
         (self.k, self.eta1, self.eta2, self.du, self.dv) = ML_KEM_PARAM[param]
+        self.name = param
 
     #   4.1 Cryptographic Functions
 
@@ -618,8 +624,15 @@ class ML_KEM:
 
     #   Algorithm 17, ML-KEM.Encaps_internal(ek, m)
 
-    def encaps_internal(self, ek, m, param=None):
-        if param != None:
+    def encaps_internal(self, ek, m, param: Optional[str] = None) -> Tuple[bytes, bytes]:
+        """Perform encapsulation using the public key and randomness.
+
+        :param ek: The public key.
+        :param m: The randomness to encapsulate.
+        :param param: Optional name of the version to parse (e,g. "ml-kem-768").
+        :return: The shared secret and ciphertext.
+        """
+        if param is not None:
             self.__init__(param)
         (k, r) = self.g(m + self.h(ek))
         # print('# ek:', ek.hex())
@@ -627,17 +640,24 @@ class ML_KEM:
         # print('# K:', k.hex())
         # print('# r:', r.hex())
         c = self.k_pke_encrypt(ek, m, r)
-        return (k, c)
+        return k, c
 
     def get_public_key(self, dk: bytes) -> bytes:
         """Return the public key from the private key."""
         return dk[384 * self.k : 768 * self.k + 32]
 
     #   Algorithm 18, ML-KEM.Decaps_internal(dk, c)
-    def decaps_internal(self, dk, c, param=None):
-        if param != None:
+    def decaps_internal(self, dk, c, param: Optional[str]=None) -> bytes:
+        """Perform the decapsulation using the private key and ciphertext.
+
+        :param dk: The private key.
+        :param c: The ciphertext to decapsulate.
+        :param param: The name of the version to parse (e,g. "ml-kem-768").
+        :return: The decapsulated shared secret.
+        """
+        if param is not None:
             self.__init__(param)
-        (k, eta1, eta2, du, dv) = ML_KEM_PARAM[param]
+
         dk_pke = dk[0 : 384 * self.k]
         ek_pke = dk[384 * self.k : 768 * self.k + 32]
         h = dk[768 * self.k + 32 : 768 * self.k + 64]

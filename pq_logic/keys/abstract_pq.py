@@ -309,9 +309,9 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
         self._check_name(name=sig_alg)
         if self.sig_alg is None:
             self.sig_alg = sig_alg
-        self._init(sig_alg=sig_alg, private_bytes=private_bytes, public_key=public_key)
+        self._initialize(sig_alg=sig_alg, private_bytes=private_bytes, public_key=public_key)
 
-    def _init(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
+    def _initialize(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
         """Initialize the private key and public key bytes.
 
         :param sig_alg: The signature algorithm name.
@@ -376,11 +376,17 @@ class PQKEMPublicKey(PQPublicKey, ABC):
         :raises ValueError: If an invalid algorithm name is provided.
         """
         super().__init__(public_key=public_key, alg_name=kem_alg)
-        self._init()
+        self._initialize(public_key=public_key, kem_alg=kem_alg)
 
-    def _init(self):
-        """Initialize the KEM method."""
+    def _initialize(self, kem_alg: str, public_key: bytes):
+        """Initialize the KEM method, defaults to liboqs.
+
+        :param kem_alg: The KEM algorithm name.
+        :param public_key: The public key as raw bytes.
+        """
+        self._check_name(name=kem_alg)
         self.kem_methode = oqs.KeyEncapsulation(self.kem_alg)
+        self._public_key_bytes = public_key
 
     @property
     def name(self) -> str:
@@ -427,9 +433,9 @@ class PQKEMPrivateKey(PQPrivateKey, ABC):
         :raises ValueError: If an invalid algorithm name is provided.
         """
         super().__init__(alg_name=kem_alg, private_bytes=private_bytes, public_key=public_key)
-        self._init(kem_alg, private_bytes, public_key)
+        self._initialize(kem_alg, private_bytes, public_key)
 
-    def _init(self, kem_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None):
+    def _initialize(self, kem_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None):
         self.kem_methode = oqs.KeyEncapsulation(self.kem_alg, secret_key=private_bytes)
         if private_bytes is None:
             self._public_key_bytes = self.kem_methode.generate_keypair()
