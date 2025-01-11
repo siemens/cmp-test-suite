@@ -25,7 +25,7 @@ from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 
 from pq_logic.custom_oids import id_altSubPubKeyHashAlgAttr, id_altSubPubKeyLocAttr, id_altSigValueHashAlgAttr, \
     id_altSigValueLocAttr, id_altSubPubKeyExt, id_altSignatureExt
-from resources.certbuildutils import build_csr, prepare_sig_alg_id, prepare_tbs_certificate, prepare_validity
+from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, prepare_validity
 from resources.certextractutils import get_extension
 from resources.convertutils import copy_asn1_certificate
 from resources.cryptoutils import sign_data
@@ -37,12 +37,10 @@ from resources.utils import get_openssl_name_notation
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.hybrid_structures import AltSignatureExt, AltSubPubKeyExt, UniformResourceIdentifier
 from pq_logic.keys.comp_sig_cms03 import (
-    CompositeSigCMSPrivateKey,
     CompositeSigCMSPublicKey,
     compute_hash,
-    get_oid_cms_composite_signature,
 )
-from pq_logic.pq_compute_utils import sign_data_with_alg_id, verify_signature_with_alg_id
+from pq_logic.pq_compute_utils import verify_signature_with_alg_id
 from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH
 
 
@@ -265,68 +263,6 @@ def prepare_sun_hybrid_alt_signature_ext(
     return extension
 
 
-def build_sun_hybrid_composite_csr(
-    signing_key: Optional[CompositeSigCMSPrivateKey] = None,
-    common_name: str = "CN=Hans Mustermann",
-    pub_key_hash_alg: Optional[str] = None,
-    pub_key_location: Optional[str] = None,
-    sig_hash_alg: Optional[str] = None,
-    sig_value_location: Optional[str] = None,
-    use_rsa_pss: bool = True,
-) -> rfc6402.CertificationRequest:
-    """
-    Create a CSR with composite signatures, supporting two public keys and multiple CSR attributes.
-
-    :param signing_key: CompositeSigCMSPrivateKey, which holds both traditional and post-quantum keys.
-    :param common_name: The subject common name for the CSR.
-    :param pub_key_hash_alg: Hash algorithm for the alternative public key.
-    :param pub_key_location: URI for the alternative public key.
-    :param sig_hash_alg: Hash algorithm for the alternative signature.
-    :param sig_value_location: URI for the alternative signature.
-    :param use_rsa_pss: Whether to use RSA-PSS for traditional keys.
-    :return: CertificationRequest object with composite signature.
-    """
-    signing_key = signing_key or CompositeSigCMSPrivateKey.generate(pq_name="ml-dsa-44", trad_param="ec")
-
-    csr = build_csr(signing_key, common_name=common_name, exclude_signature=True, use_rsa_pss=use_rsa_pss)
-    sig_alg_id = rfc5280.AlgorithmIdentifier()
-
-    domain_oid = get_oid_cms_composite_signature(
-        signing_key.pq_key.name,
-        signing_key.trad_key,  # type: ignore
-        use_pss=use_rsa_pss,
-        pre_hash=False,
-    )
-
-    # Step 4 and 5
-    # Currently is always the PQ-Key the firsts key to
-    # it is assumed to be the first key, and the alternative key is the traditional key.
-    attributes = prepare_sun_hybrid_csr_attributes(
-        pub_key_hash_alg=pub_key_hash_alg,
-        sig_value_location=sig_value_location,
-        pub_key_location=pub_key_location,
-        sig_hash_alg=sig_hash_alg,
-    )
-
-    sig_alg_id["algorithm"] = domain_oid
-
-    csr["certificationRequestInfo"]["attributes"].extend(attributes)
-
-    der_data = encoder.encode(csr["certificationRequestInfo"])
-    signature = sign_data_with_alg_id(key=signing_key, alg_id=sig_alg_id, data=der_data)
-
-    csr["signatureAlgorithm"] = sig_alg_id
-    csr["signature"] = univ.BitString.fromOctetString(signature)
-
-    csr, _ = decoder.decode(encoder.encode(csr), rfc6402.CertificationRequest())
-    return csr
-
-
-###################
-# Server Side
-###################
-
-
 def _extract_sun_hybrid_attrs_from_csr(csr: rfc6402.CertificationRequest) -> Dict:
     """Extract values of specific attributes from a CSR.
 
@@ -363,6 +299,7 @@ def sun_csr_to_cert(
     alt_private_key,
     issuer_cert: Optional[rfc9480.CMPCertificate] = None,
     hash_alg: str = "sha256",
+    extensions: Optional[List[rfc5280.Extension]] = None,
 ) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Convert a CSR to a certificate, with the sun hybrid methode.
 
@@ -371,6 +308,7 @@ def sun_csr_to_cert(
     :param issuer_private_key: The private key of the issuer for signing.
     :param alt_private_key: The certificate of the issuer.Optional alternative private key for creating AltSignatureExt.
     :param hash_alg: Hash algorithm for signing the certificate (e.g., "sha256").
+    :param extensions: Optional list of additional extensions to include in the certificate.
     :return: The build certificate object.
     """
     public_key = CompositeSigCMSPublicKey.from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
@@ -400,6 +338,7 @@ def sun_csr_to_cert(
         validity=validity,
         hash_alg=hash_alg,
         issuer_cert=issuer_cert,
+        extensions=extensions,
         **data,
     )
 
@@ -424,6 +363,7 @@ def _prepare_pre_tbs_certificate(
     hash_alg: str,
     pub_key_loc: Optional[str],
     sig_loc: Optional[str],
+    extensions: List[rfc5280.Extension],
 ):
     """Prepare a `TBSCertificate` structure with alternative public key and signature extensions.
 
@@ -456,16 +396,18 @@ def _prepare_pre_tbs_certificate(
     # inlude the created AltSubPubKeyExt extension.
 
     subject = get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
-    tbs_cert = prepare_tbs_certificate(
+    pre_tbs_cert = prepare_tbs_certificate(
         subject=subject,
         signing_key=issuer_private_key,
         issuer_cert=issuer_cert,
         public_key=composite_key.pq_key,  # Construct a SubjectPublicKeyInfo object from pk_1
         validity=validity,
         hash_alg=hash_alg,
+        extensions=[extn_alt_pub] + [] if not extensions else extensions, # The constructed TBSCertificate object is the preTbsCertificate
+        # field, which MUST include the created `AltSubPubKeyExt` extension.
     )
 
-    data = encoder.encode(tbs_cert)
+    data = encoder.encode(pre_tbs_cert)
     signature = sign_data(key=alt_private_key, data=data, hash_alg=sig_hash_id)
     sig_alg_id = prepare_sig_alg_id(signing_key=alt_private_key, hash_alg=sig_hash_id, use_rsa_pss=False)
 
@@ -479,20 +421,20 @@ def _prepare_pre_tbs_certificate(
 
     # As of Section 4.3.1:
     # Both are independent extensions.
-    tbs_cert["extensions"].append(extn_alt_pub)
+    pre_tbs_cert["extensions"].append(extn_alt_pub)
 
     # as of 4.3.2:
     # Sign the preTbsCertificate constructed in Section 4.3.1 with the issuer's
     # alternative private key to obtain the alternative signature.
-    tbs_cert["extensions"].append(extn_alt_sig)
+    pre_tbs_cert["extensions"].append(extn_alt_sig)
 
     # Sign with the first public key.
-    final_tbs_cert_data = encoder.encode(tbs_cert)
+    final_tbs_cert_data = encoder.encode(pre_tbs_cert)
     signature = sign_data(key=issuer_private_key, data=final_tbs_cert_data, hash_alg=hash_alg)
     sig_alg_id = prepare_sig_alg_id(signing_key=issuer_private_key, hash_alg=hash_alg, use_rsa_pss=False)
 
     cert = rfc9480.CMPCertificate()
-    cert["tbsCertificate"] = tbs_cert
+    cert["tbsCertificate"] = pre_tbs_cert
     cert["signature"] = univ.BitString.fromOctetString(signature)
     cert["signatureAlgorithm"] = sig_alg_id
 
@@ -592,8 +534,6 @@ def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: 
             if x["critical"]:
                 raise ValueError("The extension MUST not be critical.")
             continue
-        elif x["extnID"] == id_altSubPubKeyExt:
-            continue
         else:
             new_extn.append(x)
 
@@ -611,17 +551,6 @@ def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: 
         raise ValueError("The fetched signature was invalid!")
 
     verify_signature_with_alg_id(alg_id=sig_alg_id, public_key=alt_pub_key, data=data, signature=signature)
-
-
-# TODO fix to allow alternative to be either PQ or traditional key
-
-
-###################
-# Example Workflow
-###################
-
-# is inside the "unit_tests" folder.
-
 
 def _patch_extensions(extensions: rfc9480.Extensions, extension: rfc5280.Extension) -> rfc9480.Extensions:
     """Replace or update an extension in the given list of extensions.
