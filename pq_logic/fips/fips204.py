@@ -293,6 +293,7 @@ ML_DSA_PARAM = {
 class ML_DSA:
     def __init__(self, param: str="ml-dsa-65"):
         """Initialize the class with parameters."""
+        param = param.lower()
         if param not in ML_DSA_PARAM:
             raise ValueError(f"The parameter set is not supported.: {param}."
                              f"Supported parameter sets are: {ML_DSA_PARAM.keys()}")
