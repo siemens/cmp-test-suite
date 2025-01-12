@@ -4,13 +4,16 @@
 
 import unittest
 
+from pq_logic.hybrid_key_factory import HybridKeyFactory
 from pq_logic.keys.composite_kem_pki import (
     CompositeMLKEMECPrivateKey,
     CompositeMLKEMRSAPrivateKey,
     CompositeMLKEMXPrivateKey,
     get_oid_composite,
-    id_MLKEM768_RSA2048,
+    id_MLKEM768_RSA2048, CompositeDHKEMRFC9180PrivateKey,
 )
+from pq_logic.pq_key_factory import PQKeyFactory
+from resources.keyutils import generate_key
 
 
 class TestCompositeMLKEM(unittest.TestCase):
@@ -82,3 +85,51 @@ class TestCompositeMLKEM(unittest.TestCase):
         shared_secret, ct_vals = key1.encaps(key2.public_key())
         decaps_ss = key2.decaps(ct_vals=ct_vals)
         self.assertEqual(shared_secret, decaps_ss, "Shared secret mismatch for X448-based keys.")
+
+
+    def test_encaps_and_decaps_frodokem_x25519(self):
+        """
+        GIVEN two FrodoKEM X25519-based composite keys.
+        WHEN encapsulating and decapsulating the keys.
+        THEN the shared secret should be equal to the expected shared secret.
+        """
+        key1 = HybridKeyFactory.generate_comp_kem_key(
+            pq_name="frodokem-976-aes", trad_name="x25519")
+
+        key2 = HybridKeyFactory.generate_comp_kem_key(
+            pq_name="frodokem-976-aes", trad_name="x25519")
+
+        shared_secret, ct_vals = key1.encaps(key2.public_key())
+        decaps_ss = key2.decaps(ct_vals=ct_vals)
+        self.assertEqual(shared_secret, decaps_ss, "Shared secret mismatch for FrodoKEM X25519-based keys.")
+
+
+    def test_encaps_and_decaps_mlkem768_dhkemrfc9180_x25519(self):
+        trad_key1 = generate_key("x25519")
+        trad_key2 = generate_key("x25519")
+
+        pq_key1 = PQKeyFactory.generate_pq_key("ml-kem-768")
+        pq_key2 = PQKeyFactory.generate_pq_key("ml-kem-768")
+
+        key1 = CompositeDHKEMRFC9180PrivateKey(pq_key=pq_key1, trad_key=trad_key1)
+        key2 = CompositeDHKEMRFC9180PrivateKey(pq_key=pq_key2, trad_key=trad_key2)
+
+        ss, ct = key1.encaps(key2.public_key())
+
+        ss2 = key2.decaps(ct)
+        self.assertEqual(ss, ss2)
+
+    def test_encaps_and_decaps_frodokem_976_aes_dhkemrfc9180_x25519(self):
+        trad_key1 = generate_key("x25519")
+        trad_key2 = generate_key("x25519")
+
+        pq_key1 = PQKeyFactory.generate_pq_key("frodokem-976-aes")
+        pq_key2 = PQKeyFactory.generate_pq_key("frodokem-976-aes")
+
+        key1 = CompositeDHKEMRFC9180PrivateKey(pq_key=pq_key1, trad_key=trad_key1)
+        key2 = CompositeDHKEMRFC9180PrivateKey(pq_key=pq_key2, trad_key=trad_key2)
+
+        ss, ct = key1.encaps(key2.public_key())
+
+        ss2 = key2.decaps(ct)
+        self.assertEqual(ss, ss2)

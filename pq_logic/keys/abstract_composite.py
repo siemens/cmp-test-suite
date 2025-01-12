@@ -21,8 +21,8 @@ from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280
 from pyasn1_alt_modules.rfc5958 import OneAsymmetricKey
 
-from pq_logic.tmp_oids import PURE_OID_TO_HASH
-from resources.oid_mapping import get_curve_instance, hash_name_to_instance
+
+from resources.oid_mapping import hash_name_to_instance
 
 
 from pq_logic.hybrid_structures import (
@@ -249,7 +249,7 @@ class AbstractCompositeKEMPrivateKey(AbstractCompositePrivateKey, ABC):
         pass
 
     @abstractmethod
-    def public_key(self) -> Union[AbstractCompositeKEMPublicKey]:
+    def public_key(self) -> AbstractCompositeKEMPublicKey:
         """Return the corresponding public key class."""
         pass
 
