@@ -6,7 +6,7 @@ help:
 	@echo  'Commands:'
 	@echo  '  test         - Run all compliance tests (results will be in reports/)'
 	@echo  '  teslog       - Run all compliance tests, store results in timestamped subirectories in reports/'
-	@echo  '  doc          - Produce documentation files and store them in doc/'
+	@echo  '  docs          - Produce documentation files and store them in doc/'
 	@echo  '  unittest     - Run unit tests for the test suite itself '
 	@echo  '  unittest-docker    - Run unit tests in a docker container'
 	@echo  '  autoformat   - Run ruff on all the source files, to resolve all issues automatically '
@@ -49,7 +49,7 @@ ifeq ($(env), ejbca)
 	$(MAKE) -f Makefile_EJBCA start_EJBCA
 endif
 
-doc:
+docs:
 	python -m robot.libdoc resources/keywords.resource doc/keywords.html
 	python -m robot.libdoc resources/cryptoutils.py doc/cryptoutils.html
 	python -m robot.libdoc resources/cmputils.py doc/cmputils.html
