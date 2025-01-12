@@ -190,8 +190,8 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
     This function supports generating keys for various cryptographic algorithms including RSA, DSA, ECDSA, ECDH,
     Ed25519, and DH. Depending on the selected algorithm, additional parameters can be provided.
 
-    For post-quantum signature algorithms are not the hash version create ale,
-    but can be specified in the sign functions.
+    Post-quantum signature algorithms are not based on hash versions alone but can be specified within the
+    signing functions.
 
     Arguments:
     ---------
