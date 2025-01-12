@@ -51,8 +51,7 @@ from resources.oid_mapping import (
     get_alg_oid_from_key_hash,
     get_hash_from_oid,
     hash_name_to_instance,
-    may_return_oid_to_name,
-    sha_alg_name_to_oid,
+    sha_alg_name_to_oid, may_return_oid_to_name,
 )
 from resources.oidutils import (
     AES_GMAC_NAME_2_OID,
