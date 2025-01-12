@@ -222,3 +222,6 @@ COMPOSITE_KEM_OID_2_NAME = {
     f"{id_CompKEM}.28": "id_MLKEM1024_ECDH_brainpoolP384r1",
     f"{id_CompKEM}.29": "id_MLKEM1024_X448",
 }
+id_ce_deltaCertificateDescriptor = univ.ObjectIdentifier("2.16.840.1.114027.80.6.1")
+id_at_deltaCertificateRequestSignature = univ.ObjectIdentifier("2.16.840.1.114027.80.6.3")
+id_at_deltaCertificateRequest = univ.ObjectIdentifier("2.16.840.1.114027.80.6.2")

@@ -7,6 +7,9 @@ from typing import Any, List, Optional
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
+
+from pq_logic.tmp_oids import id_ce_deltaCertificateDescriptor, id_at_deltaCertificateRequestSignature, \
+    id_at_deltaCertificateRequest
 from resources.certbuildutils import build_csr, prepare_name, prepare_sig_alg_id
 from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
@@ -22,13 +25,8 @@ from pq_logic.hybrid_structures import (
     DeltaCertificateRequestSignatureValue,
     DeltaCertificateRequestValue,
 )
-from pq_logic.pq_compute_utils import verify_csr_signature, verify_signature_with_alg_id
-
-# TODO: replace this temporary OID
-id_ce_deltaCertificateDescriptor = univ.ObjectIdentifier("2.16.840.1.114027.80.6.1")
-
-id_at_deltaCertificateRequestSignature = univ.ObjectIdentifier("2.16.840.1.114027.80.6.3")
-id_at_deltaCertificateRequest = univ.ObjectIdentifier("2.16.840.1.114027.80.6.2")
+from pq_logic.pq_compute_utils import verify_csr_signature
+from pq_logic.py_verify_logic import verify_signature_with_alg_id
 
 
 def _prepare_issuer_and_subject(
