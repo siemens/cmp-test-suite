@@ -23,13 +23,13 @@ from resources.oidutils import PQ_OID_2_NAME, CMS_COMPOSITE_OID_2_NAME, PQ_KEM_O
 
 
 def main():
-    # Define repository URL and target directory
+
     repo_url = "https://github.com/IETF-Hackathon/pqc-certificates"
     data_dir = "./data"
     providers_dir = os.path.join(data_dir, "pqc-certificates", "providers")
     pem_files = []
 
-    # Clone the repository using subprocess if not already cloned
+
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
 
@@ -40,7 +40,7 @@ def main():
     else:
         print("Repository already cloned.")
 
-    # Walk through the providers directory
+
     if os.path.exists(providers_dir):
         for root, dirs, files in os.walk(providers_dir):
             for file in files:
@@ -48,14 +48,13 @@ def main():
                     zip_path = os.path.join(root, file)
                     print(f"Found zip file: {zip_path}")
 
-                    # Extract the zip file
                     extract_dir = os.path.join(root, "extracted", os.path.splitext(file)[0])
                     os.makedirs(extract_dir, exist_ok=True)
 
                     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                         zip_ref.extractall(extract_dir)
 
-                    # Find .pem files in the extracted content
+
                     for subdir, _, extracted_files in os.walk(extract_dir):
                         for extracted_file in extracted_files:
                             if extracted_file.endswith(".der"):
