@@ -14,7 +14,7 @@ from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import (
     validate_alt_sig_extn,
 )
 from unit_tests.pq_workflow_exp import build_sun_hybrid_composite_csr
-from pq_logic.custom_oids import id_altSubPubKeyExt, id_altSignatureExt
+from pq_logic.tmp_oids import id_altSubPubKeyExt, id_altSignatureExt
 from pq_logic.hybrid_structures import AltSignatureExt
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey
 from pq_logic.pq_compute_utils import verify_csr_signature

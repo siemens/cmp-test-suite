@@ -12,15 +12,14 @@ from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc9480
 
 
-from pq_logic.hybrid_sig.catalyst_logic import verify_catalyst_signature, verify_catalyst_signature_migrated
+from pq_logic.hybrid_sig.catalyst_logic import verify_catalyst_signature_migrated
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPublicKey
 from pq_logic.pq_compute_utils import verify_signature
 from resources.certutils import parse_certificate
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import PQ_OID_2_NAME, CMS_COMPOSITE_OID_2_NAME, PQ_KEM_OID_2_NAME
-from resources.protectionutils import verify_rsassa_pss_from_alg_id
-from resources.utils import load_and_decode_pem_file
+
 
 
 def main():

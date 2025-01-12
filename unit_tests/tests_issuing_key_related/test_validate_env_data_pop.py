@@ -35,6 +35,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
 
         cls.private_key_rsa_1 = CompositeMLKEMRSAPrivateKey.generate(pq_name="ml-kem-768", trad_param=2048)
         cls.private_key_rsa_2 = CompositeMLKEMRSAPrivateKey.generate(pq_name="ml-kem-768", trad_param=2048)
+
         cls.comp_cert = build_certificate(private_key=cls.private_key_rsa_2, signing_key=generate_key("rsa"))[0]
 
     def test_prepare_kem_env_data_for_popo(self):

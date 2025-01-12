@@ -8,7 +8,7 @@ from pq_logic.hybrid_sig.catalyst_logic import verify_catalyst_signature, verify
 from pq_logic.keys.abstract_pq import PQPublicKey, PQPrivateKey
 from pq_logic.keys.sig_keys import MLDSAPublicKey
 from resources.certutils import parse_certificate
-from resources.oid_mapping import may_return_oid_to_name, KEY_CLASS_MAPPING
+from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
 from unit_tests.utils_for_test import print_chain_subject_and_issuer, get_subject_and_issuer
 from pyasn1_alt_modules import rfc5280, rfc9480
 
@@ -77,13 +77,15 @@ def _try2(asn1cert: rfc9480.CMPCertificate,
 
         out = ML_DSA(name).verify(pk=pub_key,
                                   m=alt_sig_data,
-                                  sig=signature, ctx=b"")
+                                  sig=signature,
+                                  ctx=b"")
 
         if out:
             print(f"Verification successful with {name} with: "
                   f"exclude_alt_extensions={exclude_alt_extensions}, "
                   f"only_tbs_cert={only_tbs_cert}, "
-                  f"exclude_signature_field={exclude_signature_field}")
+                  f"exclude_signature_field={exclude_signature_field}"
+                  f"exclude_spki={exclude_spki}")
             return True
 
     print("Verification failed for all options for ", name)

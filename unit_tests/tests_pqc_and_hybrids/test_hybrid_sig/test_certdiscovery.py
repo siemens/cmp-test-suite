@@ -4,7 +4,7 @@
 
 import unittest
 
-from pq_logic.custom_oids import id_ad_certDiscovery, id_ad_relatedCertificateDescriptor
+from pq_logic.tmp_oids import id_ad_certDiscovery, id_ad_relatedCertificateDescriptor
 from pq_logic.hybrid_sig.certdiscovery import (
     extract_sia_extension_for_cert_discovery,
     prepare_subject_info_access_syntax_extension,
