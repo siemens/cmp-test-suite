@@ -5,8 +5,44 @@
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5990, rfc9480
 
+
+##############################
+# Test Suite OIDs
+##############################
+
+# Define the OID for the test suite oids.
+id_test_suite_oid = f"{rfc9480.id_it}.9996.9999"
+
+# Define the OID for the test suite KEM
+
+id_kem_test_suite = f"{id_test_suite_oid}.2"
+
+# Define the OID for the hybrid KEM test suite.
+id_hybrid_kems_test_suite = f"{id_test_suite_oid}.3"
+
+# Define the OID for the hybrid signature test suite.
+id_hybrid_sig_test_suite = f"{id_test_suite_oid}.4"
+
+
+# Hybrid KEM's.
+id_composite_kem_test_suite = f"{id_hybrid_kems_test_suite}.1"
+id_Chempat = f"{id_hybrid_kems_test_suite}.2"
+
+
+# Hybrid Signature's.
+
+id_composite_sig_test_suite = f"{id_hybrid_sig_test_suite}.1"
+
+# used inside cert-binding-for-multiple-authentication.
+id_hybrid_sig_multi_auth = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.2")
+
+# used inside the cert discovery methode.
+id_hybrid_sig_cert_binding = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.3")
+
+# OIDs used for the sun-hybrid signature methode.
+id_hybrid_sun = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.4")
+
 nist_algorithms_oid = rfc5990.nistAlgorithm
-kems_oid = nist_algorithms_oid + (4,)
 
 # Ref: https://github.com/open-quantum-safe/oqs-provider/blob/main/ALGORITHMS.md
 
@@ -15,12 +51,7 @@ id_falcon_1024 = univ.ObjectIdentifier("1.3.9999.3.9")
 
 id_falcon_padded_512 = univ.ObjectIdentifier("1.3.9999.3.16")
 id_falcon_padded_1024 = univ.ObjectIdentifier("1.3.9999.3.19")
-id_falcon_512_P256 = univ.ObjectIdentifier("1.3.9999.3.12")
-id_falcon_512_rsa3072 = univ.ObjectIdentifier("1.3.9999.3.13")
-id_falcon_padded_512_P256 = univ.ObjectIdentifier("1.3.9999.3.17")
-id_falcon_padded_512_rsa3072 = univ.ObjectIdentifier("1.3.9999.3.18")
-id_falcon_1024_P512 = univ.ObjectIdentifier("1.3.9999.3.15")
-id_falcon_padded_1024_P512 = univ.ObjectIdentifier("1.3.9999.3.20")
+
 
 FALCON_NAME_2_OID = {
     "falcon-512": id_falcon_512,
@@ -28,45 +59,40 @@ FALCON_NAME_2_OID = {
     "falcon-1024": id_falcon_1024,
     "falcon-padded-1024": id_falcon_padded_1024,
 }
-FALCON_HYBRID_NAME_2_OID = {
-    "falcon-512-ecdsa-secp256r1": id_falcon_512_P256,
-    "falcon-512-rsa3072-pkcs15": id_falcon_512_rsa3072,
-    "falcon-padded-512-ecdsa-secp256r1": id_falcon_padded_512_P256,
-    "falcon-padded-512-rsa3072-pkcs15": id_falcon_padded_512_rsa3072,
-    "falcon-1024-ecdsa-secp512r1": id_falcon_1024_P512,
-    "falcon-padded-1024-ecdsa-secp512r1": id_falcon_padded_1024_P512,
-}
-FALCON_HYBRID_NAME_2_HASH = {
-    id_falcon_512_P256: "sha256",
-    id_falcon_512_rsa3072: "sha256",
-    id_falcon_padded_512_P256: "sha256",
-    id_falcon_padded_512_rsa3072: "sha256",
-    id_falcon_1024_P512: "sha512",
-    id_falcon_padded_1024_P512: "sha512",
-}
-id_sntrup761_str = f"{kems_oid}.4"
+
+
+id_ntru = f"{id_kem_test_suite}.1"
+id_sntrup761_str = f"{id_ntru}.1"
+
+
+id_mceliece = f"{id_kem_test_suite}.2"
+
 MCELIECE_NAME_2_OID = {
-    "mceliece-348864": f"{kems_oid}.5",
-    "mceliece-460896": f"{kems_oid}.6",
-    "mceliece-6688128": f"{kems_oid}.7",
-    "mceliece-6960119": f"{kems_oid}.8",
-    "mceliece-8192128": f"{kems_oid}.9",
+    "mceliece-348864": f"{id_mceliece}.1",
+    "mceliece-460896": f"{id_mceliece}.2",
+    "mceliece-6688128": f"{id_mceliece}.3",
+    "mceliece-6960119": f"{id_mceliece}.4",
+    "mceliece-8192128": f"{id_mceliece}.5",
 }
+
+id_frodokem = f"{id_kem_test_suite}.3"
+
 FRODOKEM_NAME_2_OID = {
-    "frodokem-640-aes": f"{kems_oid}.10",
-    "frodokem-640-shake": f"{kems_oid}.11",
-    "frodokem-976-aes": f"{kems_oid}.12",
-    "frodokem-976-shake": f"{kems_oid}.13",
-    "frodokem-1344-aes": f"{kems_oid}.14",
-    "frodokem-1344-shake": f"{kems_oid}.15",
+    "frodokem-640-aes": f"{id_mceliece}.1",
+    "frodokem-640-shake": f"{id_mceliece}.2",
+    "frodokem-976-aes": f"{id_mceliece}.3",
+    "frodokem-976-shake": f"{id_mceliece}.4",
+    "frodokem-1344-aes": f"{id_mceliece}.5",
+    "frodokem-1344-shake": f"{id_mceliece}.6",
 }
+
 FRODOKEM_OID_2_NAME = {y: x for x, y in FRODOKEM_NAME_2_OID.items()}
 MCELIECE_OID_2_NAME = {y: x for x, y in MCELIECE_NAME_2_OID.items()}
 
 id_it_KemCiphertextInfo = rfc9480.id_it + (9999,)
 
 id_CompSig = "2.16.840.1.114027.80.8.1"
-id_CompKEM = "2.16.840.1.114027.80.5.2.1"
+id_CompKEM = "2.16.840.1.114027.80.5.2"
 
 id_HashMLDSA44_RSA2048_PSS_SHA256 = univ.ObjectIdentifier(f"{id_CompSig}.40")
 id_HashMLDSA44_RSA2048_PKCS15_SHA256 = univ.ObjectIdentifier(f"{id_CompSig}.41")
@@ -179,9 +205,43 @@ id_MLKEM768_RSA4096 = univ.ObjectIdentifier(f"{id_CompKEM}.23")
 id_MLKEM768_X25519 = univ.ObjectIdentifier(f"{id_CompKEM}.24")
 id_MLKEM768_ECDH_P384 = univ.ObjectIdentifier(f"{id_CompKEM}.25")
 id_MLKEM768_ECDH_brainpoolP256r1 = univ.ObjectIdentifier(f"{id_CompKEM}.26")
+
 id_MLKEM1024_ECDH_P384 = univ.ObjectIdentifier(f"{id_CompKEM}.27")
 id_MLKEM1024_ECDH_brainpoolP384r1 = univ.ObjectIdentifier(f"{id_CompKEM}.28")
 id_MLKEM1024_X448 = univ.ObjectIdentifier(f"{id_CompKEM}.29")
+
+
+id_composite_frodokem = f"{id_composite_kem_test_suite}.1"
+id_composite_mlkem_dhkemrfc9180 = f"{id_composite_kem_test_suite}.2"
+id_composite_frodokem_dhkemrfc9180 = f"{id_composite_kem_test_suite}.3"
+
+
+
+
+# FrodoKEM-976-AES, FrodoKEM-976-SHAKE are Claimed NIST Level 3
+# So define eq to ML-KEM-768
+id_frodokem_976_aes_rsa2048 = univ.ObjectIdentifier(f"{id_composite_frodokem}.1")
+id_frodokem_976_aes_rsa3072 = univ.ObjectIdentifier(f"{id_composite_frodokem}.2")
+id_frodokem_976_aes_rsa4096 = univ.ObjectIdentifier(f"{id_composite_frodokem}.3")
+id_frodokem_976_aes_x25519 = univ.ObjectIdentifier(f"{id_composite_frodokem}.4")
+id_frodokem_976_aes_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodokem}.5")
+id_frodokem_976_aes_brainpoolP256r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.6")
+
+id_frodokem_976_shake_rsa2048 = univ.ObjectIdentifier(f"{id_composite_frodokem}.7")
+id_frodokem_976_shake_rsa3072 = univ.ObjectIdentifier(f"{id_composite_frodokem}.8")
+id_frodokem_976_shake_rsa4096 = univ.ObjectIdentifier(f"{id_composite_frodokem}.9")
+id_frodokem_976_shake_x25519 = univ.ObjectIdentifier(f"{id_composite_frodokem}.10")
+id_frodokem_976_shake_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodokem}.11")
+id_frodokem_976_shake_brainpoolP256r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.12")
+
+# FrodoKEM-1344-AES and FrodoKEM-1344-SHAKE are Claimed NIST Level 5.
+# So define eq to ML-KEM-1024
+id_frodokem_1344_aes_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodokem}.13")
+id_frodokem_1344_aes_ecdh_brainpoolP384r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.14")
+id_frodokem_1344_aes_x448 = univ.ObjectIdentifier(f"{id_composite_frodokem}.15")
+id_frodokem_1344_shake_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodokem}.16")
+id_frodokem_1344_shake_ecdh_brainpoolP384r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.17")
+id_frodokem_1344_shake_x448 = univ.ObjectIdentifier(f"{id_composite_frodokem}.18")
 
 
 MLKEM_OID_2_KDF_MAPPING = {
@@ -195,6 +255,82 @@ MLKEM_OID_2_KDF_MAPPING = {
     id_MLKEM1024_ECDH_brainpoolP384r1: "sha3-256",
     id_MLKEM1024_X448: "sha3-256",
 }
+
+
+FRODOKEM_OID_2_KDF_MAPPING = {
+id_frodokem_976_aes_rsa2048: "hkdf-sha256",
+id_frodokem_976_aes_rsa3072: "hkdf-sha256",
+id_frodokem_976_aes_rsa4096: "hkdf-sha256",
+id_frodokem_976_aes_x25519: "sha3-256",
+id_frodokem_976_aes_ecdh_p384: "hkdf-sha256",
+id_frodokem_976_aes_brainpoolP256r1: "hkdf-sha256",
+id_frodokem_976_shake_rsa2048: "hkdf-sha256",
+id_frodokem_976_shake_rsa3072: "hkdf-sha256",
+id_frodokem_976_shake_rsa4096: "hkdf-sha256",
+id_frodokem_976_shake_x25519: "sha3-256",
+id_frodokem_976_shake_ecdh_p384: "hkdf-sha256",
+id_frodokem_976_shake_brainpoolP256r1: "hkdf-sha256",
+# NIST claimed level 5
+id_frodokem_1344_aes_ecdh_p384: "sha3-256",
+id_frodokem_1344_aes_ecdh_brainpoolP384r1: "sha3-256",
+id_frodokem_1344_aes_x448: "sha3-256",
+id_frodokem_1344_shake_ecdh_p384: "sha3-256",
+id_frodokem_1344_shake_ecdh_brainpoolP384r1: "sha3-256",
+id_frodokem_1344_shake_x448: "sha3-256",
+}
+##################################
+# Alternative DHKEM RFC9180 OIDs
+##################################
+
+id_composite_mlkem768_dhkemrfc9180_X25519 = f"{id_composite_mlkem_dhkemrfc9180}.1"
+id_composite_mlkem768_dhkemrfc9180_P384 = f"{id_composite_mlkem_dhkemrfc9180}.2"
+id_composite_mlkem768_dhkemrfc9180_brainpoolP256r1 = f"{id_composite_mlkem_dhkemrfc9180}.3"
+id_composite_mlkem1024_dhkemrfc9180_P384 = f"{id_composite_mlkem_dhkemrfc9180}.4"
+id_composite_mlkem1024_dhkemrfc9180_brainpoolP384r1 = f"{id_composite_mlkem_dhkemrfc9180}.5"
+id_composite_mlkem1024_dhkemrfc9180_X448 = f"{id_composite_mlkem_dhkemrfc9180}.6"
+
+id_composite_frodokem_976_aes_dhkemrfc9180_X25519 = f"{id_composite_frodokem_dhkemrfc9180}.1"
+id_composite_frodokem_976_aes_dhkemrfc9180_P384 = f"{id_composite_frodokem_dhkemrfc9180}.2"
+id_composite_frodokem_976_aes_dhkemrfc9180_brainpoolP256r1 = f"{id_composite_frodokem_dhkemrfc9180}.3"
+id_composite_frodokem_976_shake_dhkemrfc9180_X25519 = f"{id_composite_frodokem_dhkemrfc9180}.4"
+id_composite_frodokem_976_shake_dhkemrfc9180_P384 = f"{id_composite_frodokem_dhkemrfc9180}.5"
+id_composite_frodokem_976_shake_dhkemrfc9180_brainpoolP256r1 = f"{id_composite_frodokem_dhkemrfc9180}.6"
+
+id_composite_frodokem_1344_aes_dhkemrfc9180_P384 = f"{id_composite_frodokem_dhkemrfc9180}.7"
+id_composite_frodokem_1344_aes_dhkemrfc9180_brainpoolP384r1 = f"{id_composite_frodokem_dhkemrfc9180}.8"
+id_composite_frodokem_1344_aes_dhkemrfc9180_X448 = f"{id_composite_frodokem_dhkemrfc9180}.9"
+id_composite_frodokem_1344_shake_dhkemrfc9180_P384 = f"{id_composite_frodokem_dhkemrfc9180}.10"
+id_composite_frodokem_1344_shake_dhkemrfc9180_brainpoolP384r1 = f"{id_composite_frodokem_dhkemrfc9180}.11"
+id_composite_frodokem_1344_shake_dhkemrfc9180_X448 = f"{id_composite_frodokem_dhkemrfc9180}.12"
+
+COMPOSITE_KEM_DHKEMRFC9180_MAPPING = {
+
+    "dhkemrfc9180-ml-kem-768-x25519": id_composite_mlkem768_dhkemrfc9180_X25519,
+    "dhkemrfc9180-ml-kem-768-ecdh-secp384r1": id_composite_mlkem768_dhkemrfc9180_P384,
+    "dhkemrfc9180-ml-kem-768-ecdh-brainpoolP256r1": id_composite_mlkem768_dhkemrfc9180_brainpoolP256r1,
+
+    "dhkemrfc9180-ml-kem-1024-ecdh-secp384r1": id_composite_mlkem1024_dhkemrfc9180_P384,
+    "dhkemrfc9180-ml-kem-1024-ecdh-brainpoolP384r1": id_composite_mlkem1024_dhkemrfc9180_brainpoolP384r1,
+    "dhkemrfc9180-ml-kem-1024-x448": id_composite_mlkem1024_dhkemrfc9180_X448,
+
+    "dhkemrfc9180-frodokem-976-aes-x25519": id_composite_frodokem_976_aes_dhkemrfc9180_X25519,
+    "dhkemrfc9180-frodokem-976-aes-ecdh-secp384r1": id_composite_frodokem_976_aes_dhkemrfc9180_P384,
+    "dhkemrfc9180-frodokem-976-aes-brainpoolP256r1": id_composite_frodokem_976_aes_dhkemrfc9180_brainpoolP256r1,
+    "dhkemrfc9180-frodokem-976-shake-x25519": id_composite_frodokem_976_shake_dhkemrfc9180_X25519,
+    "dhkemrfc9180-frodokem-976-shake-ecdh-secp384r1": id_composite_frodokem_976_shake_dhkemrfc9180_P384,
+    "dhkemrfc9180-frodokem-976-shake-brainpoolP256r1": id_composite_frodokem_976_shake_dhkemrfc9180_brainpoolP256r1,
+
+    "dhkemrfc9180-frodokem-1344-aes-ecdh-secp384r1": id_composite_frodokem_1344_aes_dhkemrfc9180_P384,
+    "dhkemrfc9180-frodokem-1344-aes-ecdh-brainpoolP384r1": id_composite_frodokem_1344_aes_dhkemrfc9180_brainpoolP384r1,
+    "dhkemrfc9180-frodokem-1344-aes-x448": id_composite_frodokem_1344_aes_dhkemrfc9180_X448,
+    "dhkemrfc9180-frodokem-1344-shake-ecdh-secp384r1": id_composite_frodokem_1344_shake_dhkemrfc9180_P384,
+    "dhkemrfc9180-frodokem-1344-shake-ecdh-brainpoolP384r1": id_composite_frodokem_1344_shake_dhkemrfc9180_brainpoolP384r1,
+    "dhkemrfc9180-frodokem-1344-shake-x448": id_composite_frodokem_1344_shake_dhkemrfc9180_X448,
+}
+
+
+
+
 COMPOSITE_MLKEM_MAPPING = {
     "ml-kem-768": {
         "RSA2048": id_MLKEM768_RSA2048,
@@ -222,6 +358,79 @@ COMPOSITE_KEM_OID_2_NAME = {
     f"{id_CompKEM}.28": "id_MLKEM1024_ECDH_brainpoolP384r1",
     f"{id_CompKEM}.29": "id_MLKEM1024_X448",
 }
+
 id_ce_deltaCertificateDescriptor = univ.ObjectIdentifier("2.16.840.1.114027.80.6.1")
 id_at_deltaCertificateRequestSignature = univ.ObjectIdentifier("2.16.840.1.114027.80.6.3")
 id_at_deltaCertificateRequest = univ.ObjectIdentifier("2.16.840.1.114027.80.6.2")
+
+
+
+
+id_Chempat_X25519_sntrup761 = univ.ObjectIdentifier(f"{id_Chempat}.1")
+id_Chempat_X25519_mceliece348864 = univ.ObjectIdentifier(f"{id_Chempat}.2")
+id_Chempat_X25519_mceliece460896 = univ.ObjectIdentifier(f"{id_Chempat}.3")
+id_Chempat_X25519_mceliece6688128 = univ.ObjectIdentifier(f"{id_Chempat}.4")
+id_Chempat_X25519_mceliece6960119 = univ.ObjectIdentifier(f"{id_Chempat}.5")
+id_Chempat_X25519_mceliece8192128 = univ.ObjectIdentifier(f"{id_Chempat}.6")
+id_Chempat_X448_mceliece348864 = univ.ObjectIdentifier(f"{id_Chempat}.7")
+id_Chempat_X448_mceliece460896 = univ.ObjectIdentifier(f"{id_Chempat}.8")
+id_Chempat_X448_mceliece6688128 = univ.ObjectIdentifier(f"{id_Chempat}.9")
+id_Chempat_X448_mceliece6960119 = univ.ObjectIdentifier(f"{id_Chempat}.10")
+id_Chempat_X448_mceliece8192128 = univ.ObjectIdentifier(f"{id_Chempat}.11")
+id_Chempat_X25519_ML_KEM_768 = univ.ObjectIdentifier(f"{id_Chempat}.12")
+id_Chempat_X448_ML_KEM_1024 = univ.ObjectIdentifier(f"{id_Chempat}.13")
+id_Chempat_P256_ML_KEM_768 = univ.ObjectIdentifier(f"{id_Chempat}.14")
+id_Chempat_P384_ML_KEM_1024 = univ.ObjectIdentifier(f"{id_Chempat}.15")
+id_Chempat_brainpoolP256_ML_KEM_768 = univ.ObjectIdentifier(f"{id_Chempat}.16")
+id_Chempat_brainpoolP384_ML_KEM_1024 = univ.ObjectIdentifier(f"{id_Chempat}.17")
+CHEMPAT_OID_2_NAME = {
+    id_Chempat_X25519_sntrup761: "x25519-sntrup761",
+    id_Chempat_X25519_mceliece348864: "x25519_mceliece348864",
+    id_Chempat_X25519_mceliece460896: "x25519_mceliece460896",
+    id_Chempat_X25519_mceliece6688128: "x25519_mceliece6688128",
+    id_Chempat_X25519_mceliece6960119: "x25519_mceliece6960119",
+    id_Chempat_X25519_mceliece8192128: "x25519_mceliece8192128",
+    id_Chempat_X448_mceliece348864: "x448-mceliece348864",
+    id_Chempat_X448_mceliece460896: "x448-mceliece460896",
+    id_Chempat_X448_mceliece6688128: "x448-mceliece6688128",
+    id_Chempat_X448_mceliece6960119: "x448-mceliece6960119",
+    id_Chempat_X448_mceliece8192128: "x448-mceliece8192128",
+    id_Chempat_X25519_ML_KEM_768: "x25519-ml-kem-768",
+    id_Chempat_X448_ML_KEM_1024: "x448-ml-kem-1024",
+    id_Chempat_P256_ML_KEM_768: "P256-ml-kem-768",
+    id_Chempat_P384_ML_KEM_1024: "P384-ml-kem-1024",
+    id_Chempat_brainpoolP256_ML_KEM_768: "brainpoolP256-ml-kem-768",
+    id_Chempat_brainpoolP384_ML_KEM_1024: "brainpoolP384-ml-kem-1024",
+}
+
+########################
+# Hybrid Signature OIDs
+########################
+
+
+
+
+id_relatedCert = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{1}")
+id_aa_relatedCertRequest = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{2}")
+id_mod_related_cert = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{3}")
+
+
+id_ad_certDiscovery = univ.ObjectIdentifier(f"{id_hybrid_sig_cert_binding}.{1}")
+id_ad_relatedCertificateDescriptor = univ.ObjectIdentifier(f"{id_hybrid_sig_cert_binding}.{2}")
+
+
+
+# Hybrid SUN Signature OIDs
+# CSR OIDs
+
+id_altSubPubKeyHashAlgAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.2")
+id_altSubPubKeyLocAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.3")
+id_altSigValueHashAlgAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.4")
+id_altSigValueLocAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.5")
+
+# x509 OIDs
+
+id_altSubPubKeyExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.6")
+id_altSignatureExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.7")
+
+

@@ -9,12 +9,9 @@ from typing import Dict
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
-from pq_logic.custom_oids import CHEMPAT_OID_2_NAME
 from pq_logic.tmp_oids import (
     CMS_COMPOSITE_OID_2_HASH,
     COMPOSITE_KEM_OID_2_NAME,
-    FALCON_HYBRID_NAME_2_HASH,
-    FALCON_HYBRID_NAME_2_OID,
     FALCON_NAME_2_OID,
     FRODOKEM_NAME_2_OID,
     FRODOKEM_OID_2_NAME,
@@ -25,7 +22,7 @@ from pq_logic.tmp_oids import (
     PURE_COMPOSITE_NAME_TO_OID,
     PURE_OID_TO_HASH,
     id_CompKEM,
-    id_sntrup761_str,
+    id_sntrup761_str, CHEMPAT_OID_2_NAME,
 )
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
@@ -581,13 +578,6 @@ ALL_POSS_COMBINATIONS = [
     {"pq_name": "ml-dsa-87", "trad_name": "ecdsa", "curve": "secp384r1"},
     {"pq_name": "ml-dsa-87", "trad_name": "ecdsa", "curve": "brainpoolP384r1"},
     {"pq_name": "ml-dsa-87", "trad_name": "ed448", "curve": None},
-    # Additionally, added for the composite signature not inside the draft.
-    {"pq_name": "falcon-512", "trad_name": "rsa", "length": "3072"},
-    {"pq_name": "falcon-512", "trad_name": "ecdsa", "curve": "secp256r1"},
-    {"pq_name": "falcon-padded-512", "trad_name": "rsa", "length": "3072"},
-    {"pq_name": "falcon-padded-512", "trad_name": "ecdsa", "curve": "secp256r1"},
-    {"pq_name": "falcon-1024", "trad_name": "ecdsa", "curve": "secp512r1"},
-    {"pq_name": "falcon-padded-1024", "trad_name": "ecdsa", "curve": "secp512r1"},
 ]
 
 
@@ -605,9 +595,7 @@ CMS_COMPOSITE_NAME_2_OID.update(HASH_COMPOSITE_NAME_TO_OID)
 CMS_COMPOSITE_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {y: x for x, y in CMS_COMPOSITE_NAME_2_OID.items()}
 
 
-# # TODO and change the names to FN-DSA names.
-CMS_COMPOSITE_NAME_2_OID.update(FALCON_HYBRID_NAME_2_OID)
-CMS_COMPOSITE_OID_2_HASH.update(FALCON_HYBRID_NAME_2_HASH)
+
 
 PQ_SIG_NAME_2_OID.update(FALCON_NAME_2_OID)
 

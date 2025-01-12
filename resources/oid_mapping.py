@@ -15,6 +15,7 @@ from typing import Optional, Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, rsa
+
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.tmp_oids import (
     CMS_COMPOSITE_OID_2_HASH,
@@ -34,14 +35,12 @@ from pyasn1_alt_modules.rfc5480 import id_dsa_with_sha256
 from robot.api.deco import not_keyword
 
 from resources.oidutils import (
-    ALL_KNOWN_PROTECTION_OIDS,
     ALLOWED_HASH_TYPES,
     CURVE_NAMES_TO_INSTANCES,
-    ML_DSA_OID_2_NAME,
     OID_HASH_MAP,
     OID_HASH_NAME_2_OID,
     PQ_NAME_2_OID,
-    SUPPORTED_MAC_NAME_2_OID, PQ_OID_2_NAME, PQ_SIG_PRE_HASH_OID_2_NAME,
+    SUPPORTED_MAC_NAME_2_OID, PQ_OID_2_NAME, PQ_SIG_PRE_HASH_OID_2_NAME, ALL_KNOWN_PROTECTION_OIDS,
 )
 from resources.typingutils import PrivateKey
 
@@ -172,16 +171,6 @@ def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
         return ALLOWED_HASH_TYPES[alg]
     except KeyError as err:
         raise ValueError(f"Unsupported hash algorithm: {alg}") from err
-
-
-@not_keyword
-def may_return_oid_to_name(oid: univ.ObjectIdentifier) -> str:
-    """Check if the oid is Known and then returns a human-readable representation, or the dotted string.
-
-    :param oid: The OID to perform the lookup for.
-    :return: Either a human-readable name or the OID as dotted string.
-    """
-    return ALL_KNOWN_PROTECTION_OIDS.get(oid, str(oid))
 
 
 def get_oid_composite(
@@ -341,3 +330,13 @@ def compute_hash(alg_name: str, data: bytes) -> bytes:
     digest = hashes.Hash(hash_class)
     digest.update(data)
     return digest.finalize()
+
+
+@not_keyword
+def may_return_oid_to_name(oid: univ.ObjectIdentifier) -> str:
+    """Check if the oid is Known and then returns a human-readable representation, or the dotted string.
+
+    :param oid: The OID to perform the lookup for.
+    :return: Either a human-readable name or the OID as dotted string.
+    """
+    return ALL_KNOWN_PROTECTION_OIDS.get(oid, str(oid))
