@@ -70,6 +70,7 @@ class CompositeKeyFactory:
     def from_keys(algorithm: str, pq_key, trad_key):
         """Create a composite key from existing keys.
 
+        :param algorithm: The hybrid algorithm.
         :param pq_key: The post-quantum key.
         :param trad_key: The traditional key.
         :return: A composite key.
@@ -88,12 +89,23 @@ class CompositeKeyFactory:
                     length = None
                     curve = trad_key.curve.name
                     trad_name = "ecdsa"
-                else:
+                elif isinstance(trad_key, ed448.Ed448PrivateKey):
                     length = None
                     curve = None
-                CompositeKeyFactory.generate_comp_sig_key(
+                    trad_name = "ed448"
+                elif isinstance(trad_key, ed25519.Ed25519PrivateKey):
+                    length = None
+                    curve = None
+                    trad_name = "ed25519"
+                else:
+                    raise ValueError(f"Unsupported traditional key type: {type(trad_key)}")
+
+                comp_key =  CompositeKeyFactory.generate_comp_sig_key(
                     pq_name=None, trad_name=trad_name, length=length, curve=curve
                 )
+
+                pq_key = comp_key.pq_key
+
             if trad_key is None:
                 pq_name = pq_key.name
                 return CompositeKeyFactory.generate_comp_sig_key(

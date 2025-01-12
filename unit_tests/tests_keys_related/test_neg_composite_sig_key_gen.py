@@ -27,7 +27,7 @@ class TestNegCompositeSigKey(unittest.TestCase):
         pq_key = generate_key("ml-dsa-44")
         comp = CompositeSigCMSPrivateKey(trad_key=key, pq_key=pq_key)
 
-        sig = comp.sign(b"data")
+        sig = comp.sign(data=b"data")
 
         with self.assertRaises(InvalidKeyCombination):
-            comp.public_key().verify(sig, b"data")
+            comp.public_key().verify(signature=sig, data=b"data")

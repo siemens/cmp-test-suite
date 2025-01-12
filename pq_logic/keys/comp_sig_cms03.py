@@ -405,6 +405,7 @@ class CompositeSigCMSPrivateKey(AbstractCompositeSigPrivateKey):
     def get_oid(self, use_padding: bool = False, pre_hash: bool = False) -> univ.ObjectIdentifier:
         """Return the Object Identifier for the composite signature."""
 
+        length = None
         if isinstance(self.trad_key, rsa.RSAPrivateKey):
             length = min(max(self.trad_key.key_size, 2048), 4096)
 
