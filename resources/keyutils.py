@@ -190,6 +190,9 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
     This function supports generating keys for various cryptographic algorithms including RSA, DSA, ECDSA, ECDH,
     Ed25519, and DH. Depending on the selected algorithm, additional parameters can be provided.
 
+    For post-quantum signature algorithms are not the hash version create ale,
+    but can be specified in the sign functions.
+
     Arguments:
     ---------
         - `algorithm`: The cryptographic algorithm to use for key generation. Defaults to "rsa".
@@ -215,12 +218,16 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
         - "ml-kem-512", "ml-kem-768", "ml-kem-1024"
         - "sntrup761"
         - "mceliece-348864", "mceliece-460896", "mceliece-6688128", "mceliece-6960119"
-        - "frdokem-640-aes", "frodokem-640-shake", "frodokem-976-aes", "frodokem-976-shake"
+        - "frdokem-640-aes", "frodokem-640-shake", "frodokem-976-aes",
+        "frodokem-976-shake", "frodokem-1344-aes", "frodokem-1344-shake"
 
     Hybrid algorithms:
     ------------------
         - "xwing"
         - "composite-sig"
+        - "composite-kem"
+        - "composite-dhkem" (uses DHKEM: RFC9180)
+        - "chempat"
 
     Additional Parameters:
     ----------------------
@@ -233,6 +240,13 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
             - secret_scalar (str, int): the private key value for DH key generation. If not provided, one is generated.
             - length (int, str): The length of the modulus to generate if `p` is not provided. Default is 2048.
 
+    Additional Hybrid Parameters:
+    ----------------------------
+        - pq_name (str): The name of the post-quantum algorithm.
+        - trad_param (str): The name of the traditional algorithm. needs to be ecdh for composite-kem/composite-dhkem/chempat and
+        ecdsa for composite-sig.
+        - pq_key (PQPrivateKey): The post-quantum private key.
+        - trad_key (ECDHPrivateKey or RSA): The traditional private key.
 
     Returns:
     -------

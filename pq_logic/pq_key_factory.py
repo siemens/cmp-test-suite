@@ -29,6 +29,26 @@ def _check_starts_with(algorithm: str, prefixes: List[str]) -> bool:
 class PQKeyFactory:
     """Factory class for creating post-quantum keys from various input formats."""
 
+
+    @staticmethod
+    def supported_algorithms() -> List[str]:
+        """Return a list of supported post-quantum algorithms."""
+        return [
+            "slh-dsa",
+            "sntrup761",
+            "mceliece",
+            "falcon",
+            "frodokem",
+            "ml-kem-512",
+            "ml-kem-768",
+            "ml-kem-1024",
+            "ml-dsa-44",
+            "ml-dsa-65",
+            "ml-dsa-87",
+
+        ]
+
+
     @staticmethod
     def generate_pq_key(algorithm: str):
         """Generate a post-quantum private key based on the specified algorithm.
@@ -49,7 +69,7 @@ class PQKeyFactory:
             return MLDSAPrivateKey(sig_alg=algorithm.upper())
 
         if algorithm == "slh-dsa" or algorithm in resources.oidutils.SLH_DSA_NAME_2_OID:
-            algorithm = "slh_dsa_sha2_256s" if algorithm == "slh-dsa" else algorithm
+            algorithm = "slh-dsa-sha2-256s" if algorithm == "slh-dsa" else algorithm
             return SLHDSAPrivateKey(sig_alg=algorithm)
 
         if algorithm == "sntrup761":
@@ -74,7 +94,8 @@ class PQKeyFactory:
         :return: Whether the name starts with a recognized prefix or not.
         """
         return _check_starts_with(
-            algorithm, prefixes=["ml-dsa", "ml-kem", "slh-dsa", "sntrup761", "mceliece", "falcon", "frodokem"]
+            algorithm, prefixes=["ml-dsa", "ml-kem", "slh-dsa",
+                                 "sntrup761", "mceliece", "falcon", "frodokem"]
         )
 
     @staticmethod

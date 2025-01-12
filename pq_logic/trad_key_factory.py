@@ -11,7 +11,7 @@ from resources.oid_mapping import get_curve_instance
 from resources.typingutils import PrivateKey
 
 
-def _generate_ec_key(algorithm: str, curve: str):
+def generate_ec_key(algorithm: str, curve: Optional[str] = None) -> PrivateKey:
     """Generate a private key for a specified elliptic curve algorithm and curve.
 
     This function generates a private key for Ed25519, Ed448, X25519, and X448.
@@ -125,7 +125,7 @@ def generate_trad_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417 fo
     """
     algorithm = algorithm.lower()
 
-    if algorithm == "bad_rsa_key":
+    if algorithm == "bad-rsa-key":
         from cryptography.hazmat.bindings._rust import (  # pylint: disable=import-outside-toplevel
             openssl as rust_openssl,
         )
@@ -142,7 +142,7 @@ def generate_trad_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417 fo
 
     elif algorithm in {"ed25519", "ed448", "x25519", "x448", "ecdh", "ecdsa", "ecc", "ec"}:
         curve = params.get("curve", "secp256r1")
-        private_key = _generate_ec_key(algorithm, curve)
+        private_key = generate_ec_key(algorithm, curve)
 
     elif algorithm == "dh":
         private_key = _generate_dh_private_key(
