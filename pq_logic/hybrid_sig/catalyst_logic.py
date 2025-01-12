@@ -6,7 +6,6 @@ import logging
 from typing import Optional, Union
 
 import pyasn1.error
-from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
@@ -16,7 +15,7 @@ from resources.certutils import verify_cert_signature
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
 from resources.cryptoutils import sign_data, verify_signature
 from resources.keyutils import load_public_key_from_spki
-from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
+from resources.oid_mapping import get_hash_from_oid
 from resources.typingutils import PrivateKey, PrivateKeySig
 
 from pq_logic.combined_factory import CombinedKeyFactory

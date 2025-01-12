@@ -5,7 +5,10 @@ from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_oid_cms_
 from pq_logic.pq_compute_utils import sign_data_with_alg_id
 from resources.certbuildutils import build_csr
 
-from pyasn1_alt_modules import rfc6402
+from pyasn1.codec.der import encoder, decoder
+from pyasn1_alt_modules import rfc6402, rfc5280
+
+from pyasn1.type import univ
 
 ###################
 # Example Workflow
