@@ -15,6 +15,10 @@ path = [
   "unit_tests/*.py",
   "Makefile",
   "Makefile_EJBCA",
+  "data/keys/*.pem",
+  "data/unittest/*.pem",
+  "data/unittest/*.crl",
+  "data/unittest/*.der"
 ]
 
 # these are config files or sample payloads which may be in formats that cannot
