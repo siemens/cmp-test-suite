@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main
-      - pq_migration
+      - pq_*
+      - dev_*
   pull_request:
     branches:
       - main
@@ -16,16 +17,16 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: "3.11.2"
 
       - name: Cache APT packages
         id: cache-apt
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: /var/cache/apt
           key: ${{ runner.os }}-apt-${{ hashFiles('scripts/setup_pq.sh') }}
@@ -42,7 +43,7 @@ jobs:
 
       - name: Cache venv
         id: cache-venv
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .venv
           key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt') }}
@@ -122,7 +123,7 @@ jobs:
       - license_check
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v3
@@ -167,10 +168,10 @@ jobs:
       - pylint
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: 3.11.2
 
