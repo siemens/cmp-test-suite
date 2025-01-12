@@ -23,8 +23,6 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 
-from pq_logic.custom_oids import id_altSubPubKeyHashAlgAttr, id_altSubPubKeyLocAttr, id_altSigValueHashAlgAttr, \
-    id_altSigValueLocAttr, id_altSubPubKeyExt, id_altSignatureExt
 from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, prepare_validity
 from resources.certextractutils import get_extension
 from resources.convertutils import copy_asn1_certificate
@@ -41,7 +39,8 @@ from pq_logic.keys.comp_sig_cms03 import (
     compute_hash,
 )
 from pq_logic.py_verify_logic import verify_signature_with_alg_id
-from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH
+from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH, id_altSubPubKeyHashAlgAttr, id_altSubPubKeyLocAttr, \
+    id_altSigValueHashAlgAttr, id_altSigValueLocAttr, id_altSubPubKeyExt, id_altSignatureExt
 
 
 def _hash_public_key(public_key, hash_alg: str) -> bytes:

@@ -10,7 +10,7 @@ from typing import Sequence, Union, Optional, List
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
 
-from pq_logic.custom_oids import id_relatedCert
+from pq_logic.tmp_oids import id_relatedCert
 from pq_logic.hybrid_sig.catalyst_logic import id_ce_subjectAltPublicKeyInfo, SubjectAltPublicKeyInfoExt
 from pq_logic.hybrid_sig.certdiscovery import extract_sia_extension_for_cert_discovery, get_secondary_certificate, \
     validate_alg_ids

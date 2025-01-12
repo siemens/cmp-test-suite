@@ -21,12 +21,11 @@ PrivateKEMKeyType = Union[AbstractCompositeKEMPrivateKey, AbstractHybridRawPubli
 
 @not_keyword
 def get_kem_oid_from_key(
-    key: Union[PublicKEMKeyType, PrivateKEMKeyType], kdf_alg: str = "sha3"
+    key: Union[PublicKEMKeyType, PrivateKEMKeyType],
 ) -> univ.ObjectIdentifier:
     """Get the Object Identifier from the corresponding key and for CompositeKEM keys the matching kdf.
 
     :param key: The key to get the Object Identifier from.
-    :param kdf_alg: The key derivation algorithm to use.
     :return: The Object Identifier.
     """
     if isinstance(key, (rsa.RSAPublicKey, rsa.RSAPrivateKey)):
@@ -36,7 +35,7 @@ def get_kem_oid_from_key(
         return PQ_KEM_NAME_2_OID[key.name]
 
     if isinstance(key, (AbstractCompositeKEMPrivateKey, AbstractCompositeKEMPublicKey)):
-        return key.get_oid(kdf_alg)
+        return key.get_oid()
 
     if isinstance(key, (AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey)):
         return key.get_oid()
