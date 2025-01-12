@@ -70,8 +70,8 @@ class TestSunHybridScheme(unittest.TestCase):
             sig_value_location="https://example.com/sig"
         )
 
-    @patch("pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00.fetch_value_from_location")
-    def test_validate_cert_signature(self, mock_fetch):
+
+    def test_validate_cert_signature(self):
         """
         GIVEN a certificate with an alt signature extension.
         WHEN the extension is validated.
@@ -93,12 +93,9 @@ class TestSunHybridScheme(unittest.TestCase):
             hash_alg="sha256",
         )
 
-        mock_fetch.side_effect = [
-            _extract_alt_sig(cert_1)
-
-        ]
-
-        validate_alt_sig_extn(cert, self.alt_private_key.public_key())
+        sig = _extract_alt_sig(cert_1)
+        validate_alt_sig_extn(cert=cert,
+                              alt_pub_key=self.alt_private_key.public_key(), signature=sig)
 
     def test_build_csr(self):
         """

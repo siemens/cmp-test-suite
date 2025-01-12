@@ -40,7 +40,7 @@ from pq_logic.keys.comp_sig_cms03 import (
     CompositeSigCMSPublicKey,
     compute_hash,
 )
-from pq_logic.pq_compute_utils import verify_signature_with_alg_id
+from pq_logic.py_verify_logic import verify_signature_with_alg_id
 from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH
 
 
@@ -419,10 +419,6 @@ def _prepare_pre_tbs_certificate(
         signature=signature, by_val=True, hash_alg=sig_hash_id, alt_sig_algorithm=sig_alg_id, location=sig_loc
     )
 
-    # As of Section 4.3.1:
-    # Both are independent extensions.
-    pre_tbs_cert["extensions"].append(extn_alt_pub)
-
     # as of 4.3.2:
     # Sign the preTbsCertificate constructed in Section 4.3.1 with the issuer's
     # alternative private key to obtain the alternative signature.
@@ -522,9 +518,6 @@ def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: 
     """
     old_extensions = cert["tbsCertificate"]["extensions"]
 
-    cert["tbsCertificate"]["extensions"] = rfc5280.Extensions().subtype(
-        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3)
-    )
     new_extn = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
 
     decoded_ext = None
@@ -547,10 +540,11 @@ def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: 
 
     hash_alg = get_hash_from_oid(decoded_ext["hashAlg"]["algorithm"])
     hashed_sig = decoded_ext["plainOrHash"].asOctets()
-    if not hashed_sig == compute_hash(hash_alg, signature):
+    if hashed_sig != compute_hash(alg_name=hash_alg, data=signature):
         raise ValueError("The fetched signature was invalid!")
 
-    verify_signature_with_alg_id(alg_id=sig_alg_id, public_key=alt_pub_key, data=data, signature=signature)
+    verify_signature_with_alg_id(alg_id=sig_alg_id, public_key=alt_pub_key,
+                                 data=data, signature=signature)
 
 def _patch_extensions(extensions: rfc9480.Extensions, extension: rfc5280.Extension) -> rfc9480.Extensions:
     """Replace or update an extension in the given list of extensions.
