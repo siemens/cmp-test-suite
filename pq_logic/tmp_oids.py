@@ -78,12 +78,12 @@ MCELIECE_NAME_2_OID = {
 id_frodokem = f"{id_kem_test_suite}.3"
 
 FRODOKEM_NAME_2_OID = {
-    "frodokem-640-aes": f"{id_mceliece}.1",
-    "frodokem-640-shake": f"{id_mceliece}.2",
-    "frodokem-976-aes": f"{id_mceliece}.3",
-    "frodokem-976-shake": f"{id_mceliece}.4",
-    "frodokem-1344-aes": f"{id_mceliece}.5",
-    "frodokem-1344-shake": f"{id_mceliece}.6",
+    "frodokem-640-aes": f"{id_frodokem}.1",
+    "frodokem-640-shake": f"{id_frodokem}.2",
+    "frodokem-976-aes": f"{id_frodokem}.3",
+    "frodokem-976-shake": f"{id_frodokem}.4",
+    "frodokem-1344-aes": f"{id_frodokem}.5",
+    "frodokem-1344-shake": f"{id_frodokem}.6",
 }
 
 FRODOKEM_OID_2_NAME = {y: x for x, y in FRODOKEM_NAME_2_OID.items()}

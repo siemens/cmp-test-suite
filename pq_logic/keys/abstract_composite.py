@@ -134,6 +134,7 @@ class AbstractCompositePublicKey(ABC):
         return data
 
     def _self_to_raw_der(self) -> bytes:
+        """Convert the public key to a raw DER-encoded structure."""
         return encoder.encode(self._prepare_pub_keys())
 
     def to_spki(
@@ -152,7 +153,7 @@ class AbstractCompositePublicKey(ABC):
             data = encoder.encode(self._prepare_old_spki())
 
         spki = rfc5280.SubjectPublicKeyInfo()
-        spki["algorithm"]["algorithm"] = self.get_oid(use_pss, pre_hash)
+        spki["algorithm"]["algorithm"] = self.get_oid(use_pss=use_pss, pre_hash=pre_hash)
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(data)
         return spki
 
@@ -212,6 +213,11 @@ class AbstractCompositePrivateKey(ABC):
         self.pq_key = pq_key
         self.trad_key = trad_key
 
+    @abstractmethod
+    def get_oid(self, **kwargs) -> univ.ObjectIdentifier:
+        """Return the Object Identifier for the composite signature algorithm."""
+        pass
+
     @staticmethod
     @abstractmethod
     def generate(pq_name: Optional[str] = None, trad_param: Optional[Union[int, str]] = None):
@@ -223,10 +229,73 @@ class AbstractCompositePrivateKey(ABC):
         """Return the corresponding public key class."""
         pass
 
-    @abstractmethod
-    def private_bytes(self, encoding: Encoding = Encoding.PEM, format: PrivateFormat = PublicFormat.Raw) -> bytes:
-        """Get the serialized private key in bytes format."""
-        pass
+
+    def _get_key_name(self) -> bytes:
+        """Get the key name for the composite key, to set as the PEM header."""
+        return b"ABSTRACT-COMPOSITE-KEY"
+
+    def _to_der(self):
+        """Convert the private key to a CompositeSignaturePrivateKeyAsn1 structure.
+
+        :return: The DER-encoded CompositeSignaturePrivateKeyAsn1 structure.
+        """
+        data = CompositeSignaturePrivateKeyAsn1()
+
+        pq_bytes = self.pq_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, serialization.NoEncryption())
+        trad_bytes = self.trad_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, serialization.NoEncryption())
+
+        obj, _ = decoder.decode(pq_bytes, asn1Spec=OneAsymmetricKey())
+        obj2, _ = decoder.decode(trad_bytes, asn1Spec=OneAsymmetricKey())
+        data.append(obj)
+        data.append(obj2)
+
+        return encoder.encode(data)
+
+    def _to_one_asym_key(self) -> bytes:
+        """Convert the private key to a OneAsymmetricKey structure.
+
+        :return: The DER-encoded OneAsymmetricKey structure.
+        """
+        data = OneAsymmetricKey()
+        data["version"] = 0
+        data["privateKeyAlgorithm"]["algorithm"] = self.get_oid()
+        data["privateKey"] = univ.OctetString(self._to_der())
+        return encoder.encode(data)
+
+    def private_bytes(
+            self,
+            encoding: Encoding = Encoding.PEM,
+            format: PrivateFormat = PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+    ) -> bytes:
+        """Get the serialized private key in bytes format.
+
+        :param encoding: The encoding format. Can be `Encoding.Raw`, `Encoding.DER`, or `Encoding.PEM`.
+        :param format: The private key format. Can be `PrivateFormat.Raw` or `PrivateFormat.PKCS8`.
+        :return: The serialized private key as bytes.
+        """
+        if format != PrivateFormat.PKCS8:
+            raise ValueError("Only PKCS8 format is supported.")
+
+        if not isinstance(encryption_algorithm, serialization.NoEncryption) and encoding == encoding.DER:
+            raise ValueError("Encryption is not supported for DER encoding, only for PEM.")
+
+        if encoding == Encoding.DER:
+            return self._to_one_asym_key()
+
+        if encoding == encoding.PEM and isinstance(encryption_algorithm, serialization.BestAvailableEncryption):
+            password = encryption_algorithm.password.decode("utf-8")
+            return prepare_enc_key_pem(password, self._to_one_asym_key(), self._get_key_name())
+
+        if encoding == Encoding.PEM:
+            data = self._to_one_asym_key()
+            b64_encoded = base64.b64encode(data).decode("utf-8")
+            b64_encoded = "\n".join(textwrap.wrap(b64_encoded, width=64))
+            pem = "-----BEGIN COMPOSITE SIG PRIVATE KEY-----\n" + b64_encoded + "\n-----END COMPOSITE SIG PRIVATE KEY-----\n"
+            return pem.encode("utf-8")
+
+        raise NotImplementedError(f"The encoding is not supported. Encoding: {encoding} .Format: {format}.")
+
 
 
 ######################
@@ -237,11 +306,34 @@ class AbstractCompositePrivateKey(ABC):
 class AbstractCompositeKEMPublicKey(AbstractCompositePublicKey, ABC):
     """Abstract class for Composite KEM public keys."""
 
-    pass
+    def to_spki(
+            self, use_pss: bool = False, pre_hash: bool = False, use_2_spki: bool = False
+    ) -> rfc5280.SubjectPublicKeyInfo:
+        """Convert CompositePublicKey to a SubjectPublicKeyInfo structure.
+
+        :param use_2_spki: Whether to use `SequenceOf` 2 SPKI structures.
+        :param use_pss: Whether RSA-PSS padding was used (if RSA).
+        :param pre_hash: Whether the prehashed version was used.
+        :return: `SubjectPublicKeyInfo`.
+        """
+        if not use_2_spki:
+            data = self._self_to_raw_der()
+        else:
+            data = encoder.encode(self._prepare_old_spki())
+
+        spki = rfc5280.SubjectPublicKeyInfo()
+        spki["algorithm"]["algorithm"] = self.get_oid()
+        spki["subjectPublicKey"] = univ.BitString.fromOctetString(data)
+        return spki
 
 
 class AbstractCompositeKEMPrivateKey(AbstractCompositePrivateKey, ABC):
     """Abstract class for Composite KEM private keys."""
+
+
+    def _get_key_name(self) -> bytes:
+        """Get the key name for the composite key, to set as the PEM header."""
+        return b"ABSTRACT COMPOSITE KEM KEY"
 
     @abstractmethod
     def generate(self, pq_name: Optional[str] = None, trad_param: Optional[Union[int, str]] = None):
@@ -276,42 +368,9 @@ class AbstractCompositeKEMPrivateKey(AbstractCompositePrivateKey, ABC):
         """Combine the shared secrets and ciphertexts to a shared secret."""
         pass
 
-    def _encode_trad_key(self) -> bytes:
-        """Encode a traditional private key."""
-        # TODO think more about the correct way.
-        return self.trad_key.private_bytes_raw()
 
-    def _to_der(self):
-        """Convert the private key to a `CompositeSignaturePrivateKeyAsn1` structure.
 
-        :return: The DER-encoded CompositeSignaturePrivateKeyAsn1 structure.
-        """
-        key_ans1 = CompositeSignaturePrivateKeyAsn1()
-        key_ans1.append(univ.OctetString(self.pq_key.private_bytes_raw()))
-        key_ans1.append(univ.OctetString(self._encode_trad_key()))
-        return encoder.encode(key_ans1)
 
-    def private_bytes(self, encoding: Encoding = Encoding.PEM, format: PrivateFormat = PrivateFormat.Raw) -> bytes:
-        """Get the serialized private key in bytes format.
-
-        :param encoding: The encoding format. Can be `Encoding.Raw`, `Encoding.DER`, or `Encoding.PEM`.
-        :param format: The private key format. Can be `PrivateFormat.Raw` or `PrivateFormat.PKCS8`.
-        :return: The serialized private key as bytes.
-        """
-        if format != PublicFormat.Raw:
-            raise ValueError("")
-
-        if encoding == Encoding.DER:
-            return self._to_der()
-
-        if encoding == Encoding.PEM:
-            data = self._to_der()
-            b64_encoded = base64.b64encode(data).decode("utf-8")
-            b64_encoded = "\n".join(textwrap.wrap(b64_encoded, width=64))
-            pem = "-----BEGIN PUBLIC KEY-----\n" + b64_encoded + "\n-----END PUBLIC KEY-----\n"
-            return pem.encode("utf-8")
-
-        raise NotImplementedError(f"The encoding is not supported. Encoding: {encoding}. Format: {format}")
 
 
 ######################
@@ -331,6 +390,8 @@ class AbstractCompositeSigPublicKey(AbstractCompositePublicKey, ABC):
             return False
 
         return self.pq_key == other.pq_key and self.trad_key == other.trad_key
+
+
 
     @abstractmethod
     def get_oid(self, use_pss: bool = False, pre_hash: bool = False) -> univ.ObjectIdentifier:
@@ -413,9 +474,17 @@ class AbstractCompositeSigPrivateKey(AbstractCompositePrivateKey, ABC):
     pq_key: MLDSAPrivateKey
     trad_key: TradPrivKeySig
 
+    def _get_key_name(self) -> bytes:
+        """Get the key name for the composite key, to set as the PEM header."""
+        return b"ABSTRACT COMPOSITE SIG KEY"
+
     @staticmethod
-    def prepare_composite_sig(pq_sig, trad_sig) -> bytes:
-        """Prepare the composite signature."""
+    def prepare_composite_sig(pq_sig: bytes, trad_sig: bytes) -> bytes:
+        """Prepare the composite signature.
+
+        :param pq_sig: The post-quantum signature.
+        :param trad_sig: The traditional signature.
+        """
         vals = CompositeSignatureValue()
         vals.append(univ.BitString.fromOctetString(pq_sig))
         vals.append(univ.BitString.fromOctetString(trad_sig))
@@ -486,64 +555,5 @@ class AbstractCompositeSigPrivateKey(AbstractCompositePrivateKey, ABC):
         """Return the corresponding public key class."""
         pass
 
-    def _to_der(self):
-        """Convert the private key to a CompositeSignaturePrivateKeyAsn1 structure.
 
-        :return: The DER-encoded CompositeSignaturePrivateKeyAsn1 structure.
-        """
-        data = CompositeSignaturePrivateKeyAsn1()
 
-        pq_bytes = self.pq_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, serialization.NoEncryption())
-        trad_bytes = self.trad_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, serialization.NoEncryption())
-
-        obj, _ = decoder.decode(pq_bytes, asn1Spec=OneAsymmetricKey())
-        obj2, _ = decoder.decode(trad_bytes, asn1Spec=OneAsymmetricKey())
-        data.append(obj)
-        data.append(obj2)
-
-        return encoder.encode(data)
-
-    def _to_one_asym_key(self) -> bytes:
-        """Convert the private key to a OneAsymmetricKey structure.
-
-        :return: The DER-encoded OneAsymmetricKey structure.
-        """
-        data = OneAsymmetricKey()
-        data["version"] = 0
-        data["privateKeyAlgorithm"]["algorithm"] = self.get_oid()
-        data["privateKey"] = univ.OctetString(self._to_der())
-        return encoder.encode(data)
-
-    def private_bytes(
-        self,
-        encoding: Encoding = Encoding.PEM,
-        format: PrivateFormat = PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    ) -> bytes:
-        """Get the serialized private key in bytes format.
-
-        :param encoding: The encoding format. Can be `Encoding.Raw`, `Encoding.DER`, or `Encoding.PEM`.
-        :param format: The private key format. Can be `PrivateFormat.Raw` or `PrivateFormat.PKCS8`.
-        :return: The serialized private key as bytes.
-        """
-        if format != PrivateFormat.PKCS8:
-            raise ValueError("Only PKCS8 format is supported.")
-
-        if not isinstance(encryption_algorithm, serialization.NoEncryption) and encoding == encoding.DER:
-            raise ValueError("Encryption is not supported for DER encoding, only for PEM.")
-
-        if encoding == Encoding.DER:
-            return self._to_one_asym_key()
-
-        if encoding == encoding.PEM and isinstance(encryption_algorithm, serialization.BestAvailableEncryption):
-            password = encryption_algorithm.password.decode("utf-8")
-            return prepare_enc_key_pem(password, self._to_one_asym_key(), b"COMPOSITE-SIG")
-
-        if encoding == Encoding.PEM:
-            data = self._to_one_asym_key()
-            b64_encoded = base64.b64encode(data).decode("utf-8")
-            b64_encoded = "\n".join(textwrap.wrap(b64_encoded, width=64))
-            pem = "-----BEGIN PUBLIC KEY-----\n" + b64_encoded + "\n-----END PUBLIC KEY-----\n"
-            return pem.encode("utf-8")
-
-        raise NotImplementedError(f"The encoding is not supported. Encoding: {encoding} .Format: {format}.")

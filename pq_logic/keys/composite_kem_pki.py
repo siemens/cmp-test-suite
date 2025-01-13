@@ -232,6 +232,14 @@ class CompositeMLKEMPrivateKey(AbstractCompositeKEMPrivateKey):
     pq_key: MLKEMPrivateKey
     _alternative_hash = False
 
+    def _get_key_name(self) -> bytes:
+        """Return the key name of the composite KEM, for the PEM-header."""
+        return b"COMPOSITE KEM"
+
+    def get_oid(self) -> univ.ObjectIdentifier:
+        """Return the OID of the composite KEM."""
+        return get_oid_composite(self.pq_key.name, self.trad_key)
+
     @abstractmethod
     def _perform_trad_encaps(self, public_key):
         """Perform traditional key encapsulation using the specified KEM mechanism."""
@@ -257,7 +265,7 @@ class CompositeMLKEMPrivateKey(AbstractCompositeKEMPrivateKey):
         kdf_name = get_composite_kem_hash_alg(self.pq_key.name, self.trad_key)
 
         if "hkdf" in kdf_name:
-            hash_instance = hashes.SHA256()if not self._alternative_hash else hashes.SHA512()
+            hash_instance = hashes.SHA256() if not self._alternative_hash else hashes.SHA512()
             hkdf = HKDF(algorithm=hash_instance, length=32, salt=None, info=None)
             return hkdf.derive(concatenated_inputs)
         else:
@@ -427,6 +435,10 @@ class CompositeDHKEMRFC9180PublicKey(CompositeKEMPublicKey):
 
 
 class CompositeDHKEMRFC9180PrivateKey(CompositeMLKEMPrivateKey):
+
+    def _get_key_name(self) -> bytes:
+        """Return the key name of the composite KEM, for the PEM-header."""
+        return b"COMPOSITE DHKEMRFC9180"
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""

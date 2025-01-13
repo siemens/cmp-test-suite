@@ -80,6 +80,8 @@ class MLKEMPublicKey(PQKEMPublicKey):
     def from_public_bytes(cls, data: bytes, name: str) -> "MLKEMPublicKey":
         """Create an ML-KEM public key from raw bytes."""
         key = cls(kem_alg=name, public_key=data)
+        if key.key_size != len(data):
+            raise ValueError(f"Invalid key size expected {key.key_size}, but got: {len(data)}")
         return key
 
     def encaps(self) -> Tuple[bytes, bytes]:
@@ -91,6 +93,21 @@ class MLKEMPublicKey(PQKEMPublicKey):
             return self.ml_class.encaps_internal(ek=self._public_key_bytes, m=os.urandom(32))
 
 
+    @property
+    def ct_length(self) -> int:
+        """Get the length of the ciphertext."""
+        if oqs is not None:
+            return super().ct_length
+        else:
+            return {"ml-kem-768": 1088, "ml-kem-512": 768, "ml-kem-1024": 1568}[self.name]
+
+    @property
+    def key_size(self) -> int:
+        """Get the size of the key."""
+        if oqs is not None:
+            return super().key_size
+        else:
+            return {"ml-kem-768": 1184, "ml-kem-512": 800, "ml-kem-1024": 1568}[self.name]
 
 class MLKEMPrivateKey(PQKEMPrivateKey):
     """Represents an ML-KEM private key.
@@ -180,7 +197,10 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
         :param name: The algorithm name.
         :return: An instance of `MLKEMPublicKey`.
         """
+
         key = cls(kem_alg=name, private_bytes=data)
+        if key.key_size != len(data):
+            raise ValueError(f"Invalid key size expected {key.key_size}, but got: {len(data)}")
         return key
 
     def decaps(self, ct: bytes) -> bytes:
@@ -193,6 +213,22 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
             return super().decaps(ct)
         else:
             return self.ml_class.decaps_internal(dk=self._private_key, c=ct)
+
+    @property
+    def ct_length(self) -> int:
+        """Get the length of the ciphertext."""
+        if oqs is not None:
+            return super().ct_length
+        else:
+            return {"ml-kem-768": 1088, "ml-kem-512": 768, "ml-kem-1024": 1568}[self.name]
+
+    @property
+    def key_size(self) -> int:
+        """Get the size of the key."""
+        if oqs is not None:
+            return super().key_size
+        else:
+            return {"ml-kem-768": 2400, "ml-kem-512": 1632, "ml-kem-1024": 3168}[self.name]
 
 
 ##########################

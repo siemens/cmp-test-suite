@@ -116,6 +116,10 @@ class AbstractHybridRawPrivateKey(ABC):
         """Deserialize raw bytes into a private key."""
         pass
 
+    def get_oid(self) -> univ.ObjectIdentifier:
+        """Return the OID of the key. Default is to use the public key OID."""
+        return self.public_key().get_oid()
+
     def _to_one_asym_key(self) -> bytes:
         """Convert the hybrid key to an `rfc5958.OneAsymmetricKey` object.
 
@@ -123,7 +127,7 @@ class AbstractHybridRawPrivateKey(ABC):
         """
         one_asym_key = rfc5958.OneAsymmetricKey()
         one_asym_key["version"] = 1
-        one_asym_key["privateKeyAlgorithm"]["algorithm"] = self.public_key().get_oid()
+        one_asym_key["privateKeyAlgorithm"]["algorithm"] = self.get_oid()
         one_asym_key["privateKey"] = self.private_bytes_raw()
         one_asym_key["publicKey"] = one_asym_key["publicKey"].fromOctetString(self.public_key().public_bytes_raw())
 

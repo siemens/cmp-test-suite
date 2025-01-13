@@ -31,10 +31,10 @@ from resources.oidutils import (
 from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1
 from pq_logic.keys.abstract_pq import PQPrivateKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey
-from pq_logic.keys.kem_keys import McEliecePrivateKey, MLKEMPrivateKey
+from pq_logic.keys.kem_keys import McEliecePrivateKey, MLKEMPrivateKey, FrodoKEMPrivateKey, Sntrup761PrivateKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
 from pq_logic.keys.xwing import XWingPrivateKey
-from pq_logic.tmp_oids import MCELIECE_OID_2_NAME
+from pq_logic.tmp_oids import MCELIECE_OID_2_NAME, FRODOKEM_OID_2_NAME, id_sntrup761_str
 
 RawKeyType = Union[
     ed25519.Ed25519PrivateKey,
@@ -113,6 +113,8 @@ CUSTOM_KEY_TYPES = [
     b"McEliece",
     b"SLH-DSA",
     b"COMPOSITE-SIG",
+    b"COMPOSITE-KEM",
+    b"FrodoKEM",
     b"XWING",
     b"ML-DSA",
     b"ML-KEM",
@@ -261,6 +263,18 @@ def parse_key_from_one_asym_key(data: bytes):
         private_key = SLHDSAPrivateKey(
             sig_alg=name, private_bytes=obj["privateKey"].asOctets(), public_key=public_bytes
         )
+
+    elif alg_oid in FRODOKEM_OID_2_NAME:
+        name = PQ_OID_2_NAME[alg_oid]
+        private_key = FrodoKEMPrivateKey(
+            kem_alg=name,
+            private_bytes=obj["privateKey"].asOctets(),
+            public_key=public_bytes,
+        )
+    elif alg_oid in id_sntrup761_str:
+        private_key = Sntrup761PrivateKey(kem_alg="sntrup761",
+            private_bytes=obj["privateKey"].asOctets(),
+            public_key=public_bytes)
 
     else:
         oid = obj["privateKeyAlgorithm"]["algorithm"]

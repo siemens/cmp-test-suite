@@ -182,10 +182,11 @@ def get_oid_cms_composite_signature(
     :param trad_key: The traditional key object.
     :param use_pss: Indicates whether RSA-PSS padding is used.
     :param pre_hash: Indicates if the data is pre-hashed before signing.
+    :param length: Optional key length for RSA keys.
     :return: The OID representing the composite signature configuration.
     :raises KeyError: If the OID cannot be resolved.
     """
-    stringified_trad_name = _get_trad_name(trad_key, use_padding=use_pss, length=length)
+    stringified_trad_name = _get_trad_name(trad_key=trad_key, use_padding=use_pss, length=length)
     to_add = "" if not pre_hash else "hash-"
     oid_base = f"{to_add}{ml_dsa_name}-{stringified_trad_name}"
     oid = CMS_COMPOSITE_NAME_2_OID.get(oid_base)
@@ -327,6 +328,10 @@ class CompositeSigCMSPrivateKey(AbstractCompositeSigPrivateKey):
 
     pq_key: MLDSAPrivateKey
     trad_key: Union[rsa.RSAPrivateKey, ed448.Ed448PrivateKey, ed25519.Ed25519PrivateKey, ec.EllipticCurvePrivateKey]
+
+    def _get_key_name(self) -> bytes:
+        """Return the key name for the composite signature key, for the PEM header."""
+        return b"COMPOSITE SIGNATURE"
 
     @staticmethod
     def validate_oid(oid: univ.ObjectIdentifier, key: Union[CompositeSigCMSPublicKey, "CompositeSigCMSPrivateKey"]):
