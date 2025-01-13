@@ -22,7 +22,7 @@ from pq_logic.keys.comp_sig_cms03 import (
 )
 from pq_logic.keys.composite_kem_pki import (
     CompositeDHKEMRFC9180PublicKey,
-    CompositeKEMPublicKey, parse_public_keys,
+    parse_public_keys,
 )
 from pq_logic.keys.kem_keys import FrodoKEMPublicKey, MLKEMPublicKey
 from pq_logic.keys.xwing import XWingPublicKey

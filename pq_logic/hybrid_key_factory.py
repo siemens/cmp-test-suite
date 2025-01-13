@@ -4,7 +4,7 @@
 
 from typing import List, Optional
 
-from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x448, x25519
 from resources import keyutils
 from resources.exceptions import InvalidKeyCombination
 from resources.typingutils import Strint
