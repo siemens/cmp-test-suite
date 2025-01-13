@@ -123,9 +123,8 @@ CA MUST Reject Invalid POP For Composite RSA
     [Tags]             composite   csr   negative
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa
     ${cm}=             Get Next Common Name
-    ${csr}=            Build CSR    signing_key=${key}    common_name=${cm}   exclude_signature=True
-    ${signed_csr}=      Sign CSR    ${csr}    signing_key=${key}    modify_signature=True
-    ${p10cr}=          Build P10cr From CSR   ${signed_csr}  recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
+    ${csr}=            Build CSR    signing_key=${key}    common_name=${cm}   exclude_signature=True   bad_sig=True
+    ${p10cr}=          Build P10cr From CSR   ${csr}  recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Protect PKIMessage
     ...                pki_message=${p10cr}
     ...                protection=signature
@@ -142,8 +141,7 @@ CA MUST Reject Invalid POP For Composite EC
     [Tags]             composite   csr   negative
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ec
     ${cm}=             Get Next Common Name
-    ${csr}=            Build CSR    signing_key=${key}    common_name=${cm}   exclude_signature=True
-    ${signed_csr}=      Sign CSR    ${csr}    signing_key=${key}    modify_signature=True
+    ${csr}=            Build CSR    signing_key=${key}    common_name=${cm}   exclude_signature=True    bad_sig=True
     ${p10cr}=          Build P10cr From CSR   ${signed_csr}  recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Protect PKIMessage
     ...                pki_message=${p10cr}
@@ -161,8 +159,7 @@ CA MUST Reject Invalid POP For Composite ED448
     [Tags]             composite   csr   negative
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ed448
     ${cm}=             Get Next Common Name
-    ${csr}=            Build CSR    signing_key=${key}    common_name=${cm}   exclude_signature=True
-    ${signed_csr}=      Sign CSR    ${csr}    signing_key=${key}    modify_signature=True
+    ${csr}=            Build CSR    signing_key=${key}    common_name=${cm}   exclude_signature=True   bad_sig=True
     ${p10cr}=          Build P10cr From CSR   ${signed_csr}  recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Protect PKIMessage
     ...                pki_message=${p10cr}

@@ -11,6 +11,7 @@ Library             OperatingSystem
 Library             ../resources/utils.py
 Library             ../resources/asn1utils.py
 Library             ../resources/cmputils.py
+Library             ../resources/certutils.py
 Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
@@ -168,7 +169,8 @@ CA MUST Accept PKMACValue For ML-KEM
     ${server_cert}=    Parse Certificate    ${der_data}
     ${key}=   Generate Key    ${DEFAULT_ML_KEM_KEY}
     ${cm}=    Get Next Common Name
-    ${popo}=  Prepare PKMAC POPO    ca_cert=${server_cert}
+    ${cert_request}=    Prepare CertRequest    ${key}   common_name=${cm}
+    ${popo}=  Prepare PKMAC POPO    ca_cert=${server_cert}   cert_request=${cert_request}
     ${ir}=    Build Ir From Key    ${key}   ${cm}   popo=${popo}   sender=${SENDER}   omit_fields=senderKID,sender
     ${protected_ir}=    Protect PKIMessage
     ...    pki_message=${ir}
