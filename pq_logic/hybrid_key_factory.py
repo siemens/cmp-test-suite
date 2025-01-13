@@ -16,7 +16,7 @@ from pq_logic.keys.abstract_composite import (
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_valid_comb
 from pq_logic.keys.composite_kem_pki import (
     CompositeDHKEMRFC9180PrivateKey,
-    CompositeMLKEMPrivateKey,
+    CompositeKEMPrivateKey,
     parse_private_keys,
 )
 from pq_logic.keys.xwing import XWingPrivateKey
@@ -243,16 +243,16 @@ class HybridKeyFactory:
                     pq_name=None, trad_name=trad_name, length=length, curve=curve
                 )
 
-                return CompositeMLKEMPrivateKey(pq_key=comp_key.pq_key, trad_key=trad_key)
+                return CompositeKEMPrivateKey(pq_key=comp_key.pq_key, trad_key=trad_key)
 
             if trad_key is None:
                 pq_name = pq_key.name
                 comp_key = HybridKeyFactory.generate_comp_kem_key(
                     pq_name=pq_name,
                 )
-                return CompositeMLKEMPrivateKey(pq_key, comp_key.trad_key)
+                return CompositeKEMPrivateKey(pq_key, comp_key.trad_key)
 
-            return CompositeMLKEMPrivateKey(pq_key, trad_key)
+            return CompositeKEMPrivateKey(pq_key, trad_key)
 
         elif algorithm == "composite-sig":
             if pq_key is None and trad_key is None:
@@ -397,7 +397,7 @@ class HybridKeyFactory:
         trad_name: Optional[str] = None,
         length: Optional[Strint] = None,
         curve: Optional[str] = None,
-    ) -> CompositeMLKEMPrivateKey:
+    ) -> CompositeKEMPrivateKey:
         """Generate a composite KEM key.
 
         :param pq_name: Name of the post-quantum key exchange algorithm.

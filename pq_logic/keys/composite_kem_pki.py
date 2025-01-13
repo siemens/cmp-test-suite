@@ -92,7 +92,7 @@ def parse_public_keys(pq_key, trad_key) -> "CompositeKEMPublicKey":
         return CompositeMLKEMXPublicKey(pq_key, trad_key)
     raise ValueError(f"Unsupported traditional key type.: {type(trad_key).__name__}")
 
-def parse_private_keys(pq_key, trad_key) -> "CompositeMLKEMPrivateKey":
+def parse_private_keys(pq_key, trad_key) -> "CompositeKEMPrivateKey":
     """Parse the private keys into a composite ML-KEM private key.
 
     :param pq_key: The post-quantum private key.
@@ -123,7 +123,7 @@ class CompositeKEMPublicKey(AbstractCompositeKEMPublicKey):
 
         return self.pq_key == other.pq_key and self.trad_key == other.trad_key
 
-class CompositeMLKEMPrivateKey(AbstractCompositeKEMPrivateKey):
+class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
     pq_key: MLKEMPrivateKey
     _alternative_hash = False
 
@@ -226,7 +226,7 @@ class CompositeMLKEMRSAPublicKey(AbstractCompositeKEMPublicKey):
         return get_oid_composite(self.pq_key.name, self.trad_key)
 
 
-class CompositeMLKEMRSAPrivateKey(CompositeMLKEMPrivateKey):
+class CompositeMLKEMRSAPrivateKey(CompositeKEMPrivateKey):
     """Composite ML-KEM private key with RSA-based traditional KEM.
 
     This class uses a PQ-based KEM (via RSA-OAEP KEM) and a classical KEM (ECDH),
@@ -265,7 +265,7 @@ class CompositeMLKEMECPublicKey(CompositeKEMPublicKey):
         return get_oid_composite(self.pq_key.name, self.trad_key)
 
 
-class CompositeMLKEMECPrivateKey(CompositeMLKEMPrivateKey):
+class CompositeMLKEMECPrivateKey(CompositeKEMPrivateKey):
     @staticmethod
     def generate(pq_name: Optional[str] = None, trad_param: Optional[Union[int, str]] = None):
         """Generate a Composite ML-KEM private key."""
@@ -296,7 +296,7 @@ class CompositeMLKEMXPublicKey(CompositeKEMPublicKey):
         return get_oid_composite(self.pq_key.name, self.trad_key)
 
 
-class CompositeMLKEMXPrivateKey(CompositeMLKEMPrivateKey):
+class CompositeMLKEMXPrivateKey(CompositeKEMPrivateKey):
     trad_key: Union[x25519.X25519PrivateKey, x448.X448PrivateKey]
 
     def public_key(self) -> CompositeMLKEMXPublicKey:
@@ -329,7 +329,7 @@ class CompositeDHKEMRFC9180PublicKey(CompositeKEMPublicKey):
         return get_oid_composite(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
 
 
-class CompositeDHKEMRFC9180PrivateKey(CompositeMLKEMPrivateKey):
+class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
 
     def _get_key_name(self) -> bytes:
         """Return the key name of the composite KEM, for the PEM-header."""
