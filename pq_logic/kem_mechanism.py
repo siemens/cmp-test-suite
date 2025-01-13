@@ -12,11 +12,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+from pq_logic.migration_types import ECDHPrivateKey, ECDHPublicKey
 from resources.cryptoutils import perform_ecdh
 from resources.oid_mapping import hash_name_to_instance
-
-ECDHPrivateKey = Union[ec.EllipticCurvePrivateKey, x25519.X25519PrivateKey, x448.X448PrivateKey]
-ECDHPublicKey = Union[ec.EllipticCurvePublicKey, x25519.X25519PublicKey, x448.X448PublicKey]
 
 
 #####################################

@@ -36,7 +36,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 
-from pq_logic.tmp_mapping import get_oid_composite
+from pq_logic.tmp_mapping import get_oid_for_composite_kem
 from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.keyutils import generate_key
 
@@ -114,7 +114,7 @@ def parse_private_keys(pq_key, trad_key) -> "CompositeKEMPrivateKey":
 
 class CompositeKEMPublicKey(AbstractCompositeKEMPublicKey):
     def get_oid(self) -> univ.ObjectIdentifier:
-        return get_oid_composite(self.pq_key.name, self.trad_key)
+        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
     def __eq__(self, other):
         """Check if two composite KEM public keys are equal."""
@@ -133,7 +133,7 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
-        return get_oid_composite(self.pq_key.name, self.trad_key)
+        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
     @abstractmethod
     def _perform_trad_encaps(self, public_key):
@@ -223,7 +223,7 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
 
 class CompositeMLKEMRSAPublicKey(AbstractCompositeKEMPublicKey):
     def get_oid(self, *args, **kwargs) -> univ.ObjectIdentifier:
-        return get_oid_composite(self.pq_key.name, self.trad_key)
+        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
 
 class CompositeMLKEMRSAPrivateKey(CompositeKEMPrivateKey):
@@ -262,7 +262,7 @@ class CompositeMLKEMRSAPrivateKey(CompositeKEMPrivateKey):
 class CompositeMLKEMECPublicKey(CompositeKEMPublicKey):
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
-        return get_oid_composite(self.pq_key.name, self.trad_key)
+        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
 
 class CompositeMLKEMECPrivateKey(CompositeKEMPrivateKey):
@@ -293,7 +293,7 @@ class CompositeMLKEMECPrivateKey(CompositeKEMPrivateKey):
 
 class CompositeMLKEMXPublicKey(CompositeKEMPublicKey):
     def get_oid(self) -> univ.ObjectIdentifier:
-        return get_oid_composite(self.pq_key.name, self.trad_key)
+        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
 
 class CompositeMLKEMXPrivateKey(CompositeKEMPrivateKey):
@@ -326,7 +326,7 @@ class CompositeMLKEMXPrivateKey(CompositeKEMPrivateKey):
 class CompositeDHKEMRFC9180PublicKey(CompositeKEMPublicKey):
 
     def get_oid(self) -> univ.ObjectIdentifier:
-        return get_oid_composite(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
+        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
 
 
 class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
@@ -337,7 +337,7 @@ class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
-        return get_oid_composite(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
+        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
 
     def generate(self, pq_name: Optional[str] = None, trad_param: Optional[Union[int, str]] = None):
         raise NotImplementedError("Not implemented yet")

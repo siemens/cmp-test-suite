@@ -3,10 +3,11 @@ from typing import Union, Optional
 from cryptography.hazmat.primitives.asymmetric import x25519, x448, ec, rsa
 from pyasn1.type import univ
 
+from pq_logic.migration_types import ECDHPrivateKey, ECDHPublicKey
 from pq_logic.tmp_oids import COMPOSITE_KEM_NAME_2_OID
 
 
-def get_oid_composite(
+def get_oid_for_composite_kem(
     pq_name: str,
     trad_key: Union[x25519.X25519PrivateKey, x448.X448PrivateKey, ec.EllipticCurvePrivateKey, rsa.RSAPrivateKey],
     length: Optional[int] = None,
@@ -41,3 +42,22 @@ def get_oid_composite(
     prefix = "" if not use_dhkemrfc9180 else "dhkemrfc9180-"
 
     return COMPOSITE_KEM_NAME_2_OID[f"{prefix}{pq_name}-{trad_name}"]
+
+
+def get_oid_for_chemnpat(pq_name: str, trad_key: Union[ECDHPrivateKey, ECDHPublicKey], curve_name: str) -> univ.ObjectIdentifier:
+    """Return the OID for a Chempat key combination.
+
+    :param pq_name: The name of the post-quantum algorithm.
+    :param trad_key: The traditional key object.
+    :param curve_name: The name of the elliptic curve.
+    :return: The Object Identifier.
+    """
+
+    if pq_name == "sntrup761":
+        trad_name = "sntrup761"
+
+
+
+
+    trad_name = f"ecdh-{curve_name}"
+    return COMPOSITE_KEM_NAME_2_OID[f"chempat-{pq_name}-{trad_name}"]

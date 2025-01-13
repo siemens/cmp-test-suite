@@ -410,6 +410,7 @@ class Sntrup761PrivateKey(PQKEMPrivateKey):
         return Sntrup761PrivateKey(kem_alg="sntrup761")
 
 
+
 ##########################
 # FrodoKEM key
 ##########################

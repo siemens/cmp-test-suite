@@ -11,6 +11,8 @@ from typing import List, Optional, Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+from pq_logic.chempatkem import ChempatPrivateKey
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey, AbstractCompositeKEMPrivateKey
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_oid_cms_composite_signature
@@ -1091,7 +1093,7 @@ def _prepare_public_key_for_cert_template(
 
     elif isinstance(key, (typingutils.PrivateKey, AbstractCompositeKEMPrivateKey,
         AbstractHybridRawPrivateKey,
-                          AbstractCompositeSigPrivateKey)):
+                          AbstractCompositeSigPrivateKey, ChempatPrivateKey)):
         key = key.public_key()
 
     if not for_kga:

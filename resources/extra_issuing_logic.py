@@ -17,10 +17,10 @@ from typing import Optional, Tuple, Union
 import pyasn1.error
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from pq_logic.kem_mechanism import ECDHKEM, ECDHPrivateKey
+from pq_logic.kem_mechanism import ECDHKEM
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
-from pq_logic.migration_types import HybridKEMPrivateKey
+from pq_logic.migration_types import HybridKEMPrivateKey, ECDHPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1.type.base import Asn1Type
