@@ -7,10 +7,8 @@ from typing import Optional, Tuple
 #   2024-08-16  Markku-Juhani O. Saarinen <mjos@iki.fi> See LICENSE.
 #   === FIPS 204 implementation https://doi.org/10.6028/NIST.FIPS.204
 #   ML-DSA / Module-Lattice-Based Digital Signature Standard
-
 #   test_mldsa is only used by the unit test in the end
 # from test_mldsa import test_mldsa
-
 #   hash functions
 from Crypto.Hash import SHA256, SHA512, SHAKE128, SHAKE256
 

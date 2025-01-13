@@ -22,7 +22,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
-
 from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, prepare_validity
 from resources.certextractutils import get_extension
 from resources.convertutils import copy_asn1_certificate
@@ -39,8 +38,15 @@ from pq_logic.keys.comp_sig_cms03 import (
     compute_hash,
 )
 from pq_logic.py_verify_logic import verify_signature_with_alg_id
-from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH, id_altSubPubKeyHashAlgAttr, id_altSubPubKeyLocAttr, \
-    id_altSigValueHashAlgAttr, id_altSigValueLocAttr, id_altSubPubKeyExt, id_altSignatureExt
+from pq_logic.tmp_oids import (
+    CMS_COMPOSITE_OID_2_HASH,
+    id_altSignatureExt,
+    id_altSigValueHashAlgAttr,
+    id_altSigValueLocAttr,
+    id_altSubPubKeyExt,
+    id_altSubPubKeyHashAlgAttr,
+    id_altSubPubKeyLocAttr,
+)
 
 
 def _hash_public_key(public_key, hash_alg: str) -> bytes:
@@ -308,7 +314,7 @@ def sun_csr_to_cert(
     :param alt_private_key: The certificate of the issuer.Optional alternative private key for creating AltSignatureExt.
     :param hash_alg: Hash algorithm for signing the certificate (e.g., "sha256").
     :param extensions: Optional list of additional extensions to include in the certificate.
-    :return: The build certificate object.
+    :return: A tuple of the Form4 and Form1 certificates.
     """
     public_key = CompositeSigCMSPublicKey.from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
 

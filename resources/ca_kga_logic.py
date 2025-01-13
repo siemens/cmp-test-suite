@@ -50,7 +50,8 @@ from resources.envdatautils import get_aes_length
 from resources.exceptions import BadAlgError, BadAsn1Data
 from resources.oid_mapping import (
     compute_hash,
-    get_hash_from_oid, may_return_oid_to_name,
+    get_hash_from_oid,
+    may_return_oid_to_name,
 )
 from resources.oidutils import (
     ECMQV,

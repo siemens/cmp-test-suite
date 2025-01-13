@@ -47,8 +47,8 @@ from resources.utils import manipulate_first_byte
 from robot.api.deco import keyword, not_keyword
 from unit_tests.utils_for_test import convert_to_crypto_lib_cert
 
-from pq_logic.tmp_oids import id_relatedCert, id_aa_relatedCertRequest
 from pq_logic.hybrid_structures import RelatedCertificate, RequesterCertificate
+from pq_logic.tmp_oids import id_aa_relatedCertRequest, id_relatedCert
 
 
 def prepare_requester_certificate(

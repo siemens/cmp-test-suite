@@ -13,8 +13,6 @@ from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.keywrap import aes_key_wrap
 from pq_logic.kem_mechanism import ECDHPrivateKey, ECDHPublicKey
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPublicKey
-from pq_logic.keys.abstract_pq import PQKEMPublicKey
-from pq_logic.keys.composite_kem_pki import CompositeMLKEMECPublicKey
 from pq_logic.keys.kem_keys import MLKEMPublicKey
 from pq_logic.migration_types import HybridKEMPrivateKey, KEMPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
@@ -35,7 +33,7 @@ from pyasn1_alt_modules import (
 from robot.api.deco import not_keyword
 
 from resources import certbuildutils, keyutils
-from resources.certbuildutils import prepare_name
+from resources.prepareutils import prepare_name
 from resources.certextractutils import get_field_from_certificate
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.copyasn1utils import copy_name
@@ -53,6 +51,7 @@ from resources.protectionutils import get_rsa_oaep_padding, prepare_kdf, prepare
 from resources.typingutils import PrivateKey, PublicKey
 
 
+@not_keyword
 def is_kem_public_key(key: Any) -> bool:
     """Check whether a parsed key is a KEM public key."""
     allowed_types = get_args(KEMPublicKey)
@@ -61,7 +60,16 @@ def is_kem_public_key(key: Any) -> bool:
 
     return False
 
+@not_keyword
+def is_kem_private_key(key: Any) -> bool:
+    """Check whether a parsed key is a KEM private key."""
+    allowed_types = get_args(HybridKEMPrivateKey)
+    if any(isinstance(key, x) for x in allowed_types):
+        return True
 
+    return False
+
+@not_keyword
 def get_aes_length(alg_name: str) -> int:
     """
     Retrieve the AES key length in bits for the specified key wrap algorithm.
@@ -82,7 +90,7 @@ def get_aes_length(alg_name: str) -> int:
 
     raise ValueError(f"Unable to determine key length for algorithm: {alg_name}")
 
-
+@not_keyword
 def prepare_encrypted_content_info(
     cek: bytes,
     data_to_protect: bytes,
@@ -130,7 +138,8 @@ def prepare_encrypted_content_info(
     return decoder.decode(encoder.encode(enc_content_info), rfc5652.EncryptedContentInfo())[0]
 
 
-# TODO fix doc for RF
+
+@not_keyword
 def prepare_enveloped_data(
     recipient_infos: List[rfc5652.RecipientInfo],
     cek: bytes,
@@ -841,9 +850,8 @@ def prepare_recip_info(
             issuer_and_ser=issuer_and_ser,
         )
 
-    elif isinstance(
+    elif is_kem_public_key(
         public_key_recip,
-        (AbstractHybridRawPublicKey, PQKEMPublicKey, CompositeMLKEMECPublicKey),
     ):
         kem_recip_info = prepare_kem_recip_info(
             server_cert=cert_recip,
@@ -944,7 +952,7 @@ def _prepare_env_data_for_pop(
         data_to_protect=encoder.encode(data),
     )
 
-
+@not_keyword
 def build_env_data_for_exchange(
     public_key_recip: PublicKey,
     data: bytes,
@@ -970,6 +978,8 @@ def build_env_data_for_exchange(
     :param target: An optional `EnvelopedData` structure to populate. Defaults to None.
     :param use_rsa_oaep: Boolean indicating whether to use RSA-OAEP or RSA PKCS#1 v1.5 padding.
     :param issuer_and_ser: An optional `IssuerAndSerialNumber` structure to use. Defaults to `None`.
+    :param enc_oid: The OID for the content type. Defaults to `None`.
+    :param hybrid_key_recip: The hybrid key recipient to use for encryption. Defaults to None.
     :return: The populated `EnvelopedData` structure.
     """
     if cek is None:
@@ -980,7 +990,8 @@ def build_env_data_for_exchange(
     if isinstance(public_key_recip, rsa.RSAPublicKey):
         kari = prepare_ktri(public_key_recip, cert_recip, cek, use_rsa_oaep=use_rsa_oaep, issuer_and_ser=issuer_and_ser)
         return prepare_enveloped_data(
-            recipient_infos=[kari], cek=cek, target=target, data_to_protect=data, enc_oid=enc_oid
+            recipient_infos=[kari], cek=cek, target=target,
+            data_to_protect=data, enc_oid=enc_oid
         )
 
     elif isinstance(public_key_recip, ECDHPublicKey):

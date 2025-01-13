@@ -856,7 +856,7 @@ CA MUST Reject CR With Other PKI Management Entity Request
     Skip If    not ${ALLOW_CR}    Skipped because the cr `PKIBody` is disabled.
     ${is_set}=    Is Certificate And Key Set    ${DEVICE_CERT}    ${DEVICE_KEY}
     Skip If    not ${is_set}    The `DEVICE_CERT` and/or `DEVICE_KEY` variable is not set, skipping test.
-    ${cert_chain}=    Build Cert Chain From Dir    ee_cert=${DEVICE_CERT}    cert_dir=./certs
+    ${cert_chain}=    Build Cert Chain From Dir    ${DEVICE_CERT}    cert_chain_dir=./certs
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
     ${ir}=    Build Cr From Key
     ...    ${key}

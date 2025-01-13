@@ -13,15 +13,12 @@ from robot.api.deco import not_keyword
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeKEMPublicKey
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-
-PublicKEMKeyType = Union[AbstractCompositeKEMPublicKey, AbstractHybridRawPublicKey, rsa.RSAPublicKey, PQKEMPublicKey]
-
-PrivateKEMKeyType = Union[AbstractCompositeKEMPrivateKey, AbstractHybridRawPublicKey, rsa.RSAPublicKey, PQKEMPrivateKey]
+from pq_logic.migration_types import KEMPrivateKey, KEMPublicKey
 
 
 @not_keyword
 def get_kem_oid_from_key(
-    key: Union[PublicKEMKeyType, PrivateKEMKeyType],
+    key: Union[KEMPublicKey, KEMPrivateKey],
 ) -> univ.ObjectIdentifier:
     """Get the Object Identifier from the corresponding key and for CompositeKEM keys the matching kdf.
 

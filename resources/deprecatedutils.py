@@ -22,6 +22,7 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc9481
 from robot.api.deco import keyword, not_keyword
 
+import resources.prepareutils
 from resources import certbuildutils, keyutils
 from resources.asn1utils import get_set_bitstring_names, is_bit_set
 from resources.convertutils import ensure_is_sign_key
@@ -184,8 +185,8 @@ def _build_certificate(  # noqa D417 undocumented-param
 
     """
     issuer_cert = params.get("issuer_cert")
-    issuer = issuer_cert.subject if issuer_cert else certbuildutils.parse_common_name_from_str(common_name)
-    subject = certbuildutils.parse_common_name_from_str(common_name)
+    issuer = issuer_cert.subject if issuer_cert else resources.prepareutils.parse_common_name_from_str(common_name)
+    subject = resources.prepareutils.parse_common_name_from_str(common_name)
 
     key = private_key or keyutils.generate_key(params.get("key_alg", "ecdsa"))
     private_key = ensure_is_sign_key(key)
@@ -357,7 +358,7 @@ def generate_csr(  # noqa D417 undocumented-param
         common_name or "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
     )
 
-    x509_name = certbuildutils.parse_common_name_from_str(common_name)
+    x509_name = resources.prepareutils.parse_common_name_from_str(common_name)
     csr = csr.subject_name(x509_name)
     # this produces something like
     # csr = csr.subject_name(x509.Name([

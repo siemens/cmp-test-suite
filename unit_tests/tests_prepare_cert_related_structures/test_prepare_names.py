@@ -8,9 +8,12 @@ import resources.certbuildutils
 from cryptography import x509
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc5280, rfc9480
+
+import resources.prepareutils
 from resources import cmputils, keyutils
 from resources.asn1utils import encode_to_der
-from resources.certbuildutils import generate_certificate, generate_signed_csr, prepare_name
+from resources.certbuildutils import generate_certificate, generate_signed_csr
+from resources.prepareutils import prepare_name
 from resources.certextractutils import get_field_from_certificate
 from resources.cmputils import (
     compare_general_name_and_name,
@@ -29,7 +32,7 @@ class TestPrepareCertTemplate(unittest.TestCase):
         THEN the resulting `pyasn1` Name object should correctly match the original common name string.
         """
         common_name = "CN=LDevID Issuing CA v3,OU=Secure Device Onboarding Backend,O=Siemens IT"
-        name_obj = resources.certbuildutils.parse_common_name_from_str(common_name=common_name)
+        name_obj = resources.prepareutils.parse_common_name_from_str(common_name=common_name)
         self.assertEqual(common_name, name_obj.from_rfc4514_string(common_name).rfc4514_string())
         der_bytes = name_obj.public_bytes()
         pyasn1_name, rest = decoder.decode(der_bytes, asn1Spec=rfc5280.Name())
@@ -55,7 +58,7 @@ class TestPrepareCertTemplate(unittest.TestCase):
         tmp_cert = convert_to_crypto_lib_cert(cert)
         issuer_str = tmp_cert.issuer.rfc4514_string()
         issuer = rfc5280.Name()
-        issuer = resources.certbuildutils.prepare_name(common_name=issuer_str, name=issuer)
+        issuer = resources.prepareutils.prepare_name(common_name=issuer_str, name=issuer)
         my_data = encoder.encode(issuer)
         self.assertEqual(my_data.hex(), cert_data.hex())
 

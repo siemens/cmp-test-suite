@@ -11,14 +11,13 @@ from typing import Optional, Union
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from pyasn1.codec.der import encoder
-
-from pq_logic.fips.fips204 import ML_DSA
 from resources.oid_mapping import compute_hash, sha_alg_name_to_oid
+from resources.oidutils import SLH_DSA_NAME_2_OID_PRE_HASH
 
 from pq_logic.fips import fips204, fips205
+from pq_logic.fips.fips204 import ML_DSA
 from pq_logic.fips.fips205 import SLH_DSA
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from resources.oidutils import SLH_DSA_NAME_2_OID_PRE_HASH
 
 ##########################
 # ML-DSA
@@ -51,7 +50,6 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         :param public_key: The public key bytes.
         :return: The initialized ML-DSA public key.
         """
-
         self._check_name(sig_alg)
         self.ml_class = ML_DSA(sig_alg)
         self._public_key_bytes = public_key
@@ -150,7 +148,6 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
         :param public_key: The public key bytes.
         :return: The initialized ML-DSA private key.
         """
-
         if oqs is not None:
             super()._initialize(sig_alg=sig_alg, private_bytes=private_bytes, public_key=public_key)
         else:
@@ -297,9 +294,6 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
 
     def verify(self, signature: bytes, data: bytes, ctx: bytes = b"", hash_alg: Optional[str] = None) -> None:
         """Verify the signature of the data."""
-
-
-
         return self._slh_class.slh_verify(m=data, sig=signature, pk=self._public_key_bytes, ctx=ctx)
 
 
@@ -338,7 +332,6 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
 
     def check_hash_alg(self, hash_alg: Union[None, hashes.HashAlgorithm, str]) -> Optional[str]:
         """Check if the hash algorithm is valid."""
-
         if hash_alg is None:
             return None
 

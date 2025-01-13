@@ -7,16 +7,14 @@ import logging
 
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9480
-
-from pq_logic.keys.abstract_composite import AbstractCompositeKEMPublicKey
-from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPublicKey
-from pq_logic.keys.xwing import XWingPublicKey
 from resources import asn1utils
 from resources.certextractutils import get_field_from_certificate
 from resources.certutils import load_public_key_from_cert
-
-from pq_logic.keys.abstract_pq import PQPublicKey, PQSignaturePublicKey, PQKEMPublicKey
 from resources.oidutils import PQ_OID_2_NAME
+
+from pq_logic.keys.abstract_composite import AbstractCompositeKEMPublicKey
+from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQPublicKey, PQSignaturePublicKey
+from pq_logic.keys.xwing import XWingPublicKey
 
 # https://www.ietf.org/archive/id/draft-ietf-lamps-kyber-certificates-06.txt
 # section 3:
@@ -50,7 +48,6 @@ def validate_migration_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
     :param alg_id: The `AlgorithmIdentifier`.
     :raises ValueError: If the `parameters` field must be absent.
     """
-
     if alg_id["algorithm"] not in PQ_OID_2_NAME:
         if alg_id["parameters"].isValue:
             name = PQ_OID_2_NAME.get(alg_id["algorithm"])
@@ -61,13 +58,12 @@ def validate_migration_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
 
 
 
-def validate_certificate_key_usage(cert: rfc9480.CMPCertificate) -> None:
+def validate_migration_certificate_key_usage(cert: rfc9480.CMPCertificate) -> None:
     """Validate the key usage of a certificate with a PQ public key.
 
     :param cert: The certificate to validate.
     :return: None
     """
-
     public_key: PQPublicKey = load_public_key_from_cert(cert)  # type: ignore
     key_usage = get_field_from_certificate(cert, extension="key_usage")
 
@@ -95,12 +91,12 @@ def validate_certificate_key_usage(cert: rfc9480.CMPCertificate) -> None:
     elif isinstance(public_key, AbstractCompositeKEMPublicKey):
         pq_allowed = {"keyEncipherment"}
         if set(key_usage) != pq_allowed:
-            raise ValueError(f"A CompositeKEM public key MUST have only the keyUsage 'keyEncipherment'.")
+            raise ValueError("A CompositeKEM public key MUST have only the keyUsage 'keyEncipherment'.")
 
     elif isinstance(public_key, XWingPublicKey):
         pq_allowed = {"keyEncipherment"}
         if set(key_usage) != pq_allowed:
             raise ValueError("A XWing public key MUST have only the keyUsage 'keyEncipherment'.")
-    
+
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key)}")

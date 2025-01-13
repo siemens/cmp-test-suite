@@ -7,7 +7,7 @@ import unittest
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char
 from pyasn1_alt_modules import rfc5280, rfc9480
-from resources.certbuildutils import prepare_name
+from resources.prepareutils import prepare_name
 from resources.cmputils import prepare_general_name
 from resources.compareutils import compare_pyasn1_names
 

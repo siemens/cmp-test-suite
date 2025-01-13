@@ -44,14 +44,15 @@ from resources.asn1_structures import (
     KemCiphertextInfoValue,
     KemOtherInfoAsn1,
 )
-from resources.cmputils import get_value_from_seq_of_info_value_field, prepare_info_value
+
 from resources.cryptoutils import compute_ansi_x9_63_kdf, compute_hkdf, compute_pbkdf2_from_parameter
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import (
     get_alg_oid_from_key_hash,
     get_hash_from_oid,
     hash_name_to_instance,
-    sha_alg_name_to_oid, may_return_oid_to_name,
+    may_return_oid_to_name,
+    sha_alg_name_to_oid,
 )
 from resources.oidutils import (
     AES_GMAC_NAME_2_OID,
@@ -2225,7 +2226,11 @@ def prepare_kem_ciphertextinfo(
     if ct is not None:
         kem_ct_info["ct"] = univ.OctetString(ct)
 
-    return prepare_info_value(id_it_KemCiphertextInfo, value=kem_ct_info)
+    info_value = rfc9480.InfoTypeAndValue()
+    info_value["infoType"] = id_it_KemCiphertextInfo
+    info_value["infoValue"] = kem_ct_info
+
+    return info_value
 
 
 def prepare_kem_other_info(
@@ -2348,9 +2353,15 @@ def verify_kem_based_mac_protection(
         raise ValueError("Either `private_key` or `shared_secret` must be provided.")
 
     if private_key is not None:
-        kem_ct_info = get_value_from_seq_of_info_value_field(
-            pki_message["header"]["generalInfo"], id_it_KemCiphertextInfo
-        )
+        kem_ct_info = None
+        for x in pki_message["header"]["generalInfo"]:
+            if x["infoType"] == id_it_KemCiphertextInfo:
+                kem_ct_info = x["infoValue"]
+                break
+
+        if kem_ct_info is None:
+            raise ValueError("The `KemCiphertextInfo` field is missing in the `PKIMessage`.")
+
 
         kem_ct_info_val, rest = decoder.decode(kem_ct_info, asn1Spec=KemCiphertextInfoValue())
 

@@ -9,21 +9,20 @@ Either has functionality to verify signatures of PKIMessages or certificates.
 
 
 """
-import logging
 # TODO fix to include CRL-Verification
 # currently only works for PQ and traditional signatures.
 # But in the next update will be Completely support CRL-Verification.
 
-from typing import Optional, List
 
-from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPublicKey
-from resources.certutils import load_public_key_from_cert
+from pyasn1_alt_modules import rfc9480
 from resources.cryptoutils import verify_signature
 from resources.oid_mapping import get_hash_from_oid
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, RSASSA_PSS_OID_2_NAME, PQ_OID_2_NAME, MSG_SIG_ALG
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME
 from resources.protectionutils import verify_rsassa_pss_from_alg_id
 from robot.api.deco import not_keyword
-from pyasn1_alt_modules import rfc5280, rfc9480
+
+from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPublicKey
+
 
 @not_keyword
 def verify_signature_with_alg_id(public_key, alg_id: rfc9480.AlgorithmIdentifier, data: bytes, signature: bytes):

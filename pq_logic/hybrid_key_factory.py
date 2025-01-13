@@ -1,26 +1,27 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-from abc import abstractmethod
+
+from typing import List, Optional
 
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa
-
-from pq_logic.keys.composite_kem_pki import CompositeMLKEMPrivateKey, parse_private_keys, \
-    CompositeDHKEMRFC9180PrivateKey
-from pq_logic.trad_key_factory import generate_ec_key, generate_trad_key
-from resources import keyutils, oid_mapping
+from resources import keyutils
 from resources.exceptions import InvalidKeyCombination
 from resources.typingutils import Strint
-from typing import Optional, List
 
 from pq_logic.chempatkem import ChempatPrivateKey
-
 from pq_logic.keys.abstract_composite import (
     AbstractCompositeSigPrivateKey,
 )
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_valid_comb
+from pq_logic.keys.composite_kem_pki import (
+    CompositeDHKEMRFC9180PrivateKey,
+    CompositeMLKEMPrivateKey,
+    parse_private_keys,
+)
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.pq_key_factory import PQKeyFactory
+from pq_logic.trad_key_factory import generate_ec_key, generate_trad_key
 
 ALL_CHEMPAT_POSS_COMBINATIONS = [
     {"pq_name": "sntrup761", "trad_name": "x25519", "curve": None},
@@ -123,8 +124,6 @@ def _get_kem_comp_combinations(
     :param curve: The curve of the EC key.
     :return: The post-quantum and traditional key instances.
     """
-
-
     if length is not None:
         length = int(length)
 
@@ -408,7 +407,6 @@ class HybridKeyFactory:
         :return: A `CompositeMLKEMPrivateKey` instance.
         :raises InvalidKeyCombination: If the algorithm combination is not supported.
         """
-
         if pq_name in ["frodokem-aes-640", "frdokem-shake-640"]:
             raise InvalidKeyCombination("FrodoKEM-640 is not supported as a composite KEM key, "
                                         "because it only claims NIST level 1!")

@@ -46,14 +46,18 @@ class AltSignatureValueExt(univ.BitString):
     pass
 
 
-def _prepare_subject_alt_public_key_info_extn(public_key: PQSignaturePublicKey, critical: bool) -> rfc5280.Extension:
-    """
-    Prepare the subjectAltPublicKeyInfo extension.
+def prepare_subject_alt_public_key_info_extn(public_key: Union[PQSignaturePrivateKey, PQSignaturePublicKey], critical: bool) -> rfc5280.Extension:
+    """Prepare the subjectAltPublicKeyInfo extension.
 
     :param public_key: The alternative public key.
     :param critical: Whether the extension is critical.
     :return: The prepared Extension object.
     """
+
+    if isinstance(public_key, PQSignaturePrivateKey):
+        public_key = public_key.public_key()
+
+
     spki = subjectPublicKeyInfo_from_pubkey(public_key)  # type: ignore
 
     spki_ext = rfc5280.Extension()
@@ -178,7 +182,7 @@ def sign_cert_catalyst(
     cert["tbsCertificate"]["extensions"].append(_prepare_sig_alt_extn(alt_alg_id, critical=critical))
 
     cert["tbsCertificate"]["extensions"].append(
-        _prepare_subject_alt_public_key_info_extn(public_key=pq_key.public_key(), critical=critical)
+        prepare_subject_alt_public_key_info_extn(public_key=pq_key.public_key(), critical=critical)
     )
 
     alt_sig_data = prepare_alt_signature_data(cert)

@@ -29,19 +29,26 @@ from pq_logic.keys.abstract_pq import (
 )
 from pyasn1_alt_modules import rfc9480
 
-# Type alias for supported private key types
-PrivateKey = Union[
+TradSigPrivKey = Union[
     RSAPrivateKey,
     EllipticCurvePrivateKey,
     DSAPrivateKey,
     DHPrivateKey,
     Ed25519PrivateKey,
     Ed448PrivateKey,
+]
+
+# Type alias for supported private key types
+PrivateKey = Union[
+    TradSigPrivKey,
+    DHPrivateKey,
     X25519PrivateKey,
     X448PrivateKey,
     PQPrivateKey,
     AbstractHybridRawPrivateKey,
 ]
+
+
 # Type alias for supported public key types
 PublicKey = Union[
     RSAPublicKey,

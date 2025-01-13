@@ -8,17 +8,25 @@ from typing import List
 
 import resources.oidutils
 from pyasn1_alt_modules import rfc5280, rfc5958
+from resources.oidutils import PQ_SIG_PRE_HASH_OID_2_NAME
 
 from pq_logic.keys.kem_keys import (
     FrodoKEMPrivateKey,
+    FrodoKEMPublicKey,
     McEliecePrivateKey,
+    McEliecePublicKey,
     MLKEMPrivateKey,
     MLKEMPublicKey,
-    Sntrup761PrivateKey, McEliecePublicKey, FrodoKEMPublicKey,
+    Sntrup761PrivateKey,
 )
-from pq_logic.keys.sig_keys import FalconPrivateKey, MLDSAPrivateKey, MLDSAPublicKey, SLHDSAPrivateKey, SLHDSAPublicKey, \
-    FalconPublicKey
-from resources.oidutils import PQ_SIG_PRE_HASH_OID_2_NAME
+from pq_logic.keys.sig_keys import (
+    FalconPrivateKey,
+    FalconPublicKey,
+    MLDSAPrivateKey,
+    MLDSAPublicKey,
+    SLHDSAPrivateKey,
+    SLHDSAPublicKey,
+)
 
 
 def _check_starts_with(algorithm: str, prefixes: List[str]) -> bool:
@@ -28,7 +36,6 @@ def _check_starts_with(algorithm: str, prefixes: List[str]) -> bool:
 
 class PQKeyFactory:
     """Factory class for creating post-quantum keys from various input formats."""
-
 
     @staticmethod
     def supported_algorithms() -> List[str]:
@@ -149,10 +156,13 @@ class PQKeyFactory:
         public_bytes = spki["subjectPublicKey"].asOctets()
         oid = spki["algorithm"]["algorithm"]
 
-        try:
-            name = resources.oidutils.PQ_OID_2_NAME[oid]
-        except KeyError as err:
-            raise KeyError(f"Unrecognized algorithm identifier: {oid}") from err
+        name = resources.oidutils.PQ_OID_2_NAME.get(str(oid))
+        name = name or resources.oidutils.PQ_OID_2_NAME.get(oid)
+
+        if name is None:
+            raise KeyError(f"Unrecognized algorithm identifier: {oid}")
+
+
 
         if name.startswith("ml-dsa-"):
             hash_alg = PQ_SIG_PRE_HASH_OID_2_NAME.get(oid)

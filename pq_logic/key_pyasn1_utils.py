@@ -16,7 +16,6 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5958, rfc9481
-
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     CMS_COMPOSITE_OID_2_NAME,
@@ -31,10 +30,10 @@ from resources.oidutils import (
 from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1
 from pq_logic.keys.abstract_pq import PQPrivateKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey
-from pq_logic.keys.kem_keys import McEliecePrivateKey, MLKEMPrivateKey, FrodoKEMPrivateKey, Sntrup761PrivateKey
+from pq_logic.keys.kem_keys import FrodoKEMPrivateKey, McEliecePrivateKey, MLKEMPrivateKey, Sntrup761PrivateKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
 from pq_logic.keys.xwing import XWingPrivateKey
-from pq_logic.tmp_oids import MCELIECE_OID_2_NAME, FRODOKEM_OID_2_NAME, id_sntrup761_str
+from pq_logic.tmp_oids import FRODOKEM_OID_2_NAME, MCELIECE_OID_2_NAME, id_sntrup761_str
 
 RawKeyType = Union[
     ed25519.Ed25519PrivateKey,
@@ -202,7 +201,6 @@ def parse_key_from_one_asym_key(data: bytes):
     :param data: The OneAsymmetricKey encoded key data.
     :return: The parsed private key object.
     """
-
     obj, rest = decoder.decode(data, rfc5958.OneAsymmetricKey())
     if rest:
         raise ValueError("Found remainder after decoding `OneAsymmetricKey`.")

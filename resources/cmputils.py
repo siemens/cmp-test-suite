@@ -15,7 +15,10 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import dh, x448, x25519
+
+import resources.prepareutils
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, namedtype, tag, univ, useful
@@ -31,12 +34,12 @@ from pyasn1_alt_modules import (
 from robot.api.deco import keyword, not_keyword
 from robot.libraries.DateTime import convert_date
 
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from resources import asn1utils, certbuildutils, certutils, convertutils, cryptoutils, oid_mapping, utils
 from resources.certextractutils import get_field_from_certificate
 from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import str_to_bytes
-from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKey, Strint
+from resources.envdatautils import is_kem_private_key
+from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKey, Strint, TradSigPrivKey
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -671,7 +674,7 @@ def _prepare_poposigningkeyinput(sender: str, public_key: PublicKey) -> rfc4211.
     :return: A populated `POPOSigningKeyInput` structure.
     """
     popo_signing_key_input = rfc4211.POPOSigningKeyInput()
-    name_obj = certbuildutils.prepare_name(sender, 4)
+    name_obj = resources.prepareutils.prepare_name(sender, 4)
     general_name = rfc9480.GeneralName().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0))
     general_name = general_name.setComponentByName("directoryName", name_obj)
     popo_signing_key_input["authInfo"]["sender"] = general_name
@@ -736,7 +739,7 @@ def prepare_popo(  # noqa D417 undocumented-param
     to indicate the PKI management entity has the key making the request. In cases where there
     is a change made by an intermediate PKI management entity, the `ProofOfPossession`
     may not be valid. The `ra_verified` parameter indicates whether the proof has been
-    verified by a Registration Authority (RA).
+    verified by a Registration Authority (RA). Also supports keyAgreement for x25519,x448 and keyEncipherment for KEM keys.
 
     Arguments:
     ---------
@@ -935,7 +938,7 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
     elif exclude_popo:
         pass
 
-    elif isinstance(private_key, PQKEMPrivateKey):
+    elif isinstance(private_key, PQKEMPrivateKey) or is_kem_private_key(private_key):
         popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert,
                                                 use_key_enc=True)
         cert_request_msg["popo"] = popo
@@ -946,7 +949,10 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
         logging.info("Calculated POPO: %s", signature.hex())
 
         if bad_pop:
-            signature = utils.manipulate_first_byte(signature)
+            if isinstance(private_key, (TradSigPrivKey, PQSignaturePrivateKey)):
+               signature = utils.manipulate_first_byte(signature)
+            else:
+                signature = utils.manipulate_composite_sig(signature)
 
         popo = prepare_popo(signature=signature, signing_key=private_key, ra_verified=ra_verified)
         cert_request_msg["popo"] = popo
@@ -1174,7 +1180,7 @@ def build_ir_from_key(  # noqa D417 undocumented-param
         ra_verified=params.get("ra_verified", False),
         for_kga=params.get("for_kga", False),
         cert_template=params.get("cert_template"),
-        popo_structure=params.get("popo"),
+        popo_structure=params.get("popo_structure"),
         bad_pop=bad_pop,
     )
 
@@ -2494,7 +2500,7 @@ def prepare_general_name(name_type: str, name_str: str) -> rfc9480.GeneralName:
     :return: A `GeneralName` object with the encoded name based on the provided `name_type`.
     """
     if name_type == "directoryName":
-        name_obj = certbuildutils.prepare_name(name_str, 4)
+        name_obj = resources.prepareutils.prepare_name(name_str, 4)
         general_name = rfc9480.GeneralName()
         return general_name.setComponentByName("directoryName", name_obj)
 
@@ -3921,15 +3927,14 @@ def prepare_popo_challenge_for_non_signing_key(use_encr_cert: bool = True,
                                                use_key_enc: bool = True) -> rfc4211.ProofOfPossession:
     """Prepare a Proof-of-Possession (PoP) structure for Key encipherment or key agreement.
 
-     Using either the encrypted certificate or the challenge methode.
+    Using either the encrypted certificate or the challenge methode.
 
-     :param use_encr_cert: A flag indicating whether to use an encrypted certificate (`True`) or
-                            a challenge-based message (`False`). Defaults to `True`.
-     :param use_key_enc: A flag indicating whether to use the key encipherment (`True`) or
-     the key agreement (`False`) option for the PoP structure. Defaults to `True`.
-     :return: A populated `rfc4211.ProofOfPossession` structure for key encipherment.
-     """
-
+    :param use_encr_cert: A flag indicating whether to use an encrypted certificate (`True`) or
+                           a challenge-based message (`False`). Defaults to `True`.
+    :param use_key_enc: A flag indicating whether to use the key encipherment (`True`) or
+    the key agreement (`False`) option for the PoP structure. Defaults to `True`.
+    :return: A populated `rfc4211.ProofOfPossession` structure for key encipherment.
+    """
     option = "keyEncipherment" if use_key_enc else "keyAgreement"
     challenge = "encrCert" if use_encr_cert else "challengeResp"
 

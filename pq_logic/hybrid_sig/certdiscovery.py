@@ -19,8 +19,8 @@ from resources import certutils
 from resources.certutils import check_is_cert_signer, verify_cert_chain_openssl
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME
 
-from pq_logic.tmp_oids import id_ad_certDiscovery, id_ad_relatedCertificateDescriptor
 from pq_logic.hybrid_structures import OnRelatedCertificateDescriptor, RelatedCertificateDescriptor
+from pq_logic.tmp_oids import id_ad_certDiscovery, id_ad_relatedCertificateDescriptor
 
 
 def prepare_related_certificate_descriptor(

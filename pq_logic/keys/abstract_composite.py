@@ -20,10 +20,7 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280
 from pyasn1_alt_modules.rfc5958 import OneAsymmetricKey
-
-
 from resources.oid_mapping import hash_name_to_instance
-
 
 from pq_logic.hybrid_structures import (
     CompositeSignaturePrivateKeyAsn1,
@@ -330,7 +327,6 @@ class AbstractCompositeKEMPublicKey(AbstractCompositePublicKey, ABC):
 class AbstractCompositeKEMPrivateKey(AbstractCompositePrivateKey, ABC):
     """Abstract class for Composite KEM private keys."""
 
-
     def _get_key_name(self) -> bytes:
         """Get the key name for the composite key, to set as the PEM header."""
         return b"ABSTRACT COMPOSITE KEM KEY"
@@ -416,7 +412,6 @@ class AbstractCompositeSigPublicKey(AbstractCompositePublicKey, ABC):
         :raises ValueError: If the key type is unsupported.
         :raises InvalidSignature: If the signature verification fails.
         """
-
         if isinstance(self.trad_key, rsa.RSAPublicKey):
 
             key_size_to_lg = {2048: "sha256", 3072: "sha256", 4096: "sha384"}
@@ -516,7 +511,6 @@ class AbstractCompositeSigPrivateKey(AbstractCompositePrivateKey, ABC):
         :return: The signature as bytes.
         :raises ValueError: If the key type is unsupported.
         """
-
         if isinstance(self.trad_key, rsa.RSAPrivateKey):
 
             size = self.trad_key.key_size

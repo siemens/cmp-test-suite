@@ -28,7 +28,7 @@ from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6955, rfc9480, rfc9
 from robot.api.deco import keyword, not_keyword
 from unit_tests.asn1_wrapper_class.pki_message_wrapper import PKIMessage, prepare_name
 
-from resources import asn1utils
+from resources import asn1utils, protectionutils
 from resources.asn1_structures import POPODecKeyChallContentAsn1
 from resources.ca_kga_logic import validate_enveloped_data
 from resources.certutils import load_public_key_from_cert
@@ -44,7 +44,7 @@ from resources.envdatautils import (
 from resources.exceptions import InvalidKeyCombination
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import compute_hash
-from resources.protectionutils import compute_and_prepare_mac, protect_pkimessage
+from resources.protectionutils import compute_and_prepare_mac
 from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
 from resources.utils import get_openssl_name_notation
 
@@ -88,6 +88,7 @@ def prepare_pkmac_popo(
         iterations=iterations,
         salt=salt,
     )
+
 
 
 # TODO fix doc for RF.
@@ -149,6 +150,7 @@ def prepare_kem_env_data_for_popo(
     :param cek: The Content Encryption Key (CEK) to use for the KEM-based key exchange. Defaults to `None`.
     :param key_encipherment: Whether to use the `keyEncipherment` or `keyAgreement` option for the `ProofOfPossession`
     structure. Defaults to `True`.
+    :param hybrid_key_recip:  The hybrid key recipient to use for the KEM-based key exchange. Defaults to `None`.
     :return: The `ProofOfPossession` structure for the KEM-based key exchange.
     """
     if data is not None:
@@ -397,7 +399,7 @@ def process_pkimessage_with_popdecc(
         if use_dhbased_mac:
             pki_message["body"] = request["body"]
             pki_message["extraCerts"] = request["extraCerts"]
-            return protect_pkimessage(pki_message, shared_secret=ss)
+            return protectionutils.protect_pkimessage(pki_message, shared_secret=ss)
 
         else:
             body_name = request["body"].getName()
@@ -508,9 +510,6 @@ def _compute_ss(client_key, ca_cert):
     pub_key = load_public_key_from_cert(ca_cert)
     if isinstance(client_key, ECDHPrivKeyTypes):
         return perform_ecdh(client_key, pub_key)
-    elif isinstance(client_key, PQKEMPrivateKey):
-        ss, _ = client_key.encaps(ca_cert)
-        return ss
     else:
         raise ValueError(f"The provided public key type is not expected: {type(client_key).__name__}")
 

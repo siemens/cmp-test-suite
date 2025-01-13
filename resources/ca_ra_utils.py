@@ -15,7 +15,7 @@ from pyasn1_alt_modules import rfc5280, rfc5652, rfc9480
 
 from resources import certbuildutils, cmputils
 from resources.asn1_structures import CAKeyUpdContent, ChallengeASN1
-from resources.certbuildutils import prepare_name
+from resources.prepareutils import prepare_name
 from resources.certextractutils import get_extension
 from resources.certutils import check_is_cert_signer, validate_certificate_pkilint
 from resources.cmputils import prepare_general_name

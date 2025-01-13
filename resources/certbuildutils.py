@@ -11,7 +11,8 @@ from typing import List, Optional, Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
+from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey, AbstractCompositeKEMPrivateKey
+from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_oid_cms_composite_signature
 from pq_logic.tmp_oids import id_rsa_kem_spki
 from pyasn1.codec.der import decoder, encoder
@@ -37,20 +38,8 @@ from resources import (
 from resources.certextractutils import extract_extension_from_csr
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
 from resources.oidutils import CMP_EKU_OID_2_NAME, RSA_SHA_OID_2_NAME
+from resources.prepareutils import prepare_name
 from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey
-
-
-@not_keyword
-def parse_common_name_from_str(common_name: str) -> x509.Name:
-    """Parse a string representing common name attributes, convert it to `x509.Name` for X.509 certificate generation.
-
-    :param common_name: The common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,CN=Joe Mustermann"
-    :returns: x509.Name object.
-    """
-    if common_name == "Null-DN":
-        return x509.Name([])
-
-    return x509.Name.from_rfc4514_string(data=common_name.replace(", ", ","))
 
 
 # TODO verify if `utcTime` is allowed for CertTemplate, because is not allowed
@@ -194,7 +183,10 @@ def sign_csr(  # noqa D417 undocumented-param
     signature = cryptoutils.sign_data(data=der_data, key=other_key or signing_key, hash_alg=hash_alg)
     logging.info(f"CSR Signature: {signature}")
     if bad_sig:
-        signature = utils.manipulate_first_byte(signature)
+        if isinstance(signing_key, AbstractCompositeSigPrivateKey):
+            signature = utils.manipulate_composite_sig(signature)
+        else:
+            signature = utils.manipulate_first_byte(signature)
         logging.info(f"Modified CSR signature: {signature}")
 
     csr["signature"] = univ.BitString.fromOctetString(signature)
@@ -217,6 +209,7 @@ def build_csr(  # noqa D417 undocumented-param
     subjectAltName: Optional[str] = None,
     exclude_signature: bool = False,
     for_kga: bool = False,
+    bad_sig: bool = False,
 ) -> rfc6402.CertificationRequest:
     """Build a PKCS#10 Certification Request (CSR) with the given parameters.
 
@@ -235,6 +228,7 @@ def build_csr(  # noqa D417 undocumented-param
         - `exclude_signature`: A flag to indicate if the CSR should be signed or not. Defaults to `False`.
         - `for_kga`: If the CSR is created for non-local key generation. The `signature` and the
         `subjectPublicKey` are set to a zero bit string. And the algorithm identifiers are set to key provided.
+        - `bad_sig`: Whether to manipulate the signature for negative testing.
 
     Returns:
     -------
@@ -271,7 +265,8 @@ def build_csr(  # noqa D417 undocumented-param
         csr = csr_add_extensions(csr=csr, extensions=extensions)
 
     if not exclude_signature and not for_kga:
-        csr = sign_csr(csr=csr, signing_key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
+        csr = sign_csr(csr=csr, signing_key=signing_key,
+                       hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, bad_sig=bad_sig)
 
     elif for_kga:
         csr["signature"] = univ.BitString("")
@@ -782,37 +777,6 @@ def build_certificate(  # noqa D417 undocumented-param
     return certificate, private_key
 
 
-@not_keyword
-def prepare_name(
-    common_name: str, implicit_tag_id: Optional[int] = None, name: Optional[rfc9480.Name] = None
-) -> rfc9480.Name:
-    """Prepare a `rfc9480.Name` object or fill a provided object.
-
-    :param common_name: Common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,CN=Joe Mustermann"
-    :param implicit_tag_id: the implicitTag id for the new object.
-    :param name: An optional `pyasn1` Name object in which the data is parsed. Else creates a new object.
-    :return: The filled object.
-    """
-    name_obj = parse_common_name_from_str(common_name)
-    der_data = name_obj.public_bytes()
-
-    if name is None:
-        if implicit_tag_id is not None:
-            name = rfc9480.Name().subtype(
-                implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, implicit_tag_id)
-            )
-
-    name_tmp, rest = decoder.decode(der_data, rfc9480.Name())
-    if rest != b"":
-        raise ValueError("The decoding of `Name` structure had a remainder!")
-
-    if name is None:
-        return name_tmp
-
-    name["rdnSequence"] = name_tmp["rdnSequence"]
-    return name
-
-
 def modify_common_name_cert(  # noqa D417 undocumented-param
     cert: rfc9480.CMPCertificate, issuer: bool = True
 ) -> str:
@@ -1125,7 +1089,9 @@ def _prepare_public_key_for_cert_template(
     if key is None and asn1cert is not None:
         key = certutils.load_public_key_from_cert(asn1cert=asn1cert)
 
-    elif isinstance(key, (typingutils.PrivateKey, AbstractCompositeSigPrivateKey)):
+    elif isinstance(key, (typingutils.PrivateKey, AbstractCompositeKEMPrivateKey,
+        AbstractHybridRawPrivateKey,
+                          AbstractCompositeSigPrivateKey)):
         key = key.public_key()
 
     if not for_kga:

@@ -14,6 +14,7 @@ Library             ../resources/keyutils.py
 Library             ../resources/cmputils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
+Library             ../resources/extra_issuing_logic.py
 
 Test Tags           cmp
 
@@ -49,11 +50,13 @@ CA MUST Accept Valid Cross Certification Request
 
 CA MUST Reject Cross Certification Request with private key 
     [Documentation]    According to RFC4210bis-15 Section 
-    [Tags]    crr     negative  robot:skip-on-failure  bad-behaviour
+    [Tags]    crr     negative  bad-behaviour
+    Skip    Not Implemented Yet.
     ${result}=   Is Certificate And Key Set    ${TRUSTED_CA_CERT}     ${TRUSTED_CA_KEY}
     Skip If    not ${result}   Skipped because the `TRUSTED_CA_CERT` and `TRUSTED_CA_KEY` are not set.
     ${cert_template}    ${key}=  Generate CertTemplate For Testing
-    ${popo}=    Prepare POPO For Enc Key   key=${key}  server_cert=${CA_CERT}   password=${PRESHARED_SECRET}
+    # ${data}=   Prepare Private Key For POP
+    #${popo}=    Prepare POPO Env Data  ${key}   sender=${SENDER}  password=${PASSWORD}   server_cert=${TRUSTED_CA_CERT}
     ${crr}=     Build Crr From Key
     ...    ${key}
     ...    cert_template=${cert_template}
@@ -82,7 +85,7 @@ CA MUST Reject Cross Certification Request without POP
    Skip If    not ${result}   Skipped because the `TRUSTED_CA_CERT` and `TRUSTED_CA_KEY` are not set.
    ${cm}=   Get Next Common Name
    ${crr}=     Build Crr From Key
-   ...    key=${None}
+   ...    ${None}
    ...    common_name=${cm}
    ...    for_kga=True
    ...    recipient=${RECIPIENT}

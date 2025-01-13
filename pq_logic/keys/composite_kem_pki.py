@@ -36,12 +36,12 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 
-
-from resources.exceptions import InvalidKeyCombination, BadAsn1Data
+from pq_logic.tmp_mapping import get_oid_composite
+from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.keyutils import generate_key
 
 from pq_logic.hybrid_structures import CompositeCiphertextValue
-from pq_logic.kem_mechanism import ECDHKEM, RSAOaepKem, DHKEMRFC9180
+from pq_logic.kem_mechanism import DHKEMRFC9180, ECDHKEM, RSAOaepKem
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeKEMPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.pq_key_factory import PQKeyFactory
@@ -50,37 +50,6 @@ from pq_logic.pq_key_factory import PQKeyFactory
 # OIDs and OID-to-KDF Mappings
 #####################################
 
-from pq_logic.tmp_oids import id_CompKEM, id_frodokem_976_aes_rsa2048, id_frodokem_976_aes_rsa3072, \
-    id_frodokem_976_aes_rsa4096, id_frodokem_976_aes_ecdh_p384, id_frodokem_976_aes_x25519, \
-    id_frodokem_976_shake_rsa2048, id_frodokem_976_shake_rsa3072, id_frodokem_976_shake_rsa4096, \
-    id_frodokem_976_shake_x25519, id_frodokem_976_shake_ecdh_p384, id_frodokem_976_shake_brainpoolP256r1, \
-    id_frodokem_1344_aes_ecdh_p384, id_frodokem_1344_aes_x448, id_frodokem_1344_aes_ecdh_brainpoolP384r1, \
-    id_frodokem_1344_shake_ecdh_p384, id_frodokem_1344_shake_ecdh_brainpoolP384r1, id_frodokem_1344_shake_x448, \
-    id_frodokem_976_aes_brainpoolP256r1, COMPOSITE_KEM_DHKEMRFC9180_MAPPING
-
-id_MLKEM768_RSA2048 = univ.ObjectIdentifier(f"{id_CompKEM}.21")
-id_MLKEM768_RSA3072 = univ.ObjectIdentifier(f"{id_CompKEM}.22")
-id_MLKEM768_RSA4096 = univ.ObjectIdentifier(f"{id_CompKEM}.23")
-id_MLKEM768_X25519 = univ.ObjectIdentifier(f"{id_CompKEM}.24")
-id_MLKEM768_ECDH_P384 = univ.ObjectIdentifier(f"{id_CompKEM}.25")
-id_MLKEM768_ECDH_brainpoolP256r1 = univ.ObjectIdentifier(f"{id_CompKEM}.26")
-id_MLKEM1024_ECDH_P384 = univ.ObjectIdentifier(f"{id_CompKEM}.27")
-id_MLKEM1024_ECDH_brainpoolP384r1 = univ.ObjectIdentifier(f"{id_CompKEM}.28")
-id_MLKEM1024_X448 = univ.ObjectIdentifier(f"{id_CompKEM}.29")
-
-
-
-oid_to_kdf_mapping = {
-    id_MLKEM768_RSA2048: "hkdf-sha256",
-    id_MLKEM768_RSA3072: "hkdf-sha256",
-    id_MLKEM768_RSA4096: "hkdf-sha256",
-    id_MLKEM768_X25519: "sha3-256",
-    id_MLKEM768_ECDH_P384: "hkdf-sha256",
-    id_MLKEM768_ECDH_brainpoolP256r1: "hkdf-sha256",
-    id_MLKEM1024_ECDH_P384: "sha3-256",
-    id_MLKEM1024_ECDH_brainpoolP384r1: "sha3-256",
-    id_MLKEM1024_X448: "sha3-256",
-}
 
 def get_composite_kem_hash_alg(pq_name: str, trad_key, alternative: bool = False) -> str:
     """Return the hash algorithm for a composite KEM.
@@ -92,7 +61,6 @@ def get_composite_kem_hash_alg(pq_name: str, trad_key, alternative: bool = False
     (to use HKDF-SHA2-512)
     :return: The hash algorithm.
     """
-
     # TODO maybe do directly by claimed NIST level ?
 
     if pq_name in ["ml-kem-1024", "frodokem-1344-aes", "frodokem-1344-shake"]:
@@ -108,85 +76,6 @@ def get_composite_kem_hash_alg(pq_name: str, trad_key, alternative: bool = False
 
     raise InvalidKeyCombination(f"Unsupported composite KEM: {pq_name} with {trad_key}")
 
-
-COMPOSITE_MLKEM_NAME_2_OID = {
-    "ml-kem-768-rsa2048": id_MLKEM768_RSA2048,
-    "ml-kem-768-rsa3072": id_MLKEM768_RSA3072,
-    "ml-kem-768-rsa4096": id_MLKEM768_RSA4096,
-    "ml-kem-768-ecdh-secp384r1": id_MLKEM768_ECDH_P384,
-    "ml-kem-768-ecdh-brainpoolP256r1": id_MLKEM768_ECDH_brainpoolP256r1,
-    "ml-kem-768-x25519": id_MLKEM768_X25519,
-    "ml-kem-1024-ecdh-secp384r1": id_MLKEM1024_ECDH_P384,
-    "ml-kem-1024-ecdh-brainpoolP384r1": id_MLKEM1024_ECDH_brainpoolP384r1,
-    "ml-kem-1024-x448": id_MLKEM1024_X448,
-}
-
-
-COMPOSITE_FRODOKEM_NAME_2_OID = {
-    "frodokem-976-aes-rsa2048": id_frodokem_976_aes_rsa2048,
-    "frodokem-976-aes-rsa3072": id_frodokem_976_aes_rsa3072,
-    "frodokem-976-aes-rsa4096": id_frodokem_976_aes_rsa4096,
-    "frodokem-976-aes-x25519": id_frodokem_976_aes_x25519,
-    "frodokem-976-aes-ecdh-secp384r1": id_frodokem_976_aes_ecdh_p384,
-    "frodokem-976-aes-brainpoolP256r1": id_frodokem_976_aes_brainpoolP256r1,
-    "frodokem-976-shake-rsa2048": id_frodokem_976_shake_rsa2048,
-    "frodokem-976-shake-rsa3072": id_frodokem_976_shake_rsa3072,
-    "frodokem-976-shake-rsa4096": id_frodokem_976_shake_rsa4096,
-    "frodokem-976-shake-x25519": id_frodokem_976_shake_x25519,
-    "frodokem-976-shake-ecdh-secp384r1": id_frodokem_976_shake_ecdh_p384,
-    "frodokem-976-shake-brainpoolP256r1": id_frodokem_976_shake_brainpoolP256r1,
-    "frodokem-1344-aes-ecdh-secp384r1": id_frodokem_1344_aes_ecdh_p384,
-    "frodokem-1344-aes-ecdh-brainpoolP384r1": id_frodokem_1344_aes_ecdh_brainpoolP384r1,
-    "frodokem-1344-aes-x448": id_frodokem_1344_aes_x448,
-    "frodokem-1344-shake-ecdh-secp384r1": id_frodokem_1344_shake_ecdh_p384,
-    "frodokem-1344-shake-ecdh-brainpoolP384r1": id_frodokem_1344_shake_ecdh_brainpoolP384r1,
-    "frodokem-1344-shake-x448": id_frodokem_1344_shake_x448,
-}
-
-
-COMPOSITE_KEM_NAME_2_OID = {}
-COMPOSITE_KEM_NAME_2_OID.update(COMPOSITE_MLKEM_NAME_2_OID)
-COMPOSITE_KEM_NAME_2_OID.update(COMPOSITE_FRODOKEM_NAME_2_OID)
-COMPOSITE_KEM_NAME_2_OID.update(COMPOSITE_KEM_DHKEMRFC9180_MAPPING)
-
-COMPOSITE_KEM_OID_2_NAME = {str(oid): name for name, oid in COMPOSITE_KEM_NAME_2_OID.items()}
-
-def get_oid_composite(
-    pq_name: str,
-    trad_key: Union[x25519.X25519PrivateKey, x448.X448PrivateKey, ec.EllipticCurvePrivateKey, rsa.RSAPrivateKey],
-    length: Optional[int] = None,
-    curve_name: Optional[str] = None,
-    use_dhkemrfc9180: bool = False,
-) -> univ.ObjectIdentifier:
-    """Return the OID for a composite KEM combination.
-
-    :param pq_name: The name of the post-quantum algorithm.
-    :param trad_key: The traditional key object.
-    :param length: The length of the RSA key.
-    :param curve_name: The name of the elliptic curve
-    (only needed for negative testing)
-    :param use_dhkemrfc9180: Whether to use the DHKEMRFC9180 and not ECDH mechanism.
-    :return: The Object Identifier.
-    """
-
-    if isinstance(trad_key, (rsa.RSAPrivateKey, rsa.RSAPublicKey)):
-        trad_name = f"rsa{length or trad_key.key_size}"
-
-    elif isinstance(trad_key, (ec.EllipticCurvePrivateKey, ec.EllipticCurvePublicKey)):
-        curve_name = curve_name or trad_key.curve.name
-        trad_name = f"ecdh-{curve_name}"
-
-    elif isinstance(trad_key, (x25519.X25519PrivateKey, x25519.X25519PublicKey)):
-        trad_name = "x25519"
-
-    elif isinstance(trad_key, (x448.X448PrivateKey, x448.X448PublicKey)):
-        trad_name = "x448"
-    else:
-        raise ValueError(f"Unsupported traditional key type.: {type(trad_key).__name__}")
-
-    prefix = "" if not use_dhkemrfc9180 else "dhkemrfc9180-"
-
-    return COMPOSITE_KEM_NAME_2_OID[f"{prefix}{pq_name}-{trad_name}"]
 
 def parse_public_keys(pq_key, trad_key) -> "CompositeKEMPublicKey":
     """Parse the public keys into a composite ML-KEM public key.

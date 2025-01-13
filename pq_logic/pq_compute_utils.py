@@ -5,31 +5,32 @@
 """Utility functions for verifying hybrid signatures."""
 
 import logging
-from typing import Sequence, Union, Optional, List
+from typing import List, Optional, Sequence, Union
 
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
-
-from pq_logic.tmp_oids import id_relatedCert
-from pq_logic.hybrid_sig.catalyst_logic import id_ce_subjectAltPublicKeyInfo, SubjectAltPublicKeyInfoExt
-from pq_logic.hybrid_sig.certdiscovery import extract_sia_extension_for_cert_discovery, get_secondary_certificate, \
-    validate_alg_ids
-from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import validate_alt_pub_key_extn, validate_alt_sig_extn
-from pq_logic.py_verify_logic import verify_signature_with_alg_id
 from resources.certextractutils import get_extension
 from resources.certutils import load_public_key_from_cert
-
 from resources.cryptoutils import sign_data
-from resources.exceptions import UnknownOID, BadAsn1Data
+from resources.exceptions import BadAsn1Data, UnknownOID
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME
+from resources.typingutils import PublicKeySig
 from robot.api.deco import not_keyword
 
+from pq_logic.hybrid_sig.catalyst_logic import SubjectAltPublicKeyInfoExt, id_ce_subjectAltPublicKeyInfo
+from pq_logic.hybrid_sig.certdiscovery import (
+    extract_sia_extension_for_cert_discovery,
+    get_secondary_certificate,
+    validate_alg_ids,
+)
+from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import validate_alt_pub_key_extn, validate_alt_sig_extn
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, CompositeSigCMSPublicKey
 from pq_logic.pq_key_factory import PQKeyFactory
-from resources.typingutils import PublicKeySig
+from pq_logic.py_verify_logic import verify_signature_with_alg_id
+from pq_logic.tmp_oids import id_relatedCert
 
 
 def sign_data_with_alg_id(key, alg_id: rfc9480.AlgorithmIdentifier, data: bytes) -> bytes:
@@ -205,7 +206,6 @@ def verify_signature_with_hybrid_cert(
     :raises ValueError: If the `cert` contains a PQ signature algorithm.
     It Should be a traditional algorithm for migration strategy.
     """
-
     if sig_alg["algorithm"] not in CMS_COMPOSITE_OID_2_NAME:
         raise ValueError("The signature algorithm is not a composite signature.")
 
@@ -244,7 +244,6 @@ def may_extract_alt_key_from_cert(cert: rfc9480.CMPCertificate,
     :param other_certs: A list of other certificates to search for the related certificate.
     :return: The extracted alternative public key or None if not found.
     """
-
     extensions = cert["tbsCertificate"]["extensions"]
     extn_rel_cert = get_extension(extensions, id_relatedCert)
     extn_sia = get_extension(extensions, rfc5280.id_pe_subjectInfoAccess)
@@ -317,7 +316,6 @@ def verify_sun_hybrid_cert(
     :raises ValueError: If the alternative issuer key is not found.
     :raises BadAsn1Data: If the AlternativePublicKeyInfo extension contains remainder data.
     """
-
     if alt_issuer_key is None:
         alt_issuer_key = may_extract_alt_key_from_cert(issuer_cert, other_certs=other_certs)
         if alt_issuer_key is None:

@@ -43,14 +43,12 @@ except ImportError:
 class MLKEMPublicKey(PQKEMPublicKey):
     """Represents an ML-KEM public key."""
 
-
     def _initialize(self, kem_alg: str, public_key: bytes):
         """Initialize the ML-KEM public key.
 
         :param kem_alg: Algorithm name to use (e.g., "ml-kem-512").
         :param public_key: Public key as raw bytes.
         """
-
         if oqs is not None:
             super()._initialize(kem_alg=kem_alg, public_key=public_key)
         else:
@@ -86,7 +84,6 @@ class MLKEMPublicKey(PQKEMPublicKey):
 
     def encaps(self) -> Tuple[bytes, bytes]:
         """Encapsulate a shared secret using the public key."""
-
         if oqs is not None:
             return super().encaps()
         else:
@@ -197,7 +194,6 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
         :param name: The algorithm name.
         :return: An instance of `MLKEMPublicKey`.
         """
-
         key = cls(kem_alg=name, private_bytes=data)
         if key.key_size != len(data):
             raise ValueError(f"Invalid key size expected {key.key_size}, but got: {len(data)}")
