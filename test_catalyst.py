@@ -12,6 +12,8 @@ from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
 from unit_tests.utils_for_test import print_chain_subject_and_issuer, get_subject_and_issuer
 from pyasn1_alt_modules import rfc5280, rfc9480
 
+import oqs
+
 
 def get_catalyst_certs() -> list[str]:
     pem_files = []
@@ -79,6 +81,15 @@ def _try2(asn1cert: rfc9480.CMPCertificate,
                                   m=alt_sig_data,
                                   sig=signature,
                                   ctx=b"")
+
+        for sigalg in oqs.list_signature_algorithms():
+            if sigalg.startswith("dilithium") or sigalg.startswith("ML-D"):
+                with oqs.Signature(sigalg) as verifier:
+                     is_valid = verifier.verify(alt_sig_data, signature, pub_key)
+
+        print("\nValid signature?", is_valid)
+
+
 
         if out:
             print(f"Verification successful with {name} with: "

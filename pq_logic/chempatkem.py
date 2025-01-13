@@ -8,15 +8,15 @@ from typing import Optional, Tuple, Union
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1.type import univ
+from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.kem_mechanism import DHKEMRFC9180
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
-from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPublicKey, AbstractHybridRawPrivateKey
+from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.keys.kem_keys import McEliecePrivateKey, McEliecePublicKey, MLKEMPrivateKey, Sntrup761PrivateKey
 from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_mapping import get_oid_for_chemnpat
-from resources.exceptions import InvalidKeyCombination
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 
 CURVE_NAME_2_CONTEXT_NAME = {
     "secp256r1": "P256",

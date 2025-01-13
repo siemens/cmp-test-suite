@@ -10,8 +10,8 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
 from cryptography.hazmat.primitives.asymmetric import x25519
+from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5958

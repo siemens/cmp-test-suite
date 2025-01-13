@@ -8,12 +8,12 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from resources.certbuildutils import build_csr, prepare_sig_alg_id
-from resources.prepareutils import prepare_name
 from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
 from resources.copyasn1utils import copy_name
 from resources.cryptoutils import sign_data
 from resources.oid_mapping import get_hash_from_oid
+from resources.prepareutils import prepare_name
 from resources.typingutils import PrivateKeySig
 
 from pq_logic.combined_factory import CombinedKeyFactory

@@ -4,7 +4,6 @@
 
 from typing import Union
 
-from pq_logic.chempatkem import ChempatPublicKey
 from pq_logic.keys.abstract_composite import (
     AbstractCompositeKEMPrivateKey,
     AbstractCompositeKEMPublicKey,

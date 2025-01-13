@@ -5,7 +5,6 @@
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5990, rfc9480
 
-
 ##############################
 # Test Suite OIDs
 ##############################

@@ -53,7 +53,6 @@ def prepare_subject_alt_public_key_info_extn(public_key: Union[PQSignaturePrivat
     :param critical: Whether the extension is critical.
     :return: The prepared Extension object.
     """
-
     if isinstance(public_key, PQSignaturePrivateKey):
         public_key = public_key.public_key()
 
