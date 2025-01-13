@@ -11,11 +11,10 @@ from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc9480
 
-
 from pq_logic.hybrid_sig.catalyst_logic import verify_catalyst_signature_migrated
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPublicKey
-from pq_logic.pq_compute_utils import verify_signature
 from resources.certutils import parse_certificate
+from resources.cryptoutils import verify_signature
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import PQ_OID_2_NAME, CMS_COMPOSITE_OID_2_NAME, PQ_KEM_OID_2_NAME
@@ -148,19 +147,26 @@ if __name__ == "__main__":
        f = open("validation_pem_files.txt", "w", encoding='utf-8')
        f.write(f"Collected {len(pem_files)}.pem files:\n\n")
        for pem in pem_files:
+
+           if "_pub" in pem:
+               f.write(f"Skipping public key file: {pem}\n")
+               continue
+
            try:
                data = open(pem, "rb").read()
                cert = parse_certificate(data)
                name = verify_cert_sig(cert, verify_catalyst=True if "catalyst" in pem else False)
-               f.write(f"VALID SIGNATURE Key_name: {name}\t{pem}\n")
+               if name in PQ_KEM_OID_2_NAME.values():
+                   f.write(f"VALID KEY LOAD CERT Key_name:\t{name}\t{pem}\n")
+               f.write(f"VALID SIGNATURE Key_name:\t{name}\t{pem}\n")
            except InvalidSignature:
               f.write(f"INVALID SIGNATURE\t{pem}\n")
            except ValueError as e:
-               f.write(f"{pem}\t{e}\n")
+               f.write(f"ValueError\t{pem}\t{e}\n")
            except pyasn1.error.PyAsn1Error as e:
-                f.write(f"{pem}\tUnable to decode.{e}\n")
+                f.write(f"PARSING ERROR\t{pem}\t{e}\n")
            except cryptography.exceptions.UnsupportedAlgorithm as e:
-               f.write(f"{pem}\tUnable to decode.{e}\n")
+               f.write(f"UNSUPPORTED ALGORITHM\t{pem}\tUnable to decode.{e}\n")
 
 
        f.close()
