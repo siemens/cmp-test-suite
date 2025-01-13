@@ -116,6 +116,12 @@ class CompositeKEMPublicKey(AbstractCompositeKEMPublicKey):
     def get_oid(self) -> univ.ObjectIdentifier:
         return get_oid_composite(self.pq_key.name, self.trad_key)
 
+    def __eq__(self, other):
+        """Check if two composite KEM public keys are equal."""
+        if not isinstance(other, CompositeKEMPublicKey):
+            return False
+
+        return self.pq_key == other.pq_key and self.trad_key == other.trad_key
 
 class CompositeMLKEMPrivateKey(AbstractCompositeKEMPrivateKey):
     pq_key: MLKEMPrivateKey
