@@ -58,7 +58,11 @@ docs:
 	python -m robot.libdoc resources/httputils.py doc/httputils.html
 	python -m robot.libdoc resources/keyutils.py doc/keyutils.html
 	python -m robot.libdoc resources/protectionutils.py doc/protectionutils.html
+	python -m robot.libdoc pq_logic/py_verify_logic.py doc/py_verify_logic.html
+	python -m robot.libdoc pq_logic/pq_validation_utils.py doc/pq_validation_utils.html
+	python -m robot.libdoc pq_logic/pq_compute_utils.py doc/pq_validation_utils.html
 	python -m robot.testdoc tests/ doc/test-suites.html
+	python -m robot.testdoc tests_untested/ doc/test-migration-suites.html
 
 autoformat:
 	ruff check --fix .
@@ -72,3 +76,7 @@ verify:
 
 verifyformat:
 	ruff check .
+
+dryrun:
+	robot --dryrun --pythonpath=./ --variable environment:$(env) tests
+	robot --dryrun --pythonpath=./ --variable environment:$(env) tests_untested
