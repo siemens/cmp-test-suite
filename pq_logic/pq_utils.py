@@ -13,7 +13,7 @@ from robot.api.deco import not_keyword
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeKEMPublicKey
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.migration_types import KEMPrivateKey, KEMPublicKey
+from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey
 
 
 @not_keyword

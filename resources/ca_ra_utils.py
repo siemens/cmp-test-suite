@@ -8,7 +8,7 @@ import logging
 import os
 from typing import Optional, Union
 
-from pq_logic.migration_types import HybridKEMPrivateKey
+from pq_logic.migration_typing import HybridKEMPrivateKey
 from pyasn1.codec.der import encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc9480

@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1.type import univ
 
 from pq_logic.kem_mechanism import DHKEMRFC9180
-from pq_logic.migration_types import ECDHPrivateKey, ECDHPublicKey
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPublicKey, AbstractHybridRawPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.keys.kem_keys import McEliecePrivateKey, McEliecePublicKey, MLKEMPrivateKey, Sntrup761PrivateKey

@@ -14,7 +14,7 @@ import pyasn1
 from cryptography.hazmat.primitives import keywrap, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa, x448, x25519
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
-from pq_logic.migration_types import KEMPrivateKey
+from pq_logic.migration_typing import KEMPrivateKey
 from pq_logic.tmp_oids import id_rsa_kem_spki
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ

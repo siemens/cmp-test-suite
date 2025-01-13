@@ -5,7 +5,7 @@ from pyasn1.type import univ
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey, McEliecePrivateKey, McEliecePublicKey, MLKEMPublicKey
-from pq_logic.migration_types import ECDHPrivateKey, ECDHPublicKey
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from pq_logic.tmp_oids import COMPOSITE_KEM_NAME_2_OID, CHEMPAT_NAME_2_OID
 from resources.exceptions import InvalidKeyCombination
 
