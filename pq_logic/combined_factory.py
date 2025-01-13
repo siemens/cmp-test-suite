@@ -63,30 +63,17 @@ class CombinedKeyFactory:
         if algorithm in ["rsa", "ecdsa", "ed25519", "ed448", "bad-rsa-key"]:
             return generate_trad_key(algorithm, **kwargs)
 
-        if algorithm == "xwing":
-            return HybridKeyFactory.from_keys(algorithm=algorithm, pq_key=kwargs.get("pq_key"), trad_key=kwargs.get("trad_key"))
+
         elif PQKeyFactory.may_be_pq_alg(algorithm=algorithm):
             return PQKeyFactory.generate_pq_key(algorithm=algorithm)
 
-        elif algorithm == "chempat":
-             if kwargs.get("pq_key") is not None or kwargs.get("trad_key") is not None:
-                 return HybridKeyFactory.from_keys(algorithm=algorithm, pq_key=kwargs.get("pq_key"), trad_key=kwargs.get("trad_key"))
-
-             return HybridKeyFactory.generate_hybrid_key(algorithm=algorithm,**kwargs)
-
-        elif algorithm == "composite-kem":
+        elif algorithm in HybridKeyFactory.supported_algorithms():
             if kwargs.get("pq_key") is not None or kwargs.get("trad_key") is not None:
                 return HybridKeyFactory.from_keys(algorithm=algorithm, pq_key=kwargs.get("pq_key"), trad_key=kwargs.get("trad_key"))
-            return HybridKeyFactory.generate_hybrid_key(algorithm=algorithm,**kwargs)
 
-        elif algorithm == "composite-sig":
+            return HybridKeyFactory.generate_hybrid_key(algorithm=algorithm, **kwargs)
 
-            if kwargs.get("trad_key") is not None or kwargs.get("pq_key") is not None:
-                return HybridKeyFactory.from_keys(algorithm=algorithm, pq_key=kwargs.get("pq_key"), trad_key=kwargs.get("trad_key"))
-
-            return HybridKeyFactory.generate_hybrid_key(algorithm=algorithm,**kwargs)
         else:
-
             options = ", ".join(CombinedKeyFactory.supported_algorithms())
             raise ValueError(f"Unsupported key type: {algorithm} Supported are {options}")
 
