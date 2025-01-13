@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Union, Any, get_args
+from typing import Any, Union, get_args
 
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.type import univ
@@ -13,7 +13,7 @@ from robot.api.deco import not_keyword
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeKEMPublicKey
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey, HybridKEMPrivateKey
+from pq_logic.migration_typing import HybridKEMPrivateKey, KEMPrivateKey, KEMPublicKey
 
 
 @not_keyword

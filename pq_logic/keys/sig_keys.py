@@ -56,7 +56,6 @@ class MLDSAPublicKey(PQSignaturePublicKey):
     @property
     def key_size(self) -> int:
         """Return the size of the public key."""
-
         key_size = {"ml-dsa-44": 1312, "ml-dsa-65": 1952, "ml-dsa-87": 2592}
         return key_size[self.name]
 
