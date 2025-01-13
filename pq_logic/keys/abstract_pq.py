@@ -467,4 +467,5 @@ class PQKEMPrivateKey(PQPrivateKey, ABC):
     @property
     def key_size(self) -> int:
         """Return the size of the public key."""
-        return self.kem_methode.details["length_shared_secret"]
+        return self.kem_methode.details["length_secret_key"]
+
