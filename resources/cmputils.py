@@ -38,7 +38,7 @@ from resources import asn1utils, certbuildutils, certutils, convertutils, crypto
 from resources.certextractutils import get_field_from_certificate
 from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import str_to_bytes
-from resources.envdatautils import is_kem_private_key
+from pq_logic.pq_utils import is_kem_private_key
 from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKey, Strint, TradSigPrivKey
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed

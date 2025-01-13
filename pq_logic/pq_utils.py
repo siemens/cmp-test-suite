@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Union
+from typing import Union, Any, get_args
 
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.type import univ
@@ -13,7 +13,7 @@ from robot.api.deco import not_keyword
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeKEMPublicKey
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey
+from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey, HybridKEMPrivateKey
 
 
 @not_keyword
@@ -39,3 +39,23 @@ def get_kem_oid_from_key(
 
     else:
         raise ValueError(f"Invalid key type: {type(key).__name__}")
+
+
+@not_keyword
+def is_kem_public_key(key: Any) -> bool:
+    """Check whether a parsed key is a KEM public key."""
+    allowed_types = get_args(KEMPublicKey)
+    if any(isinstance(key, x) for x in allowed_types):
+        return True
+
+    return False
+
+
+@not_keyword
+def is_kem_private_key(key: Any) -> bool:
+    """Check whether a parsed key is a KEM private key."""
+    allowed_types = get_args(HybridKEMPrivateKey)
+    if any(isinstance(key, x) for x in allowed_types):
+        return True
+
+    return False

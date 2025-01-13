@@ -74,6 +74,10 @@ class PQPublicKey(ABC):
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(self._public_key_bytes)
         return encoder.encode(spki)
 
+
+
+
+
     def public_bytes_raw(self) -> bytes:
         """Return the public key as raw bytes."""
         return self._public_key_bytes
@@ -288,6 +292,9 @@ class PQSignaturePublicKey(PQPublicKey, ABC):
 
         if not self.sig_methode.verify(data, signature, self._public_key_bytes):
             raise InvalidSignature()
+
+
+
 
 
 class PQSignaturePrivateKey(PQPrivateKey, ABC):

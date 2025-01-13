@@ -6,7 +6,7 @@
 
 import logging
 import os
-from typing import Any, List, Optional, Union, get_args
+from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives import keywrap, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
@@ -15,7 +15,7 @@ from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPublicKey
 from pq_logic.keys.kem_keys import MLKEMPublicKey
 from pq_logic.migration_typing import HybridKEMPrivateKey, KEMPublicKey
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
-from pq_logic.pq_utils import get_kem_oid_from_key
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import (
@@ -50,24 +50,6 @@ from resources.oidutils import KEY_WRAP_NAME_2_OID
 from resources.protectionutils import get_rsa_oaep_padding, prepare_kdf, prepare_pbkdf2_alg_id, prepare_wrap_alg_id
 from resources.typingutils import PrivateKey, PublicKey
 
-
-@not_keyword
-def is_kem_public_key(key: Any) -> bool:
-    """Check whether a parsed key is a KEM public key."""
-    allowed_types = get_args(KEMPublicKey)
-    if any(isinstance(key, x) for x in allowed_types):
-        return True
-
-    return False
-
-@not_keyword
-def is_kem_private_key(key: Any) -> bool:
-    """Check whether a parsed key is a KEM private key."""
-    allowed_types = get_args(HybridKEMPrivateKey)
-    if any(isinstance(key, x) for x in allowed_types):
-        return True
-
-    return False
 
 @not_keyword
 def get_aes_length(alg_name: str) -> int:

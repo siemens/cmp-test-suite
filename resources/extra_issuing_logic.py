@@ -38,10 +38,10 @@ from resources.convertutils import str_to_bytes
 from resources.cryptoutils import compute_hmac, perform_ecdh
 from resources.envdatautils import (
     build_env_data_for_exchange,
-    is_kem_public_key,
     prepare_issuer_and_serial_number,
     prepare_one_asymmetric_key,
 )
+from pq_logic.pq_utils import is_kem_public_key
 from resources.exceptions import InvalidKeyCombination
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import compute_hash

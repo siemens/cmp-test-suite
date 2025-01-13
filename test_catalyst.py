@@ -2,6 +2,8 @@ import glob
 import pprint
 from itertools import product
 
+from cryptography.exceptions import InvalidSignature
+
 from pq_logic.fips.fips204 import ML_DSA
 from pq_logic.hybrid_sig.catalyst_logic import verify_catalyst_signature, verify_catalyst_signature_migrated, \
     validate_catalyst_extension, prepare_alt_signature_data
@@ -65,6 +67,10 @@ def _try2(asn1cert: rfc9480.CMPCertificate,
     :param signature: The signature to be verified.
     :return: Whether the verification was successful.
     """
+
+    # verify the key size.
+    MLDSAPublicKey.from_public_bytes(pub_key, name)
+
     for exclude_alt_extensions, only_tbs_cert, exclude_signature_field, exclude_spki \
             in product([True, False], repeat=4):
         # Prepare alternative signature data with the current combination
@@ -77,17 +83,30 @@ def _try2(asn1cert: rfc9480.CMPCertificate,
             exclude_first_spki=exclude_spki,
         )
 
+
+
         out = ML_DSA(name).verify(pk=pub_key,
                                   m=alt_sig_data,
                                   sig=signature,
                                   ctx=b"")
 
-        for sigalg in oqs.list_signature_algorithms():
-            if sigalg.startswith("dilithium") or sigalg.startswith("ML-D"):
-                with oqs.Signature(sigalg) as verifier:
-                     is_valid = verifier.verify(alt_sig_data, signature, pub_key)
 
-        print("\nValid signature?", is_valid)
+        for sigalg in oqs.get_enabled_sig_mechanisms():
+            if sigalg.startswith("Dilithium") or sigalg.startswith("ML-D"):
+                with oqs.Signature(sigalg) as verifier:
+                    try:
+                         is_valid = verifier.verify(alt_sig_data, signature, pub_key)
+
+                         if is_valid:
+                           print(f"Verification successful with {sigalg} with: "
+                                   f"exclude_alt_extensions={exclude_alt_extensions}, "
+                                   f"only_tbs_cert={only_tbs_cert}, "
+                                   f"exclude_signature_field={exclude_signature_field}"
+                                   f"exclude_spki={exclude_spki}")
+                           return True
+                    except Exception as e:
+                        #print(f"Verification failed for {sigalg}:", e)
+                        continue
 
 
 
