@@ -3,8 +3,11 @@ from typing import Union, Optional
 from cryptography.hazmat.primitives.asymmetric import x25519, x448, ec, rsa
 from pyasn1.type import univ
 
+from pq_logic.keys.abstract_pq import PQKEMPublicKey
+from pq_logic.keys.kem_keys import MLKEMPrivateKey, McEliecePrivateKey, McEliecePublicKey, MLKEMPublicKey
 from pq_logic.migration_types import ECDHPrivateKey, ECDHPublicKey
-from pq_logic.tmp_oids import COMPOSITE_KEM_NAME_2_OID
+from pq_logic.tmp_oids import COMPOSITE_KEM_NAME_2_OID, CHEMPAT_NAME_2_OID
+from resources.exceptions import InvalidKeyCombination
 
 
 def get_oid_for_composite_kem(
@@ -44,20 +47,49 @@ def get_oid_for_composite_kem(
     return COMPOSITE_KEM_NAME_2_OID[f"{prefix}{pq_name}-{trad_name}"]
 
 
-def get_oid_for_chemnpat(pq_name: str, trad_key: Union[ECDHPrivateKey, ECDHPublicKey], curve_name: str) -> univ.ObjectIdentifier:
+def get_oid_for_chemnpat(pq_key: PQKEMPublicKey, trad_key: Union[ECDHPrivateKey, ECDHPublicKey],
+                         curve_name: Optional[str] = None) -> univ.ObjectIdentifier:
     """Return the OID for a Chempat key combination.
 
-    :param pq_name: The name of the post-quantum algorithm.
+    :param pq_key: The post-quantum key object.
     :param trad_key: The traditional key object.
     :param curve_name: The name of the elliptic curve.
     :return: The Object Identifier.
+    :raises InvalidKeyCombination: If the traditional key type or the post-quantum key type is not supported,
+    or if the Chempat key combination is not supported.
+
     """
+    curve_name_2_context_name = {
+        "secp256r1": "P256",
+        "brainpoolP256r1": "brainpoolP256",
+        "secp384r1": "P384",
+        "brainpoolP384r1": "brainpoolP384",
+    }
 
-    if pq_name == "sntrup761":
-        trad_name = "sntrup761"
+    if pq_key.name == "sntrup761":
+        pq_name = "sntrup761"
+
+    elif isinstance(pq_key, (McEliecePrivateKey, McEliecePublicKey)):
+        pq_name = pq_key.name.replace("-", "").lower()
+    elif isinstance(pq_key, (MLKEMPrivateKey, MLKEMPublicKey)):
+        pq_name = pq_key.name.upper()
+    else:
+        raise InvalidKeyCombination(f"Unsupported post-quantum key type for Chempat.: {pq_key.name}")
 
 
+    if isinstance(trad_key, (ec.EllipticCurvePrivateKey, ec.EllipticCurvePublicKey)):
+        curve_name = curve_name or trad_key.curve.name
+        trad_name = curve_name_2_context_name[curve_name]
 
+    elif isinstance(trad_key, (x25519.X25519PrivateKey, x25519.X25519PublicKey)):
+         trad_name = "X25519"
 
-    trad_name = f"ecdh-{curve_name}"
-    return COMPOSITE_KEM_NAME_2_OID[f"chempat-{pq_name}-{trad_name}"]
+    elif isinstance(trad_key, (x448.X448PrivateKey, x448.X448PublicKey)):
+         trad_name = "X448"
+    else:
+        raise InvalidKeyCombination(f"Unsupported traditional key type.: {type(trad_key).__name__}")
+
+    try:
+        return CHEMPAT_NAME_2_OID[f"Chempat-{trad_name}-{pq_name}"]
+    except KeyError:
+        raise InvalidKeyCombination(f"Unsupported Chempat key combination: {trad_name}-{pq_name}")

@@ -372,25 +372,27 @@ id_Chempat_P256_ML_KEM_768 = univ.ObjectIdentifier(f"{id_Chempat}.14")
 id_Chempat_P384_ML_KEM_1024 = univ.ObjectIdentifier(f"{id_Chempat}.15")
 id_Chempat_brainpoolP256_ML_KEM_768 = univ.ObjectIdentifier(f"{id_Chempat}.16")
 id_Chempat_brainpoolP384_ML_KEM_1024 = univ.ObjectIdentifier(f"{id_Chempat}.17")
+
 CHEMPAT_OID_2_NAME = {
-    id_Chempat_X25519_sntrup761: "x25519-sntrup761",
-    id_Chempat_X25519_mceliece348864: "x25519_mceliece348864",
-    id_Chempat_X25519_mceliece460896: "x25519_mceliece460896",
-    id_Chempat_X25519_mceliece6688128: "x25519_mceliece6688128",
-    id_Chempat_X25519_mceliece6960119: "x25519_mceliece6960119",
-    id_Chempat_X25519_mceliece8192128: "x25519_mceliece8192128",
-    id_Chempat_X448_mceliece348864: "x448-mceliece348864",
-    id_Chempat_X448_mceliece460896: "x448-mceliece460896",
-    id_Chempat_X448_mceliece6688128: "x448-mceliece6688128",
-    id_Chempat_X448_mceliece6960119: "x448-mceliece6960119",
-    id_Chempat_X448_mceliece8192128: "x448-mceliece8192128",
-    id_Chempat_X25519_ML_KEM_768: "x25519-ml-kem-768",
-    id_Chempat_X448_ML_KEM_1024: "x448-ml-kem-1024",
-    id_Chempat_P256_ML_KEM_768: "P256-ml-kem-768",
-    id_Chempat_P384_ML_KEM_1024: "P384-ml-kem-1024",
-    id_Chempat_brainpoolP256_ML_KEM_768: "brainpoolP256-ml-kem-768",
-    id_Chempat_brainpoolP384_ML_KEM_1024: "brainpoolP384-ml-kem-1024",
+    id_Chempat_X25519_sntrup761: "Chempat-X25519-sntrup761",
+    id_Chempat_X25519_mceliece348864: "Chempat-X25519_mceliece348864",
+    id_Chempat_X25519_mceliece460896: "Chempat-X25519_mceliece460896",
+    id_Chempat_X25519_mceliece6688128: "Chempat-X25519_mceliece6688128",
+    id_Chempat_X25519_mceliece6960119: "Chempat-X25519_mceliece6960119",
+    id_Chempat_X25519_mceliece8192128: "Chempat-X25519_mceliece8192128",
+    id_Chempat_X448_mceliece348864: "Chempat-X448-mceliece348864",
+    id_Chempat_X448_mceliece460896: "Chempat-X448-mceliece460896",
+    id_Chempat_X448_mceliece6688128: "Chempat-X448-mceliece6688128",
+    id_Chempat_X448_mceliece6960119: "Chempat-X448-mceliece6960119",
+    id_Chempat_X448_mceliece8192128: "Chempat-X448-mceliece8192128",
+    id_Chempat_X25519_ML_KEM_768: "Chempat-X25519-ML-KEM-768",
+    id_Chempat_X448_ML_KEM_1024: "Chempat-X448-ML-KEM-1024",
+    id_Chempat_P256_ML_KEM_768: "Chempat-P256-ML-KEM-768",
+    id_Chempat_P384_ML_KEM_1024: "Chempat-P384-ML-KEM-1024",
+    id_Chempat_brainpoolP256_ML_KEM_768: "Chempat-brainpoolP256-ML-KEM-768",
+    id_Chempat_brainpoolP384_ML_KEM_1024: "Chempat-brainpoolP384-ML-KEM-1024",
 }
+CHEMPAT_NAME_2_OID = {y: x for x, y in CHEMPAT_OID_2_NAME.items()}
 
 ########################
 # Hybrid Signature OIDs

@@ -15,6 +15,8 @@ from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.keys.kem_keys import McEliecePrivateKey, McEliecePublicKey, MLKEMPrivateKey, Sntrup761PrivateKey
 from pq_logic.pq_key_factory import PQKeyFactory
+from pq_logic.tmp_mapping import get_oid_for_chemnpat
+from resources.exceptions import InvalidKeyCombination
 
 CURVE_NAME_2_CONTEXT_NAME = {
     "secp256r1": "P256",
@@ -40,8 +42,6 @@ def _get_trad_name(trad_key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> str:
     return name
 
 
-
-
 class ChempatKEM:
     """
     Class implementing a hybrid key encapsulation mechanism (Chempat), combining a traditional KEM (TKEM)
@@ -65,14 +65,17 @@ class ChempatKEM:
         the types of keys in use.
 
         :return: The context string as bytes.
+        :raises InvalidKeyCombination: If the key combination is not supported.
         """
         if self.pq_key.name == "sntrup761":
             pq_name = "sntrup761"
 
         elif isinstance(self.pq_key, (McEliecePrivateKey, McEliecePublicKey)):
-            pq_name = self.pq_key.name.replace("Classic-", "").replace("-", "").lower()
-        else:
+            pq_name = self.pq_key.name.replace("-", "").lower()
+        elif isinstance(self.pq_key, MLKEMPrivateKey):
             pq_name = self.pq_key.name.upper()
+        else:
+            raise InvalidKeyCombination(f"Unsupported post-quantum key type for Chempat.: {self.pq_key.name}")
 
         name = bytes(_get_trad_name(self.trad_key), "utf-8")
 
@@ -168,11 +171,27 @@ class ChempatKEM:
 
 class ChempatPublicKey(AbstractHybridRawPublicKey):
 
+    def __init__(self, pq_key: PQKEMPublicKey, trad_key: Optional[ECDHPublicKey] = None):
+        """Constructor for the ChempatPublicKey class.
+
+        :param pq_key: The post-quantum public key.
+        :param trad_key: The traditional public key.
+        :raises ValueError: If the trad_key is not None and not an ECDHPublicKey.
+        :raises InvalidKeyCombination: If the key combination is not supported.
+        """
+        super().__init__(pq_key, trad_key)
+        if trad_key and not isinstance(trad_key, ECDHPublicKey):
+            raise ValueError("Unsupported key type for Chempat the trad_key must be `None` or `ECDHPublicKey`")
+
+        self.chempat_kem = get_oid_for_chemnpat(pq_key, trad_key)
+
     def public_bytes_raw(self) -> bytes:
+        """Return the raw bytes of the public key as concatenation of the post-quantum and traditional keys."""
         return self.pq_key.public_bytes_raw() + self.trad_key.public_bytes_raw()
 
     def get_oid(self) -> univ.ObjectIdentifier:
-        return self.chempat_kem
+        """Return the OID for the Chempat key."""
+        return get_oid_for_chemnpat(self.pq_key, self.trad_key)
 
 
 class ChempatPrivateKey(AbstractHybridRawPrivateKey):
@@ -185,7 +204,7 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
         return self.pq_key.private_bytes_raw() + self.trad_key.private_bytes_raw()
 
     @classmethod
-    def from_private_bytes(cls, data: bytes, name: Optional[str] = None) -> "ChempatPrivateKey:
+    def from_private_bytes(cls, data: bytes, name: Optional[str] = None) -> "ChempatPrivateKey":
 
         if name is None:
             raise ValueError("The key name must be provided to create a ChempatPrivateKey instance.")
@@ -211,6 +230,8 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
 
         :param pq_key: The post-quantum private key.
         :param trad_key: The traditional private key, if None, will be created in the `encaps` function.
+        :raises ValueError: If the trad_key is not None and not an ECDHPrivateKey.
+        :raises InvalidKeyCombination: If the key combination is not supported.
         """
         super().__init__(pq_key, trad_key)
         if trad_key and not isinstance(trad_key, ECDHPrivateKey):
@@ -225,6 +246,7 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
         :param pq_key: The post-quantum private key.
         :param trad_key: The traditional private key.
         :return: The corresponding `ChempatPrivateKey` instance.
+        :raises InvalidKeyCombination: If the key combination is not supported.
         """
         if isinstance(pq_key, MLKEMPrivateKey):
             return ChempatMLKEM768PrivateKey(pq_key, trad_key)

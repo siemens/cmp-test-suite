@@ -22,7 +22,6 @@ from pq_logic.tmp_oids import (
     PREHASH_OID_2_HASH,
     PURE_COMPOSITE_NAME_TO_OID,
     PURE_OID_TO_HASH,
-    id_CompKEM,
     id_sntrup761_str,
 )
 from pyasn1.type import univ

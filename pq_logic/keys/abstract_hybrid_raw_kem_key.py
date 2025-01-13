@@ -10,20 +10,21 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives._serialization import Encoding, PrivateFormat
+from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
 from cryptography.hazmat.primitives.asymmetric import x25519
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5958
 
-from pq_logic.keys.kem_keys import MLKEMPrivateKey, MLKEMPublicKey
+from pq_logic.keys.abstract_pq import PQKEMPublicKey
+from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.serialize_utils import prepare_enc_key_pem
 
 
 class AbstractHybridRawPublicKey(ABC):
     """Abstract class for a raw hybrid public key."""
 
-    def __init__(self, pq_key: MLKEMPublicKey, trad_key: x25519.X25519PublicKey):
+    def __init__(self, pq_key: PQKEMPublicKey, trad_key: x25519.X25519PublicKey):
         """
         Initialize the public key with post-quantum and traditional public keys.
 
