@@ -317,7 +317,7 @@ CA SHOULD Accept CSR with related cert from different CA
     # ${new_cert}=   Get Cert From PKIMessage    ${response}
     # ${key}=    Get From List    ${burned_keys}    -1
     # must then change the variables.
-    ${req_cert}=   Prepare Requester Certificate  cert_a=${ISSUED_CERT}    cert_a_key=${ISSUED_KEY}   uri=${uri_multiple_auth}   different_ca=True
+    ${req_cert}=   Prepare Requester Certificate  cert_a=${ISSUED_CERT}    cert_a_key=${ISSUED_KEY}   uri=${uri_multiple_auth}
     ${pq_key}=    Generate Key    ${DEFAULT_ML_DSA_ALG}
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
@@ -496,7 +496,7 @@ CA MUST Check If The Related Certificate Is Not Revoked.
     [Tags]         multiple-auth   csr   negative   rr
     ${result}=   Is Certificate And Key Set    ${REVOKED_CERT}    ${REVOKED_KEY}
     Skip If    ${result}    The revoked certificate and key are not set.
-    ${req_cert}=   Prepare Requester Certificate  cert_a=${REVOKED_CERT}    cert_a_key=${REVOKED_KEY}   uri=${uri_multiple_auth}   valid_cert=False
+    ${req_cert}=   Prepare Requester Certificate  cert_a=${REVOKED_CERT}    cert_a_key=${REVOKED_KEY}   uri=${uri_multiple_auth}   
     ${pq_key}=    Generate Key    ${DEFAULT_ML_DSA_ALG}
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
@@ -521,7 +521,7 @@ CA MUST Check If The Related Certificate Is Not Updated
     ...                for the related certificate. The CA MUST detect this error and reject the request and MAY
     ...                respond with the optional failInfo `badCertTemplate`.
     [Tags]         multiple-auth   csr   negative   rr
-    ${req_cert}=   Prepare Requester Certificate  cert_a=${ISSUED_CERT}    cert_a_key=${ISSUED_KEY}   uri=${uri_multiple_auth}   valid_cert=False
+    ${req_cert}=   Prepare Requester Certificate  cert_a=${ISSUED_CERT}    cert_a_key=${ISSUED_KEY}   uri=${uri_multiple_auth}   
     ${pq_key}=    Generate Key    ${DEFAULT_ML_DSA_ALG}
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
@@ -545,7 +545,7 @@ CA MUST Reject Related Cert For Non-EE Cert
     ...                an end entity. The CA MUST detect this error and reject the request and MAY respond with the
     ...                optional failInfo `badCertTemplate`.
     [Tags]         multiple-auth   csr   negative
-    ${req_cert}=   Prepare Requester Certificate  cert_a=${CA_CERT}    cert_a_key=${CA_KEY}   uri=${uri_multiple_auth}   valid_cert=False
+    ${req_cert}=   Prepare Requester Certificate  cert_a=${CA_CERT}    cert_a_key=${CA_KEY}   uri=${uri_multiple_auth}   
     ${pq_key}=    Generate Key    ${DEFAULT_ML_DSA_ALG}
     ${cm}=             Get Next Common Name
     ${extensions}=   Prepare Extensions    is_ca=True
