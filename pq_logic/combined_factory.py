@@ -22,7 +22,7 @@ from pq_logic.keys.comp_sig_cms03 import (
 )
 from pq_logic.keys.composite_kem_pki import (
     CompositeDHKEMRFC9180PublicKey,
-    CompositeKEMPublicKey,
+    CompositeKEMPublicKey, parse_public_keys,
 )
 from pq_logic.keys.kem_keys import FrodoKEMPublicKey, MLKEMPublicKey
 from pq_logic.keys.xwing import XWingPublicKey
@@ -158,7 +158,7 @@ class CombinedKeyFactory:
 
         if alg_name.startswith("dhkem"):
             return CompositeDHKEMRFC9180PublicKey(pq_pub, trad_pub)
-        return CompositeKEMPublicKey(pq_pub, trad_pub)
+        return parse_public_keys(pq_pub, trad_pub)
 
     @staticmethod
     def supported_algorithms():
