@@ -87,7 +87,7 @@ class CombinedKeyFactory:
             return HybridKeyFactory.generate_hybrid_key(algorithm=algorithm,**kwargs)
         else:
 
-            options = "".join(CombinedKeyFactory.supported_algorithms())
+            options = ", ".join(CombinedKeyFactory.supported_algorithms())
             raise ValueError(f"Unsupported key type: {algorithm} Supported are {options}")
 
     @staticmethod
