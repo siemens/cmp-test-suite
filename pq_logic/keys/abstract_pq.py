@@ -469,3 +469,16 @@ class PQKEMPrivateKey(PQPrivateKey, ABC):
         """Return the size of the public key."""
         return self.kem_methode.details["length_secret_key"]
 
+    @classmethod
+    def from_private_bytes(cls, data: bytes, name: str):
+        """Create a new private key object from the provided bytes.
+
+        :param data: The private key as bytes.
+        :param name: The algorithm name.
+        :return: The private key object.
+        :raises ValueError: If the key size does not match the expected size.
+        """
+        key = cls(kem_alg=name, private_bytes=data)
+        if len(data) != key.key_size:
+            raise ValueError(f"Invalid private key size for {cls.name}. Expected {key.key_size}, got {len(data)}")
+        return key

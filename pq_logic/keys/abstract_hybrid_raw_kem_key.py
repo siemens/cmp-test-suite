@@ -73,8 +73,7 @@ class AbstractHybridRawPrivateKey(ABC):
     @classmethod
     @abstractmethod
     def generate(cls):
-        """
-        Generate a new hybrid private key consisting of a post-quantum key and a traditional X25519 key.
+        """Generate a new hybrid private key consisting of a post-quantum key and a traditional X25519 key.
 
         :return: An instance of AbstractHybridRawPrivateKey.
         """

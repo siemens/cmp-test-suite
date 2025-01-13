@@ -7,8 +7,11 @@ from typing import Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
+from pyasn1.type import univ
 
-from pq_logic.kem_mechanism import DHKEMRFC9180, ECDHPrivateKey, ECDHPublicKey
+from pq_logic.kem_mechanism import DHKEMRFC9180
+from pq_logic.migration_types import ECDHPrivateKey, ECDHPublicKey
+from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPublicKey, AbstractHybridRawPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.keys.kem_keys import McEliecePrivateKey, McEliecePublicKey, MLKEMPrivateKey, Sntrup761PrivateKey
 from pq_logic.pq_key_factory import PQKeyFactory
@@ -35,6 +38,8 @@ def _get_trad_name(trad_key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> str:
     else:
         raise ValueError("Unsupported key type.")
     return name
+
+
 
 
 class ChempatKEM:
@@ -161,26 +166,56 @@ class ChempatKEM:
         return hybrid_ss
 
 
-class ChempatPublicKey:
-    def __init__(self, pq_key, trad_key):
-        """Constructor for the ChempatPublicKey class.
+class ChempatPublicKey(AbstractHybridRawPublicKey):
 
-        :param pq_key: The post-quantum public key.
-        :param trad_key: The traditional public key.
-        """
-        self.pq_key = pq_key
-        self.trad_key = trad_key
+    def public_bytes_raw(self) -> bytes:
+        return self.pq_key.public_bytes_raw() + self.trad_key.public_bytes_raw()
+
+    def get_oid(self) -> univ.ObjectIdentifier:
+        return self.chempat_kem
 
 
-class ChempatPrivateKey:
+class ChempatPrivateKey(AbstractHybridRawPrivateKey):
+
+    @classmethod
+    def generate(cls):
+        raise NotImplementedError("The ChempatPrivateKey class does not support key generation.")
+
+    def private_bytes_raw(self) -> bytes:
+        return self.pq_key.private_bytes_raw() + self.trad_key.private_bytes_raw()
+
+    @classmethod
+    def from_private_bytes(cls, data: bytes, name: Optional[str] = None) -> "ChempatPrivateKey:
+
+        if name is None:
+            raise ValueError("The key name must be provided to create a ChempatPrivateKey instance.")
+
+        if "sntrup761" in name:
+            return ChempatSntrup761PrivateKey.from_private_bytes(data)
+
+        if "mceliece" in name:
+            return ChempatMcEliecePrivateKey.from_private_bytes(data)
+
+        elif "ml-kem-768" in name:
+            return ChempatMLKEM768PrivateKey.from_private_bytes(data)
+        else:
+            raise ValueError("Unsupported key type for Chempat.")
+
+
+    def _get_key_name(self) -> bytes:
+        """Return the key name for the key, for saving the key to a file."""
+        return b"CHEMPAT"
+
     def __init__(self, pq_key, trad_key: Optional[ECDHPrivateKey] = None):
         """Constructor for the ChempatPrivateKey class.
 
         :param pq_key: The post-quantum private key.
         :param trad_key: The traditional private key, if None, will be created in the `encaps` function.
         """
-        self.pq_key = pq_key
-        self.trad_key = trad_key
+        super().__init__(pq_key, trad_key)
+        if trad_key and not isinstance(trad_key, ECDHPrivateKey):
+            raise ValueError("Unsupported key type for Chempat the trad_key must be `None` or `ECDHPrivateKey`")
+
         self.chempat_kem = ChempatKEM(self.pq_key, self.trad_key)
 
     @staticmethod
@@ -229,6 +264,19 @@ class ChempatSntrup761PrivateKey(ChempatPrivateKey):
         """Return the corresponding public key class."""
         return ChempatSntrup761PublicKey(self.pq_key.public_key(), self.trad_key.public_key())
 
+    @classmethod
+    def from_private_bytes(cls, data: bytes, name: Optional[str] = None) -> "ChempatSntrup761PrivateKey":
+        """Create a ChempatSntrup761PrivateKey instance from the provided private bytes.
+
+        :param data: The private key bytes, which are the pq-part and the trad-part concatenated.
+        :param name: The pq-algorithm name.
+        :return: The created `ChempatSntrup761PrivateKey` instance.
+        """
+        key = PQKeyFactory.generate_pq_key("sntrup761")
+        key_size = key.key_size
+        pq_key = Sntrup761PrivateKey.from_private_bytes(data=data[:key_size], name="sntrup761")
+        trad_key = x25519.X25519PrivateKey.from_private_bytes(data=data[key_size:])
+        return ChempatSntrup761PrivateKey(pq_key, trad_key)
 
 class ChempatMcEliecePublicKey(ChempatPublicKey):
     """Public key class for the Chempat hybrid key encapsulation mechanism."""
