@@ -4,6 +4,7 @@ import os
 import shutil
 import zipfile
 import subprocess
+from datetime import datetime
 
 import cryptography
 import pyasn1
@@ -145,11 +146,12 @@ if __name__ == "__main__":
                pem_files.append(file)
 
        f = open("validation_pem_files.txt", "w", encoding='utf-8')
+       f.write(f"Last Time Verified: {datetime.now()}\n")
        f.write(f"Collected {len(pem_files)}.pem files:\n\n")
        for pem in pem_files:
 
            if "_pub" in pem:
-               f.write(f"Skipping public key file: {pem}\n")
+               f.write(f"SKIPPING PUBLIC KEY FILE:\t{pem}\n")
                continue
 
            try:
@@ -157,8 +159,8 @@ if __name__ == "__main__":
                cert = parse_certificate(data)
                name = verify_cert_sig(cert, verify_catalyst=True if "catalyst" in pem else False)
                if name in PQ_KEM_OID_2_NAME.values():
-                   f.write(f"VALID KEY LOAD CERT Key_name:\t{name}\t{pem}\n")
-               f.write(f"VALID SIGNATURE Key_name:\t{name}\t{pem}\n")
+                   f.write(f"VALID KEY LOAD CERT\t{name}\t{pem}\n")
+               f.write(f"VALID SIGNATURE\t{name}\t{pem}\n")
            except InvalidSignature:
               f.write(f"INVALID SIGNATURE\t{pem}\n")
            except ValueError as e:
