@@ -15,7 +15,6 @@ from typing import Optional, Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, rsa
-
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.tmp_oids import (
     CMS_COMPOSITE_OID_2_HASH,
@@ -35,12 +34,15 @@ from pyasn1_alt_modules.rfc5480 import id_dsa_with_sha256
 from robot.api.deco import not_keyword
 
 from resources.oidutils import (
+    ALL_KNOWN_PROTECTION_OIDS,
     ALLOWED_HASH_TYPES,
     CURVE_NAMES_TO_INSTANCES,
     OID_HASH_MAP,
     OID_HASH_NAME_2_OID,
     PQ_NAME_2_OID,
-    SUPPORTED_MAC_NAME_2_OID, PQ_OID_2_NAME, PQ_SIG_PRE_HASH_OID_2_NAME, ALL_KNOWN_PROTECTION_OIDS,
+    PQ_OID_2_NAME,
+    PQ_SIG_PRE_HASH_OID_2_NAME,
+    SUPPORTED_MAC_NAME_2_OID,
 )
 from resources.typingutils import PrivateKey
 

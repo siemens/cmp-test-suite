@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 from pq_logic.tmp_oids import (
+    CHEMPAT_OID_2_NAME,
     CMS_COMPOSITE_OID_2_HASH,
     COMPOSITE_KEM_OID_2_NAME,
     FALCON_NAME_2_OID,
@@ -22,7 +23,7 @@ from pq_logic.tmp_oids import (
     PURE_COMPOSITE_NAME_TO_OID,
     PURE_OID_TO_HASH,
     id_CompKEM,
-    id_sntrup761_str, CHEMPAT_OID_2_NAME,
+    id_sntrup761_str,
 )
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
@@ -352,17 +353,17 @@ id_KemBasedMac = univ.ObjectIdentifier("1.2.840.113533.7.66.16")
 
 
 id_alg_ml_kem_512_oid = kems_oid + (1,)
-id_alg_ml_kem_768_oid = kems_oid + (2,)
+id_ml_kem_768_oid = kems_oid + (2,)
 id_alg_ml_kem_1024_oid = kems_oid + (3,)
 ML_KEM_OID_2_NAME = {
     id_alg_ml_kem_512_oid: "ml-kem-512",
-    id_alg_ml_kem_768_oid: "ml-kem-768",
+    id_ml_kem_768_oid: "ml-kem-768",
     id_alg_ml_kem_1024_oid: "ml-kem-1024",
 }
 
 ML_KEM_NAME_2_OID = {
     "ml-kem-512": id_alg_ml_kem_512_oid,
-    "ml-kem-768": id_alg_ml_kem_768_oid,
+    "ml-kem-768": id_ml_kem_768_oid,
     "ml-kem-1024": id_alg_ml_kem_1024_oid,
 }
 

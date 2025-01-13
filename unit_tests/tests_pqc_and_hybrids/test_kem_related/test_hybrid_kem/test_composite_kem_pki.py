@@ -9,10 +9,11 @@ from pq_logic.keys.composite_kem_pki import (
     CompositeMLKEMECPrivateKey,
     CompositeMLKEMRSAPrivateKey,
     CompositeMLKEMXPrivateKey,
-    get_oid_composite,
-    id_MLKEM768_RSA2048, CompositeDHKEMRFC9180PrivateKey,
+    CompositeDHKEMRFC9180PrivateKey,
 )
+from pq_logic.tmp_mapping import get_oid_composite
 from pq_logic.pq_key_factory import PQKeyFactory
+from pq_logic.tmp_oids import id_MLKEM768_RSA2048
 from resources.keyutils import generate_key
 
 
