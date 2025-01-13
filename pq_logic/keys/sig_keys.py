@@ -31,17 +31,7 @@ except ImportError:
 
 
 class MLDSAPublicKey(PQSignaturePublicKey):
-    """Represent an ML-DSA public key.
-
-    This wrapper class provides support for ML-DSA public keys, which are not currently natively supported by the
-    `cryptography` library. Provides functionality to manage, serialize, and use ML-DSA private keys. Methods in
-    this class are modeled after the `cryptography` library for consistency.
-
-    Available methods:
-        - `public_bytes(encoding, format)`: Serialize the public key in the specified encoding and format.
-        - `verify(signature, data)`: Verify a signature for provided data.
-
-    """
+    """Represent an ML-DSA public key."""
 
     def _init(self, sig_alg: str, public_key: bytes) -> None:
         """Initialize the ML-DSA public key.
@@ -53,6 +43,23 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         self._check_name(sig_alg)
         self.ml_class = ML_DSA(sig_alg)
         self._public_key_bytes = public_key
+
+    @property
+    def sig_size(self) -> int:
+        """Return the size of the signature."""
+        if oqs is None:
+            sig_size = {"ml-dsa-44": 2420, "ml-dsa-65": 3309, "ml-dsa-87": 4627}
+            return sig_size[self.name]
+
+        return self.sig_methode.details["length_signature"]
+
+    @property
+    def key_size(self) -> int:
+        """Return the size of the public key."""
+
+        key_size = {"ml-dsa-44": 1312, "ml-dsa-65": 1952, "ml-dsa-87": 2592}
+        return key_size[self.name]
+
 
     def verify(
         self,
@@ -100,15 +107,6 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         if not sig:
             raise InvalidSignature()
 
-    def _validate_hash_alg(self, hash_alg: Union[None, str, hashes.HashAlgorithm] = None):
-        if isinstance(hash_alg, hashes.SHA512):
-            pass
-        elif hash_alg in ["sha512", None]:
-            pass
-
-        else:
-            raise ValueError(f"Invalid hash algorithm for {self.name}: {hash_alg}")
-
     @property
     def name(self) -> str:
         """Return the name of the algorithm."""
@@ -135,6 +133,19 @@ class MLDSAPublicKey(PQSignaturePublicKey):
             raise ValueError(f"Invalid signature algorithm name provided.: {name}")
 
         self.sig_alg = name
+
+    @classmethod
+    def from_public_bytes(cls, data: bytes, name: str) -> "MLDSAPublicKey":
+        """Create a public key from the given byte string.
+
+        :param data: The byte string to create the public key from.
+        :param name: The name of the signature algorithm.
+        """
+        key = cls(sig_alg=name, public_key=data)
+        if key.key_size != len(data):
+            raise ValueError(f"Invalid public key size. Expected: {key.key_size}, got: {len(data)}")
+
+        return key
 
 
 class MLDSAPrivateKey(PQSignaturePrivateKey):
@@ -192,6 +203,12 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
             raise ValueError(f"Invalid signature algorithm name provided.: {name}")
 
         self.sig_alg = name
+
+    @property
+    def key_size(self) -> int:
+        """Return the size of the private key."""
+        key_size = {"ml-dsa-44": 2560, "ml-dsa-65": 4032, "ml-dsa-87": 4896}
+        return key_size[self.name]
 
     def public_key(self) -> MLDSAPublicKey:
         """Derive the corresponding public key.
