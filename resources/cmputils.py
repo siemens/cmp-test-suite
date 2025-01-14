@@ -15,10 +15,9 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import dh, x448, x25519
-
-import resources.prepareutils
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
+from pq_logic.pq_utils import is_kem_private_key
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, namedtype, tag, univ, useful
@@ -34,11 +33,11 @@ from pyasn1_alt_modules import (
 from robot.api.deco import keyword, not_keyword
 from robot.libraries.DateTime import convert_date
 
+import resources.prepareutils
 from resources import asn1utils, certbuildutils, certutils, convertutils, cryptoutils, oid_mapping, utils
 from resources.certextractutils import get_field_from_certificate
 from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import str_to_bytes
-from pq_logic.pq_utils import is_kem_private_key
 from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKey, Strint, TradSigPrivKey
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
@@ -732,6 +731,8 @@ def prepare_popo(  # noqa D417 undocumented-param
     hash_alg: str = "sha256",
     ra_verified: bool = False,
     sender: Optional[str] = None,
+    use_encr_cert: bool = True,
+    use_key_enc: Optional[bool] = True,
 ) -> rfc4211.ProofOfPossession:
     """Prepare the `ProofOfPossession` (POPO) structure for a certificate request.
 
@@ -739,7 +740,8 @@ def prepare_popo(  # noqa D417 undocumented-param
     to indicate the PKI management entity has the key making the request. In cases where there
     is a change made by an intermediate PKI management entity, the `ProofOfPossession`
     may not be valid. The `ra_verified` parameter indicates whether the proof has been
-    verified by a Registration Authority (RA). Also supports keyAgreement for x25519,x448 and keyEncipherment for KEM keys.
+    verified by a Registration Authority (RA). Also supports keyAgreement for x25519,x448 and
+    `keyEncipherment` for KEM keys.
 
     Arguments:
     ---------
@@ -753,6 +755,8 @@ def prepare_popo(  # noqa D417 undocumented-param
           If set to `True`, a POPO without a signature will be generated. Defaults to `False`.
         - `sender`: The sender of the `PKIMessage` used inside the `POPOSigningKeyInput` structure.
         (which *MUST* be absent.)
+        - `use_encr_cert`: Indicates if the certificate request is for a keyAgreement or keyEncipherment key.
+        _ `use_key_enc`: Indicates if the certificate request is for a keyEncipherment key.
 
     Returns:
     -------
@@ -769,6 +773,15 @@ def prepare_popo(  # noqa D417 undocumented-param
     | ${popo}= | Prepare POPO | ra_verified=True |
 
     """
+    if is_kem_private_key(signing_key):
+        use_key_enc = True if use_key_enc is None else use_key_enc
+        return prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert, use_key_enc=use_key_enc)
+
+    if isinstance(signing_key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
+        use_key_enc = False if use_key_enc is None else use_key_enc
+        return prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert, use_key_enc=use_key_enc)
+
+
     popo = rfc4211.ProofOfPossession()
     if ra_verified:
         # raVerified automatically removes the signature, if set.
@@ -3920,7 +3933,7 @@ def build_polling_response(  # noqa D417 undocumented-param
 
 
 def prepare_popo_challenge_for_non_signing_key(
-    use_encr_cert: bool = True, use_key_enc: bool = True
+    use_encr_cert: bool = True, use_key_enc: bool = True,
 ) -> rfc4211.ProofOfPossession:
     """Prepare a Proof-of-Possession (PoP) structure for Key encipherment or key agreement.
 
