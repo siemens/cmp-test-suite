@@ -79,11 +79,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Union[None, str] = "11111")
     else:
         encrypt_algo = serialization.BestAvailableEncryption(passphrase)  # type: ignore
 
-    if isinstance(key, dh.DHPrivateKey):
-        # DH only supports PKCS8 serialization
-        format_ = serialization.PrivateFormat.PKCS8
-
-    elif isinstance(
+    if isinstance(
         key, (x448.X448PrivateKey, x25519.X25519PrivateKey, ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey)
     ):
         data = key.private_bytes(
@@ -99,9 +95,6 @@ def save_key(key: PrivateKey, path: str, passphrase: Union[None, str] = "11111")
             f.write(data)
 
         return
-
-    if not isinstance(key, typingutils.PQPrivateKey) or isinstance(key, PQPrivateKey):
-        format_ = serialization.PrivateFormat.PKCS8
 
     data = key.private_bytes(
         encoding=encoding_,
