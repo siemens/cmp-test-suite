@@ -27,11 +27,10 @@ from cryptography.hazmat.primitives.asymmetric import (
     x25519,
 )
 from pq_logic.key_pyasn1_utils import load_enc_key
-from pq_logic.keys.abstract_pq import PQPrivateKey
 from pyasn1.codec.der import decoder
 from pyasn1_alt_modules import rfc5280
 
-from resources import oid_mapping, typingutils, utils
+from resources import oid_mapping, utils
 from resources.typingutils import PrivateKey, PublicKey
 
 
@@ -236,7 +235,8 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
     Additional Hybrid Parameters:
     ----------------------------
         - pq_name (str): The name of the post-quantum algorithm.
-        - trad_param (str): The name of the traditional algorithm. needs to be ecdh for composite-kem/composite-dhkem/chempat and
+        - trad_param (str): The name of the traditional algorithm. needs to be ecdh for
+        composite-kem/composite-dhkem/chempat and
         ecdsa for composite-sig.
         - pq_key (PQPrivateKey): The post-quantum private key.
         - trad_key (ECDHPrivateKey or RSA): The traditional private key.

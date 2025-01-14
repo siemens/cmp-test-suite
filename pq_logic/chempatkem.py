@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Optional, Tuple, Union, List
+from typing import List, Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
@@ -14,14 +14,14 @@ from pq_logic.kem_mechanism import DHKEMRFC9180
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.keys.kem_keys import (
+    FrodoKEMPrivateKey,
+    FrodoKEMPublicKey,
     McEliecePrivateKey,
     McEliecePublicKey,
     MLKEMPrivateKey,
+    MLKEMPublicKey,
     Sntrup761PrivateKey,
     Sntrup761PublicKey,
-    MLKEMPublicKey,
-    FrodoKEMPublicKey,
-    FrodoKEMPrivateKey,
 )
 from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_mapping import get_oid_for_chemnpat
@@ -220,7 +220,6 @@ class ChempatPublicKey(AbstractHybridRawPublicKey):
         :param name: The key name.
         :return: The public key.
         """
-
         name = name.lower()
         if "sntrup761" in name:
             return ChempatSntrup761PublicKey.from_public_bytes(data, name=name)
@@ -409,7 +408,6 @@ class ChempatMcEliecePublicKey(ChempatPublicKey):
         :return: The public key.
         :raises InvalidKeyCombination: If the key combination is not supported or incorrect.
         """
-
         name = name.lower()
 
         if "mceliece" not in name:
@@ -461,7 +459,6 @@ class ChempatMLKEMPublicKey(ChempatPublicKey):
         :return: The public key.
         :raises InvalidKeyCombination: If the key combination is not supported or incorrect.
         """
-
         if name is None:
             raise ValueError("The key name must be provided to create a ChempatMLKEMPublicKey instance.")
 
@@ -553,7 +550,6 @@ class ChempatFrodoKEMPublicKey(ChempatPublicKey):
         :return: The public key.
         :raises InvalidKeyCombination: If the key combination is not supported or incorrect.
         """
-
         name = name.lower()
 
         pq_name = _get_may_name(

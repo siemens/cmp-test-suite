@@ -1,3 +1,4 @@
+"""Utility functions for preparing data which is not tied to a specific keyword."""
 from typing import Optional
 
 from cryptography import x509

@@ -21,6 +21,7 @@ from pq_logic.kem_mechanism import ECDHKEM
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.migration_typing import HybridKEMPrivateKey
+from pq_logic.pq_utils import is_kem_public_key
 from pq_logic.trad_typing import ECDHPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
@@ -41,7 +42,6 @@ from resources.envdatautils import (
     prepare_issuer_and_serial_number,
     prepare_one_asymmetric_key,
 )
-from pq_logic.pq_utils import is_kem_public_key
 from resources.exceptions import InvalidKeyCombination
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import compute_hash

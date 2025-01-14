@@ -8,11 +8,10 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc5280, rfc5958
-
-from pq_logic.chempatkem import ChempatPublicKey
 from resources.oid_mapping import get_curve_instance
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, PQ_OID_2_NAME, XWING_OID_STR
 
+from pq_logic.chempatkem import ChempatPublicKey
 from pq_logic.hybrid_key_factory import HybridKeyFactory
 from pq_logic.hybrid_structures import (
     CompositeSignaturePublicKeyAsn1,
@@ -27,7 +26,7 @@ from pq_logic.keys.composite_kem_pki import (
 from pq_logic.keys.kem_keys import FrodoKEMPublicKey, MLKEMPublicKey
 from pq_logic.keys.xwing import XWingPublicKey
 from pq_logic.pq_key_factory import PQKeyFactory
-from pq_logic.tmp_oids import COMPOSITE_KEM_OID_2_NAME, CHEMPAT_OID_2_NAME
+from pq_logic.tmp_oids import CHEMPAT_OID_2_NAME, COMPOSITE_KEM_OID_2_NAME
 from pq_logic.trad_key_factory import generate_trad_key
 
 

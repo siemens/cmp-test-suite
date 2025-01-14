@@ -6,12 +6,12 @@ from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.keys.kem_keys import (
+    FrodoKEMPrivateKey,
+    FrodoKEMPublicKey,
     McEliecePrivateKey,
     McEliecePublicKey,
     MLKEMPrivateKey,
     MLKEMPublicKey,
-    FrodoKEMPublicKey,
-    FrodoKEMPrivateKey,
 )
 from pq_logic.tmp_oids import CHEMPAT_NAME_2_OID, COMPOSITE_KEM_NAME_2_OID
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey

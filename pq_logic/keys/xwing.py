@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
-from pyasn1_alt_modules import rfc5280, rfc5958
+from pyasn1_alt_modules import rfc5958
 
 from pq_logic.fips import fips203
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey

@@ -10,12 +10,11 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.serialization import PublicFormat
 from cryptography.hazmat.primitives.asymmetric import x25519
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
+from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, PublicFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
-from pyasn1_alt_modules import rfc5958, rfc5280
+from pyasn1_alt_modules import rfc5280, rfc5958
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey

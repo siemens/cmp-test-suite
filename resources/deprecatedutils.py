@@ -23,7 +23,7 @@ from pyasn1_alt_modules import rfc4211, rfc5280, rfc9481
 from robot.api.deco import keyword, not_keyword
 
 import resources.prepareutils
-from resources import certbuildutils, keyutils
+from resources import keyutils
 from resources.asn1utils import get_set_bitstring_names, is_bit_set
 from resources.convertutils import ensure_is_sign_key
 from resources.cryptoutils import compute_aes_cbc

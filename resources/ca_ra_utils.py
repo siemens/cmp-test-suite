@@ -15,7 +15,6 @@ from pyasn1_alt_modules import rfc5280, rfc5652, rfc9480
 
 from resources import certbuildutils, cmputils
 from resources.asn1_structures import CAKeyUpdContent, ChallengeASN1
-from resources.prepareutils import prepare_name
 from resources.certextractutils import get_extension
 from resources.certutils import check_is_cert_signer, validate_certificate_pkilint
 from resources.cmputils import prepare_general_name
@@ -23,6 +22,7 @@ from resources.convertutils import copy_asn1_certificate
 from resources.envdatautils import build_env_data_for_exchange
 from resources.extra_issuing_logic import is_null_dn
 from resources.oid_mapping import compute_hash, get_hash_from_oid, sha_alg_name_to_oid
+from resources.prepareutils import prepare_name
 from resources.protectionutils import prepare_sha_alg_id
 from resources.typingutils import PrivateKey, PublicKey
 
