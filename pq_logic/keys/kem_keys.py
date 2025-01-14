@@ -93,18 +93,12 @@ class MLKEMPublicKey(PQKEMPublicKey):
     @property
     def ct_length(self) -> int:
         """Get the length of the ciphertext."""
-        if oqs is not None:
-            return super().ct_length
-        else:
-            return {"ml-kem-768": 1088, "ml-kem-512": 768, "ml-kem-1024": 1568}[self.name]
+        return {"ml-kem-768": 1088, "ml-kem-512": 768, "ml-kem-1024": 1568}[self.name]
 
     @property
     def key_size(self) -> int:
         """Get the size of the key."""
-        if oqs is not None:
-            return super().key_size
-        else:
-            return {"ml-kem-768": 1184, "ml-kem-512": 800, "ml-kem-1024": 1568}[self.name]
+        return {"ml-kem-768": 1184, "ml-kem-512": 800, "ml-kem-1024": 1568}[self.name]
 
 class MLKEMPrivateKey(PQKEMPrivateKey):
     """Represents an ML-KEM private key.
@@ -213,18 +207,25 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
     @property
     def ct_length(self) -> int:
         """Get the length of the ciphertext."""
-        if oqs is not None:
-            return super().ct_length
-        else:
-            return {"ml-kem-768": 1088, "ml-kem-512": 768, "ml-kem-1024": 1568}[self.name]
+        return {"ml-kem-768": 1088, "ml-kem-512": 768, "ml-kem-1024": 1568}[self.name]
 
     @property
     def key_size(self) -> int:
         """Get the size of the key."""
-        if oqs is not None:
-            return super().key_size
-        else:
-            return {"ml-kem-768": 2400, "ml-kem-512": 1632, "ml-kem-1024": 3168}[self.name]
+        return {"ml-kem-768": 2400, "ml-kem-512": 1632, "ml-kem-1024": 3168}[self.name]
+
+    @classmethod
+    def key_gen(cls,name: str, d:bytes, z:bytes) -> "MLKEMPrivateKey":
+        """Generate a new ML-KEM private key.
+
+        :param name: The algorithm name (e.g., "ml-kem-512").
+        :param d: The random value d.
+        :param z: The random value z.
+        :return: The private key.
+        """
+        ek, dk = ML_KEM(name).keygen_internal(d=d, z=z)
+        return MLKEMPrivateKey(kem_alg=name, private_bytes=dk, public_key=ek)
+
 
 
 ##########################
