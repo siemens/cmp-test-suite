@@ -254,7 +254,7 @@ class PQSignaturePublicKey(PQPublicKey, ABC):
         self._public_key_bytes = public_key
 
     @abstractmethod
-    def check_hash_alg(self, hash_alg: str, allow_failure: bool = True) -> Optional[str]:
+    def check_hash_alg(self, hash_alg: Union[None, str,hashes.HashAlgorithm], allow_failure: bool = True) -> Optional[str]:
         """Check if the hash algorithm is valid and return the name of the hash algorithm.
 
         If the name is invalid returns `None`.

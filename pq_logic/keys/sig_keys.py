@@ -305,7 +305,7 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
         """Check if the parsed name is valid."""
         pass
 
-    def check_hash_alg(self, hash_alg: Optional[str, hashes.HashAlgorithm, None] = None) -> Optional[str]:
+    def check_hash_alg(self, hash_alg: Union[None, str,hashes.HashAlgorithm]) -> Optional[str]:
         """Check if the hash algorithm is valid to be used with SLH-DSA."""
         if hash_alg is None:
             return None
@@ -359,7 +359,7 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
         """Check if the name is valid."""
         pass
 
-    def check_hash_alg(self, hash_alg: Union[None, hashes.HashAlgorithm, str]) -> Optional[str]:
+    def check_hash_alg(self, hash_alg: Union[None, str, hashes.HashAlgorithm]) -> Optional[str]:
         """Check if the hash algorithm is valid."""
         if hash_alg is None:
             return None
