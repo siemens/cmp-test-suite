@@ -117,8 +117,8 @@ class CompositeKEMPublicKey(AbstractCompositeKEMPublicKey):
 
     def __eq__(self, other):
         """Check if two composite KEM public keys are equal."""
-        if not isinstance(other, CompositeKEMPublicKey):
-            return False
+        if not type(self) == type(other):
+            raise ValueError(f"Cannot compare `{type(self)}` with `{type(other)}`")
 
         return self.pq_key == other.pq_key and self.trad_key == other.trad_key
 
@@ -220,7 +220,7 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
         return combined_ss
 
 
-class CompositeMLKEMRSAPublicKey(AbstractCompositeKEMPublicKey):
+class CompositeMLKEMRSAPublicKey(CompositeKEMPublicKey):
     def get_oid(self, *args, **kwargs) -> univ.ObjectIdentifier:
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
