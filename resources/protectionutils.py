@@ -1324,7 +1324,7 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
 
     if protection_value != expected_protection_value:
         raise ValueError(
-            f"PKIMessage Protection should be:" f" {expected_protection_value.hex()} but was: {protection_value.hex()}"
+            f"PKIMessage Protection should be: {expected_protection_value.hex()} but was: {protection_value.hex()}"
         )
 
 
@@ -2361,7 +2361,6 @@ def verify_kem_based_mac_protection(
 
         if kem_ct_info is None:
             raise ValueError("The `KemCiphertextInfo` field is missing in the `PKIMessage`.")
-
 
         kem_ct_info_val, rest = decoder.decode(kem_ct_info, asn1Spec=KemCiphertextInfoValue())
 

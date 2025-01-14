@@ -5,8 +5,14 @@ from pyasn1.type import univ
 from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
-from pq_logic.keys.kem_keys import McEliecePrivateKey, McEliecePublicKey, MLKEMPrivateKey, MLKEMPublicKey, \
-    FrodoKEMPublicKey, FrodoKEMPrivateKey
+from pq_logic.keys.kem_keys import (
+    McEliecePrivateKey,
+    McEliecePublicKey,
+    MLKEMPrivateKey,
+    MLKEMPublicKey,
+    FrodoKEMPublicKey,
+    FrodoKEMPrivateKey,
+)
 from pq_logic.tmp_oids import CHEMPAT_NAME_2_OID, COMPOSITE_KEM_NAME_2_OID
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 
@@ -48,8 +54,9 @@ def get_oid_for_composite_kem(
     return COMPOSITE_KEM_NAME_2_OID[f"{prefix}{pq_name}-{trad_name}"]
 
 
-def get_oid_for_chemnpat(pq_key: PQKEMPublicKey, trad_key: Union[ECDHPrivateKey, ECDHPublicKey],
-                         curve_name: Optional[str] = None) -> univ.ObjectIdentifier:
+def get_oid_for_chemnpat(
+    pq_key: PQKEMPublicKey, trad_key: Union[ECDHPrivateKey, ECDHPublicKey], curve_name: Optional[str] = None
+) -> univ.ObjectIdentifier:
     """Return the OID for a Chempat key combination.
 
     :param pq_key: The post-quantum key object.
@@ -81,16 +88,15 @@ def get_oid_for_chemnpat(pq_key: PQKEMPublicKey, trad_key: Union[ECDHPrivateKey,
     else:
         raise InvalidKeyCombination(f"Unsupported post-quantum key type for Chempat.: {pq_key.name}")
 
-
     if isinstance(trad_key, (ec.EllipticCurvePrivateKey, ec.EllipticCurvePublicKey)):
         curve_name = curve_name or trad_key.curve.name
         trad_name = curve_name_2_context_name[curve_name]
 
     elif isinstance(trad_key, (x25519.X25519PrivateKey, x25519.X25519PublicKey)):
-         trad_name = "X25519"
+        trad_name = "X25519"
 
     elif isinstance(trad_key, (x448.X448PrivateKey, x448.X448PublicKey)):
-         trad_name = "X448"
+        trad_name = "X448"
     else:
         raise InvalidKeyCombination(f"Unsupported traditional key type.: {type(trad_key).__name__}")
 

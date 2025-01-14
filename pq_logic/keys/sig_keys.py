@@ -59,7 +59,6 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         key_size = {"ml-dsa-44": 1312, "ml-dsa-65": 1952, "ml-dsa-87": 2592}
         return key_size[self.name]
 
-
     def verify(
         self,
         signature: bytes,
@@ -82,7 +81,7 @@ class MLDSAPublicKey(PQSignaturePublicKey):
             raise ValueError(f"The context length is longer then 255 bytes.Got: {len(ctx)}")
 
         # disabled liboqs, because the signatures did not verify correctly for pqc-certificates!
-        #if hash_alg is None and ctx == b"":
+        # if hash_alg is None and ctx == b"":
         #    super().verify(signature=signature, data=data)
         #    return
 
@@ -90,7 +89,6 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         ml_ = fips204.ML_DSA(self.name)
         if hash_alg is None:
             sig = ml_.verify(pk=self.public_bytes_raw(), sig=signature, m=data, ctx=ctx)
-
 
         else:
             oid = encoder.encode(sha_alg_name_to_oid(hash_alg))
@@ -150,7 +148,9 @@ class MLDSAPublicKey(PQSignaturePublicKey):
 class MLDSAPrivateKey(PQSignaturePrivateKey):
     """Represents an ML-DSA private key."""
 
-    def _initialize(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
+    def _initialize(
+        self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None
+    ) -> None:
         """Initialize the ML-DSA private key.
 
         :param sig_alg: The signature algorithm name.
@@ -236,7 +236,7 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
         if len(ctx) > 255:
             raise ValueError(f"The context length is longer then 255 bytes.Got: {len(ctx)}")
 
-        #if hash_alg is None and ctx == b"":
+        # if hash_alg is None and ctx == b"":
         #    return super().sign(data=data)
 
         elif hash_alg is None:
@@ -302,8 +302,6 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
             return hash_alg
         return None
 
-
-
     def _validate_hash_alg(self, hash_alg: Optional[str] = None):
         if hash_alg not in [None, "sha512", "sha256", "shake128", "shake256"]:
             raise ValueError(f"The provided hash algorithm is not supported for SLH-DSA. Provided: {hash_alg}")
@@ -322,7 +320,9 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
 
     """
 
-    def _initialize(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
+    def _initialize(
+        self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None
+    ) -> None:
         self.sig_alg = sig_alg.replace("_", "-")
 
         self._slh_class: SLH_DSA = fips205.SLH_DSA_PARAMS[self.sig_alg]
@@ -358,7 +358,6 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
         if SLH_DSA_NAME_2_OID_PRE_HASH.get(alg):
             return hash_alg
         return None
-
 
     def public_key(self) -> SLHDSAPublicKey:
         """Derive the corresponding public key.
@@ -455,4 +454,3 @@ class FalconPrivateKey(PQSignaturePrivateKey):
             )
 
         self.sig_alg = name.capitalize()
-

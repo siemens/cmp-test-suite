@@ -289,12 +289,13 @@ ML_DSA_PARAM = {
 
 
 class ML_DSA:
-    def __init__(self, param: str="ml-dsa-65"):
+    def __init__(self, param: str = "ml-dsa-65"):
         """Initialize the class with parameters."""
         param = param.lower()
         if param not in ML_DSA_PARAM:
-            raise ValueError(f"The parameter set is not supported.: {param}."
-                             f"Supported parameter sets are: {ML_DSA_PARAM.keys()}")
+            raise ValueError(
+                f"The parameter set is not supported.: {param}.Supported parameter sets are: {ML_DSA_PARAM.keys()}"
+            )
         self.q = ML_DSA_Q
         self.n = ML_DSA_N
         (self.d, self.tau, self.lam, self.gam1, self.gam2, self.k, self.ell, self.eta, self.beta, self.omega) = (
@@ -401,7 +402,7 @@ class ML_DSA:
 
     #   Algorithm 6, ML-DSA.KeyGen_internal(xi)
 
-    def keygen_internal(self, xi: bytes, param: Optional[str]=None) -> Tuple[bytes, bytes]:
+    def keygen_internal(self, xi: bytes, param: Optional[str] = None) -> Tuple[bytes, bytes]:
         """Generate the key pair.
 
         :param xi: The seed for the key pair.

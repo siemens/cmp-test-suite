@@ -45,6 +45,7 @@ def _any_string_in_string(string: str, options: list[str]) -> str:
 
     raise ValueError(f"Invalid key type: {string}")
 
+
 # TODO update for Chempat and other Hybrid-KEM keys.
 class CombinedKeyFactory:
     """
@@ -64,13 +65,14 @@ class CombinedKeyFactory:
         if algorithm in ["rsa", "ecdsa", "ed25519", "ed448", "bad-rsa-key"]:
             return generate_trad_key(algorithm, **kwargs)
 
-
         elif PQKeyFactory.may_be_pq_alg(algorithm=algorithm):
             return PQKeyFactory.generate_pq_key(algorithm=algorithm)
 
         elif algorithm in HybridKeyFactory.supported_algorithms():
             if kwargs.get("pq_key") is not None or kwargs.get("trad_key") is not None:
-                return HybridKeyFactory.from_keys(algorithm=algorithm, pq_key=kwargs.get("pq_key"), trad_key=kwargs.get("trad_key"))
+                return HybridKeyFactory.from_keys(
+                    algorithm=algorithm, pq_key=kwargs.get("pq_key"), trad_key=kwargs.get("trad_key")
+                )
 
             return HybridKeyFactory.generate_hybrid_key(algorithm=algorithm, **kwargs)
 
@@ -80,7 +82,11 @@ class CombinedKeyFactory:
 
     @staticmethod
     def load_public_key_from_spki(spki: rfc5280.SubjectPublicKeyInfo):
-        """Load a public key from an SPKI structure."""
+        """Load a public key from an SPKI structure.
+
+        :param spki: rfc5280.SubjectPublicKeyInfo structure.
+        :return: The loaded public key.
+        """
         oid = spki["algorithm"]["algorithm"]
 
         if oid in CMS_COMPOSITE_OID_2_NAME:
@@ -118,8 +124,18 @@ class CombinedKeyFactory:
         pq_pub_bytes = obj[0].asOctets()
         trad_pub_bytes = obj[1].asOctets()
 
-        pq_name = _any_string_in_string(alg_name, ["ml-kem-512", "ml-kem-768", "ml-kem-1024", "frodokem-976-aes",
-                                                   "frogokem-1344-aes", "frodokem-976-shake", "frodokem-1344-shake"])
+        pq_name = _any_string_in_string(
+            alg_name,
+            [
+                "ml-kem-512",
+                "ml-kem-768",
+                "ml-kem-1024",
+                "frodokem-976-aes",
+                "frogokem-1344-aes",
+                "frodokem-976-shake",
+                "frodokem-1344-shake",
+            ],
+        )
 
         if pq_name.startswith("ml"):
             pq_pub = MLKEMPublicKey(
@@ -139,7 +155,9 @@ class CombinedKeyFactory:
         elif trad_name == "x448":
             trad_pub = x448.X448PublicKey.from_public_bytes(trad_pub_bytes)
         elif trad_name == "ecdh":
-            curve_name = _any_string_in_string(alg_name, ["secp256r1", "secp384r1", "brainpoolP256r1", "brainpoolP384r1"])
+            curve_name = _any_string_in_string(
+                alg_name, ["secp256r1", "secp384r1", "brainpoolP256r1", "brainpoolP384r1"]
+            )
             curve = get_curve_instance(curve_name)
             trad_pub = ec.EllipticCurvePublicKey.from_encoded_point(curve, trad_pub_bytes)
         elif trad_name.startswith("rsa"):
@@ -157,12 +175,10 @@ class CombinedKeyFactory:
 
         :return: List of supported key types.
         """
-        trad_names = ["rsa", "ecdsa", "ed25519", "ed448",
-                      "bad_rsa_key", "x25519", "x448"]
+        trad_names = ["rsa", "ecdsa", "ed25519", "ed448", "bad_rsa_key", "x25519", "x448"]
         hybrid_names = HybridKeyFactory.supported_algorithms()
         pq_names = PQKeyFactory.supported_algorithms()
         return trad_names + pq_names + hybrid_names
-
 
     @staticmethod
     def load_key_from_one_asym_key(one_asym_key: rfc5958.OneAsymmetricKey):

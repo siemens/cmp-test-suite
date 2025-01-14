@@ -35,17 +35,12 @@ ALL_CHEMPAT_POSS_COMBINATIONS = [
     {"pq_name": "mceliece-6688128", "trad_name": "x448", "curve": None},
     {"pq_name": "mceliece-6960119", "trad_name": "x448", "curve": None},
     {"pq_name": "mceliece-8192128", "trad_name": "x448", "curve": None},
-
     {"pq_name": "ml-kem-768", "trad_name": "x25519", "curve": None},
     {"pq_name": "ml-kem-1024", "trad_name": "x448", "curve": None},
     {"pq_name": "ml-kem-768", "trad_name": "ecdh", "curve": "sepc256r1"},
     {"pq_name": "ml-kem-1024", "trad_name": "ecdh", "curve": "sepc384r1"},
     {"pq_name": "ml-kem-768", "trad_name": "ecdh", "curve": "brainpoolP256r1"},
     {"pq_name": "ml-kem-1024", "trad_name": "ecdh", "curve": "brainpoolP384r1"},
-
-
-
-
 ]
 
 CHEMPAT_FRODOKEM_POSS_COMBINATIONS = [
@@ -66,9 +61,6 @@ CHEMPAT_FRODOKEM_POSS_COMBINATIONS = [
 ALL_CHEMPAT_POSS_COMBINATIONS += CHEMPAT_FRODOKEM_POSS_COMBINATIONS
 
 
-
-
-
 def _get_chempat_combinations(
     pq_name: Optional[str] = None, trad_name: Optional[str] = None, curve: Optional[str] = None
 ) -> dict:
@@ -83,7 +75,6 @@ def _get_chempat_combinations(
         return {"pq_name": "ml-kem-768", "trad_name": "x25519", "curve": None}
 
     for entry in ALL_CHEMPAT_POSS_COMBINATIONS:
-
         if pq_name is not None and entry["pq_name"] != pq_name:
             continue
 
@@ -96,7 +87,6 @@ def _get_chempat_combinations(
         return entry
 
     raise ValueError("Invalid Chempat combinations!")
-
 
 
 ALL_COMPOSITE_KEM_COMBINATIONS = [
@@ -125,7 +115,6 @@ ALL_COMPOSITE_KEM_FRDODOKEM_COMBINATIONS = [
     {"pq_name": "frodokem-976-shake", "trad_name": "rsa", "length": 4096},
     {"pq_name": "frodokem-976-shake", "trad_name": "ec", "curve": "secp384r1"},
     {"pq_name": "frodokem-976-shake", "trad_name": "ec", "curve": "brainpoolP256r1"},
-
     # Claimed NIST level 5
     {"pq_name": "frodokem-1344-aes", "trad_name": "ec", "curve": "secp384r1"},
     {"pq_name": "frodokem-1344-aes", "trad_name": "ec", "curve": "brainpoolP384r1"},
@@ -139,8 +128,10 @@ ALL_COMPOSITE_KEM_COMBINATIONS += ALL_COMPOSITE_KEM_FRDODOKEM_COMBINATIONS
 
 
 def _get_kem_comp_combinations(
-        pq_name: Optional[str] = None, trad_name: Optional[str] = None,
-        length: Optional[Strint] = None, curve: Optional[str] = None
+    pq_name: Optional[str] = None,
+    trad_name: Optional[str] = None,
+    length: Optional[Strint] = None,
+    curve: Optional[str] = None,
 ) -> dict:
     """Generate a matching combination of post-quantum and traditional key exchange algorithms.
 
@@ -160,7 +151,6 @@ def _get_kem_comp_combinations(
         return {"pq_name": "ml-kem-768", "trad_name": "x25519"}
 
     for entry in ALL_COMPOSITE_KEM_COMBINATIONS:
-
         if pq_name is not None and entry["pq_name"] != pq_name:
             continue
 
@@ -176,6 +166,7 @@ def _get_kem_comp_combinations(
         return entry
 
     raise ValueError("Invalid combination of post-quantum and traditional composite-kem key.")
+
 
 class HybridKeyFactory:
     """
@@ -201,13 +192,10 @@ class HybridKeyFactory:
             return XWingPrivateKey(pq_key=pq_key, trad_key=trad_key)
 
         elif algorithm == "chempat":
-
             if pq_key is None and trad_key is None:
                 raise ValueError("Either a pq_key or trad_key must be provided, to generate a chempat key.")
 
-
             if pq_key is None:
-
                 if isinstance(trad_key, rsa.RSAPrivateKey):
                     raise ValueError("RSA is not supported as traditional key for Chempat.")
 
@@ -224,11 +212,7 @@ class HybridKeyFactory:
                 else:
                     raise ValueError(f"Unsupported traditional key type: {type(trad_key)}")
 
-                comp_key = HybridKeyFactory.generate_chempat(
-                    pq_name=None,
-                    trad_name=trad_name,
-                    curve=curve
-                )
+                comp_key = HybridKeyFactory.generate_chempat(pq_name=None, trad_name=trad_name, curve=curve)
                 pq_key = comp_key.pq_key
 
             if trad_key is None:
@@ -241,7 +225,6 @@ class HybridKeyFactory:
             return ChempatPrivateKey(pq_key, trad_key)
 
         elif algorithm == "composite-kem":
-
             if pq_key is None and trad_key is None:
                 raise ValueError("Either a pq_key or trad_key must be provided, to generate a composite kem key.")
 
@@ -265,7 +248,7 @@ class HybridKeyFactory:
                 else:
                     raise ValueError(f"Unsupported traditional key type: {type(trad_key)}")
 
-                comp_key =  HybridKeyFactory.generate_comp_kem_key(
+                comp_key = HybridKeyFactory.generate_comp_kem_key(
                     pq_name=None, trad_name=trad_name, length=length, curve=curve
                 )
 
@@ -304,7 +287,7 @@ class HybridKeyFactory:
                 else:
                     raise ValueError(f"Unsupported traditional key type: {type(trad_key)}")
 
-                comp_key =  HybridKeyFactory.generate_comp_sig_key(
+                comp_key = HybridKeyFactory.generate_comp_sig_key(
                     pq_name=None, trad_name=trad_name, length=length, curve=curve
                 )
 
@@ -323,7 +306,6 @@ class HybridKeyFactory:
             return CompositeDHKEMRFC9180PrivateKey(pq_key=keys.pq_key, trad_key=keys.trad_key)
         else:
             raise NotImplementedError(f"Unsupported hybrid algorithm: {algorithm}")
-
 
     @staticmethod
     def get_all_kem_coms():
@@ -360,16 +342,14 @@ class HybridKeyFactory:
             )
 
         elif algorithm == "composite-dhkem":
-            keys =  HybridKeyFactory.generate_comp_kem_key(
-                pq_name=pq_name, trad_name=trad_name, length=length, curve=curve)
+            keys = HybridKeyFactory.generate_comp_kem_key(
+                pq_name=pq_name, trad_name=trad_name, length=length, curve=curve
+            )
 
             return CompositeDHKEMRFC9180PrivateKey(pq_key=keys.pq_key, trad_key=keys.trad_key)
 
-
         elif algorithm == "chempat":
-            return HybridKeyFactory.generate_chempat(pq_name=pq_name,
-                                                     trad_name=trad_name,
-                                                     curve=curve)
+            return HybridKeyFactory.generate_chempat(pq_name=pq_name, trad_name=trad_name, curve=curve)
         else:
             raise ValueError(f"Unknown hybrid key algorithm: {algorithm}")
 
@@ -437,15 +417,14 @@ class HybridKeyFactory:
         :raises InvalidKeyCombination: If the algorithm combination is not supported.
         """
         if pq_name in ["frodokem-aes-640", "frdokem-shake-640"]:
-            raise InvalidKeyCombination("FrodoKEM-640 is not supported as a composite KEM key, "
-                                        "because it only claims NIST level 1!")
+            raise InvalidKeyCombination(
+                "FrodoKEM-640 is not supported as a composite KEM key, because it only claims NIST level 1!"
+            )
 
         if pq_name is not None and pq_name not in ([entry["pq_name"] for entry in ALL_COMPOSITE_KEM_COMBINATIONS]):
             raise InvalidKeyCombination(f"Unsupported post-quantum key exchange algorithm: {pq_name}")
 
-        key_params = _get_kem_comp_combinations(
-            pq_name=pq_name, trad_name=trad_name, length=length, curve=curve
-        )
+        key_params = _get_kem_comp_combinations(pq_name=pq_name, trad_name=trad_name, length=length, curve=curve)
 
         pq_key = PQKeyFactory.generate_pq_key(key_params["pq_name"])
         trad_key = generate_trad_key(
@@ -453,7 +432,6 @@ class HybridKeyFactory:
         )
 
         return parse_private_keys(pq_key, trad_key)
-
 
     @staticmethod
     def generate_chempat(
@@ -467,9 +445,7 @@ class HybridKeyFactory:
         :return: A `ChempatPrivateKey` instance.
         """
         if pq_name is None or trad_name is None:
-            key_params = _get_chempat_combinations(pq_name=pq_name,
-                                                   trad_name=trad_name,
-                                                   curve=curve)
+            key_params = _get_chempat_combinations(pq_name=pq_name, trad_name=trad_name, curve=curve)
 
             pq_key = PQKeyFactory.generate_pq_key(key_params["pq_name"])
             trad_key = generate_trad_key(

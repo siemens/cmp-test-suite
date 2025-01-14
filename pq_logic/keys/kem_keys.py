@@ -20,6 +20,7 @@ and format.
 - `generate(kem_alg: str)`: Generate a new private key for the specified algorithm.
 - `_check_name(name: str)`: Validate the provided algorithm name.
 """
+
 import logging
 import os
 from typing import Optional, Tuple
@@ -89,7 +90,6 @@ class MLKEMPublicKey(PQKEMPublicKey):
         else:
             return self.ml_class.encaps_internal(ek=self._public_key_bytes, m=os.urandom(32))
 
-
     @property
     def ct_length(self) -> int:
         """Get the length of the ciphertext."""
@@ -99,6 +99,7 @@ class MLKEMPublicKey(PQKEMPublicKey):
     def key_size(self) -> int:
         """Get the size of the key."""
         return {"ml-kem-768": 1184, "ml-kem-512": 800, "ml-kem-1024": 1568}[self.name]
+
 
 class MLKEMPrivateKey(PQKEMPrivateKey):
     """Represents an ML-KEM private key.
@@ -215,7 +216,7 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
         return {"ml-kem-768": 2400, "ml-kem-512": 1632, "ml-kem-1024": 3168}[self.name]
 
     @classmethod
-    def key_gen(cls,name: str, d:bytes, z:bytes) -> "MLKEMPrivateKey":
+    def key_gen(cls, name: str, d: bytes, z: bytes) -> "MLKEMPrivateKey":
         """Generate a new ML-KEM private key.
 
         :param name: The algorithm name (e.g., "ml-kem-512").
@@ -225,7 +226,6 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
         """
         ek, dk = ML_KEM(name).keygen_internal(d=d, z=z)
         return MLKEMPrivateKey(kem_alg=name, private_bytes=dk, public_key=ek)
-
 
 
 ##########################
@@ -258,7 +258,7 @@ class McEliecePublicKey(PQKEMPublicKey):
             if y == name or x == name:
                 self.kem_alg = y
                 return
-        raise ValueError(f"Invalid McEliece algorithm name: {name}. " f"Supported options: {VALID_MCELIECE_OPTIONS}")
+        raise ValueError(f"Invalid McEliece algorithm name: {name}. Supported options: {VALID_MCELIECE_OPTIONS}")
 
     @property
     def name(self) -> str:
@@ -409,7 +409,6 @@ class Sntrup761PrivateKey(PQKEMPrivateKey):
         :return: An instance of `Sntrup761PrivateKey`.
         """
         return Sntrup761PrivateKey(kem_alg="sntrup761")
-
 
 
 ##########################

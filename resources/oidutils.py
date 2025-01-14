@@ -390,7 +390,6 @@ ML_DSA_OID_2_NAME = {
     id_ml_dsa_44_oid: "ml-dsa-44",
     id_ml_dsa_65_oid: "ml-dsa-65",
     id_ml_dsa_87_oid: "ml-dsa-87",
-
 }
 
 ML_DSA_PRE_HASH_OID_2_NAME = {
@@ -416,7 +415,6 @@ SLH_DSA_NAME_2_OID = {
     "slh-dsa-shake-256s": sig_algorithms_oid + (30,),
     "slh-dsa-shake-256f": sig_algorithms_oid + (31,),
 }
-
 
 
 SLH_DSA_NAME_2_OID_PRE_HASH = {
@@ -523,8 +521,6 @@ CMS_COMPOSITE_NAME_2_OID.update(HASH_COMPOSITE_NAME_TO_OID)
 CMS_COMPOSITE_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {y: x for x, y in CMS_COMPOSITE_NAME_2_OID.items()}
 
 
-
-
 PQ_SIG_NAME_2_OID.update(FALCON_NAME_2_OID)
 
 PQ_KEM_NAME_2_OID.update({"sntrup761": id_sntrup761_str})
@@ -551,4 +547,4 @@ KEM_OID_2_NAME.update(COMPOSITE_KEM_OID_2_NAME)
 
 ALL_KNOWN_PROTECTION_OIDS.update(PQ_OID_2_NAME)
 ALL_KNOWN_PROTECTION_OIDS.update(KEM_OID_2_NAME)
-ALL_KNOWN_PROTECTION_OIDS.update({rfc9481.rsaEncryption : "rsa_encryption"})
+ALL_KNOWN_PROTECTION_OIDS.update({rfc9481.rsaEncryption: "rsa_encryption"})

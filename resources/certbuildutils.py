@@ -266,8 +266,7 @@ def build_csr(  # noqa D417 undocumented-param
         csr = csr_add_extensions(csr=csr, extensions=extensions)
 
     if not exclude_signature and not for_kga:
-        csr = sign_csr(csr=csr, signing_key=signing_key,
-                       hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, bad_sig=bad_sig)
+        csr = sign_csr(csr=csr, signing_key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, bad_sig=bad_sig)
 
     elif for_kga:
         csr["signature"] = univ.BitString("")
@@ -1090,10 +1089,15 @@ def _prepare_public_key_for_cert_template(
     if key is None and asn1cert is not None:
         key = certutils.load_public_key_from_cert(asn1cert=asn1cert)
 
-    elif isinstance(key, (typingutils.PrivateKey, AbstractCompositeKEMPrivateKey,
-        AbstractHybridRawPrivateKey,
-                          AbstractCompositeSigPrivateKey,
-                          )):
+    elif isinstance(
+        key,
+        (
+            typingutils.PrivateKey,
+            AbstractCompositeKEMPrivateKey,
+            AbstractHybridRawPrivateKey,
+            AbstractCompositeSigPrivateKey,
+        ),
+    ):
         key = key.public_key()
 
     if not for_kga:

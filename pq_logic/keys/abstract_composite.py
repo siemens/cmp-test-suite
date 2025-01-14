@@ -95,7 +95,7 @@ class AbstractCompositePublicKey(ABC):
                 encoding=serialization.Encoding.DER, format=serialization.PublicFormat.PKCS1
             )
         else:
-            raise NotImplementedError(f"Unsupported traditional public key type.: " f"{type(trad_key).__name__}")
+            raise NotImplementedError(f"Unsupported traditional public key type.: {type(trad_key).__name__}")
 
         return public_key_bytes
 
@@ -226,7 +226,6 @@ class AbstractCompositePrivateKey(ABC):
         """Return the corresponding public key class."""
         pass
 
-
     def _get_key_name(self) -> bytes:
         """Get the key name for the composite key, to set as the PEM header."""
         return b"ABSTRACT-COMPOSITE-KEY"
@@ -260,10 +259,10 @@ class AbstractCompositePrivateKey(ABC):
         return encoder.encode(data)
 
     def private_bytes(
-            self,
-            encoding: Encoding = Encoding.PEM,
-            format: PrivateFormat = PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
+        self,
+        encoding: Encoding = Encoding.PEM,
+        format: PrivateFormat = PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
     ) -> bytes:
         """Get the serialized private key in bytes format.
 
@@ -288,11 +287,14 @@ class AbstractCompositePrivateKey(ABC):
             data = self._to_one_asym_key()
             b64_encoded = base64.b64encode(data).decode("utf-8")
             b64_encoded = "\n".join(textwrap.wrap(b64_encoded, width=64))
-            pem = "-----BEGIN COMPOSITE SIG PRIVATE KEY-----\n" + b64_encoded + "\n-----END COMPOSITE SIG PRIVATE KEY-----\n"
+            pem = (
+                "-----BEGIN COMPOSITE SIG PRIVATE KEY-----\n"
+                + b64_encoded
+                + "\n-----END COMPOSITE SIG PRIVATE KEY-----\n"
+            )
             return pem.encode("utf-8")
 
         raise NotImplementedError(f"The encoding is not supported. Encoding: {encoding} .Format: {format}.")
-
 
 
 ######################
@@ -304,7 +306,7 @@ class AbstractCompositeKEMPublicKey(AbstractCompositePublicKey, ABC):
     """Abstract class for Composite KEM public keys."""
 
     def to_spki(
-            self, use_pss: bool = False, pre_hash: bool = False, use_2_spki: bool = False
+        self, use_pss: bool = False, pre_hash: bool = False, use_2_spki: bool = False
     ) -> rfc5280.SubjectPublicKeyInfo:
         """Convert CompositePublicKey to a SubjectPublicKeyInfo structure.
 
@@ -365,10 +367,6 @@ class AbstractCompositeKEMPrivateKey(AbstractCompositePrivateKey, ABC):
         pass
 
 
-
-
-
-
 ######################
 # Composite Sig
 #####################
@@ -387,8 +385,6 @@ class AbstractCompositeSigPublicKey(AbstractCompositePublicKey, ABC):
 
         return self.pq_key == other.pq_key and self.trad_key == other.trad_key
 
-
-
     @abstractmethod
     def get_oid(self, use_pss: bool = False, pre_hash: bool = False) -> univ.ObjectIdentifier:
         """Return the Object Identifier for the composite signature algorithm."""
@@ -401,8 +397,12 @@ class AbstractCompositeSigPublicKey(AbstractCompositePublicKey, ABC):
         """Get the hash name for the given composite key combination."""
         pass
 
-    def _verify_trad(self, data: bytes, signature: bytes,
-                     use_pss: bool = False, ) -> None:
+    def _verify_trad(
+        self,
+        data: bytes,
+        signature: bytes,
+        use_pss: bool = False,
+    ) -> None:
         """Verify a traditional signature using the corresponding public key.
 
         :param data: The data that was signed.
@@ -413,9 +413,10 @@ class AbstractCompositeSigPublicKey(AbstractCompositePublicKey, ABC):
         :raises InvalidSignature: If the signature verification fails.
         """
         if isinstance(self.trad_key, rsa.RSAPublicKey):
-
             key_size_to_lg = {2048: "sha256", 3072: "sha256", 4096: "sha384"}
-            hash_alg = key_size_to_lg.get(self.trad_key.key_size, "sha256" if self.trad_key.key_size < 3072 else "sha384")
+            hash_alg = key_size_to_lg.get(
+                self.trad_key.key_size, "sha256" if self.trad_key.key_size < 3072 else "sha384"
+            )
 
             hash_instance = hash_name_to_instance(hash_alg)
 
@@ -434,16 +435,15 @@ class AbstractCompositeSigPublicKey(AbstractCompositePublicKey, ABC):
         elif isinstance(self.trad_key, (ed448.Ed448PublicKey, ed25519.Ed25519PublicKey)):
             self.trad_key.verify(signature=signature, data=data)
         elif isinstance(self.trad_key, ec.EllipticCurvePublicKey):
-
-            hash_alg = {"secp256r1": "sha256", "secp384r1": "sha384",
-                        "brainpoolP256r1": "sha256",
-                             "brainpoolP384r1": "sha384"}[self.trad_key.curve.name]
-
-
+            hash_alg = {
+                "secp256r1": "sha256",
+                "secp384r1": "sha384",
+                "brainpoolP256r1": "sha256",
+                "brainpoolP384r1": "sha384",
+            }[self.trad_key.curve.name]
 
             hash_instance = hash_name_to_instance(hash_alg)
-            self.trad_key.verify(signature=signature, data=data,
-                                 signature_algorithm=ec.ECDSA(hash_instance))
+            self.trad_key.verify(signature=signature, data=data, signature_algorithm=ec.ECDSA(hash_instance))
         else:
             raise ValueError("Unsupported traditional public key type.")
 
@@ -512,7 +512,6 @@ class AbstractCompositeSigPrivateKey(AbstractCompositePrivateKey, ABC):
         :raises ValueError: If the key type is unsupported.
         """
         if isinstance(self.trad_key, rsa.RSAPrivateKey):
-
             size = self.trad_key.key_size
             if size >= 4096:
                 hash_alg = "sha384"
@@ -529,15 +528,19 @@ class AbstractCompositeSigPrivateKey(AbstractCompositePrivateKey, ABC):
         elif isinstance(self.trad_key, (ed448.Ed448PrivateKey, ed25519.Ed25519PrivateKey)):
             return self.trad_key.sign(data)
         elif isinstance(self.trad_key, ec.EllipticCurvePrivateKey):
-
-            hash_alg = {"secp256r1": "sha256", "secp384r1": "sha384",
-                        "brainpoolP256r1": "sha256",
-                             "brainpoolP384r1": "sha384"}[self.trad_key.curve.name]
+            hash_alg = {
+                "secp256r1": "sha256",
+                "secp384r1": "sha384",
+                "brainpoolP256r1": "sha256",
+                "brainpoolP384r1": "sha384",
+            }[self.trad_key.curve.name]
             hash_instance = hash_name_to_instance(hash_alg)
 
             return self.trad_key.sign(data=data, signature_algorithm=ec.ECDSA(hash_instance))
         else:
-            raise ValueError(f"CompositeSigPrivateKey: Unsupported traditional private key type.: {type(self.trad_key).__name__}")
+            raise ValueError(
+                f"CompositeSigPrivateKey: Unsupported traditional private key type.: {type(self.trad_key).__name__}"
+            )
 
     @abstractmethod
     def sign(self, data: bytes, hash_alg: Optional[str] = None) -> bytes:
@@ -548,6 +551,3 @@ class AbstractCompositeSigPrivateKey(AbstractCompositePrivateKey, ABC):
     def public_key(self) -> AbstractCompositeSigPublicKey:
         """Return the corresponding public key class."""
         pass
-
-
-

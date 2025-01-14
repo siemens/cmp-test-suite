@@ -881,7 +881,7 @@ def check_protection_alg_field(  # noqa D417 undocumented-param
     if expected_type is not None:
         if protection_type != expected_type:
             raise ValueError(
-                f"Excepted to be {expected_type} protected, " f"but the `PKIMessage` is {protection_type} protected"
+                f"Excepted to be {expected_type} protected, but the `PKIMessage` is {protection_type} protected"
             )
 
     if protection_type == "sig":
@@ -1717,8 +1717,7 @@ def validate_ids_and_nonces_for_nested_response(  # noqa D417 undocumented-param
 
         if allowed_answer_bodies[body_name] != resp_pair[tuple_data]:
             raise ValueError(
-                f"Expected to get the PKIBody type: {allowed_answer_bodies[body_name]} "
-                f"but got: {resp_pair[tuple_data]}"
+                f"Expected to get the PKIBody type: {allowed_answer_bodies[body_name]} but got: {resp_pair[tuple_data]}"
             )
 
 

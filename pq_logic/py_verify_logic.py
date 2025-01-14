@@ -13,7 +13,6 @@ Either has functionality to verify signatures of PKIMessages or certificates.
 # currently only works for PQ and traditional signatures.
 # But in the next update will be Completely support CRL-Verification.
 
-
 from pyasn1_alt_modules import rfc9480
 from resources.cryptoutils import verify_signature
 from resources.oid_mapping import get_hash_from_oid

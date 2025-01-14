@@ -91,7 +91,6 @@ def prepare_pkmac_popo(
     )
 
 
-
 # TODO fix doc for RF.
 @keyword(name="Prepare Private Key For POP")
 def prepare_private_key_for_pop(

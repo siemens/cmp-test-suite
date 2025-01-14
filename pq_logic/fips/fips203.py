@@ -306,8 +306,9 @@ class ML_KEM:
         """
         param = param.lower()
         if param not in ML_KEM_PARAM:
-            raise ValueError(f"The ML-KEM parameter is not valid: {param}. "
-                             f"A valid parameter is one of {list(ML_KEM_PARAM.keys())}")
+            raise ValueError(
+                f"The ML-KEM parameter is not valid: {param}. A valid parameter is one of {list(ML_KEM_PARAM.keys())}"
+            )
         self.q = 3329
         self.n = 256
         (self.k, self.eta1, self.eta2, self.du, self.dv) = ML_KEM_PARAM[param]
@@ -647,7 +648,7 @@ class ML_KEM:
         return dk[384 * self.k : 768 * self.k + 32]
 
     #   Algorithm 18, ML-KEM.Decaps_internal(dk, c)
-    def decaps_internal(self, dk, c, param: Optional[str]=None) -> bytes:
+    def decaps_internal(self, dk, c, param: Optional[str] = None) -> bytes:
         """Perform the decapsulation using the private key and ciphertext.
 
         :param dk: The private key.

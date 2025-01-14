@@ -270,16 +270,14 @@ def parse_key_from_one_asym_key(data: bytes):
             public_key=public_bytes,
         )
     elif alg_oid in id_sntrup761_str:
-        private_key = Sntrup761PrivateKey(kem_alg="sntrup761",
-            private_bytes=obj["privateKey"].asOctets(),
-            public_key=public_bytes)
+        private_key = Sntrup761PrivateKey(
+            kem_alg="sntrup761", private_bytes=obj["privateKey"].asOctets(), public_key=public_bytes
+        )
 
     else:
         oid = obj["privateKeyAlgorithm"]["algorithm"]
 
-        raise NotImplementedError(
-            f"Parsing for this key type is not implemented: " f"{may_return_oid_to_name(oid=oid)}."
-        )
+        raise NotImplementedError(f"Parsing for this key type is not implemented: {may_return_oid_to_name(oid=oid)}.")
 
     return private_key
 

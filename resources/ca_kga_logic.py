@@ -1325,15 +1325,14 @@ def validate_issuer_and_serial_number_field(structure: rfc5652.IssuerAndSerialNu
         logging.info("IssuerAndSerialNumber: %s", structure.prettyPrint())
         logging.info("CMP protection certificate: %s", cert.prettyPrint())
         raise ValueError(
-            "The issuer inside the `IssuerAndSerialNumber` structure was different from the " "provided certificate!"
+            "The issuer inside the `IssuerAndSerialNumber` structure was different from the provided certificate!"
         )
 
     if int(structure["serialNumber"]) != int(cert["tbsCertificate"]["serialNumber"]):
         logging.info("IssuerAndSerialNumber: %s", structure.prettyPrint())
         logging.info("CMP protection certificate: %s", cert.prettyPrint())
         raise ValueError(
-            "The serialNumber inside the `IssuerAndSerialNumber` structure was different from the "
-            "provided certificate!"
+            "The serialNumber inside the `IssuerAndSerialNumber` structure was different from the provided certificate!"
         )
 
 

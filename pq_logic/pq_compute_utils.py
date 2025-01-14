@@ -216,10 +216,12 @@ def verify_signature_with_hybrid_cert(
         return
 
     elif cert_sig_alg in PQ_OID_2_NAME:
-        raise ValueError("The certificate contains a post-quantum signature algorithm."
-                          "please use traditional signature algorithm"
-                          "because the migration should test use case of "
-                          "having the certificate with traditional signature algorithm.")
+        raise ValueError(
+            "The certificate contains a post-quantum signature algorithm."
+            "please use traditional signature algorithm"
+            "because the migration should test use case of "
+            "having the certificate with traditional signature algorithm."
+        )
 
     elif cert_sig_alg in CMS_COMPOSITE_OID_2_NAME:
         logging.info("The certificate contains a composite signature algorithm.")
@@ -231,8 +233,9 @@ def verify_signature_with_hybrid_cert(
         raise UnknownOID(sig_alg["algorithm"], extra_info="Composite signature can not be verified.")
 
 
-def may_extract_alt_key_from_cert(cert: rfc9480.CMPCertificate,
-                                  other_certs: Optional[List[rfc9480.CMPCertificate]] = None) -> Optional[PQSignaturePublicKey]:
+def may_extract_alt_key_from_cert(
+    cert: rfc9480.CMPCertificate, other_certs: Optional[List[rfc9480.CMPCertificate]] = None
+) -> Optional[PQSignaturePublicKey]:
     """May extract the alternative public key from a certificate.
 
     Either extracts the alternative public key from the issuer's certificate or from the certificate discovery extension.
@@ -283,7 +286,6 @@ def may_extract_alt_key_from_cert(cert: rfc9480.CMPCertificate,
         validate_alg_ids(other_cert, rel_cert_desc=rel_cert_desc)
         pq_key = load_public_key_from_spki(other_cert["tbsCertificate"]["subjectPublicKeyInfo"])
         return pq_key
-
 
     if oid in CMS_COMPOSITE_OID_2_NAME:
         public_key = CompositeSigCMSPublicKey.from_spki(spki)

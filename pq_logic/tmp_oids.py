@@ -215,8 +215,6 @@ id_composite_mlkem_dhkemrfc9180 = f"{id_composite_kem_test_suite}.2"
 id_composite_frodokem_dhkemrfc9180 = f"{id_composite_kem_test_suite}.3"
 
 
-
-
 # FrodoKEM-976-AES, FrodoKEM-976-SHAKE are Claimed NIST Level 3
 # So define eq to ML-KEM-768
 id_frodokem_976_aes_rsa2048 = univ.ObjectIdentifier(f"{id_composite_frodokem}.1")
@@ -257,25 +255,25 @@ MLKEM_OID_2_KDF_MAPPING = {
 
 
 FRODOKEM_OID_2_KDF_MAPPING = {
-id_frodokem_976_aes_rsa2048: "hkdf-sha256",
-id_frodokem_976_aes_rsa3072: "hkdf-sha256",
-id_frodokem_976_aes_rsa4096: "hkdf-sha256",
-id_frodokem_976_aes_x25519: "sha3-256",
-id_frodokem_976_aes_ecdh_p384: "hkdf-sha256",
-id_frodokem_976_aes_brainpoolP256r1: "hkdf-sha256",
-id_frodokem_976_shake_rsa2048: "hkdf-sha256",
-id_frodokem_976_shake_rsa3072: "hkdf-sha256",
-id_frodokem_976_shake_rsa4096: "hkdf-sha256",
-id_frodokem_976_shake_x25519: "sha3-256",
-id_frodokem_976_shake_ecdh_p384: "hkdf-sha256",
-id_frodokem_976_shake_brainpoolP256r1: "hkdf-sha256",
-# NIST claimed level 5
-id_frodokem_1344_aes_ecdh_p384: "sha3-256",
-id_frodokem_1344_aes_ecdh_brainpoolP384r1: "sha3-256",
-id_frodokem_1344_aes_x448: "sha3-256",
-id_frodokem_1344_shake_ecdh_p384: "sha3-256",
-id_frodokem_1344_shake_ecdh_brainpoolP384r1: "sha3-256",
-id_frodokem_1344_shake_x448: "sha3-256",
+    id_frodokem_976_aes_rsa2048: "hkdf-sha256",
+    id_frodokem_976_aes_rsa3072: "hkdf-sha256",
+    id_frodokem_976_aes_rsa4096: "hkdf-sha256",
+    id_frodokem_976_aes_x25519: "sha3-256",
+    id_frodokem_976_aes_ecdh_p384: "hkdf-sha256",
+    id_frodokem_976_aes_brainpoolP256r1: "hkdf-sha256",
+    id_frodokem_976_shake_rsa2048: "hkdf-sha256",
+    id_frodokem_976_shake_rsa3072: "hkdf-sha256",
+    id_frodokem_976_shake_rsa4096: "hkdf-sha256",
+    id_frodokem_976_shake_x25519: "sha3-256",
+    id_frodokem_976_shake_ecdh_p384: "hkdf-sha256",
+    id_frodokem_976_shake_brainpoolP256r1: "hkdf-sha256",
+    # NIST claimed level 5
+    id_frodokem_1344_aes_ecdh_p384: "sha3-256",
+    id_frodokem_1344_aes_ecdh_brainpoolP384r1: "sha3-256",
+    id_frodokem_1344_aes_x448: "sha3-256",
+    id_frodokem_1344_shake_ecdh_p384: "sha3-256",
+    id_frodokem_1344_shake_ecdh_brainpoolP384r1: "sha3-256",
+    id_frodokem_1344_shake_x448: "sha3-256",
 }
 ##################################
 # Alternative DHKEM RFC9180 OIDs
@@ -303,22 +301,18 @@ id_composite_frodokem_1344_shake_dhkemrfc9180_brainpoolP384r1 = f"{id_composite_
 id_composite_frodokem_1344_shake_dhkemrfc9180_X448 = f"{id_composite_frodokem_dhkemrfc9180}.12"
 
 COMPOSITE_KEM_DHKEMRFC9180_NAME_2_OID = {
-
     "dhkemrfc9180-ml-kem-768-x25519": id_composite_mlkem768_dhkemrfc9180_X25519,
     "dhkemrfc9180-ml-kem-768-ecdh-secp384r1": id_composite_mlkem768_dhkemrfc9180_P384,
     "dhkemrfc9180-ml-kem-768-ecdh-brainpoolP256r1": id_composite_mlkem768_dhkemrfc9180_brainpoolP256r1,
-
     "dhkemrfc9180-ml-kem-1024-ecdh-secp384r1": id_composite_mlkem1024_dhkemrfc9180_P384,
     "dhkemrfc9180-ml-kem-1024-ecdh-brainpoolP384r1": id_composite_mlkem1024_dhkemrfc9180_brainpoolP384r1,
     "dhkemrfc9180-ml-kem-1024-x448": id_composite_mlkem1024_dhkemrfc9180_X448,
-
     "dhkemrfc9180-frodokem-976-aes-x25519": id_composite_frodokem_976_aes_dhkemrfc9180_X25519,
     "dhkemrfc9180-frodokem-976-aes-ecdh-secp384r1": id_composite_frodokem_976_aes_dhkemrfc9180_P384,
     "dhkemrfc9180-frodokem-976-aes-brainpoolP256r1": id_composite_frodokem_976_aes_dhkemrfc9180_brainpoolP256r1,
     "dhkemrfc9180-frodokem-976-shake-x25519": id_composite_frodokem_976_shake_dhkemrfc9180_X25519,
     "dhkemrfc9180-frodokem-976-shake-ecdh-secp384r1": id_composite_frodokem_976_shake_dhkemrfc9180_P384,
     "dhkemrfc9180-frodokem-976-shake-brainpoolP256r1": id_composite_frodokem_976_shake_dhkemrfc9180_brainpoolP256r1,
-
     "dhkemrfc9180-frodokem-1344-aes-ecdh-secp384r1": id_composite_frodokem_1344_aes_dhkemrfc9180_P384,
     "dhkemrfc9180-frodokem-1344-aes-ecdh-brainpoolP384r1": id_composite_frodokem_1344_aes_dhkemrfc9180_brainpoolP384r1,
     "dhkemrfc9180-frodokem-1344-aes-x448": id_composite_frodokem_1344_aes_dhkemrfc9180_X448,
@@ -326,8 +320,6 @@ COMPOSITE_KEM_DHKEMRFC9180_NAME_2_OID = {
     "dhkemrfc9180-frodokem-1344-shake-ecdh-brainpoolP384r1": id_composite_frodokem_1344_shake_dhkemrfc9180_brainpoolP384r1,
     "dhkemrfc9180-frodokem-1344-shake-x448": id_composite_frodokem_1344_shake_dhkemrfc9180_X448,
 }
-
-
 
 
 COMPOSITE_MLKEM_MAPPING = {
@@ -350,8 +342,6 @@ COMPOSITE_MLKEM_MAPPING = {
 id_ce_deltaCertificateDescriptor = univ.ObjectIdentifier("2.16.840.1.114027.80.6.1")
 id_at_deltaCertificateRequestSignature = univ.ObjectIdentifier("2.16.840.1.114027.80.6.3")
 id_at_deltaCertificateRequest = univ.ObjectIdentifier("2.16.840.1.114027.80.6.2")
-
-
 
 
 id_Chempat_X25519_sntrup761 = univ.ObjectIdentifier(f"{id_Chempat}.1")
@@ -430,8 +420,6 @@ CHEMPAT_NAME_2_OID = {y: x for x, y in CHEMPAT_OID_2_NAME.items()}
 ########################
 
 
-
-
 id_relatedCert = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{1}")
 id_aa_relatedCertRequest = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{2}")
 id_mod_related_cert = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{3}")
@@ -439,7 +427,6 @@ id_mod_related_cert = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{3}")
 
 id_ad_certDiscovery = univ.ObjectIdentifier(f"{id_hybrid_sig_cert_binding}.{1}")
 id_ad_relatedCertificateDescriptor = univ.ObjectIdentifier(f"{id_hybrid_sig_cert_binding}.{2}")
-
 
 
 # Hybrid SUN Signature OIDs

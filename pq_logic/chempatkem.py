@@ -13,8 +13,16 @@ from resources.exceptions import InvalidKeyCombination
 from pq_logic.kem_mechanism import DHKEMRFC9180
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.keys.kem_keys import McEliecePrivateKey, McEliecePublicKey, MLKEMPrivateKey, Sntrup761PrivateKey, \
-    Sntrup761PublicKey, MLKEMPublicKey, FrodoKEMPublicKey, FrodoKEMPrivateKey
+from pq_logic.keys.kem_keys import (
+    McEliecePrivateKey,
+    McEliecePublicKey,
+    MLKEMPrivateKey,
+    Sntrup761PrivateKey,
+    Sntrup761PublicKey,
+    MLKEMPublicKey,
+    FrodoKEMPublicKey,
+    FrodoKEMPrivateKey,
+)
 from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_mapping import get_oid_for_chemnpat
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
@@ -238,10 +246,7 @@ class ChempatPublicKey(AbstractHybridRawPublicKey):
         return self.pq_key.key_size + trad_size
 
 
-
-
 class ChempatPrivateKey(AbstractHybridRawPrivateKey):
-
     @classmethod
     def generate(cls):
         """Generate a ChempatPrivateKey instance."""
@@ -272,8 +277,6 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
             return ChempatMLKEMPrivateKey.from_private_bytes(data)
         else:
             raise ValueError("Unsupported key type for Chempat.")
-
-
 
     def _get_key_name(self) -> bytes:
         """Return the key name for the key, for saving the key to a file."""
@@ -369,14 +372,11 @@ class ChempatSntrup761PublicKey(ChempatPublicKey):
         return cls(pq_key, trad_key)
 
 
-
 class ChempatSntrup761PrivateKey(ChempatPrivateKey):
-
     @classmethod
     def generate(cls):
         """Generate a ChempatSntrup761PrivateKey instance."""
-        return cls(PQKeyFactory.generate_pq_key("sntrup761"),
-                     x25519.X25519PrivateKey.generate())
+        return cls(PQKeyFactory.generate_pq_key("sntrup761"), x25519.X25519PrivateKey.generate())
 
     def public_key(self) -> ChempatSntrup761PublicKey:
         """Return the corresponding public key class."""
@@ -436,9 +436,7 @@ class ChempatMcEliecePublicKey(ChempatPublicKey):
 
         size = key.key_size + trad_size
         if len(data) != size:
-            raise ValueError(f"Invalid key length for ChempatMcEliecePublicKey. "
-                             f"Expected: {size}, got: {len(data)}")
-
+            raise ValueError(f"Invalid key length for ChempatMcEliecePublicKey. Expected: {size}, got: {len(data)}")
 
         return cls(pq_key, trad_key)
 
@@ -480,7 +478,6 @@ class ChempatMLKEMPublicKey(ChempatPublicKey):
         else:
             raise InvalidKeyCombination(f"Unsupported key type for ChempatMLKEMPublicKey: {name}")
 
-
         trad_key = _load_public_key(data[key_size:], name)
 
         pq_key = MLKEMPublicKey.from_public_bytes(data=data[:key_size], name=pq_name)
@@ -489,8 +486,9 @@ class ChempatMLKEMPublicKey(ChempatPublicKey):
         # checks if the public key is allowed to be created.
 
         if len(data) != key.key_size:
-            raise ValueError(f"Invalid key length for ChempatMLKEMPublicKey. "
-                             f"Expected: {key.key_size}, got: {len(data)}")
+            raise ValueError(
+                f"Invalid key length for ChempatMLKEMPublicKey. Expected: {key.key_size}, got: {len(data)}"
+            )
 
         key.get_oid()
         return key
@@ -513,7 +511,6 @@ class ChempatMLKEMPrivateKey(ChempatPrivateKey):
 
     def public_key(self) -> ChempatMLKEMPublicKey:
         return ChempatMLKEMPublicKey(self.pq_key.public_key(), self.trad_key.public_key())
-
 
 
 def _get_may_name(name: str, options: List[str]) -> Optional[str]:
@@ -546,9 +543,7 @@ def _load_public_key(data: bytes, name: str) -> ECDHPublicKey:
         raise InvalidKeyCombination(f"Unsupported key type for Chempat: {name}")
 
 
-
 class ChempatFrodoKEMPublicKey(ChempatPublicKey):
-
     @classmethod
     def from_public_bytes(cls, data: bytes, name: str) -> "ChempatPublicKey":
         """Create a public key from the given byte string.
@@ -561,17 +556,16 @@ class ChempatFrodoKEMPublicKey(ChempatPublicKey):
 
         name = name.lower()
 
-        pq_name = _get_may_name(name, ["frodokem-976-aes", "frodokem-1344-aes",
-                                    "frodokem-976-shake", "frodokem-1344-shake"])
+        pq_name = _get_may_name(
+            name, ["frodokem-976-aes", "frodokem-1344-aes", "frodokem-976-shake", "frodokem-1344-shake"]
+        )
 
         if not name or not pq_name:
             raise InvalidKeyCombination(f"Unsupported key type for ChempatFrodoKEMPublicKey: {name}")
 
         key = PQKeyFactory.generate_pq_key(algorithm=pq_name).public_key()
         key_size = key.key_size
-        pq_key = FrodoKEMPublicKey.from_public_bytes(data=data[:key_size],
-                                                     name=pq_name)
-
+        pq_key = FrodoKEMPublicKey.from_public_bytes(data=data[:key_size], name=pq_name)
 
         trad_key = _load_public_key(data[key_size:], name)
 
@@ -579,8 +573,9 @@ class ChempatFrodoKEMPublicKey(ChempatPublicKey):
         # checks if the public key is allowed to be created.
 
         if len(data) != key.key_size:
-            raise ValueError(f"Invalid key length for ChempatFrodoKEMPublicKey. "
-                             f"Expected: {key.key_size}, got: {len(data)}")
+            raise ValueError(
+                f"Invalid key length for ChempatFrodoKEMPublicKey. Expected: {key.key_size}, got: {len(data)}"
+            )
 
         key.get_oid()
         return key
@@ -588,6 +583,7 @@ class ChempatFrodoKEMPublicKey(ChempatPublicKey):
 
 class ChempatFrodoKEMPrivateKey(ChempatPrivateKey):
     """Chempat FrodoKEM private key class."""
+
     def public_key(self) -> ChempatFrodoKEMPublicKey:
         """Return the corresponding public key class."""
         return ChempatFrodoKEMPublicKey(self.pq_key.public_key(), self.trad_key.public_key())

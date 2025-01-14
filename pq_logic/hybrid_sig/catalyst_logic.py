@@ -46,7 +46,9 @@ class AltSignatureValueExt(univ.BitString):
     pass
 
 
-def prepare_subject_alt_public_key_info_extn(public_key: Union[PQSignaturePrivateKey, PQSignaturePublicKey], critical: bool) -> rfc5280.Extension:
+def prepare_subject_alt_public_key_info_extn(
+    public_key: Union[PQSignaturePrivateKey, PQSignaturePublicKey], critical: bool
+) -> rfc5280.Extension:
     """Prepare the subjectAltPublicKeyInfo extension.
 
     :param public_key: The alternative public key.
@@ -55,7 +57,6 @@ def prepare_subject_alt_public_key_info_extn(public_key: Union[PQSignaturePrivat
     """
     if isinstance(public_key, PQSignaturePrivateKey):
         public_key = public_key.public_key()
-
 
     spki = subjectPublicKeyInfo_from_pubkey(public_key)  # type: ignore
 
@@ -99,11 +100,13 @@ def _prepare_alt_signature_value(signature: bytes, critical: bool) -> rfc5280.Ex
     return alt_signature_value_extension
 
 
-def prepare_alt_signature_data(cert: rfc9480.CMPCertificate, exclude_alt_extensions: bool = False,
-                               only_tbs_cert: bool = False,
-                               exclude_signature_field: bool = False,
-                               exclude_first_spki: bool = False
-                               ) -> bytes:
+def prepare_alt_signature_data(
+    cert: rfc9480.CMPCertificate,
+    exclude_alt_extensions: bool = False,
+    only_tbs_cert: bool = False,
+    exclude_signature_field: bool = False,
+    exclude_first_spki: bool = False,
+) -> bytes:
     """Prepare the data to be signed for the `altSignatureValue` extension by excluding the altSignatureValue extension.
 
     :param cert: The certificate to prepare data from.
@@ -127,12 +130,13 @@ def prepare_alt_signature_data(cert: rfc9480.CMPCertificate, exclude_alt_extensi
             if tbs_cert[field].isValue:
                 data += encoder.encode(tbs_cert[field])
 
-    new_extn = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext,
-                                                                tag.tagFormatSimple, 3))
+    new_extn = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
 
-    exclude_extn = [id_ce_altSignatureValue] if not exclude_alt_extensions else [id_ce_altSignatureValue,
-                                                                                 id_ce_altSignatureAlgorithm,
-                                                                                 id_ce_subjectAltPublicKeyInfo]
+    exclude_extn = (
+        [id_ce_altSignatureValue]
+        if not exclude_alt_extensions
+        else [id_ce_altSignatureValue, id_ce_altSignatureAlgorithm, id_ce_subjectAltPublicKeyInfo]
+    )
 
     for x in cert["tbsCertificate"]["extensions"]:
         if x["extnID"] not in exclude_extn:
@@ -235,7 +239,6 @@ def validate_catalyst_extension(cert: rfc9480.CMPCertificate) -> Union[None, dic
         if rest:
             raise ValueError("Invalid altSignatureValue extension content.")
 
-
         return {
             "signature": alt_signature_value.asOctets(),
             "spki": subject_alt_public_key_info,
@@ -246,11 +249,12 @@ def validate_catalyst_extension(cert: rfc9480.CMPCertificate) -> Union[None, dic
         raise ValueError(f"Invalid extension content or verification error: {e}")
 
 
-def verify_catalyst_signature_migrated(cert: rfc9480.CMPCertificate,
-                                       issuer_pub_key: Optional[PrivateKeySig] = None,
-                                       exclude_alt_extensions: bool = False,
-                                       only_tbs_cert: bool = False
-                                       ) -> None:
+def verify_catalyst_signature_migrated(
+    cert: rfc9480.CMPCertificate,
+    issuer_pub_key: Optional[PrivateKeySig] = None,
+    exclude_alt_extensions: bool = False,
+    only_tbs_cert: bool = False,
+) -> None:
     """Verify the alternative signature for migrated relying parties.
 
     First verify native signature to ensure certificate authenticity and then
@@ -276,19 +280,20 @@ def verify_catalyst_signature_migrated(cert: rfc9480.CMPCertificate,
     pq_pub_key = CombinedKeyFactory.load_public_key_from_spki(catalyst_ext["spki"])
     hash_alg = get_hash_from_oid(catalyst_ext["alg_id"]["algorithm"], only_hash=True)
 
-    alt_sig_data = prepare_alt_signature_data(cert,
-                                              exclude_alt_extensions=exclude_alt_extensions,
-                                              only_tbs_cert=only_tbs_cert)
+    alt_sig_data = prepare_alt_signature_data(
+        cert, exclude_alt_extensions=exclude_alt_extensions, only_tbs_cert=only_tbs_cert
+    )
 
-    verify_signature(public_key=pq_pub_key, hash_alg=hash_alg,
-                     data=alt_sig_data,
-                     signature=catalyst_ext["signature"])
+    verify_signature(public_key=pq_pub_key, hash_alg=hash_alg, data=alt_sig_data, signature=catalyst_ext["signature"])
 
     logging.info("Alternative signature verification succeeded.")
 
 
 def verify_catalyst_signature(
-    cert: rfc9480.CMPCertificate, issuer_pub_key: Optional[PrivateKeySig] = None, include_extensions: bool = True, migrated: bool = False
+    cert: rfc9480.CMPCertificate,
+    issuer_pub_key: Optional[PrivateKeySig] = None,
+    include_extensions: bool = True,
+    migrated: bool = False,
 ):
     """Verify the certificate's signature, handling both native and alternative signatures.
 
@@ -342,7 +347,9 @@ def generate_catalyst_cert(
     :return: The created `CMPCertificate`.
     """
     tbs_cert = prepare_tbs_certificate(
-        subject=common_name, signing_key=trad_key, public_key=client_key.public_key(),
+        subject=common_name,
+        signing_key=trad_key,
+        public_key=client_key.public_key(),
         use_rsa_pss=use_pss,
         extensions=extensions,
     )

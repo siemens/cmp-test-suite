@@ -38,7 +38,6 @@ class XWingPublicKey(AbstractHybridRawPublicKey):
     pq_key: MLKEMPublicKey
     trad_key: x25519.X25519PublicKey
 
-
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the key."""
         return univ.ObjectIdentifier(_XWING_OID_STR)
@@ -91,7 +90,7 @@ class XWingPublicKey(AbstractHybridRawPublicKey):
             return pem.encode("utf-8")
 
         raise ValueError(
-            "Unsupported combination of encoding and format. " "Only Raw-Raw, DER-SPKI, and PEM-SPKI are supported."
+            "Unsupported combination of encoding and format. Only Raw-Raw, DER-SPKI, and PEM-SPKI are supported."
         )
 
     @property
@@ -247,4 +246,3 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
     def name(self) -> str:
         """Return the name of the key."""
         return "xwing"
-

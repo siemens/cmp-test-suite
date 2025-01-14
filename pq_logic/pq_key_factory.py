@@ -52,9 +52,7 @@ class PQKeyFactory:
             "ml-dsa-44",
             "ml-dsa-65",
             "ml-dsa-87",
-
         ]
-
 
     @staticmethod
     def generate_pq_key(algorithm: str):
@@ -101,8 +99,7 @@ class PQKeyFactory:
         :return: Whether the name starts with a recognized prefix or not.
         """
         return _check_starts_with(
-            algorithm, prefixes=["ml-dsa", "ml-kem", "slh-dsa",
-                                 "sntrup761", "mceliece", "falcon", "frodokem"]
+            algorithm, prefixes=["ml-dsa", "ml-kem", "slh-dsa", "sntrup761", "mceliece", "falcon", "frodokem"]
         )
 
     @staticmethod
@@ -162,20 +159,17 @@ class PQKeyFactory:
         if name is None:
             raise KeyError(f"Unrecognized algorithm identifier: {oid}")
 
-
-
         if name.startswith("ml-dsa-"):
             hash_alg = PQ_SIG_PRE_HASH_OID_2_NAME.get(oid)
             if hash_alg is not None:
-                name = name.replace("-"+ name.split("-")[-1], "")
+                name = name.replace("-" + name.split("-")[-1], "")
 
             public_key = MLDSAPublicKey(public_key=public_bytes, sig_alg=name.upper().replace("-SHA512", ""))
 
         elif name.startswith("slh-dsa"):
-
             hash_alg = PQ_SIG_PRE_HASH_OID_2_NAME.get(oid)
             if hash_alg is not None:
-                name = name.replace("-"+ name.split("-")[-1], "")
+                name = name.replace("-" + name.split("-")[-1], "")
 
             public_key = SLHDSAPublicKey(public_key=public_bytes, sig_alg=name)
 

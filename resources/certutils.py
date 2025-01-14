@@ -551,7 +551,7 @@ def validate_key_usage(  # noqa D417 undocumented-param
 
         if not _validate_key_usage(expected_usage=key_usages, given_usage=usage, same_vals=same):  # type: ignore
             names = asn1utils.get_set_bitstring_names(usage)  # type: ignore
-            raise ValueError(f"KeyUsage Extension was expected to be: {key_usages}, " f"but is {names}")
+            raise ValueError(f"KeyUsage Extension was expected to be: {key_usages}, but is {names}")
 
 
 def _cert_chain_to_file(cert_chain: List[rfc9480.CMPCertificate], path: str):

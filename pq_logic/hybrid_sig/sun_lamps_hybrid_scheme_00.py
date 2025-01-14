@@ -408,7 +408,9 @@ def _prepare_pre_tbs_certificate(
         public_key=composite_key.pq_key,  # Construct a SubjectPublicKeyInfo object from pk_1
         validity=validity,
         hash_alg=hash_alg,
-        extensions=[extn_alt_pub] + [] if not extensions else extensions, # The constructed TBSCertificate object is the preTbsCertificate
+        extensions=[extn_alt_pub] + []
+        if not extensions
+        else extensions,  # The constructed TBSCertificate object is the preTbsCertificate
         # field, which MUST include the created `AltSubPubKeyExt` extension.
     )
 
@@ -548,8 +550,8 @@ def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: 
     if hashed_sig != compute_hash(alg_name=hash_alg, data=signature):
         raise ValueError("The fetched signature was invalid!")
 
-    verify_signature_with_alg_id(alg_id=sig_alg_id, public_key=alt_pub_key,
-                                 data=data, signature=signature)
+    verify_signature_with_alg_id(alg_id=sig_alg_id, public_key=alt_pub_key, data=data, signature=signature)
+
 
 def _patch_extensions(extensions: rfc9480.Extensions, extension: rfc5280.Extension) -> rfc9480.Extensions:
     """Replace or update an extension in the given list of extensions.

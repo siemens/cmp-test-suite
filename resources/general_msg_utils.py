@@ -398,7 +398,7 @@ def _validate_id_reg_ctrl_alg_id(value: bytes) -> None:
 
     else:
         raise ValueError(
-            "The `Controls` structure for the `CertTemplateReq` got " f"a unknown or wrong OID: {alg_id.prettyPrint()}"
+            f"The `Controls` structure for the `CertTemplateReq` got a unknown or wrong OID: {alg_id.prettyPrint()}"
         )
 
 
@@ -818,7 +818,7 @@ def validate_general_response(  # noqa D417 undocumented-param
     body_name = pki_message["body"].getName()
     if body_name != "genp":
         logging.info("General Message got Response body: \n%s", pki_message["body"].prettyPrint())
-        raise ValueError(f"Expected to get a general Response but got type: " f"{pki_message['body'].getName()}")
+        raise ValueError(f"Expected to get a general Response but got type: {pki_message['body'].getName()}")
 
     genp_content: rfc9480.GenRepContent() = pki_message["body"][body_name]
     if len(genp_content) != expected_size:

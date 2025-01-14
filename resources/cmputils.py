@@ -399,7 +399,7 @@ def prepare_controls_structure(  # noqa D417 undocumented-param
     """
     if not cert and not (serial_number is not None and issuer):
         raise ValueError(
-            "Either a valid certificate must be provided, or both " "`serial_number` and `issuer` must be specified."
+            "Either a valid certificate must be provided, or both `serial_number` and `issuer` must be specified."
         )
 
     cert_issuer = None
@@ -939,8 +939,7 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
         pass
 
     elif isinstance(private_key, PQKEMPrivateKey) or is_kem_private_key(private_key):
-        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert,
-                                                use_key_enc=True)
+        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert, use_key_enc=True)
         cert_request_msg["popo"] = popo
 
     elif not isinstance(private_key, (x448.X448PrivateKey, x25519.X25519PrivateKey, dh.DHPrivateKey)):
@@ -950,18 +949,15 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
 
         if bad_pop:
             if isinstance(private_key, (TradSigPrivKey, PQSignaturePrivateKey)):
-               signature = utils.manipulate_first_byte(signature)
+                signature = utils.manipulate_first_byte(signature)
             else:
                 signature = utils.manipulate_composite_sig(signature)
 
         popo = prepare_popo(signature=signature, signing_key=private_key, ra_verified=ra_verified)
         cert_request_msg["popo"] = popo
     elif isinstance(private_key, (x448.X448PrivateKey, x25519.X25519PrivateKey)):
-        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert,
-                                                          use_key_enc=False)
+        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert, use_key_enc=False)
         cert_request_msg["popo"] = popo
-
-
 
     return cert_request_msg
 
@@ -3562,7 +3558,7 @@ def verify_pkistatusinfo(  # noqa D417 undocumented-param
 
     if body_type is not None:
         if body_type.strip() != body_name:
-            raise ValueError(f"Response body type mismatch: expected {body_type}, " f"but received {body_name}.")
+            raise ValueError(f"Response body type mismatch: expected {body_type}, but received {body_name}.")
 
 
 @keyword(name="Verify statusString")
@@ -3923,8 +3919,9 @@ def build_polling_response(  # noqa D417 undocumented-param
     return pki_message
 
 
-def prepare_popo_challenge_for_non_signing_key(use_encr_cert: bool = True,
-                                               use_key_enc: bool = True) -> rfc4211.ProofOfPossession:
+def prepare_popo_challenge_for_non_signing_key(
+    use_encr_cert: bool = True, use_key_enc: bool = True
+) -> rfc4211.ProofOfPossession:
     """Prepare a Proof-of-Possession (PoP) structure for Key encipherment or key agreement.
 
     Using either the encrypted certificate or the challenge methode.

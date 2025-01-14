@@ -141,9 +141,7 @@ def get_hash_from_oid(oid: univ.ObjectIdentifier, only_hash: bool = False) -> Un
     if oid in CMS_COMPOSITE_OID_2_HASH:
         return CMS_COMPOSITE_OID_2_HASH[oid]
 
-
     try:
-
         if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
             return PQ_SIG_PRE_HASH_OID_2_NAME[oid].split("-")[-1]
 
@@ -302,7 +300,6 @@ def get_alg_oid_from_key_hash(
     alg_oid = get_signing_oid(key, hash_alg, use_pss=use_pss)
 
     if isinstance(key, PQSignaturePrivateKey) and alg_oid is None:
-
         hash_alg = key.check_hash_alg(hash_alg)
 
         name = key.name

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Contains utility functions for validating PQ keys and certificates."""
+
 import logging
 
 from pyasn1.type import univ
@@ -39,9 +40,6 @@ id_SLH_DSA_SHAKE_256S = univ.ObjectIdentifier(f"{SIG_ALGS}.30")
 id_SLH_DSA_SHAKE_256F = univ.ObjectIdentifier(f"{SIG_ALGS}.31")
 
 
-
-
-
 def validate_migration_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
     """Validate a post-quantum or hybrid algorithm identifier.
 
@@ -52,10 +50,10 @@ def validate_migration_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
         if alg_id["parameters"].isValue:
             name = PQ_OID_2_NAME.get(alg_id["algorithm"])
             name = name or PQ_OID_2_NAME.get(str(alg_id["algorithm"]))
-            raise ValueError(f"The Post-Quantum algorithm identifier {name} does not `allow` the parameters"
-                             f" field to be set: {alg_id['parameters']}")
-
-
+            raise ValueError(
+                f"The Post-Quantum algorithm identifier {name} does not `allow` the parameters"
+                f" field to be set: {alg_id['parameters']}"
+            )
 
 
 def validate_migration_certificate_key_usage(cert: rfc9480.CMPCertificate) -> None:

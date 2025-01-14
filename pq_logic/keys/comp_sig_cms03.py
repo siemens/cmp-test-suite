@@ -93,6 +93,7 @@ def get_names_from_oid(oid: univ.ObjectIdentifier) -> Tuple[str, str]:
     :raises ValueError: If the OID is not found in either PURE_COMPOSITE_NAME_TO_OID
                         or HASH_COMPOSITE_NAME_TO_OID.
     """
+
     def split_name(name: str, prefix: str = "") -> Tuple[str, str]:
         if prefix:
             name = name.replace(prefix, "")
@@ -110,6 +111,7 @@ def get_names_from_oid(oid: univ.ObjectIdentifier) -> Tuple[str, str]:
             return split_name(name, prefix="hash-")
 
     raise ValueError(f"OID {oid} not found in the composite name mappings.")
+
 
 def _prepare_sig_vals(sigs: List[bytes]) -> CompositeSignatureValue:
     """Prepare a CompositeSignatureValue object from a list of individual signatures.
@@ -293,7 +295,6 @@ class CompositeSigCMSPublicKey(AbstractCompositeSigPublicKey):
             pre_hash=pre_hash,
         )
         length_bytes = len(ctx).to_bytes(1, "big", signed=False)
-
 
         if pre_hash:
             hash_alg = CMS_COMPOSITE_OID_2_HASH[domain_oid]

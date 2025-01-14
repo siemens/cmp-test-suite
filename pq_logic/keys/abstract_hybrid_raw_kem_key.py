@@ -59,7 +59,6 @@ class AbstractHybridRawPublicKey(ABC):
         """
         pass
 
-
     def _to_spki(self) -> bytes:
         """Encode the public key into the `SubjectPublicKeyInfo` (spki) format.
 
@@ -71,7 +70,7 @@ class AbstractHybridRawPublicKey(ABC):
         return encoder.encode(spki)
 
     def public_bytes(
-            self, encoding: Encoding = Encoding.Raw, format: PublicFormat = PublicFormat.SubjectPublicKeyInfo
+        self, encoding: Encoding = Encoding.Raw, format: PublicFormat = PublicFormat.SubjectPublicKeyInfo
     ) -> bytes:
         """Get the serialized public key in bytes format.
 
@@ -98,10 +97,8 @@ class AbstractHybridRawPublicKey(ABC):
             return pem.encode("utf-8")
 
         raise ValueError(
-            "Unsupported combination of encoding and format. " "Only Raw-Raw, DER-SPKI, and PEM-SPKI are supported."
+            "Unsupported combination of encoding and format. Only Raw-Raw, DER-SPKI, and PEM-SPKI are supported."
         )
-
-
 
 
 class AbstractHybridRawPrivateKey(ABC):

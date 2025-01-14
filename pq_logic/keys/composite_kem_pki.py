@@ -65,9 +65,9 @@ def get_composite_kem_hash_alg(pq_name: str, trad_key, alternative: bool = False
     if pq_name in ["ml-kem-1024", "frodokem-1344-aes", "frodokem-1344-shake"]:
         return "sha3-256"
 
-    elif (pq_name in ["frodokem-976-aes", "frodokem-976-shake", "ml-kem-768"] and
-          isinstance(trad_key, (x25519.X25519PublicKey, x25519.X25519PrivateKey))):
-
+    elif pq_name in ["frodokem-976-aes", "frodokem-976-shake", "ml-kem-768"] and isinstance(
+        trad_key, (x25519.X25519PublicKey, x25519.X25519PrivateKey)
+    ):
         return "sha3-256"
 
     elif pq_name in ["frodokem-976-aes", "frodokem-976-shake", "ml-kem-768"]:
@@ -91,6 +91,7 @@ def parse_public_keys(pq_key, trad_key) -> "CompositeKEMPublicKey":
         return CompositeMLKEMXPublicKey(pq_key, trad_key)
     raise ValueError(f"Unsupported traditional key type.: {type(trad_key).__name__}")
 
+
 def parse_private_keys(pq_key, trad_key) -> "CompositeKEMPrivateKey":
     """Parse the private keys into a composite ML-KEM private key.
 
@@ -105,6 +106,7 @@ def parse_private_keys(pq_key, trad_key) -> "CompositeKEMPrivateKey":
     if isinstance(trad_key, x25519.X25519PrivateKey) or isinstance(trad_key, x448.X448PrivateKey):
         return CompositeMLKEMXPrivateKey(pq_key, trad_key)
     raise ValueError(f"Unsupported traditional key type.: {type(trad_key).__name__}")
+
 
 #####################################
 # Concrete Class Implementation
@@ -121,6 +123,7 @@ class CompositeKEMPublicKey(AbstractCompositeKEMPublicKey):
             raise ValueError(f"Cannot compare `{type(self)}` with `{type(other)}`")
 
         return self.pq_key == other.pq_key and self.trad_key == other.trad_key
+
 
 class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
     pq_key: MLKEMPrivateKey
@@ -322,14 +325,13 @@ class CompositeMLKEMXPrivateKey(CompositeKEMPrivateKey):
         dh_kem_mech = ECDHKEM(self.trad_key)
         return dh_kem_mech.decaps(trad_ct)
 
-class CompositeDHKEMRFC9180PublicKey(CompositeKEMPublicKey):
 
+class CompositeDHKEMRFC9180PublicKey(CompositeKEMPublicKey):
     def get_oid(self) -> univ.ObjectIdentifier:
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
 
 
 class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
-
     def _get_key_name(self) -> bytes:
         """Return the key name of the composite KEM, for the PEM-header."""
         return b"COMPOSITE DHKEMRFC9180"
@@ -362,4 +364,3 @@ class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
         """
         dh_kem_mech = DHKEMRFC9180(private_key=self.trad_key)
         return dh_kem_mech.decaps(trad_ct)
-

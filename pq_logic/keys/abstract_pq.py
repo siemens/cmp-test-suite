@@ -74,10 +74,6 @@ class PQPublicKey(ABC):
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(self._public_key_bytes)
         return encoder.encode(spki)
 
-
-
-
-
     def public_bytes_raw(self) -> bytes:
         """Return the public key as raw bytes."""
         return self._public_key_bytes
@@ -288,13 +284,10 @@ class PQSignaturePublicKey(PQPublicKey, ABC):
             raise NotImplementedError("Currently can the hash algorithm not parsed directly.")
 
         if is_prehashed:
-            raise NotImplementedError("Currently can the pre-hashed data not parsed, in" "python-liboqs.")
+            raise NotImplementedError("Currently can the pre-hashed data not parsed, inpython-liboqs.")
 
         if not self.sig_methode.verify(data, signature, self._public_key_bytes):
             raise InvalidSignature()
-
-
-
 
 
 class PQSignaturePrivateKey(PQPrivateKey, ABC):
@@ -318,7 +311,9 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
             self.sig_alg = sig_alg
         self._initialize(sig_alg=sig_alg, private_bytes=private_bytes, public_key=public_key)
 
-    def _initialize(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
+    def _initialize(
+        self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None
+    ) -> None:
         """Initialize the private key and public key bytes.
 
         :param sig_alg: The signature algorithm name.
@@ -359,13 +354,13 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
         self.check_hash_alg(hash_alg)
 
         if ctx != b"":
-            raise NotImplementedError("Currently is signed with context not possible." "with liboqs-python")
+            raise NotImplementedError("Currently is signed with context not possible.with liboqs-python")
 
         if hash_alg is not None:
             raise NotImplementedError("Currently can the hash algorithm not parsed directly.")
 
         if is_prehashed:
-            raise NotImplementedError("Currently can the pre-hashed data not parsed, in" "python-liboqs.")
+            raise NotImplementedError("Currently can the pre-hashed data not parsed, inpython-liboqs.")
 
         signature = self.sig_methode.sign(data)
         return signature

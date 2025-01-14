@@ -72,6 +72,7 @@ def get_aes_length(alg_name: str) -> int:
 
     raise ValueError(f"Unable to determine key length for algorithm: {alg_name}")
 
+
 @not_keyword
 def prepare_encrypted_content_info(
     cek: bytes,
@@ -118,7 +119,6 @@ def prepare_encrypted_content_info(
     enc_content_info["encryptedContent"] = enc_content
 
     return decoder.decode(encoder.encode(enc_content_info), rfc5652.EncryptedContentInfo())[0]
-
 
 
 @not_keyword
@@ -934,6 +934,7 @@ def _prepare_env_data_for_pop(
         data_to_protect=encoder.encode(data),
     )
 
+
 @not_keyword
 def build_env_data_for_exchange(
     public_key_recip: PublicKey,
@@ -972,8 +973,7 @@ def build_env_data_for_exchange(
     if isinstance(public_key_recip, rsa.RSAPublicKey):
         kari = prepare_ktri(public_key_recip, cert_recip, cek, use_rsa_oaep=use_rsa_oaep, issuer_and_ser=issuer_and_ser)
         return prepare_enveloped_data(
-            recipient_infos=[kari], cek=cek, target=target,
-            data_to_protect=data, enc_oid=enc_oid
+            recipient_infos=[kari], cek=cek, target=target, data_to_protect=data, enc_oid=enc_oid
         )
 
     elif isinstance(public_key_recip, ECDHPublicKey):
