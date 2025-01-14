@@ -18,8 +18,8 @@ jobs:
 
       - name: Check Robot Framework tests
         run: |
-          robot --dryrun --pythonpath=./ --variable environment:$(env) tests
+          robot --dryrun --pythonpath=./ --variable environment:cloudpki tests
       - name: Check Robot Framework Migration tests
         run: |
-          robot --dryrun --pythonpath=./ --variable environment:$(env) tests_untested
+          robot --dryrun --pythonpath=./ --variable environment:cloudpki tests_untested
           
