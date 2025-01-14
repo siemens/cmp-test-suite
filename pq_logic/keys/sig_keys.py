@@ -2,8 +2,24 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Contains the classes for the public and private keys of the supported post-quantum signature algorithms."""
+"""
+Provided Wrapper classes for Post-Quantum signature Keys.
 
+Classes in this file follow the `cryptography` library style. This ensures seamless integration
+and allows the classes to be easily swapped out or extended in the future.
+
+APIs are:
+
+### Public Keys:
+- `public_bytes(encoding: Encoding, format: PublicFormat)`: Serialize the public key into the specified encoding
+and format.
+- `_check_name(name: str)`: Validate the provided algorithm name.
+
+### Private Keys:
+- `public_key()`: Derive the corresponding public key from the private key.
+- `generate(kem_alg: str)`: Generate a new private key for the specified algorithm.
+- `_check_name(name: str)`: Validate the provided algorithm name.
+"""
 import logging
 import os
 from typing import Optional, Union
@@ -289,7 +305,7 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
         """Check if the parsed name is valid."""
         pass
 
-    def check_hash_alg(self, hash_alg: Optional[str] = None) -> Optional[str]:
+    def check_hash_alg(self, hash_alg: Optional[str, hashes.HashAlgorithm, None] = None) -> Optional[str]:
         """Check if the hash algorithm is valid to be used with SLH-DSA."""
         if hash_alg is None:
             return None
@@ -302,27 +318,24 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
             return hash_alg
         return None
 
-    def _validate_hash_alg(self, hash_alg: Optional[str] = None):
-        if hash_alg not in [None, "sha512", "sha256", "shake128", "shake256"]:
-            raise ValueError(f"The provided hash algorithm is not supported for SLH-DSA. Provided: {hash_alg}")
-
     def verify(self, signature: bytes, data: bytes, ctx: bytes = b"", hash_alg: Optional[str] = None) -> None:
         """Verify the signature of the data."""
         return self._slh_class.slh_verify(m=data, sig=signature, pk=self._public_key_bytes, ctx=ctx)
 
 
 class SLHDSAPrivateKey(PQSignaturePrivateKey):
-    """Represents an SLH-DSA private key.
-
-    This wrapper class provides support for SLH-DSA private keys, which are not currently natively supported by the
-    `cryptography` library. Provides functionality to manage, serialize, and use SLH-DSA private keys. Methods in this
-     class are modeled after the `cryptography` library for consistency.
-
-    """
+    """Represents an SLH-DSA private key."""
 
     def _initialize(
         self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None
     ) -> None:
+        """Initialize the SLH-DSA private key.
+
+        :param sig_alg: The signature algorithm name.
+        :param private_bytes: The private key.
+        :param public_key: The public key.
+        :return:
+        """
         self.sig_alg = sig_alg.replace("_", "-")
 
         self._slh_class: SLH_DSA = fips205.SLH_DSA_PARAMS[self.sig_alg]

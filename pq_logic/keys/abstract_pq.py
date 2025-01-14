@@ -2,13 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Utility for preparing and generating post-quantum logic and objects.
+"""Utility for preparing and generating post-quantum keys.
 
-This code implements structures and functions for ML-KEM and ML-DSA as specified in:
-ML-KEM:
-https://www.ietf.org/archive/id/draft-ietf-lamps-kyber-certificates-06.html
-ML-DSA:
-https://www.ietf.org/archive/id/draft-ietf-lamps-dilithium-certificates-05.html
+
 """
 
 import base64
@@ -330,7 +326,7 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
         """Derive the corresponding public key."""
         pass
 
-    def check_hash_alg(self, hash_alg: Optional[str], allow_failure: bool = True) -> Optional[str]:
+    def check_hash_alg(self, hash_alg: Optional[None, str, hashes.HashAlgorithm], allow_failure: bool = True) -> Optional[str]:
         """Check if a specified or parsed hash algorithm is allowed."""
         return self.public_key().check_hash_alg(hash_alg)
 
