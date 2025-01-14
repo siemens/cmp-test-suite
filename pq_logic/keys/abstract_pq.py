@@ -326,7 +326,7 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
         """Derive the corresponding public key."""
         pass
 
-    def check_hash_alg(self, hash_alg: Optional[None, str, hashes.HashAlgorithm], allow_failure: bool = True) -> Optional[str]:
+    def check_hash_alg(self, hash_alg: Union[None, str, hashes.HashAlgorithm], allow_failure: bool = True) -> Optional[str]:
         """Check if a specified or parsed hash algorithm is allowed."""
         return self.public_key().check_hash_alg(hash_alg)
 

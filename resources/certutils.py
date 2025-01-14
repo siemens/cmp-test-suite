@@ -40,8 +40,6 @@ from resources.suiteenums import KeyUsageStrictness
 # for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False
 
-
-
 def parse_certificate(data: bytes) -> rfc9480.CMPCertificate:
     """Parse a DER-encoded X509 certificate into a pyasn1 object.
 
