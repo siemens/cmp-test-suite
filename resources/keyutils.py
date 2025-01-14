@@ -71,7 +71,7 @@ def save_key(key: PrivateKey, path: str, passphrase: Union[None, str] = "11111")
 
     """
     encoding_ = serialization.Encoding.PEM
-    format_ = serialization.PrivateFormat.TraditionalOpenSSL
+    format_ = serialization.PrivateFormat.PKCS8
     passphrase = passphrase.encode("utf-8") if passphrase else None  # type: ignore
 
     if passphrase is None:
