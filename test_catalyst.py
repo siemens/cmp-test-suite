@@ -1,3 +1,4 @@
+"""Try out all possible combinations of alternative signature data and verify the signature of a catalyst certificate."""
 import glob
 import pprint
 from itertools import product

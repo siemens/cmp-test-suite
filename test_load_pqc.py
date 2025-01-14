@@ -1,3 +1,4 @@
+"""Verify the signatures of the certificates in the pqc-certificates repository."""
 import argparse
 import glob
 import os
@@ -152,6 +153,10 @@ if __name__ == "__main__":
 
            if "_pub" in pem:
                f.write(f"SKIPPING PUBLIC KEY FILE:\t{pem}\n")
+               continue
+
+           if "_priv" in pem:
+               f.write(f"SKIPPING PRIVATE KEY FILE:\t{pem}\n")
                continue
 
            try:
