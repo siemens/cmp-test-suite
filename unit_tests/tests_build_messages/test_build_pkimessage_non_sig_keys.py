@@ -123,12 +123,8 @@ class TestBuildPKIMessageNonSigKeys(unittest.TestCase):
         obj, rest = decoder.decode(der_data, rfc9480.PKIMessage())
         self.assertEqual(rest, b"", "Decoding did not consume the entire input")
         spki = get_cert_template_from_pkimessage(obj)["publicKey"]
-        spki_new = rfc5280.SubjectPublicKeyInfo()
-
-        spki_new["algorithm"] = spki["algorithm"]
-        spki_new["subjectPublicKey"] = spki["subjectPublicKey"]
         self.assertEqual(str(spki["algorithm"]["algorithm"]), str(id_MLKEM768_RSA2048))
-        pub_key = load_public_key_from_spki(spki_new)
+        pub_key = load_public_key_from_spki(spki)
         self.assertEqual(pub_key, key.public_key())
         popo = get_popo_from_pkimessage(obj)
         self.assertTrue(popo["keyEncipherment"].isValue)

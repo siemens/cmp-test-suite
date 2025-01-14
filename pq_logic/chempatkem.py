@@ -561,7 +561,7 @@ class ChempatFrodoKEMPublicKey(ChempatPublicKey):
 
         name = name.lower()
 
-        pq_name = _get_may_name(name, ["frodokem-976-aes", "frodokem--1344-aes",
+        pq_name = _get_may_name(name, ["frodokem-976-aes", "frodokem-1344-aes",
                                     "frodokem-976-shake", "frodokem-1344-shake"])
 
         if not name or not pq_name:

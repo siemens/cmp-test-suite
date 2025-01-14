@@ -73,7 +73,7 @@ class TestChempatLoadAndExportKey(unittest.TestCase):
         key_first = generate_key("chempat", pq_name="frodokem-1344-aes", trad_name="x448")
         template = prepare_cert_template(key_first)
 
-        key_second = ChempatFrodoKEMPublicKey.from_public_bytes(key_first.public_key().public_bytes_raw(), "Chempat-X448-frodokem1344aes")
+        key_second = ChempatFrodoKEMPublicKey.from_public_bytes(key_first.public_key().public_bytes_raw(), "Chempat-X448-frodokem-1344-aes")
         key_third = load_public_key_from_spki(template["publicKey"])
         self.assertEqual(key_first.public_key(), key_second)
         self.assertEqual(key_first.public_key(), key_third)
