@@ -38,15 +38,6 @@ class XWingPublicKey(AbstractHybridRawPublicKey):
     pq_key: MLKEMPublicKey
     trad_key: x25519.X25519PublicKey
 
-    def _to_spki(self) -> bytes:
-        """Encode the public key into the `SubjectPublicKeyInfo` (spki) format.
-
-        :return: The public key in DER-encoded spki format as bytes.
-        """
-        spki = rfc5280.SubjectPublicKeyInfo()
-        spki["algorithm"]["algorithm"] = univ.ObjectIdentifier(_XWING_OID_STR)
-        spki["subjectPublicKey"] = univ.BitString.fromOctetString(self.public_bytes_raw())
-        return encoder.encode(spki)
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the key."""
@@ -103,11 +94,15 @@ class XWingPublicKey(AbstractHybridRawPublicKey):
             "Unsupported combination of encoding and format. " "Only Raw-Raw, DER-SPKI, and PEM-SPKI are supported."
         )
 
-    def __eq__(self, other):
-        if isinstance(other, XWingPublicKey):
-            return self.pq_key == other.pq_key and self.trad_key == other.trad_key
+    @property
+    def key_size(self) -> int:
+        """Return the size of the key in bits."""
+        return self.pq_key.key_size + 32
 
-        raise ValueError(f"Cannot compare XWingPublicKey with other types: {type(other)}.")
+    @property
+    def ct_length(self) -> int:
+        """Return the length of the ciphertext."""
+        return self.pq_key.ct_length + 32
 
 
 class XWingPrivateKey(AbstractHybridRawPrivateKey):
@@ -237,3 +232,19 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
         ml_kem_key = XWingPrivateKey.ml_kem_keygen_internal(seed1, seed2)
         x25519_key = x25519.X25519PrivateKey.from_private_bytes(expanded[64:96])
         return cls(ml_kem_key, x25519_key)
+
+    @property
+    def key_size(self) -> int:
+        """Return the size of the key in bits."""
+        return self.pq_key.key_size + 32
+
+    @property
+    def ct_length(self) -> int:
+        """Return the length of the ciphertext."""
+        return self.public_key().ct_length
+
+    @property
+    def name(self) -> str:
+        """Return the name of the key."""
+        return "xwing"
+

@@ -10,11 +10,12 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import PublicFormat
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
-from pyasn1_alt_modules import rfc5958
+from pyasn1_alt_modules import rfc5958, rfc5280
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
@@ -23,6 +24,11 @@ from pq_logic.keys.serialize_utils import prepare_enc_key_pem
 
 class AbstractHybridRawPublicKey(ABC):
     """Abstract class for a raw hybrid public key."""
+
+    def __eq__(self, other):
+        if not type(self) == type(other):
+            raise ValueError(f"Cannot compare `{type(self)}` with `{type(other)}`")
+        return self.pq_key == other.pq_key and self.trad_key == other.trad_key
 
     def __init__(self, pq_key: PQKEMPublicKey, trad_key: x25519.X25519PublicKey):
         """
@@ -52,6 +58,50 @@ class AbstractHybridRawPublicKey(ABC):
         :return: An instance of AbstractHybridRawPublicKey.
         """
         pass
+
+
+    def _to_spki(self) -> bytes:
+        """Encode the public key into the `SubjectPublicKeyInfo` (spki) format.
+
+        :return: The public key in DER-encoded spki format as bytes.
+        """
+        spki = rfc5280.SubjectPublicKeyInfo()
+        spki["algorithm"]["algorithm"] = self.get_oid()
+        spki["subjectPublicKey"] = univ.BitString.fromOctetString(self.public_bytes_raw())
+        return encoder.encode(spki)
+
+    def public_bytes(
+            self, encoding: Encoding = Encoding.Raw, format: PublicFormat = PublicFormat.SubjectPublicKeyInfo
+    ) -> bytes:
+        """Get the serialized public key in bytes format.
+
+        Serialize the public key into the specified encoding (`Raw`, `DER`, or `PEM`) and
+        format (`Raw` or `SubjectPublicKeyInfo`).
+
+        :param encoding: The encoding format. Can be `Encoding.Raw`, `Encoding.DER`, or `Encoding.PEM`.
+                        Defaults to `Raw`.
+        :param format: The public key format. Can be `PublicFormat.Raw` or `PublicFormat.SubjectPublicKeyInfo`.
+                      Defaults to `SubjectPublicKeyInfo`.
+        :return: The serialized public key as bytes (or string for PEM).
+        :raises ValueError: If the combination of encoding and format is unsupported.
+        """
+        if encoding == encoding.Raw and format == PublicFormat.Raw:
+            return self.public_bytes_raw()
+
+        if encoding == Encoding.DER and format == PublicFormat.SubjectPublicKeyInfo:
+            return self._to_spki()
+
+        elif encoding == Encoding.PEM and format == PublicFormat.SubjectPublicKeyInfo:
+            b64_encoded = base64.b64encode(self._to_spki()).decode("utf-8")
+            b64_encoded = "\n".join(textwrap.wrap(b64_encoded, width=64))
+            pem = "-----BEGIN PUBLIC KEY-----\n" + b64_encoded + "\n-----END PUBLIC KEY-----\n"
+            return pem.encode("utf-8")
+
+        raise ValueError(
+            "Unsupported combination of encoding and format. " "Only Raw-Raw, DER-SPKI, and PEM-SPKI are supported."
+        )
+
+
 
 
 class AbstractHybridRawPrivateKey(ABC):

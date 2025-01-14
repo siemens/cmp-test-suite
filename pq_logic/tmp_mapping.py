@@ -5,7 +5,8 @@ from pyasn1.type import univ
 from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
-from pq_logic.keys.kem_keys import McEliecePrivateKey, McEliecePublicKey, MLKEMPrivateKey, MLKEMPublicKey
+from pq_logic.keys.kem_keys import McEliecePrivateKey, McEliecePublicKey, MLKEMPrivateKey, MLKEMPublicKey, \
+    FrodoKEMPublicKey, FrodoKEMPrivateKey
 from pq_logic.tmp_oids import CHEMPAT_NAME_2_OID, COMPOSITE_KEM_NAME_2_OID
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 
@@ -73,6 +74,10 @@ def get_oid_for_chemnpat(pq_key: PQKEMPublicKey, trad_key: Union[ECDHPrivateKey,
         pq_name = pq_key.name.replace("-", "").lower()
     elif isinstance(pq_key, (MLKEMPrivateKey, MLKEMPublicKey)):
         pq_name = pq_key.name.upper()
+
+    elif isinstance(pq_key, (FrodoKEMPublicKey, FrodoKEMPrivateKey)):
+        pq_name = pq_key.name
+
     else:
         raise InvalidKeyCombination(f"Unsupported post-quantum key type for Chempat.: {pq_key.name}")
 
@@ -92,4 +97,4 @@ def get_oid_for_chemnpat(pq_key: PQKEMPublicKey, trad_key: Union[ECDHPrivateKey,
     try:
         return CHEMPAT_NAME_2_OID[f"Chempat-{trad_name}-{pq_name}"]
     except KeyError:
-        raise InvalidKeyCombination(f"Unsupported Chempat key combination: {trad_name}-{pq_name}")
+        raise InvalidKeyCombination(f"Unsupported Chempat key combination: Chempat-{trad_name}-{pq_name}")

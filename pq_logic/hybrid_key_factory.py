@@ -35,13 +35,39 @@ ALL_CHEMPAT_POSS_COMBINATIONS = [
     {"pq_name": "mceliece-6688128", "trad_name": "x448", "curve": None},
     {"pq_name": "mceliece-6960119", "trad_name": "x448", "curve": None},
     {"pq_name": "mceliece-8192128", "trad_name": "x448", "curve": None},
+
     {"pq_name": "ml-kem-768", "trad_name": "x25519", "curve": None},
     {"pq_name": "ml-kem-1024", "trad_name": "x448", "curve": None},
     {"pq_name": "ml-kem-768", "trad_name": "ecdh", "curve": "sepc256r1"},
     {"pq_name": "ml-kem-1024", "trad_name": "ecdh", "curve": "sepc384r1"},
     {"pq_name": "ml-kem-768", "trad_name": "ecdh", "curve": "brainpoolP256r1"},
     {"pq_name": "ml-kem-1024", "trad_name": "ecdh", "curve": "brainpoolP384r1"},
+
+
+
+
 ]
+
+CHEMPAT_FRODOKEM_POSS_COMBINATIONS = [
+    {"pq_name": "frodokem-976-aes", "trad_name": "x25519", "curve": None},
+    {"pq_name": "frodokem-976-shake", "trad_name": "x25519", "curve": None},
+    {"pq_name": "frodokem-976-aes", "trad_name": "ecdh", "curve": "sepc256r1"},
+    {"pq_name": "frodokem-976-shake", "trad_name": "ecdh", "curve": "sepc256r1"},
+    {"pq_name": "frodokem-976-aes", "trad_name": "ecdh", "curve": "brainpoolP256r1"},
+    {"pq_name": "frodokem-976-shake", "trad_name": "ecdh", "curve": "brainpoolP256r1"},
+    {"pq_name": "frodokem-1344-aes", "trad_name": "ecdh", "curve": "secp384r1"},
+    {"pq_name": "frodokem-1344-shake", "trad_name": "ecdh", "curve": "secp384r1"},
+    {"pq_name": "frodokem-1344-aes", "trad_name": "ecdh", "curve": "brainpoolP384r1"},
+    {"pq_name": "frodokem-1344-shake", "trad_name": "ecdh", "curve": "brainpoolP384r1"},
+    {"pq_name": "frodokem-1344-aes", "trad_name": "x448", "curve": None},
+    {"pq_name": "frodokem-1344-shake", "trad_name": "x448", "curve": None},
+]
+
+ALL_CHEMPAT_POSS_COMBINATIONS += CHEMPAT_FRODOKEM_POSS_COMBINATIONS
+
+
+
+
 
 def _get_chempat_combinations(
     pq_name: Optional[str] = None, trad_name: Optional[str] = None, curve: Optional[str] = None
@@ -299,6 +325,9 @@ class HybridKeyFactory:
             raise NotImplementedError(f"Unsupported hybrid algorithm: {algorithm}")
 
 
+    @staticmethod
+    def get_all_kem_coms():
+        return ALL_COMPOSITE_KEM_COMBINATIONS + ALL_CHEMPAT_POSS_COMBINATIONS + [{"xwing"}]
 
     @staticmethod
     def supported_algorithms() -> List[str]:

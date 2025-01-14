@@ -8,6 +8,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc5280, rfc5958
+
+from pq_logic.chempatkem import ChempatPublicKey
 from resources.oid_mapping import get_curve_instance
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, PQ_OID_2_NAME, XWING_OID_STR
 
@@ -25,7 +27,7 @@ from pq_logic.keys.composite_kem_pki import (
 from pq_logic.keys.kem_keys import FrodoKEMPublicKey, MLKEMPublicKey
 from pq_logic.keys.xwing import XWingPublicKey
 from pq_logic.pq_key_factory import PQKeyFactory
-from pq_logic.tmp_oids import COMPOSITE_KEM_OID_2_NAME
+from pq_logic.tmp_oids import COMPOSITE_KEM_OID_2_NAME, CHEMPAT_OID_2_NAME
 from pq_logic.trad_key_factory import generate_trad_key
 
 
@@ -86,6 +88,9 @@ class CombinedKeyFactory:
 
         if str(oid) in COMPOSITE_KEM_OID_2_NAME:
             return CombinedKeyFactory.load_composite_kem_key(spki)
+
+        if str(oid) in CHEMPAT_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
+            return CombinedKeyFactory.load_chempat_key(spki)
 
         if oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME:
             return PQKeyFactory.load_public_key_from_spki(spki=spki)
@@ -171,3 +176,20 @@ class CombinedKeyFactory:
         der_data = encoder.encode(one_asym_key)
         return parse_key_from_one_asym_key(der_data)
 
+    @staticmethod
+    def load_chempat_key(spki: rfc5280.SubjectPublicKeyInfo):
+        """Load a Chempat public key from an SPKI structure.
+
+        :param spki: rfc5280.SubjectPublicKeyInfo structure.
+        :return: Instance of the appropriate ChempatPublicKey subclass.
+        :raises KeyError: If the key OID is invalid.
+        """
+        oid = spki["algorithm"]["algorithm"]
+        alg_name = CHEMPAT_OID_2_NAME.get(oid)
+        alg_name = alg_name or CHEMPAT_OID_2_NAME[str(oid)]
+        if alg_name is None:
+            raise KeyError(f"Invalid Chempat key OID: {oid}")
+
+        raw_bytes = spki["subjectPublicKey"].asOctets()
+
+        return ChempatPublicKey.from_public_bytes(data=raw_bytes, name=alg_name)
