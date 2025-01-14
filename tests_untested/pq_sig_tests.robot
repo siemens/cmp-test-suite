@@ -34,6 +34,10 @@ Initialize Global Variables
     VAR   ${ISSUED_CERT}  ${cert}   scope=Global
     VAR   ${ISSUED_KEY}   ${key}    scope=Global
 
+*** Variables ***
+
+${DEFAULT_ML_DSA_KEY}    ml-dsa-65
+
 *** Test Cases ***
 
 ############################

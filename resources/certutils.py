@@ -41,7 +41,7 @@ from resources.suiteenums import KeyUsageStrictness
 # return False
 
 
-@not_keyword
+
 def parse_certificate(data: bytes) -> rfc9480.CMPCertificate:
     """Parse a DER-encoded X509 certificate into a pyasn1 object.
 
