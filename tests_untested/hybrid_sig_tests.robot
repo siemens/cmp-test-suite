@@ -62,3 +62,20 @@ CA MUST Issue A Valid Composite RSA-PSS Certificate From CSR
     ${cert}=           Get Cert From PKIMessage    ${response}
     Validate Migration Certificate Key Usage   ${cert}
 
+CA MUST Issue a Valid Composite-Sig RSA Certificate
+    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP for composite signature.
+    ...                The traditional algorithm is RSA key and ML-DSA-44 as pq algorithm.
+    ...                The CA MUST process the valid request and issue a valid certificate.
+    [Tags]             composite-sig   positive  rsa
+    ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
+    ${cm}=             Get Next Common Name
+    ${ir}=   Build Ir From Key    ${key}   common_name=${cm}  recipient=${RECIPIENT}  omit_fields=senderKID,sender   implicit_confirm=${True}
+    ${response}=       Exchange PKIMessage    ${ir}
+    ${protected_p10cr}=  Protect PKIMessage
+    ...                pki_message=${ir}
+    ...                protection=signature
+    ...                private_key=${ISSUED_KEY}
+    ...                cert=${ISSUED_CERT}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    status=accepted
+
