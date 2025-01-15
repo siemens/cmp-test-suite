@@ -22,7 +22,7 @@ Library             ../resources/checkutils.py
 # Runs first before any test case.
 Test Setup          Regenerate Cert For RR Tests
 
-Test Tags           rr
+Test Tags           revocation
 
 
 *** Variables ***
