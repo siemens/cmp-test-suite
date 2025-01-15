@@ -954,6 +954,8 @@ def prepare_cert_template(  # noqa D417 undocumented-param
     for_kga: bool = False,
     cert: Optional[rfc9480.CMPCertificate] = None,
     include_cert_extensions: bool = True,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
+    use_pre_hash: bool = False,
 ) -> rfc9480.CertTemplate:
     """Prepare a `pyasn1` `CertTemplate` structure for `rr`,`ir`, `cr`, or `kur` `PKIBody` types.
 
@@ -980,6 +982,8 @@ def prepare_cert_template(  # noqa D417 undocumented-param
         - `cert`: A certificate object to extract values from. Defaults to `None`.
         - `include_cert_extensions`: Indicates if the extensions from the certificate should be added to the extensions,
         if provided. Defaults to `True`.
+        - `spki`: The `SubjectPublicKeyInfo` object to include in the template. Defaults to `None`.
+        - `use_pre_hash`: Whether to prepare the public key as a pre-hash version, for a `CompositeKey`. Defaults to `False`.
 
     Returns:
     -------
@@ -1037,8 +1041,14 @@ def prepare_cert_template(  # noqa D417 undocumented-param
         if validity is not None:
             cert_template.setComponentByName("validity", validity)
 
+    if spki is not None and "publicKey" not in exclude_list:
+        public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
+        )
+        spki_temp = convertutils.copy_subject_public_key_info(target=public_key_obj, filled_sub_pubkey_info=spki)
+        cert_template["publicKey"] = spki_temp
     if "publicKey" not in exclude_list:
-        cert_template["publicKey"] = _prepare_public_key_for_cert_template(key=key, for_kga=for_kga, asn1cert=cert)
+        cert_template["publicKey"] = _prepare_public_key_for_cert_template(key=key, for_kga=for_kga, asn1cert=cert, use_pre_hash=use_pre_hash)
 
     logging.info("%s", cert_template.prettyPrint())
     return cert_template
@@ -1093,12 +1103,16 @@ def _prepare_public_key_for_cert_template(
     key: Optional[Union[typingutils.PrivateKey, typingutils.PublicKey]] = None,
     for_kga=False,
     asn1cert: Optional[rfc9480.CMPCertificate] = None,
+    use_rsa_pss: bool = False,
+    use_pre_hash: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare the `pyasn1` `SubjectPublicKeyInfo` for the `CertTemplate` structure.
 
     :param key: A private or public key object. If a private key is provided, the public key will be extracted.
     :param for_kga: Boolean flag indicating whether to prepare the key for non-local-key generation.
     :param asn1cert: Optional `rfc9480.CMPCertificate` object to extract the public key from if no `key` is provided.
+    :param use_rsa_pss: Whether to prepare the public key as RSA-PSS. Defaults to `False`.
+    :param use_pre_hash: Whether to prepare the public key as a pre-hash version, for a `CompositeKey`.
     :return: A `SubjectPublicKeyInfo` object ready to be used in a certificate template.
     """
     if key is None and asn1cert is None:
@@ -1119,7 +1133,7 @@ def _prepare_public_key_for_cert_template(
         key = key.public_key()
 
     if not for_kga:
-        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(public_key=key)
+        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(public_key=key, use_pre_hash=use_pre_hash, use_rsa_pss=use_rsa_pss)
         public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
         )
@@ -1127,7 +1141,7 @@ def _prepare_public_key_for_cert_template(
             target=public_key_obj, filled_sub_pubkey_info=cert_public_key
         )
     else:
-        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(public_key=key)
+        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(public_key=key, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash)
         public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
         )
@@ -1222,7 +1236,9 @@ def prepare_subject_public_key_info(
     key: Union[PrivateKey, PublicKey] = None,
     for_kga: bool = False,
     key_name: Optional[str] = None,
-    use_pss: bool = False,
+    use_rsa_pss: bool = False,
+    use_pre_hash: bool = False,
+    hash_alg: Optional[str] = None,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare a `SubjectPublicKeyInfo` structure for a `Certificate`, `CSR` or `CertTemplate`.
 
@@ -1230,7 +1246,10 @@ def prepare_subject_public_key_info(
     :param for_kga: A flag indicating whether the key is for key generation authentication (KGA).
     :param key_name: The key algorithm name to use for the `SubjectPublicKeyInfo`.
     (can be set to `rsa_kem`. RFC 5990bis-10). Defaults to `None`.
-    :param use_pss: Whether to use PSS padding if the key is an RSA key. Defaults to `False`.
+    :param use_rsa_pss: Whether to use RSA-PSS padding. Defaults to `False`.
+    :param use_pre_hash: Whether to use the pre-hash version for a `CompositeKey` and pq signature keys.
+    Defaults to `False`.
+    :param hash_alg: The pre-hash algorithm to use for the pq signature key. Defaults to `None`.
     :return: The populated `SubjectPublicKeyInfo` structure.
     """
     if key is None and not for_kga:
@@ -1241,7 +1260,7 @@ def prepare_subject_public_key_info(
             key = key.public_key()
 
     if for_kga:
-        return _prepare_spki_for_kga(key=key, key_name=key_name, use_pss=use_pss)
+        return _prepare_spki_for_kga(key=key, key_name=key_name, use_pss=use_rsa_pss, use_pre_hash=use_pre_hash)
 
     if key_name in ["rsa-kem", "rsa_kem"]:
         spki = rfc5280.SubjectPublicKeyInfo()
@@ -1251,7 +1270,10 @@ def prepare_subject_public_key_info(
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(der_data)
 
     else:
-        spki = subjectPublicKeyInfo_from_pubkey(public_key=key, use_pss=use_pss)
+        spki = subjectPublicKeyInfo_from_pubkey(public_key=key,
+                                                use_rsa_pss=use_rsa_pss,
+                                                use_pre_hash=use_pre_hash,
+                                                hash_alg=hash_alg)
 
     return spki
 
@@ -1260,12 +1282,14 @@ def _prepare_spki_for_kga(
     key: Union[PrivateKey, PublicKey] = None,
     key_name: Optional[str] = None,
     use_pss: bool = False,
+    use_pre_hash: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare a SubjectPublicKeyInfo for KGA usage.
 
     :param key: A private or public key.
     :param key_name: An optional key algorithm name.
-    :param use_pss: Use PSS padding if true (RSA keys only).
+    :param use_pss: Whether to use PSS padding for RSA and a RSA-CompositeKey.
+    :param use_pre_hash: Whether to use the pre-hash version for a CompositeKey.
     :return: The populated `SubjectPublicKeyInfo` structure.
     """
     spki = rfc5280.SubjectPublicKeyInfo()
@@ -1288,11 +1312,14 @@ def _prepare_spki_for_kga(
         from pq_logic.combined_factory import CombinedKeyFactory
 
         key = CombinedKeyFactory.generate_key(key_name).public_key()
-        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_pss=use_pss)
+        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key,
+                                                    use_rsa_pss=use_pss,
+                                                    use_pre_hash=use_pre_hash
+                                                    )
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     elif key is not None:
-        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_pss=use_pss)
+        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_rsa_pss=use_pss)
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     return spki
