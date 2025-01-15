@@ -401,3 +401,23 @@ CA MUST Reject Composite RSA with invalid RSA key length
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badRequest
 
 #### Security Related #####
+
+CA MUST Reject Composite Sig with Traditional Revoked key Due Compromise
+    [Documentation]    As defined in Composite Sig Draft CMS03 Section 11.2, we generate a CSR with a composite signature.
+    ...                The CSR is signed with a RSA key as traditional algorithm and a ML-DSA as pq algorithm.
+    ...                The CA MUST reject the request and MAY respond with the optional failInfo `badCertTemplate`.
+    [Tags]             composite-sig   negative  security   revocation
+    ${result}=     Is Certificate And Key Set    ${REVOKED_CERT}    ${REVOKED_KEY}
+    Skip if    not ${result}    The revocation certificate and key are not set.
+    ${key}=            Generate Key    algorithm=composite-sig  trad_key=${REVOKED_KEY}
+    ${ir}=    Build Ir From Key    ${key}   ${cm}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${protected_ir}=  Protect PKIMessage
+    ...                pki_message=${ir}
+    ...                protection=signature
+    ...                private_key=${REVOKED_KEY}
+    ...                cert=${REVOKED_CERT}
+    ${response}=       Exchange PKIMessage    ${ir}
+    PKIMessage Body Type Must Be    ${response}    error
+    PKIStatus Must Be    ${response}    rejection
+
+CA SHOULD Reject Issuing Already in use Traditional Key
