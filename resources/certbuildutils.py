@@ -629,7 +629,7 @@ def _prepare_invalid_extensions(
     return extensions
 
 
-# TODO fix doc
+@not_keyword
 def sign_cert(
     signing_key: typingutils.PrivSignCertKey,
     cert: rfc9480.CMPCertificate,
@@ -644,7 +644,7 @@ def sign_cert(
     :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
     :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
     :param modify_signature: The signature will be modified by changing the first byte.
-    :return:
+    :return: The signed `CMPCertificate` object.
     """
     der_tbs_cert = encoder.encode(cert["tbsCertificate"])
     if use_rsa_pss:
