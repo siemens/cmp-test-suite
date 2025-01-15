@@ -42,6 +42,8 @@ ${Allowed_freshness}=   500
 
 #### Composite Signature Positive Tests ####
 
+# Normally, you would use `ir` as usual; this is just to demonstrate that csr can be used in almost the same way.
+
 CA MUST Issue A Valid Composite RSA-PSS Certificate From CSR
     [Documentation]    As defined in Composite Sig Draft CMS03, we generate a CSR with a composite signature.
     ...                The CSR is signed with RSA-PSS as traditional algorithm and ML-DSA as pq algorithm.
