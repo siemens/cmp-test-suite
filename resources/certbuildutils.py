@@ -146,6 +146,7 @@ def sign_csr(  # noqa D417 undocumented-param
     other_key: Optional[PrivateKeySig] = None,
     use_rsa_pss: bool = False,
     bad_sig: bool = False,
+    use_pre_hash: bool = False,
 ):
     """Sign a `pyasn1` `CertificationRequest` (CSR).
 
@@ -163,6 +164,7 @@ def sign_csr(  # noqa D417 undocumented-param
         Will be ignored if Ed25519 and Ed448 are used.
         - `use_rsa_pss`: Whether to use RSA-PSS for the signature algorithm. Defaults to `False`.
         - `bad_sig`: Whether to manipulate the signature for negative testing.
+        - `use_pre_hash`: Whether to use the pre-hashed version for PQ-keys and CompositeSig-keys.
 
     Returns:
     -------
@@ -190,7 +192,10 @@ def sign_csr(  # noqa D417 undocumented-param
         logging.info(f"Modified CSR signature: {signature}")
 
     csr["signature"] = univ.BitString.fromOctetString(signature)
-    csr["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
+    csr["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key,
+                                                   hash_alg=hash_alg,
+                                                   use_rsa_pss=use_rsa_pss,
+    use_pre_hash=use_pre_hash)
 
     # Needs to be en and decoded otherwise is the structure empty.
     der_data = encoder.encode(csr)
@@ -210,6 +215,9 @@ def build_csr(  # noqa D417 undocumented-param
     exclude_signature: bool = False,
     for_kga: bool = False,
     bad_sig: bool = False,
+    use_pre_hash: bool = False,
+    use_pre_hash_pub_key: Optional[bool] = None,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc6402.CertificationRequest:
     """Build a PKCS#10 Certification Request (CSR) with the given parameters.
 
@@ -229,6 +237,11 @@ def build_csr(  # noqa D417 undocumented-param
         - `for_kga`: If the CSR is created for non-local key generation. The `signature` and the
         `subjectPublicKey` are set to a zero bit string. And the algorithm identifiers are set to key provided.
         - `bad_sig`: Whether to manipulate the signature for negative testing.
+        - `use_pre_hash`: Whether to use the pre-hashed version for PQ-keys and CompositeSig-keys.
+        - `use_pre_hash_pub_key`: Whether to use the pre-hashed version for the public key.
+        Defaults to `use_pre_hash`.
+        - `spki`: Optional `SubjectPublicKeyInfo` object to popolate the CSR with. Defaults to `None`.
+
 
     Returns:
     -------
@@ -246,7 +259,12 @@ def build_csr(  # noqa D417 undocumented-param
 
     csr["certificationRequestInfo"]["version"] = univ.Integer(0)
     csr["certificationRequestInfo"]["subject"] = prepare_name(common_name)
-    spki = convertutils.subjectPublicKeyInfo_from_pubkey(signing_key.public_key())
+
+    pub_pre_hash = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
+    spki = spki or convertutils.subjectPublicKeyInfo_from_pubkey(public_key=signing_key.public_key(),
+                                                         use_rsa_pss=use_rsa_pss,
+                                                         use_pre_hash=pub_pre_hash
+                                                         )
     if for_kga:
         spki_kga = rfc5280.SubjectPublicKeyInfo()
         spki_kga["algorithm"] = spki["algorithm"]
@@ -265,7 +283,8 @@ def build_csr(  # noqa D417 undocumented-param
         csr = csr_add_extensions(csr=csr, extensions=extensions)
 
     if not exclude_signature and not for_kga:
-        csr = sign_csr(csr=csr, signing_key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, bad_sig=bad_sig)
+        csr = sign_csr(csr=csr, signing_key=signing_key, hash_alg=hash_alg,
+                       use_rsa_pss=use_rsa_pss, bad_sig=bad_sig, use_pre_hash=use_pre_hash)
 
     elif for_kga:
         csr["signature"] = univ.BitString("")
