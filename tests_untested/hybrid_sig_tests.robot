@@ -96,3 +96,20 @@ CA MUST Issue A Valid Composite EC Certificate
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
+CA MUST Issue a Valid Composite EC-brainpool Certificate
+    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP for composite signature.
+    ...                The traditional algorithm is EC key on the brainpoolP256r1 curve and ML-DSA-44 as pq algorithm.
+    ...                The CA MUST process the valid request and issue a valid certificate.
+    [Tags]             composite-sig   positive   ec
+    ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa   curve=brainpoolP256r1   pq_name=ml-dsa-65
+    ${cm}=             Get Next Common Name
+    ${ir}=    Build Ir From Key    ${key}   common_name=${cm}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${protected_csr}=  Protect PKIMessage
+    ...                pki_message=${ir}
+    ...                protection=signature
+    ...                private_key=${ISSUED_KEY}
+    ...                cert=${ISSUED_CERT}
+    ${response}=       Exchange PKIMessage    ${protected_csr}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    status=accepted
+
