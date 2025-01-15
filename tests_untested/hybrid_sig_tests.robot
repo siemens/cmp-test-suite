@@ -15,7 +15,7 @@ Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
-Library             ../pq_logic/hybrid_sig/cert_binding_for_multi_auth.py
+Library             ../pq_logic/pq_validation_utils.py
 
 
 #Suite Setup         Do PQ SIG Tests
