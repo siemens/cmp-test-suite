@@ -265,11 +265,30 @@ CA MUST Issue A Valid Composite ED448-Prehashed Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 
+#### Composite Signature Negative Tests ####
 
 CA MUST Reject An Invalid POP For Composite RSA
     [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with an invalid POP for
     ...                a composite signature algorithm. The traditional algorithm used is RSA, and the pq algorithm
     ...                used is ML-DSA-44. The CA must detect the invalid POP and reject the request. The CA MAY respond
+    ...                with the optional failInfo `badPOP`.
+    [Tags]             composite-sig   negative  rsa-pss
+    ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
+    ${cm}=             Get Next Common Name
+    ${ir}=    Build Ir From Key    ${key}   common_name=${cm}   bad_pop=True   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${protected_ir}=  Protect PKIMessage
+    ...                pki_message=${ir}
+    ...                protection=signature
+    ...                private_key=${ISSUED_KEY}
+    ...                cert=${ISSUED_CERT}
+    ${response}=       Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be    ${response}    status=rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP  exclusive=True
+
+CA MUST Reject An Invalid POP For Composite RSA-PSS
+    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with an invalid POP for
+    ...                a composite signature algorithm. The traditional algorithm used is RSA-PSS, and the pq algorithm
+    ...                used is ML-DSA-44. The CA must detect the invalid POP and reject the re quest. The CA MAY respond
     ...                with the optional failInfo `badPOP`.
     [Tags]             composite-sig   negative  rsa-pss
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
