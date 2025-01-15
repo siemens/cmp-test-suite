@@ -302,3 +302,20 @@ CA MUST Reject An Invalid POP For Composite RSA-PSS
     ${response}=       Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    status=rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP  exclusive=True
+
+CA MUST Reject An Invalid POP For Composite EC
+    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a invalid POP for 
+    ...                a composite signature algorithm. The traditional algorithm used is EC key on the secp256r1 curve
+    ...                and ML-DSA-44 as pq algorithm. The CA must detect the invalid POP and reject the request. The CA
+    ...                MAY respond with the optional failInfo `badPOP`.
+    ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa   curve=secp256r1   pq_name=ml-dsa-44
+    ${cm}=             Get Next Common Name
+    ${ir}=    Build Ir From Key    ${key}   common_name=${cm}   bad_pop=True   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${protected_ir}=  Protect PKIMessage
+    ...                pki_message=${ir}
+    ...                protection=signature
+    ...                private_key=${ISSUED_KEY}
+    ...                cert=${ISSUED_CERT}
+    ${response}=       Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be    ${response}    status=rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP  exclusive=True
