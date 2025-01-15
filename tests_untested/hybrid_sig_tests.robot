@@ -155,10 +155,10 @@ CA MUST Issue a Valid Composite ED448 Certificate
 ############################
 
 CA MUST Issue A Valid Composite RSA-Prehashed Certificate
-    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP for the prehashed
-    ...                composite signature version. The traditional algorithm is RSA key and ML-DSA-44 as pq algorithm.
-    ...                The CA MUST process the valid request and issue a valid certificate.
-    [Tags]             composite-sig   positive  rsa  prehashed
+    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
+    ...                prehashed composite signature version. The traditional algorithm used is RSA and ML-DSA-44 as
+    ...                pq algorithm. The CA MUST process the valid request and issue a valid certificate.
+    [Tags]             composite-sig   positive   rsa  prehashed
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True  use_rsa_pss=False
@@ -173,11 +173,10 @@ CA MUST Issue A Valid Composite RSA-Prehashed Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 CA MUST Issue A Valid Composite RSA-PSS-Prehashed Certificate
-    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP for the prehashed
-    ...                composite signature version. The traditional algorithm is RSA-PSS as traditional algorithm
-    ...                and ML-DSA-44 as pq algorithm. The CA MUST process the valid request and issue a valid
-    ...                certificate.
-    [Tags]             composite-sig   positive  rsa-pss  prehashed
+    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
+    ...                prehashed composite signature version. The traditional algorithm used is RSA-PSS and ML-DSA-44
+    ...                as pq algorithm. The CA MUST process the valid request and issue a valid certificate.
+    [Tags]             composite-sig   positive   rsa-pss  prehashed
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True   use_rsa_pss=True
@@ -192,10 +191,11 @@ CA MUST Issue A Valid Composite RSA-PSS-Prehashed Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 CA MUST Issue A Valid Composite EC-Prehashed Certificate
-    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP for the prehashed
-    ...                composite signature version. The traditional algorithm is EC key on the secp256r1 curve
-    ...                and ML-DSA-44 as pq algorithm. The CA MUST process the valid request and issue a valid
+    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
+    ...                prehashed composite signature version. The traditional algorithm used is EC key on the secp256r1
+    ...                curve and ML-DSA-44 as pq algorithm. The CA MUST process the valid request and issue a valid
     ...                certificate.
+    [Tags]             composite-sig   positive   ec  prehashed
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa   curve=secp256r1   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
@@ -210,11 +210,11 @@ CA MUST Issue A Valid Composite EC-Prehashed Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 CA MUST Issue A Valid Composite EC-brainpool-Prehashed Certificate
-    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP for the prehashed
-    ...                composite signature version. The traditional algorithm is EC key on the brainpoolP256r1 curve
-    ...                and ML-DSA-65 as pq algorithm. The CA MUST process the valid request and issue a valid
-    ...                certificate.
-    [Tags]             composite-sig   positive   ec  prehashed
+    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
+    ...                prehashed composite signature version. The traditional algorithm used is EC key on the
+    ...                brainpoolP256r1 curve and ML-DSA-65 as pq algorithm. The CA MUST process the valid request
+    ...                and issue a valid certificate.
+    [Tags]             composite-sig   positive   ec  prehashed  brainpool
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa   curve=brainpoolP256r1   pq_name=ml-dsa-65
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
@@ -229,10 +229,10 @@ CA MUST Issue A Valid Composite EC-brainpool-Prehashed Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 CA MUST Issue A Valid Composite ED25519-Prehashed Certificate
-    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP POP for the prehashed
-    ...                composite signature version. The traditional algorithm is ED25519 key and ML-DSA-65 as
-    ...                pq algorithm. The CA MUST process the valid request and issue a valid certificate.
-    [Tags]             composite-sig   positive   ed25519  prehashed
+    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
+    ...                prehashed composite signature version. The traditional algorithm used is ED25519 and ML-DSA-65
+    ...                as pq algorithm. The CA MUST process the valid request and issue a valid certificate.
+    [Tags]             composite-sig   positive   ed25519   prehashed
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ed25519   pq_name=ml-dsa-65
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
@@ -247,8 +247,8 @@ CA MUST Issue A Valid Composite ED25519-Prehashed Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 CA MUST Issue A Valid Composite ED448-Prehashed Certificate
-    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP for the prehashed
-    ...                composite signature version. The traditional algorithm is ED448 key and ML-DSA-87 as
+    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
+    ...                prehashed composite signature version. The traditional algorithm used is ED448 and ML-DSA-87 as
     ...                pq algorithm. The CA MUST process the valid request and issue a valid certificate.
     [Tags]             composite-sig   positive   ed448  prehashed
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ed448   pq_name=ml-dsa-87
