@@ -147,3 +147,25 @@ CA MUST Issue a Valid Composite ED448 Certificate
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
+############################
+## Pre-Hashed Versions
+############################
+
+CA MUST Issue A Valid Composite RSA-Prehashed Certificate
+    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP for the prehashed
+    ...                composite signature version. The traditional algorithm is RSA key and ML-DSA-44 as pq algorithm.
+    ...                The CA MUST process the valid request and issue a valid certificate.
+    [Tags]             composite-sig   positive  rsa  prehashed
+    ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
+    ${cm}=             Get Next Common Name
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True  use_rsa_pss=False
+    ${ir}=          Build Ir From Key    ${key  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
+    ${protected_ir}=  Protect PKIMessage
+    ...                pki_message=${ir}
+    ...                protection=signature
+    ...                private_key=${ISSUED_KEY}
+    ...                cert=${ISSUED_CERT}
+    ${response}=       Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    status=accepted
+
