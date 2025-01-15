@@ -489,7 +489,7 @@ ALL_KNOWN_PROTECTION_OIDS.update(ML_DSA_NAME_2_OID)
 XWING_OID_STR = "1.3.6.1.4.1.62253.25722"
 
 
-ALL_POSS_COMBINATIONS = [
+ALL_POSS_COMPOSITE_SIG_COMBINATIONS = [
     {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
     {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
     {"pq_name": "ml-dsa-44", "trad_name": "ed25519", "curve": None},
