@@ -17,7 +17,10 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc9480
 from robot.api.deco import not_keyword
 
+from pq_logic.keys.abstract_pq import PQSignaturePublicKey
 from resources.copyasn1utils import copy_subject_public_key_info
+from resources.oid_mapping import get_ec_key_hash_oid, get_alg_oid_from_key_hash
+from resources.oidutils import PQ_NAME_2_OID
 from resources.typingutils import PrivateKeySig, PublicKey
 
 
@@ -31,7 +34,12 @@ def ensure_is_sign_key(key: Any) -> PrivateKeySig:
 
 @not_keyword
 def subjectPublicKeyInfo_from_pubkey(
-    public_key: PublicKey, target: Optional[rfc5280.SubjectPublicKeyInfo] = None, use_pss: bool = False
+    public_key: PublicKey,
+    target: Optional[rfc5280.SubjectPublicKeyInfo] = None,
+    use_rsa_pss: bool = False,
+    use_pre_hash: bool = False,
+    hash_alg: Optional[str] = None,
+    use_2_spkis: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Convert a `PublicKey` object to a `rfc5280.SubjectPublicKeyInfo` structure.
 
@@ -42,19 +50,36 @@ def subjectPublicKeyInfo_from_pubkey(
     :param public_key: The `PublicKey` object to convert.
     :param target: An optional existing `rfc5280.SubjectPublicKeyInfo` object to populate
     with the decoded data. If not provided, a new structure is created.
-    :param use_pss: Whether RSA-PSS-Padding was used for signing. Only relevant for CompositeSigKeys.
+    :param use_rsa_pss: Whether RSA-PSS-Padding was used for signing. Only relevant for CompositeSigKeys.
+    :param use_pre_hash: Whether the CompositeKey uses a pre_hashing OID.
+    :param hash_alg: The hash algorithm to use for pq-signature key, pre-hashing.
+    (e,g. "sha512", "shake256").
+    :param use_2_spkis: Whether to return two SPKIs for the CompositeSigKey. Defaults to `False`.
+    (some implementations may require two SPKIs for the public key).
     :return: An `rfc5280.SubjectPublicKeyInfo` structure containing the public key information.
     """
     if isinstance(public_key, AbstractCompositePublicKey):
-        return public_key.to_spki(use_pss, False)
+        return public_key.to_spki(use_pss=use_rsa_pss, pre_hash=use_pre_hash,
+                                  use_2_spki=use_2_spkis)
+
+    oid = None
+    if hash_alg is not None and isinstance(public_key, PQSignaturePublicKey):
+        hash_alg = public_key.check_hash_alg(hash_alg)
+        if hash_alg is None:
+            raise ValueError(f"Hash algorithm {hash_alg} is not supported for the provided key: {public_key.name}")
+        oid = PQ_NAME_2_OID[public_key.name + "-" + hash_alg]
 
     der_data = public_key.public_bytes(
-        encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
+        encoding=serialization.Encoding.DER,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
 
     subject_public_key_info, _ = decoder.decode(der_data, asn1Spec=rfc5280.SubjectPublicKeyInfo())
     if target is not None:
-        return copy_subject_public_key_info(target, subject_public_key_info)
+        subject_public_key_info = copy_subject_public_key_info(target, subject_public_key_info)
+
+    if oid is not None:
+       subject_public_key_info["algorithm"]["algorithm"] = oid
 
     return subject_public_key_info
 
