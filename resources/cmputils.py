@@ -588,7 +588,6 @@ def prepare_authorization_control(auth_info: Union[bytes, str] = None) -> rfc421
 
 # TODO correct EncryptedKey logic to allow this for KeyAgreement or KEM as well.
 
-
 def prepare_controls_protocol_encr_key(
     ca_public_key: Optional[PublicKey] = None, ca_cert: Optional[rfc9480.CMPCertificate] = None
 ) -> rfc4211.AttributeTypeAndValue:
@@ -805,6 +804,8 @@ def prepare_cert_request(  # noqa D417 undocumented-param
     extensions: Optional[rfc5280.Extensions] = None,
     controls: Optional[rfc4211.Controls] = None,
     for_kga: bool = False,
+    use_pre_hash: bool = False,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc4211.CertRequest:
     """Prepare a `CertRequest` structure for a certificate request.
 
@@ -829,6 +830,8 @@ def prepare_cert_request(  # noqa D417 undocumented-param
           May be used by the `Key Update Request`.
         - `for_kga`: Indicates if the certificate request is for a Key Generation Authority
           (KGA). Defaults to `False`.
+        - `use_pre_hash`: Indicates if the certificate request should use pre-hashing.
+        - `spki`: The SubjectPublicKeyInfo structure to use for the certificate request. Defaults to `None`.
 
     Returns:
     -------
@@ -854,7 +857,10 @@ def prepare_cert_request(  # noqa D417 undocumented-param
         if common_name is None:
             raise ValueError("A `common_name` must be provided if `cert_template` is not specified.")
         cert_template = certbuildutils.prepare_cert_template(
-            key=key, subject=common_name, extensions=extensions, for_kga=for_kga
+            key=key, subject=common_name, extensions=extensions,
+            for_kga=for_kga,
+            use_pre_hash=use_pre_hash,
+            spki=spki,
         )
 
     cert_request["certTemplate"] = cert_template
@@ -880,6 +886,8 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
     exclude_popo: bool = False,
     bad_pop: bool = False,
     use_encr_cert: bool = True,
+    use_pre_hash: bool = False,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc4211.CertReqMsg:
     """Prepare a `CertReqMsg` structure for a certificate request message ("ir", "cr", "kur").
 
@@ -911,7 +919,7 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
         - `bad_pop`: If `True`, the first byte of the signature will be modified to create an invalid
         Proof-of-Possession.
         - `use_encr_cert`: If `True`, the certificate will be encrypted by the CA using the public key of the client.
-
+        - `spki`: The SubjectPublicKeyInfo structure to use for the certificate request. Defaults to `None`.
     Returns:
     -------
         - The populated `CertReqMsg` object, ready for use in a certificate request.
@@ -938,6 +946,8 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
         cert_template=cert_template,
         controls=controls,
         for_kga=for_kga,
+        spki=spki,
+
     )
 
     cert_request_msg["certReq"] = cert_request
@@ -1134,6 +1144,7 @@ def build_ir_from_key(  # noqa D417 undocumented-param
     exclude_fields: Optional[str] = None,
     cert_req_msg: Optional[Union[List[rfc4211.CertReqMsg], rfc4211.CertReqMsg]] = None,
     bad_pop: bool = False,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
     **params,
 ):
     """Create an `ir` (Initialization Request) PKIMessage using a signing key and specified parameters.
@@ -1152,6 +1163,7 @@ def build_ir_from_key(  # noqa D417 undocumented-param
         - `exclude_fields`: Comma-separated list of fields to omit from the PKIHeader. Defaults to `None`.
         - `cert_req_msg`: A list of or single `CertReqMsg` object to be appended.
         - `bad_pop`: If `True`, the Proof of Possession (POPO) will be manipulated to create an invalid signature.
+        - `spki`: The `SubjectPublicKeyInfo` structure to use for the certificate request. Defaults to `None`.
 
     `**params`: Additional optional parameters for customization:
         - `cert_req_id` (int): ID for the certificate request. Defaults to `0`.
@@ -1191,6 +1203,7 @@ def build_ir_from_key(  # noqa D417 undocumented-param
         cert_template=params.get("cert_template"),
         popo_structure=params.get("popo_structure"),
         bad_pop=bad_pop,
+        spki=spki,
     )
 
     pvno = 2
