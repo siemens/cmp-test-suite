@@ -375,3 +375,29 @@ CA MUST Reject An Invalid POP For Composite ED448
     PKIStatus Must Be    ${response}    status=rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP  exclusive=True
 
+
+#### Composite Signature Mixed/Security Tests ####
+
+CA MUST Reject Composite RSA with invalid RSA key length
+    [Documentation]    As defined in Composite Sig Draft CMS03, we send a valid IR with a POP for composite signature.
+    ...                The traditional algorithm is RSA key with an invalid length (512-bits) and ML-DSA-44 as pq
+    ...                algorithm. The CA MUST reject the request and MAY respond with the optional failInfo
+    ...                `badCertTemplate` or `badRequest`.
+    [Tags]             composite-sig   negative  rsa
+    # generates a rsa key with length 512 bits.
+    ${trad_key}=   Generate Key       algorithm=bad_rsa_key
+    ${pq_key}=     Generate Key       algorithm=ml-dsa-44
+    ${key}=            Generate Key    algorithm=composite-sig   trad_key=${trad_key}   pq_key=${pq_key}
+    ${cm}=             Get Next Common Name
+    ${ir}=    Build Ir From Key    ${key}   common_name=${cm}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${protected_ir}=  Protect PKIMessage
+    ...                pki_message=${ir}
+    ...                protection=signature
+    ...                private_key=${ISSUED_KEY}
+    ...                cert=${ISSUED_CERT}
+    ${response}=       Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    error
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badRequest
+
+#### Security Related #####
