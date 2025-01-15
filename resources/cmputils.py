@@ -421,7 +421,7 @@ def prepare_controls_structure(  # noqa D417 undocumented-param
     return control_instance
 
 
-# RFC4210bis-10 Section 5.2.6 Archive Options
+# RFC4210bis-16 Section 5.2.6 Archive Options
 
 
 def _prepare_archive_options(
@@ -495,7 +495,7 @@ def validate_archive_options(
         logging.info("PKIArchiveOptions: archiveRemGenPrivKey was: %s", str(archive_options["archiveRemGenPrivKey"]))
 
 
-# RFC4210bis-10 Section 5.2.7. Publication Information
+# RFC4210bis-16 Section 5.2.7. Publication Information
 
 
 def prepare_publication_information(
