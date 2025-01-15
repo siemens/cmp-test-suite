@@ -95,12 +95,12 @@ def prepare_validity(  # noqa D417 undocumented-param
 
     return validity
 
-
+@not_keyword
 def prepare_sig_alg_id(
     signing_key: PrivateKeySig,
     hash_alg: str,
     use_rsa_pss: bool,
-    pre_hash: bool = False,
+    use_pre_hash: bool = False,
 ) -> rfc9480.AlgorithmIdentifier:
     """Prepare the AlgorithmIdentifier for the signature algorithm based on the key and hash algorithm.
 
@@ -110,7 +110,7 @@ def prepare_sig_alg_id(
     :param signing_key: The private key to use for signing the certificate.
     :param hash_alg: The hash algorithm to use (e.g., "sha256").
     :param use_rsa_pss: Boolean flag indicating whether to use RSA-PSS for signing.
-    :param pre_hash: Boolean flag indicating whether the data is pre-hashed before signing.
+    :param use_pre_hash: Boolean flag indicating whether the data is pre-hashed before signing.
     :return: An `rfc9480.AlgorithmIdentifier` for the specified signing configuration.
     """
     alg_id = rfc9480.AlgorithmIdentifier()
@@ -120,13 +120,13 @@ def prepare_sig_alg_id(
         # Left like this, because unknown how the cryptography library will
         # implement the CompositeSigPrivateKey (Probably for every key a new class).
         domain_oid = get_oid_cms_composite_signature(
-            signing_key.pq_key.name, signing_key.trad_key, use_pss=use_rsa_pss, pre_hash=pre_hash
+            signing_key.pq_key.name, signing_key.trad_key, use_pss=use_rsa_pss, pre_hash=use_pre_hash
         )
         alg_id["algorithm"] = domain_oid
 
     elif isinstance(signing_key, AbstractCompositeSigPrivateKey):
         # means an expired key is used.
-        domain_oid = signing_key.get_oid(used_padding=use_rsa_pss, pre_hash=pre_hash)
+        domain_oid = signing_key.get_oid(used_padding=use_rsa_pss, pre_hash=use_pre_hash)
         alg_id["algorithm"] = domain_oid
 
     else:
