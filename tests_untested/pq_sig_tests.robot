@@ -278,3 +278,28 @@ CA MUST Reject ML-DSA-65 with Sha512 with Invalid POP
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    status=rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP
+
+CA MUST Reject ML-DSA-87 with Sha512 with Invalid POP
+    [Documentation]   According to fips204 is the ML-DSA-87 with Sha512 ObjectIdentifier and the algorithm used. We send an valid
+    ...               Initialization Request with an invalid POP. The CA MUST reject the request and MAY respond
+    ...               with the optional failInfo `badPOP`.
+    ${key}=   Generate Key    ml-dsa-87
+    ${cm}=    Get Next Common Name
+    ${spki}=   Prepare SubjectPublicKeyInfo    ${key}   hash_alg=sha512
+    ${cert_req_msg}=    Prepare CertReqMsg    ${key}   common_name=${cm}   hash_alg=sha512   spki=${spki}   bad_pop=True
+    ${ir}=    Build Ir From Key
+    ...       ${key}
+    ...       ${cm}
+    ...       cert_req_msg=${cert_req_msg}
+    ...       recipient=${RECIPIENT}
+    ...       omit_fields=senderKID,sender
+    ${protected_ir}=    Protect PKIMessage
+    ...                 pki_message=${ir}
+    ...                 protection=signature
+    ...                 private_key=${ISSUED_KEY}
+    ...                 cert=${ISSUED_CERT}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    error
+    PKIStatus Must Be    ${response}    status=rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP
+
