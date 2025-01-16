@@ -207,3 +207,26 @@ CA MUST Issue A Valid ML-DSA-65 With Sha512 Certificate
     ${cert}=    Get Cert From PKIMessage    ${response}
     Validate Migration Oid In Certificate     ${cert}   ml-dsa-65-sha512
 
+CA MUST Issue A Valid ML-DSA-87 With Sha512 Certificate
+    [Documentation]   According to fips204 is ML-DSA ObjectIdentifier and the algorithm used. We send an IR
+    ...               Initialization Request with a valid ML-DSA-87 private key. The CA MUST process the request
+    ...               and issue a valid certificate.
+    [Tags]       positive   ml-dsa
+    ${key}=   Generate Key    ml-dsa-87
+    ${cm}=    Get Next Common Name
+    ${spki}=   Prepare SubjectPublicKeyInfo    ${key}   hash_alg=sha512
+    ${cert_req_msg}=    Prepare CertReqMsg    ${key}   common_name=${cm}   hash_alg=sha512   spki=${spki}
+    ${ir}=    Build Ir From Key    ${key}   ${cm}   cert_req_msg=${cert_req_msg}
+    ...       recipient=${RECIPIENT}
+    ...       omit_fields=senderKID,sender
+    ${protected_ir}=    Protect PKIMessage
+    ...                 pki_message=${ir}
+    ...                 protection=signature
+    ...                 private_key=${ISSUED_KEY}
+    ...                 cert=${ISSUED_CERT}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=    Get Cert From PKIMessage    ${response}
+    Validate Migration Oid In Certificate     ${cert}   ml-dsa-87-sha512
+
