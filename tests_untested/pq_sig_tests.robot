@@ -155,3 +155,32 @@ CA MUST Reject SLH-DSA IR with Invalid POP
 ############################
 # FN-DSA Tests
 ############################
+
+
+############################
+## Pre-Hashed Versions
+############################
+
+CA MUST Issue a valid ML-DSA-44 with Sha512 Certificate
+    [Documentation]   According to fips204 is ML-DSA ObjectIdentifier and the algorithm used. We send an IR
+    ...               Initialization Request with a valid ML-DSA private key. The CA MUST process the request
+    ...               and issue a valid certificate.
+    [Tags]       positive   ml-dsa
+    ${key}=   Generate Key    ml-dsa-44
+    ${cm}=    Get Next Common Name
+    ${spki}=   Prepare SubjectPublicKeyInfo    ${key}   hash_alg=sha512
+    ${cert_req_msg}=    Prepare CertReqMsg    ${key}   common_name=${cm}   hash_alg=sha512   spki=${spki}
+    ${ir}=    Build Ir From Key    ${key}   ${cm}   cert_req_msg=${cert_req_msg}
+    ...       recipient=${RECIPIENT}
+    ...       omit_fields=senderKID,sender
+    ${protected_ir}=    Protect PKIMessage
+    ...                 pki_message=${ir}
+    ...                 protection=signature
+    ...                 private_key=${ISSUED_KEY}
+    ...                 cert=${ISSUED_CERT}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=    Get Cert From PKIMessage    ${response}
+    Validate Migration Oid In Certificate     ${cert}   ml-dsa-44-sha512
+
