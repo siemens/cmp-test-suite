@@ -135,7 +135,8 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
-        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
+        obj = get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
+        return univ.ObjectIdentifier(str(obj))
 
     @abstractmethod
     def _perform_trad_encaps(self, public_key):
@@ -339,7 +340,8 @@ class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
-        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
+        oid = get_oid_for_composite_kem(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
+        return univ.ObjectIdentifier(str(oid))
 
     def generate(self, pq_name: Optional[str] = None, trad_param: Optional[Union[int, str]] = None):
         raise NotImplementedError("Not implemented yet")
