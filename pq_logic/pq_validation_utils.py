@@ -82,3 +82,29 @@ def validate_migration_certificate_key_usage(cert: rfc9480.CMPCertificate) -> No
 
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
+
+
+def validate_migration_oid_in_certificate(cert: rfc9480.CMPCertificate, name: str) -> None:
+    """Validate the OID of the public key in the certificate.
+
+    Arguments:
+    ----------
+        - `cert`: The certificate to validate.
+        - `name`: The name of the public key algorithm.
+
+    Raises:
+    -------
+        - `ValueError`: If the OID does not match the name.
+        - `NotImplementedError`: If the OID is not supported.
+    """
+    pub_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+
+    if PQ_NAME_2_OID.get(name) is not None:
+        if str(pub_oid) != str(PQ_NAME_2_OID[name]):
+            raise ValueError(f"The OID {pub_oid} does not match the name {name}.")
+
+    elif HYBRID_NAME_2_OID.get(name) is not None:
+        if str(pub_oid) != str(HYBRID_NAME_2_OID[name]):
+            raise ValueError(f"The OID {pub_oid} does not match the name {name}.")
+    else:
+        raise NotImplementedError(f"Unsupported OID: {pub_oid}")
