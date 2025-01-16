@@ -44,12 +44,12 @@ ${DEFAULT_ML_DSA_KEY}    ml-dsa-65
 # ML-DSA Tests
 ############################
 
-CA MUST Issue A Valid ML-DSA Cert
-    [Documentation]   According to fips204 is ML-DSA ObjectIdentifier and the algorithm used. We send an IR
+CA MUST Issue A Valid ML-DSA-44 Cert
+    [Documentation]   According to fips204 is the ML-DSA-44 ObjectIdentifier and the algorithm used. We send an IR
     ...               Initialization Request with a valid ML-DSA private key. The CA MUST process the request
     ...               and issue a valid certificate.
     [Tags]   positive  ml-dsa
-    ${key}=   Generate Key    ${DEFAULT_ML_DSA_KEY}
+    ${key}=   Generate Key    ml-dsa-44
     ${cm}=   Get Next Common Name
     ${ir}=    Build Ir From Key    ${key}    ${cm}
     ...    recipient=${RECIPIENT}
@@ -65,12 +65,12 @@ CA MUST Issue A Valid ML-DSA Cert
     ${cert}=   Get Cert From PKIMessage    ${response}
     Validate Migration Certificate Key Usage   ${cert}
 
-CA MUST Reject A Invalid ML-DSA POP
-    [Documentation]   According to fips204 is ML-DSA ObjectIdentifier and the algorithm used. We send an IR
+CA MUST Reject A Invalid ML-DSA-44 POP
+    [Documentation]   According to fips204 is the ML-DSA-44 ObjectIdentifier and the algorithm used. We send an IR
     ...               Initialization Request with a valid ML-DSA private key, but the POP is invalid. The CA
-    ...               MUST reject the request and may respond with the optional failInfo `badPOP`.
+    ...               MUST reject the request and MAY respond with the optional failInfo `badPOP`.
     [Tags]   negative   pop   ml-dsa
-    ${key}=   Generate Key    ${DEFAULT_ML_DSA_KEY}
+    ${key}=   Generate Key    ml-dsa-44
     ${cm}=   Get Next Common Name
     ${ir}=    Build Ir From Key    ${key}    ${cm}    bad_pop=True
     ...    recipient=${RECIPIENT}
@@ -110,7 +110,7 @@ CA MUST Accept A Valid KGA Request For ML-DSA
 ############################
 
 CA MUST Accept Valid SLH-DSA IR
-    [Documentation]   According to fips205 is SLH-DSA ObjectIdentifier and the algorithm used. We send an IR
+    [Documentation]   According to fips205 is the SLH-DSA ObjectIdentifier and the algorithm used. We send an IR
     ...               Initialization Request with a valid SLH-DSA private key. The CA MUST process the request
     ...               and issue a valid certificate.
     [Tags]       positive   slh-dsa 
@@ -131,9 +131,9 @@ CA MUST Accept Valid SLH-DSA IR
     Validate Migration Certificate Key Usage   ${cert}
     
 CA MUST Reject SLH-DSA IR with Invalid POP
-    [Documentation]   According to fips205 is SLH-DSA ObjectIdentifier and the algorithm used. We send an IR
+    [Documentation]   According to fips205 is the SLH-DSA ObjectIdentifier and the algorithm used. We send an IR
     ...               Initialization Request with a valid SLH-DSA private key, but the POP is invalid. The CA
-    ...               MUST reject the request and may respond with the optional failInfo `badPOP`.
+    ...               MUST reject the request and MAY respond with the optional failInfo `badPOP`.
     ${key}=   Generate Key    slh-dsa
     ${cm}=    Get Next Common Name
     ${ir}=    Build Ir From Key    ${key}   ${cm}
@@ -162,7 +162,7 @@ CA MUST Reject SLH-DSA IR with Invalid POP
 ############################
 
 CA MUST Issue a valid ML-DSA-44 with Sha512 Certificate
-    [Documentation]   According to fips204 is ML-DSA ObjectIdentifier and the algorithm used. We send an IR
+    [Documentation]   According to fips204 is the ML-DSA ObjectIdentifier and the algorithm used. We send an IR
     ...               Initialization Request with a valid ML-DSA private key. The CA MUST process the request
     ...               and issue a valid certificate.
     [Tags]       positive   ml-dsa
@@ -185,7 +185,7 @@ CA MUST Issue a valid ML-DSA-44 with Sha512 Certificate
     Validate Migration Oid In Certificate     ${cert}   ml-dsa-44-sha512
 
 CA MUST Issue A Valid ML-DSA-65 With Sha512 Certificate
-    [Documentation]   According to fips204 is ML-DSA ObjectIdentifier and the algorithm used. We send an IR
+    [Documentation]   According to fips204 is the ML-DSA ObjectIdentifier and the algorithm used. We send an IR
     ...               Initialization Request with a valid ML-DSA-65 private key. The CA MUST process the request
     ...               and issue a valid certificate.
     [Tags]       positive   ml-dsa
@@ -208,7 +208,7 @@ CA MUST Issue A Valid ML-DSA-65 With Sha512 Certificate
     Validate Migration Oid In Certificate     ${cert}   ml-dsa-65-sha512
 
 CA MUST Issue A Valid ML-DSA-87 With Sha512 Certificate
-    [Documentation]   According to fips204 is ML-DSA ObjectIdentifier and the algorithm used. We send an IR
+    [Documentation]   According to fips204 is the ML-DSA ObjectIdentifier and the algorithm used. We send an IR
     ...               Initialization Request with a valid ML-DSA-87 private key. The CA MUST process the request
     ...               and issue a valid certificate.
     [Tags]       positive   ml-dsa
