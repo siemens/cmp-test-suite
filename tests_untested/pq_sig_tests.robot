@@ -68,8 +68,8 @@ CA MUST Issue A Valid ML-DSA Cert
 CA MUST Reject A Invalid ML-DSA POP
     [Documentation]   According to fips204 is ML-DSA ObjectIdentifier and the algorithm used. We send an IR
     ...               Initialization Request with a valid ML-DSA private key, but the POP is invalid. The CA
-    ...               **MUST** reject the request and may respond with the optional failInfo `badPOP`.
-    [Tags]   negative   popo   ml-dsa
+    ...               MUST reject the request and may respond with the optional failInfo `badPOP`.
+    [Tags]   negative   pop   ml-dsa
     ${key}=   Generate Key    ${DEFAULT_ML_DSA_KEY}
     ${cm}=   Get Next Common Name
     ${ir}=    Build Ir From Key    ${key}    ${cm}    bad_pop=True
@@ -130,10 +130,10 @@ CA MUST Accept Valid SLH-DSA IR
     ${cert}=   Get Cert From PKIMessage    ${response}
     Validate Migration Certificate Key Usage   ${cert}
     
-CA MUST Reject SLH-DSA IR with Invalid POPO
+CA MUST Reject SLH-DSA IR with Invalid POP
     [Documentation]   According to fips205 is SLH-DSA ObjectIdentifier and the algorithm used. We send an IR
     ...               Initialization Request with a valid SLH-DSA private key, but the POP is invalid. The CA
-    ...               **MUST** reject the request and may respond with the optional failInfo `badPOP`.
+    ...               MUST reject the request and may respond with the optional failInfo `badPOP`.
     ${key}=   Generate Key    slh-dsa
     ${cm}=    Get Next Common Name
     ${ir}=    Build Ir From Key    ${key}   ${cm}
