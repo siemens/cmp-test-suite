@@ -324,3 +324,26 @@ CA MUST Issue a valid SLH-DSA-SHA2-256S with Sha512 Certificate
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
+CA MUST Reject SLH-DSA-SHA2-256S with Sha512 IR with Invalid POP
+    [Documentation]   According to fips205 is the SLH-DSA-SHA2-256S with Sha512 ObjectIdentifier and the algorithm used.
+    ...               We send an valid Initialization Request with an invalid POP. The CA MUST reject the request and
+    ...               MAY respond with the optional failInfo `badPOP`.
+    ${key}=   Generate Key    slh-dsa
+    ${cm}=    Get Next Common Name
+    ${spki}=   Prepare SubjectPublicKeyInfo    ${key}   hash_alg=sha512
+    ${cert_req_msg}=    Prepare CertReqMsg    ${key}   common_name=${cm}   hash_alg=sha512   spki=${spki}   bad_pop=True
+    ${ir}=    Build Ir From Key
+    ...       ${key}
+    ...       ${cm}
+    ...       cert_req_msg=${cert_req_msg}
+    ...       recipient=${RECIPIENT}
+    ...       omit_fields=senderKID,sender
+    ${protected_ir}=    Protect PKIMessage
+    ...                 pki_message=${ir}
+    ...                 protection=signature
+    ...                 private_key=${ISSUED_KEY}
+    ...                 cert=${ISSUED_CERT}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    error
+    PKIStatus Must Be    ${response}    status=rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP
