@@ -50,6 +50,8 @@ possible using, because the same can be done for `ECDSA`.
 ### PQ Keys
 The implementation of PQ keys follows a specific set of design principles. Below are the current considerations:
 
+- **Falcon**: If someone wants to set it up in pure python:
+https://github.com/tprest/falcon.py (reason for not included: deprecated)
 - **ML-DSA**: Does not support signing with context.
 - **SLH-DSA**: Not yet supported, though OIDs are defined. Integration is planned for future versions.
 - **FN-DSA**: Currently unstandardized and thus not considered. Updates will follow as the standard develops.
