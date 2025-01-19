@@ -188,13 +188,12 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
         """
         mlkem_ss, mlkem_ct = public_key.pq_key.encaps()
         trad_ss, trad_ct = self._perform_trad_encaps(public_key.trad_key)
+        trad_pk = public_key._encode_pub_key()
         combined_ss = self.kem_combiner(
             mlkem_ss,
             trad_ss,
             trad_ct,
-            public_key.trad_key.public_bytes(
-                encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
-            ),
+            trad_pk,
         )
 
         ct_vals = CompositeCiphertextValue()
@@ -220,13 +219,12 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
         mlkem_ss = self.pq_key.decaps(mlkem_ct)
 
         trad_ss = self._perform_trad_decaps(trad_ct)
+        trad_pk = self.public_key()._encode_pub_key()
         combined_ss = self.kem_combiner(
             mlkem_ss,
             trad_ss,
             trad_ct,
-            self.trad_key.public_key().public_bytes(
-                encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
-            ),
+            trad_pk,
         )
         return combined_ss
 
