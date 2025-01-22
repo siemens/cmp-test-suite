@@ -383,7 +383,7 @@ class PQKEMPublicKey(PQPublicKey, ABC):
         :param public_key: The public key as raw bytes.
         """
         self._check_name(name=kem_alg)
-        self.kem_methode= oqs.KeyEncapsulation(self.kem_alg)
+        self.kem_method= oqs.KeyEncapsulation(self.kem_alg)
         self._public_key_bytes = public_key
 
     @property

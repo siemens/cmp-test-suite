@@ -67,7 +67,7 @@ class MLDSAPublicKey(PQSignaturePublicKey):
             sig_size = {"ml-dsa-44": 2420, "ml-dsa-65": 3309, "ml-dsa-87": 4627}
             return sig_size[self.name]
 
-        return self.sig_methode.details["length_signature"]
+        return self.sig_method.details["length_signature"]
 
     @property
     def key_size(self) -> int:

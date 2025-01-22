@@ -26,7 +26,7 @@ Issues: No composite is currently compatible with CNSA 2.0 #102 (Does not suppor
 
 
 """
-
+import logging
 from abc import abstractmethod
 from typing import Optional, Tuple, Union
 
@@ -135,7 +135,8 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
-        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
+        obj = get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
+        return univ.ObjectIdentifier(str(obj))
 
     @abstractmethod
     def _perform_trad_encaps(self, public_key):
@@ -158,7 +159,8 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
 
         :raises KeyError: If the OID mapping for the specified keys is not found.
         """
-        concatenated_inputs = mlkem_ss + trad_ss + trad_ct + trad_pk
+        concatenated_inputs = mlkem_ss + trad_ss + trad_ct + trad_pk + encoder.encode(self.get_oid())
+        logging.info("CompositeKEM concatenated inputs: %s", concatenated_inputs)
         kdf_name = get_composite_kem_hash_alg(self.pq_key.name, self.trad_key)
 
         if "hkdf" in kdf_name:
@@ -338,7 +340,8 @@ class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
-        return get_oid_for_composite_kem(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
+        oid = get_oid_for_composite_kem(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
+        return univ.ObjectIdentifier(str(oid))
 
     def generate(self, pq_name: Optional[str] = None, trad_param: Optional[Union[int, str]] = None):
         raise NotImplementedError("Not implemented yet")

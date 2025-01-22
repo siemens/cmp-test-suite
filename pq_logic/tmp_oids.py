@@ -35,10 +35,10 @@ id_composite_sig_test_suite = f"{id_hybrid_sig_test_suite}.1"
 # used inside cert-binding-for-multiple-authentication.
 id_hybrid_sig_multi_auth = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.2")
 
-# used inside the cert discovery methode.
+# used inside the cert discovery method.
 id_hybrid_sig_cert_binding = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.3")
 
-# OIDs used for the sun-hybrid signature methode.
+# OIDs used for the sun-hybrid signature method.
 id_hybrid_sun = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.4")
 
 nist_algorithms_oid = rfc5990.nistAlgorithm
