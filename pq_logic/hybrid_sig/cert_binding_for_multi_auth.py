@@ -107,7 +107,7 @@ def prepare_requester_certificate(
 
     if isinstance(cert_a_key, (rsa.RSAPrivateKey, ec.EllipticCurvePrivateKey)) and hash_alg is None:
         # This solution is not inside the draft.
-        # TODO maybe file an issue on github or aks if this is allowed solution.
+        # TODO maybe file an issue on github or ask if this is allowed solution.
         hash_alg = get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"])
 
     signature = sign_data(data=data, key=cert_a_key, hash_alg=hash_alg)

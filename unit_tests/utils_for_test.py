@@ -363,7 +363,7 @@ def prepare_cert_for_extensions(extensions: rfc5280.Extensions) -> rfc9480.CMPCe
 
 
 def get_subject_and_issuer(cert: rfc9480.CMPCertificate) -> str:
-    """Return a concatenated string fo the issuer and subject of a certificate.
+    """Return a concatenated string of the issuer and subject of a certificate.
 
     :param cert: object to extract the values from.
     :return: "issuer=%s, subject=%s"

@@ -72,6 +72,6 @@ id_relatedCert = univ.ObjectIdentifier(f"{id_ca}.{tba}")
 id_aa_relatedCertRequest = univ.ObjectIdentifier(f"{id_aa}.{tba -1}")
 id_mod_related_cert = univ.ObjectIdentifier(f"{id_aa}.{tba - 2}")
 
-# used inside the cert discovery methode.
+# used inside the cert discovery method.
 id_ad_certDiscovery = univ.ObjectIdentifier(f"{id_ca}.{tba-3}")
 id_ad_relatedCertificateDescriptor = univ.ObjectIdentifier(f"{id_ca}.{tba - 4}")

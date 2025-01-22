@@ -4,7 +4,7 @@
 
 """Deprecated functions to build a certificate with the `cryptography` library.
 
-As a fallback, if there is an error wit `pyasn1`.
+As a fallback, if there is an error with `pyasn1`.
 """
 
 import datetime

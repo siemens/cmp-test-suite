@@ -100,7 +100,7 @@ def verify_cert_hybrid_signature(
     other_cert: rfc9480.CMPCertificate,
     catalyst_key: PQSignaturePrivateKey = None,
 ) -> None:
-    """Verify the hybrid signature of an end-entity (EE) certificate using the appropriate composite methode.
+    """Verify the hybrid signature of an end-entity (EE) certificate using the appropriate composite method.
 
     :param ee_cert: The end-entity certificate (`CMPCertificate`) to be verified. This certificate
                     contains the hybrid signature and its algorithm identifier.

@@ -721,7 +721,7 @@ def validate_crl_update_retrieval(  # noqa D417 undocumented-param
 
         if len(crl_values) != expected_crl_size:
             raise ValueError(
-                "For CRL Update Retrieval, is present and did not conatined the "
+                "For CRL Update Retrieval, is present and did not contain the "
                 "number of expected "
                 f"entries. Expected: {expected_crl_size} Got: {len(crl_values)}"
             )

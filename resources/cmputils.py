@@ -2599,7 +2599,7 @@ def _prepare_generalinfo(
 
     :param implicit_confirm: If `True`, includes implicit confirmation information. Defaults to `True`.
     :param negative_value: If set to `True` changes, the datatypes which are expected for confirmWaitTime
-    to `UTCTime`, adds random value to teh MUST be absent value field for `implicitConfirm`, or
+    to `UTCTime`, adds random value to the MUST be absent value field for `implicitConfirm`, or
     adds a modified certReqTemplate, and the correct one, if a value is provided.
     :param confirm_wait_time: The wait time in seconds to be included, if specified. Defaults to `None`.
     :param cert_profile: An optional certificate profile value to include. Defaults to `None`.
@@ -3921,7 +3921,7 @@ def prepare_popo_challenge_for_non_signing_key(use_encr_cert: bool = True,
                                                use_key_enc: bool = True) -> rfc4211.ProofOfPossession:
     """Prepare a Proof-of-Possession (PoP) structure for Key encipherment or key agreement.
 
-     Using either the encrypted certificate or the challenge methode.
+     Using either the encrypted certificate or the challenge method.
 
      :param use_encr_cert: A flag indicating whether to use an encrypted certificate (`True`) or
                             a challenge-based message (`False`). Defaults to `True`.

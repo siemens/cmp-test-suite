@@ -78,7 +78,7 @@ class TestPyasn1Assumptions(unittest.TestCase):
         WHEN checking the type of each using `assertIsInstance`
         THEN it should confirm that all instances are of the base `Asn1Type` type
         """
-        # needed fo type checks, to make sure that try_to_log_pkimessage
+        # needed for type checks, to make sure that try_to_log_pkimessage
         # and so on, are checking for the correct type.
         self.assertIsInstance(univ.BitString(""), base.Asn1Type)
         self.assertIsInstance(univ.Integer(1), base.Asn1Type)

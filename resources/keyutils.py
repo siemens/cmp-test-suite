@@ -474,7 +474,7 @@ def load_public_key_from_spki(data: Union[bytes, rfc5280.SubjectPublicKeyInfo]) 
         - The loaded public key.
 
     Raises:
-          - `ValueError`: If the public key is invalid formated, or the OID is not valid/unknown.
+          - `ValueError`: If the public key is incorrectly formatted, or the OID is not valid/unknown.
 
     Examples:
     --------

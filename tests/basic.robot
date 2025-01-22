@@ -653,8 +653,8 @@ CA MAY React To Cert Request With Invalid Is_ca In BasicConstraints False But Ke
 # TODO add negative certs: rsa with KeyAgreement and ecc with KeyEncipherment
 
 # To also be allowed to sign the PKIMessage, because, it is advised to use the
-# Appropriate methode for KGA. So MAC based would imply to then also use
-# The Password-Based Key Management Technique.
+# Appropriate method for KGA. So MAC based would imply to then also use
+# The Password-Based Key Management Technique. The The inverse is true.
 
 CA MUST Issue A Certificate With The KeyAgreement KeyUsage Extension
     [Documentation]    According to RFC 9483 Section 5, the CA responds to a certificate request based on its own

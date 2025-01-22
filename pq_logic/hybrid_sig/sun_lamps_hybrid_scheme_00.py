@@ -378,7 +378,7 @@ def sun_csr_to_cert(
     issuer_cert: Optional[rfc9480.CMPCertificate] = None,
     hash_alg: str = "sha256",
 ) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
-    """Convert a CSR to a certificate, with the sun hybrid methode.
+    """Convert a CSR to a certificate, with the sun hybrid method.
 
     :param csr: The CSR to convert.
     :param issuer_cert:
@@ -467,7 +467,7 @@ def _prepare_pre_tbs_certificate(
     # object from attributes in the given
     # CSR following existing standards, e.g., [RFC2986] and [RFC5280].
     # The constructed TBSCertificate object is the preTbsCertificate field, which MUST
-    # inlude the created AltSubPubKeyExt extension.
+    # include the created AltSubPubKeyExt extension.
 
     subject = get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
     tbs_cert = prepare_tbs_certificate(

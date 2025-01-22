@@ -70,7 +70,7 @@ class CompositeSignatureValue(univ.SequenceOf):
     sizeSpec = univ.SequenceOf.sizeSpec + constraint.ValueSizeConstraint(2, 2)
 
 
-# Used for the Sun-Hybrid-Signature methode.
+# Used for the Sun-Hybrid-Signature method.
 class UniformResourceIdentifier(char.IA5String):
     """ASN.1 Definition of the `UniformResourceIdentifier` structure.
 
@@ -122,7 +122,7 @@ class AltSignatureExt(univ.Sequence):
     )
 
 
-# Used for the cert-discovery methode.
+# Used for the cert-discovery method.
 class RelatedCertificateDescriptor(univ.Sequence):
     """ASN.1 Definition of the `RelatedCertificateDescriptor` structure.
 
@@ -157,7 +157,7 @@ class OnRelatedCertificateDescriptor(rfc5280.AnotherName):
     pass
 
 
-# Used for the cert-binding-for-multiple-authentication methode.
+# Used for the cert-binding-for-multiple-authentication method.
 
 
 class RequesterCertificate(univ.Sequence):
@@ -189,7 +189,7 @@ class RelatedCertificate(univ.OctetString):
     pass
 
 
-# Used for the Chameleon Signature methode.
+# Used for the Chameleon Signature method.
 
 
 class DeltaCertificateDescriptor(univ.Sequence):

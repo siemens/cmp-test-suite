@@ -53,7 +53,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
             key_encipherment=True,
         )
 
-        # To simulate, send over the wire, because ori uses ANS.1 Any.
+        # To simulate, send over the wire, because ori uses ASN.1 Any.
         der_data = encoder.encode(popo_structure)
         decoded, _ = decoder.decode(der_data, rfc4211.ProofOfPossession())
         env_data = decoded["keyEncipherment"]["encryptedKey"]
@@ -78,7 +78,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
             hybrid_key_recip=self.xwing_key_other,
         )
 
-        # To simulate, send over the wire, because ori uses ANS.1 Any.
+        # To simulate, send over the wire, because ori uses ASN.1 Any.
         der_data = encoder.encode(popo_structure)
         decoded, _ = decoder.decode(der_data, rfc4211.ProofOfPossession())
         env_data = decoded["keyEncipherment"]["encryptedKey"]
