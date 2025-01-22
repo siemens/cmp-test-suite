@@ -849,7 +849,7 @@ def modify_common_name_cert(  # noqa D417 undocumented-param
     )
     if not issuer_name:
         utils.log_certificates([cert])
-        raise ValueError("The parsed Certificate did not contained value for the `issuer` field.")
+        raise ValueError("The certificate did not contain a value in the `issuer` field.")
 
     issuer_name["CN"] = cmputils.modify_random_str(issuer_name["CN"], index=-1)
     data = ""

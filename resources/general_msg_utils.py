@@ -788,11 +788,11 @@ def validate_current_crl(pki_message: rfc9480.PKIMessage, expected_size: Strint 
     val = cmputils.get_value_from_seq_of_info_value_field(genp_content, oid=rfc9480.id_it_currentCRL)
     if val is None:
         logging.info("General Response: \n%s", genp_content.prettyPrint())
-        raise ValueError("The CA did not contain the oid for `id-it-currentCRL` as of Section 4.3.1 specified!")
+        raise ValueError("The CA did not contain the oid for `id-it-currentCRL` as Section 4.3.1 specified!")
 
     _, rest = decoder.decode(val, rfc9480.CurrentCRLValue())
     if rest != b"":
-        raise ValueError("Did not contained a valid `CurrentCRLValue` structure!")
+        raise ValueError("Did not contain a valid `CurrentCRLValue` structure!")
 
 
 def validate_general_response(  # noqa D417 undocumented-param

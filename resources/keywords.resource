@@ -190,7 +190,7 @@ Collect Nonce From PKIMessage
     END
 
 Exchange PKIMessage
-    [Documentation]    Send a PKIMessage to the CA or RA Server and then then parses the returned PKIMessage.
+    [Documentation]    Send a PKIMessage to the CA or RA Server and then then parse the returned PKIMessage.
     ...    Expects to get a parse-able PKIMessage.
     [Tags]    exchange    http
     [Arguments]    ${request_pki_message}

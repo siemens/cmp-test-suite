@@ -354,7 +354,7 @@ def process_pkimessage_with_popdecc(
     :param request: The original PKIMessage request to build the new one for the `challenge`.
     :param use_dhbased_mac: Whether to use the DH-based MAC for the `challenge` field,
     and then update the old request. Otherwise, update the old request Proof-of-Possession.
-    :return: The updated PKIMessage as DER-encoded bytes, so send over the wire.
+    :return: The updated PKIMessage as DER-encoded bytes, to send over the wire.
 
     :raises ValueError: If the PKIMessage decoding has a remainder.
     :raises NotImplementedError: If the challenge is not encryptedRand.
@@ -472,10 +472,10 @@ def _process_encrypted_rand(
 
 
 def _process_challenge(challenge_val: bytes, ee_key) -> bytes:
-    """Process the challenge value by decrypting or decapuslation it with the end-entity private key.
+    """Process the challenge value by decrypting or decapuslating it with the end-entity private key.
 
     :param challenge_val: The `Challenge` to process.
-    :param ee_key: The private key to decrypt the challenge.
+    :param ee_key: The private key to decrypt or decapsulate the challenge.
     :return: The shared secret as the password field in the PKIMessage.
     """
     if isinstance(ee_key, rsa.RSAPrivateKey):

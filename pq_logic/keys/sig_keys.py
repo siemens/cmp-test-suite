@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Contains the classes for the public and private keys of the supported post-quantum signature algorithms."""
+"""Classes for the public and private keys of the supported post-quantum signature algorithms."""
 
 import logging
 import os
@@ -63,7 +63,7 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         logging.info("ctx is currently not supported, possible in liboqs version 13.")
 
         if len(ctx) > 255:
-            raise ValueError(f"The context length is longer then 255 bytes.Got: {len(ctx)}")
+            raise ValueError(f"The context length is longer than 255 bytes. Got: {len(ctx)}")
 
         # disabled liboqs, because the signatures did not verify correctly for pqc-certificates!
         #if hash_alg is None and ctx == b"":
