@@ -1132,7 +1132,7 @@ class ML_DSA:
         else:
             return 1
 
-    #   weigth (number of nonzero entries)
+    #   weight (number of nonzero entries)
 
     def weight(self, a):
         if type(a) == list:

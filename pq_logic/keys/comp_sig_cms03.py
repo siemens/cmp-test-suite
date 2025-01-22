@@ -4,7 +4,7 @@
 
 """Composite Signature Implementation.
 
-https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-03
+https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-sigs/03/
 
 Composite ML-DSA For use in X.509 Public Key Infrastructure and CMS
 

@@ -453,7 +453,7 @@ class PKIMessage(Asn1Wrapper):
 
         :param password: The password to protect the PKIMessage with.
         :param private_key: The private key to sign the PKIMessage with.
-        :param protection: The protection methode as string to use.
+        :param protection: The protection method as string to use.
         :return: The DER-encoded updated PKIMessage.
         """
         if not password or not private_key or not self._private_key:

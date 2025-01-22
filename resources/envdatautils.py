@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Provided utilities for CMP `EnvelopedData` structure to securely transport data."""
+"""Utilities for the CMP `EnvelopedData` structure to securely transport data."""
 
 import logging
 import os
@@ -294,7 +294,7 @@ def prepare_signed_attributes(message_digest: bytes) -> rfc5652.SignedAttributes
     der_data = encoder.encode(signed_attrs)
     data, rest = decoder.decode(der_data, signed_attrs2)
     if rest != b"":
-        raise ValueError("The decoding of the ")
+        raise ValueError("The decoding of the SignedAttributes failed")
 
     return data
 
@@ -869,7 +869,7 @@ def prepare_enc_key_for_pop(
 ) -> rfc4211.ProofOfPossession:
     """Prepare an EncKeyWithID structure for the `ProofOfPossession` structure.
 
-    Used to proof the possession of a private key by sending the encrypted key to the CA/RA.
+    Used to prove the possession of a private key by sending the encrypted key to the CA/RA.
 
     :param private_key: The private key of the client to send to the CA/RA.
     :param recip_info: The recipient information structure to include. Which is used to encrypt the CEK.
@@ -950,7 +950,7 @@ def build_env_data_for_exchange(
 ):
     """Build an EnvelopedData structure for the provided public key and data.
 
-    This function prepares an EnvelopedData structure for the provided public key and data.
+    Prepare an EnvelopedData structure for the provided public key and data.
     The EnvelopedData structure is used in CMP messages to securely transport encrypted content.
 
     :param public_key_recip: The public key of the recipient.
@@ -1393,7 +1393,7 @@ def prepare_pwri_structure(
 ) -> rfc5652.PasswordRecipientInfo:
     """Create a `PasswordRecipientInfo` (`pwri`) used to encrypt a content encryption key.
 
-    Prepares a default `PBKDF2_params` structure with the fixes salt b"AAAAAAAAAAAAAAAA".
+    Prepares a default `PBKDF2_params` structure with the fixed salt b"AAAAAAAAAAAAAAAA".
 
     :param version: The version number for the `PasswordRecipientInfo` structure. Defaults to 0.
     :param key_der_alg_id: The Object Identifier (OID) for the key derivation algorithm.
@@ -1432,7 +1432,7 @@ def prepare_pwri_structure(
         )
 
         if rest != b"":
-            raise ValueError("Please correct the test structure!")
+            raise ValueError("Please correct the test PasswordRecipientInfo structure!")
 
     return pwri
 
@@ -1440,7 +1440,7 @@ def prepare_pwri_structure(
 def wrap_key_password_based_key_management_technique(
     password: str, parameters: rfc8018.PBKDF2_params, key_to_wrap: bytes
 ) -> bytes:
-    """Derive a key from a password using PBKDF2 parameters and wraps the given AES key using the derived key.
+    """Derive a key from a password using PBKDF2 parameters and wrap the given AES key using the derived key.
 
     :param password: The password used to derive the key.
     :param parameters: The PBKDF2 parameters used to derive the key.

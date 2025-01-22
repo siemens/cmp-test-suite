@@ -594,7 +594,7 @@ def log_cert_chain_subject_and_issuer(certs: Iterable[rfc9480.CMPCertificate]): 
 
 
 def _get_subject_and_issuer(cert: rfc9480.CMPCertificate) -> str:
-    """Return a concatenated string fo the issuer and subject of a certificate.
+    """Return a concatenated string of the issuer and subject of a certificate.
 
     :param cert: The certificate to extract the values from.
     :return: "issuer=%s, subject=%s"

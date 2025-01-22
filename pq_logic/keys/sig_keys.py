@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Provided Wrapper classes for Post-Quantum signature Keys.
+Wrapper classes for Post-Quantum signature Keys.
 
 Classes in this file follow the `cryptography` library style. This ensures seamless integration
 and allows the classes to be easily swapped out or extended in the future.
@@ -94,7 +94,7 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         logging.info("ctx is currently not supported, possible in liboqs version 13.")
 
         if len(ctx) > 255:
-            raise ValueError(f"The context length is longer then 255 bytes.Got: {len(ctx)}")
+            raise ValueError(f"The context length is longer than 255 bytes. Got: {len(ctx)}")
 
         # disabled liboqs, because the signatures did not verify correctly for pqc-certificates!
         # if hash_alg is None and ctx == b"":

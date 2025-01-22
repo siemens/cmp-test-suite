@@ -192,7 +192,7 @@ class TestSunHybridScheme(unittest.TestCase):
             hash_alg="sha256",
         )
         # needs to be called with the form 4 certificate,
-        # otherwise needs to apply the convertion to be in form 4 certificate
+        # otherwise needs to apply the conversion to be in form 4 certificate
         validate_alt_pub_key_extn(cert_form4)
 
     def test_convert_to_form4(self):

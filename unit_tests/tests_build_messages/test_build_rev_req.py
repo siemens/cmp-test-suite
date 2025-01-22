@@ -37,7 +37,7 @@ class TestBuildCmpRevRequest(unittest.TestCase):
         pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
         self.assertEqual(rest, b"")
 
-        # Check that the request header is correct, but cannot use built in methode. Not all values are set.
+        # Check that the request header is correct, but cannot use built in method. Not all values are set.
         sender = rfc9480.GeneralName().setComponentByName("rfc822Name", self.example_sender)
         recipient = rfc9480.GeneralName().setComponentByName("rfc822Name", self.example_recipient)
 
@@ -72,7 +72,7 @@ class TestBuildCmpRevRequest(unittest.TestCase):
         pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
         self.assertEqual(rest, b"")
 
-        # Check that the request header is correct, but cannot use built in methode. Not all values are set.
+        # Check that the request header is correct, but cannot use built in method. Not all values are set.
         sender = rfc9480.GeneralName().setComponentByName("rfc822Name", self.example_sender)
         recipient = rfc9480.GeneralName().setComponentByName("rfc822Name", self.example_recipient)
 

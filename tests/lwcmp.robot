@@ -1062,7 +1062,7 @@ CA MUST Reject IR With Missing Subject In CertTemplate
 
 ### Key Related
 
-CA MUST Issued A ECC Certificate With A Valid IR
+CA MUST Issue A ECC Certificate With A Valid IR
     [Documentation]    According to RFC 9483, Section 4.1.3, when the CA receives a valid initialization request (ir)
     ...    containing an Elliptic Curve Cryptography (ECC) key, it should issue an ECC certificate if the
     ...    algorithm is allowed by CA policy. We send an IR with an ECC key. The CA issues a
@@ -1104,7 +1104,7 @@ CA MUST Issued A ECC Certificate With A Valid IR
     VAR    ${ECDSA_CERT}    ${cert}    scope=GLOBAL
     VAR    ${ECDSA_KEY}    ${ecc_key}    scope=GLOBAL
 
-CA MAY Issued A Ed25519 Certificate With A Valid IR
+CA MAY Issue A Ed25519 Certificate With A Valid IR
     [Documentation]    According to RFC 9483, Section 4.1.3, the CA may issue a certificate for a valid initialization
     ...    request (ir) containing an Ed25519 key if its policy allows this algorithm. We send an ir
     ...    message with an Ed25519 key and expects the CA to issue a certificate if Ed25519 is supported.
@@ -1253,7 +1253,7 @@ CA MUST Reject IR With Too Large RSA Key In CertTemplate
     PKIMessage Body Type Must Be      ${response}    ip
     PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=badCertTemplate
 
-CA MAY Issued A DSA Certificate
+CA MAY Issue A DSA Certificate
     [Documentation]    According to RFC 9483, Section 5.1.1, the CA processes certificate requests based on its policy.
     ...    When the CA receives a valid initialization request (ir) containing a DSA public key, it should
     ...    process the request accordingly. If the CA's policy allows issuing certificates with DSA keys,

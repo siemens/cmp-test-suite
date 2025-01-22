@@ -143,7 +143,7 @@ class PQPrivateKey(ABC):
     def _one_asym_key(self) -> rfc5958.OneAsymmetricKey:
         """Prepare a PyAsn1 OneAsymmetricKey structure."""
         one_asym_key = rfc5958.OneAsymmetricKey()
-        # MUST be version 2 otherwise, will liboqs generate a wrong key.
+        # MUST be version 2 otherwise, liboqs will generate a wrong key.
         one_asym_key["version"] = 2
         one_asym_key["privateKeyAlgorithm"]["algorithm"] = PQ_NAME_2_OID[self.name]
         one_asym_key["privateKey"] = univ.OctetString(self.private_bytes_raw())
@@ -250,7 +250,7 @@ class PQSignaturePublicKey(PQPublicKey, ABC):
         :param public_key: The public key as bytes.
         :return:
         """
-        self.sig_methode = oqs.Signature(self.sig_alg)
+        self.sig_method = oqs.Signature(self.sig_alg)
         self._public_key_bytes = public_key
 
     @abstractmethod
@@ -280,9 +280,9 @@ class PQSignaturePublicKey(PQPublicKey, ABC):
             raise NotImplementedError("Currently can the hash algorithm not parsed directly.")
 
         if is_prehashed:
-            raise NotImplementedError("Currently can the pre-hashed data not parsed, inpython-liboqs.")
+            raise NotImplementedError("Currently can the pre-hashed data not parsed, in python-liboqs.")
 
-        if not self.sig_methode.verify(data, signature, self._public_key_bytes):
+        if not self.sig_method.verify(data, signature, self._public_key_bytes):
             raise InvalidSignature()
 
 
@@ -317,9 +317,9 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
         :param public_key: The public key bytes.
         :return:
         """
-        self.sig_methode = oqs.Signature(self.sig_alg, secret_key=private_bytes)
-        self._public_key = public_key or self.sig_methode.generate_keypair()
-        self._private_key = private_bytes or self.sig_methode.export_secret_key()
+        self.sig_method = oqs.Signature(self.sig_alg, secret_key=private_bytes)
+        self._public_key = public_key or self.sig_method.generate_keypair()
+        self._private_key = private_bytes or self.sig_method.export_secret_key()
 
     @abstractmethod
     def public_key(self) -> PQSignaturePublicKey:
@@ -350,15 +350,15 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
         self.check_hash_alg(hash_alg)
 
         if ctx != b"":
-            raise NotImplementedError("Currently is signed with context not possible.with liboqs-python")
+            raise NotImplementedError("Currently is signed with context not possible with liboqs-python")
 
         if hash_alg is not None:
             raise NotImplementedError("Currently can the hash algorithm not parsed directly.")
 
         if is_prehashed:
-            raise NotImplementedError("Currently can the pre-hashed data not parsed, inpython-liboqs.")
+            raise NotImplementedError("Currently can the pre-hashed data not parsed, in python-liboqs.")
 
-        signature = self.sig_methode.sign(data)
+        signature = self.sig_method.sign(data)
         return signature
 
 
@@ -383,7 +383,7 @@ class PQKEMPublicKey(PQPublicKey, ABC):
         :param public_key: The public key as raw bytes.
         """
         self._check_name(name=kem_alg)
-        self.kem_methode = oqs.KeyEncapsulation(self.kem_alg)
+        self.kem_methode= oqs.KeyEncapsulation(self.kem_alg)
         self._public_key_bytes = public_key
 
     @property
@@ -394,12 +394,12 @@ class PQKEMPublicKey(PQPublicKey, ABC):
     @property
     def ct_length(self) -> int:
         """Return the size of the ciphertext."""
-        return self.kem_methode.details["length_ciphertext"]
+        return self.kem_method.details["length_ciphertext"]
 
     @property
     def key_size(self) -> int:
         """Return the size of the public key."""
-        return self.kem_methode.details["length_public_key"]
+        return self.kem_method.details["length_public_key"]
 
     @classmethod
     def from_public_bytes(cls, data: bytes, name: str):
@@ -411,7 +411,7 @@ class PQKEMPublicKey(PQPublicKey, ABC):
 
         :return: The shared secret and the ciphertext as bytes.
         """
-        ct, ss = self.kem_methode.encap_secret(self._public_key_bytes)
+        ct, ss = self.kem_method.encap_secret(self._public_key_bytes)
         return ss, ct
 
 
@@ -434,13 +434,13 @@ class PQKEMPrivateKey(PQPrivateKey, ABC):
         self._initialize(kem_alg, private_bytes, public_key)
 
     def _initialize(self, kem_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None):
-        self.kem_methode = oqs.KeyEncapsulation(self.kem_alg, secret_key=private_bytes)
+        self.kem_method = oqs.KeyEncapsulation(self.kem_alg, secret_key=private_bytes)
         if private_bytes is None:
-            self._public_key_bytes = self.kem_methode.generate_keypair()
+            self._public_key_bytes = self.kem_method.generate_keypair()
         else:
             self._public_key_bytes = public_key
         # MUST first generate a keypair, before the secret key can be exported.
-        self._private_key = private_bytes or self.kem_methode.export_secret_key()
+        self._private_key = private_bytes or self.kem_method.export_secret_key()
 
     def decaps(self, ciphertext: bytes) -> bytes:
         """Perform decapsulation to retrieve a shared secret.
@@ -450,7 +450,7 @@ class PQKEMPrivateKey(PQPrivateKey, ABC):
         :param ciphertext: The ciphertext generated during encapsulation.
         :return: The shared secret as bytes.
         """
-        return self.kem_methode.decap_secret(ciphertext)
+        return self.kem_method.decap_secret(ciphertext)
 
     @property
     def name(self) -> str:
@@ -460,12 +460,12 @@ class PQKEMPrivateKey(PQPrivateKey, ABC):
     @property
     def ct_length(self) -> int:
         """Return the size of the ciphertext."""
-        return self.kem_methode.details["length_ciphertext"]
+        return self.kem_method.details["length_ciphertext"]
 
     @property
     def key_size(self) -> int:
         """Return the size of the public key."""
-        return self.kem_methode.details["length_secret_key"]
+        return self.kem_method.details["length_secret_key"]
 
     @classmethod
     def from_private_bytes(cls, data: bytes, name: str):

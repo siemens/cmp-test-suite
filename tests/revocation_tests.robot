@@ -329,7 +329,7 @@ CA MUST Reject Revocation Request With Invalid Extensions
     [Documentation]    According to RFC 9483 Section 4.2, when a revocation request is submitted, it MUST contain
     ...    the `issuer` and `serialNumber` fields inside the `CertTemplate`. If the `extensions` field is
     ...    provided as additional information, it MUST match the extensions of the certificate.
-    ...    We send a revocation request with a invalid extensions inside the CertTemplate.
+    ...    We send a revocation request with invalid extensions inside the CertTemplate.
     ...    The CA MUST reject the request and may respond with the optional failInfo `badCertTemplate`.
     [Tags]    certTemplate    negative    robot:skip-on-failure    strict
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
@@ -356,7 +356,7 @@ CA MUST Reject Revocation Request With Valid And Invalid Extensions
     [Documentation]    According to RFC 9483 Section 4.2, when a revocation request is submitted, it MUST contain
     ...    the `issuer` and `serialNumber` fields inside the `CertTemplate`. If the `extensions` field is
     ...    provided as additional information, it MUST match the extensions of the certificate.
-    ...    We send a revocation request with the valid extensions and a invalid extension inside the
+    ...    We send a revocation request with the valid extensions and an invalid extension inside the
     ...    CertTemplate. The CA MUST reject the request and may respond with the optional failInfo
     ...    `badCertTemplate`.
     [Tags]    certTemplate    negative    robot:skip-on-failure    strict
@@ -536,6 +536,7 @@ CA MUST Accept Valid Revive Request
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be   ${response}    status=accepted
+    # TODO: Check if the certificate is actually revived, examine the CRL or do an OCSP request
 
 #### Section 4 RR checks for issuing.
 

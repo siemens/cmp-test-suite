@@ -29,7 +29,7 @@ The design decisions follow closely the `cryptography` library for easier migrat
 - Flexibility for users who may not wish to use `pyasn1` while still allowing PQ key usage.
 - Simpler updates to existing workflows, such as creating a CSR (Certificate Signing Request).
 
-#### Alternative Design Approch for Pre-hashing:
+#### Alternative Design Approach for Pre-hashing:
 
 An alternative solution for the design of the Composite and the PQ-Keys would be
 to use this approach:
