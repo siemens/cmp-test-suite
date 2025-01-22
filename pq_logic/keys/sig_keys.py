@@ -451,12 +451,12 @@ class AltSLHDSAPublicKey(PQSignaturePublicKey):
             raise ValueError(f"Invalid signature algorithm name provided.: {sig_alg}")
 
         self.sig_alg = sig_alg
-        self.sig_methode = PublicKey.from_digest(public_key, getattr(slhdsa, sig_alg))
+        self.sig_method = PublicKey.from_digest(public_key, getattr(slhdsa, sig_alg))
         self._public_key_bytes = public_key
 
     def verify(self, signature: bytes, data: bytes) -> None:
         """Verify the signature of the data."""
-        if not self.sig_methode.verify(msg=data, sig=signature):
+        if not self.sig_method.verify(msg=data, sig=signature):
             raise InvalidSignature()
 
 
@@ -478,15 +478,15 @@ class AltSLHDSAPrivateKey(PQSignaturePrivateKey):
 
     def _init(self, sig_alg: str, private_bytes: Optional[bytes] = None, public_key: Optional[bytes] = None) -> None:
         self.sig_alg = sig_alg.removeprefix("slh-dsa-").replace("-", "_", 1)
-        self.sig_methode = KeyPair.gen(getattr(slhdsa, sig_alg))
+        self.sig_method = KeyPair.gen(getattr(slhdsa, sig_alg))
 
     def public_key(self) -> PQSignaturePublicKey:
         """Derive the corresponding public key."""
-        return AltSLHDSAPublicKey(sig_alg=self.sig_alg, public_key=self.sig_methode.pub.digest())
+        return AltSLHDSAPublicKey(sig_alg=self.sig_alg, public_key=self.sig_method.pub.digest())
 
     def private_bytes_raw(self) -> bytes:
         """Return the private key as raw bytes."""
-        return self.sig_methode.sec.digest()
+        return self.sig_method.sec.digest()
 
     def sign(
         self,
@@ -498,4 +498,4 @@ class AltSLHDSAPrivateKey(PQSignaturePrivateKey):
         :param data: The data to sign.
         :param use_rand: Whether to use randomization for the signature. Defaults to `True`.
         """
-        return self.sig_methode.sign(data, randomize=use_rand)
+        return self.sig_method.sign(data, randomize=use_rand)
