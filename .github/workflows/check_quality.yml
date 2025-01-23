@@ -14,6 +14,10 @@ on:
 jobs:
   check_code_quality:
     runs-on: ubuntu-22.04
+    # The steps are allowed to continue on error, so that we provide as
+    # much feedback at once as possible. Nevertheless, this job must fail in
+    # the end if there was at least one error.
+    continue-on-error: true
     container:
       image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
 
@@ -37,7 +41,7 @@ jobs:
         run: pylint --fail-under=9.38 resources
 
       - name: Unit tests
-        run: PYTHONPATH=./resources python -m unittest discover -s unit_tests
+        run: PYTHONPATH=./resources python3 -m unittest discover -s unit_tests
 
       - name: Pyright check
         run: |
