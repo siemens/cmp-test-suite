@@ -1,20 +1,19 @@
-FROM debian:12
+# This adds the actual test suite to the base image, so that it can be used to
+# test CMP implementations.
+# By default it attempts to use the locally stored image, but you can also rely
+# on an external image registry if you specify another base when building:
+# `docker build --build-arg BASE_IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER}/cmp-test-base:latest -f data/dockerfiles/Dockerfile.tests .`
+# To experiment locally, build it with:
+# `docker build -t cmptest-tests -f data/dockerfiles/Dockerfile.tests .`
+# Run it with `docker run --rm -it cmptest-tests`
 
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip python3-venv openssl && \
-    apt-get clean
+ARG BASE_IMAGE=cmptest-base:latest
+FROM ${BASE_IMAGE}
 
-# Set up a virtual environment, because "pip install" is not allowed.
 WORKDIR /app
-RUN python3 -m venv /app/venv
 
-COPY requirements.txt /app/requirements.txt
-RUN /app/venv/bin/pip install --upgrade pip && \
-    /app/venv/bin/pip install -r /app/requirements.txt
+COPY . /app
 
-
-COPY . /app --exclude=venv* __pycache__ .git
-
-RUN openssl version
-# Update to use port and ip-address
-CMD ["sh", "-c", "/app/venv/bin/python3 -m robot --outputdir=out --variable environment:cloudpki tests"]
+# TODO: Devise a procedure to make it easy to add user-specific tests that will
+#       be executed along with the basic ones.
+CMD ["sh", "-c", "robot --pythonpath=./ --outputdir=reports/ scripts/smoke.robot"]
