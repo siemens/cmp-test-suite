@@ -1,0 +1,19 @@
+# This builds on top of the base image, adding the dependencies that are only
+# needed for quality tests (linting, formatting, type checking, etc.).
+# By default it attempts to use the locally stored image, but you can also rely
+# on an external image registry if you specify another base when building:
+# `docker build --build-arg BASE_IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER}/cmp-test-base:latest -f data/dockerfiles/Dockerfile.dev .`
+# To experiment locally, build it with:
+# `docker build -t cmptest-dev -f data/dockerfiles/Dockerfile.dev .`
+
+ARG BASE_IMAGE=cmptest-base:latest
+FROM ${BASE_IMAGE}
+
+WORKDIR /app
+
+COPY requirements-dev.txt /app/requirements-dev.txt
+RUN pip3 install -r /app/requirements-dev.txt
+
+# By default we just print some environment information, which might be useful
+# for troubleshooting.
+CMD ["sh", "-c", "uname -a && python3 --version && openssl version && pip3 freeze"]
