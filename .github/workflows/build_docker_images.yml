@@ -1,0 +1,54 @@
+# This produces base image that contains the dependencies required for the test
+# suite, including the build environment for liboqs; and a dev image, which is
+# used to run code quality checks in the CI pipeline
+
+name: Build and push base docker images
+
+# This is triggered whenever Docker-related changes occur, or when there are
+# updates in the dependencies. It can also be started manually.
+on:
+  push:
+    paths:
+    - 'data/dockerfiles/Dockerfile.*'
+    - 'requirements*.txt'
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push base Docker image
+        run: |
+          docker buildx build \
+            --tag ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
+            --push \
+            -f data/dockerfiles/Dockerfile.base .
+
+      - name: Build and push dev Docker image
+        run: |
+          docker buildx build \
+            --tag ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest \
+            --build-arg BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
+            --push \
+            -f data/dockerfiles/Dockerfile.dev .
+
+      - name: Build and push the production test suite Docker image
+        run: |
+          docker buildx build \
+            --tag ghcr.io/${{ github.repository_owner }}/cmp-test-prod:latest \
+            --build-arg BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
+            --push \
+            -f data/dockerfiles/Dockerfile.tests .
