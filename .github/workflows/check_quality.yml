@@ -67,6 +67,8 @@ jobs:
     runs-on: ubuntu-22.04
     container:
       image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+      env:
+        OQS_INSTALL_PATH: "/root/_oqs"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
