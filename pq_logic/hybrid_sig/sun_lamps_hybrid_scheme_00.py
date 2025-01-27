@@ -505,7 +505,7 @@ def prepare_sun_hybrid_pre_tbs_certificate(
         subject=subject,
         signing_key=issuer_private_key,
         issuer_cert=issuer_cert,
-        public_key=composite_key.pq_key,  # Construct a SubjectPublicKeyInfo object from pk_1
+        public_key=composite_key.trad_key,  # Construct a SubjectPublicKeyInfo object from pk_1
         validity=validity,
         hash_alg=hash_alg,
         extensions=[extn_alt_pub] + []
