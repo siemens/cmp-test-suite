@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Help Utility to build pki message structures or other stuff for the unittests and debugging."""
-
+import base64
 import datetime
 import os.path
+import textwrap
 from typing import List, Optional, Tuple, Union
 
 from cryptography import x509
@@ -17,9 +18,9 @@ from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import base, tag, univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
-from pyasn1_alt_modules import rfc2459, rfc5280, rfc5652, rfc9480
+from pyasn1_alt_modules import rfc2459, rfc5280, rfc5652, rfc9480, rfc6402
 from resources import certutils, cmputils, utils
-from resources.certbuildutils import build_certificate
+from resources.certbuildutils import build_certificate, build_csr
 from resources.certutils import parse_certificate
 from resources.cmputils import parse_csr
 from resources.cryptoutils import verify_signature
@@ -827,8 +828,73 @@ def prepare_default_pwri_env_data(
     )
 
 
+
+
+
+def _save_csr(csr: rfc6402.CertificationRequest, path: str, save_as_pem: bool = False, add_pretty_print: bool = False) -> None:
+    """Save a CSR to a file.
+
+    :param csr: The CSR to save.
+    :param path: The path to save the CSR to.
+    :param save_as_pem: If True, the CSR is saved as PEM-; otherwise, it is saved as DER-encoded.
+
+    """
+
+    der_data = encoder.encode(csr)
+    if save_as_pem:
+        b64_encoded = base64.b64encode(der_data).decode("utf-8")
+        b64_encoded = "\n".join(textwrap.wrap(b64_encoded, width=64))
+        pem_csr = "-----BEGIN CERTIFICATE REQUEST-----\n" + b64_encoded + "\n-----END CERTIFICATE REQUEST-----\n"
+        if add_pretty_print:
+            pem_csr += "\n"
+            pem_csr += csr.prettyPrint()
+            pem_csr += "\n"
+        der_data =  pem_csr.encode("utf-8")
+
+
+    with open(path, "wb") as file:
+        file.write(der_data)
+
+
+def _save_migration_csrs():
+    """Generate and save CSRs for PQ/Hybrid testing.
+
+    Might change, due different key encodings.
+    """
+    os.makedirs("data/csrs", exist_ok=True)
+
+    # PQ CSR's
+    #
+    ## ML-DSA CSR's
+    key = load_private_key_from_file(
+        "data/keys/private-key-ml-dsa-44.pem"
+    )
+    csr = build_csr(signing_key=key, common_name="CN=PQ CSR ML-DSA-44")
+    _save_csr(csr, "data/csrs/pq_csr_ml_dsa_44.pem", save_as_pem=True, add_pretty_print=True)
+
+    ## SLH-DSA CSR's
+    key = load_private_key_from_file(
+        "data/keys/private-key-slh-dsa-shake-256s.pem"
+    )
+    csr = build_csr(signing_key=key, common_name="CN=PQ CSR SLH-DSA-SHAKE-256s")
+    _save_csr(csr, "data/csrs/pq_csr_slh_dsa_shake_256s.pem", save_as_pem=True, add_pretty_print=True)
+
+    # Composite Signature CSR's
+    key = load_private_key_from_file(
+        "data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem"
+    )
+    csr = build_csr(signing_key=key, common_name="CN=Hybrid CSR CompositeSig RSA2048 ML-DSA-44")
+    _save_csr(csr, "data/csrs/hybrid_csr_composite_sig_rsa2048_ml_dsa_44.pem", save_as_pem=True, add_pretty_print=True)
+
+
 def update_cert_and_keys():
-    """Generate new PQ and Hybrid keys and certificates."""
+    """Generate new PQ and Hybrid keys and certificates.
+
+    Update the certificates/CRS and keys used for testing with new ones.
+    """
     _save_composite_sig()
     _save_xwing()
     _save_composite_kem()
+    _save_migration_csrs()
+
+
