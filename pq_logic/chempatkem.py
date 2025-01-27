@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""Chempat key encapsulation mechanism and corresponding key classes."""
+
 import logging
 from typing import List, Optional, Tuple, Union
 
