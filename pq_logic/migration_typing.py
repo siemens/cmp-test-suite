@@ -2,7 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Union
+"""Defines the keys-typings for newly created wrapper keys."""
+
+from typing import Sequence, Union
+
+from pyasn1_alt_modules import rfc9480
 
 from pq_logic.keys.abstract_composite import (
     AbstractCompositeKEMPrivateKey,
@@ -22,3 +26,4 @@ KEMPublicKey = Union[PQKEMPublicKey, HybridKEMPublicKey]
 
 HybridSigPrivKey = Union[AbstractCompositeSigPrivateKey]
 HybridSigPubKey = Union[AbstractCompositeSigPublicKey]
+CertOrCerts = Union[rfc9480.CMPCertificate, Sequence[rfc9480.CMPCertificate]]
