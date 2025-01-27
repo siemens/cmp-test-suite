@@ -161,7 +161,8 @@ def prepare_challenge(
     return challenge_obj, shared_secret, info_val
 
 
-def prepare_challenge_enc_rand(
+@keyword(name="Prepare Challenge Encrypted Rand")
+def prepare_challenge_enc_rand(# noqa: D417 Missing argument descriptions in the docstring
     public_key: PublicKey,
     sender: Optional[Union[rfc9480.GeneralName, str]],
     rand_int: Optional[int] = None,
@@ -173,16 +174,27 @@ def prepare_challenge_enc_rand(
 ) -> ChallengeASN1:
     """Prepare a `Challenge` structure with an encrypted random number.
 
-    :param public_key: The public key of the end-entity (EE), used to create the `EnvelopedData`
-    structure.
-    :param sender: The sender of the message. Either a `GeneralName` or a string.
-    :param rand_int: The random number to be encrypted. Defaults to `None`.
-    :param private_key: The private key of the server (CA/RA). Defaults to `None`.
-    :param hash_alg: The hash algorithm to use to hash the challenge (e.g., "sha256"). Defaults to `None`.
-    :param bad_witness: The hash of the challenge. Defaults to an empty byte string.
-    :param cert_req_id: The certificate request ID. Defaults to `0`.
-    :param hybrid_kem_key: The hybrid KEM key to use. Defaults to `None`.
-    :return: The populated `Challenge` structure.
+    Arguments:
+    ---------
+        - `public_key`: The public key of the end-entity (EE), used to create the `EnvelopedData` structure.
+        - `sender`: The sender of the message, to set in the `Rand` structure.
+        Either a `GeneralName` or a string.
+        - `rand_int`: The random number to be encrypted. Defaults to `None`.
+        (a random number is generated if not provided)
+        - `private_key`: The private key of the server (CA/RA). Defaults to `None`.
+        - `hash_alg`: The hash algorithm to use to hash the random number (e.g., "sha256"). Defaults to `None`.
+        - `bad_witness`: The hash of the challenge. Defaults to an empty byte string.
+        - `cert_req_id`: The certificate request ID , used in the `rid` field. Defaults to `0`.
+        - `hybrid_kem_key`: The hybrid KEM key to use. Defaults to `None`.
+
+    Returns:
+    -------
+        - The populated `Challenge` structure.
+
+    Raises:
+    ------
+        - ValueError: If the public key type is invalid.
+
     """
     challenge_obj = ChallengeASN1()
 
