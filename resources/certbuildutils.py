@@ -1263,6 +1263,76 @@ def _default_validity(
     return prepare_validity(not_before, not_after)
 
 
+@keyword(name="Build Cert from CSR")
+def build_cert_from_csr(
+    csr: rfc6402.CertificationRequest,
+    ca_key: PrivateKey,
+    extensions: Optional[rfc5280.Extensions] = None,
+    serial_number: Optional[Union[str, int]] = None,
+    validity: Optional[rfc5280.Validity] = None,
+    issuer: Optional[rfc9480.Name] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    hash_alg: str = "sha256",
+    include_extensions: bool = True,
+    alt_sign_key: Optional[PrivateKeySig] = None,
+    **kwargs,
+) -> rfc9480.CMPCertificate:
+    """Build a certificate from a CSR.
+
+    :param csr: The CSR to build the certificate from.
+    :param ca_cert: The CA certificate.
+    :param ca_key: The CA private key.
+    :param extensions: Optional extensions to include in the certificate. Defaults to `None`.
+    If set, will exclude the extensions from the CSR.
+    :param serial_number: Optional serial number for the certificate. Defaults to `None`.
+    :param validity: Optional validity period for the certificate. Defaults to `None`.
+    :param issuer: The issuer of the certificate. Defaults to `None`.
+    :param hash_alg: The hash algorithm to use for signing. Defaults to `sha256`.
+    :param include_extensions: Whether to include the extensions from the CSR. Defaults to `True`.
+    :param alt_sign_key: Optional alternative signing key to use. Defaults to `None`.
+    :return: The certificate as raw bytes.
+    :raises ValueError: If neither the issuer nor the CA certificate is provided.
+    """
+    if issuer is None and ca_cert is None:
+        raise ValueError(
+            "Either the issuer or the CA certificate have to be provided.to build a certificate, from a CSR."
+        )
+    if ca_cert is not None:
+        issuer = ca_cert["tbsCertificate"]["subject"]
+
+    tbs_cert = _prepare_shared_tbs_cert(
+        issuer=issuer,
+        subject=csr["certificationRequestInfo"]["subject"],
+        serial_number=serial_number,
+        validity=validity,
+        days=kwargs.get("days", 3650),
+        public_key=csr["certificationRequestInfo"]["subjectPublicKeyInfo"],
+    )
+
+    tbs_cert["signature"] = prepare_sig_alg_id(
+        signing_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=kwargs.get("use_rsa_pss", True),
+        use_pre_hash=kwargs.get("use_pre_hash", False),
+    )
+    if include_extensions:
+        extn = extract_extension_from_csr(csr=csr)
+        if extensions is not None and extn is not None:
+            tbs_cert["extensions"] = extn
+        elif extensions is not None:
+            tbs_cert["extensions"] = extensions
+    cert = rfc9480.CMPCertificate()
+    cert["tbsCertificate"] = tbs_cert
+
+    if alt_sign_key is not None:
+        # so that the catalyst logic can be in the matching file.
+        from pq_logic.hybrid_sig.catalyst_logic import sign_cert_catalyst
+
+        return sign_cert_catalyst(cert=cert, trad_key=ca_key, pq_key=alt_sign_key, hash_alg=hash_alg, **kwargs)
+
+    return sign_cert(cert=cert, signing_key=ca_key, hash_alg=hash_alg, **kwargs)
+
+
 @not_keyword
 def prepare_tbs_certificate(
     subject: str,
