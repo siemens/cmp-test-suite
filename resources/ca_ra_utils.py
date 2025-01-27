@@ -391,20 +391,21 @@ def build_ckuann(
     return pki_message
 
 @keyword("Get CertReqMsg From PKIMessage")
-def get_cert_req_msg_from_pkimessage(pki_message: rfc9480.PKIMessage, index: int = 0) -> rfc4211.CertReqMsg:
+def get_cert_req_msg_from_pkimessage(# noqa: D417 Missing argument descriptions in the docstring
+        pki_message: rfc9480.PKIMessage, index: int = 0) -> rfc4211.CertReqMsg:
     """Extract the certificate request from a PKIMessage.
 
     Arguments:
-    ----------
+    ---------
         - `pki_message`: The PKIMessage to extract the certificate request from.
         - `index`: The index of the certificate request to extract. Defaults to `0`.
 
     Returns:
-    --------
+    -------
         - The certificate request message.
 
     Raises:
-    -------
+    ------
         - ValueError: If the body type is not one of `ir`, `cr`, `kur`, or `crr`.
         - IndexError: If the index is out of range.
 
