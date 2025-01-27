@@ -623,6 +623,41 @@ def verify_sig_pop_for_pki_request(pki_message: rfc9480.PKIMessage, cert_index: 
         raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr or p10cr")
 
 
+def _prepare_ca_body(
+    body_name: str,
+    responses: Union[Sequence[rfc9480.CertResponse], rfc9480.CertResponse],
+    ca_pubs: Optional[Sequence[rfc9480.CMPCertificate]] = None,
+) -> rfc9480.PKIBody:
+    """Prepare the body for a CA `CertResponse` message.
+
+    :return: The prepared body.
+    """
+    types_to_id = {"ip": 1, "cp": 3, "kup": 8, "ccp": 14}
+    if body_name not in types_to_id:
+        raise ValueError(f"Unsupported body_type: '{body_name}'. Expected one of {list(types_to_id.keys())}.")
+
+    body = rfc9480.PKIBody()
+    if ca_pubs is not None:
+        body[body_name]["caPubs"].extend(ca_pubs)
+
+    if isinstance(responses, rfc9480.CertResponse):
+        responses = [responses]
+
+    if responses is None:
+        raise ValueError("No responses provided to build the body.")
+
+    body[body_name]["response"].extend(responses)
+    return body
+
+
+def _set_header_fields(request: rfc9480.PKIMessage, kwargs: dict) -> dict:
+    """Set header fields for a new PKIMessage, by extracting them from the request."""
+    kwargs["recip_kid"] = kwargs.get("recip_kid") or request["header"]["senderKID"].asOctets()
+    kwargs["recip_nonce"] = kwargs.get("recip_nonce") or request["header"]["senderNonce"].asOctets()
+    kwargs["sender_nonce"] = kwargs.get("sender_nonce") or os.urandom(16)
+    return kwargs
+
+
 
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
