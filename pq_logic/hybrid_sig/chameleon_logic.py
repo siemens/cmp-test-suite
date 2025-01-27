@@ -539,3 +539,82 @@ def build_chameleon_cert_from_paired_csr(
     return paired_cert, delta_cert
 
 
+def build_delta_cert_from_paired_cert(paired_cert: rfc9480.CMPCertificate) -> rfc9480.CMPCertificate:
+    """Prepare a paired certificate from a Base Certificate with a Delta Certificate Descriptor (DCD) extension.
+
+    :param paired_cert: The Base Certificate with the DCD extension.
+    :return: The paired certificate.
+    """
+    paired_cert_tmp = copy_asn1_certificate(paired_cert)
+
+    dcd = get_extension(paired_cert_tmp["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
+
+    if dcd is None:
+        raise ValueError("DCD extension not found in the Base Certificate.")
+
+    dcd, rest = decoder.decode(dcd["extnValue"], asn1Spec=DeltaCertificateDescriptor())
+
+    if rest:
+        raise BadAsn1Data("DeltaCertificateDescriptor")
+
+    delta_cert = rfc9480.CMPCertificate()
+    delta_cert["tbsCertificate"] = paired_cert_tmp["tbsCertificate"]
+
+    # Remove the DCD extension from the Delta Certificate template
+    extensions = []
+
+    for ext in delta_cert["tbsCertificate"]["extensions"]:
+        if ext["extnID"] != id_ce_deltaCertificateDescriptor:
+            extensions.append(ext)
+
+    tmp_extn = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
+    if extensions:
+        tmp_extn.extend(extensions)
+        delta_cert["tbsCertificate"]["extensions"] = tmp_extn
+
+    delta_cert["tbsCertificate"]["extensions"] = tmp_extn
+
+    # Replace fields based on the DCD extension
+    delta_cert["tbsCertificate"]["serialNumber"] = int(dcd["serialNumber"])
+
+    if dcd["signature"].isValue:
+        delta_cert["tbsCertificate"]["signature"]["algorithm"] = dcd["signature"]["algorithm"]
+        delta_cert["tbsCertificate"]["signature"]["parameters"] = dcd["signature"]["parameters"]
+        delta_cert["signatureAlgorithm"]["algorithm"] = dcd["signature"]["algorithm"]
+        delta_cert["signatureAlgorithm"]["parameters"] = dcd["signature"]["parameters"]
+
+    else:
+        delta_cert["signatureAlgorithm"]["algorithm"] = paired_cert_tmp["signatureAlgorithm"]["algorithm"]
+        delta_cert["signatureAlgorithm"]["parameters"] = paired_cert_tmp["signatureAlgorithm"]["parameters"]
+
+    if dcd["issuer"].isValue:
+        issuer = copy_name(filled_name=dcd["issuer"], target=rfc5280.Name())
+        delta_cert["tbsCertificate"]["issuer"] = issuer
+
+    if dcd["validity"].isValue:
+        validity = copy_validity(dcd["validity"])
+        delta_cert["tbsCertificate"]["validity"] = validity
+
+    delta_cert["tbsCertificate"]["subjectPublicKeyInfo"] = dcd["subjectPublicKeyInfo"]
+
+    if dcd["subject"].isValue:
+        subject = copy_name(filled_name=dcd["subject"], target=rfc5280.Name())
+        delta_cert["tbsCertificate"]["subject"] = subject
+
+    if dcd["extensions"].isValue:
+        for dcd_ext in dcd["extensions"]:
+            found = False
+            for ext in delta_cert["tbsCertificate"]["extensions"]:
+                if ext["extnID"] == dcd_ext["extnID"]:
+                    ext["critical"] = dcd_ext["critical"]
+                    ext["extnValue"] = dcd_ext["extnValue"]
+                    found = True
+                    break
+            if not found:
+                raise ValueError(f"Extension {dcd_ext['extnID']} not found in the Delta Certificate template.")
+
+    delta_cert["signature"] = dcd["signatureValue"]
+
+    return delta_cert
+
+
