@@ -379,11 +379,14 @@ def build_paired_csrs(
 ###################
 
 
-def _extract_attributes(attributes):
+@not_keyword
+def extract_chameleon_attributes(
+    csr: rfc6402.CertificationRequest,
+) -> Tuple[List[rfc5652.Attribute], DeltaCertificateRequestValue, DeltaCertificateRequestSignatureValue]:
     """
     Extract attributes from the CSR, excluding the signature attribute.
 
-    :param attributes: The list of attributes in the CertificationRequestInfo.
+    :param csr: The `CertificationRequest` to extract attributes from.
     :return: A tuple containing:
         - All attributes except the signature one.
         - The Delta Certificate Request attribute.
@@ -392,6 +395,8 @@ def _extract_attributes(attributes):
     non_signature_attributes = []
     delta_cert_request = None
     delta_cert_request_signature = None
+
+    attributes = csr["certificationRequestInfo"]["attributes"]
 
     for attr in attributes:
         if attr["attrType"] == id_at_deltaCertificateRequest:
