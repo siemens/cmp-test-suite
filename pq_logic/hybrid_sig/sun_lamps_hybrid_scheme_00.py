@@ -637,7 +637,9 @@ def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: 
     if hashed_sig != compute_hash(alg_name=hash_alg, data=signature):
         raise ValueError("The fetched signature was invalid!")
 
-    verify_signature_with_alg_id(alg_id=sig_alg_id, public_key=alt_pub_key, data=data, signature=signature)
+    pq_compute_utils.verify_signature_with_alg_id(
+        alg_id=sig_alg_id, public_key=alt_pub_key, data=data, signature=signature
+    )
 
 
 def _patch_extensions(extensions: rfc9480.Extensions, extension: rfc5280.Extension) -> rfc9480.Extensions:
@@ -731,12 +733,12 @@ def parse_alt_sub_pub_key_extension(cert: rfc9480.CMPCertificate, to_by_val: boo
         if not loc:
             raise ValueError("Location is required to fetch the public key for ByValue conversion.")
 
-        public_key = _process_public_key(public_key)
+        public_key = process_public_key(public_key)
         logging.info("used hash alg %s", hash_alg)
 
     else:
         public_key = fetch_value_from_location(loc)
-        public_key = _process_public_key(public_key)
+        public_key = process_public_key(public_key)
 
     new_extension = prepare_sun_hybrid_alt_sub_pub_key_ext(
         public_key=public_key,
