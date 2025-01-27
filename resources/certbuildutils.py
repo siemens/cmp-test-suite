@@ -1263,6 +1263,42 @@ def _default_validity(
     return prepare_validity(not_before, not_after)
 
 
+@keyword(name="Build Cert From CertTemplate")
+def build_cert_from_cert_template(
+    cert_template: rfc9480.CertTemplate,
+    ca_cert: rfc9480.CMPCertificate,
+    ca_key: PrivateKey,
+    use_rsa_pss: bool = True,
+    use_pre_hash: bool = False,
+    hash_alg: str = "sha256",
+) -> rfc9480.CMPCertificate:
+    """Build a certificate from a CertTemplate.
+
+    :param cert_template: The CertTemplate to build the certificate from.
+    :param ca_cert: The CA certificate.
+    :param ca_key: The CA private key.
+    :param use_rsa_pss: Whether to use RSA-PSS or not. Defaults to `True`.
+    :param use_pre_hash: Whether to use pre-hash or not. Defaults to `False`.
+    :param hash_alg: The hash algorithm to use (e.g. "sha256").
+    """
+    tbs_certs = prepare_tbs_certificate_from_template(
+        cert_template=cert_template,
+        issuer=ca_cert["tbsCertificate"]["subject"],
+        ca_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=use_pre_hash,
+    )
+    cert = rfc9480.CMPCertificate()
+    cert["tbsCertificate"] = tbs_certs
+    return sign_cert(
+        cert=cert,
+        signing_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+    )
+
+
 def _prepare_shared_tbs_cert(
     subject: Union[str, rfc9480.Name],
     issuer: Union[rfc9480.CMPCertificate, rfc9480.Name],
