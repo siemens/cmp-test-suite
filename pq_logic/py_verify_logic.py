@@ -9,51 +9,223 @@ Either has functionality to verify signatures of PKIMessages or certificates.
 
 
 """
+
+import logging
+from typing import List, Optional, Sequence, Tuple
+
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import constraint, tag, univ
+from pyasn1_alt_modules import rfc5280, rfc9480, rfc9481, rfc5480
+from resources import keyutils
+from resources.certutils import load_public_key_from_cert
+from resources.exceptions import BadMessageCheck, UnknownOID
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, TRAD_STR_OID_TO_KEY_NAME
+from resources.typingutils import PublicKeySig
+
+from pq_logic import pq_compute_utils
+from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
+from pq_logic.hybrid_sig.catalyst_logic import (
+    id_ce_altSignatureAlgorithm,
+    id_ce_altSignatureValue,
+    id_ce_subjectAltPublicKeyInfo,
+)
+from pq_logic.keys.abstract_composite import AbstractCompositeSigPublicKey
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, CompositeSigCMSPublicKey
+from pq_logic.migration_typing import CertOrCerts
+from pq_logic.pq_key_factory import PQKeyFactory
+
 # TODO fix to include CRL-Verification
 # currently only works for PQ and traditional signatures.
 # But in the next update will be Completely support CRL-Verification.
 
-from pyasn1_alt_modules import rfc9480
-from resources.cryptoutils import verify_signature
-from resources.oid_mapping import get_hash_from_oid
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME
-from resources.protectionutils import verify_rsassa_pss_from_alg_id
-from robot.api.deco import not_keyword
 
-from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPublicKey
+# TODO fix parse catalyst directly.
 
 
-@not_keyword
-def verify_signature_with_alg_id(public_key, alg_id: rfc9480.AlgorithmIdentifier, data: bytes, signature: bytes):
-    """Verify the provided data and signature using the given algorithm identifier.
+def verify_cert_hybrid_signature(
+    ee_cert: rfc9480.CMPCertificate,
+    issuer_cert: rfc9480.CMPCertificate,
+    other_cert: rfc9480.CMPCertificate,
+    catalyst_key: PQSignaturePrivateKey = None,
+) -> None:
+    """Verify the hybrid signature of an end-entity (EE) certificate using the appropriate composite methode.
 
-    Supports traditional-, pq- and composite signature algorithm.
+    :param ee_cert: The end-entity certificate (`CMPCertificate`) to be verified. This certificate
+                    contains the hybrid signature and its algorithm identifier.
+    :param issuer_cert: The issuer certificate providing the traditional public key or composite signature key.
+    :param other_cert: The secondary certificate containing the
+                       post-quantum public key (e.g., ML-DSA or another PQ signature algorithm)
+                       used in the composite signature. (as an example, use-case for cert discovery)
+    :param catalyst_key: Optional. A post-quantum private key (`PQSignaturePrivateKey`) used for creating
+                         a composite key dynamically when `other_cert` is not provided.
 
-    :param public_key: The public key object used to verify the signature.
-    :param alg_id: An `AlgorithmIdentifier` specifying the algorithm and any
-                   associated parameters for signature verification.
-    :param data: The original message or data whose signature needs verification,
-                 as a byte string.
-    :param signature: The digital signature to verify, as a byte string.
-
-    :raises ValueError: If the algorithm identifier is unsupported or invalid.
-    :raises InvalidSignature: If the signature does not match the provided data
-                              under the given algorithm and public key.
+    :raises ValueError:
+        - If the OID in the `ee_cert` is unsupported or invalid.
+        - If neither `other_cert` nor `catalyst_key` is provided when required.
+    :raises NotImplementedError: If the signature algorithm OID is not supported for verification.
+    :raises InvalidSignature: If the signature verification fails.
     """
-    oid = alg_id["algorithm"]
-
+    oid = ee_cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+    alg_id = ee_cert["tbsCertificate"]["signature"]
+    spki = other_cert["tbsCertificate"]["subjectPublicKeyInfo"]
     if oid in CMS_COMPOSITE_OID_2_NAME:
-        name: str = CMS_COMPOSITE_OID_2_NAME[oid]
-        use_pss = name.endswith("-pss")
-        pre_hash = name.startswith("hash-")
-        public_key: CompositeSigCMSPublicKey
-        public_key.verify(data=data, signature=signature, use_pss=use_pss, pre_hash=pre_hash)
+        if other_cert is None and catalyst_key is None:
+            composite_key = PQKeyFactory.load_public_key_from_spki(spki)
+            if not isinstance(composite_key, CompositeSigCMSPublicKey):
+                raise ValueError()
+        elif other_cert is not None:
+            trad_key = keyutils.load_public_key_from_spki(issuer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+            pq_key = PQKeyFactory.load_public_key_from_spki(other_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+            composite_key = CompositeSigCMSPublicKey(pq_key, trad_key=trad_key)
 
-    elif oid in RSASSA_PSS_OID_2_NAME:
-        return verify_rsassa_pss_from_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
+        else:
+            trad_key = keyutils.load_public_key_from_spki(issuer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+            composite_key = CompositeSigCMSPublicKey(catalyst_key, trad_key=trad_key)
 
-    elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
-        hash_alg = get_hash_from_oid(oid, only_hash=True)
-        verify_signature(public_key=public_key, signature=signature, data=data, hash_alg=hash_alg)
+        data = encoder.encode(ee_cert["tbsCertificate"])
+        signature = ee_cert["signature"].asOctets()
+        CompositeSigCMSPrivateKey.validate_oid(oid, composite_key)
+        pq_compute_utils.verify_signature_with_alg_id(composite_key, alg_id=alg_id, signature=signature, data=data)
+
     else:
-        raise ValueError(f"Unsupported public key type: {type(public_key).__name__}.")
+        raise NotImplementedError(f"Unsupported algorithm OID: {oid}. Verification not implemented.")
+
+
+def _verify_signature_with_other_cert(
+    cert: rfc9480.CMPCertificate,
+    sig_alg: rfc9480.AlgorithmIdentifier,
+    data: bytes,
+    signature: bytes,
+    other_certs: Optional[CertOrCerts] = None,
+) -> None:
+    """Verify a Composite Signature Certificate using two certificates.
+
+    :param cert: The certificate to verify.
+    :param sig_alg: The signature algorithm identifier.
+    :param data: The data to verify.
+    :param signature: The signature to verify.
+    :param other_certs: A single certificate or a sequence of certificates to extract
+    the related certificate.
+    :raises ValueError: If the related certificate is not provided.
+    :raises UnknownOID: If the signature algorithm OID is not supported.
+    :raises InvalidSignature: If the signature verification fails.
+    """
+    sig_alg_oid = sig_alg["algorithm"]
+
+    if sig_alg_oid not in CMS_COMPOSITE_OID_2_NAME:
+        raise ValueError("The signature algorithm is not a composite signature one.")
+
+    if other_certs is not None:
+        other_certs = other_certs if not isinstance(other_certs, rfc9480.CMPCertificate) else [other_certs]
+
+    pq_key = pq_compute_utils.may_extract_alt_key_from_cert(cert=cert, other_certs=other_certs)
+    if pq_key is None:
+        raise ValueError("No alternative issuer key found.")
+
+    trad_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+
+    if not isinstance(pq_key, PQSignaturePublicKey):
+        trad_key, pq_key = pq_key, trad_key
+
+    if sig_alg_oid in CMS_COMPOSITE_OID_2_NAME:
+        public_key = CompositeSigCMSPublicKey(pq_key=pq_key, trad_key=trad_key)
+        CompositeSigCMSPublicKey.validate_oid(sig_alg_oid, public_key)
+
+    else:
+        raise UnknownOID(sig_alg_oid, extra_info="Composite signature can not be verified, with 2-certs.")
+
+    pq_compute_utils.verify_signature_with_alg_id(public_key, sig_alg, data, signature)
+
+
+def verify_composite_signature_with_hybrid_cert(
+    data: bytes,
+    signature: bytes,
+    sig_alg: rfc9480.AlgorithmIdentifier,
+    cert: rfc9480.CMPCertificate,
+    other_certs: Optional[CertOrCerts] = None,
+) -> None:
+    """Verify a signature using a hybrid certificate.
+
+    Expected to either get a composite signature certificate or a certificate with a related certificate extension.
+    or a certificate with a cert discovery extension. So that the second certificate can be extracted.
+
+    :param data: The data to verify.
+    :param signature: The signature to verify against the data.
+    :param sig_alg: The signature algorithm identifier.
+    :param cert: The certificate may contain a composite signature key or a single key.
+    :param other_certs: A single certificate or a sequence of certificates to extract
+    the related certificate from.
+    :raises ValueError: If the alternative key cannot be obtained.
+    :raises UnknownOID: If the signature algorithm OID is not supported.
+    :raises InvalidSignature: If the signature verification fails.
+    :raises ValueError: If the `cert` contains a PQ signature algorithm.
+    It Should be a traditional algorithm for migration strategy.
+    """
+    if sig_alg["algorithm"] not in CMS_COMPOSITE_OID_2_NAME:
+        raise ValueError("The signature algorithm is not a composite signature.")
+
+    cert_sig_alg = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+
+    if cert_sig_alg in MSG_SIG_ALG or str(cert_sig_alg) in TRAD_STR_OID_TO_KEY_NAME:
+        logging.info("The certificate contains a traditional signature algorithm.")
+        _verify_signature_with_other_cert(cert, sig_alg, data, signature, other_certs=other_certs)
+        return
+
+    elif cert_sig_alg in PQ_OID_2_NAME:
+        raise ValueError(
+            "The certificate contains a post-quantum signature algorithm."
+            "please use traditional signature algorithm"
+            "because the migration should test use case of "
+            "having the certificate with traditional signature algorithm."
+        )
+
+    elif cert_sig_alg in CMS_COMPOSITE_OID_2_NAME:
+        logging.info("The certificate contains a composite signature algorithm.")
+        public_key = CompositeSigCMSPublicKey.from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+        CompositeSigCMSPublicKey.validate_oid(cert_sig_alg, public_key)
+        pq_compute_utils.verify_signature_with_alg_id(public_key, sig_alg, data, signature)
+
+    else:
+        raise UnknownOID(sig_alg["algorithm"], extra_info="Composite signature can not be verified.")
+
+
+def verify_sun_hybrid_cert(
+    cert: rfc9480.CMPCertificate,
+    issuer_cert: rfc9480.CMPCertificate,
+    alt_issuer_key: Optional[PublicKeySig] = None,
+    check_alt_sig: bool = True,
+    other_certs: Optional[List[rfc9480.CMPCertificate]] = None,
+):
+    """Verify a Sun hybrid certificate.
+
+    Validates the primary and alternative signatures in a certificate.
+    The main signature is verified using the issuer's tradition key inside the certificate public key.
+    And the alternative signature is verified using the issuer's alternative key.
+
+    :param cert: The SUN hybrid certificate to verify.
+    :param issuer_cert: The issuer's certificate for verifying the main signature.
+    :param check_alt_sig: Whether to validate the alternative signature (default: True).
+    :param alt_issuer_key: The issuer's public key for verifying the alternative signature.
+    Otherwise, will need to get the public key from the issuer's certificate.
+    :param other_certs: A list of other certificates to search for the related certificate.
+    :raises ValueError: If validation fails for the certificate or its extensions.
+    :raises ValueError: If the alternative issuer key is not found.
+    :raises BadAsn1Data: If the AlternativePublicKeyInfo extension contains remainder data.
+    """
+    if alt_issuer_key is None:
+        alt_issuer_key = pq_compute_utils.may_extract_alt_key_from_cert(issuer_cert, other_certs=other_certs)
+        if alt_issuer_key is None:
+            raise ValueError("No alternative issuer key found.")
+
+    alt_pub_key = sun_lamps_hybrid_scheme_00.validate_alt_pub_key_extn(cert)
+    if check_alt_sig:
+        sun_lamps_hybrid_scheme_00.validate_alt_sig_extn(cert, alt_pub_key, alt_issuer_key)
+
+    public_key = load_public_key_from_cert(issuer_cert)
+    data = encoder.encode(cert["tbsCertificate"])
+    alg_id = cert["tbsCertificate"]["signature"]
+    signature = cert["signature"].asOctets()
+    pq_compute_utils.verify_signature_with_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
+
+
