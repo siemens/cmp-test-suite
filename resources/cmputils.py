@@ -3942,7 +3942,8 @@ def build_polling_response(  # noqa D417 undocumented-param
 
 
 def prepare_popo_challenge_for_non_signing_key(
-    use_encr_cert: bool = True, use_key_enc: bool = True,
+    use_encr_cert: bool = True,
+    use_key_enc: bool = True,
 ) -> rfc4211.ProofOfPossession:
     """Prepare a Proof-of-Possession (PoP) structure for Key encipherment or key agreement.
 
