@@ -311,8 +311,8 @@ def verify_catalyst_signature(
             verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
 
 
-def generate_catalyst_cert(
-    trad_key,
+def build_catalyst_cert(
+    trad_key: TradSigPrivKey,
     pq_key: PQSignaturePrivateKey,
     client_key: PrivateKey,
     common_name: str = "CN=Hans Mustermann",
