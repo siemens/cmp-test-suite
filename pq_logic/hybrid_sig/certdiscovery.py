@@ -142,7 +142,7 @@ def extract_sia_extension_for_cert_discovery(
     return obj
 
 
-def get_secondary_certificate(uri: str) -> rfc9480.CMPCertificate:
+def get_cert_discovery_cert(uri: str) -> rfc9480.CMPCertificate:
     """Get the secondary certificate using the provided URI.
 
     :param uri: The URI of the secondary certificate.
@@ -192,7 +192,8 @@ def validate_alg_ids(other_cert: rfc9480.CMPCertificate, rel_cert_desc: RelatedC
             rel_cert_desc["signatureAlgorithm"], other_cert["tbsCertificate"]["signature"]
         ):
             raise ValueError(
-                "The `signatureAlgorithm` in the secondary certificate does not match the RelatedCertificateDescriptor's one."
+                "The `signatureAlgorithm` in the secondary certificate does not match the "
+                "RelatedCertificateDescriptor's one."
             )
 
     if rel_cert_desc["publicKeyAlgorithm"].isValue:
@@ -200,7 +201,8 @@ def validate_alg_ids(other_cert: rfc9480.CMPCertificate, rel_cert_desc: RelatedC
             rel_cert_desc["publicKeyAlgorithm"], other_cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]
         ):
             raise ValueError(
-                "The `publicKeyAlgorithm` in the secondary certificate does not match the RelatedCertificateDescriptor's one."
+                "The `publicKeyAlgorithm` in the secondary certificate does not "
+                "match the RelatedCertificateDescriptor's one."
             )
 
 
