@@ -461,8 +461,8 @@ def generate_certs_only_message(cert_path: str, cert_dir: str) -> bytes:
     return cms_der
 
 
-def prepare_related_certificate_extension(
-    cert_a, hash_alg: Optional[str] = None, critical: bool = False
+def prepare_related_cert_extension(
+    cert_a: rfc9480.CMPCertificate, hash_alg: Optional[str] = None, critical: bool = False
 ) -> rfc5280.Extension:
     """Prepare the RelatedCertificate extension for a x509 certificate.
 
