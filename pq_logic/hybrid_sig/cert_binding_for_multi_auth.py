@@ -45,7 +45,7 @@ from resources.exceptions import BadAsn1Data
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.typingutils import PrivateKey
 from resources.utils import manipulate_first_byte
-from robot.api.deco import keyword, not_keyword
+from robot.api.deco import keyword
 from unit_tests.utils_for_test import convert_to_crypto_lib_cert
 
 from pq_logic.hybrid_structures import RelatedCertificate, RequesterCertificate
@@ -190,7 +190,6 @@ def validate_related_cert_extension(
     validate_ku_and_eku_related_cert(cert_a=cert_a, related_cert=related_cert)
 
 
-@not_keyword
 def get_related_cert_from_list(
     certs: List[rfc9480.CMPCertificate], cert_a: rfc9480.CMPCertificate
 ) -> rfc9480.CMPCertificate:
@@ -286,7 +285,7 @@ def extract_related_cert_request_attribute(csr: rfc6402.CertificationRequest) ->
 
 
 def process_mime_message(mime_data: bytes):
-    """Parses a MIME message and extracts application/pkcs7-mime content.
+    """Parse a MIME message and extracts application/pkcs7-mime content.
 
     :param mime_data: Raw MIME message as bytes.
     :return: Decoded CMS content (as bytes).
