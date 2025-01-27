@@ -444,23 +444,6 @@ def _prepare_pre_tbs_certificate(
     return cert, extn_alt_sig2, extn_alt_pub2
 
 
-def fetch_value_from_location(location: str) -> Optional[bytes]:
-    """Fetch the actual value from a location (e.g., URL) if provided.
-
-    :param location: The URI or location to fetch the value from.
-    :return: The fetched value as bytes:
-    :raise: ValueError, if the data can not be fetched.
-    """
-    if not location:
-        return None
-    try:
-        response = requests.get(location)
-        response.raise_for_status()
-        return response.content
-    except Exception as e:
-        raise ValueError(f"Failed to fetch value from {location}: {e}")
-
-
 def validate_alt_pub_key_extn(cert: rfc9480.CMPCertificate):
     """Validate the `AltSubPubKeyExt` extension in a certificate.
 
