@@ -40,6 +40,7 @@ from resources.suiteenums import KeyUsageStrictness
 # for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False
 
+
 def parse_certificate(data: bytes) -> rfc9480.CMPCertificate:
     """Parse a DER-encoded X509 certificate into a pyasn1 object.
 
@@ -729,7 +730,8 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     _verify_certificate_chain(command=command, cert_chain=cert_chain, timeout=int(timeout))
 
 
-def _cert_in_list(cert: rfc9480.CMPCertificate, cert_list: List[rfc9480.CMPCertificate]) -> bool:
+@not_keyword
+def cert_in_list(cert: rfc9480.CMPCertificate, cert_list: List[rfc9480.CMPCertificate]) -> bool:
     """Check if a pyasn1 certificate inside a list of pyasn1 certificates.
 
     `pyasn1` might throw an error, so the key word 'in' is not usable.
@@ -774,7 +776,7 @@ def certificates_are_trustanchors(  # noqa D417 undocumented-param
     none_anchors = []
 
     for single_cert in certs:
-        if not _cert_in_list(single_cert, anchors):
+        if not cert_in_list(single_cert, anchors):
             none_anchors.append(single_cert)
 
     if none_anchors:
