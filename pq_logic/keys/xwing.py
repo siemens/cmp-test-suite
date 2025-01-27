@@ -8,7 +8,7 @@ import base64
 import logging
 import os
 import textwrap
-from typing import Optional
+from typing import Optional, Tuple
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import x25519
@@ -21,6 +21,7 @@ from pq_logic.fips import fips203
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey, MLKEMPublicKey
 from pq_logic.trad_key_factory import generate_trad_key
+from pq_logic.trad_typing import ECDHPrivateKey
 
 ##################################
 # XWing Keys
@@ -102,6 +103,20 @@ class XWingPublicKey(AbstractHybridRawPublicKey):
     def ct_length(self) -> int:
         """Return the length of the ciphertext."""
         return self.pq_key.ct_length + 32
+
+    def encaps(self, private_key: ECDHPrivateKey) -> Tuple[bytes, bytes]:
+        """Encapsulate a shared secret and ciphertext for the given private key.
+
+        :param private_key: The private key to encapsulate the shared secret for.
+        :return: The shared secret and ciphertext.
+        """
+        pk_X = self.trad_key.public_bytes_raw()
+        ss_X = private_key.exchange(self.trad_key)
+        ss_M, ct_M = self.pq_key.encaps()
+        ct_X = private_key.public_key().public_bytes_raw()
+        ss = XWingPrivateKey.kem_combiner(ss_M, ss_X, ct_X, pk_X)
+        ct = ct_M + ct_X
+        return ss, ct
 
 
 class XWingPrivateKey(AbstractHybridRawPrivateKey):
