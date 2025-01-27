@@ -2,10 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Utility for preparing and generating post-quantum keys.
-
-
-"""
+"""Utility for preparing and generating post-quantum keys."""
 
 import base64
 import logging
@@ -138,7 +135,7 @@ class PQPrivateKey(ABC):
         self._check_name(name=alg_name)
         self._name = alg_name
         self._private_key = private_bytes
-        self._public_key = public_key
+        self._public_key_bytes = public_key
 
     def _one_asym_key(self) -> rfc5958.OneAsymmetricKey:
         """Prepare a PyAsn1 OneAsymmetricKey structure."""
