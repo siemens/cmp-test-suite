@@ -1084,26 +1084,30 @@ def csr_add_extensions(  # noqa D417 undocumented-param
     | ${updated_csr}= | CSR Add Extensions | csr=${csr} | extensions=${extensions_list} |
 
     """
-    # extensions are kept in a `SetOf Attributes` and are explicitly tagged 0
-    extension_set = univ.SetOf()
-    attributes = Attributes().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 0))
-
-    # the attribute type we need is a `x509 v3 extension` with the corresponding OID
-    attribute = Attribute()
-    attribute["type"] = univ.ObjectIdentifier("1.2.840.113549.1.9.14")
-
     # the extensions are wrapped in a sequence before they go into the set
     wrapping_sequence = univ.Sequence()
     for index, extension in enumerate(extensions):
         wrapping_sequence[index] = AttributeValue(encoder.encode(extension))
 
-    extension_set[0] = wrapping_sequence
-    attribute["vals"] = extension_set
-    attributes[0] = attribute
+    # rfc2985.pkcs_9_at_extensionRequest
+    attribute = prepare_single_value_attr(attr_type=univ.ObjectIdentifier("1.2.840.113549.1.9.14"),
+                                          attr_value=wrapping_sequence)
 
-    csr["certificationRequestInfo"]["attributes"] = attributes
+    csr["certificationRequestInfo"]["attributes"].append(attribute)
     return csr
 
+
+def prepare_single_value_attr(attr_type: univ.ObjectIdentifier, attr_value: Any) -> rfc5652.Attribute:
+    """Prepare an attribute for a CSR.
+
+    :param attr_type: The Object Identifier (OID) for the attribute.
+    :param attr_value: The value of the attribute to be encoded.
+    :return: The populated `Attribute` structure.
+    """
+    attr = rfc5652.Attribute()
+    attr["attrType"] = attr_type
+    attr["attrValues"][0] = encoder.encode(attr_value)
+    return attr
 
 @keyword(name="CSR Extend Subject")
 def csr_extend_subject(  # noqa D417 undocumented-param

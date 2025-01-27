@@ -301,19 +301,6 @@ def prepare_delta_cert_req(
     return delta_req
 
 
-def _prepare_attr(attr_type: univ.ObjectIdentifier, attr_value: Any) -> rfc5652.Attribute:
-    """Prepare an attribute for a CSR.
-
-    :param attr_type: The Object Identifier (OID) for the attribute.
-    :param attr_value: The value of the attribute to be encoded.
-    :return: The populated `Attribute` structure.
-    """
-    attr = rfc5652.Attribute()
-    attr["attrType"] = attr_type
-    attr["attrValues"][0] = encoder.encode(attr_value)
-    return attr
-
-
 def build_paired_csrs(
     base_private_key,
     delta_private_key,
