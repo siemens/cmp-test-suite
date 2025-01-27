@@ -221,7 +221,7 @@ def validate_cert_discovery(
     )
     url = str(rel_cert_desc["uniformResourceIdentifier"])
 
-    other_cert = get_secondary_certificate(url)
+    other_cert = get_cert_discovery_cert(url)
     validate_alg_ids(other_cert, rel_cert_desc)
 
     if check_is_cert_signer(cert=other_cert, poss_issuer=issuer_cert):
