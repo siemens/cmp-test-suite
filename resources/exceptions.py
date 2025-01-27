@@ -57,7 +57,7 @@ class InvalidKeyCombination(CMPTestSuiteError):
     As an example, a key combination for Chempat or Composite keys is invalid.
     """
 
-    message: str
+    pass
 
 
 class UnknownOID(CMPTestSuiteError):
@@ -69,8 +69,8 @@ class UnknownOID(CMPTestSuiteError):
         :param oid: The OID that is unknown.
         :param extra_info: Additional information about the unknown OID.
         """
-        oid = may_return_oid_to_name(oid)
-        self.message = f"Unknown OID: {oid} {extra_info}"
+        oid_name = may_return_oid_to_name(oid)
+        self.message = f"Unknown OID: {oid_name}:{oid} {extra_info}"
         self.oid = oid
         super().__init__(self.message)
 
