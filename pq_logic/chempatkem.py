@@ -35,7 +35,7 @@ CURVE_NAME_2_CONTEXT_NAME = {
 }
 
 
-TRAD_ALG_2_NENC = {"brainpoolP384": 48, "P256": 32, "brainpoolP256": 32, "X448": 56, "X25519": 32, "P384": 48}
+TRAD_ALG_2_NENC = {"brainpoolP384": 97, "P256": 65, "brainpoolP256": 65, "X448": 56, "X25519": 32, "P384": 97}
 
 
 def _get_trad_name(trad_key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> str:
