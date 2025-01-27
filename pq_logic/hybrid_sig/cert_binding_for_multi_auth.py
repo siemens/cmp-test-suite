@@ -30,7 +30,7 @@ from pyasn1_alt_modules.rfc7906 import BinaryTime
 from resources import cmputils, utils
 from resources.asn1utils import get_set_bitstring_names
 from resources.ca_kga_logic import validate_issuer_and_serial_number_field
-from resources.certextractutils import get_extension, get_field_from_certificate, extract_extension_from_csr
+from resources.certextractutils import extract_extension_from_csr, get_extension, get_field_from_certificate
 from resources.certutils import (
     build_cert_chain_from_dir,
     certificates_are_trustanchors,
