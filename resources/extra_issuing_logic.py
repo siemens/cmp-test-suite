@@ -17,12 +17,10 @@ from typing import Optional, Tuple, Union
 import pyasn1.error
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from pq_logic.kem_mechanism import ECDHKEM
-from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.migration_typing import HybridKEMPrivateKey
-from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.trad_typing import ECDHPrivateKey
+from pq_logic.pq_utils import is_kem_private_key, is_kem_public_key
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1.type.base import Asn1Type
@@ -31,18 +29,18 @@ from robot.api.deco import keyword, not_keyword
 from unit_tests.asn1_wrapper_class.pki_message_wrapper import PKIMessage, prepare_name
 
 from resources import asn1utils, protectionutils
-from resources.asn1_structures import POPODecKeyChallContentAsn1
+from resources.asn1_structures import ChallengeASN1, POPODecKeyChallContentAsn1
 from resources.ca_kga_logic import validate_enveloped_data
 from resources.certutils import load_public_key_from_cert
 from resources.cmputils import _prepare_pki_message, compare_general_name_and_name, prepare_general_name
 from resources.convertutils import str_to_bytes
-from resources.cryptoutils import compute_hmac, perform_ecdh
+from resources.cryptoutils import compute_aes_cbc, compute_hmac, perform_ecdh
 from resources.envdatautils import (
     build_env_data_for_exchange,
     prepare_issuer_and_serial_number,
     prepare_one_asymmetric_key,
 )
-from resources.exceptions import InvalidKeyCombination
+from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import compute_hash
 from resources.protectionutils import compute_and_prepare_mac
@@ -177,7 +175,7 @@ def prepare_kem_env_data_for_popo(
 
     env_data = build_env_data_for_exchange(
         public_key_recip=ca_public_key,
-        cert_recip=ca_cert,
+        cert_sender=ca_cert,
         cek=cek,
         target=env_data,
         data=data,
