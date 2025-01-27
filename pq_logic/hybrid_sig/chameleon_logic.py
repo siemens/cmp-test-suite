@@ -458,3 +458,41 @@ def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> DeltaCerti
     return delta_req
 
 
+def build_delta_cert(
+    csr: rfc6402.CertificationRequest,
+    delta_value: DeltaCertificateRequestValue,
+    ca_key: PrivateKeySig,
+    ca_cert: rfc9480.CMPCertificate,
+    alt_sign_key: Optional[PrivateKeySig] = None,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = False,
+) -> rfc9480.CMPCertificate:
+    """Prepare a Delta Certificate from a paired CSR.
+
+    :param csr: The paired CSR.
+    :param delta_value: The Delta Certificate Request attribute.
+    :param ca_key: The CA key for signing the certificate.
+    :param ca_cert: The CA certificate matching the CA key.
+    :param alt_sign_key: An alternative signing key for the certificate.
+    :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use PSS-padding for signing. Defaults to False.
+    :return: The populated `TBSCertificate` structure.
+    """
+    csr_tmp = rfc6402.CertificationRequest()
+
+    if delta_value["subject"].isValue:
+        csr_tmp["certificationRequestInfo"]["subject"] = delta_value["subject"]
+    else:
+        csr_tmp["certificationRequestInfo"]["subject"] = csr["certificationRequestInfo"]["subject"]
+
+    csr_tmp["certificationRequestInfo"]["subjectPublicKeyInfo"] = delta_value["subjectPKInfo"]
+
+    if delta_value["extensions"].isValue:
+        csr_tmp = csr_add_extensions(
+            csr_tmp,
+            delta_value["extensions"],
+        )
+
+    return build_cert_from_csr(csr=csr_tmp, ca_key=ca_key, ca_cert=ca_cert, alt_sign_key=alt_sign_key)
+
+
