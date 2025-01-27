@@ -56,7 +56,7 @@ class TestSunHybridScheme(unittest.TestCase):
         self.common_name = "CN=Hans Mustermann"
 
         # Currently uses the trad-key as key for the extension.
-        self.public_key_bytes = self.composite_key.trad_key.public_key().public_bytes(
+        self.public_key_bytes = self.composite_key.pq_key.public_key().public_bytes(
             encoding=serialization.Encoding.DER,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
