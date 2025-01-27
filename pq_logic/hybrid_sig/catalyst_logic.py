@@ -10,13 +10,18 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from pyasn1_alt_modules.rfc4210 import CMPCertificate
+
+from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt, AltSignatureValueExt
 from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, sign_cert
+from resources.certextractutils import get_extension
 from resources.certutils import verify_cert_signature
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
 from resources.cryptoutils import sign_data, verify_signature
+from resources.exceptions import BadAlg, BadAsn1Data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
-from resources.typingutils import PrivateKey, PrivateKeySig
+from resources.oidutils import PQ_NAME_2_OID
+from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey, TradSigPrivKey
 
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
@@ -51,14 +56,33 @@ def prepare_subject_alt_public_key_info_extn(
     return spki_ext
 
 
-def _prepare_sig_alt_extn(alg_id: rfc5280.AlgorithmIdentifier, critical: bool) -> rfc5280.Extension:
-    """
-    Prepare the altSignatureAlgorithm extension.
+def prepare_alt_sig_alg_id_extn(
+    alg_id: Optional[rfc5280.AlgorithmIdentifier] = None,
+    critical: bool = False,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = False,
+    use_pre_hash: bool = False,
+    key: Optional[PrivateKeySig] = None,
+) -> rfc5280.Extension:
+    """Prepare the altSignatureAlgorithm extension.
 
     :param alg_id: The alternative AlgorithmIdentifier.
-    :param critical: Whether the extension is critical.
+    :param critical: Whether the extension is critical. Defaults to `False`.
+    :param hash_alg: The hash algorithm to use. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
+    :param use_pre_hash: Whether to use the pre-hash key. Defaults to `False`.
+    :param key: Key to prepare the signature algorithm for. Defaults to `None`.
     :return: The prepared Extension object.
+    :raises ValueError: If neither `alg_id` nor `key` is provided.
     """
+    if alg_id is None and key is None:
+        raise ValueError("Either `alg_id` or `key` must be provided.")
+
+    if key is not None:
+        alg_id = prepare_sig_alg_id(
+            signing_key=key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+        )
+
     alt_signature_algorithm_extension = rfc5280.Extension()
     alt_signature_algorithm_extension["extnID"] = id_ce_altSignatureAlgorithm
     alt_signature_algorithm_extension["critical"] = critical
