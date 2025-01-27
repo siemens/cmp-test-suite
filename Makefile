@@ -50,19 +50,21 @@ ifeq ($(env), ejbca)
 endif
 
 docs:
-	python -m robot.libdoc resources/keywords.resource doc/keywords.html
-	python -m robot.libdoc resources/cryptoutils.py doc/cryptoutils.html
-	python -m robot.libdoc resources/cmputils.py doc/cmputils.html
-	python -m robot.libdoc resources/asn1utils.py doc/asn1utils.html
-	python -m robot.libdoc resources/certutils.py doc/certutils.html
-	python -m robot.libdoc resources/httputils.py doc/httputils.html
-	python -m robot.libdoc resources/keyutils.py doc/keyutils.html
-	python -m robot.libdoc resources/protectionutils.py doc/protectionutils.html
-	python -m robot.libdoc pq_logic/py_verify_logic.py doc/py_verify_logic.html
-	python -m robot.libdoc pq_logic/pq_validation_utils.py doc/pq_validation_utils.html
-	python -m robot.libdoc pq_logic/pq_compute_utils.py doc/pq_validation_utils.html
-	python -m robot.testdoc tests/ doc/test-suites.html
-	python -m robot.testdoc tests_untested/ doc/test-migration-suites.html
+	python -m robot.libdoc --pythonpath=./ resources/keywords.resource doc/keywords.html
+	python -m robot.libdoc --pythonpath=./ resources/cryptoutils.py doc/cryptoutils.html
+	python -m robot.libdoc --pythonpath=./ resources/cmputils.py doc/cmputils.html
+	python -m robot.libdoc --pythonpath=./ resources/asn1utils.py doc/asn1utils.html
+	python -m robot.libdoc --pythonpath=./ resources/certutils.py doc/certutils.html
+	python -m robot.libdoc --pythonpath=./ resources/httputils.py doc/httputils.html
+	python -m robot.libdoc --pythonpath=./ resources/keyutils.py doc/keyutils.html
+	python -m robot.libdoc --pythonpath=./ resources/protectionutils.py doc/protectionutils.html
+	python -m robot.testdoc --pythonpath=./ tests/ doc/test-suites.html
+
+pq-docs:
+	python -m robot.libdoc --pythonpath=./ pq_logic/pq_compute_utils.py doc/pq_validation_utils.html
+	python -m robot.libdoc --pythonpath=./ tests_untested/ doc/test-migration-suites.html
+
+
 
 autoformat:
 	ruff check --fix .
