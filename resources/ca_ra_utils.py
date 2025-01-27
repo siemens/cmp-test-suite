@@ -658,6 +658,81 @@ def _set_header_fields(request: rfc9480.PKIMessage, kwargs: dict) -> dict:
     return kwargs
 
 
+def _process_one_cert_request(
+    ca_key: PrivateKey,
+    ca_cert: rfc9480.CMPCertificate,
+    request: rfc9480.PKIMessage,
+    cert_index: int,
+    eku_strict: bool,
+    **kwargs,
+) -> Tuple[rfc9480.CMPCertificate, Optional[rfc5652.EnvelopedData]]:
+    """Process a single certificate response.
+
+    :param ca_key: The CA private key to sign the certificate with.
+    :param ca_cert: The CA certificate matching the CA key.
+    :param request: The PKIMessage containing the certificate request.
+    :param cert_index: The index of the certificate to respond to.
+    :param eku_strict: The strictness of the EKU bits.
+    :param kwargs: The additional values to set for the header.
+    :return: The certificate and the optional encrypted certificate.
+    """
+    verify_popo_for_cert_request(
+        pki_message=request,
+        allowed_ra_dir=kwargs.get("allowed_ra_dir", "./data/allowed_ras"),
+        trustanchor=kwargs.get("trustanchor", "./data/trustanchors"),
+        allow_os_store=kwargs.get("allow_os_store", True),
+        index=cert_index,
+        strict=eku_strict,
+    )
+    cert_req_msg = get_cert_req_msg_from_pkimessage(pki_message=request, index=cert_index)
+    cert, enc_cert = respond_to_cert_req_msg(
+        cert_req_msg=cert_req_msg,
+        ca_key=ca_key,
+        ca_cert=ca_cert,
+        hybrid_kem_key=kwargs.get("hybrid_kem_key"),
+        hash_alg=kwargs.get("hash_alg", "sha256"),
+    )
+    return cert, enc_cert
+
+
+def _process_cert_requests(
+    ca_key: PrivateKey,
+    ca_cert: rfc9480.CMPCertificate,
+    request: rfc9480.PKIMessage,
+    eku_strict: bool,
+    **kwargs,
+) -> Tuple[List[rfc9480.CertResponse], List[rfc9480.CMPCertificate]]:
+    """Process a certificate requests.
+
+    :param ca_key: The CA private key to sign the certificates with.
+    :param ca_cert: The CA certificate matching the CA key.
+    :param request: The PKIMessage containing the certificate request.
+    :param eku_strict: The strictness of the EKU bits.
+    :return: The certificate responses and the certificates.
+    """
+    responses = []
+    certs = []
+
+    body_name = request["body"].getName()
+
+    for i in range(len(request["body"][body_name])):
+        cert, enc_cert = _process_one_cert_request(
+            ca_key=ca_key,
+            ca_cert=ca_cert,
+            request=request,
+            cert_index=i,
+            eku_strict=eku_strict,
+            **kwargs,
+        )
+        certs.append(cert)
+        cert_req_id = request["body"]["cr"][i]["certReq"]["certReqId"]
+        response = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
+
+        responses.append(response)
+
+    return responses, certs
+
+
 
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
