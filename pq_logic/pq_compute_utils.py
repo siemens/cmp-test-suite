@@ -238,3 +238,161 @@ def _prepare_catalyst_info_vals(
     return info_val_type, info_val_type_pub_key
 
 
+def _compute_protection(
+    signing_key: PrivateKeySig,
+    pki_message: rfc9480.PKIMessage,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = True,
+    use_pre_hash: bool = False,
+    bad_message_check: bool = False,
+) -> rfc9480.PKIMessage:
+    """Compute the protection for a PKIMessage.
+
+    :param signing_key: The private key used for signing.
+    :param pki_message: The PKIMessage to protect.
+    :param hash_alg: The hash algorithm to use for signing.
+    :param use_rsa_pss: Whether to use RSA-PSS padding for signing.
+    :param use_pre_hash: Whether to use pre-hashing for signing.
+    :return: The protected PKIMessage.
+    """
+    prot_alg_id = prepare_sig_alg_id(
+        signing_key=signing_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=use_pre_hash,
+    )
+    prot_alg_id = prot_alg_id.subtype(
+        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1), cloneValueFlag=True
+    )
+    pki_message["header"]["protectionAlg"] = prot_alg_id
+
+    der_data = encoder.encode(pki_message["header"]) + encoder.encode(pki_message["body"])
+    signature = sign_data_with_alg_id(
+        alg_id=pki_message["header"]["protectionAlg"],
+        data=der_data,
+        key=signing_key,
+    )
+
+    if bad_message_check:
+        if isinstance(signing_key, CompositeSigCMSPrivateKey):
+            signature = utils.manipulate_composite_sig(signature)
+        else:
+            signature = utils.manipulate_first_byte(signature)
+
+    pki_message["protection"] = prepare_pki_protection_field(signature)
+    return pki_message
+
+
+def protect_hybrid_pkimessage(
+    pki_message: rfc9480.PKIMessage,
+    private_key: Union[PrivateKeySig, CompositeSigCMSPrivateKey, PQSignaturePrivateKey],
+    protection: str = "signature",
+    do_patch: bool = True,
+    alt_signing_key: Optional[Union[PrivateKeySig, PQSignaturePrivateKey]] = None,
+    include_alt_pub_key: bool = False,
+    bad_message_check: bool = False,
+    **params,
+):
+    """Protect a PKIMessage with a hybrid protection scheme.
+
+    :param pki_message: The PKIMessage to protect.
+    :param protection: The protection type to use.
+    :param private_key: The private key used for the primary signature.
+    :param do_patch: Whether to patch the sender and senderKID fields.
+    :param alt_signing_key: The alternative signing key to use for composite protection,
+    or the catalyst signature.
+    :param include_alt_pub_key: Whether to include the alternative public key in the message.
+    :param bad_message_check: Whether to manipulate the message signature. Defaults to `False`.
+    :return: The protected `PKIMessage`.
+    """
+    pki_message = patch_sender_and_sender_kid(
+        do_patch=do_patch,
+        pki_message=pki_message,
+        cert=params.get("cert"),
+    )
+
+    if protection not in ["signature", "composite", "catalyst"]:
+        raise ValueError("Only 'signature', 'composite', and 'catalyst' protection types are supported.")
+
+    if protection == "signature":
+        return _compute_protection(
+            signing_key=private_key,
+            pki_message=pki_message,
+            hash_alg=params.get("hash_alg", "sha256"),
+            use_rsa_pss=params.get("use_rsa_pss", True),
+            use_pre_hash=params.get("use_pre_hash", False),
+            bad_message_check=bad_message_check,
+        )
+
+    if protection == "composite":
+        if alt_signing_key is not None:
+            if isinstance(alt_signing_key, PQSignaturePrivateKey):
+                private_key, alt_signing_key = alt_signing_key, private_key
+
+            private_key = CompositeSigCMSPrivateKey(
+                pq_key=private_key,
+                trad_key=alt_signing_key,
+            )
+
+        return _compute_protection(
+            signing_key=private_key,
+            pki_message=pki_message,
+            hash_alg=params.get("hash_alg", "sha256"),
+            use_rsa_pss=params.get("use_rsa_pss", True),
+            use_pre_hash=params.get("use_pre_hash", False),
+            bad_message_check=bad_message_check,
+        )
+
+    else:
+        alt_prot_alg_id = prepare_sig_alg_id(
+            signing_key=alt_signing_key,
+            hash_alg=params.get("hash_alg", "sha256"),
+            use_rsa_pss=params.get("use_rsa_pss", True),
+            use_pre_hash=params.get("use_pre_hash", False),
+        )
+        prot_alg_id = prepare_sig_alg_id(
+            signing_key=private_key,
+            hash_alg=params.get("hash_alg", "sha256"),
+            use_rsa_pss=params.get("use_rsa_pss", True),
+            use_pre_hash=params.get("use_pre_hash", False),
+        )
+
+        prot_alg_id = prot_alg_id.subtype(
+            explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1), cloneValueFlag=True
+        )
+        pki_message["header"]["protectionAlg"] = prot_alg_id
+
+        info_val_type, info_val_type_pub_key = _prepare_catalyst_info_vals(
+            prot_alg_id=alt_prot_alg_id,
+            public_key=alt_signing_key.public_key() if include_alt_pub_key else None,
+        )
+        pki_message["header"]["generalInfo"].append(info_val_type)
+        if info_val_type_pub_key is not None:
+            pki_message["header"]["generalInfo"].append(info_val_type_pub_key)
+
+        der_data = encoder.encode(pki_message["header"]) + encoder.encode(pki_message["body"])
+
+        signature = sign_data_with_alg_id(
+            alg_id=alt_prot_alg_id,
+            data=der_data,
+            key=alt_signing_key,
+        )
+
+        if bad_message_check:
+            signature = utils.manipulate_first_byte(signature)
+
+        info_val_type_sig = rfc9480.InfoTypeAndValue()
+        info_val_type_sig["infoType"] = id_ce_altSignatureValue
+        info_val_type_sig["infoValue"] = encoder.encode(univ.BitString.fromOctetString(signature))
+        pki_message["header"]["generalInfo"].append(info_val_type_sig)
+
+        der_data = encoder.encode(pki_message["header"]) + encoder.encode(pki_message["body"])
+
+        signature = sign_data_with_alg_id(
+            alg_id=prot_alg_id,
+            data=der_data,
+            key=private_key,
+        )
+        pki_message["protection"] = prepare_pki_protection_field(signature)
+
+    return pki_message
