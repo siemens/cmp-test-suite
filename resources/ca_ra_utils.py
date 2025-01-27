@@ -521,6 +521,93 @@ def _verify_encrypted_key_popo(
 
 
 def process_popo_priv_key(
+@keyword(name="Build pkiconf from CertConf")
+def build_pki_conf_from_cert_conf(
+    request: rfc9480.PKIMessage,
+    issued_certs: List[rfc9480.CMPCertificate],
+    exclude_fields: Optional[str] = None,
+    enforce_lwcmp: bool = True,
+    set_header_fields: bool = True,
+    **kwargs,
+) -> rfc9480.PKIMessage:
+    """Build a PKIConf message from a CertConf message.
+
+    Arguments:
+    ----------
+       - `request`: The CertConf message to build the PKIConf message from.
+       - `issued_certs`: The certificates that were issued.
+       - `exclude_fields`: The fields to exclude from the PKIConf message. Defaults to `None`.
+       - `enforce_lwcmp`: Whether to enforce LwCMP rules. Defaults to `True`.
+       - `set_header_fields`: Whether to set the header fields. Defaults to `True`.
+
+    Returns:
+    --------
+         - The built PKI Confirmation message.
+
+    Raises:
+    -------
+        - `ValueError`: If the request is not a CertConf message.
+        - `ValueError`: If the number of CertConf entries does not match the number of issued certificates.
+        - `BadRequest`: If the number of CertStatus's is not one (for LwCMP).
+        - `BadRequest`: If the CertReqId is not zero (for LwCMP).
+        - `BadRequest`: If the certificate status is not `accepted` or `rejection`.
+        - `BadPOP`: If the certificate hash is invalid in the CertConf message.
+
+    """
+    if request["body"].getName() != "certConf":
+        raise ValueError("Request must be a `certConf` to build a `PKIConf` message from it.")
+
+    cert_conf: rfc9480.CertConfirmContent = request["body"]["certConf"]
+
+    if len(cert_conf) != 1 and enforce_lwcmp:
+        raise BadRequest(f"Invalid number of entries in CertConf message.Expected 1 for LwCMP, got {len(cert_conf)}")
+
+    if len(cert_conf) != len(issued_certs):
+        raise ValueError("Number of CertConf entries does not match the number of issued certificates.")
+
+    entry: rfc9480.CertStatus
+    for entry, issued_cert in zip(cert_conf, issued_certs):
+        if entry["certReqId"] != 0 and enforce_lwcmp:
+            raise BadRequest("Invalid CertReqId in CertConf message.")
+
+        if entry["statusInfo"].isValue:
+            if str(entry["status"]) == "rejection":
+                logging.debug("Certificate status was rejection.")
+                continue
+
+            elif str(entry["status"]) != "accepted":
+                raise BadRequest(
+                    "Invalid certificate status in CertConf message."
+                    f"Expected 'accepted' or 'rejection', got {entry['status'].getName()}"
+                )
+
+        if entry["hashAlg"]["algorithm"].isValue:
+            if int(request["header"]["pvno"]) != 3:
+                raise BadRequest("Hash algorithm is missing in CertConf message,but the version is not 3.")
+            hash_alg = get_hash_from_oid(entry["hashAlg"]["algorithm"], only_hash=False)
+        else:
+            alg_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
+            hash_alg = get_hash_from_oid(alg_oid, only_hash=True)
+
+        computed_hash = compute_hash(
+            alg_name=hash_alg,
+            data=encoder.encode(issued_cert),
+        )
+
+        if entry["certHash"].asOctets() != computed_hash:
+            raise BadPOP("Invalid certificate hash in CertConf message.")
+
+    if request and set_header_fields:
+        kwargs = _set_header_fields(request, kwargs)
+
+    pki_message = cmputils._prepare_pki_message(exclude_fields=exclude_fields, **kwargs)
+    pki_message["body"]["pkiconf"] = rfc9480.PKIConfirmContent("").subtype(
+        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 19)
+    )
+
+    return pki_message
+
+
 @not_keyword
 def get_correct_ca_body_name(request: rfc9480.PKIMessage) -> str:
     """Get the correct body name for the response.
