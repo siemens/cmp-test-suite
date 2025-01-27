@@ -1263,6 +1263,55 @@ def _default_validity(
     return prepare_validity(not_before, not_after)
 
 
+def _prepare_shared_tbs_cert(
+    subject: Union[str, rfc9480.Name],
+    issuer: Union[rfc9480.CMPCertificate, rfc9480.Name],
+    serial_number: Optional[int] = None,
+    validity: Optional[Union[rfc4211.OptionalValidity, rfc5280.Validity]] = None,
+    days: int = 3650,
+    public_key: Optional[rfc5280.SubjectPublicKeyInfo] = None,
+) -> rfc5280.TBSCertificate:
+    """Prepare some attributes of `TBSCertificate` structure, for a certificate.
+
+    :param subject: The subject of the certificate, either a string or a `Name` object.
+    :param issuer: The issuer of the certificate, either a `CMPCertificate` or a `Name` object.
+    :param serial_number: The serial number for the certificate. Defaults to `None`.
+    :param validity: The validity of the certificate. Defaults to `None`.
+    :param days: The number of days for which the certificate remains valid. Defaults to `3650` days.
+    :return: The populated `TBSCertificate` structure.
+    """
+    tbs_cert = rfc5280.TBSCertificate()
+
+    if isinstance(subject, rfc9480.Name):
+        subject = subject["rdnSequence"]
+    else:
+        subject = prepare_name(common_name=subject)["rdnSequence"]
+
+    tbs_cert["subject"]["rdnSequence"] = subject
+
+    if isinstance(issuer, rfc9480.CMPCertificate):
+        issuer = issuer["tbsCertificate"]["subject"]
+
+    tbs_cert["issuer"] = issuer
+    if serial_number is None:
+        serial_number = x509.random_serial_number()
+    tbs_cert["serialNumber"] = serial_number
+    tbs_cert["version"] = rfc5280.Version("v3").subtype(
+        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+    )
+
+    tbs_cert["subjectPublicKeyInfo"] = copyasn1utils.copy_subject_public_key_info(
+        target=rfc5280.SubjectPublicKeyInfo(), filled_sub_pubkey_info=public_key
+    )
+
+    if isinstance(validity, rfc5280.Validity):
+        tbs_cert["validity"] = validity
+    else:
+        tbs_cert["validity"] = _default_validity(days=days, optional_validity=validity)
+
+    return tbs_cert
+
+
 @not_keyword
 def prepare_tbs_certificate_from_template(
     cert_template: rfc4211.CertTemplate,
