@@ -116,20 +116,34 @@ def may_extract_alt_key_from_cert(
     extn_rel_cert = get_extension(extensions, id_relatedCert)
     extn_sia = get_extension(extensions, rfc5280.id_pe_subjectInfoAccess)
     extn_alt_spki = get_extension(extensions, id_ce_subjectAltPublicKeyInfo)
+    extn_chameleon = get_extension(extensions, id_ce_deltaCertificateDescriptor)
+    extn_sun_hybrid = get_extension(extensions, id_altSubPubKeyExt)
 
-    try:
-        rel_cert_desc = extract_sia_extension_for_cert_discovery(extn_sia)
-    except ValueError:
-        rel_cert_desc = None
+    rel_cert_desc = None
+    if extn_sia is not None:
+        try:
+            # it could be that the SIA extension is present, but does not
+            # contain the cert discovery entry.
+            rel_cert_desc = extract_sia_extension_for_cert_discovery(extn_sia)
+        except ValueError:
+            pass
 
     # TODO fix try to validate both.
 
     spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
     oid = spki["algorithm"]["algorithm"]
 
+    if extn_sun_hybrid is not None:
+        public_key = pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00.get_sun_hybrid_alt_pub_key(
+            cert["tbsCertificate"]["extensions"]
+        )
+        if public_key is not None:
+            return public_key
+        raise ValueError("Could not extract the Sun-Hybrid alternative public key.")
+
     if extn_rel_cert is not None and other_certs is not None:
         logging.info("Validate signature with related certificate.")
-        related_cert = get_related_cert_from_list(other_certs, cert)  # type: ignore
+        related_cert = get_related_cert_from_list(other_certs, cert)
         pq_key = load_public_key_from_spki(related_cert["tbsCertificate"]["subjectPublicKeyInfo"])
         return pq_key
 
@@ -147,10 +161,14 @@ def may_extract_alt_key_from_cert(
     if rel_cert_desc is not None:
         logging.info("Validate signature with cert discovery.")
         uri = str(rel_cert_desc["uniformResourceIdentifier"])
-        other_cert = get_secondary_certificate(uri)
+        other_cert = get_cert_discovery_cert(uri)
         validate_alg_ids(other_cert, rel_cert_desc=rel_cert_desc)
         pq_key = load_public_key_from_spki(other_cert["tbsCertificate"]["subjectPublicKeyInfo"])
         return pq_key
+
+    if extn_chameleon is not None:
+        spki = chameleon_logic.get_chameleon_delta_public_key(cert)
+        return load_public_key_from_spki(spki)
 
     if oid in CMS_COMPOSITE_OID_2_NAME:
         public_key = CompositeSigCMSPublicKey.from_spki(spki)
