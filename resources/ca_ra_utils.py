@@ -1159,8 +1159,76 @@ def _verify_encrypted_key_popo(
     if private_key.public_key() != client_public_key:
         raise ValueError("The decrypted key does not match the public key in the certificate request.")
 
+@keyword(name="Process POPOPrivKey")
 
 def process_popo_priv_key(
+    cert_req_msg: rfc4211.CertReqMsg,
+    ca_key: PrivateKey,
+    password: Optional[str] = None,
+    client_cert: Optional[rfc9480.CMPCertificate] = None,
+    protection_salt: Optional[bytes] = None,
+    expected_identifier: Optional[str] = None,
+    shared_secret: Optional[bytes] = None,
+) -> None:
+    """`keyEncipherment` and `keyAgreement` POPO processing.
+
+    Arguments:
+    ---------
+        - `cert_req_msg`: The certificate request message.
+        - `ca_key`: The CA private key used to unwrap the private key.
+        - `password`: The password to use for decryption the private key. Defaults to `None`.
+        - `client_cert`: The client certificate. Defaults to `None`.
+        - `protection_salt`: The protection salt used to compare to the PWRI protection salt. Defaults to `None`.
+        - `expected_identifier`: The expected identifier name. Defaults to `None`.
+        - `shared_secret`: The shared secret to use for key agreement. Defaults to `None`.
+
+    Raises:
+    ------
+        - ValueError: client public key does not match the private key.
+        - ValueError: If the decrypted key does not match the public key in the certificate request.
+    """
+    popo: rfc4211.ProofOfPossession = cert_req_msg["popo"]
+    type_name = popo.getName()
+    name = popo[type_name].getName()
+    popo_priv_key: rfc4211.POPOPrivKey = popo[type_name]
+    client_public_key = get_public_key_from_cert_req_msg(cert_req_msg)
+
+    if name == "encryptedKey":
+        _verify_encrypted_key_popo(
+            popo_priv_key=popo_priv_key,
+            client_public_key=client_public_key,
+            ca_key=ca_key,
+            password=password,
+            client_cert=client_cert,
+            protection_salt=protection_salt,
+            expected_name=expected_identifier,
+        )
+
+    elif name == "agreeMAC":
+        if not isinstance(client_public_key, ECDHPublicKey) and shared_secret is None:
+            raise ValueError("Shared secret or client, public key must be provided for ECDH key agreement.")
+
+        if isinstance(client_public_key, ECDHPublicKey) and shared_secret is None:
+            shared_secret = perform_ecdh(private_key=ca_key, public_key=client_public_key)
+
+        mac = compute_mac_from_alg_id(
+            key=shared_secret,
+            data=encoder.encode(cert_req_msg["certReq"]),
+            alg_id=popo_priv_key["agreeMAC"]["algId"],
+        )
+
+        if mac != popo_priv_key["agreeMAC"]["value"].asOctets():
+            raise ValueError("Invalid `agreeMAC` value as `POP`.")
+
+    elif name == "subsequentMessage":
+        if str(popo_priv_key["subsequentMessage"]) == "encrCert":
+            raise ValueError("Invalid subsequentMessage value.")
+        elif str(popo_priv_key["subsequentMessage"]) == "challengeResp":
+            raise ValueError("Invalid subsequentMessage value.")
+        else:
+            raise ValueError("Invalid subsequentMessage value.")
+
+
 @keyword(name="Build Cert from CertReqMsg")
 def build_cert_from_cert_req_msg(# noqa: D417 Missing argument descriptions in the docstring
     request: rfc4211.CertReqMsg,
