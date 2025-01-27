@@ -55,7 +55,7 @@ def _prepare_issuer_and_subject(
     return dcd
 
 
-def prepare_dcd_extension_from_delta(delta_cert, base_cert):
+def prepare_dcd_extension_from_delta(delta_cert: rfc9480.CMPCertificate, base_cert: rfc9480.CMPCertificate):
     """Prepare a Delta Certificate Descriptor (DCD) extension from a parsed Delta Certificate and Base Certificate.
 
     :param delta_cert: Parsed Delta Certificate structure.
@@ -81,14 +81,13 @@ def prepare_dcd_extension_from_delta(delta_cert, base_cert):
     )
 
     if not same_alg_id:
-        # TODO fix
         dcd["signature"]["algorithm"] = delta_cert["tbsCertificate"]["signature"]["algorithm"]
 
     same_issuer = compare_pyasn1_names(delta_cert["tbsCertificate"]["issuer"], base_cert["tbsCertificate"]["issuer"])
 
     if not same_issuer:
         obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
-        name_obj = copy_name(delta_cert["tbsCertificate"]["issuer"], name=obj)
+        name_obj = copy_name(filled_name=delta_cert["tbsCertificate"]["issuer"], target=obj)
         dcd["issuer"] = name_obj
 
     val1 = encoder.encode(delta_cert["tbsCertificate"]["validity"])
@@ -101,7 +100,7 @@ def prepare_dcd_extension_from_delta(delta_cert, base_cert):
 
     if not same_subject:
         obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
-        name_obj = copy_name(delta_cert["tbsCertificate"]["subject"], name=obj)
+        name_obj = copy_name(filled_name=delta_cert["tbsCertificate"]["subject"], target=obj)
         dcd["subject"] = name_obj
 
     dcd["subjectPublicKeyInfo"] = delta_cert["tbsCertificate"]["subjectPublicKeyInfo"]
@@ -135,7 +134,7 @@ def _prepare_dcd_extensions(
     If the extensions field is absent, then all extensions in the Delta Certificate 
     MUST have the same criticality and DER-encoded value as the Base Certificate 
     (except for the DCD extension, which MUST be absent from the Delta Certificate)
-    """
+    """  # noqa: W291 Trailing whitespace
 
     differing_extensions = []
     for ext_id, ext in delta_extensions.items():
