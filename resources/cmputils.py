@@ -2048,9 +2048,11 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
         cert_resp_msg: rfc9480.CertRepMessage = ca_message["body"][message_type]["response"]
         entry: rfc9480.CertResponse
         for i, entry in enumerate(cert_resp_msg):
+            # remove the tagging.
+            cert = copy_asn1_certificate(cert=entry["certifiedKeyPair"]["certOrEncCert"]["certificate"])
             cert_status = prepare_certstatus(
-                cert_hash=hash_alg,
-                cert=entry["certifiedKeyPair"]["certOrEncCert"]["certificate"],
+                hash_alg=hash_alg,
+                cert=cert,
                 cert_req_id=i,
                 status="accepted",
                 status_info=None,
