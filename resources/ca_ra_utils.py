@@ -452,6 +452,9 @@ def _verify_pop_signature(
     """Verify the POP signature in the PKIMessage.
 
     :param pki_message: The PKIMessage to verify the POP signature for.
+    :raises BadAsn1Data: If the CertRequest encoding fails.
+    :raises BadPOP: If the POP verification fails.
+    :raises InvalidSignature: If the signature verification fails.
     :return: `None`.
     """
     body_name = pki_message["body"].getName()
