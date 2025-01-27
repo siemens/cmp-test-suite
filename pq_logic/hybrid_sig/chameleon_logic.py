@@ -618,3 +618,26 @@ def build_delta_cert_from_paired_cert(paired_cert: rfc9480.CMPCertificate) -> rf
     return delta_cert
 
 
+def get_chameleon_delta_public_key(
+   paired_cert: rfc9480.CMPCertificate
+) -> rfc5280.SubjectPublicKeyInfo:
+    """Extract the delta public key from a paired certificate.
+
+    :param paired_cert: The paired certificate.
+    :return: The extracted public key.
+    """
+
+    dcd = get_extension(paired_cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
+
+    if dcd is None:
+        raise ValueError("DCD extension not found in the Base Certificate.")
+
+    dcd, rest = decoder.decode(dcd["extnValue"], asn1Spec=DeltaCertificateDescriptor())
+
+    if rest:
+        raise BadAsn1Data("DeltaCertificateDescriptor")
+
+    return dcd["subjectPublicKeyInfo"]
+
+
+
