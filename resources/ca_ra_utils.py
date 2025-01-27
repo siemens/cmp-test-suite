@@ -481,6 +481,41 @@ def _verify_pop_signature(
         raise BadPOP(f"POP verification for `{body_name}` failed.") from err
 
 
+def _verify_ra_verified(
+    pki_message: rfc9480.PKIMessage,
+    allowed_ra_dir: str,
+    trustanchor: Optional[str] = None,
+    allow_os_store: bool = False,
+    strict: bool = True,
+) -> None:
+    """Verify the raVerified in the PKIMessage.
+
+    :param pki_message: The PKIMessage to verify the raVerified for.
+    :param trustanchor: The trust anchor to use for verification. Defaults to `None`.
+    :param allowed_ra_dir: The allowed RA directory. Defaults to `None`.
+    :param allow_os_store: Allow the OS store. Defaults to `False`.
+    :param strict: Whether the RA certificate must have the `cmcRA` EKU bit set.
+    Defaults to `True`.
+    """
+    ra_certs = load_certificates_from_dir(allowed_ra_dir)
+    may_ra_cert = pki_message["extraCerts"][0]
+    result = cert_in_list(may_ra_cert, ra_certs)
+
+    if not result:
+        raise NotAuthorized("RA certificate not in allowed RA directory.")
+
+    eku_cert = get_field_from_certificate(may_ra_cert, extension="eku")
+    validate_cmp_extended_key_usage(eku_cert, ext_key_usages="cmcRA", strict="STRICT" if strict else "LAX")
+
+    cert_chain = build_cmp_chain_from_pkimessage(
+        pki_message,
+    )
+    try:
+        certificates_must_be_trusted(cert_chain=cert_chain, trustanchors=trustanchor, allow_os_store=allow_os_store)
+    except InvalidSignature as err:
+        raise NotAuthorized("RA certificate not trusted.") from err
+
+
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
 
