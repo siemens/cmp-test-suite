@@ -570,8 +570,12 @@ def validate_alt_pub_key_extn(cert: rfc9480.CMPCertificate):
         raise ValueError("MUST be in Form 4 for verification.")
 
     location = decoded_ext["location"]
-    actual_value = fetch_value_from_location(str(location)) if location.isValue else None
-    public_key = _process_public_key(actual_value)
+
+    if not location.isValue:
+        raise ValueError("The location is not a value, the public key can not be fetched.")
+
+    actual_value = fetch_value_from_location(str(location))
+    public_key = process_public_key(actual_value)
 
     hash_alg_oid = decoded_ext["hashAlg"]["algorithm"]
     hash_alg = get_hash_from_oid(hash_alg_oid)
@@ -583,7 +587,7 @@ def validate_alt_pub_key_extn(cert: rfc9480.CMPCertificate):
     if computed_hash != decoded_ext["plainOrHash"].asOctets():
         raise ValueError(
             f"Hash mismatch for ByReference extension:\n"
-            f" Found: {decoded_ext['plainOrHash'].asOctets().hex()}\n"
+            f" Found:    {decoded_ext['plainOrHash'].asOctets().hex()}\n"
             f" Computed: {computed_hash.hex()}"
         )
 
