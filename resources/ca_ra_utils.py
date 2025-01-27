@@ -521,3 +521,25 @@ def _verify_encrypted_key_popo(
 
 
 def process_popo_priv_key(
+@not_keyword
+def get_correct_ca_body_name(request: rfc9480.PKIMessage) -> str:
+    """Get the correct body name for the response.
+
+    :param request: The PKIMessage with the request.
+    :return: The correct body name for the response.
+    :raises ValueError: If the body name is invalid (allowed are `ir`, `cr`, `kur`, `ccr`).
+    """
+    body_name = request["body"].getName()
+    if body_name == "ir":
+        return "ip"
+
+    if body_name in ["cr", "p10cr"]:
+        return "cp"
+
+    if body_name == "kur":
+        return "kup"
+
+    if body_name == "ccr":
+        return "ccp"
+
+    raise ValueError(f"Invalid body name: {body_name}")
