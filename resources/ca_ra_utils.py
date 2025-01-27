@@ -1161,6 +1161,70 @@ def _verify_encrypted_key_popo(
 
 
 def process_popo_priv_key(
+@keyword(name="Build Cert from CertReqMsg")
+def build_cert_from_cert_req_msg(# noqa: D417 Missing argument descriptions in the docstring
+    request: rfc4211.CertReqMsg,
+    ca_signing_key: PrivateKey,
+    cert: Optional[rfc9480.CMPCertificate] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    ca_key: Optional[PrivateKey] = None,
+    cert_req_id: Optional[Union[str, int]] = None,
+) -> rfc9480.CertResponse:
+    """Build a certificate from a certificate request message.
+
+    Arguments:
+    ---------
+       - `request`: The certificate request message.
+       - `ca_signing_key`: The CA key to sign the certificate with.
+       - `cert`: The certificate to build the response for. Defaults to `None`.
+       - `ca_cert`: The CA certificate matching the CA key. Defaults to `None`.
+       - `ca_key`: The CA private key to sign the response with. Defaults to `None`.
+       - `cert_req_id`: The certificate request ID. Defaults to `None`.
+
+    Returns:
+    -------
+        - The built certificate response.
+
+    """
+    cert_response = rfc9480.CertResponse()
+
+    popo: rfc4211.ProofOfPossession = request["popo"]
+    cert_req = request["certReq"]
+
+    if request["regInfo"].isValue:
+        logging.debug("regInfo is present in the CertReqMsg,but server logic is not supported yet.")
+
+    if request["popo"]["signature"].isValue:
+        cert = cert or build_cert_from_cert_template(
+            cert_req["certTemplate"],
+            ca_key=ca_signing_key,
+            ca_cert=ca_cert,
+        )
+    elif popo.getName() == "keyEncipherment":
+        cert = build_cert_from_cert_template(csr=cert_req["certTemplate"])
+        process_popo_priv_key(cert_req_msg=request, ca_key=ca_key)
+
+    elif popo.getName() == "keyAgreement":
+        raise NotImplementedError("keyAgreement is not supported yet.")
+
+    elif popo.getName() == "raVerified":
+        logging.debug("raVerified is present in the CertReqMsg,but is not validate in this function.")
+
+    else:
+        raise ValueError(
+            f"Invalid POP structure: {popo.getName()}. Expected: `signature`, `keyEncipherment` or `raVerified`"
+        )
+
+    if cert_req_id is None:
+        cert_req_id = cert_req["certReqId"]
+    cert_response["certReqId"] = univ.Integer(int(cert_req_id))
+
+    status = prepare_pkistatusinfo(texts="Certificate issued", status="accepted")
+    cert_response["status"] = status
+    cert_response["certifiedKeyPair"] = prepare_certified_key_pair(cert=cert)
+    return cert_response
+
+
 def prepare_enc_cert_for_request(# noqa: D417 Missing argument descriptions in the docstring
     cert_req_msg: rfc4211.CertReqMsg,
     signing_key: PrivateKey,
