@@ -103,8 +103,8 @@ def may_extract_alt_key_from_cert(
 ) -> Optional[PQSignaturePublicKey]:
     """May extract the alternative public key from a certificate.
 
-    Either extracts the alternative public key from the issuer's certificate or from the certificate discovery extension.
-    Alternative extracts the pq_key of the related certificate from the issuer's certificate or
+    Either extracts the alternative public key from the issuer's certificate or from the certificate discovery
+    extension. Alternative extracts the pq_key of the related certificate from the issuer's certificate or
     if the issuer's certificate is a composite signature certificate, extracts the pq_key from the composite signature
     keys.
 
