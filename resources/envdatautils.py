@@ -123,7 +123,7 @@ def prepare_encrypted_content_info(
 
 @not_keyword
 def prepare_enveloped_data(
-    recipient_infos: List[rfc5652.RecipientInfo],
+    recipient_infos: Union[rfc5652.RecipientInfo, List[rfc5652.RecipientInfo]],
     cek: bytes,
     data_to_protect: bytes,
     version: int = 2,
@@ -150,6 +150,8 @@ def prepare_enveloped_data(
 
     target["version"] = version
     infos = rfc5652.RecipientInfos()
+    if isinstance(recipient_infos, rfc5652.RecipientInfo):
+        recipient_infos = [recipient_infos]
     infos.extend(recipient_infos)
 
     target["encryptedContentInfo"] = prepare_encrypted_content_info(
