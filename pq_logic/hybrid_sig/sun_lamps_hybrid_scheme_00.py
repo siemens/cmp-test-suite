@@ -355,6 +355,31 @@ def sun_csr_to_cert(
 
 
 def _prepare_pre_tbs_certificate(
+def _prepare_public_key_extensions(
+    composite_key: CompositeSigCMSPublicKey,
+    pub_key_hash_id: str,
+    pub_key_loc: Optional[str],
+) -> Tuple[rfc5280.Extension, rfc5280.Extension]:
+    """Prepare the public key extensions for the Sun-Hybrid certificate.
+
+    :param composite_key: The composite key containing both the primary and alternative keys.
+    :param pub_key_hash_id: The hash algorithm identifier for hashing the alternative public key.
+    :param pub_key_loc: The location of the alternative public key.
+    :return: THe public key in Form4 and Form1.
+    """
+    # Compute a hash by hashing pk_2
+    extn_alt_pub = prepare_sun_hybrid_alt_sub_pub_key_ext(
+        composite_key.pq_key, hash_alg=pub_key_hash_id, by_val=False, location=pub_key_loc
+    )
+    # Prepare pk_2 for Form1
+    extn_alt_pub2 = prepare_sun_hybrid_alt_sub_pub_key_ext(
+        public_key=composite_key.pq_key, hash_alg=pub_key_hash_id, by_val=True, location=pub_key_loc
+    )
+    return extn_alt_pub, extn_alt_pub2
+
+
+@not_keyword
+def prepare_sun_hybrid_pre_tbs_certificate(
     composite_key: CompositeSigCMSPublicKey,
     issuer_private_key,
     alt_private_key,
@@ -373,6 +398,7 @@ def _prepare_pre_tbs_certificate(
     :param composite_key: The composite key containing both the primary and alternative keys.
     :param issuer_private_key: The issuer's private key for signing the certificate.
     :param alt_private_key: The alternative private key used for the alternative signature.
+    :param issuer_cert: The issuer's certificate to use for constructing the certificate.
     :param csr: The certificate signing request from which to construct the certificate.
     :param pub_key_hash_id: The hash algorithm identifier for hashing the alternative public key.
     :param sig_hash_id: The hash algorithm identifier for hashing the alternative signature.
@@ -383,14 +409,8 @@ def _prepare_pre_tbs_certificate(
     :return: A fully prepared TBSCertificate wrapped in a certificate structure.
     :raises ValueError: If required parameters are missing or invalid.
     """
-    # Compute a hash by hashing pk_2
-    extn_alt_pub = prepare_sun_hybrid_alt_sub_pub_key_ext(
-        composite_key.trad_key, hash_alg=pub_key_hash_id, by_val=False, location=pub_key_loc
-    )
-    # Prepare pk_2 for Form1
-    extn_alt_pub2 = prepare_sun_hybrid_alt_sub_pub_key_ext(
-        public_key=composite_key.trad_key, hash_alg=pub_key_hash_id, by_val=True, location=pub_key_loc
-    )
+    # Compute a hash by hashing pk_1
+    extn_alt_pub, extn_alt_pub2 = _prepare_public_key_extensions(composite_key, pub_key_hash_id, pub_key_loc)
 
     # After creating an AltSubPubKeyExt extension, an issuer constructs a TBSCertificate
     # object from attributes in the given
