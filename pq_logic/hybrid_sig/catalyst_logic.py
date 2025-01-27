@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""Handles Calalyst Certificates and related functionality."""
+
 import logging
 from typing import Optional, Union
 
@@ -161,7 +163,7 @@ def prepare_alt_signature_data(
 def sign_cert_catalyst(
     cert: rfc9480.CMPCertificate,
     pq_key: PQSignaturePrivateKey,
-    trad_key,
+    trad_key: TradSigPrivKey,
     exclude_catalyst_extensions: bool = False,
     pq_hash_alg: Optional[str] = None,
     hash_alg: str = "sha256",
@@ -189,7 +191,7 @@ def sign_cert_catalyst(
     cert["tbsCertificate"]["signature"] = trad_alg_id
     cert["signatureAlgorithm"] = trad_alg_id
 
-    cert["tbsCertificate"]["extensions"].append(_prepare_sig_alt_extn(alt_alg_id, critical=critical))
+    cert["tbsCertificate"]["extensions"].append(prepare_alt_sig_alg_id_extn(alt_alg_id, critical=critical))
 
     cert["tbsCertificate"]["extensions"].append(
         prepare_subject_alt_public_key_info_extn(public_key=pq_key.public_key(), critical=critical)
@@ -199,7 +201,7 @@ def sign_cert_catalyst(
 
     alt_signature = sign_data(data=alt_sig_data, key=pq_key, hash_alg=pq_hash_alg)
 
-    alt_extn = _prepare_alt_signature_value(signature=alt_signature, critical=critical)
+    alt_extn = prepare_alt_signature_value_extn(signature=alt_signature, critical=critical)
     cert["tbsCertificate"]["extensions"].append(alt_extn)
 
     return sign_cert(signing_key=trad_key, cert=cert, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
