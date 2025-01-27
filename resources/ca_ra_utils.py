@@ -160,7 +160,6 @@ def prepare_challenge(
     challenge_obj["challenge"] = univ.OctetString(enc_data)
     return challenge_obj, shared_secret, info_val
 
-
 @keyword(name="Prepare Challenge Encrypted Rand")
 def prepare_challenge_enc_rand(# noqa: D417 Missing argument descriptions in the docstring
     public_key: PublicKey,
@@ -417,14 +416,15 @@ def get_cert_req_msg_from_pkimessage(# noqa: D417 Missing argument descriptions 
     raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr")
 
 
-def validate_cert_request_cert_id(pki_message: rfc9480.PKIMessage, cert_req_id: Union[str, int] = 0) -> None:
+def validate_cert_request_cert_id(# noqa: D417 Missing argument descriptions in the docstring
+        pki_message: rfc9480.PKIMessage, cert_req_id: Union[str, int] = 0) -> None:
     """Validate the certificate request certificate ID.
 
     Used for LwCMP to ensure the certReqId in the PKIMessage matches
     either one or minus one for p10cr.
 
     Arguments:
-    ----------
+    ---------
         - `pki_message`: The PKIMessage to validate.
         - `cert_req_id`: The index of the certificate request to validate. Defaults to `0`.
 
@@ -532,7 +532,7 @@ def _verify_ra_verified(
         raise NotAuthorized("RA certificate not trusted.") from err
 
 @keyword(name="Respond To CertReqMsg")
-def respond_to_cert_req_msg(
+def respond_to_cert_req_msg(# noqa: D417 Missing argument descriptions in the docstring
     cert_req_msg: rfc4211.CertReqMsg,
     ca_key: PrivateKey,
     ca_cert: rfc9480.CMPCertificate,
@@ -542,11 +542,11 @@ def respond_to_cert_req_msg(
     """Respond to a certificate request.
 
     Note:
-    -----
+    ----
        - Assumes that the `POP` was already verified.
 
     Arguments:
-    ----------
+    ---------
        - `cert_req_msg`: The certificate request message to respond to.
        - `ca_key`: The CA private key to sign the response with.
        - `ca_cert`: The CA certificate matching the CA key.
@@ -554,17 +554,15 @@ def respond_to_cert_req_msg(
        - `hash_alg`: The hash algorithm to use, for signing the certificate. Defaults to "sha256".
 
     Returns:
-    --------
+    -------
          - The certificate and the encrypted certificate, if the request is for key encipherment.
 
     Raises:
-    -------
+    ------
        - NotImplementedError: If the request is for key agreement.
 
 
     """
-
-
     name = cert_req_msg["popo"].getName()
 
     if name in ["raVerified", "signature"]:
@@ -600,16 +598,17 @@ def respond_to_cert_req_msg(
 
 
 @keyword(name="Verify POP Signature For PKI Request")
-def verify_sig_pop_for_pki_request(pki_message: rfc9480.PKIMessage, cert_index: Union[int, str] = 0) -> None:
+def verify_sig_pop_for_pki_request(# noqa: D417 Missing argument descriptions in the docstring
+        pki_message: rfc9480.PKIMessage, cert_index: Union[int, str] = 0) -> None:
     """Verify the POP in the PKIMessage.
 
     Arguments:
-    ----------
+    ---------
         - `pki_message`: The PKIMessage to verify the POP for.
         - `cert_index`: The index of the certificate request to verify the POP for. Defaults to `0`.
 
     Raises:
-    -------
+    ------
         - ValueError: If the body type is not one of `ir`, `cr`, `kur`, or `crr`.
         - IndexError: If the index is out of range.
         - BadAsn1Data: If the ASN.1 data is invalid.
@@ -671,7 +670,7 @@ def _set_header_fields(request: rfc9480.PKIMessage, kwargs: dict) -> dict:
     return kwargs
 
 
-def build_cp_from_p10cr(
+def build_cp_from_p10cr( # noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
     cert: Optional[rfc9480.CMPCertificate] = None,
     set_header_fields: bool = True,
@@ -684,7 +683,7 @@ def build_cp_from_p10cr(
     """Build a CMP message for a certificate request.
 
     Arguments:
-    ----------
+    ---------
         - `request`: The PKIMessage containing the certificate request.
         - `cert`: The certificate to build the response for. Defaults to `None`.
         - `set_header_fields`: Whether to set the header fields, for the exchange. Defaults to `True`.
@@ -695,13 +694,14 @@ def build_cp_from_p10cr(
         - `kwargs`: Additional values to set for the header.
 
     Returns:
-    --------
+    -------
         - The built PKIMessage.
 
     Raises:
-    -------
+    ------
         - ValueError: If the request is not a `p10cr`.
         - ValueError: If the CA key and certificate are not provided and the certificate is not provided.
+
     """
     if request["body"].getName() != "p10cr":
         raise ValueError("Request must be a p10cr to build a CP message for it.")
