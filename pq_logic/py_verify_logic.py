@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-"""Contains logic to perform all kind of verification tasks.
+"""Contains logic to perform all kinds of verification tasks.
 
 Either has functionality to verify signatures of PKIMessages or certificates.
 
