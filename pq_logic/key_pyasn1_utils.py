@@ -24,6 +24,7 @@ from resources.oidutils import (
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
     SLH_DSA_OID_2_NAME,
+    TRAD_STR_OID_TO_KEY_NAME,
     XWING_OID_STR,
 )
 
@@ -121,15 +122,6 @@ CUSTOM_KEY_TYPES = [
 
 
 supported_keys += CUSTOM_KEY_TYPES
-
-OID_TO_KEY_LOADER = {
-    "1.3.101.110": "x25519",
-    "1.3.101.111": "x448",
-    "1.3.101.112": "ed25519",
-    "1.3.101.113": "ed448",
-    "1.2.840.113549.1.1.1": "rsa",
-    "1.2.840.113549.1.9.16.3.14": "rsa-kem",
-}
 
 
 def _get_pem_header(key) -> bytes:
@@ -230,7 +222,7 @@ def parse_key_from_one_asym_key(data: bytes):
         trad_key = serialization.load_der_private_key(encoder.encode(obj[1]), password=None)
         return CompositeSigCMSPrivateKey(pq_key=pq_key, trad_key=trad_key)
 
-    if alg_oid in OID_TO_KEY_LOADER:
+    if alg_oid in TRAD_STR_OID_TO_KEY_NAME:
         return serialization.load_der_private_key(data=data, password=None)
 
     if alg_oid == XWING_OID_STR:
