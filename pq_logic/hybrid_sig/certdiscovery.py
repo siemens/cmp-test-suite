@@ -118,8 +118,8 @@ def extract_sia_extension_for_cert_discovery(
     means that all entries are checked.
     :raises ValueError: If the `accessMethod` does not match `id_ad_certDiscovery` or the `type-id` does not
                         match `id_ad_relatedCertificateDescriptor`.
-    :return: The extracted `RelatedCertificateDescriptor` object containing details such as the `uniformResourceIdentifier`,
-             `signatureAlgorithm`, and `publicKeyAlgorithm`.
+    :return: The extracted `RelatedCertificateDescriptor` object containing details such as
+    the `uniformResourceIdentifier`, `signatureAlgorithm`, and `publicKeyAlgorithm`.
     """
     sia, _ = decoder.decode(extension["extnValue"].asOctets(), rfc5280.SubjectInfoAccessSyntax())
 
