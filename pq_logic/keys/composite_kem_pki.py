@@ -26,24 +26,27 @@ Issues: No composite is currently compatible with CNSA 2.0 #102 (Does not suppor
 
 
 """
+
 import logging
 from abc import abstractmethod
 from typing import Optional, Tuple, Union
 
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, rsa, x448, x25519
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from resources.exceptions import BadAsn1Data, InvalidKeyCombination
-from resources.keyutils import generate_key
 
 from pq_logic.hybrid_structures import CompositeCiphertextValue
 from pq_logic.kem_mechanism import DHKEMRFC9180, ECDHKEM, RSAOaepKem
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeKEMPublicKey
-from pq_logic.keys.kem_keys import MLKEMPrivateKey
+from pq_logic.keys.kem_keys import MLKEMPrivateKey, MLKEMPublicKey
 from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_mapping import get_oid_for_composite_kem
+from pq_logic.trad_key_factory import generate_trad_key as generate_key
+from pq_logic.trad_typing import ECDHPrivateKey
 
 #####################################
 # OIDs and OID-to-KDF Mappings
@@ -114,15 +117,77 @@ def parse_private_keys(pq_key, trad_key) -> "CompositeKEMPrivateKey":
 
 
 class CompositeKEMPublicKey(AbstractCompositeKEMPublicKey):
+    """Composite KEM public key."""
+
+    pq_key: MLKEMPublicKey
+    _alternative_hash = False
+
     def get_oid(self) -> univ.ObjectIdentifier:
+        """Return the OID of the composite KEM."""
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
     def __eq__(self, other):
         """Check if two composite KEM public keys are equal."""
-        if not type(self) == type(other):
+        if type(self) is not type(other):
             raise ValueError(f"Cannot compare `{type(self)}` with `{type(other)}`")
 
         return self.pq_key == other.pq_key and self.trad_key == other.trad_key
+
+    def kem_combiner(self, mlkem_ss: bytes, trad_ss: bytes, trad_ct: bytes, trad_pk: bytes) -> bytes:
+        """Combine the shared secrets and encapsulation artifacts into a single shared secret.
+
+        :param mlkem_ss: Shared secret generated from the ML-KEM encapsulation.
+        :param trad_ss: Shared secret generated from the traditional KEM encapsulation.
+        :param trad_ct: Ciphertext from the traditional KEM encapsulation.
+        :param trad_pk: Serialized public key of the traditional KEM.
+        :return: A combined shared secret as bytes, derived using a KDF (HKDF or SHA3-256).
+
+        :raises KeyError: If the OID mapping for the specified keys is not found.
+        """
+        concatenated_inputs = mlkem_ss + trad_ss + trad_ct + trad_pk + encoder.encode(self.get_oid())
+        logging.info("CompositeKEM concatenated inputs: %s", concatenated_inputs)
+        kdf_name = get_composite_kem_hash_alg(self.pq_key.name, self.trad_key)
+
+        if "hkdf" in kdf_name:
+            hash_instance = hashes.SHA256() if not self._alternative_hash else hashes.SHA512()
+            hkdf = HKDF(algorithm=hash_instance, length=32, salt=None, info=None)
+            return hkdf.derive(concatenated_inputs)
+        else:
+            h = hashes.Hash(hashes.SHA3_256())
+            h.update(concatenated_inputs)
+            return h.finalize()
+
+    def _trad_encaps(self, private_key: Optional[ECDHPrivateKey]) -> Tuple[bytes, bytes]:
+        """Perform traditional key encapsulation using the specified KEM mechanism.
+
+        :param private_key: The private key to use for encapsulation.
+        :return: The shared secret and encapsulated ciphertext.
+        """
+        if isinstance(self.trad_key, RSAPublicKey):
+            return RSAOaepKem().encaps(public_key=self.trad_key)
+        dh_kem_mech = ECDHKEM(private_key)
+        ss, ct = dh_kem_mech.encaps(self.trad_key)
+        return ss, ct
+
+    def encaps(self, private_key: Optional[ECDHPrivateKey] = None) -> Tuple[bytes, bytes]:
+        """Encapsulate a shared secret using the composite KEM algorithm.
+
+        :param private_key: The private key to use for encapsulation.
+        :return: The shared secret and encapsulated ciphertext.
+        """
+        mlkem_ss, mlkem_ct = self.pq_key.encaps()
+        trad_ss, trad_ct = self._trad_encaps(private_key)
+        trad_pk = self._encode_pub_key()
+        combined_ss = self.kem_combiner(
+            mlkem_ss,
+            trad_ss,
+            trad_ct,
+            trad_pk,
+        )
+        ct_vals = CompositeCiphertextValue()
+        ct_vals.append(univ.OctetString(mlkem_ct))
+        ct_vals.append(univ.OctetString(trad_ct))
+        return combined_ss, encoder.encode(ct_vals)
 
 
 class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
