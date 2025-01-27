@@ -8,7 +8,6 @@ import base64
 import logging
 import os
 import re
-import sys
 import textwrap
 from base64 import b64decode, b64encode
 from collections import Counter
@@ -545,7 +544,6 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
     return True
 
 
-# TODO fix for pq
 def check_if_private_key_in_list(  # noqa D417 undocumented-param
     keys: List[PrivateKey], new_key: PrivateKey
 ) -> bool:
@@ -642,9 +640,3 @@ def manipulate_composite_sig(sig: bytes) -> bytes:
     out.append(sig1)
     out.append(sig2)
     return encoder.encode(out)
-
-
-def load_code():
-    """Load the code from the resources directory."""
-    sys.path.append(os.path.join(os.path.dirname(__file__), "..", "resources"))
-    sys.path.append(os.path.join(os.path.dirname(__file__), "..", "pq_logic"))
