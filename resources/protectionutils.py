@@ -623,11 +623,19 @@ def compute_and_prepare_mac(
     :return: A tuple containing the `AlgorithmIdentifier` structure and the computed MAC value.
     """
     alg_id = _prepare_mac_alg_id(protection=mac_alg, **params)
-    mac_value = _compute_mac_from_alg_id(key=key, alg_id=alg_id, data=data)
+    mac_value = compute_mac_from_alg_id(key=key, alg_id=alg_id, data=data)
     return alg_id, mac_value
 
 
-def _compute_mac_from_alg_id(key: bytes, alg_id: rfc9480.AlgorithmIdentifier, data: bytes) -> bytes:
+@not_keyword
+def compute_mac_from_alg_id(key: bytes, alg_id: rfc9480.AlgorithmIdentifier, data: bytes) -> bytes:
+    """Compute the MAC value based on the provided `AlgorithmIdentifier` structure.
+
+    :param key: The key to use for the MAC computation.
+    :param alg_id: The `AlgorithmIdentifier` structure containing the MAC parameters.
+    :param data: The data to authenticate.
+    :return: The computed MAC value.
+    """
     protection_type_oid = alg_id["algorithm"]
     prot_params = alg_id["parameters"]
 
