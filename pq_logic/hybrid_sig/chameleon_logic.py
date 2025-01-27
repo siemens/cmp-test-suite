@@ -2,20 +2,34 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, List, Optional
+"""Logic for building/validating Chameleon certificates/certification requests."""
 
+from typing import List, Optional, Tuple
+
+from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
-from resources.certbuildutils import build_csr, prepare_sig_alg_id
+from resources.certbuildutils import (
+    build_cert_from_csr,
+    build_csr,
+    csr_add_extensions,
+    prepare_sig_alg_id,
+    prepare_single_value_attr,
+    sign_cert,
+)
+from resources.certextractutils import get_extension
 from resources.compareutils import compare_pyasn1_names
-from resources.convertutils import subjectPublicKeyInfo_from_pubkey
-from resources.copyasn1utils import copy_name
+from resources.convertutils import copy_asn1_certificate, subjectPublicKeyInfo_from_pubkey
+from resources.copyasn1utils import copy_name, copy_validity
 from resources.cryptoutils import sign_data
+from resources.exceptions import BadAsn1Data, BadPOP
 from resources.oid_mapping import get_hash_from_oid
 from resources.prepareutils import prepare_name
 from resources.typingutils import PrivateKeySig
+from robot.api.deco import not_keyword
 
+from pq_logic import pq_compute_utils
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.hybrid_sig.certdiscovery import compare_alg_id_without_tag
 from pq_logic.hybrid_structures import (
@@ -23,8 +37,6 @@ from pq_logic.hybrid_structures import (
     DeltaCertificateRequestSignatureValue,
     DeltaCertificateRequestValue,
 )
-from pq_logic.pq_compute_utils import verify_csr_signature
-from pq_logic.py_verify_logic import verify_signature_with_alg_id
 from pq_logic.tmp_oids import (
     id_at_deltaCertificateRequest,
     id_at_deltaCertificateRequestSignature,
@@ -156,11 +168,12 @@ def _prepare_dcd_extensions(
 ### as of Section 4.2. Issuing a Base Certificate
 
 
-def issue_base_certificate(
+def build_chameleon_base_certificate(
     delta_cert: rfc9480.CMPCertificate,
     base_tbs_cert: rfc5280.TBSCertificate,
     ca_key: PrivateKeySig,
     use_rsa_pss: bool = False,
+    hash_alg: Optional[str] = None,
 ) -> rfc9480.CMPCertificate:
     """Issue a Base Certificate with the Delta Certificate Descriptor (DCD) extension.
 
@@ -185,7 +198,7 @@ def issue_base_certificate(
     # validity periods of the Base Certificate and Delta Certificate be identical, or that if the
     # Delta Certificate is revoked, the Base Certificate must also be revoked.
 
-    hash_alg = get_hash_from_oid(delta_cert["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
+    hash_alg = hash_alg or get_hash_from_oid(delta_cert["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
 
     base_cert = rfc9480.CMPCertificate()
     base_cert["tbsCertificate"] = base_tbs_cert
@@ -198,15 +211,9 @@ def issue_base_certificate(
     dcd_extension["extnValue"] = univ.OctetString(encoder.encode(dcd))
     base_tbs_cert["extensions"].append(dcd_extension)
 
-    tbs_base_der = encoder.encode(base_tbs_cert)
-    base_signature = sign_data(data=tbs_base_der, key=ca_key, hash_alg=hash_alg)
-
     base_cert = rfc9480.CMPCertificate()
-    sig_alg = prepare_sig_alg_id(use_rsa_pss=use_rsa_pss, signing_key=ca_key, hash_alg=hash_alg)
     base_cert["tbsCertificate"] = base_tbs_cert
-    base_cert["signatureAlgorithm"] = sig_alg
-    base_cert["signature"] = univ.BitString.fromOctetString(base_signature)
-
+    base_cert = sign_cert(cert=base_cert, signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
     return base_cert
 
 
