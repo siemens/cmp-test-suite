@@ -1181,19 +1181,20 @@ def build_ir_from_key(  # noqa D417 undocumented-param
     | ${ir}= | Build Ir From Key | ${signing_key} | exclude_fields=transactionID,senderNonce |
 
     """
-    cert_request_msg = prepare_cert_req_msg(
-        private_key=signing_key,
-        common_name=common_name,
-        cert_req_id=params.get("cert_req_id", 0),
-        hash_alg=params.get("hash_alg", "sha256"),
-        extensions=params.get("extensions", None),
-        controls=params.get("controls"),
-        ra_verified=params.get("ra_verified", False),
-        for_kga=params.get("for_kga", False),
-        cert_template=params.get("cert_template"),
-        popo_structure=params.get("popo_structure"),
-        bad_pop=bad_pop,
-    )
+    if cert_req_msg is None:
+        cert_req_msg = prepare_cert_req_msg(
+            private_key=signing_key,
+            common_name=common_name,
+            cert_req_id=params.get("cert_req_id", 0),
+            hash_alg=params.get("hash_alg", "sha256"),
+            extensions=params.get("extensions", None),
+            controls=params.get("controls"),
+            ra_verified=params.get("ra_verified", False),
+            for_kga=params.get("for_kga", False),
+            cert_template=params.get("cert_template"),
+            popo_structure=params.get("popo_structure"),
+            bad_pop=bad_pop,
+        )
 
     pvno = 2
     if params.get("pvno") is None:
@@ -1203,7 +1204,6 @@ def build_ir_from_key(  # noqa D417 undocumented-param
         pvno = int(params.get("pvno"))
 
     pki_body = _prepare_cert_req_msg_body("ir")
-    pki_body["ir"].append(cert_request_msg)
     pki_body["ir"].extend(utils.ensure_list(cert_req_msg))
 
     # To ensure that the prepared messageTime is newer.
@@ -1276,21 +1276,21 @@ def build_cr_from_key(  # noqa D417 undocumented-param
     | ${cr}= | Build Cr From Key | ${signing_key} | common_name=${common_name} | hash_alg=sha512 |
 
     """
-    cert_request_msg = prepare_cert_req_msg(
-        private_key=signing_key,
-        common_name=common_name,
-        cert_req_id=params.get("cert_req_id", 0),
-        hash_alg=params.get("hash_alg", "sha256"),
-        extensions=params.get("extensions", None),
-        controls=params.get("controls"),
-        ra_verified=params.get("ra_verified", False),
-        for_kga=params.get("for_kga", False),
-        cert_template=params.get("cert_template"),
-        popo_structure=params.get("popo"),
-    )
+    if cert_req_msg is None:
+        cert_req_msg = prepare_cert_req_msg(
+            private_key=signing_key,
+            common_name=common_name,
+            cert_req_id=params.get("cert_req_id", 0),
+            hash_alg=params.get("hash_alg", "sha256"),
+            extensions=params.get("extensions", None),
+            controls=params.get("controls"),
+            ra_verified=params.get("ra_verified", False),
+            for_kga=params.get("for_kga", False),
+            cert_template=params.get("cert_template"),
+            popo_structure=params.get("popo"),
+        )
 
     pki_body = _prepare_cert_req_msg_body("cr")
-    pki_body["cr"].append(cert_request_msg)
     pki_body["cr"].extend(utils.ensure_list(cert_req_msg))
 
     # To ensure that the prepared messageTime is newer.
