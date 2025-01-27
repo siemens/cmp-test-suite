@@ -1074,7 +1074,8 @@ def extract_protected_part(pki_message: rfc9480.PKIMessage) -> bytes:
     return encoder.encode(protected_part)
 
 
-def _prepare_pki_protection_field(protection_value: bytes) -> rfc9480.PKIProtection:
+@not_keyword
+def prepare_pki_protection_field(protection_value: bytes) -> rfc9480.PKIProtection:
     """Return the tagged `PKIProtection` structure."""
     wrapped_protection = (
         rfc9480.PKIProtection()
@@ -1106,6 +1107,33 @@ def _prepare_certificate_chain(
         cert_chain = utils.load_certificate_chain(cert_chain_path)[::-1]
 
     return cert_chain
+
+
+@not_keyword
+def patch_sender_and_sender_kid(
+    do_patch: bool, pki_message: rfc9480.PKIMessage, cert: Optional[rfc9480.CMPCertificate]
+) -> rfc9480.PKIMessage:
+    """Patch the `sender` and `senderKID` fields of the PKIMessage structure based on the provided certificate.
+
+    :param do_patch: Whether to patch the `sender` and `senderKID` fields.
+    :param pki_message: The PKIMessage structure to patch.
+    :param cert: The certificate to use for patching.
+    :return: The patched or unpached PKIMessage.
+    """
+    if do_patch:
+        logging.info("Skipped patch of sender and senderKID, for signature-based protection.")
+    elif cert is None:
+        logging.info(
+            "Protect PKIMessage did not patch the sender and senderKID field,because the `cert` parameter was absent!"
+        )
+    else:
+        sender_kid = resources.certextractutils.get_field_from_certificate(cert, extension="ski")  # type: ignore
+        if sender_kid is not None:
+            pki_message = cmputils.patch_senderkid(pki_message, sender_kid)  # type: ignore
+
+        pki_message = cmputils.patch_sender(pki_message, cert=cert)
+
+    return pki_message
 
 
 @keyword(name="Protect PKIMessage")
@@ -1204,19 +1232,7 @@ def protect_pkimessage(  # noqa: D417
         cert = certutils.parse_certificate(der_data)
 
     if protection in ["signature", "rsassa-pss", "rsassa_pss"]:
-        if params.get("no_patch", False):
-            logging.info("Skipped patch of sender and senderKID, for signature-based protection.")
-        elif cert is None:
-            logging.info(
-                "Protect PKIMessage did not patch the sender and senderKID field,"
-                "because the `cert` parameter was absent!"
-            )
-        else:
-            sender_kid = resources.certextractutils.get_field_from_certificate(cert, extension="ski")  # type: ignore
-            if sender_kid is not None:
-                pki_message = cmputils.patch_senderkid(pki_message, sender_kid)  # type: ignore
-
-            cmputils.patch_sender(pki_message, cert=cert)
+        patch_sender_and_sender_kid(do_patch=not params.get("no_patch", False), pki_message=pki_message, cert=cert)
 
     pki_message["header"]["protectionAlg"] = _prepare_prot_alg_id(
         protection=protection,
@@ -1254,7 +1270,7 @@ def protect_pkimessage(  # noqa: D417
             cert=cert,  # type: ignore
         )
 
-    pki_message["protection"] = _prepare_pki_protection_field(protection_value)
+    pki_message["protection"] = prepare_pki_protection_field(protection_value)
     return pki_message
 
 
@@ -1877,7 +1893,7 @@ def modify_pkimessage_protection(  # noqa D417 undocumented-param
         protection_value = pki_message["protection"].asOctets()
         protection_value = utils.manipulate_first_byte(protection_value)
 
-    pki_message["protection"] = _prepare_pki_protection_field(protection_value)
+    pki_message["protection"] = prepare_pki_protection_field(protection_value)
     return pki_message
 
 
@@ -2314,7 +2330,7 @@ def protect_pkimessage_kem_based_mac(
 
     data = extract_protected_part(pki_message)
     mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=prot_alg_id, ss=shared_secret)
-    pki_message["protection"] = _prepare_pki_protection_field(mac)
+    pki_message["protection"] = prepare_pki_protection_field(mac)
     return pki_message
 
 
