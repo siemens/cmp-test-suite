@@ -31,7 +31,10 @@ def ensure_is_sign_key(key: Any) -> PrivateKeySig:
 
 @not_keyword
 def subjectPublicKeyInfo_from_pubkey(
-    public_key: PublicKey, target: Optional[rfc5280.SubjectPublicKeyInfo] = None, use_pss: bool = False
+    public_key: PublicKey,
+    target: Optional[rfc5280.SubjectPublicKeyInfo] = None,
+    use_rsa_pss: bool = False,
+    use_pre_hash: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Convert a `PublicKey` object to a `rfc5280.SubjectPublicKeyInfo` structure.
 
@@ -42,11 +45,12 @@ def subjectPublicKeyInfo_from_pubkey(
     :param public_key: The `PublicKey` object to convert.
     :param target: An optional existing `rfc5280.SubjectPublicKeyInfo` object to populate
     with the decoded data. If not provided, a new structure is created.
-    :param use_pss: Whether RSA-PSS-Padding was used for signing. Only relevant for CompositeSigKeys.
+    :param use_rsa_pss: Whether RSA-PSS-Padding was used for signing. Only relevant for CompositeSigKeys.
+    :param use_pre_hash: Whether the public key should be the pre-hash one. Only relevant for CompositeSigKeys.
     :return: An `rfc5280.SubjectPublicKeyInfo` structure containing the public key information.
     """
     if isinstance(public_key, AbstractCompositePublicKey):
-        return public_key.to_spki(use_pss, False)
+        return public_key.to_spki(use_rsa_pss, use_pre_hash)
 
     der_data = public_key.public_bytes(
         encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
