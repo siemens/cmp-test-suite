@@ -16,28 +16,36 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
-import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
-from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
-from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, prepare_validity
+from pyasn1_alt_modules import rfc2986, rfc4211, rfc5280, rfc6402, rfc9480
+from resources import keyutils
+from resources.certbuildutils import (
+    prepare_sig_alg_id,
+    prepare_tbs_certificate,
+    prepare_tbs_certificate_from_template,
+    prepare_validity,
+)
 from resources.certextractutils import get_extension
 from resources.convertutils import copy_asn1_certificate
 from resources.cryptoutils import sign_data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
 from resources.protectionutils import prepare_sha_alg_id
+from resources.typingutils import PublicKey
 from resources.utils import get_openssl_name_notation
+from robot.api.deco import not_keyword
 
+from pq_logic import pq_compute_utils
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.hybrid_structures import AltSignatureExt, AltSubPubKeyExt, UniformResourceIdentifier
 from pq_logic.keys.comp_sig_cms03 import (
     CompositeSigCMSPublicKey,
     compute_hash,
 )
-from pq_logic.py_verify_logic import verify_signature_with_alg_id
+from pq_logic.pq_utils import fetch_value_from_location
 from pq_logic.tmp_oids import (
     CMS_COMPOSITE_OID_2_HASH,
     id_altSignatureExt,
@@ -354,7 +362,81 @@ def sun_csr_to_cert(
     return cert_form4, cert_form1
 
 
-def _prepare_pre_tbs_certificate(
+def sun_cert_template_to_cert(
+    cert_template: rfc4211.CertTemplate,
+    issuer_cert: rfc9480.CMPCertificate,
+    issuer_private_key,
+    alt_private_key,
+    pub_key_loc: Optional[str],
+    sig_loc: Optional[str],
+    hash_alg: Optional[str] = None,
+) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
+    """Convert a certificate template to a certificate, with the sun hybrid method.
+
+
+    :param cert_template: The certificate template, to built the certificate from.
+    :param issuer_cert: The issuer's certificate to use for constructing the certificate.
+    :param issuer_private_key: The private key of the issuer for signing.
+    :param alt_private_key: The alternative private key for creating the alternative signature.
+    :param pub_key_loc: The location of the alternative public key.
+    :param sig_loc: The location of the alternative signature.
+    :param hash_alg: The hash algorithm to use for signing the certificate (e.g., "sha256").
+    :return: A tuple of the Form4 and Form1 certificates.
+    """
+    tbs_cert = prepare_tbs_certificate_from_template(
+        cert_template=cert_template,
+        issuer_cert=issuer_cert["tbsCertificate"]["subject"],
+    )
+
+    composite_key = load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+    oid = composite_key.get_oid()
+    hash_alg = CMS_COMPOSITE_OID_2_HASH[oid] or hash_alg or "sha256"
+    extn_alt_pub, extn_alt_pub2 = _prepare_public_key_extensions(composite_key, hash_alg, pub_key_loc)
+
+    tbs_cert["extensions"].append(extn_alt_pub)
+
+    pre_tbs_cert = tbs_cert
+    data = encoder.encode(pre_tbs_cert)
+    signature = sign_data(key=alt_private_key, data=data, hash_alg=hash_alg)
+    sig_alg_id = prepare_sig_alg_id(signing_key=alt_private_key, hash_alg=hash_alg, use_rsa_pss=False)
+
+    extn_alt_sig = prepare_sun_hybrid_alt_signature_ext(
+        signature=signature, by_val=False, hash_alg=hash_alg, alt_sig_algorithm=sig_alg_id, location=sig_loc
+    )
+
+    extn_alt_sig2 = prepare_sun_hybrid_alt_signature_ext(
+        signature=signature, by_val=True, hash_alg=hash_alg, alt_sig_algorithm=sig_alg_id, location=sig_loc
+    )
+
+    # as of 4.3.2:
+    # Sign the preTbsCertificate constructed in Section 4.3.1 with the issuer's
+    # alternative private key to obtain the alternative signature.
+    pre_tbs_cert["extensions"].append(extn_alt_sig)
+
+    # Sign with the first public key.
+    final_tbs_cert_data = encoder.encode(pre_tbs_cert)
+    signature = sign_data(key=issuer_private_key, data=final_tbs_cert_data, hash_alg=hash_alg)
+    sig_alg_id = prepare_sig_alg_id(signing_key=issuer_private_key, hash_alg=hash_alg, use_rsa_pss=False)
+
+    cert_form4 = rfc9480.CMPCertificate()
+    cert_form4["tbsCertificate"] = pre_tbs_cert
+    cert_form4["signature"] = univ.BitString.fromOctetString(signature)
+    cert_form4["signatureAlgorithm"] = sig_alg_id
+
+    cert_form1 = copy_asn1_certificate(cert_form4)
+
+    # build Form1
+
+    cert_form1["tbsCertificate"]["extensions"] = _patch_extensions(
+        cert_form1["tbsCertificate"]["extensions"], extn_alt_pub2
+    )
+    cert_form1["tbsCertificate"]["extensions"] = _patch_extensions(
+        cert_form1["tbsCertificate"]["extensions"], extn_alt_sig2
+    )
+
+    return cert_form4, cert_form1
+
+
 def _prepare_public_key_extensions(
     composite_key: CompositeSigCMSPublicKey,
     pub_key_hash_id: str,
