@@ -617,6 +617,7 @@ def sign_cert(
     hash_alg: str = "sha256",
     use_rsa_pss: bool = False,
     modify_signature: bool = False,
+    bad_sig: bool = False,
 ) -> rfc9480.CMPCertificate:
     """Sign a `CMPCertificate` object with the provided private key.
 
@@ -628,16 +629,19 @@ def sign_cert(
     :return:
     """
     der_tbs_cert = encoder.encode(cert["tbsCertificate"])
-    if use_rsa_pss:
-        signature = cryptoutils.sign_data_rsa_pss(data=der_tbs_cert, private_key=signing_key, hash_alg=hash_alg)
-    else:
-        signature = cryptoutils.sign_data(data=der_tbs_cert, key=signing_key, hash_alg=hash_alg)
+    signature = cryptoutils.sign_data(data=der_tbs_cert, key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
     logging.info("Certificate signature: %s", signature.hex())
 
     if modify_signature:
         signature = utils.manipulate_first_byte(signature)
         logging.info("Modified certificate signature: %s", signature.hex())
+
+    if bad_sig:
+        if isinstance(signing_key, AbstractCompositeSigPrivateKey):
+            signature = utils.manipulate_composite_sig(signature)
+        else:
+            signature = utils.manipulate_first_byte(signature)
 
     cert["signature"] = univ.BitString.fromOctetString(signature)
     cert["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
