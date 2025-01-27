@@ -413,17 +413,16 @@ def extract_chameleon_attributes(
     return non_signature_attributes, delta_cert_request, delta_cert_request_signature
 
 
-# TODO fix doc
-def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> None:
+# TODO fix doc for rf
+def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> DeltaCertificateRequestValue:
     """Verify the signature of a paired CSR.
 
     :param csr: The CertificationRequest to verify.
     :raises ValueError: If the Delta Certificate Request attribute is missing.
 
     """
-    verify_csr_signature(csr=csr)
-    attributes = csr["certificationRequestInfo"]["attributes"]
-    attributes, delta_req, delta_sig = _extract_attributes(attributes)
+    pq_compute_utils.verify_csr_signature(csr=csr)
+    attributes, delta_req, delta_sig = extract_chameleon_attributes(csr=csr)
 
     if delta_req is None:
         raise ValueError("Delta Certificate Request attribute is missing.")
@@ -449,4 +448,13 @@ def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> None:
     public_key = CombinedKeyFactory.load_public_key_from_spki(delta_req["subjectPKInfo"])
 
     data = encoder.encode(csr["certificationRequestInfo"])
-    verify_signature_with_alg_id(alg_id=sig_alg_id, data=data, public_key=public_key, signature=delta_sig.asOctets())
+    try:
+        pq_compute_utils.verify_signature_with_alg_id(
+            alg_id=sig_alg_id, data=data, public_key=public_key, signature=delta_sig.asOctets()
+        )
+    except InvalidSignature as e:
+        raise BadPOP("Invalid signature", error_details=e)
+
+    return delta_req
+
+
