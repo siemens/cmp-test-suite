@@ -229,3 +229,126 @@ def verify_sun_hybrid_cert(
     pq_compute_utils.verify_signature_with_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
 
 
+def _get_catalyst_info_vals(
+    general_info: Sequence[rfc9480.InfoTypeAndValue],
+) -> Tuple[
+    rfc9480.AlgorithmIdentifier, Optional[rfc5280.SubjectPublicKeyInfo], bytes, Sequence[rfc9480.InfoTypeAndValue]
+]:
+    """Extract the catalyst protection mechanism values from the `generalInfo` field.
+
+    :param general_info: The general info field.
+    :return: The protection algorithm identifier, the optional public key, and the alternative signature.
+    and the other fields to overwrite the generalInfo field.
+    """
+    prot_alg_id = None
+    public_key_info = None
+    alt_sig = None
+
+    other_fields = (
+        univ.SequenceOf(componentType=rfc9480.InfoTypeAndValue())
+        .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, float("inf")))
+        .subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 8))
+    )
+
+    for info in general_info:
+        if info["infoType"] == id_ce_altSignatureAlgorithm:
+            other_fields.append(info)
+            prot_alg_id = decoder.decode(info["infoValue"], asn1Spec=rfc9480.AlgorithmIdentifier())[0]
+        elif info["infoType"] == id_ce_subjectAltPublicKeyInfo:
+            other_fields.append(info)
+            public_key_info = decoder.decode(info["infoValue"], asn1Spec=rfc5280.SubjectPublicKeyInfo())[0]
+        elif info["infoType"] == id_ce_altSignatureValue:
+            alt_sig = decoder.decode(info["infoValue"], asn1Spec=univ.BitString())[0]
+            alt_sig = alt_sig.asOctets()
+        else:
+            other_fields.append(info)
+
+    if alt_sig is None:
+        raise ValueError("No alternative signature found in the message.")
+
+    if prot_alg_id is None:
+        raise ValueError("No protection algorithm found in the message.")
+
+    if public_key_info is not None:
+        logging.info("Public key found in the message.")
+
+    return prot_alg_id, public_key_info, alt_sig, other_fields
+
+
+def verify_hybrid_pkimessage_protection(
+    pki_message: rfc9480.PKIMessage,
+    public_key: Optional[PublicKeySig] = None,
+) -> None:
+    """Verify the protection of a PKIMessage with a hybrid protection scheme.
+
+    :param pki_message: The PKIMessage to verify.
+    :param public_key: The public key to use for verification.
+    (allowed in case of self-signed certificates.)
+    :raises InvalidSignature: If the protection of the PKIMessage is invalid.
+    """
+    prot_alg_id = pki_message["header"]["protectionAlg"]
+
+    if not prot_alg_id.isValue:
+        raise BadMessageCheck("The `PKIMessage` does not contain a protection algorithm.")
+
+    if not pki_message["protection"].isValue:
+        raise BadMessageCheck("The `PKIMessage` does not contain a protection value.")
+
+    if not pki_message["extraCerts"].isValue and public_key is None:
+        raise BadMessageCheck(
+            "The `PKIMessage` does not contain any certificatesand no public key was provided for verification."
+        )
+
+    data = encoder.encode(pki_message["header"]) + encoder.encode(pki_message["body"])
+
+    oid = prot_alg_id["algorithm"]
+    if isinstance(public_key, AbstractCompositeSigPublicKey) and oid in CMS_COMPOSITE_OID_2_NAME:
+        pq_compute_utils.verify_signature_with_alg_id(
+            public_key=public_key,
+            alg_id=prot_alg_id,
+            data=data,
+            signature=pki_message["protection"].asOctets(),
+        )
+
+    elif oid in CMS_COMPOSITE_OID_2_NAME:
+        other_certs = None
+        if len(pki_message) > 1:
+            other_certs = pki_message["extraCerts"][1:]
+
+        verify_composite_signature_with_hybrid_cert(
+            data=data,
+            sig_alg=prot_alg_id,
+            signature=pki_message["protection"].asOctets(),
+            cert=pki_message["extraCerts"][0],
+            other_certs=other_certs,
+        )
+    else:
+        cert = pki_message["extraCerts"][0]
+        other_certs = None
+        if len(pki_message) > 1:
+            other_certs = pki_message["extraCerts"][1:]
+
+        pq_compute_utils.verify_signature_with_alg_id(
+            public_key=load_public_key_from_cert(pki_message["extraCerts"][0]),
+            alg_id=prot_alg_id,
+            data=data,
+            signature=pki_message["protection"].asOctets(),
+        )
+
+        sig_alg_id, public_key_info, alt_sig, other_fields = _get_catalyst_info_vals(
+            pki_message["header"]["generalInfo"]
+        )
+        if public_key_info is not None:
+            other_key = keyutils.load_public_key_from_spki(public_key_info)
+        else:
+            other_key = pq_compute_utils.may_extract_alt_key_from_cert(cert=cert, other_certs=other_certs)
+
+        pki_message["header"]["generalInfo"] = other_fields
+        data = encoder.encode(pki_message["header"]) + encoder.encode(pki_message["body"])
+
+        pq_compute_utils.verify_signature_with_alg_id(
+            public_key=other_key,
+            alg_id=sig_alg_id,
+            data=data,
+            signature=alt_sig,
+        )
