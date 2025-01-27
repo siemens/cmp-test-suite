@@ -637,7 +637,7 @@ def prepare_ktri(
     ktri = prepare_key_transport_recipient_info(
         version=2,
         key_enc_alg_id=key_enc_alg_id,
-        cert=server_cert,
+        cert=cmp_protection_cert,
         encrypted_key=encrypted_key,
         iss_and_ser=issuer_and_ser,
     )
@@ -942,7 +942,7 @@ def build_env_data_for_exchange(
     public_key_recip: PublicKey,
     data: bytes,
     private_key: Optional[ECDHPrivateKey] = None,
-    cert_recip: Optional[rfc9480.CMPCertificate] = None,
+    cert_sender: Optional[rfc9480.CMPCertificate] = None,
     cek: Optional[Union[str, bytes]] = None,
     target: Optional[rfc9480.EnvelopedData] = None,
     issuer_and_ser: Optional[rfc5652.IssuerAndSerialNumber] = None,
@@ -958,7 +958,7 @@ def build_env_data_for_exchange(
     :param public_key_recip: The public key of the recipient.
     :param data: The data to be encrypted.
     :param private_key: The private key used for key agreement.
-    :param cert_recip: The certificate of the sender.
+    :param cert_sender: The certificate of the sender.
     :param cek: The content encryption key to use. Defaults to 32 random bytes.
     :param target: An optional `EnvelopedData` structure to populate. Defaults to None.
     :param use_rsa_oaep: Boolean indicating whether to use RSA-OAEP or RSA PKCS#1 v1.5 padding.
@@ -990,7 +990,7 @@ def build_env_data_for_exchange(
 
     elif is_kem_public_key(public_key_recip):
         kem_recip_info = prepare_kem_recip_info(
-            server_cert=cert_recip,
+            server_cert=cert_sender,
             public_key_recip=public_key_recip,
             cek=cek,
             issuer_and_ser=issuer_and_ser,
