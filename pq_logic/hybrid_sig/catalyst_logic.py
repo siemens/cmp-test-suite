@@ -205,7 +205,9 @@ def sign_cert_catalyst(
     return sign_cert(signing_key=trad_key, cert=cert, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
 
-def validate_catalyst_extension(cert: rfc9480.CMPCertificate) -> Union[None, dict]:
+def validate_catalyst_extension(
+    cert: rfc9480.CMPCertificate, sig_alg_must_be: Optional[str] = None
+) -> Union[None, dict]:
     """Check if the certificate contains all required catalyst extensions.
 
     Required Extensions:
@@ -214,8 +216,12 @@ def validate_catalyst_extension(cert: rfc9480.CMPCertificate) -> Union[None, dic
     - altSignatureValue
 
     :param cert: The certificate to check.
+    :param sig_alg_must_be: The signature algorithm that the alternative signature must match.
     :return: A dictionary with extension values if all are present, else None.
+    (keys are: "signature", "spki", "alg_id")
     :raises ValueError: If only some catalyst extensions are present or if extensions are malformed.
+    :raises BadAlg: If the signature algorithm does not match the expected value.
+    :raises KeyError: If the signature algorithm is not PQ-signature algorithm.
     """
     required_extensions = {id_ce_subjectAltPublicKeyInfo, id_ce_altSignatureAlgorithm, id_ce_altSignatureValue}
 
@@ -245,6 +251,14 @@ def validate_catalyst_extension(cert: rfc9480.CMPCertificate) -> Union[None, dic
 
         if rest:
             raise ValueError("Invalid altSignatureValue extension content.")
+
+        if sig_alg_must_be is not None:
+            if "." in sig_alg_must_be:
+                if str(alt_signature_algorithm["algorithm"]) != sig_alg_must_be:
+                    raise BadAlg(f"Signature algorithm must be {sig_alg_must_be}.")
+            else:
+                if str(PQ_NAME_2_OID[sig_alg_must_be]) != str(alt_signature_algorithm["algorithm"]):
+                    raise BadAlg(f"Signature algorithm must be {sig_alg_must_be}.")
 
         return {
             "signature": alt_signature_value.asOctets(),
