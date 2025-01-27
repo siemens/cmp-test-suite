@@ -496,3 +496,46 @@ def build_delta_cert(
     return build_cert_from_csr(csr=csr_tmp, ca_key=ca_key, ca_cert=ca_cert, alt_sign_key=alt_sign_key)
 
 
+def build_chameleon_cert_from_paired_csr(
+    csr: rfc6402.CertificationRequest,
+    ca_key: PrivateKeySig,
+    ca_cert: rfc9480.CMPCertificate,
+    alt_key: Optional[PrivateKeySig] = None,
+    use_rsa_pss: bool = False,
+    hash_alg: str = "sha256",
+) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
+    """Build a paired certificate from a paired CSR.
+
+    :param csr: The paired CSR.
+    :param ca_key: The CA key for signing the certificate.
+    :param ca_cert: The CA certificate matching the CA key.
+    :param alt_key: An alternative signing key for the certificate.
+    :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use PSS-padding for signing.
+    :return: The paired certificate.
+    Starts with the Base and then Delta Certificate.
+    """
+    delta_req = verify_paired_csr_signature(csr=csr)
+    cert = build_cert_from_csr(csr=csr, ca_key=ca_key, ca_cert=ca_cert, alt_sign_key=alt_key, use_rsa_pss=use_rsa_pss)
+
+    delta_cert = build_delta_cert(
+        csr=csr,
+        delta_value=delta_req,
+        ca_key=ca_key,
+        ca_cert=ca_cert,
+        alt_sign_key=alt_key,
+        use_rsa_pss=use_rsa_pss,
+        hash_alg=hash_alg,
+    )
+
+    paired_cert = build_chameleon_base_certificate(
+        delta_cert=delta_cert,
+        base_tbs_cert=cert["tbsCertificate"],
+        ca_key=ca_key,
+        use_rsa_pss=use_rsa_pss,
+        hash_alg=None,  # only supposed to be used for negative testing.
+    )
+
+    return paired_cert, delta_cert
+
+
