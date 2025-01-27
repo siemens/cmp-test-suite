@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import unittest
 
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import prepare_related_cert_extension

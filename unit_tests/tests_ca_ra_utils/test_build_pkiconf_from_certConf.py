@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import unittest
 
 from resources.ca_ra_utils import build_cp_cmp_message, build_pki_conf_from_cert_conf

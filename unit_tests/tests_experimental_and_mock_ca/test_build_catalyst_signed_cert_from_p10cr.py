@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import unittest
 
 from pq_logic.hybrid_issuing import build_catalyst_signed_cert_from_p10cr, build_catalyst_signed_cert_from_req
