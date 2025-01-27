@@ -1775,6 +1775,9 @@ def verify_rsassa_pss_from_alg_id(
     """
     salt_length = None
     if alg_id["algorithm"] == rfc9481.id_RSASSA_PSS:
+        if not alg_id["parameters"].isValue:
+            raise ValueError("The `protectionAlg` field must have parameters for RSASSA-PSS set.")
+
         params, rest = decoder.decode(alg_id["parameters"], rfc8017.RSASSA_PSS_params())
         if rest != b"":
             raise ValueError("The decoding of 'parameters' field inside the `protectionAlg` had a remainder!")
