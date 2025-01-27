@@ -304,6 +304,8 @@ ML_KEM_ZETA_MUL = [ (17 ** (2*bitrev7(i) + 1)) % self.q for i in range(128) ]
 
 
 class ML_KEM:
+    """ML-KEM Class."""
+
     def __init__(self, param: str = "ml-kem-768"):
         """Initialize the class with parameters.
 
@@ -338,12 +340,6 @@ class ML_KEM:
 
     #   rounding is floor(x+1/2)
     def compress(self, d, xv):
-        """
-
-        :param d:
-        :param xv:
-        :return:
-        """
         return [(((x << d) + (self.q - 1) // 2) // self.q) % (1 << d) for x in xv]
 
     def decompress(self, d, yv):
@@ -352,9 +348,9 @@ class ML_KEM:
     #   Algorithm 3, BitsToBytes(b)
 
     def bits_to_bytes(self, b):
-        l = len(b)
-        a = bytearray(l // 8)
-        for i in range(0, l, 8):
+        length = len(b)
+        a = bytearray(length // 8)
+        for i in range(0, length, 8):
             x = 0
             for j in range(8):
                 x += b[i + j] << j
@@ -364,9 +360,9 @@ class ML_KEM:
     #   Algorithm 4, BytesToBits(B)
 
     def bytes_to_bits(self, b):
-        l = len(b)
-        a = bytearray(8 * l)
-        for i in range(0, 8 * l, 8):
+        length = len(b)
+        a = bytearray(8 * length)
+        for i in range(0, 8 * length, 8):
             x = b[i // 8]
             for j in range(8):
                 a[i + j] = (x >> j) & 1
@@ -375,7 +371,7 @@ class ML_KEM:
     #   Algorithm 5, ByteEncode_d(F)
 
     def byte_encode(self, d, f):
-        if type(f[0]) == list:
+        if isinstance(f[0], list):
             b = b""
             for x in f:
                 b += self.byte_encode(d, x)
@@ -621,7 +617,7 @@ class ML_KEM:
         :param param: Optional name of the version to parse. (e,g. "ml-kem-768")
         :return: The public and private key as raw bytes.
         """
-        if param != None:
+        if param is not None:
             self.__init__(param)
         ek_pke, dk_pke = self.k_pke_keygen(d)
         ek = ek_pke
