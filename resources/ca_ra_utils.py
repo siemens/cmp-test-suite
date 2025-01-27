@@ -808,8 +808,8 @@ def _process_one_cert_request(
         allowed_ra_dir=kwargs.get("allowed_ra_dir", "./data/allowed_ras"),
         trustanchor=kwargs.get("trustanchor", "./data/trustanchors"),
         allow_os_store=kwargs.get("allow_os_store", True),
-        index=cert_index,
-        strict=eku_strict,
+        cert_req_index=cert_index,
+        must_have_ra_eku_set=eku_strict,
     )
     cert_req_msg = get_cert_req_msg_from_pkimessage(pki_message=request, index=cert_index)
     cert, enc_cert = respond_to_cert_req_msg(
