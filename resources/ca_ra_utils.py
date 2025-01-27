@@ -746,7 +746,8 @@ def build_cp_from_p10cr( # noqa: D417 Missing argument descriptions in the docst
     ---------
         - `request`: The PKIMessage containing the certificate request.
         - `cert`: The certificate to build the response for. Defaults to `None`.
-        - `set_header_fields`: Whether to set the header fields, for the exchange. Defaults to `True`.
+        - `set_header_fields`: Whether to patch the header fields, for the exchange. Defaults to `True`.
+        (recipNonce, recipKID)
         - `cert_req_id`: The certificate request ID. Defaults to `-1`.
         - `ca_pubs`: The CA certificates to include in the response. Defaults to `None`.
         - `ca_key`: The CA private key to sign the response with. Defaults to `None`.
