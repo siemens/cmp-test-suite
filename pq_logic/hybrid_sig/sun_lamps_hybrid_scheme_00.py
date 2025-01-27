@@ -703,18 +703,6 @@ def parse_alt_sig_extension(cert: rfc9480.CMPCertificate, to_by_val: bool) -> rf
     return cert
 
 
-def _process_public_key(data: bytes):
-    """Process the public key from the given bytes, in any sun hybrid form (1-4).
-
-    :param data: The DER encoded public key.
-    :return: The loaded public key object.
-    """
-    obj, rest = decoder.decode(data, rfc5280.SubjectPublicKeyInfo())
-    if rest != b"":
-        raise ValueError("Decoding of the public key had trailing data.")
-    return load_public_key_from_spki(obj)
-
-
 def parse_alt_sub_pub_key_extension(cert: rfc9480.CMPCertificate, to_by_val: bool) -> rfc9480.CMPCertificate:
     """Parse and convert the AltSubPubKeyExt extension in the given certificate.
 
@@ -797,3 +785,17 @@ def convert_cert_to_target_form(cert, target_form: str):
     cert = parse_alt_sig_extension(cert, to_by_val_alt_sig)
 
     return cert
+
+
+def process_public_key(data: bytes):
+    """Process the public key from the given bytes, in any sun hybrid form (1-4).
+
+    :param data: The DER encoded public key.
+    :return: The loaded public key object.
+    """
+    obj, rest = decoder.decode(data, rfc5280.SubjectPublicKeyInfo())
+    if rest != b"":
+        raise ValueError("Decoding of the public key had trailing data.")
+    return load_public_key_from_spki(obj)
+
+
