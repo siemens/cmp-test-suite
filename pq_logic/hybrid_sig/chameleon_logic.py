@@ -343,7 +343,7 @@ def build_paired_csrs(
     )
 
     # Step 3: Add attribute.
-    delta_cert_attr = _prepare_attr(id_at_deltaCertificateRequest, delta_request)
+    delta_cert_attr = prepare_single_value_attr(id_at_deltaCertificateRequest, delta_request)
     base_csr["certificationRequestInfo"]["attributes"].append(delta_cert_attr)
 
     # Step 4: Sign the CertificationRequestInfo using the private key of the delta certificate
@@ -352,7 +352,7 @@ def build_paired_csrs(
     delta_signature = sign_data(data=tmp_der_data, key=delta_private_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
     # Step 5: Prepare
-    delta_sig_attr = _prepare_attr(
+    delta_sig_attr = prepare_single_value_attr(
         id_at_deltaCertificateRequestSignature, DeltaCertificateRequestSignatureValue.fromOctetString(delta_signature)
     )
 
