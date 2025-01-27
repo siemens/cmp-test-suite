@@ -52,12 +52,12 @@ def _get_trad_name(trad_key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> str:
 
 
 class ChempatKEM:
-    """
-    Class implementing a hybrid key encapsulation mechanism (Chempat), combining a traditional KEM (TKEM)
-    with a post-quantum KEM (PQKEM).
+    """Class implementing a hybrid key encapsulation mechanism (Chempat).
+
+    Combining a traditional KEM (TKEM) with a post-quantum KEM (PQKEM).
     """
 
-    def __init__(self, pq_key: PQKEMPrivateKey, trad_key: Optional[ECDHPrivateKey] = None):
+    def __init__(self, pq_key: Optional[PQKEMPrivateKey], trad_key: Optional[ECDHPrivateKey] = None):
         """Initialize the ChempatKEM instance with keys.
 
         :param trad_key: Traditional private.
