@@ -76,7 +76,7 @@ ECDSA_SHA_OID_2_NAME = {
     rfc9481.id_ecdsa_with_shake256: "ecdsa-shake256",
 }
 RSASSA_PSS_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
-    rfc9481.id_RSASSA_PSS: "rsassa_pss",
+    rfc9481.id_RSASSA_PSS: "rsassa_pss-sha256",
     rfc9481.id_RSASSA_PSS_SHAKE128: "rsassa_pss-shake128",
     rfc9481.id_RSASSA_PSS_SHAKE256: "rsassa_pss-shake256",
 }
@@ -126,6 +126,7 @@ SHA3_OID_2_NAME = {
 # computed with the same algorithm as the one in the signature
 OID_HASH_MAP: Dict[univ.ObjectIdentifier, str] = {}
 OID_HASH_MAP.update(RSA_SHA_OID_2_NAME)
+OID_HASH_MAP.update(RSASSA_PSS_OID_2_NAME)
 OID_HASH_MAP.update(ECDSA_SHA_OID_2_NAME)
 OID_HASH_MAP.update(HMAC_OID_2_NAME)
 OID_HASH_MAP.update(SHA_OID_2_NAME)
@@ -545,6 +546,16 @@ KEM_OID_2_NAME.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
 KEM_OID_2_NAME.update(COMPOSITE_KEM_OID_2_NAME)
 
 
+TRAD_STR_OID_TO_KEY_NAME = {
+    "1.3.101.110": "x25519",
+    "1.3.101.111": "x448",
+    "1.3.101.112": "ed25519",
+    "1.3.101.113": "ed448",
+    "1.2.840.113549.1.1.1": "rsa",
+    "1.2.840.113549.1.9.16.3.14": "rsa-kem",
+}
+
 ALL_KNOWN_PROTECTION_OIDS.update(PQ_OID_2_NAME)
 ALL_KNOWN_PROTECTION_OIDS.update(KEM_OID_2_NAME)
 ALL_KNOWN_PROTECTION_OIDS.update({rfc9481.rsaEncryption: "rsa_encryption"})
+ALL_KNOWN_PROTECTION_OIDS.update(TRAD_STR_OID_TO_KEY_NAME)
