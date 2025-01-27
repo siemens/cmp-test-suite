@@ -4,7 +4,7 @@
 
 
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey
-from pq_logic.pq_compute_utils import verify_signature_with_hybrid_cert
+from pq_logic.py_verify_logic import verify_composite_signature_with_hybrid_cert
 from resources.certbuildutils import generate_certificate
 from resources.certutils import parse_certificate
 from resources.cryptoutils import sign_data
@@ -34,10 +34,10 @@ class TestSigVerificationMultiCert:
         signature = sign_data(key=composite_key, data=b"Hello World")
 
 
-        verify_signature_with_hybrid_cert(data=b"Hello World",
-                                          signature=signature,
-                                          cert=self.cert_related,
-                                          other_certs=[self.cert_a, self.cert_b])
+        verify_composite_signature_with_hybrid_cert(data=b"Hello World",
+                                                    signature=signature,
+                                                    cert=self.cert_related,
+                                                    other_certs=[self.cert_a, self.cert_b])
 
 
 
