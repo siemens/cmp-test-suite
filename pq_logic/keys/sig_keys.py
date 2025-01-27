@@ -20,6 +20,7 @@ and format.
 - `generate(kem_alg: str)`: Generate a new private key for the specified algorithm.
 - `_check_name(name: str)`: Validate the provided algorithm name.
 """
+
 import logging
 import os
 from typing import Optional, Union
@@ -305,7 +306,7 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
         """Check if the parsed name is valid."""
         pass
 
-    def check_hash_alg(self, hash_alg: Union[None, str,hashes.HashAlgorithm]) -> Optional[str]:
+    def check_hash_alg(self, hash_alg: Union[None, str, hashes.HashAlgorithm]) -> Optional[str]:
         """Check if the hash algorithm is valid to be used with SLH-DSA."""
         if hash_alg is None:
             return None
