@@ -862,6 +862,93 @@ def _process_cert_requests(
     return responses, certs
 
 
+def build_cp_cmp_message(
+    request: Optional[rfc9480.PKIMessage] = None,
+    cert: Optional[rfc9480.CMPCertificate] = None,
+    enc_cert: Optional[rfc5652.EnvelopedData] = None,
+    ca_key: Optional[PrivateKey] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    cert_req_id: Optional[int] = None,
+    responses: Optional[Union[Sequence[rfc9480.CertResponse], rfc9480.CertResponse]] = None,
+    cert_index: Optional[int] = None,
+    eku_strict: bool = True,
+    set_header_fields: bool = True,
+    **kwargs,
+) -> CA_RESPONSE:
+    """Build a CMP message for a certificate response.
+
+
+    Arguments:
+    ---------
+       - `request`: The PKIMessage containing the certificate request. Defaults to `None`.
+       - `cert`: The certificate to build the response for. Defaults to `None`.
+       - `enc_cert`: The encrypted certificate to build the response for. Defaults to `None`.
+       - `ca_key`: The CA private key to sign the response with. Defaults to `None`.
+       - `ca_cert`: The CA certificate matching the CA key. Defaults to `None`.
+       - `cert_req_id`: The certificate request ID. Defaults to `None`.
+       - `responses`: The certificate responses to include in the response. Defaults to `None`.
+       - `cert_index`: The certificate index. Defaults to `None` (if `None`, all requests are processed).
+       - `eku_strict`: Whether to strictly enforce the EKU bits, for `raVerified`. Defaults to `True`.
+       - `set_header_fields`: Whether to patch the header fields, for the exchange. Defaults to `True`.
+       - `kwargs`: Additional values to set for the header.
+
+    Returns:
+    -------
+        - The built PKIMessage and the certificates.
+
+    """
+    certs = []
+
+    if enc_cert is None and cert is None and request is None:
+        raise ValueError("Either `cert`, `enc_cert`, or `request` must be provided to build a CA CMP message.")
+
+    if responses is not None:
+        pass
+
+    elif enc_cert is not None or cert is not None:
+        if cert_req_id is None:
+            cert_req_id = 0
+
+        responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
+
+        if cert is not None:
+            certs.append(cert)
+
+    elif request is not None:
+        if cert_index is not None:
+            cert, enc_cert = _process_one_cert_request(
+                ca_key=ca_key,
+                ca_cert=ca_cert,
+                request=request,
+                cert_index=cert_index,
+                eku_strict=eku_strict,
+                **kwargs,
+            )
+            certs.append(cert)
+
+            if cert_req_id is None:
+                cert_req_id = request["body"]["cr"][cert_index]["certReq"]["certReqId"]
+
+            responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
+
+        else:
+            responses, certs = _process_cert_requests(
+                ca_key=ca_key,
+                ca_cert=ca_cert,
+                request=request,
+                eku_strict=eku_strict,
+                **kwargs,
+            )
+
+    if request and set_header_fields:
+        kwargs = _set_header_fields(request, kwargs)
+
+    body = _prepare_ca_body("ip", responses=responses, ca_pubs=kwargs.get("ca_pubs"))
+    pki_message = cmputils._prepare_pki_message(**kwargs)
+    pki_message["body"] = body
+    return pki_message, certs
+
+
 
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
