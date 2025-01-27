@@ -4,10 +4,10 @@
 
 """Logic to build and modify `CertTemplate`, `CMPCertificate` or CSR objects."""
 
-import datetime
 import logging
 import os
-from typing import List, Optional, Tuple, Union
+from datetime import datetime, timedelta
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -45,8 +45,8 @@ from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey
 # TODO verify if `utcTime` is allowed for CertTemplate, because is not allowed
 # for CMPCertificate.
 def prepare_validity(  # noqa D417 undocumented-param
-    not_before: Optional[datetime.datetime] = None,
-    not_after: Optional[datetime.datetime] = None,
+    not_before: Optional[datetime] = None,
+    not_after: Optional[datetime] = None,
     before_use_utc: bool = True,
     after_use_utc: bool = True,
 ) -> rfc5280.Validity:
@@ -203,7 +203,7 @@ def sign_csr(  # noqa D417 undocumented-param
 def build_csr(  # noqa D417 undocumented-param
     signing_key: PrivateKeySig,
     common_name: str = "CN=Hans Mustermann",
-    extensions: Optional[rfc9480.Extensions] = None,
+    extensions: Optional[Sequence[rfc5280.Extension]] = None,
     hash_alg: Union[None, str] = "sha256",
     use_rsa_pss: bool = False,
     subjectAltName: Optional[str] = None,
@@ -654,7 +654,7 @@ def generate_certificate(
     serial_number: Optional[typingutils.Strint] = None,
     signing_key: Optional[typingutils.PrivSignCertKey] = None,
     issuer_cert: Optional[rfc9480.CMPCertificate] = None,
-    extensions: Optional[rfc9480.Extensions] = None,
+    extensions: Optional[Sequence[rfc5280.Extension]] = None,
     days: int = 365,
     use_rsa_pss: bool = False,
 ) -> rfc9480.CMPCertificate:
@@ -931,7 +931,7 @@ def prepare_cert_template(  # noqa D417 undocumented-param
     serial_number: Optional[typingutils.Strint] = None,
     version: Optional[typingutils.Strint] = None,
     validity: Optional[rfc5280.Validity] = None,
-    extensions: Optional[rfc5280.Extensions] = None,
+    extensions: Optional[Sequence[rfc5280.Extension]] = None,
     for_kga: bool = False,
     cert: Optional[rfc9480.CMPCertificate] = None,
     include_cert_extensions: bool = True,
