@@ -340,3 +340,21 @@ def generate_catalyst_cert(
     cert = rfc9480.CMPCertificate()
     cert["tbsCertificate"] = tbs_cert
     return sign_cert_catalyst(cert, trad_key=trad_key, pq_key=pq_key, use_rsa_pss=use_pss)
+
+
+def load_catalyst_public_key(extensions: rfc9480.Extensions) -> PublicKey:
+    """Load a public key from the newly defined AltPublicKeyInfo extension.
+
+    :param extensions: The extensions to load the public key from.
+    :return: The loaded public key.
+    :raises ValueError: If the extension is not found.
+    """
+    extn_alt_spki = get_extension(extensions, id_ce_subjectAltPublicKeyInfo)
+    if extn_alt_spki is None:
+        raise ValueError("AltPublicKeyInfo extension not found.")
+
+    spki, rest = decoder.decode(extn_alt_spki["extnValue"].asOctets(), SubjectAltPublicKeyInfoExt())
+    if rest:
+        raise BadAsn1Data("The alternative public key extension contains remainder data.", overwrite=True)
+    alt_issuer_key = load_public_key_from_spki(spki)
+    return alt_issuer_key
