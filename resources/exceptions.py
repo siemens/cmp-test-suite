@@ -16,7 +16,39 @@ from resources.oid_mapping import may_return_oid_to_name
 class CMPTestSuiteError(Exception, ABC):
     """Base class for CMP Test Suite errors."""
 
-    pass
+    failinfo: str = "systemFailure"
+    error_details: List[str]
+    bit_num: int = -1
+
+    def __init__(self, message: str, extra_details: Optional[Union[List[str], str]] = None):
+        """Initialize the exception with the message.
+
+        :param message: The message to display.
+        :param extra_details: Additional details about the error.
+        """
+        self.message = message
+
+        if extra_details is not None:
+            if isinstance(extra_details, str):
+                self.error_details = [extra_details]
+
+        self.error_details = extra_details or []
+        super().__init__(message)
+
+    @classmethod
+    def get_failinfo(cls) -> str:
+        """Return the failinfo."""
+        return cls.failinfo
+
+    @classmethod
+    def get_error_details(cls) -> List[str]:
+        """Return the error details."""
+        return cls.error_details
+
+
+#########################
+# CMP Test Suite Errors
+##########################
 
 
 class InvalidKeyCombination(CMPTestSuiteError):
