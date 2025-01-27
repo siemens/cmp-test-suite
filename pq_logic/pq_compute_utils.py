@@ -5,59 +5,71 @@
 """Utility functions for verifying hybrid signatures."""
 
 import logging
-from typing import List, Optional, Sequence, Union
+from typing import List, Optional, Tuple, Union
 
-from pyasn1.codec.der import encoder
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
+
+from pq_logic.hybrid_sig import chameleon_logic
+from resources import utils
+from resources.certbuildutils import prepare_sig_alg_id
 from resources.certextractutils import get_extension
-from resources.certutils import load_public_key_from_cert
-from resources.cryptoutils import sign_data
-from resources.exceptions import BadAsn1Data, UnknownOID
+from resources.convertutils import subjectPublicKeyInfo_from_pubkey
+from resources.cryptoutils import sign_data, verify_signature
+from resources.exceptions import BadAsn1Data
 from resources.keyutils import load_public_key_from_spki
-from resources.oid_mapping import get_hash_from_oid
+from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME
-from resources.typingutils import PublicKeySig
+from resources.protectionutils import (
+    patch_sender_and_sender_kid,
+    prepare_pki_protection_field,
+    verify_rsassa_pss_from_alg_id,
+)
+from resources.typingutils import PrivateKeySig, PublicKeySig
 from robot.api.deco import not_keyword
 
-from pq_logic.hybrid_sig.catalyst_logic import SubjectAltPublicKeyInfoExt, id_ce_subjectAltPublicKeyInfo
+import pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00
+from pq_logic.hybrid_sig.catalyst_logic import (
+    id_ce_altSignatureAlgorithm,
+    id_ce_altSignatureValue,
+    id_ce_subjectAltPublicKeyInfo,
+)
+from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
+from pq_logic.hybrid_sig.cert_binding_for_multi_auth import get_related_cert_from_list
 from pq_logic.hybrid_sig.certdiscovery import (
     extract_sia_extension_for_cert_discovery,
-    get_secondary_certificate,
+    get_cert_discovery_cert,
     validate_alg_ids,
 )
-from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import validate_alt_pub_key_extn, validate_alt_sig_extn
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, CompositeSigCMSPublicKey
 from pq_logic.pq_key_factory import PQKeyFactory
-from pq_logic.py_verify_logic import verify_signature_with_alg_id
-from pq_logic.tmp_oids import id_relatedCert
+from pq_logic.tmp_oids import id_altSubPubKeyExt, id_relatedCert, id_ce_deltaCertificateDescriptor
 
 
 def sign_data_with_alg_id(key, alg_id: rfc9480.AlgorithmIdentifier, data: bytes) -> bytes:
     """Sign the provided data using the given algorithm identifier.
 
-    :param key: The private key object used to sign the data.
+    :param key: The private key used to sign the data.
     :param alg_id: The algorithm identifier specifying the algorithm and any associated parameters for signing.
-    :param data: The data to sign, as a byte string.
-    :return: The digital signature as a byte string.
+    :param data: The data to sign.
+    :return: The digital signature.
     """
     oid = alg_id["algorithm"]
 
-    if isinstance(key, CompositeSigCMSPrivateKey) or oid in CMS_COMPOSITE_OID_2_NAME:
+    if isinstance(key, CompositeSigCMSPrivateKey):
         name: str = CMS_COMPOSITE_OID_2_NAME[oid]
         use_pss = name.endswith("-pss")
         pre_hash = name.startswith("hash-")
         key: CompositeSigCMSPrivateKey
         return key.sign(data=data, use_pss=use_pss, pre_hash=pre_hash)
 
-    elif oid in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
+    elif oid in PQ_OID_2_NAME or oid in MSG_SIG_ALG or oid in RSASSA_PSS_OID_2_NAME or str(oid) in PQ_OID_2_NAME:
         hash_alg = get_hash_from_oid(oid, only_hash=True)
         use_pss = oid in RSASSA_PSS_OID_2_NAME
         return sign_data(key=key, data=data, hash_alg=hash_alg, use_rsa_pss=use_pss)
     else:
-        raise ValueError(f"Unsupported public key type: {type(key).__name__}.")
-
-
         raise ValueError(f"Unsupported private key type: {type(key).__name__} oid:{may_return_oid_to_name(oid)}")
 
 
