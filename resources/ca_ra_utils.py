@@ -377,6 +377,33 @@ def build_ckuann(
     pki_message = cmputils._prepare_pki_message(pvno=pvno, sender=sender, recipient=recipient, **kwargs)
     pki_message["body"] = body
     return pki_message
+
+@keyword("Get CertReqMsg From PKIMessage")
+def get_cert_req_msg_from_pkimessage(pki_message: rfc9480.PKIMessage, index: int = 0) -> rfc4211.CertReqMsg:
+    """Extract the certificate request from a PKIMessage.
+
+    Arguments:
+    ----------
+        - `pki_message`: The PKIMessage to extract the certificate request from.
+        - `index`: The index of the certificate request to extract. Defaults to `0`.
+
+    Returns:
+    --------
+        - The certificate request message.
+
+    Raises:
+    -------
+        - ValueError: If the body type is not one of `ir`, `cr`, `kur`, or `crr`.
+        - IndexError: If the index is out of range.
+
+    """
+    body_name = pki_message["body"].getName()
+    if body_name in {"ir", "cr", "kur", "crr"}:
+        return pki_message["body"][body_name][index]
+
+    raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr")
+
+
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
 
