@@ -10,8 +10,6 @@ Will be removed as soon as the draft becomes an RFC.
 from pyasn1.type import constraint, namedtype, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 
-from unit_tests.asn1_wrapper_class.pki_message_wrapper import PKIBody
-
 
 class KemBMParameterAsn1(univ.Sequence):
     """Defines the ASN.1 structure for the `KemBMParameter`.
@@ -113,6 +111,8 @@ class CAKeyUpdContent(univ.Choice):
 # So the only difference is the `popdecc: POPODecKeyChallContentAsn1`
 # body. The rest is the same as the `PKIBody` class.
 class PKIBodyTMP(univ.Choice):
+    """Defines the ASN.1 structure for the `PKIBody`."""
+
     componentType = namedtype.NamedTypes(
         namedtype.NamedType('ir', rfc9480.CertReqMessages().subtype(
             explicitTag=tag.Tag(tag.tagClassContext,
@@ -197,6 +197,8 @@ class PKIBodyTMP(univ.Choice):
 
 # Set the body to the temporary PKIBodyTMP.
 class PKIMessageTMP(univ.Sequence):
+    """Defines the ASN.1 structure for the `PKIMessage`."""
+
     componentType = namedtype.NamedTypes(
         namedtype.NamedType('header', rfc9480.PKIHeader()),
         namedtype.NamedType('body', PKIBodyTMP()),
