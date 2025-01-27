@@ -12,12 +12,13 @@ import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+
 from pq_logic.key_pyasn1_utils import parse_key_from_one_asym_key
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.migration_typing import HybridKEMPrivateKey
 from pq_logic.pq_compute_utils import verify_csr_signature, verify_signature_with_alg_id
 from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey, CA_RESPONSE
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc9480
@@ -1006,7 +1007,7 @@ def _verify_encrypted_key_popo(
 
 def process_popo_priv_key(
 @keyword(name="Build pkiconf from CertConf")
-def build_pki_conf_from_cert_conf(
+def build_pki_conf_from_cert_conf(# noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
     issued_certs: List[rfc9480.CMPCertificate],
     exclude_fields: Optional[str] = None,
@@ -1014,10 +1015,12 @@ def build_pki_conf_from_cert_conf(
     set_header_fields: bool = True,
     **kwargs,
 ) -> rfc9480.PKIMessage:
-    """Build a PKIConf message from a CertConf message.
+    """Build a PKI Confirmation message from a Certification Confirmation message.
+
+    Ensures that the client correly received the certificates.
 
     Arguments:
-    ----------
+    ---------
        - `request`: The CertConf message to build the PKIConf message from.
        - `issued_certs`: The certificates that were issued.
        - `exclude_fields`: The fields to exclude from the PKIConf message. Defaults to `None`.
@@ -1025,11 +1028,11 @@ def build_pki_conf_from_cert_conf(
        - `set_header_fields`: Whether to set the header fields. Defaults to `True`.
 
     Returns:
-    --------
+    -------
          - The built PKI Confirmation message.
 
     Raises:
-    -------
+    ------
         - `ValueError`: If the request is not a CertConf message.
         - `ValueError`: If the number of CertConf entries does not match the number of issued certificates.
         - `BadRequest`: If the number of CertStatus's is not one (for LwCMP).
