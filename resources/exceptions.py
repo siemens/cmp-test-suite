@@ -5,7 +5,7 @@
 """Contains Custom Exceptions for pq_logic."""
 
 from abc import ABC
-from typing import Optional
+from typing import List, Optional, Union
 
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9480
@@ -43,8 +43,23 @@ class UnknownOID(CMPTestSuiteError):
         super().__init__(self.message)
 
 
+#########################
+# CMP Protocol Errors
+##########################
+
+
+class BadAlg(CMPTestSuiteError):
+    """Raised when the algorithm is not supported or not allowed to be used."""
+
+    failinfo = "badAlg"
+    bit_num = 0
+
+
 class BadDataFormat(CMPTestSuiteError):
     """Raised when the ASN.1 data cannot be decoded."""
+
+    failinfo = "badDataFormat"
+    bit_num = 5
 
     def __init__(self, message: str):
         """Initialize the exception with the message.

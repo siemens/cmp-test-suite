@@ -47,7 +47,7 @@ from resources import (
 from resources.convertutils import str_to_bytes
 from resources.cryptoutils import compute_ansi_x9_63_kdf, compute_hkdf, perform_ecdh
 from resources.envdatautils import get_aes_length
-from resources.exceptions import BadAlgError, BadAsn1Data
+from resources.exceptions import BadAlg, BadAsn1Data
 from resources.oid_mapping import (
     compute_hash,
     get_hash_from_oid,
@@ -586,7 +586,7 @@ def validate_encrypted_content_info(
         raise ValueError("The `contentType` MUST be id-signedData!")
 
     if enc_content_info["contentEncryptionAlgorithm"]["algorithm"] not in PROT_SYM_ALG:
-        raise BadAlgError("Only AES-CBC is allowed!")
+        raise BadAlg("Only AES-CBC is allowed!")
 
     if not enc_content_info["contentEncryptionAlgorithm"]["parameters"].isValue:
         raise BadAsn1Data("AES-CBC must have the IV set inside the `parameters` field", overwrite=True)
@@ -1512,7 +1512,7 @@ def validate_kem_recip_info_structure(
 
     kem_oid = kem_recip_info["kem"]["algorithm"]
     if kem_oid not in KEM_OID_2_NAME and str(kem_oid) not in KEM_OID_2_NAME:
-        raise BadAlgError(f"The `kem` OID must be a known KEM id! Found: {kem_oid}")
+        raise BadAlg(f"The `kem` OID must be a known KEM id! Found: {kem_oid}")
 
     if not kem_recip_info["kemct"].isValue:
         raise ValueError("The `kemct` (encapsulated ciphertext) field of the `KEMRecipientInfo` structure is missing!")
