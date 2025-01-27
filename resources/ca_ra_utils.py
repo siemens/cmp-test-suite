@@ -586,6 +586,43 @@ def respond_to_cert_req_msg(
         raise ValueError(f"Invalid POP structure: {name}.")
 
 
+@keyword(name="Verify POP Signature For PKI Request")
+def verify_sig_pop_for_pki_request(pki_message: rfc9480.PKIMessage, cert_index: Union[int, str] = 0) -> None:
+    """Verify the POP in the PKIMessage.
+
+    Arguments:
+    ----------
+        - `pki_message`: The PKIMessage to verify the POP for.
+        - `cert_index`: The index of the certificate request to verify the POP for. Defaults to `0`.
+
+    Raises:
+    -------
+        - ValueError: If the body type is not one of `ir`, `cr`, `kur`, or `crr`.
+        - IndexError: If the index is out of range.
+        - BadAsn1Data: If the ASN.1 data is invalid.
+        - BadPOP: If the signature is invalid.
+
+    """
+    body_name = pki_message["body"].getName()
+    if body_name in {"ir", "cr", "kur", "crr"}:
+        cert_req_msg = get_cert_req_msg_from_pkimessage(pki_message, index=cert_index)
+        popo: rfc4211.ProofOfPossession = cert_req_msg["popo"]
+        if not popo["signature"].isValue:
+            raise ValueError("POP signature is missing in the PKIMessage.")
+
+        _verify_pop_signature(pki_message)
+
+    elif pki_message["p10cr"]:
+        csr = pki_message["p10cr"]
+        try:
+            verify_csr_signature(csr)
+        except InvalidSignature:
+            raise BadPOP("POP verification for `p10cr` failed.")
+
+    else:
+        raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr or p10cr")
+
+
 
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
