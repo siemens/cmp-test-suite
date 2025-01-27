@@ -613,7 +613,7 @@ def _encrypt_rsa_oaep(key: rsa.RSAPublicKey, alg_id: rfc5280.AlgorithmIdentifier
 @not_keyword
 def prepare_ktri(
     ee_key: rsa.RSAPublicKey,
-    server_cert: Optional[rfc9480.CMPCertificate],
+    cmp_protection_cert: Optional[rfc9480.CMPCertificate],
     cek: bytes,
     use_rsa_oaep: bool = True,
     issuer_and_ser: Optional[rfc5652.IssuerAndSerialNumber] = None,
@@ -621,7 +621,7 @@ def prepare_ktri(
     """Prepare a KeyTransRecipientInfo object for testing.
 
     :param ee_key: The RSA public key of the end entity.
-    :param server_cert: The certificate of the server.
+    :param cmp_protection_cert: The certificate of the server.
     :param cek: The content encryption key to be encrypted.
     :param use_rsa_oaep: Boolean indicating whether to use RSA-OAEP or RSA PKCS#1 v1.5 padding.
     :param issuer_and_ser: The optional `IssuerAndSerialNumber` structure to use. Defaults to None.
