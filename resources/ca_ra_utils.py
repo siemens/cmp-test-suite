@@ -404,6 +404,32 @@ def get_cert_req_msg_from_pkimessage(pki_message: rfc9480.PKIMessage, index: int
     raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr")
 
 
+def validate_cert_request_cert_id(pki_message: rfc9480.PKIMessage, cert_req_id: Union[str, int] = 0) -> None:
+    """Validate the certificate request certificate ID.
+
+    Used for LwCMP to ensure the certReqId in the PKIMessage matches
+    either one or minus one for p10cr.
+
+    Arguments:
+    ----------
+        - `pki_message`: The PKIMessage to validate.
+        - `cert_req_id`: The index of the certificate request to validate. Defaults to `0`.
+
+    """
+    cert_req_id = int(cert_req_id)
+    cert_req = get_cert_req_msg_from_pkimessage(pki_message)
+    body_name = pki_message["body"].getName()
+    cert_id = cert_req["certReqId"]
+    if body_name in {"ir", "cr", "kur", "crr"}:
+        if cert_id != pki_message["body"][body_name][cert_req_id]["certReqId"]:
+            raise ValueError("Invalid certReqId in PKIMessage.")
+    elif body_name == "p10cr":
+        if -1 != pki_message["body"]["p10cr"]["certReqId"]:
+            raise ValueError("Invalid certReqId in PKIMessage,`p10cr` expects -1.")
+    else:
+        raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr or p10cr")
+
+
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
 
