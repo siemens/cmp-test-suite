@@ -317,25 +317,23 @@ def sun_csr_to_cert(
     :return: A tuple of the Form4 and Form1 certificates.
     """
     public_key = CompositeSigCMSPublicKey.from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
-
     oid = csr["signatureAlgorithm"]["algorithm"]
-
     data: dict = _extract_sun_hybrid_attrs_from_csr(csr)
 
     if data["pub_key_hash_id"] is None:
-        data["pub_key_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or "sha256"
+        data["pub_key_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or hash_alg
     else:
         data["pub_key_hash_id"] = get_hash_from_oid(data["pub_key_hash_id"]["algorithm"])
 
     if data["sig_hash_id"] is None:
-        data["sig_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or "sha256"
+        data["sig_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or hash_alg
     else:
         data["sig_hash_id"] = get_hash_from_oid(data["sig_hash_id"]["algorithm"])
 
     not_before = datetime.now()
-    not_after = datetime.now() + timedelta(days=365)
+    not_after = datetime.now() + timedelta(days=365 * 10)
     validity = prepare_validity(not_before=not_before, not_after=not_after)
-    cert_form4, ext_sig, ext_pub = _prepare_pre_tbs_certificate(
+    cert_form4, ext_sig, ext_pub = prepare_sun_hybrid_pre_tbs_certificate(
         public_key,
         alt_private_key=alt_private_key,
         issuer_private_key=issuer_private_key,
