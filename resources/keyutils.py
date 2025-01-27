@@ -26,11 +26,22 @@ from cryptography.hazmat.primitives.asymmetric import (
     x448,
     x25519,
 )
+from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.key_pyasn1_utils import load_enc_key
 from pyasn1.codec.der import decoder
-from pyasn1_alt_modules import rfc5280
+from pyasn1_alt_modules import rfc5280, rfc5480, rfc6664
+from robot.api.deco import not_keyword
 
 from resources import oid_mapping, utils
+from resources.exceptions import BadAsn1Data, UnknownOID
+from resources.oid_mapping import get_curve_instance
+from resources.oidutils import (
+    CMS_COMPOSITE_NAME_2_OID,
+    CURVE_OIDS_2_NAME,
+    PQ_OID_2_NAME,
+    PQ_SIG_PRE_HASH_OID_2_NAME,
+    TRAD_STR_OID_TO_KEY_NAME,
+)
 from resources.typingutils import PrivateKey, PublicKey
 
 
@@ -495,3 +506,44 @@ def load_public_key_from_spki(data: Union[bytes, rfc5280.SubjectPublicKeyInfo]) 
     from pq_logic.combined_factory import CombinedKeyFactory
 
     return CombinedKeyFactory.load_public_key_from_spki(spki=data)
+
+
+@not_keyword
+def generate_key_based_on_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> PrivateKey:
+    """Generate a private key based on the provided algorithm identifier.
+
+    :param alg_id: The algorithm identifier.
+    :return: The generated private key.
+    :raises ValueError: If the algorithm is not supported.
+    :raises UnknownOID: If the OID is unknown.
+    :raises BadAsn1Data: If the provided ASN.1 data is invalid.
+    :raises NotImplementedError: Hybrid keys are not supported yet.
+    """
+    oid = alg_id["algorithm"]
+    if oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME:
+        for tmp_oid, name in PQ_OID_2_NAME.items():
+            if str(oid) == str(tmp_oid):
+                if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
+                    tmp = PQ_SIG_PRE_HASH_OID_2_NAME[oid].split("-")
+                    name = "-".join(tmp[:-1])
+                return CombinedKeyFactory.generate_key(algorithm=name)
+
+    elif oid == rfc6664.id_ecPublicKey:
+        curve_oid, rest = decoder.decode(alg_id["parameters"], asn1Spec=rfc5480.ECParameters())
+        if rest != b"":
+            raise BadAsn1Data("ECParameters")
+        curve_oid = curve_oid["namedCurve"]
+        curve_name = CURVE_OIDS_2_NAME.get(curve_oid)
+        if curve_name is None:
+            raise ValueError(f"Unsupported curve OID: {curve_oid}")
+        curve_instance = get_curve_instance(curve_name)
+        return ec.generate_private_key(curve=curve_instance)
+
+    elif str(oid) in TRAD_STR_OID_TO_KEY_NAME:
+        return CombinedKeyFactory.generate_key(algorithm=TRAD_STR_OID_TO_KEY_NAME[str(oid)])
+
+    elif oid in CMS_COMPOSITE_NAME_2_OID:
+        raise NotImplementedError("Composite keys are not supported yet.")
+
+    else:
+        raise UnknownOID(oid=oid, extra_info="For generating a private key.")
