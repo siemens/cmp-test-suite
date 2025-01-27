@@ -336,65 +336,6 @@ def generate_signed_csr(  # noqa D417 undocumented-param
     return csr, key  # type: ignore
 
 
-@not_keyword
-def prepare_tbs_certificate(
-    subject: str,
-    signing_key: PrivateKeySig,
-    public_key: typingutils.PublicKey,
-    serial_number: Optional[int] = None,
-    issuer_cert: Optional[rfc9480.CMPCertificate] = None,
-    extensions: Optional[rfc9480.Extensions] = None,
-    validity: Optional[rfc5280.Validity] = None,
-    days: int = 365,
-    use_rsa_pss: bool = False,
-    hash_alg: str = "sha256",
-) -> rfc5280.TBSCertificate:
-    """Prepare the `TBSCertificate` structure for a certificate with specified parameters.
-
-    :param subject: The subject's distinguished name in OpenSSL notation (e.g., "C=US, ST=California, L=San Francisco").
-    :param signing_key: Private key used for signing.
-    :param public_key: Public key associated with the subject.
-    :param serial_number: Serial number of the certificate.
-    :param issuer_cert: Optional, the issuer's certificate (self-signed if not provided).
-    :param extensions: Optional extensions to include in the certificate.
-    :param validity: Optional `Validity` object defining the certificate's validity period.
-    :param days: Number of days the certificate is valid if `validity` is not provided. Defaults to 365 days.
-    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
-    :param hash_alg: Hash algorithm used for signing (e.g., "sha256"). Defaults to "sha256".
-    :return: `rfc5280.TBSCertificate` object configured with the provided parameters.
-    """
-    tbs_cert = rfc5280.TBSCertificate()
-
-    if extensions is not None:
-        exts = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
-        for ext in extensions:
-            exts.append(ext)
-        tbs_cert["extensions"] = exts
-
-    subject = prepare_name(subject)  # type: ignore
-
-    if issuer_cert is None:
-        issuer = subject
-    else:
-        issuer = copyasn1utils.copy_name(rfc9480.Name(), issuer_cert["tbsCertificate"]["subject"])
-
-    if validity is None:
-        not_before = datetime.datetime.now(datetime.timezone.utc)
-        not_after = not_before + datetime.timedelta(days=days)
-        validity = prepare_validity(not_before=not_before, not_after=not_after)
-
-    tbs_cert["validity"] = validity
-    tbs_cert["subjectPublicKeyInfo"] = convertutils.subjectPublicKeyInfo_from_pubkey(public_key)
-    tbs_cert["signature"] = prepare_sig_alg_id(signing_key, hash_alg, use_rsa_pss=use_rsa_pss)
-    tbs_cert["issuer"] = issuer
-    tbs_cert["subject"] = subject
-    tbs_cert["serialNumber"] = serial_number or x509.random_serial_number()
-    tbs_cert["version"] = rfc5280.Version("v3").subtype(
-        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
-    )
-    return tbs_cert
-
-
 def _prepare_extended_key_usage(oids: List[univ.ObjectIdentifier]) -> rfc5280.Extension:
     """Generate pyasn1 `ExtendedKeyUsage` object with the provided list of OIDs.
 
@@ -1322,3 +1263,67 @@ def _default_validity(
     return prepare_validity(not_before, not_after)
 
 
+@not_keyword
+def prepare_tbs_certificate(
+    subject: str,
+    signing_key: PrivateKeySig,
+    public_key: typingutils.PublicKey,
+    serial_number: Optional[int] = None,
+    issuer_cert: Optional[rfc9480.CMPCertificate] = None,
+    extensions: Optional[rfc9480.Extensions] = None,
+    validity: Optional[rfc5280.Validity] = None,
+    days: int = 3650,
+    use_rsa_pss: bool = False,
+    hash_alg: str = "sha256",
+    use_pre_hash: bool = False,
+    use_rsa_pss_pubkey: bool = False,
+    use_pre_hash_pubkey: bool = False,
+) -> rfc5280.TBSCertificate:
+    """Prepare the `TBSCertificate` structure for a certificate with specified parameters.
+
+    :param subject: The subject's distinguished name in OpenSSL notation (e.g., "C=US, ST=California, L=San Francisco").
+    :param signing_key: Private key used for signing.
+    :param public_key: Public key associated with the subject.
+    :param serial_number: Serial number of the certificate.
+    :param issuer_cert: Optional, the issuer's certificate (self-signed if not provided).
+    :param extensions: Optional extensions to include in the certificate.
+    :param validity: Optional `Validity` object defining the certificate's validity period.
+    :param days: Number of days the certificate is valid if `validity` is not provided. Defaults to 365 days.
+    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
+    :param hash_alg: Hash algorithm used for signing (e.g., "sha256"). Defaults to "sha256".
+    :param use_pre_hash: Whether to use pre-hash for signing. Defaults to `False`.
+    :param use_rsa_pss_pubkey: Whether to use RSA-PSS for the CompositeSigKey public key. Defaults to `False`.
+    :param use_pre_hash_pubkey: Whether to use pre-hash for the CompositeSigKey public key. Defaults to `False`.
+    :return: `rfc5280.TBSCertificate` object configured with the provided parameters.
+    """
+    subject = prepare_name(subject)  # type: ignore
+
+    if issuer_cert is None:
+        issuer = subject
+    else:
+        issuer = copyasn1utils.copy_name(rfc9480.Name(), issuer_cert["tbsCertificate"]["subject"])
+
+    pub_key = convertutils.subjectPublicKeyInfo_from_pubkey(
+        public_key=public_key, use_rsa_pss=use_rsa_pss_pubkey, use_pre_hash=use_pre_hash_pubkey
+    )
+    tbs_cert = _prepare_shared_tbs_cert(
+        issuer=issuer,
+        subject=subject,
+        serial_number=serial_number,
+        validity=validity,
+        days=days,
+        public_key=pub_key,
+    )
+    if extensions is not None:
+        exts = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
+        for ext in extensions:
+            exts.append(ext)
+        tbs_cert["extensions"] = exts
+
+    tbs_cert["signature"] = prepare_sig_alg_id(
+        signing_key=signing_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=use_pre_hash,
+    )
+    return tbs_cert
