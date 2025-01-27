@@ -1,3 +1,5 @@
+"""Mapping functions for the Object Identifiers."""
+
 from typing import Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import ec, rsa, x448, x25519
