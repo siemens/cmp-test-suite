@@ -262,6 +262,16 @@ def prepare_delta_cert_req(
     use_rsa_pss: bool = False,
     omit_sig_alg_id: bool = False,
 ) -> DeltaCertificateRequestValue:
+    """Prepare a Delta Certificate Request.
+
+    :param signing_key: The private key of the subject of the Delta Certificate.
+    :param delta_common_name: The subject name of the Delta Certificate.
+    :param extensions: The extensions for the Delta Certificate.
+    :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use PSS-padding for signing. Defaults to False.
+    :param omit_sig_alg_id: Whether to omit the signature algorithm ID. Defaults to False.
+    :return: The populated `DeltaCertificateRequestValue` structure.
+    """
     if not signing_key:
         raise ValueError("SubjectPublicKeyInfo is required.")
 
@@ -274,7 +284,7 @@ def prepare_delta_cert_req(
 
     delta_req["subjectPKInfo"] = subjectPublicKeyInfo_from_pubkey(signing_key.public_key())
 
-    if extensions:
+    if extensions is not None:
         delta_req["extensions"].extend(extensions)
 
     if not omit_sig_alg_id:
