@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""ASN.1 structures for hybrid cryptographic schemes/mechanisms."""
 
 from pyasn1.type import char, constraint, namedtype, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5958
