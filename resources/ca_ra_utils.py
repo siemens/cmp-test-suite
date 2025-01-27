@@ -518,6 +518,74 @@ def _verify_ra_verified(
     except InvalidSignature as err:
         raise NotAuthorized("RA certificate not trusted.") from err
 
+@keyword(name="Respond To CertReqMsg")
+def respond_to_cert_req_msg(
+    cert_req_msg: rfc4211.CertReqMsg,
+    ca_key: PrivateKey,
+    ca_cert: rfc9480.CMPCertificate,
+    hybrid_kem_key: Optional[ECDHPrivateKey] = None,
+    hash_alg: str = "sha256",
+) -> [rfc9480.CMPCertificate, Optional[rfc9480.EnvelopedData]]:
+    """Respond to a certificate request.
+
+    Note:
+    -----
+       - Assumes that the `POP` was already verified.
+
+    Arguments:
+    ----------
+       - `cert_req_msg`: The certificate request message to respond to.
+       - `ca_key`: The CA private key to sign the response with.
+       - `ca_cert`: The CA certificate matching the CA key.
+       - `hybrid_kem_key`: The hybrid KEM key of the CA to use. Defaults to `None`.
+       - `hash_alg`: The hash algorithm to use, for signing the certificate. Defaults to "sha256".
+
+    Returns:
+    --------
+         - The certificate and the encrypted certificate, if the request is for key encipherment.
+
+    Raises:
+    -------
+       - NotImplementedError: If the request is for key agreement.
+
+
+    """
+
+
+    name = cert_req_msg["popo"].getName()
+
+    if name in ["raVerified", "signature"]:
+        cert = build_cert_from_cert_template(
+            cert_req_msg["certReq"]["certTemplate"],
+            ca_key=ca_key,
+            ca_cert=ca_cert,
+        )
+        return cert, None
+
+    elif name == "keyEncipherment":
+        cert = build_cert_from_cert_template(
+            cert_template=cert_req_msg["certReq"]["certTemplate"],
+            ca_key=ca_key,
+            ca_cert=ca_cert,
+        )
+        enc_cert = prepare_enc_cert_for_request(
+            cert_req_msg=cert_req_msg,
+            signing_key=ca_key,
+            hash_alg=hash_alg,
+            ca_cert=ca_cert,
+            new_ee_cert=cert,
+            hybrid_kem_key=hybrid_kem_key,
+        )
+
+        return cert, enc_cert
+
+    elif name == "keyAgreement":
+        raise NotImplementedError("Key agreement is not allowed.")
+    else:
+        name = cert_req_msg["popo"].getName()
+        raise ValueError(f"Invalid POP structure: {name}.")
+
+
 
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
