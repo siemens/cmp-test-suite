@@ -1729,6 +1729,7 @@ def prepare_certstatus(  # noqa D417 undocumented-param
     failinfo: Optional[str] = None,
     text: Optional[str] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
+    bad_pop: bool = False,
 ) -> rfc9480.CertStatus:
     """Prepare a `CertStatus` structure for a certificate confirmation `certConf` PKIMessage.
 
@@ -1749,6 +1750,7 @@ def prepare_certstatus(  # noqa D417 undocumented-param
           Used when the status is not `"accepted"`.
         - `text`: An optional text message to include in the status information.
         - `cert`: An optional certificate to use for the hash algorithm, if none is provided.
+        - `bad_pop`: If `True`, the Proof of Possession (POPO) will be manipulated to create an invalid signature.
 
     Returns:
     -------
@@ -1783,9 +1785,12 @@ def prepare_certstatus(  # noqa D417 undocumented-param
         cert_status["hashAlg"] = alg_id
 
     if cert is not None and not cert_hash and hash_alg:
-        cert_hash = oid_mapping.compute_hash(hash_alg, encoder.encode(cert))
+        cert_hash = oid_mapping.compute_hash(alg_name=hash_alg, data=encoder.encode(cert))
 
     if cert_hash is not None:
+        if bad_pop:
+            cert_hash = utils.manipulate_first_byte(cert_hash)
+
         cert_status["certHash"] = univ.OctetString(cert_hash)
 
     return cert_status
