@@ -658,6 +658,61 @@ def _set_header_fields(request: rfc9480.PKIMessage, kwargs: dict) -> dict:
     return kwargs
 
 
+def build_cp_from_p10cr(
+    request: rfc9480.PKIMessage,
+    cert: Optional[rfc9480.CMPCertificate] = None,
+    set_header_fields: bool = True,
+    cert_req_id: Union[int, str] = -1,
+    ca_pubs: Optional[Sequence[rfc9480.CMPCertificate]] = None,
+    ca_key: Optional[PrivateKey] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    **kwargs,
+) -> rfc9480.PKIMessage:
+    """Build a CMP message for a certificate request.
+
+    Arguments:
+    ----------
+        - `request`: The PKIMessage containing the certificate request.
+        - `cert`: The certificate to build the response for. Defaults to `None`.
+        - `set_header_fields`: Whether to set the header fields, for the exchange. Defaults to `True`.
+        - `cert_req_id`: The certificate request ID. Defaults to `-1`.
+        - `ca_pubs`: The CA certificates to include in the response. Defaults to `None`.
+        - `ca_key`: The CA private key to sign the response with. Defaults to `None`.
+        - `ca_cert`: The CA certificate matching the CA key. Defaults to `None`.
+        - `kwargs`: Additional values to set for the header.
+
+    Returns:
+    --------
+        - The built PKIMessage.
+
+    Raises:
+    -------
+        - ValueError: If the request is not a `p10cr`.
+        - ValueError: If the CA key and certificate are not provided and the certificate is not provided.
+    """
+    if request["body"].getName() != "p10cr":
+        raise ValueError("Request must be a p10cr to build a CP message for it.")
+
+    if request and set_header_fields:
+        kwargs = _set_header_fields(request, kwargs)
+
+    verify_csr_signature(request["body"]["p10cr"])
+
+    if cert is None:
+        if ca_key is None or ca_cert is None:
+            raise ValueError("Either `cert` or `ca_key` and `ca_cert` must be provided to build a CA CMP message.")
+
+    cert = cert or build_cert_from_csr(
+        csr=request["body"]["p10cr"], ca_key=ca_key, ca_cert=ca_cert, hash_alg=kwargs.get("hash_alg", "sha256")
+    )
+
+    responses = prepare_cert_response(cert=cert, cert_req_id=cert_req_id)
+    body = _prepare_ca_body(body_name="cp", responses=responses, ca_pubs=ca_pubs)
+    pki_message = cmputils._prepare_pki_message(**kwargs)
+    pki_message["body"] = body
+    return pki_message
+
+
 def _process_one_cert_request(
     ca_key: PrivateKey,
     ca_cert: rfc9480.CMPCertificate,
