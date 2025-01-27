@@ -799,3 +799,32 @@ def process_public_key(data: bytes):
     return load_public_key_from_spki(obj)
 
 
+def get_sun_hybrid_alt_pub_key(extensions: rfc9480.Extensions) -> Optional[PublicKey]:
+    """Extract the alternative public key from a certificate.
+
+    :param extensions: The extensions of the certificate.
+    :return: The alternative public key.
+    """
+    extn = get_extension(extensions, id_altSubPubKeyExt)
+
+    if extn is None:
+        return None
+
+    decoded_ext, _ = decoder.decode(extn["extnValue"].asOctets(), AltSubPubKeyExt())
+
+    if decoded_ext["byVal"]:
+        return keyutils.load_public_key_from_spki(decoded_ext["plainOrHash"].asOctets())
+
+    location = decoded_ext["location"]
+
+    if not location.isValue:
+        raise ValueError("The location in the AltSubPubKeyExt extension must be a value,"
+                         "to load the public key from the location.")
+
+    actual_value = fetch_value_from_location(str(location))
+
+    obj, rest = decoder.decode(actual_value, rfc5280.SubjectPublicKeyInfo())
+    if rest != b"":
+        raise ValueError("Decoding of the public key had trailing data.")
+
+    return keyutils.load_public_key_from_spki(obj)
