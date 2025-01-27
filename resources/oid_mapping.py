@@ -85,7 +85,7 @@ def get_signing_oid(key, hash_alg: Optional[str], use_pss: bool = False) -> Opti
     key_type = KEY_CLASS_MAPPING.get(type_name, "")
     if hash_alg is not None:
         name = key_type + "-" + hash_alg
-        if use_pss:
+        if use_pss and key_type == "rsa":
             name += "-pss"
         oid = extra_data.get(name)
 
