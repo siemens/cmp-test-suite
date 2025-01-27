@@ -949,6 +949,73 @@ def build_cp_cmp_message(
     return pki_message, certs
 
 
+def build_ip_cmp_message(
+    cert: Optional[rfc9480.CMPCertificate] = None,
+    enc_cert: Optional[rfc5652.EnvelopedData] = None,
+    cert_req_id: Optional[int] = None,
+    ca_pubs: Optional[Sequence[rfc9480.CMPCertificate]] = None,
+    responses: Optional[Union[Sequence[rfc9480.CertResponse], rfc9480.CertResponse]] = None,
+    exclude_fields: Optional[str] = None,
+    request: Optional[rfc9480.PKIMessage] = None,
+    set_header_fields: bool = True,
+    **kwargs,
+) -> CA_RESPONSE:
+    """Build a CMP message for an initialization response.
+
+    Arguments:
+    ----------
+        - `cert`: The certificate to build the response for. Defaults to `None`.
+        - `enc_cert`: The encrypted certificate to build the response for. Defaults to `None`.
+        - `cert_req_id`: The certificate request ID. Defaults to `None`.
+        - `ca_pubs`: The CA certificates to include in the response. Defaults to `None`.
+        - `responses`: The certificate responses to include in the response. Defaults to `None`.
+        - `exclude_fields`: The fields to exclude from the response. Defaults to `None`.
+        - `request`: The PKIMessage containing the certificate request. Defaults to `None`.
+        - `set_header_fields`: Whether to patch the header fields, for the exchange. Defaults to `True`.
+        - `kwargs`: Additional values to set for the header.
+
+
+    """
+    if enc_cert is None and cert is None and responses is None and request is None:
+        raise ValueError(
+            "Either `cert`, `enc_cert`, `responses` or `request` must be provided to build a CA CMP message."
+        )
+
+    if request and set_header_fields:
+        kwargs = _set_header_fields(request, kwargs)
+
+    if responses is not None:
+        certs = [cert]
+        responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
+
+    elif request and cert is None and enc_cert is None:
+        if request["body"].getName() != "p10cr":
+
+            responses, certs = _process_cert_requests(
+                request=request,
+                **kwargs,
+            )
+        else:
+            logging.warning("Request was a p10cr, this is not allowed for IP messages.")
+            verify_csr_signature(request["body"]["p10cr"])
+            cert = build_cert_from_csr(
+                request["body"]["p10cr"],
+                ca_key=kwargs.get("ca_key"),
+                ca_cert=kwargs.get("ca_cert"),
+                hash_alg=kwargs.get("hash_alg", "sha256"),
+            )
+            cert_req_id = kwargs.get("cert_req_id") or -1
+            certs = [cert]
+        responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
+    else:
+        certs = [cert]
+        responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
+
+    body = _prepare_ca_body("ip", responses=responses, ca_pubs=ca_pubs)
+    pki_message = cmputils._prepare_pki_message(exclude_fields=exclude_fields, **kwargs)
+    pki_message["body"] = body
+    return pki_message, certs
+
 
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
