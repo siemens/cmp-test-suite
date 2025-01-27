@@ -1,7 +1,13 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional, Tuple
+#
+# ruff: noqa: D104 Missing docstring in public package
+# ruff: noqa: D102 Missing docstring in public method
+# ruff: noqa: D401 First line of docstring should be in imperative mood
+# ruff: noqa: E711 Comparison to `None` should be `cond is not None`
+
+"""Contains the ML-DSA implementation based on FIPS 204."""
 
 #   fips204.py
 #   2024-08-16  Markku-Juhani O. Saarinen <mjos@iki.fi> See LICENSE.

@@ -1,6 +1,13 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
+#
+# ruff: noqa: D402 First line should not be the function's signature
+# ruff: noqa: D401 First line of docstring should be in imperative mood
+# ruff: noqa: D205 1 blank line required between summary line and description
+# ruff: noqa: D102 Missing docstring in public method
+
+"""SLH-DSA implementation based on FIPS 205."""
 import os
 
 #   fips205.py

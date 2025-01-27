@@ -1,6 +1,11 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
+#
+# ruff: noqa: D104 Missing docstring in public package
+# ruff: noqa: D102 Missing docstring in public method
+"""ML-KEM implementation based on FIPS 203."""
+
 from typing import Optional, Tuple
 
 #   fips203.py
