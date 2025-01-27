@@ -6,25 +6,53 @@
 
 import logging
 import os
-from typing import Optional, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
+import pyasn1.error
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from pq_logic.key_pyasn1_utils import parse_key_from_one_asym_key
+from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.migration_typing import HybridKEMPrivateKey
-from pyasn1.codec.der import encoder
+from pq_logic.pq_compute_utils import verify_csr_signature, verify_signature_with_alg_id
+from pq_logic.pq_utils import is_kem_public_key
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc5280, rfc5652, rfc9480
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc9480
+from robot.api.deco import keyword, not_keyword
 
 from resources import certbuildutils, cmputils
 from resources.asn1_structures import CAKeyUpdContent, ChallengeASN1
-from resources.certextractutils import get_extension
-from resources.certutils import check_is_cert_signer, validate_certificate_pkilint
-from resources.cmputils import prepare_general_name
-from resources.convertutils import copy_asn1_certificate
+from resources.ca_kga_logic import validate_enveloped_data
+from resources.certbuildutils import build_cert_from_cert_template, build_cert_from_csr
+from resources.certextractutils import get_extension, get_field_from_certificate
+from resources.certutils import (
+    build_cmp_chain_from_pkimessage,
+    cert_in_list,
+    certificates_must_be_trusted,
+    check_is_cert_signer,
+    load_certificates_from_dir,
+    validate_certificate_pkilint,
+    validate_cmp_extended_key_usage,
+)
+from resources.cmputils import compare_general_name_and_name, prepare_general_name, prepare_pkistatusinfo
+from resources.convertutils import copy_asn1_certificate, str_to_bytes
+from resources.cryptoutils import compute_aes_cbc, perform_ecdh
 from resources.envdatautils import build_env_data_for_exchange
+from resources.exceptions import BadAsn1Data, BadPOP, BadRequest, NotAuthorized
 from resources.extra_issuing_logic import is_null_dn
+from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import compute_hash, get_hash_from_oid, sha_alg_name_to_oid
 from resources.prepareutils import prepare_name
-from resources.protectionutils import prepare_sha_alg_id
+from resources.protectionutils import (
+    compute_mac_from_alg_id,
+    prepare_kem_ciphertextinfo,
+    prepare_sha_alg_id,
+)
 from resources.typingutils import PrivateKey, PublicKey
+from resources.utils import manipulate_first_byte
 
 
 def _prepare_issuer_and_ser_num_for_challenge(cert_req_id: int) -> rfc5652.IssuerAndSerialNumber:
@@ -265,3 +293,147 @@ def build_ckuann(
     pki_message = cmputils._prepare_pki_message(pvno=pvno, sender=sender, recipient=recipient, **kwargs)
     pki_message["body"] = body
     return pki_message
+def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
+    """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
+
+    :param env_data: The EnvelopedData to wrap in the `EncryptedKey` structure.
+    :param explicit_tag: The explicitTag id set for the `EncryptedKey` structure
+    :return: An `EncryptedKey` object with encapsulated EnvelopedData.
+    """
+    enc_key = rfc9480.EncryptedKey().subtype(
+        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, explicit_tag)
+    )
+
+    enc_key["envelopedData"] = env_data
+    return enc_key
+
+
+def prepare_cert_or_enc_cert(
+    cert: rfc9480.CMPCertificate, enc_cert: Optional[rfc5652.EnvelopedData] = None
+) -> rfc9480.CertOrEncCert:
+    """Prepare a CertOrEncCert structure containing either a certificate or encrypted certificate.
+
+    :param cert: A certificate object representing the certificate to include.
+    :param enc_cert: An optional EnvelopedData object representing an encrypted certificate.
+    :return: A populated CertOrEncCert structure.
+    """
+    cert_or_enc_cert = rfc9480.CertOrEncCert()
+    if cert is not None:
+        cert2 = rfc9480.CMPCertificate().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0))
+        cert_or_enc_cert["certificate"] = copy_asn1_certificate(cert, cert2)
+
+    if enc_cert is not None:
+        enc_key = prepare_enc_key(env_data=enc_cert, explicit_tag=1)
+        cert_or_enc_cert["encryptedCert"] = enc_key
+
+    return cert_or_enc_cert
+
+
+def prepare_certified_key_pair(
+    cert: Optional[rfc9480.CMPCertificate] = None,
+    enc_cert: Optional[rfc9480.EnvelopedData] = None,
+    private_key: Optional[rfc9480.EnvelopedData] = None,
+) -> rfc9480.CertifiedKeyPair:
+    """Prepare a CertifiedKeyPair structure containing certificate or encrypted certificate and an optional private key.
+
+    :param cert: An optional certificate representing the certificate.
+    :param enc_cert: An optional EnvelopedData object for the encrypted certificate.
+    :param private_key: An optional EnvelopedData object representing the private key.
+    :raises ValueError: If both cert and enc_cert are not provided.
+    :return: A populated CertifiedKeyPair structure.
+    """
+    if not cert and not enc_cert:
+        raise ValueError("At least one of `cert` or `enc_cert` must be provided to prepare a CertifiedKeyPair.")
+
+    certified_key_pair = rfc9480.CertifiedKeyPair()
+    certified_key_pair["certOrEncCert"] = prepare_cert_or_enc_cert(cert=cert, enc_cert=enc_cert)
+
+    if private_key is not None:
+        enc_key = rfc9480.EncryptedKey().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+
+        enc_key["envelopedData"] = private_key
+        certified_key_pair["privateKey"] = enc_key
+
+    return certified_key_pair
+
+
+@keyword(name="Prepare CertResponse")
+def prepare_cert_response(
+    cert_req_id: Union[str, int] = 0,
+    status: str = "accepted",
+    text: str = None,
+    failinfo: str = None,
+    cert: Optional[rfc9480.CMPCertificate] = None,
+    enc_cert: Optional[rfc9480.EnvelopedData] = None,
+    private_key: Optional[PrivateKey] = None,
+    rspInfo: Optional[bytes] = None,
+) -> rfc9480.CertResponse:
+    """Prepare a CertResponse structure for responding to a certificate request.
+
+    :param cert_req_id: The ID of the certificate request being responded to.
+    :param status: The status of the certificate request (e.g., "accepted" or "rejected").
+    :param text: Optional status text.
+    :param failinfo: Optional failure information.
+    :param cert: An optional certificate object.
+    :param enc_cert: Optional encrypted certificate as EnvelopedData.
+    :param private_key: Optional private key as EnvelopedData.
+    :return: A populated CertResponse structure.
+    """
+    cert_response = rfc9480.CertResponse()
+    cert_response["certReqId"] = univ.Integer(int(cert_req_id))
+    cert_response["status"] = prepare_pkistatusinfo(texts=text, status=status, failinfo=failinfo)
+
+    if cert or enc_cert or private_key:
+        cert_response["certifiedKeyPair"] = prepare_certified_key_pair(cert, enc_cert, private_key)
+
+    if rspInfo:
+        cert_response["rspInfo"] = univ.OctetString(rspInfo)
+
+    return cert_response
+
+
+def _verify_encrypted_key_popo(
+    popo_priv_key: rfc4211.POPOPrivKey,
+    client_public_key: PublicKey,
+    ca_key: Optional[PrivateKey] = None,
+    password: Optional[str] = None,
+    client_cert: Optional[rfc9480.CMPCertificate] = None,
+    protection_salt: Optional[bytes] = None,
+    expected_name: Optional[str] = None,
+):
+    data = validate_enveloped_data(
+        env_data=popo_priv_key["encryptedKey"],
+        password=password,
+        ee_key=ca_key,
+        for_pop=False,
+        cmp_protection_cert=client_cert,
+        protection_salt=protection_salt,
+    )
+    enc_key, rest = decoder.decode(data, rfc4211.EncKeyWithID())
+
+    if rest:
+        raise BadAsn1Data("EncKeyWithID")
+
+    if not enc_key["identifier"].isValue:
+        raise ValueError("EncKeyWithID identifier is missing.")
+
+    if expected_name is not None:
+        if enc_key["identifier"]["string"].isValue:
+            idf_name = str(enc_key["identifier"]["string"])
+            if idf_name != expected_name:
+                raise ValueError(f"EncKeyWithID identifier name mismatch. Expected: {expected_name}. Got: {idf_name}")
+        else:
+            result = compare_general_name_and_name(enc_key["identifier"]["generalName"], prepare_name(expected_name))
+            if not result:
+                logging.debug(enc_key["identifier"].prettyPrint())
+                raise ValueError("EncKeyWithID identifier name mismatch.")
+
+    data = encoder.encode(enc_key["privateKeyInfo"])
+
+    private_key = parse_key_from_one_asym_key(data)
+
+    if private_key.public_key() != client_public_key:
+        raise ValueError("The decrypted key does not match the public key in the certificate request.")
+
+
+def process_popo_priv_key(
