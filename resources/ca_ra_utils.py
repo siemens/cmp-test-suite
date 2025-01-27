@@ -67,10 +67,104 @@ def _prepare_issuer_and_ser_num_for_challenge(cert_req_id: int) -> rfc5652.Issue
     return issuer_and_ser_num
 
 
+def _prepare_rand(sender: Optional[Union[rfc9480.GeneralName, str]], rand_int: Optional[int] = None) -> rfc9480.Rand:
+    """Prepare the `Rand` structure for the challenge.
+
+    :param sender: The sender of the message.
+    :param rand_int: The random number to use. Defaults to `None`.
+    :return: The populated `Rand` structure.
+    """
+    rand_obj = rfc9480.Rand()
+    if rand_int is None:
+        rand_int = int.from_bytes(os.urandom(4), "big")
+
+    if isinstance(sender, str):
+        sender = prepare_general_name("directoryName", sender)
+    rand_obj["sender"] = sender
+    rand_obj["int"] = rand_int
+    return rand_obj
+
+
+def _prepare_witness_val(
+    challenge_obj: ChallengeASN1, hash_alg: Optional[str], rand: rfc9480.Rand, bad_witness: bool
+) -> ChallengeASN1:
+    """Get the witness value for the challenge.
+
+    :return: The updated challenge object.
+    """
+    witness = b""
+    if hash_alg:
+        challenge_obj["owf"] = prepare_sha_alg_id(hash_alg or "sha256")
+        num_bytes = (int(rand["int"])).to_bytes(4, "big")
+        witness = compute_hash(hash_alg, num_bytes)
+        logging.info("valid witness value: %s", witness.hex())
+
+    if bad_witness:
+        if not hash_alg:
+            witness = os.urandom(32)
+        else:
+            witness = manipulate_first_byte(witness)
+
+    challenge_obj["witness"] = univ.OctetString(witness)
+    return challenge_obj
+
+
+@not_keyword
+def prepare_challenge(
+    public_key: PublicKey,
+    ca_key: Optional[PrivateKey] = None,
+    bad_witness: bool = False,
+    hash_alg: Optional[str] = None,
+    sender: str = "CN=CMP-Test-Suite CA",
+    rand_int: Optional[int] = None,
+    iv: Union[str, bytes] = b"AAAAAAAAAAAAAAAA",
+) -> Tuple[ChallengeASN1, Optional[bytes], Optional[rfc9480.InfoTypeAndValue]]:
+    """Prepare a challenge for the PKIMessage.
+
+    :param public_key: The public key of the end-entity (EE).
+    :param ca_key: The private key of the CA/RA.
+    :param bad_witness: Whether to manipulate the witness value. Defaults to `False`.
+    :param hash_alg: The hash algorithm to use. Defaults to `None`.
+    :param sender: The sender inside the Rand structure. Defaults to "CN=CMP-Test-Suite CA".
+    :param rand_int: The random number to use. Defaults to `None`.
+    :param iv: The initialization vector to use, for AES-CBC. Defaults to `b"AAAAAAAAAAAAAAAA"`.
+    :return: The populated `Challenge` structure, the shared secret, and the info value (for KEMs/HybridKEMs).
+    """
+    challenge_obj = ChallengeASN1()
+    info_val: Optional[rfc9480.InfoTypeAndValue] = None
+
+    rand = _prepare_rand(sender=sender, rand_int=rand_int)
+    data = encoder.encode(rand)
+    challenge_obj = _prepare_witness_val(
+        challenge_obj=challenge_obj, rand=rand, hash_alg=hash_alg, bad_witness=bad_witness
+    )
+
+    if isinstance(public_key, RSAPublicKey):
+        enc_data = public_key.encrypt(data, padding=padding.PKCS1v15())
+        challenge_obj["challenge"] = univ.OctetString(enc_data)
+        return challenge_obj, None, None
+
+    if isinstance(public_key, ECDHPublicKey):
+        shared_secret = perform_ecdh(ca_key, public_key)
+    elif isinstance(public_key, PQKEMPublicKey):
+        shared_secret, ct = public_key.encaps()
+        info_val = prepare_kem_ciphertextinfo(key=public_key, ct=ct)
+    elif is_kem_public_key(public_key):
+        shared_secret, ct = public_key.encaps(ca_key)
+        info_val = prepare_kem_ciphertextinfo(key=public_key, ct=ct)
+    else:
+        raise ValueError(f"Invalid public key type, to prepare a challenge: {type(public_key).__name__}")
+
+    enc_data = compute_aes_cbc(key=shared_secret, data=data, iv=str_to_bytes(iv), decrypt=False)
+
+    challenge_obj["challenge"] = univ.OctetString(enc_data)
+    return challenge_obj, shared_secret, info_val
+
+
 def prepare_challenge_enc_rand(
     public_key: PublicKey,
     sender: Optional[Union[rfc9480.GeneralName, str]],
-    rand: Optional[int] = None,
+    rand_int: Optional[int] = None,
     hash_alg: Optional[str] = None,
     bad_witness: bool = False,
     cert_req_id: int = 0,
@@ -82,7 +176,7 @@ def prepare_challenge_enc_rand(
     :param public_key: The public key of the end-entity (EE), used to create the `EnvelopedData`
     structure.
     :param sender: The sender of the message. Either a `GeneralName` or a string.
-    :param rand: The random number to be encrypted. Defaults to `None`.
+    :param rand_int: The random number to be encrypted. Defaults to `None`.
     :param private_key: The private key of the server (CA/RA). Defaults to `None`.
     :param hash_alg: The hash algorithm to use to hash the challenge (e.g., "sha256"). Defaults to `None`.
     :param bad_witness: The hash of the challenge. Defaults to an empty byte string.
@@ -92,14 +186,7 @@ def prepare_challenge_enc_rand(
     """
     challenge_obj = ChallengeASN1()
 
-    rand_obj = rfc9480.Rand()
-    if rand is None:
-        rand = int.from_bytes(os.urandom(4), "big")
-
-    if isinstance(sender, str):
-        sender = prepare_general_name("directoryName", sender)
-    rand_obj["sender"] = sender
-    rand_obj["int"] = rand
+    rand_obj = _prepare_rand(sender, rand_int)
 
     env_data = rfc9480.EnvelopedData().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
     issuer_and_ser = _prepare_issuer_and_ser_num_for_challenge(cert_req_id)
@@ -112,15 +199,12 @@ def prepare_challenge_enc_rand(
         hybrid_key_recip=hybrid_kem_key,
     )
 
-    witness = b""
-
-    if bad_witness:
-        challenge_obj["owf"] = prepare_sha_alg_id(hash_alg or "sha256")
-        witness = os.urandom(32)
+    challenge_obj = _prepare_witness_val(
+        challenge_obj=challenge_obj, rand=rand_obj, hash_alg=hash_alg, bad_witness=bad_witness
+    )
 
     challenge_obj["encryptedRand"] = env_data
     challenge_obj["challenge"] = univ.OctetString(b"")
-    challenge_obj["witness"] = univ.OctetString(witness)
     return challenge_obj
 
 
