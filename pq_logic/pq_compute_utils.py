@@ -214,3 +214,27 @@ def verify_signature_with_alg_id(public_key, alg_id: rfc9480.AlgorithmIdentifier
         raise ValueError(f"Unsupported public key type: {type(public_key).__name__}.")
 
 
+def _prepare_catalyst_info_vals(
+    prot_alg_id: rfc9480.AlgorithmIdentifier, public_key: Optional[PublicKeySig]
+) -> Tuple[rfc9480.InfoTypeAndValue, Optional[rfc9480.InfoTypeAndValue]]:
+    """Prepare the InfoTypeAndValue objects for the catalyst protection scheme.
+
+    :param prot_alg_id: The protection algorithm identifier.
+    :param public_key: The alternative public key to include in the message.
+    :return: The InfoTypeAndValue objects.
+    """
+    info_val_type_pub_key = None
+
+    info_val_type = rfc9480.InfoTypeAndValue()
+    info_val_type["infoType"] = id_ce_altSignatureAlgorithm
+    info_val_type["infoValue"] = encoder.encode(prot_alg_id)
+
+    if public_key is not None:
+        info_val_type_pub_key = rfc9480.InfoTypeAndValue()
+        info_val_type_pub_key["infoType"] = id_ce_subjectAltPublicKeyInfo
+        spki = subjectPublicKeyInfo_from_pubkey(public_key)
+        info_val_type_pub_key["infoValue"] = encoder.encode(spki)
+
+    return info_val_type, info_val_type_pub_key
+
+
