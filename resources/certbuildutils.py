@@ -1277,3 +1277,43 @@ def _prepare_spki_for_kga(
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     return spki
+def _default_validity(
+    days: int = 3650,
+    optional_validity: Optional[rfc5280.Validity] = None,
+    max_days_before: Optional[Union[int, str]] = 10,
+) -> rfc5280.Validity:
+    """Prepare a default `Validity` structure for a certificate.
+
+    :param days: The number of days for which the certificate remains valid. Defaults to `3650` days.
+    :param optional_validity: Optional `rfc5280.Validity` object to use for the certificate. Defaults to `None`.
+    :param max_days_before: Specifies the maximum allowable difference, in days, between
+    the `notBefore` date and the current date. Defaults to `10` days.
+    :return: The prepared `Validity` structure.
+    """
+    not_before = datetime.now()
+    if optional_validity is not None:
+        # print(cert_template["validity"].isValue)
+        # bug in pyasn1-alt-modules, validity is always a value.
+        # even if it is not set.
+        # if cert_template["validity"].isValue: is always `True`.
+        if optional_validity["notBefore"].isValue:
+            time_type = optional_validity["notBefore"].getName()
+            tmp = optional_validity["notBefore"][time_type].asDateTime
+
+            if tmp < datetime.now() - timedelta(days=max_days_before):
+                raise BadCertTemplate("The `notBefore` date is too far in the past.")
+
+            not_before = tmp
+
+        if optional_validity["notAfter"].isValue:
+            time_type = optional_validity["notAfter"].getName()
+            not_after = optional_validity["notAfter"][time_type].asDateTime
+        else:
+            not_after = not_before + timedelta(days=days)
+        return prepare_validity(not_before, not_after)
+
+    not_before = datetime.now()
+    not_after = not_before + timedelta(days=days)
+    return prepare_validity(not_before, not_after)
+
+
