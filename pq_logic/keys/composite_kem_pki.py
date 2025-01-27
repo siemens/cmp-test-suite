@@ -191,6 +191,8 @@ class CompositeKEMPublicKey(AbstractCompositeKEMPublicKey):
 
 
 class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
+    """Composite KEM private key."""
+
     pq_key: MLKEMPrivateKey
     _alternative_hash = False
 
@@ -289,7 +291,10 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
 
 
 class CompositeMLKEMRSAPublicKey(CompositeKEMPublicKey):
+    """Composite ML-KEM public key with RSA-based traditional KEM."""
+
     def get_oid(self, *args, **kwargs) -> univ.ObjectIdentifier:
+        """Return the OID of the composite KEM."""
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
 
@@ -319,6 +324,12 @@ class CompositeMLKEMRSAPrivateKey(CompositeKEMPrivateKey):
 
     @staticmethod
     def generate(pq_name: Optional[str] = None, trad_param: int = 2048):
+        """Generate a Composite ML-KEM private key.
+
+        :param pq_name: The name of the post-quantum algorithm.
+        :param trad_param: The RSA key length. Default is `2048` bits.
+        :return: The composite ML-KEM private key.
+        """
         if pq_name is None:
             pq_name = "ml-dsa-44"  # default placeholder
         pq_key = PQKeyFactory.generate_pq_key(pq_name)
@@ -327,12 +338,16 @@ class CompositeMLKEMRSAPrivateKey(CompositeKEMPrivateKey):
 
 
 class CompositeMLKEMECPublicKey(CompositeKEMPublicKey):
+    """Composite ML-KEM public key with EC-based traditional KEM."""
+
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
 
 class CompositeMLKEMECPrivateKey(CompositeKEMPrivateKey):
+    """Composite ML-KEM private key with EC-based traditional KEM."""
+
     @staticmethod
     def generate(pq_name: Optional[str] = None, trad_param: Optional[Union[int, str]] = None):
         """Generate a Composite ML-KEM private key."""
@@ -359,11 +374,16 @@ class CompositeMLKEMECPrivateKey(CompositeKEMPrivateKey):
 
 
 class CompositeMLKEMXPublicKey(CompositeKEMPublicKey):
+    """Composite ML-KEM public key with X25519/X448-based traditional KEM."""
+
     def get_oid(self) -> univ.ObjectIdentifier:
+        """Return the OID of the composite KEM."""
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
 
 class CompositeMLKEMXPrivateKey(CompositeKEMPrivateKey):
+    """Composite ML-KEM private key with X25519/X448-based traditional KEM."""
+
     trad_key: Union[x25519.X25519PrivateKey, x448.X448PrivateKey]
 
     def public_key(self) -> CompositeMLKEMXPublicKey:
@@ -392,11 +412,16 @@ class CompositeMLKEMXPrivateKey(CompositeKEMPrivateKey):
 
 
 class CompositeDHKEMRFC9180PublicKey(CompositeKEMPublicKey):
+    """Composite DHKEMRFC9180 public key."""
+
     def get_oid(self) -> univ.ObjectIdentifier:
+        """Return the OID of the DHKEM composite KEM."""
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
 
 
 class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
+    """Composite DHKEMRFC9180 private key."""
+
     def _get_key_name(self) -> bytes:
         """Return the key name of the composite KEM, for the PEM-header."""
         return b"COMPOSITE DHKEMRFC9180"
@@ -407,6 +432,13 @@ class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
         return univ.ObjectIdentifier(str(oid))
 
     def generate(self, pq_name: Optional[str] = None, trad_param: Optional[Union[int, str]] = None):
+        """Generate a Composite DHKEMRFC9180 private key.
+
+        :param pq_name: The name of the post-quantum algorithm.
+        :param trad_param: The traditional key parameter.
+        :return: A Composite DHKEMRFC9180 private key.
+        :raises NotImplementedError: If the method is not implemented.
+        """
         raise NotImplementedError("Not implemented yet")
 
     def public_key(self) -> CompositeDHKEMRFC9180PublicKey:
