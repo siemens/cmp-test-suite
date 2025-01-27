@@ -75,6 +75,20 @@ class UnknownOID(CMPTestSuiteError):
         super().__init__(self.message)
 
 
+class AlgorithmProfileError(CMPTestSuiteError):
+    """Raised when an algorithm used which is not in RFC9483 or violate the expected algorithm for LwCMP."""
+
+    failinfo = "badAlg"
+
+    def __init__(self, message: str):
+        """Initialize the exception with the message.
+
+        :param message: The message to display.
+        """
+        self.message = message
+        super().__init__(message)
+
+
 #########################
 # CMP Protocol Errors
 ##########################
@@ -85,6 +99,27 @@ class BadAlg(CMPTestSuiteError):
 
     failinfo = "badAlg"
     bit_num = 0
+
+
+class BadMessageCheck(CMPTestSuiteError):
+    """Raised when:
+
+    - `senderKID` is invalid.
+    - `PKIProtection` is invalid.
+    - Signature protection, and the sender is not the subject of the certificate.
+    - Could be used for MAC-protected message, if name not in "directoryName" choice.
+
+    """
+
+    failinfo = "badMessageCheck"
+    bit_num = 1
+
+
+class BadRequest(CMPTestSuiteError):
+    """Raised when the request is invalid."""
+
+    failinfo = "badRequest"
+    bit_num = 2
 
 
 class BadDataFormat(CMPTestSuiteError):
@@ -102,25 +137,34 @@ class BadDataFormat(CMPTestSuiteError):
         super().__init__(f"Bad data format: {message}")
 
 
+# This Exception is not in the protocol but would be more accurate.
 class BadAsn1Data(CMPTestSuiteError):
     """Raised when the ASN.1 data has a remainder or ASN.1 data is incorrectly populated."""
+
+    failinfo = "badDataFormat"
+    bit_num = 5
 
     def __init__(self, message: str, remainder: Optional[bytes] = None, overwrite: bool = False):
         """Initialize the exception with the message.
 
-        :param message: The message to display.
+        :param message: The message to display or just the structure name.
+        :param remainder: The remainder of the ASN.1 data.
+        :param overwrite: Raise the exception with the message only.
         """
         self.message = message
 
         if overwrite:
-            super().__init__()
+            super().__init__(message=message)
         else:
             r = "" if remainder is None else remainder.hex()
             super().__init__(f"Decoding the `{message}` structure had a remainder: {r}.")
 
 
-class AlgorithmProfileError(CMPTestSuiteError):
-    """Raised when an algorithm used are not in RFC9483 or violate the expected algorithm for LwCMP."""
+class BadPOP(CMPTestSuiteError):
+    """Raised when the Proof-of-Possession is invalid."""
+
+    failinfo = "badPOP"
+    bit_num = 9
 
     def __init__(self, message: str):
         """Initialize the exception with the message.
@@ -131,8 +175,37 @@ class AlgorithmProfileError(CMPTestSuiteError):
         super().__init__(message)
 
 
-class BadAlgError(CMPTestSuiteError):
-    """Raised when the algorithm is not supported or not allowed to be used."""
+class WrongIntegrity(CMPTestSuiteError):
+    """Raised when the integrity of the message is wrong.
+
+    Either expected MAC or signature protection.
+    """
+
+    failinfo = "wrongIntegrity"
+    bit_num = 12
+
+
+class BadCertTemplate(CMPTestSuiteError):
+    """Raised when the certificate template is invalid."""
+
+    failinfo = "badCertTemplate"
+    bit_num = 19
+    pass
+
+
+class TransactionIdInUse(CMPTestSuiteError):
+    """Raised when the transaction ID is already in use."""
+
+    failinfo = "transactionIdInUse"
+    bit_num = 21
+    pass
+
+
+class NotAuthorized(CMPTestSuiteError):
+    """Raised when the user is not authorized to perform the action."""
+
+    failinfo = "notAuthorized"
+    bit_num = 23
 
     def __init__(self, message: str):
         """Initialize the exception with the message.
