@@ -1006,6 +1006,67 @@ def _verify_encrypted_key_popo(
 
 
 def process_popo_priv_key(
+def prepare_enc_cert_for_request(# noqa: D417 Missing argument descriptions in the docstring
+    cert_req_msg: rfc4211.CertReqMsg,
+    signing_key: PrivateKey,
+    hash_alg: str,
+    ca_cert: rfc9480.CMPCertificate,
+    new_ee_cert: Optional[rfc9480.CMPCertificate] = None,
+    hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
+    client_pub_key: Optional[PQKEMPublicKey] = None,
+) -> rfc9480.EnvelopedData:
+    """Prepare an encrypted certificate for a request.
+
+    Either used as a challenge for non-signing keys like KEM keys.
+
+    Arguments:
+    ---------
+       - `cert_req_msg`: The certificate request message.
+       - `signing_key`: The CA key to sign the certificate with.
+       - `hash_alg`: The hash algorithm to use for signing the certificate (e.g., "sha256").
+       - `ca_cert`: The CA certificate matching the CA key.
+       - `new_ee_cert`: The new EE certificate to encrypt. Defaults to `None`.
+       - `hybrid_kem_key`: The hybrid KEM key to use for encryption. Defaults to `None`.
+       - `client_pub_key`: The client public key to use for the RecipientInfo. Defaults to `None`.
+       (only used for the newly introduced Catalyst KEM issuing, without using Hybrid KEMs.)
+
+    Returns:
+    -------
+         - The tagged `EnvelopedData` with the encrypted certificate.
+
+    Raises:
+    ------
+        - `ValueError`: If the POP type is not `subsequentMessage` with `encrCert`.
+        - `ValueError`: If arguments are invalid or missing.
+
+    """
+    new_ee_cert = new_ee_cert or build_cert_from_cert_template(
+        cert_template=cert_req_msg["certReq"]["certTemplate"],
+        issuer=ca_cert["tbsCertificate"]["subject"],
+        ca_key=signing_key,
+        hash_alg=hash_alg,
+    )
+
+    popo_type = cert_req_msg["popo"]["keyEncipherment"]
+    if popo_type.getName() != "subsequentMessage":
+        raise ValueError("Only subsequentMessage is supported for KEM keys")
+
+    if str(popo_type["subsequentMessage"]) != "encrCert":
+        raise ValueError("Only encrCert is supported for KEM keys")
+
+    data = encoder.encode(new_ee_cert)
+    public_key = client_pub_key or load_public_key_from_spki(new_ee_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+
+    target = rfc5652.EnvelopedData().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+    target = build_env_data_for_exchange(
+        public_key_recip=public_key,
+        hybrid_key_recip=hybrid_kem_key,
+        cert_sender=ca_cert,
+        data=data,
+        target=target,
+    )
+    return target
+
 @keyword(name="Build pkiconf from CertConf")
 def build_pki_conf_from_cert_conf(# noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
