@@ -272,3 +272,22 @@ class DeltaCertificateRequestSignatureValue(univ.BitString):
     """
 
     pass
+
+# Catalyst X.509 Certificate Extension Classes.
+
+class SubjectAltPublicKeyInfoExt(rfc5280.SubjectPublicKeyInfo):
+    """Extension for alternative public key information."""
+
+    pass
+
+
+class AltSignatureAlgorithmExt(rfc5280.AlgorithmIdentifier):
+    """Extension for alternative signature algorithm."""
+
+    pass
+
+
+class AltSignatureValueExt(univ.BitString):
+    """Extension for alternative signature value."""
+
+    pass

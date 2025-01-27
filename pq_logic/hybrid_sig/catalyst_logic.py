@@ -27,23 +27,7 @@ id_ce_altSignatureAlgorithm = rfc5280.id_ce + (73,)
 id_ce_altSignatureValue = rfc5280.id_ce + (74,)
 
 
-# X.509 Certificate Extension Classes
-class SubjectAltPublicKeyInfoExt(rfc5280.SubjectPublicKeyInfo):
-    """Extension for alternative public key information."""
 
-    pass
-
-
-class AltSignatureAlgorithmExt(rfc5280.AlgorithmIdentifier):
-    """Extension for alternative signature algorithm."""
-
-    pass
-
-
-class AltSignatureValueExt(univ.BitString):
-    """Extension for alternative signature value."""
-
-    pass
 
 
 def prepare_subject_alt_public_key_info_extn(
