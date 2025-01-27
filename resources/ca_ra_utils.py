@@ -430,6 +430,20 @@ def validate_cert_request_cert_id(pki_message: rfc9480.PKIMessage, cert_req_id: 
         raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr or p10cr")
 
 
+@not_keyword
+def get_public_key_from_cert_req_msg(cert_req_msg: rfc4211.CertReqMsg) -> PublicKey:
+    """Extract the public key from a certificate request message.
+
+    :param cert_req_msg: The certificate request message.
+    :return: The extracted public key.
+    """
+    spki = cert_req_msg["certReq"]["certTemplate"]["publicKey"]
+
+    old_spki = rfc5280.SubjectPublicKeyInfo()
+    old_spki["algorithm"] = spki["algorithm"]
+    old_spki["subjectPublicKey"] = spki["subjectPublicKey"]
+
+    return load_public_key_from_spki(old_spki)
 def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
     """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
 
