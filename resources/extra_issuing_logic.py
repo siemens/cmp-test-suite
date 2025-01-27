@@ -382,7 +382,7 @@ def process_pkimessage_with_popdecc(
                 raise ValueError(f"Expected sender name: {expected_sender}. Got: {rand_name}")
 
     else:
-        ss = _process_challenge(challenge, ee_key)
+        ss = process_simple_challenge(challenge, ee_key)
         if request is None:
             raise ValueError("The original PKIMessage request is required to build the new one for the challenge.")
 
@@ -473,25 +473,47 @@ def _process_encrypted_rand(
     return obj
 
 
-def _process_challenge(challenge_val: bytes, ee_key) -> bytes:
+@not_keyword
+def process_simple_challenge(
+    challenge: ChallengeASN1,
+    iv: Union[str, bytes],
+    ee_key: PrivateKey,
+    ca_pub_key: Optional[ECDHPublicKey] = None,
+    kemct: Optional[bytes] = None,
+) -> rfc9480.Rand:
     """Process the challenge value by decrypting or decapuslation it with the end-entity private key.
 
-    :param challenge_val: The `Challenge` to process.
+    :param challenge: The `Challenge` to process.
+    :param iv: The initialization vector to use for the AES decryption.
     :param ee_key: The private key to decrypt the challenge.
+    :param ca_pub_key: The CA's public key to use for the ECDH key exchange.
+    :param kemct: The KEM ciphertext.
     :return: The shared secret as the password field in the PKIMessage.
+    :raises ValueError: If the private key type is not supported.
     """
-    if isinstance(ee_key, rsa.RSAPrivateKey):
-        ss = ee_key.decrypt(challenge_val, padding=padding.PKCS1v15())
-    elif isinstance(ee_key, ECDHPrivateKey):
-        ss = ECDHKEM(private_key=ee_key).decaps(challenge_val)
-    elif isinstance(ee_key, PQKEMPrivateKey):
-        ss = ee_key.decaps(challenge_val)
-    elif isinstance(ee_key, AbstractCompositeKEMPrivateKey):
-        ss = ee_key.decaps(challenge_val)
-    else:
-        raise ValueError("Unsupported key type")
+    challenge_val = challenge["challenge"].asOctets()
 
-    return ss
+    if isinstance(ee_key, rsa.RSAPrivateKey):
+        rand_data = ee_key.decrypt(challenge_val, padding=padding.PKCS1v15())
+        rand_obj, rest = decoder.decode(rand_data, asn1Spec=rfc9480.Rand())
+        if rest:
+            raise BadAsn1Data("Rand")
+        return rand_obj
+
+    if isinstance(ee_key, ECDHPrivateKey):
+        ss = perform_ecdh(ee_key, ca_pub_key)
+    elif is_kem_private_key(ee_key):
+        ss = ee_key.decaps(kemct)
+    else:
+        raise ValueError(
+            f"The private key type is not supported, for processing the challenge.: {type(ee_key).__name__}"
+        )
+
+    rand_data = compute_aes_cbc(key=ss, data=challenge_val, iv=str_to_bytes(iv), decrypt=True)
+    rand_obj, rest = decoder.decode(rand_data, asn1Spec=rfc9480.Rand())
+    if rest:
+        raise BadAsn1Data("Rand")
+    return rand_obj
 
 
 def _compute_ss(client_key, ca_cert):
