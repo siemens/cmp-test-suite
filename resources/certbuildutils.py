@@ -1263,6 +1263,50 @@ def _default_validity(
     return prepare_validity(not_before, not_after)
 
 
+@not_keyword
+def prepare_tbs_certificate_from_template(
+    cert_template: rfc4211.CertTemplate,
+    issuer: rfc9480.Name,
+    ca_key: PrivateKey,
+    serial_number: Optional[int] = None,
+    hash_alg: str = "sha256",
+    days: int = 3650,
+    use_rsa_pss: bool = True,
+    use_pre_hash: bool = False,
+) -> rfc5280.TBSCertificate:
+    """Prepare a `TBSCertificate` structure from a `CertTemplate`.
+
+    :param cert_template: The `CertTemplate` to prepare the `TBSCertificate` from.
+    :param issuer: The issuer of the certificate.
+    :param ca_key: The CA private key.
+    :param serial_number: The serial number for the certificate. Defaults to `None`.
+    :param hash_alg: The hash algorithm to use. Defaults to `sha256`.
+    :param days: The number of days for which the certificate remains valid. Defaults to `3650` days.
+    :param use_rsa_pss: Whether to use RSA-PSS or not. Defaults to `True`.
+    :param use_pre_hash: Whether to use pre-hash or not. Defaults to `False`.
+    :return: The prepared `TBSCertificate` structure.
+    """
+    if serial_number is None:
+        if cert_template["serialNumber"].isValue:
+            serial_number = int(cert_template["serialNumber"])
+
+    tbs_cert = _prepare_shared_tbs_cert(
+        issuer=issuer,
+        subject=cert_template["subject"],
+        serial_number=serial_number,
+        validity=cert_template["validity"],
+        days=days,
+        public_key=cert_template["publicKey"],
+    )
+
+    tbs_cert["signature"] = prepare_sig_alg_id(
+        signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+    )
+    # check if the public key is correct.
+    _ = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+    return tbs_cert
+
+
 @keyword(name="Build Cert from CSR")
 def build_cert_from_csr(
     csr: rfc6402.CertificationRequest,
