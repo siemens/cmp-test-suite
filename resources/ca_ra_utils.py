@@ -531,6 +531,65 @@ def _verify_ra_verified(
     except InvalidSignature as err:
         raise NotAuthorized("RA certificate not trusted.") from err
 
+def verify_popo_for_cert_request(
+    pki_message: rfc9480.PKIMessage,
+    allowed_ra_dir: str = "data/trusted_ras",
+    trustanchor: Optional[str] = None,
+    allow_os_store: bool = False,
+    cert_req_index: Union[int, str] = 0,
+    must_have_ra_eku_set: bool = True,
+) -> None:
+    """Verify the Proof-of-Possession (POP) for a certificate request.
+
+    Arguments:
+    ---------
+       - `pki_message`: The pki message to verify the POP for.
+       - `allowed_ra_dir`: The allowed RA directory, filed with trusted RA certificates.
+         Defaults to `data/trusted_ras`.
+       - `trustanchor`: The trust anchor to use for verification. Defaults to `None`.
+       - `allow_os_store`: Whether to allow the OS store. Defaults to `False`.
+       - `cert_req_index`: The index of the certificate request to verify the POP for. Defaults to `0`.
+       - `must_have_ra_eku_set`: Whether Extended Key Usage (EKU) CMP-RA bit must be set. Defaults to `True`.
+
+    Raises:
+    ------
+        - ValueError: If the body type is not one of `ir`, `cr`, `kur`, or `crr`.
+        - ValueError: If the POP structure is invalid
+        - ValueError: If the public key type is invalid.
+        - NotImplementedError: If the request is for key agreement.
+        - BadPOP: If the POP verification fails.
+        - NotAuthorized: If the RA certificate is not trusted.
+    """
+    if pki_message["body"].getName() not in {"ir", "cr", "kur", "crr"}:
+        raise ValueError(f"Invalid PKIMessage body: {pki_message['body'].getName()} Expected: ir, cr, kur, crr")
+
+    cert_req_msg = get_cert_req_msg_from_pkimessage(pki_message, index=cert_req_index)
+    name = cert_req_msg["popo"].getName()
+
+    if name == "raVerified":
+        _verify_ra_verified(pki_message, allowed_ra_dir, trustanchor, allow_os_store, must_have_ra_eku_set)
+    elif name == "signature":
+        verify_sig_pop_for_pki_request(pki_message)
+    elif name == "keyEncipherment":
+
+        public_key = get_public_key_from_cert_req_msg(cert_req_msg=cert_req_msg)
+
+        if not is_kem_public_key(public_key):
+            raise ValueError("Invalid public key type, for `keyEncipherment`.")
+
+
+    elif name == "keyAgreement":
+        public_key = get_public_key_from_cert_req_msg(cert_req_msg=cert_req_msg)
+        if not isinstance(public_key, ECDHPublicKey):
+            raise ValueError("Invalid public key type, for `keyAgreement`.")
+
+
+    else:
+        raise ValueError(
+            f"Invalid POP structure: {name}. Expected: raVerified, signature, keyEncipherment, keyAgreement"
+        )
+
+
 @keyword(name="Respond To CertReqMsg")
 def respond_to_cert_req_msg(# noqa: D417 Missing argument descriptions in the docstring
     cert_req_msg: rfc4211.CertReqMsg,
