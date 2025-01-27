@@ -104,6 +104,7 @@ def _prepare_pki_message(
     message_time: Optional[useful.GeneralizedTime] = None,
     pki_free_text: Optional[Union[List[str], str]] = None,
     pvno: int = 2,
+    **kwargs,
 ) -> rfc9480.PKIMessage:
     """Prepare the skeleton structure of a PKIMessage, with the body to be set later.
 
