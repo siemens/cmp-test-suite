@@ -1107,6 +1107,7 @@ def prepare_single_value_attr(attr_type: univ.ObjectIdentifier, attr_value: Any)
     attr["attrValues"][0] = encoder.encode(attr_value)
     return attr
 
+
 @keyword(name="CSR Extend Subject")
 def csr_extend_subject(  # noqa D417 undocumented-param
     csr: rfc6402.CertificationRequest, rdn: rfc5280.RelativeDistinguishedName
@@ -1151,7 +1152,7 @@ def prepare_subject_public_key_info(
     key: Union[PrivateKey, PublicKey] = None,
     for_kga: bool = False,
     key_name: Optional[str] = None,
-    use_pss: bool = False,
+    use_rsa_pss: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare a `SubjectPublicKeyInfo` structure for a `Certificate`, `CSR` or `CertTemplate`.
 
@@ -1159,7 +1160,7 @@ def prepare_subject_public_key_info(
     :param for_kga: A flag indicating whether the key is for key generation authentication (KGA).
     :param key_name: The key algorithm name to use for the `SubjectPublicKeyInfo`.
     (can be set to `rsa_kem`. RFC 5990bis-10). Defaults to `None`.
-    :param use_pss: Whether to use PSS padding if the key is an RSA key. Defaults to `False`.
+    :param use_rsa_pss: Whether to use PSS padding if the key is an RSA key. Defaults to `False`.
     :return: The populated `SubjectPublicKeyInfo` structure.
     """
     if key is None and not for_kga:
@@ -1170,7 +1171,7 @@ def prepare_subject_public_key_info(
             key = key.public_key()
 
     if for_kga:
-        return _prepare_spki_for_kga(key=key, key_name=key_name, use_pss=use_pss)
+        return _prepare_spki_for_kga(key=key, key_name=key_name, use_rsa_pss=use_rsa_pss)
 
     if key_name in ["rsa-kem", "rsa_kem"]:
         spki = rfc5280.SubjectPublicKeyInfo()
@@ -1180,7 +1181,7 @@ def prepare_subject_public_key_info(
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(der_data)
 
     else:
-        spki = subjectPublicKeyInfo_from_pubkey(public_key=key, use_pss=use_pss)
+        spki = subjectPublicKeyInfo_from_pubkey(public_key=key, use_rsa_pss=use_rsa_pss)
 
     return spki
 
@@ -1188,13 +1189,13 @@ def prepare_subject_public_key_info(
 def _prepare_spki_for_kga(
     key: Union[PrivateKey, PublicKey] = None,
     key_name: Optional[str] = None,
-    use_pss: bool = False,
+    use_rsa_pss: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare a SubjectPublicKeyInfo for KGA usage.
 
     :param key: A private or public key.
     :param key_name: An optional key algorithm name.
-    :param use_pss: Use PSS padding if true (RSA keys only).
+    :param use_rsa_pss: Use PSS padding if true (RSA keys only).
     :return: The populated `SubjectPublicKeyInfo` structure.
     """
     spki = rfc5280.SubjectPublicKeyInfo()
@@ -1217,14 +1218,16 @@ def _prepare_spki_for_kga(
         from pq_logic.combined_factory import CombinedKeyFactory
 
         key = CombinedKeyFactory.generate_key(key_name).public_key()
-        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_pss=use_pss)
+        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_rsa_pss=use_rsa_pss)
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     elif key is not None:
-        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_pss=use_pss)
+        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_rsa_pss=use_rsa_pss)
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     return spki
+
+
 def _default_validity(
     days: int = 3650,
     optional_validity: Optional[rfc5280.Validity] = None,
