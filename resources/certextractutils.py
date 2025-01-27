@@ -37,6 +37,10 @@ def get_extension(
     :param must_be_crit: If True, ensure the extension is critical. Defaults to disabled.
     :return: The matching extension, or None if not found.
     """
+    if not extensions.isValue:
+        logging.info("No `extensions` found in the certificate.")
+        return None
+
     for ext in extensions:
         if ext["extnID"] == oid:
             if must_be_non_crit and ext["critical"] and must_be_non_crit is not None:
