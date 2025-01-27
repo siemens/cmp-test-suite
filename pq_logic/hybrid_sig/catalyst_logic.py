@@ -83,9 +83,8 @@ def _prepare_sig_alt_extn(alg_id: rfc5280.AlgorithmIdentifier, critical: bool) -
     return alt_signature_algorithm_extension
 
 
-def _prepare_alt_signature_value(signature: bytes, critical: bool) -> rfc5280.Extension:
-    """
-    Prepare the altSignatureValue extension.
+def prepare_alt_signature_value_extn(signature: bytes, critical: bool) -> rfc5280.Extension:
+    """Prepare the altSignatureValue extension.
 
     :param signature: The alternative signature bytes.
     :param critical: Whether the extension is critical.
