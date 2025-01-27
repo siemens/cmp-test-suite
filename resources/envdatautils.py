@@ -974,7 +974,9 @@ def build_env_data_for_exchange(
     cek = str_to_bytes(cek)
 
     if isinstance(public_key_recip, rsa.RSAPublicKey):
-        kari = prepare_ktri(public_key_recip, cert_recip, cek, use_rsa_oaep=use_rsa_oaep, issuer_and_ser=issuer_and_ser)
+        kari = prepare_ktri(
+            public_key_recip, cert_sender, cek, use_rsa_oaep=use_rsa_oaep, issuer_and_ser=issuer_and_ser
+        )
         return prepare_enveloped_data(
             recipient_infos=[kari], cek=cek, target=target, data_to_protect=data, enc_oid=enc_oid
         )
