@@ -33,7 +33,7 @@ class XWingPublicKeyASN1(univ.OctetString):
 
 
 class CompositeCiphertextValue(univ.SequenceOf):
-    """Define CompositeCiphertextValue as a SequenceOf BIT STRING of size 2."""
+    """Define CompositeCiphertextValue as a SequenceOf OCTET STRING of size 2."""
 
     componentType = univ.OctetString()
     subtypeSpec = constraint.ValueSizeConstraint(2, float("inf"))
