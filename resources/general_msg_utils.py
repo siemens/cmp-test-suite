@@ -1293,6 +1293,82 @@ def validate_genm_message_size(
     if len(genm["body"]["genm"]) != expected_size:
         raise ValueError(f"Expected {expected_size} messages in the General Message body.")
 
+def build_genp_kem_ct_info_from_genm(
+    genm: PKIMessageTMP,
+    expected_size: int = 1,
+    ca_key: Optional[ECDHPrivateKey] = None,
+    **kwargs
+) -> Tuple[bytes, PKIMessageTMP]:
+    """Build the KEMCiphertextInfo from a General Message PKIMessage.
+
+    Arguments:
+    ---------
+        - `pki_message`: The General Message PKIMessage.
+        - `expected_size`: The expected number of messages in the response.
+        - `ca_key`: The CA's private key to perform the decapsulation with.
+        - `**kwargs`: Additional parameters for the PKIHeader.
+
+    Returns:
+    -------
+        - The shared secret and the General Response PKIMessage.
+
+    Raises:
+    ------
+        - `ValueError`: If the response does not contain the `KEMCiphertextInfo` OID.
+        - `ValueError`: If the `KEMCiphertextInfo` value was not absent.
+        - `ValueError`: If the response does not contain the `extraCerts` field.
+        - `ValueError`: If the public key was not a KEM public key.
+
+    """
+    validate_genm_message_size(genm=genm, expected_size=expected_size)
+
+
+    value = get_value_from_seq_of_info_value_field(genm["body"]["genm"],
+                                                   oid=id_it_KemCiphertextInfo)
+
+    if value is None:
+        raise ValueError("The response did not contain the `KEMCiphertextInfo`.")
+
+    if len(genm["extraCerts"]) < 1:
+        raise ValueError("The response did not contain the extraCerts field.")
+
+    cert: rfc9480.CMPCertificate = genm["extraCerts"][0]
+    public_key = load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+
+    if not is_kem_public_key(public_key):
+        raise ValueError("The public key was not a KEM public key.")
+
+
+    if isinstance(public_key, HybridKEMPublicKey):
+        ss, ct = public_key.encaps(ca_key)
+    else:
+       ss, ct = public_key.encaps()
+
+
+    kem_oid = get_kem_oid_from_key(public_key)
+
+    genm = cmputils._prepare_pki_message(
+        **kwargs
+    )
+
+    kem_ct_info = KemCiphertextInfoAsn1()
+    kem_ct_info["ct"] = univ.OctetString(ct)
+    kem_ct_info["kem"]["algorithm"] = kem_oid
+
+    info_val = InfoTypeAndValueAsn1()
+    info_val["infoType"] = id_it_KemCiphertextInfo
+    info_val["infoValue"] = encoder.encode(kem_ct_info)
+
+    genm2 = PKIMessageTMP()
+    for field in genm["header"].keys():
+        genm2["header"][field] = genm["header"][field]
+
+
+    genm2["body"]["genp"].append(
+        info_val
+    )
+    return ss, genm2
+
     """Validate the KEMCiphertextInfo in a General Response PKIMessage.
 
     For more information, please look at the workflow of RFC4210bis-16,
