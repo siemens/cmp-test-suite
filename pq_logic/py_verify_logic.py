@@ -13,22 +13,22 @@ Either has functionality to verify signatures of PKIMessages or certificates.
 import logging
 from typing import List, Optional, Sequence, Tuple
 
+from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480, rfc9481, rfc5480
+
+import pq_logic
 from resources import keyutils
-from resources.certutils import load_public_key_from_cert
-from resources.exceptions import BadMessageCheck, UnknownOID
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, TRAD_STR_OID_TO_KEY_NAME
-from resources.typingutils import PublicKeySig
+from resources import certutils
+from resources.exceptions import BadMessageCheck, UnknownOID, BadAsn1Data, InvalidAltSignature
+from resources.oid_mapping import get_hash_from_oid
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, TRAD_STR_OID_TO_KEY_NAME, \
+    id_ce_subjectAltPublicKeyInfo, id_ce_altSignatureAlgorithm, id_ce_altSignatureValue
+from resources.typingutils import PublicKeySig, PublicKey
 
 from pq_logic import pq_compute_utils
 from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
-from pq_logic.hybrid_sig.catalyst_logic import (
-    id_ce_altSignatureAlgorithm,
-    id_ce_altSignatureValue,
-    id_ce_subjectAltPublicKeyInfo,
-)
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPublicKey
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, CompositeSigCMSPublicKey
@@ -230,7 +230,7 @@ def verify_sun_hybrid_cert(  # noqa D417 undocumented-param
     if check_alt_sig:
         sun_lamps_hybrid_scheme_00.validate_alt_sig_extn(cert, alt_pub_key, alt_issuer_key)
 
-    public_key = load_public_key_from_cert(issuer_cert)
+    public_key = certutils.load_public_key_from_cert(issuer_cert)
     data = encoder.encode(cert["tbsCertificate"])
     alg_id = cert["tbsCertificate"]["signature"]
     signature = cert["signature"].asOctets()
@@ -337,7 +337,7 @@ def verify_hybrid_pkimessage_protection(
             other_certs = pki_message["extraCerts"][1:]
 
         pq_compute_utils.verify_signature_with_alg_id(
-            public_key=load_public_key_from_cert(pki_message["extraCerts"][0]),
+            public_key= certutils.load_public_key_from_cert(pki_message["extraCerts"][0]),
             alg_id=prot_alg_id,
             data=data,
             signature=pki_message["protection"].asOctets(),
