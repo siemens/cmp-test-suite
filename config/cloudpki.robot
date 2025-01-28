@@ -89,7 +89,7 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
 ##### Section 3
-#Indicating if the PKIFailInfo bit is not optional.
+#Indicating if the PKIFailInfo must be set correctly.
 ${FAILINFO_MUST_BE_PRESENT}=    True
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}

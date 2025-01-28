@@ -14,6 +14,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dh, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
+from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from pyasn1.codec.der import decoder, encoder
@@ -623,11 +624,19 @@ def compute_and_prepare_mac(
     :return: A tuple containing the `AlgorithmIdentifier` structure and the computed MAC value.
     """
     alg_id = _prepare_mac_alg_id(protection=mac_alg, **params)
-    mac_value = _compute_mac_from_alg_id(key=key, alg_id=alg_id, data=data)
+    mac_value = compute_mac_from_alg_id(key=key, alg_id=alg_id, data=data)
     return alg_id, mac_value
 
 
-def _compute_mac_from_alg_id(key: bytes, alg_id: rfc9480.AlgorithmIdentifier, data: bytes) -> bytes:
+@not_keyword
+def compute_mac_from_alg_id(key: bytes, alg_id: rfc9480.AlgorithmIdentifier, data: bytes) -> bytes:
+    """Compute the MAC value based on the provided `AlgorithmIdentifier` structure.
+
+    :param key: The key to use for the MAC computation.
+    :param alg_id: The `AlgorithmIdentifier` structure containing the MAC parameters.
+    :param data: The data to authenticate.
+    :return: The computed MAC value.
+    """
     protection_type_oid = alg_id["algorithm"]
     prot_params = alg_id["parameters"]
 
@@ -1066,7 +1075,8 @@ def extract_protected_part(pki_message: rfc9480.PKIMessage) -> bytes:
     return encoder.encode(protected_part)
 
 
-def _prepare_pki_protection_field(protection_value: bytes) -> rfc9480.PKIProtection:
+@not_keyword
+def prepare_pki_protection_field(protection_value: bytes) -> rfc9480.PKIProtection:
     """Return the tagged `PKIProtection` structure."""
     wrapped_protection = (
         rfc9480.PKIProtection()
@@ -1100,6 +1110,33 @@ def _prepare_certificate_chain(
     return cert_chain
 
 
+@not_keyword
+def patch_sender_and_sender_kid(
+    do_patch: bool, pki_message: rfc9480.PKIMessage, cert: Optional[rfc9480.CMPCertificate]
+) -> rfc9480.PKIMessage:
+    """Patch the `sender` and `senderKID` fields of the PKIMessage structure based on the provided certificate.
+
+    :param do_patch: Whether to patch the `sender` and `senderKID` fields.
+    :param pki_message: The PKIMessage structure to patch.
+    :param cert: The certificate to use for patching.
+    :return: The patched or unpached PKIMessage.
+    """
+    if do_patch:
+        logging.info("Skipped patch of sender and senderKID, for signature-based protection.")
+    elif cert is None:
+        logging.info(
+            "Protect PKIMessage did not patch the sender and senderKID field,because the `cert` parameter was absent!"
+        )
+    else:
+        sender_kid = resources.certextractutils.get_field_from_certificate(cert, extension="ski")  # type: ignore
+        if sender_kid is not None:
+            pki_message = cmputils.patch_senderkid(pki_message, sender_kid)  # type: ignore
+
+        pki_message = cmputils.patch_sender(pki_message, cert=cert)
+
+    return pki_message
+
+
 @keyword(name="Protect PKIMessage")
 def protect_pkimessage(  # noqa: D417
     pki_message: rfc9480.PKIMessage,
@@ -1111,6 +1148,7 @@ def protect_pkimessage(  # noqa: D417
     cert_chain_fpath: Optional[str] = None,
     certs_dir: str = "./data/cert_logs",
     shared_secret: Optional[Union[bytes, str]] = None,
+    bad_message_check: bool = False,
     **params,
 ) -> rfc9480.PKIMessage:
     """Apply protection to a PKIMessage based on the provided protection type (e.g., signature, PBMAC1).
@@ -1137,6 +1175,7 @@ def protect_pkimessage(  # noqa: D417
         - `certs_dir`: Directory containing intermediate certificates to build a certificate chain.
           Defaults to `"./cert_logs"`.
         - `shared_secret`: Shared secret for DH-based MAC protection, if applicable.
+        - `bad_message_check`: Whether to manipulate the message protection.
 
     `**params`: Additional options for customization:
         - `salt` (str, bytes): The salt value for key derivation functions (KDF).
@@ -1196,19 +1235,7 @@ def protect_pkimessage(  # noqa: D417
         cert = certutils.parse_certificate(der_data)
 
     if protection in ["signature", "rsassa-pss", "rsassa_pss"]:
-        if params.get("no_patch", False):
-            logging.info("Skipped patch of sender and senderKID, for signature-based protection.")
-        elif cert is None:
-            logging.info(
-                "Protect PKIMessage did not patch the sender and senderKID field,"
-                "because the `cert` parameter was absent!"
-            )
-        else:
-            sender_kid = resources.certextractutils.get_field_from_certificate(cert, extension="ski")  # type: ignore
-            if sender_kid is not None:
-                pki_message = cmputils.patch_senderkid(pki_message, sender_kid)  # type: ignore
-
-            cmputils.patch_sender(pki_message, cert=cert)
+        patch_sender_and_sender_kid(do_patch=not params.get("no_patch", False), pki_message=pki_message, cert=cert)
 
     pki_message["header"]["protectionAlg"] = _prepare_prot_alg_id(
         protection=protection,
@@ -1246,7 +1273,10 @@ def protect_pkimessage(  # noqa: D417
             cert=cert,  # type: ignore
         )
 
-    pki_message["protection"] = _prepare_pki_protection_field(protection_value)
+    if bad_message_check:
+        protection_value = utils.manipulate_first_byte(protection_value)
+
+    pki_message["protection"] = prepare_pki_protection_field(protection_value)
     return pki_message
 
 
@@ -1296,6 +1326,10 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
     """
     protection_value: bytes = pki_message["protection"].asOctets()
     protection_type_oid = pki_message["header"]["protectionAlg"]["algorithm"]
+
+    if protection_type_oid == id_KemBasedMac:
+        verify_kem_based_mac_protection(pki_message=pki_message, private_key=private_key, shared_secret=shared_secret)
+        return
 
     if protection_type_oid == rfc9480.id_DHBasedMac:
         if not shared_secret:
@@ -1751,6 +1785,9 @@ def verify_rsassa_pss_from_alg_id(
     """
     salt_length = None
     if alg_id["algorithm"] == rfc9481.id_RSASSA_PSS:
+        if not alg_id["parameters"].isValue:
+            raise ValueError("The `protectionAlg` field must have parameters for RSASSA-PSS set.")
+
         params, rest = decoder.decode(alg_id["parameters"], rfc8017.RSASSA_PSS_params())
         if rest != b"":
             raise ValueError("The decoding of 'parameters' field inside the `protectionAlg` had a remainder!")
@@ -1869,7 +1906,7 @@ def modify_pkimessage_protection(  # noqa D417 undocumented-param
         protection_value = pki_message["protection"].asOctets()
         protection_value = utils.manipulate_first_byte(protection_value)
 
-    pki_message["protection"] = _prepare_pki_protection_field(protection_value)
+    pki_message["protection"] = prepare_pki_protection_field(protection_value)
     return pki_message
 
 
@@ -2205,18 +2242,28 @@ def _prepare_gen_hybrid_param(aes_wrap: str = "aes256-wrap") -> rfc9480.Algorith
     return hybrid_param
 
 
-@not_keyword
-def prepare_kem_ciphertextinfo(
-    key: Union[PQKEMPrivateKey, PQKEMPublicKey], ct: Optional[bytes] = None
+def prepare_kem_ciphertextinfo(# noqa: D417 Missing argument description in the docstring
+    key: Union[KEMPublicKey, KEMPrivateKey],
+    ct: Optional[bytes] = None,
 ) -> rfc9480.InfoTypeAndValue:
     """Prepare a `KemCiphertextInfo` structure.
 
     Used to encapsulate a secret, so that one party can ask for the necessary information for the
     KEMBasedMac.
 
-    :param key: The private key instance used to identify the KEM algorithm.
-    :param ct: The ciphertext data to be.
-    :return: The populated `InfoTypeAndValue` structure.
+    Arguments:
+    ---------
+       - `key`: The private key of the client to get the KEM algorithm.
+       - `ct`: The ciphertext data to be encapsulated.
+
+    Returns:
+    -------
+        - The populated `InfoTypeAndValue` object.
+
+    Raises:
+    ------
+        - `ValueError`: if the `key` is not a `KEMPublicKey` or `KEMPrivateKey`.
+
     """
     oid = get_kem_oid_from_key(key)
 
@@ -2261,32 +2308,38 @@ def prepare_kem_other_info(
 def protect_pkimessage_kem_based_mac(
     pki_message: rfc9480.PKIMessage,
     private_key: Optional[PQKEMPrivateKey] = None,
+    shared_secret: Optional[bytes] = None,
     peer_cert: Optional[rfc9480.CMPCertificate] = None,
     kem_ct_info: Optional[KemCiphertextInfoAsn1] = None,
     kdf: str = "kdf3",
     kem_context: Optional[KemOtherInfoAsn1] = None,
     context: Optional[bytes] = None,
     hash_alg: str = "sha256",
+    bad_message_check: bool = True,
 ) -> rfc9480.PKIMessage:
     """Protect a `PKIMessage` using KEMBasedMac.
 
     :param pki_message: The `PKIMessage` to protect.
     :param private_key: The private key of the sender. if before the `genm` message
      exchange was done.
+    :param shared_secret: The shared secret to use for protection. Defaults to `None`.
     :param peer_cert: The optional peer's certificate containing the public key.
     :param kem_ct_info: The optional KEM ciphertext information structure.
     :param kdf: The key derivation function to use (e.g., "pbkdf2", "kdf2", "kdf3"). Defaults to "kdf3".
     :param kem_context: Optional context information for the KEM operation. Defaults to `None`.
     :param context: Optional context information for the KEM operation. Defaults to `None`.
     :param hash_alg: The hash algorithm to use for key derivation. Defaults to "sha256".
+    :param bad_message_check: Whether to manipulate the message protection value. Defaults to `True`.
     :return: The protected `PKIMessage`.
     :raises ValueError: If neither `kem_ct_info` nor (`private_key` and `peer_cert`) are provided.
     """
-    if private_key is None and kem_ct_info is None and not peer_cert:
-        raise ValueError("Either `kem_ct_info` and `private_key` or `peer_cert` must be provided.")
+    if private_key is None and kem_ct_info is None and not peer_cert and shared_secret is None:
+        raise ValueError("Either `kem_ct_info` and `private_key` or `peer_cert` or `shared_secret` must be provided.")
 
-    # TODO fix to perform_key_encapsulation_method
-    if kem_ct_info is not None:
+    if shared_secret is not None:
+        pass
+
+    elif kem_ct_info is not None:
         ct = kem_ct_info["ct"].asOctets()
         shared_secret = private_key.decaps(ct)
     else:
@@ -2306,7 +2359,11 @@ def protect_pkimessage_kem_based_mac(
 
     data = extract_protected_part(pki_message)
     mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=prot_alg_id, ss=shared_secret)
-    pki_message["protection"] = _prepare_pki_protection_field(mac)
+
+    if bad_message_check:
+        mac = utils.manipulate_first_byte(mac)
+
+    pki_message["protection"] = prepare_pki_protection_field(mac)
     return pki_message
 
 
@@ -2333,6 +2390,7 @@ def _process_kem_other_info(kem_other_info: bytes, expected_tx_id: Optional[byte
         raise NotImplementedError("KEMContext inside the `KemOtherInfo` structure is not yet supported.")
 
 
+@not_keyword
 def verify_kem_based_mac_protection(
     pki_message: rfc9480.PKIMessage,
     private_key: Optional[PQKEMPrivateKey] = None,

@@ -12,12 +12,13 @@ import random
 import string
 import sys
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from cryptography.hazmat.primitives.asymmetric import dh, x448, x25519
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
-from pq_logic.pq_utils import is_kem_private_key
+from pq_logic.migration_typing import HybridKEMPublicKey
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, namedtype, tag, univ, useful
@@ -34,10 +35,22 @@ from robot.api.deco import keyword, not_keyword
 from robot.libraries.DateTime import convert_date
 
 import resources.prepareutils
-from resources import asn1utils, certbuildutils, certutils, convertutils, cryptoutils, oid_mapping, utils
+from resources import (
+    asn1utils,
+    certbuildutils,
+    certutils,
+    convertutils,
+    cryptoutils,
+    keyutils,
+    oid_mapping,
+    protectionutils,
+    utils,
+)
+from resources.asn1_structures import KemCiphertextInfoAsn1
 from resources.certextractutils import get_field_from_certificate
 from resources.compareutils import compare_pyasn1_names
-from resources.convertutils import str_to_bytes
+from resources.convertutils import copy_asn1_certificate, str_to_bytes
+from resources.exceptions import BadAsn1Data
 from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKey, Strint, TradSigPrivKey
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
@@ -104,6 +117,7 @@ def _prepare_pki_message(
     message_time: Optional[useful.GeneralizedTime] = None,
     pki_free_text: Optional[Union[List[str], str]] = None,
     pvno: int = 2,
+    **kwargs,
 ) -> rfc9480.PKIMessage:
     """Prepare the skeleton structure of a PKIMessage, with the body to be set later.
 
@@ -588,6 +602,7 @@ def prepare_authorization_control(auth_info: Union[bytes, str] = None) -> rfc421
 
 # TODO correct EncryptedKey logic to allow this for KeyAgreement or KEM as well.
 
+
 def prepare_controls_protocol_encr_key(
     ca_public_key: Optional[PublicKey] = None, ca_cert: Optional[rfc9480.CMPCertificate] = None
 ) -> rfc4211.AttributeTypeAndValue:
@@ -779,7 +794,6 @@ def prepare_popo(  # noqa D417 undocumented-param
     if isinstance(signing_key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
         use_key_enc = False if use_key_enc is None else use_key_enc
         return prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert, use_key_enc=use_key_enc)
-
 
     popo = rfc4211.ProofOfPossession()
     if ra_verified:
@@ -1191,20 +1205,20 @@ def build_ir_from_key(  # noqa D417 undocumented-param
     | ${ir}= | Build Ir From Key | ${signing_key} | exclude_fields=transactionID,senderNonce |
 
     """
-    cert_request_msg = prepare_cert_req_msg(
-        private_key=signing_key,
-        common_name=common_name,
-        cert_req_id=params.get("cert_req_id", 0),
-        hash_alg=params.get("hash_alg", "sha256"),
-        extensions=params.get("extensions", None),
-        controls=params.get("controls"),
-        ra_verified=params.get("ra_verified", False),
-        for_kga=params.get("for_kga", False),
-        cert_template=params.get("cert_template"),
-        popo_structure=params.get("popo_structure"),
-        bad_pop=bad_pop,
-        spki=spki,
-    )
+    if cert_req_msg is None:
+        cert_req_msg = prepare_cert_req_msg(
+            private_key=signing_key,
+            common_name=common_name,
+            cert_req_id=params.get("cert_req_id", 0),
+            hash_alg=params.get("hash_alg", "sha256"),
+            extensions=params.get("extensions", None),
+            controls=params.get("controls"),
+            ra_verified=params.get("ra_verified", False),
+            for_kga=params.get("for_kga", False),
+            cert_template=params.get("cert_template"),
+            popo_structure=params.get("popo_structure"),
+            bad_pop=bad_pop,
+        )
 
     pvno = 2
     if params.get("pvno") is None:
@@ -1214,7 +1228,6 @@ def build_ir_from_key(  # noqa D417 undocumented-param
         pvno = int(params.get("pvno"))
 
     pki_body = _prepare_cert_req_msg_body("ir")
-    pki_body["ir"].append(cert_request_msg)
     pki_body["ir"].extend(utils.ensure_list(cert_req_msg))
 
     # To ensure that the prepared messageTime is newer.
@@ -1287,21 +1300,21 @@ def build_cr_from_key(  # noqa D417 undocumented-param
     | ${cr}= | Build Cr From Key | ${signing_key} | common_name=${common_name} | hash_alg=sha512 |
 
     """
-    cert_request_msg = prepare_cert_req_msg(
-        private_key=signing_key,
-        common_name=common_name,
-        cert_req_id=params.get("cert_req_id", 0),
-        hash_alg=params.get("hash_alg", "sha256"),
-        extensions=params.get("extensions", None),
-        controls=params.get("controls"),
-        ra_verified=params.get("ra_verified", False),
-        for_kga=params.get("for_kga", False),
-        cert_template=params.get("cert_template"),
-        popo_structure=params.get("popo"),
-    )
+    if cert_req_msg is None:
+        cert_req_msg = prepare_cert_req_msg(
+            private_key=signing_key,
+            common_name=common_name,
+            cert_req_id=params.get("cert_req_id", 0),
+            hash_alg=params.get("hash_alg", "sha256"),
+            extensions=params.get("extensions", None),
+            controls=params.get("controls"),
+            ra_verified=params.get("ra_verified", False),
+            for_kga=params.get("for_kga", False),
+            cert_template=params.get("cert_template"),
+            popo_structure=params.get("popo"),
+        )
 
     pki_body = _prepare_cert_req_msg_body("cr")
-    pki_body["cr"].append(cert_request_msg)
     pki_body["cr"].extend(utils.ensure_list(cert_req_msg))
 
     # To ensure that the prepared messageTime is newer.
@@ -1740,6 +1753,7 @@ def prepare_certstatus(  # noqa D417 undocumented-param
     failinfo: Optional[str] = None,
     text: Optional[str] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
+    bad_pop: bool = False,
 ) -> rfc9480.CertStatus:
     """Prepare a `CertStatus` structure for a certificate confirmation `certConf` PKIMessage.
 
@@ -1760,6 +1774,7 @@ def prepare_certstatus(  # noqa D417 undocumented-param
           Used when the status is not `"accepted"`.
         - `text`: An optional text message to include in the status information.
         - `cert`: An optional certificate to use for the hash algorithm, if none is provided.
+        - `bad_pop`: If `True`, the Proof of Possession (POPO) will be manipulated to create an invalid signature.
 
     Returns:
     -------
@@ -1794,9 +1809,12 @@ def prepare_certstatus(  # noqa D417 undocumented-param
         cert_status["hashAlg"] = alg_id
 
     if cert is not None and not cert_hash and hash_alg:
-        cert_hash = oid_mapping.compute_hash(hash_alg, encoder.encode(cert))
+        cert_hash = oid_mapping.compute_hash(alg_name=hash_alg, data=encoder.encode(cert))
 
     if cert_hash is not None:
+        if bad_pop:
+            cert_hash = utils.manipulate_first_byte(cert_hash)
+
         cert_status["certHash"] = univ.OctetString(cert_hash)
 
     return cert_status
@@ -2054,9 +2072,11 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
         cert_resp_msg: rfc9480.CertRepMessage = ca_message["body"][message_type]["response"]
         entry: rfc9480.CertResponse
         for i, entry in enumerate(cert_resp_msg):
+            # remove the tagging.
+            cert = copy_asn1_certificate(cert=entry["certifiedKeyPair"]["certOrEncCert"]["certificate"])
             cert_status = prepare_certstatus(
-                cert_hash=hash_alg,
-                cert=entry["certifiedKeyPair"]["certOrEncCert"]["certificate"],
+                hash_alg=hash_alg,
+                cert=cert,
                 cert_req_id=i,
                 status="accepted",
                 status_info=None,
@@ -3946,11 +3966,12 @@ def build_polling_response(  # noqa D417 undocumented-param
 
 
 def prepare_popo_challenge_for_non_signing_key(
-    use_encr_cert: bool = True, use_key_enc: bool = True,
+    use_encr_cert: bool = True,
+    use_key_enc: bool = True,
 ) -> rfc4211.ProofOfPossession:
     """Prepare a Proof-of-Possession (PoP) structure for Key encipherment or key agreement.
 
-    Using either the encrypted certificate or the challenge method.
+    Using either the encrypted certificate or the challenge methode.
 
     :param use_encr_cert: A flag indicating whether to use an encrypted certificate (`True`) or
                            a challenge-based message (`False`). Defaults to `True`.
@@ -3964,3 +3985,68 @@ def prepare_popo_challenge_for_non_signing_key(
     popo_structure = rfc4211.ProofOfPossession()
     popo_structure[option]["subsequentMessage"] = challenge
     return popo_structure
+
+
+def build_kem_based_mac_protected_message(# noqa: D417 Missing argument description in the docstring
+    request: rfc9480.PKIMessage,
+    shared_secret: Optional[bytes] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    kem_ct_info: Optional[rfc9480.InfoTypeAndValue] = None,
+    client_key=None,
+) -> Tuple[bytes, rfc9480.PKIMessage]:
+    """Build a KEM based MAC protected message.
+
+    Either sends the kem ciphertextinfo inside the general message or uses
+    the shared secret to protect the message.
+
+    Arguments:
+    ---------
+        - `shared_secret`: The shared secret to use for the MAC. Defaults to `None`.
+        - `ca_cert`: The CA certificate to use for encapsulation. Defaults to `None`.
+        - `request`: The PKIMessage with the request. Defaults to `None`.
+        - `client_key`: The client key used for the pkiMessage, if request is not provided. Defaults to `None`.
+        (The default message is "ir".)
+
+    Returns:
+    -------
+        - The protected PKIMessage.
+
+    """
+    if kem_ct_info is not None and client_key is None:
+        raise ValueError("Client key must be provided if kem_ct_info is used.")
+
+    if shared_secret is not None:
+        pass
+
+    elif client_key is not None and kem_ct_info is not None:
+        obj, rest = decoder.decode(kem_ct_info["infoValue"].asOctets(), asn1Spec=KemCiphertextInfoAsn1())
+
+        if rest:
+            raise BadAsn1Data("KemCiphertextInfo")
+
+        if get_kem_oid_from_key(client_key) != obj["kem"]["algorithm"]:
+            raise ValueError("KEM algorithm mismatch.")
+
+        shared_secret = client_key.decaps(obj["ct"].asOctets())
+
+    elif ca_cert is not None:
+        ca_key = keyutils.load_public_key_from_spki(ca_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+
+        if not is_kem_public_key(ca_key):
+            raise ValueError(f"Invalid public key for `keyEncipherment`: {type(ca_key)}")
+
+        if isinstance(ca_key, HybridKEMPublicKey):
+            shared_secret, ct = ca_key.encaps(client_key)
+        else:
+            shared_secret, ct = ca_key.encaps()
+
+        kem_ct_info = protectionutils.prepare_kem_ciphertextinfo(
+            key=ca_key,
+            ct=ct,
+        )
+        request["header"]["generalInfo"].append(kem_ct_info)
+
+    return shared_secret, protectionutils.protect_pkimessage_kem_based_mac(
+        pki_message=request,
+        shared_secret=shared_secret,
+    )

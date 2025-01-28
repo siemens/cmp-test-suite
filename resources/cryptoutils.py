@@ -112,7 +112,7 @@ def _sign_traditional_key(
     """Sign data using a standalone private key."""
     if isinstance(key, rsa.RSAPrivateKey):
         if use_pss:
-            return sign_data_rsa_pss(key, data, hash_alg)
+            return sign_data_rsa_pss(key, data, hash_alg.name.lower())
         return key.sign(data, padding.PKCS1v15(), hash_alg)
     if isinstance(key, ec.EllipticCurvePrivateKey):
         return key.sign(data, ec.ECDSA(hash_alg))

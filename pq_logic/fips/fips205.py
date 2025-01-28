@@ -1,7 +1,16 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
+#
+# ruff: noqa: D402 First line should not be the function's signature
+# ruff: noqa: D401 First line of docstring should be in imperative mood
+# ruff: noqa: D205 1 blank line required between summary line and description
+# ruff: noqa: D102 Missing docstring in public method
+
+"""SLH-DSA implementation based on FIPS 205."""
+
 import os
+from typing import Optional, Tuple, Union
 
 #   fips205.py
 #   2023-11-24  Markku-Juhani O. Saarinen < mjos@iki.fi>. See LICENSE
@@ -12,10 +21,10 @@ import os
 #   hashes
 from Crypto.Hash import SHA256, SHA512, SHAKE128, SHAKE256
 
-#   A class for handling Addresses (Section 4.2.)
-
 
 class ADRS:
+    """Class for handling Addresses (Section 4.2)."""
+
     #   type constants
     WOTS_HASH = 0
     WOTS_PK = 1
@@ -25,11 +34,13 @@ class ADRS:
     WOTS_PRF = 5
     FORS_PRF = 6
 
-    def __init__(self, a=32):
+    a: bytearray
+
+    def __init__(self, a: Union[int, bytearray, bytes] = 32):
         """Initialize."""
         self.a = bytearray(a)
 
-    def copy(self):
+    def copy(self) -> "ADRS":
         """Make a copy of self."""
         return ADRS(self.a)
 
@@ -90,9 +101,25 @@ class ADRS:
 #   SLH-DSA Implementation
 
 
+def integer_to_bytes(x: int, alpha: int) -> bytearray:
+    """Convert an integer to a byte array.
+
+    :param x: The integer to convert.
+    :param alpha: The number of bytes to return.
+    :return: The byte array.
+    """
+    y = bytearray(alpha)
+    for i in range(alpha):
+        y[i] = x & 0xFF
+        x >>= 8
+    return y
+
+
 class SLH_DSA:
-    #   initialize
+    """SLH-DSA Class."""
+
     def __init__(self, hashname="SHAKE", n=16, h=66, d=22, hp=3, a=6, k=33, lg_w=4, m=34, rbg=os.urandom):
+        """Initialize the SLH-DSA object."""
         self.hashname = hashname
         self.n = n
         self.h = h
@@ -140,17 +167,10 @@ class SLH_DSA:
         #   rbg
         self.rbg = rbg
 
-    def integer_to_bytes(self, x, alpha):
-        y = bytearray(alpha)
-        for i in range(alpha):
-            y[i] = x & 0xFF
-            x >>= 8
-        return y
-
     #   10.1.   SLH-DSA Using SHAKE
-    def shake256(self, x, l):
+    def shake256(self, x: bytes, length: int) -> bytes:
         """SHAKE256(x, l): Internal hook."""
-        return SHAKE256.new(x).read(l)
+        return SHAKE256.new(x).read(length)
 
     def shake_h_msg(self, r, pk_seed, pk_root, m):
         return self.shake256(r + pk_seed + pk_root + m, self.m)
@@ -166,26 +186,43 @@ class SLH_DSA:
 
     #   Various constructions required for SHA-2 variants.
 
-    def sha256(self, x, n=32):
-        """Tranc_n(SHA2-256(x))."""
+    def sha256(self, x: bytes, n: int = 32) -> bytes:
+        """Tranc_n(SHA2-256(x)).
+
+        :param x: The input data.
+        :param n: The number of bytes to return. Defaults to 32.
+        :return: The truncated hash.
+        """
         return SHA256.new(x).digest()[0:n]
 
-    def sha512(self, x, n=64):
-        """Tranc_n(SHA2-512(x))."""
+    def sha512(self, x: bytes, n: int = 64) -> bytes:
+        """Tranc_n(SHA2-512(x)).
+
+        :param x: The input data.
+        :param n: The number of bytes to return. Defaults to 64.
+        :return: The truncated hash.
+        """
         return SHA512.new(x).digest()[0:n]
 
-    def mgf(self, hash_f, hash_l, mgf_seed, mask_len):
-        """NIST SP 800-56B REV. 2 / The Mask Generation Function (MGF)."""
+    def mgf(self, hash_f, hash_l: int, mgf_seed: bytes, mask_len: int) -> bytes:
+        """NIST SP 800-56B REV. 2 / The Mask Generation Function (MGF).
+
+        :param hash_f: The hash function to use.
+        :param hash_l: The length of the hash.
+        :param mgf_seed: The seed for the MGF.
+        :param mask_len: The length of the mask.
+        :return: The mask.
+        """
         t = b""
         for c in range((mask_len + hash_l - 1) // hash_l):
             t += hash_f(mgf_seed + c.to_bytes(4, byteorder="big"))
         return t[0:mask_len]
 
-    def mgf_sha256(self, mgf_seed, mask_len):
+    def mgf_sha256(self, mgf_seed: bytes, mask_len: int) -> bytes:
         """MGF1-SHA1-256(mgfSeed, maskLen)."""
         return self.mgf(self.sha256, 32, mgf_seed, mask_len)
 
-    def mgf_sha512(self, mgf_seed, mask_len):
+    def mgf_sha512(self, mgf_seed: bytes, mask_len: int):
         """MGF1-SHA1-512(mgfSeed, maskLen)."""
         return self.mgf(self.sha512, 64, mgf_seed, mask_len)
 
@@ -201,37 +238,78 @@ class SLH_DSA:
             opad[i] ^= 0x5C
         return hash_f(opad + hash_f(ipad + text))
 
-    def hmac_sha256(self, k, text, n=32):
-        """Trunc_n(HMAC-SHA-256(k, text)): Internal hook."""
+    def hmac_sha256(self, k: bytes, text: bytes, n=32):
+        """Trunc_n(HMAC-SHA-256(k, text)): Internal hook.
+
+        :param k: The key for the HMAC-sha256.
+        :param text: The text to hash.
+        :param n: The number of bytes to return. Defaults to 32.
+        """
         return self.hmac(self.sha256, 32, 64, k, text)[0:n]
 
-    def hmac_sha512(self, k, text, n=64):
-        """Trunc_n(HMAC-SHA-256(k, text)): Internal hook."""
+    def hmac_sha512(self, k: bytes, text: bytes, n: int = 64) -> bytes:
+        """Trunc_n(HMAC-SHA-256(k, text)): Internal hook.
+
+        :param k: The key for the HMAC-sha512.
+        :param text: The text to hash.
+        :param n: The number of bytes to return. Defaults to 64.
+        :return: The truncated hash.
+        """
         return self.hmac(self.sha512, 64, 128, k, text)[0:n]
 
     #   10.2    SLH-DSA Using SHA2 for Security Category 1
 
-    def sha256_h_msg(self, r, pk_seed, pk_root, m):
+    def sha256_h_msg(self, r: bytes, pk_seed: bytes, pk_root: bytes, m: bytes) -> bytes:
         return self.mgf_sha256(r + pk_seed + self.sha256(r + pk_seed + pk_root + m), self.m)
 
-    def sha256_prf(self, pk_seed, sk_seed, adrs):
+    def sha256_prf(self, pk_seed: bytes, sk_seed: bytes, adrs: ADRS) -> bytes:
+        """Compute the SHA256 Pseudo-Random Function.
+
+        :param pk_seed: The public seed.
+        :param sk_seed: The secret seed.
+        :param adrs: The address.
+        :return: The truncated hash, based on `n`.
+        """
         return self.sha256(pk_seed + bytes(64 - self.n) + adrs.adrsc() + sk_seed, self.n)
 
-    def sha256_prf_msg(self, sk_prf, opt_rand, m):
+    def sha256_prf_msg(self, sk_prf: bytes, opt_rand: bytes, m: bytes) -> bytes:
+        """Compute the HMAC for the message.
+
+        :param sk_prf: The secret key for HMAC-sha256.
+        :param opt_rand: The optional random value.
+        :param m: The message.
+        :return: The truncated hash, based on `n`.
+        """
         return self.hmac_sha256(sk_prf, opt_rand + m, self.n)
 
-    def sha256_f(self, pk_seed, adrs, m1):
+    def sha256_f(self, pk_seed: bytes, adrs: ADRS, m1: bytes):
+        """Compute the hash function.
+
+        :param pk_seed: The public seed.
+        :param adrs: The address.
+        :param m1: The message.
+        :return: The truncated hash, based on `n`.
+        """
         return self.sha256(pk_seed + bytes(64 - self.n) + adrs.adrsc() + m1, self.n)
 
     #   10.3    SLH-DSA Using SHA2 for Security Categories 3 and 5
 
-    def sha512_h_msg(self, r, pk_seed, pk_root, m):
+    def sha512_h_msg(self, r: bytes, pk_seed: bytes, pk_root: bytes, m: bytes) -> bytes:
+        """Compute the hash of the message."""
         return self.mgf_sha512(r + pk_seed + self.sha512(r + pk_seed + pk_root + m), self.m)
 
-    def sha512_prf_msg(self, sk_prf, opt_rand, m):
+    def sha512_prf_msg(self, sk_prf: bytes, opt_rand: bytes, m: bytes):
+        """Compute the PRF for the message.
+
+        :param sk_prf: The secret key for the PRF.
+        :param opt_rand: The optional random value.
+        :param m: The message.
+        :return: The truncated hash.
+        """
         return self.hmac_sha512(sk_prf, opt_rand + m, self.n)
 
-    def sha512_h(self, pk_seed, adrs, m2):
+    def sha512_h(self, pk_seed: bytes, adrs: ADRS, m2: bytes) -> bytes:
+        """Compute the SHA512 hash function."""
         return self.sha512(pk_seed + bytes(128 - self.n) + adrs.adrsc() + m2, self.n)
 
     #   --- FIPS 205 Algorithms
@@ -254,6 +332,7 @@ class SLH_DSA:
 
     def base_2b(self, s, b, out_len):
         """Algorithm 4: base_2b (X, b, out_len).
+
         Compute the base 2**b representation of X.
         """
         i = 0  # in
@@ -282,8 +361,9 @@ class SLH_DSA:
             t = self.h_f(pk_seed, adrs, t)
         return t
 
-    def wots_pkgen(self, sk_seed, pk_seed, adrs):
+    def wots_pkgen(self, sk_seed: bytes, pk_seed: bytes, adrs: ADRS):
         """Algorithm 6: wots_PKgen(SK.seed, PK.seed, ADRS).
+
         Generate a WOTS+ public key.
         """
         sk_adrs = adrs.copy()
@@ -303,6 +383,7 @@ class SLH_DSA:
 
     def wots_sign(self, m, sk_seed, pk_seed, adrs):
         """Algorithm 7: wots_sign(M, SK.seed, PK.seed, ADRS).
+
         Generate a WOTS+ signature on an n-byte message.
         """
         csum = 0
@@ -325,6 +406,7 @@ class SLH_DSA:
 
     def wots_pk_from_sig(self, sig, m, pk_seed, adrs):
         """Algorithm 8: wots_PKFromSig(sig, M, PK.seed, ADRS).
+
         Compute a WOTS+ public key from a message and its signature.
         """
         csum = 0
@@ -343,7 +425,7 @@ class SLH_DSA:
         pk_sig = self.h_t(pk_seed, wots_pk_adrs, tmp)
         return pk_sig
 
-    def xmss_node(self, sk_seed, i, z, pk_seed, adrs):
+    def xmss_node(self, sk_seed: bytes, i: int, z: int, pk_seed: bytes, adrs: ADRS):
         """Algorithm 9: xmss_node(SK.seed, i, z, PK.seed, ADRS).
         Compute the root of a Merkle subtree of WOTS+ public keys.
         """
@@ -362,8 +444,9 @@ class SLH_DSA:
             node = self.h_h(pk_seed, adrs, lnode + rnode)
         return node
 
-    def xmss_sign(self, m, sk_seed, idx, pk_seed, adrs):
+    def xmss_sign(self, m: bytes, sk_seed: bytes, idx: int, pk_seed: bytes, adrs: ADRS) -> bytes:
         """Algorithm 10: xmss_sign(M, SK.seed, idx, PK.seed, ADRS).
+
         Generate an XMSS signature.
         """
         auth = b""
@@ -378,6 +461,7 @@ class SLH_DSA:
 
     def xmss_pk_from_sig(self, idx, sig_xmss, m, pk_seed, adrs):
         """Algorithm 11: xmss_PKFromSig(idx, SIG_XMSS, M, PK.seed, ADRS).
+
         Compute an XMSS public key from an XMSS signature.
         """
         adrs.set_type_and_clear(ADRS.WOTS_HASH)
@@ -401,9 +485,16 @@ class SLH_DSA:
 
         return node_0
 
-    def ht_sign(self, m, sk_seed, pk_seed, i_tree, i_leaf):
+    def ht_sign(self, m: bytes, sk_seed: bytes, pk_seed: bytes, i_tree: int, i_leaf: int):
         """Algorithm 12: ht_sign(M, SK.seed, PK.seed, idx_tree, idx_leaf).
+
         Generate a hypertree signature.
+
+        :param m: The message to sign.
+        :param sk_seed: The secret seed.
+        :param pk_seed: The public seed.
+        :param i_tree: The tree index.
+        :param i_leaf: The leaf index.
         """
         adrs = ADRS()
         adrs.set_tree_address(i_tree)
@@ -422,9 +513,20 @@ class SLH_DSA:
                 root = self.xmss_pk_from_sig(i_leaf, sig_tmp, root, pk_seed, adrs)
         return sig_ht
 
-    def ht_verify(self, m, sig_ht, pk_seed, i_tree, i_leaf, pk_root):
-        """Algorithm 13: ht_verify(M, SIG_HT, PK.seed, idx_tree, idx_leaf,
-        PK.root). Verify a hypertree signature.
+    def ht_verify(self, m, sig_ht, pk_seed, i_tree, i_leaf, pk_root) -> bool:
+        """Algorithm 13: ht_verify(M, SIG_HT, PK.seed, idx_tree, idx_leaf,PK.root).
+
+        Verify a hypertree signature.
+
+        :param m: The message.
+        :param sig_ht: The signature.
+        :param pk_seed: The public seed.
+        :param i_tree: The tree index.
+        :param i_leaf: The leaf index.
+        :param pk_root: The root public key.
+        :return: True if the signature is valid, False otherwise.
+
+
         """
         adrs = ADRS()
         adrs.set_tree_address(i_tree)
@@ -453,6 +555,7 @@ class SLH_DSA:
 
     def fors_node(self, sk_seed, i, z, pk_seed, adrs):
         """Algorithm 15: fors_node(SK.seed, i, z, PK.seed, ADRS).
+
         Compute the root of a Merkle subtree of FORS public values.
         """
         if z > self.a or i >= (self.k << (self.a - z)):
@@ -470,9 +573,16 @@ class SLH_DSA:
             node = self.h_h(pk_seed, adrs, lnode + rnode)
         return node
 
-    def fors_sign(self, md, sk_seed, pk_seed, adrs):
+    def fors_sign(self, md: bytes, sk_seed: bytes, pk_seed: bytes, adrs: ADRS):
         """Algorithm 16: fors_sign(md, SK.seed, PK.seed, ADRS).
+
         Generate a FORS signature.
+
+        :param md: The message digest.
+        :param sk_seed: The secret seed.
+        :param pk_seed: The public seed.
+        :param adrs: The address.
+
         """
         sig_fors = b""
         indices = self.base_2b(md, self.a, self.k)
@@ -485,6 +595,7 @@ class SLH_DSA:
 
     def fors_pk_from_sig(self, sig_fors, md, pk_seed, adrs):
         """Algorithm 17: fors_pkFromSig(SIG_FORS, md, PK.seed, ADRS).
+
         Compute a FORS public key from a FORS signature.
         """
 
@@ -522,8 +633,14 @@ class SLH_DSA:
         pk = self.h_t(pk_seed, fors_pk_adrs, root)
         return pk
 
-    def slh_keygen_internal(self, sk_seed, sk_prf, pk_seed):
-        """Algorithm 18: slh_keygen_internal()."""
+    def slh_keygen_internal(self, sk_seed: bytes, sk_prf: bytes, pk_seed: bytes) -> Tuple[bytes, bytes]:
+        """Algorithm 18: slh_keygen_internal().
+
+        :param sk_seed: The secret seed.
+        :param sk_prf: The secret Pseudo-Random Function seed.
+        :param pk_seed: The public seed.
+        :returns: The public and secret key.
+        """
         #   The behavior is different if one performs three distinct
         adrs = ADRS()
         adrs.set_layer_address(self.d - 1)
@@ -532,7 +649,7 @@ class SLH_DSA:
         pk = pk_seed + pk_root
         return (pk, sk)  #   Alg 17 has (sk, pk)
 
-    def split_digest(self, digest):
+    def split_digest(self, digest: bytes) -> Tuple[bytes, int, int]:
         """Helper: Lines 11-16 of Alg 18 / Lines 10-15 of Alg 19."""
         ka1 = (self.k * self.a + 7) // 8
         md = digest[0:ka1]
@@ -542,17 +659,22 @@ class SLH_DSA:
         i_tree = self.to_int(digest[ka1:ka2], (hhd + 7) // 8) % (2**hhd)
         ka3 = ka2 + ((hd + 7) // 8)
         i_leaf = self.to_int(digest[ka2:ka3], (hd + 7) // 8) % (2**hd)
-        return (md, i_tree, i_leaf)
+        return md, i_tree, i_leaf
 
-    def slh_sign_internal(self, m, sk, addrnd=None):
-        """Algorithm 19: slh_sign_internal(M, SK)."""
+    def slh_sign_internal(self, m: bytes, sk: bytes, addrnd: Optional[bytes] = None) -> bytes:
+        """Algorithm 19: slh_sign_internal(M, SK).
+
+        :param m: The message to sign.
+        :param sk: The secret key.
+        :param addrnd: The optional random address, as bytes. Defaults to `pk_seed`.
+        """
         adrs = ADRS()
         sk_seed = sk[0 : self.n]
         sk_prf = sk[self.n : 2 * self.n]
         pk_seed = sk[2 * self.n : 3 * self.n]
         pk_root = sk[3 * self.n :]
 
-        if addrnd == None:
+        if addrnd is None:
             addrnd = pk_seed
 
         r = self.prf_msg(sk_prf, addrnd, m)
@@ -598,9 +720,13 @@ class SLH_DSA:
         return self.ht_verify(pk_fors, sig_ht, pk_seed, i_tree, i_leaf, pk_root)
 
     #   XXX Note 2024-11-09: Not covered by test vectors.
-    def slh_keygen(self, param=None):
-        """Algorithm 21, Algorithm 21 slh_keygen()."""
-        if param != None:
+    def slh_keygen(self, param: Optional[str] = None):
+        """Algorithm 21, Algorithm 21 slh_keygen().
+
+        :param param: The parameter set to use, identified by the hash function.
+        (e,g., "shake256").
+        """
+        if param is not None:
             self.__init__(param)
         sk_seed = self.rbg(self.n)
         sk_prf = self.rbg(self.n)
@@ -608,14 +734,21 @@ class SLH_DSA:
         return self.slh_keygen_internal(sk_seed, sk_prf, pk_seed)
 
     #   XXX Note 2024-11-09: Not covered by test vectors.
-    def slh_sign(self, m, ctx, sk, addrnd=None, param=None):
-        """Algorithm 22, slh_sign(M, ctx, SK)."""
-        if param != None:
+    def slh_sign(self, m: bytes, ctx: bytes, sk: bytes, addrnd=None, param: Optional[str] = None):
+        """Algorithm 22, slh_sign(M, ctx, SK).
+
+        :param m: The message to sign.
+        :param ctx: The context.
+        :param sk: The secret key.
+        :param addrnd: The random address.
+        :param param: The parameter set to use, identified by the hash function.
+        """
+        if param is not None:
             self.__init__(param)
         if len(ctx) > 255:
             return None
 
-        mp = self.integer_to_bytes(0, 1) + self.integer_to_bytes(len(ctx), 1) + ctx + m
+        mp = integer_to_bytes(0, 1) + integer_to_bytes(len(ctx), 1) + ctx + m
         sig = self.slh_sign_internal(mp, sk, addrnd)
         return sig
 
@@ -642,28 +775,47 @@ class SLH_DSA:
         else:
             return None
 
-        mp = self.integer_to_bytes(1, 1) + self.integer_to_bytes(len(ctx), 1) + ctx + oid + phm
+        mp = integer_to_bytes(1, 1) + integer_to_bytes(len(ctx), 1) + ctx + oid + phm
         sig = self.slh_sign_internal(sk, mp, rnd)
         return sig
 
     #   XXX Note 2024-11-09: Not covered by test vectors.
-    def slh_verify(self, m, sig, ctx, pk, param=None):
-        """Algorithm 24, slh_verify(M, SIG, ctx, PK)."""
-        if param != None:
+    def slh_verify(self, m: bytes, sig: bytes, ctx: bytes, pk: bytes, param: Optional[str] = None) -> bool:
+        """Algorithm 24, slh_verify(M, SIG, ctx, PK).
+
+        :param m: The message to verify.
+        :param sig: The signature to verify.
+        :param ctx: The context.
+        :param pk: The public key.
+        :param param: The parameter set to use, identified by the hash function.
+        :return: True if the signature is valid, False otherwise.
+        """
+        if param is not None:
             self.__init__(param)
         if len(ctx) > 255:
             return False
 
-        mp = self.integer_to_bytes(0, 1) + self.integer_to_bytes(len(ctx), 1) + ctx + m
+        mp = integer_to_bytes(0, 1) + integer_to_bytes(len(ctx), 1) + ctx + m
         return self.slh_verify_internal(mp, sig, pk)
 
     #   XXX Note 2024-11-09: Not covered by test vectors.
-    def hash_ml_dsa_verify(self, pk, m, sig, ctx, ph, param=None):
-        """Algorithm 25, hash_slh_verify(M, SIG, ctx, PH, PK)."""
-        if param != None:
+    def hash_ml_dsa_verify(
+        self, pk: bytes, m: bytes, sig: bytes, ctx: bytes, ph: str, param: Optional[str] = None
+    ) -> bool:
+        """Algorithm 25, hash_slh_verify(M, SIG, ctx, PH, PK).
+
+        :param pk: The public key.
+        :param m: The message to verify.
+        :param sig: The signature to verify.
+        :param ctx: The context.
+        :param ph: The hash function to use.
+        :param param: The parameter set to use.
+        :return: True if the signature is valid, False otherwise
+        """
+        if param is not None:
             self.__init__(param)
         if len(ctx) > 255:
-            return None
+            raise ValueError(f"The provided context is too long: {len(ctx)}")
 
         if ph == "SHA-256":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01])
@@ -678,9 +830,9 @@ class SLH_DSA:
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x0C])
             phm = SHAKE256.new(m).read(512 // 8)
         else:
-            return None
+            raise ValueError(f"Unsupported hash function: {ph}")
 
-        mp = self.integer_to_bytes(1, 1) + self.integer_to_bytes(len(ctx), 1) + ctx + oid + phm
+        mp = integer_to_bytes(1, 1) + integer_to_bytes(len(ctx), 1) + ctx + oid + phm
         return self.slh_verify_internal(mp, sig, pk)
 
 
@@ -701,16 +853,26 @@ SLH_DSA_PARAMS = {
 }
 
 
-def param_keygen(sk_seed, sk_prf, pk_seed, param):
+def param_keygen(sk_seed: bytes, sk_prf, pk_seed: bytes, param: str):
+    """Generate a SLH-DSA key pair."""
     slh = SLH_DSA_PARAMS[param]
     return slh.slh_keygen_internal(sk_seed, sk_prf, pk_seed)
 
 
-def param_sign(msg, sk, addrnd, param):
+def param_sign(msg: bytes, sk: bytes, addrnd: Optional[bytes], param: str) -> bytes:
+    """Sign a message with SLH-DSA.
+
+    :param msg: The message to sign.
+    :param sk: The secret key.
+    :param addrnd: The optional random address.
+    :param param: The parameter set to use, identified by the hash function.
+    :return: The signature.
+    """
     slh = SLH_DSA_PARAMS[param]
     return slh.slh_sign_internal(msg, sk, addrnd)
 
 
 def param_verify(msg, sig, pk, param):
+    """Verify a SLH-DSA signature."""
     slh = SLH_DSA_PARAMS[param]
     return slh.slh_verify_internal(msg, sig, pk)

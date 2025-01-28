@@ -2,8 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Union, get_args
+"""Utility to handle extra functionality which is only used for "./pq_logic"."""
 
+from typing import Any, Optional, Union, get_args
+
+import requests
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5990
@@ -13,7 +16,7 @@ from robot.api.deco import not_keyword
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeKEMPublicKey
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.migration_typing import HybridKEMPrivateKey, KEMPrivateKey, KEMPublicKey
+from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey
 
 
 @not_keyword
@@ -38,7 +41,7 @@ def get_kem_oid_from_key(
         return key.get_oid()
 
     else:
-        raise ValueError(f"Invalid key type: {type(key).__name__}")
+        raise ValueError(f"Invalid KEM key. Got: {type(key).__name__}")
 
 
 @not_keyword
@@ -54,8 +57,25 @@ def is_kem_public_key(key: Any) -> bool:
 @not_keyword
 def is_kem_private_key(key: Any) -> bool:
     """Check whether a parsed key is a KEM private key."""
-    allowed_types = get_args(HybridKEMPrivateKey)
+    allowed_types = get_args(KEMPrivateKey)
     if any(isinstance(key, x) for x in allowed_types):
         return True
 
     return False
+
+
+def fetch_value_from_location(location: str) -> Optional[bytes]:
+    """Fetch the actual value from a location (e.g., URL) if provided.
+
+    :param location: The URI or location to fetch the value from.
+    :return: The fetched value as bytes:
+    :raise: ValueError, if the data can not be fetched.
+    """
+    if not location:
+        return None
+    try:
+        response = requests.get(location)
+        response.raise_for_status()
+        return response.content
+    except Exception as e:
+        raise ValueError(f"Failed to fetch value from {location}: {e}")

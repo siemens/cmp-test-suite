@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""Chempat key encapsulation mechanism and corresponding key classes."""
+
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
@@ -29,14 +31,37 @@ from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_mapping import get_oid_for_chemnpat
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 
+CURVE_NAME_2_CONTEXT_NAME = {
+    "secp256r1": "P256",
+    "brainpoolP256r1": "brainpoolP256",
+    "secp384r1": "P384",
+    "brainpoolP384r1": "brainpoolP384",
+}
+
+
+TRAD_ALG_2_NENC = {"brainpoolP384": 97, "P256": 65, "brainpoolP256": 65, "X448": 56, "X25519": 32, "P384": 97}
+
+
+def _get_trad_name(trad_key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> str:
+    """Return the traditional name to generate the context string"""
+    if isinstance(trad_key, (ec.EllipticCurvePrivateKey, ec.EllipticCurvePublicKey)):
+        name = CURVE_NAME_2_CONTEXT_NAME[trad_key.curve.name]
+    elif isinstance(trad_key, (x448.X448PrivateKey, x448.X448PublicKey)):
+        name = "X448"
+    elif isinstance(trad_key, (x25519.X25519PrivateKey, x25519.X25519PublicKey)):
+        name = "X25519"
+    else:
+        raise ValueError("Unsupported key type.")
+    return name
+
 
 class ChempatKEM:
-    """
-    Class implementing a hybrid key encapsulation mechanism (Chempat), combining a traditional KEM (TKEM)
-    with a post-quantum KEM (PQKEM).
+    """Class implementing a hybrid key encapsulation mechanism (Chempat).
+
+    Combining a traditional KEM (TKEM) with a post-quantum KEM (PQKEM).
     """
 
-    def __init__(self, pq_key: Optional[PQKEMPrivateKey] = None, trad_key: Optional[ECDHPrivateKey] = None):
+    def __init__(self, pq_key: Optional[PQKEMPrivateKey], trad_key: Optional[ECDHPrivateKey] = None):
         """Initialize the ChempatKEM instance with keys.
 
         :param trad_key: Traditional private.
@@ -84,7 +109,7 @@ class ChempatKEM:
         digest.update(data)
         return digest.finalize()
 
-    def encap(self, peer_pq_key: PQKEMPublicKey, trad_pk: ECDHPublicKey) -> Tuple[bytes, bytes]:
+    def encaps(self, peer_pq_key: PQKEMPublicKey, trad_pk: ECDHPublicKey) -> Tuple[bytes, bytes]:
         """Perform hybrid key encapsulation with a peer's public key.
 
         :param peer_pq_key: The peer's post-quantum public key.
@@ -102,7 +127,7 @@ class ChempatKEM:
         ss = self.kem_combiner(ss_T, ss_PQ, ct_T, ct_PQ, pk_trad, pk_pq)
         return ss, b"".join([ct_T, ct_PQ])
 
-    def decap(self, ct: bytes) -> bytes:
+    def decaps(self, ct: bytes) -> bytes:
         """Perform hybrid key decapsulation using the provided ciphertext.
 
         :param ct: Concatenated ciphertext of the traditional and post-quantum keys.
@@ -168,12 +193,13 @@ class ChempatPublicKey(AbstractHybridRawPublicKey):
     trad_key: Optional[ECDHPublicKey]
 
     def __eq__(self, other):
+        """Compare the ChempatPublicKey with another object."""
         if isinstance(other, ChempatPublicKey):
             return self.pq_key == other.pq_key and self.trad_key == other.trad_key
         raise ValueError(f"Cannot compare ChempatPublicKey with other types: {type(other)}.")
 
     def __init__(self, pq_key: PQKEMPublicKey, trad_key: Optional[ECDHPublicKey] = None):
-        """Constructor for the ChempatPublicKey class.
+        """Initialize the ChempatPublicKey instance with keys.
 
         :param pq_key: The post-quantum public key.
         :param trad_key: The traditional public key.
@@ -231,8 +257,21 @@ class ChempatPublicKey(AbstractHybridRawPublicKey):
         """Return the name of the key."""
         return "chempat-" + self.pq_key.name + "-" + get_ec_trad_name(self.trad_key)
 
+    def encaps(self, private_key: Optional[ECDHPrivateKey] = None) -> Tuple[bytes, bytes]:
+        """Perform key encapsulation with a peer's private key.
+
+        :param private_key: The peer's private key.
+        :return: The encapsulated shared secret and ciphertext.
+        """
+        self.chempat_kem = ChempatKEM(self.pq_key, private_key)
+        ss, ct = self.chempat_kem.encaps(self.pq_key, self.trad_key)
+        logging.info("Chempat: ss: %s, ct: %s", ss.hex(), ct.hex())
+        return ss, ct
+
 
 class ChempatPrivateKey(AbstractHybridRawPrivateKey):
+    """Chempat private key class."""
+
     @classmethod
     def generate(cls):
         """Generate a ChempatPrivateKey instance."""
@@ -269,7 +308,7 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
         return b"CHEMPAT"
 
     def __init__(self, pq_key, trad_key: Optional[ECDHPrivateKey] = None):
-        """Constructor for the ChempatPrivateKey class.
+        """Initialize the ChempatPrivateKey instance with keys.
 
         :param pq_key: The post-quantum private key.
         :param trad_key: The traditional private key, if None, will be created in the `encaps` function.
@@ -312,7 +351,7 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
         :param peer_key: The peer's hybrid public key.
         :return: The encapsulated shared secret and ciphertext.
         """
-        return self.chempat_kem.encap(peer_key.pq_key, peer_key.trad_key)
+        return self.chempat_kem.encaps(peer_key.pq_key, peer_key.trad_key)
 
     def decaps(self, ct: bytes) -> bytes:
         """Perform key decapsulation using the provided ciphertext.
@@ -320,7 +359,7 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
         :param ct: The ciphertext to be decrypted.
         :return: The decapsulated shared secret.
         """
-        return self.chempat_kem.decap(ct)
+        return self.chempat_kem.decaps(ct)
 
     @property
     def key_size(self) -> int:
@@ -364,6 +403,8 @@ class ChempatSntrup761PublicKey(ChempatPublicKey):
 
 
 class ChempatSntrup761PrivateKey(ChempatPrivateKey):
+    """Chempat Sntrup761 private key class."""
+
     @classmethod
     def generate(cls):
         """Generate a ChempatSntrup761PrivateKey instance."""
@@ -533,6 +574,8 @@ def _load_public_key(data: bytes, name: str) -> ECDHPublicKey:
 
 
 class ChempatFrodoKEMPublicKey(ChempatPublicKey):
+    """Chempat FrodoKEM public key class."""
+
     @classmethod
     def from_public_bytes(cls, data: bytes, name: str) -> "ChempatPublicKey":
         """Create a public key from the given byte string.

@@ -394,3 +394,21 @@ def compare_csr_and_cert(
             return False
 
     return True
+
+
+def compare_alg_id_without_tag(first: rfc9480.AlgorithmIdentifier, second: rfc9480.AlgorithmIdentifier) -> bool:
+    """Compare `AlgorithmIdentifier` without considering the tag.
+
+    :param first: The first `AlgorithmIdentifier` to compare.
+    :param second: The second `AlgorithmIdentifier` to compare.
+    :return: `True` if both the OID and parameters match, `False` otherwise.
+    """
+    oid_first, params_first = first["algorithm"], first["parameters"]
+    oid_second, params_second = second["algorithm"], second["parameters"]
+    if oid_first != oid_second:
+        return False
+
+    if sum([params_first.isValue, params_second.isValue]) in [0, 2]:
+        return params_first == params_second
+    else:
+        return False

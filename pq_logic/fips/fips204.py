@@ -1,7 +1,13 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-from typing import Optional, Tuple
+#
+# ruff: noqa: D104 Missing docstring in public package
+# ruff: noqa: D102 Missing docstring in public method
+# ruff: noqa: D401 First line of docstring should be in imperative mood
+# ruff: noqa: E711 Comparison to `None` should be `cond is not None`
+
+"""Contains the ML-DSA implementation based on FIPS 204."""
 
 #   fips204.py
 #   2024-08-16  Markku-Juhani O. Saarinen <mjos@iki.fi> See LICENSE.
@@ -10,6 +16,9 @@ from typing import Optional, Tuple
 #   test_mldsa is only used by the unit test in the end
 # from test_mldsa import test_mldsa
 #   hash functions
+
+from typing import Optional, Tuple
+
 from Crypto.Hash import SHA256, SHA512, SHAKE128, SHAKE256
 
 ML_DSA_Q = 8380417
@@ -289,6 +298,8 @@ ML_DSA_PARAM = {
 
 
 class ML_DSA:
+    """The ML-DSA class."""
+
     def __init__(self, param: str = "ml-dsa-65"):
         """Initialize the class with parameters."""
         param = param.lower()
@@ -303,19 +314,28 @@ class ML_DSA:
         )
 
     #   3.7 Use of Symmetric Cryptography
-    def h(self, s, l):
-        return SHAKE256.new(s).read(l)
+    def h(self, s, length):
+        return SHAKE256.new(s).read(length)
 
     #   Algorithm 2, ML-DSA.Sign(sk, M, ctx)
     #   XXX: Not covered by test vectors.
 
-    def sign(self, sk, m, ctx, rnd_in=None, param=None):
-        if param != None:
+    def sign(self, sk: bytes, m: bytes, ctx: bytes, rnd_in: Optional[bytes] = None, param: Optional[str] = None):
+        """Sign the message.
+
+        :param sk: The secret key.
+        :param m: The message to sign.
+        :param ctx: The context relevant to the signature.
+        :param rnd_in: The random value. Defaults to `os.urandom(32)`.
+        :param param: The name of the ML-DSA version in lowercase. Defaults to `None`.
+        :return:
+        """
+        if param is not None:
             self.__init__(param)
         if len(ctx) > 255:
             return None
 
-        if rnd_in == None:
+        if rnd_in is None:
             rnd = b"\x00" * 32
         else:
             rnd = rnd_in
@@ -350,12 +370,12 @@ class ML_DSA:
     #   XXX: Not covered by test vectors.
 
     def hash_ml_dsa_sign(self, sk, m, ctx, ph, rnd_in=None, param=None):
-        if param != None:
+        if param is not None:
             self.__init__(param)
         if len(ctx) > 255:
             return None
 
-        if rnd_in == None:
+        if rnd_in is None:
             rnd = b"\x00" * 32
         else:
             rnd = rnd_in
@@ -380,7 +400,7 @@ class ML_DSA:
     #   Note 2024-08-20: Not covered by test vectors.
 
     def hash_ml_dsa_verify(self, pk, m, sig, ctx, ph, param=None):
-        if param != None:
+        if param is not None:
             self.__init__(param)
         if len(ctx) > 255:
             return None
@@ -454,7 +474,7 @@ class ML_DSA:
     #   Algorithm 7, ML-DSA.Sign_internal(sk, M', rnd)
 
     def sign_internal(self, sk: bytes, mp: bytes, rnd: bytes, param: Optional[str] = None) -> bytes:
-        """The internal function to sign the message.
+        """Internal function to sign the message.
 
         The prefix bytes and the extra information are set in the corresponding functions.
 
@@ -568,7 +588,7 @@ class ML_DSA:
     #   Algorithm 8, ML-DSA.Verify_internal(pk, M', sigma)
 
     def verify_internal(self, pk, mp, sig, param: Optional[str] = None) -> bool:
-        """The internal function to verify the signature.
+        """Internal function to verify a signature.
 
         Verify the already prepared signature, which includes the prefix bytes and the extra information.
 
@@ -890,7 +910,7 @@ class ML_DSA:
         while j < 256:
             s = g.read(3)
             a[j] = self.coeff_from_three_bytes(s[0], s[1], s[2])
-            if a[j] != None:
+            if a[j] is not None:
                 j += 1
         return a
 
@@ -1031,7 +1051,7 @@ class ML_DSA:
     #   Algorithm 40, UseHint(h, r)
 
     def use_hint(self, h, r):
-        if type(h[0]) == list:
+        if isinstance(h[0], list):
             return [self.use_hint(h[i], r[i]) for i in range(len(h))]
         m = (self.q - 1) // (2 * self.gam2)
         r1v = []
@@ -1066,6 +1086,11 @@ class ML_DSA:
     #   Algorithm 42, NTT^-1(w)
 
     def ntt_inverse(self, w):
+        """Compute the inverse NTT of a polynomial.
+
+        :param w: The weights.
+        :return: The result of the inverse NTT.
+        """
         w = w.copy()
         m = 256
         le = 1
@@ -1096,7 +1121,7 @@ class ML_DSA:
     #   Algorithm 44, AddNTT(a, b)
 
     def add(self, a, b):
-        if type(a) == list:
+        if isinstance(a, list):
             return [self.add(a[i], b[i]) for i in range(len(a))]
         else:
             return (a + b) % self.q
@@ -1117,7 +1142,13 @@ class ML_DSA:
     #   subtraction
 
     def sub(self, a, b):
-        if type(a) == list:
+        """Compute the subtraction of two values inside the polynomial ring.
+
+        :param a: The first value.
+        :param b: The second value.
+        :return: The result of the subtraction.
+        """
+        if isinstance(a, list):
             return [self.sub(a[i], b[i]) for i in range(len(a))]
         else:
             return (a - b) % self.q
@@ -1125,7 +1156,13 @@ class ML_DSA:
     #   not equivalent
 
     def neq(self, a, b):
-        if type(a) == list:
+        """Compute the not equivalent of two values.
+
+        :param a: The first value.
+        :param b: The second value.
+        :return: The result of the not equivalent operation.
+        """
+        if isinstance(a, list):
             return [self.neq(a[i], b[i]) for i in range(len(a))]
         elif a == b:
             return 0
@@ -1135,7 +1172,7 @@ class ML_DSA:
     #   weight (number of nonzero entries)
 
     def weight(self, a):
-        if type(a) == list:
+        if isinstance(a, list):
             w = 0
             for ai in a:
                 w += self.weight(ai)

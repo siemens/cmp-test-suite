@@ -9,7 +9,7 @@ from pyasn1_alt_modules import rfc3565, rfc8619, rfc9481, rfc9629
 from resources.ca_kga_logic import validate_kem_recip_info_structure
 from resources.certutils import parse_certificate
 from resources.envdatautils import prepare_recipient_identifier
-from resources.exceptions import BadAlgError
+from resources.exceptions import BadAlg
 from resources.oidutils import id_alg_ml_kem_512_oid
 from resources.utils import load_and_decode_pem_file
 
@@ -75,7 +75,7 @@ class TestValidateKEMInfo(unittest.TestCase):
         THEN a ValueError should be raised.
         """
         self.recipient_info["kem"]["algorithm"] = rfc9481.rsaEncryption
-        with self.assertRaises(BadAlgError):
+        with self.assertRaises(BadAlg):
             validate_kem_recip_info_structure(self.recipient_info, self.server_cert)
 
     def test_missing_encrypted_key(self):

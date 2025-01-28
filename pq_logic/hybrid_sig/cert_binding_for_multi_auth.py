@@ -27,10 +27,10 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from pyasn1_alt_modules.rfc7906 import BinaryTime
-from resources import cmputils, utils
+from resources import cmputils, cryptoutils, utils
 from resources.asn1utils import get_set_bitstring_names
 from resources.ca_kga_logic import validate_issuer_and_serial_number_field
-from resources.certextractutils import get_extension, get_field_from_certificate, extract_extension_from_csr
+from resources.certextractutils import extract_extension_from_csr, get_extension, get_field_from_certificate
 from resources.certutils import (
     build_cert_chain_from_dir,
     certificates_are_trustanchors,
@@ -39,13 +39,11 @@ from resources.certutils import (
     verify_cert_chain_openssl,
 )
 from resources.convertutils import pyasn1_time_obj_to_py_datetime
-from resources.cryptoutils import sign_data, verify_signature
 from resources.envdatautils import prepare_issuer_and_serial_number
 from resources.exceptions import BadAsn1Data
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.typingutils import PrivateKey
-from resources.utils import manipulate_first_byte
-from robot.api.deco import keyword, not_keyword
+from robot.api.deco import keyword
 from unit_tests.utils_for_test import convert_to_crypto_lib_cert
 
 from pq_logic.hybrid_structures import RelatedCertificate, RequesterCertificate
@@ -111,11 +109,11 @@ def prepare_requester_certificate(
         # TODO maybe file an issue on github or ask if this is allowed solution.
         hash_alg = get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"])
 
-    signature = sign_data(data=data, key=cert_a_key, hash_alg=hash_alg)
+    signature = cryptoutils.sign_data(data=data, key=cert_a_key, hash_alg=hash_alg)
 
     logging.info(f"Signature: {signature}")
     if bad_pop:
-        signature = manipulate_first_byte(signature)
+        signature = utils.manipulate_first_byte(signature)
 
     req_cert["signature"] = univ.BitString.fromOctetString(signature)
     return req_cert
@@ -190,7 +188,6 @@ def validate_related_cert_extension(
     validate_ku_and_eku_related_cert(cert_a=cert_a, related_cert=related_cert)
 
 
-@not_keyword
 def get_related_cert_from_list(
     certs: List[rfc9480.CMPCertificate], cert_a: rfc9480.CMPCertificate
 ) -> rfc9480.CMPCertificate:
@@ -286,7 +283,7 @@ def extract_related_cert_request_attribute(csr: rfc6402.CertificationRequest) ->
 
 
 def process_mime_message(mime_data: bytes):
-    """Parses a MIME message and extracts application/pkcs7-mime content.
+    """Parse a MIME message and extracts application/pkcs7-mime content.
 
     :param mime_data: Raw MIME message as bytes.
     :return: Decoded CMS content (as bytes).
@@ -390,7 +387,7 @@ def validate_multi_auth_binding_csr(
     # extra the bound value to verify the signature
     data = encoder.encode(attributes["requestTime"]) + encoder.encode(attributes["certID"])
 
-    verify_signature(data=data, hash_alg=hash_alg, public_key=public_key, signature=signature)
+    cryptoutils.verify_signature(data=data, hash_alg=hash_alg, public_key=public_key, signature=signature)
 
     certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, allow_os_store=allow_os_store)
     verify_cert_chain_openssl(cert_chain=cert_chain, crl_check=crl_check)
@@ -461,8 +458,8 @@ def generate_certs_only_message(cert_path: str, cert_dir: str) -> bytes:
     return cms_der
 
 
-def prepare_related_certificate_extension(
-    cert_a, hash_alg: Optional[str] = None, critical: bool = False
+def prepare_related_cert_extension(
+    cert_a: rfc9480.CMPCertificate, hash_alg: Optional[str] = None, critical: bool = False
 ) -> rfc5280.Extension:
     """Prepare the RelatedCertificate extension for a x509 certificate.
 

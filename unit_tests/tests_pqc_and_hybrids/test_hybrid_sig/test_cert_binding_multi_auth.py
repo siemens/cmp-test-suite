@@ -9,7 +9,7 @@ import pq_logic.pq_compute_utils
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import (
     add_csr_related_cert_request_attribute,
     get_related_cert_from_list,
-    prepare_related_certificate_extension,
+    prepare_related_cert_extension,
     prepare_requester_certificate,
     validate_multi_auth_binding_csr,
 )
@@ -68,8 +68,8 @@ class TestCertBindingMultiAuth(unittest.TestCase):
         WHEN the related certificate is searched for in the list,
         THEN the related certificate is found.
         """
-        extn = prepare_related_certificate_extension(cert_a=self.cert_a,
-                                                     hash_alg="sha256", critical=False)
+        extn = prepare_related_cert_extension(cert_a=self.cert_a,
+                                              hash_alg="sha256", critical=False)
         cert = generate_certificate(private_key=self.cert_a_key,
                                     extensions=[extn], hash_alg="sha256")
 

@@ -2,29 +2,40 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, List, Optional
+"""Logic for building/validating Chameleon certificates/certification requests."""
 
+from typing import List, Optional, Tuple
+
+from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
-from resources.certbuildutils import build_csr, prepare_sig_alg_id
-from resources.compareutils import compare_pyasn1_names
-from resources.convertutils import subjectPublicKeyInfo_from_pubkey
-from resources.copyasn1utils import copy_name
+from resources.certbuildutils import (
+    build_cert_from_csr,
+    build_csr,
+    csr_add_extensions,
+    prepare_sig_alg_id,
+    prepare_single_value_attr,
+    sign_cert,
+)
+from resources.certextractutils import get_extension
+from resources.compareutils import compare_alg_id_without_tag, compare_pyasn1_names
+from resources.convertutils import copy_asn1_certificate, subjectPublicKeyInfo_from_pubkey
+from resources.copyasn1utils import copy_name, copy_validity
 from resources.cryptoutils import sign_data
+from resources.exceptions import BadAsn1Data, BadPOP
 from resources.oid_mapping import get_hash_from_oid
 from resources.prepareutils import prepare_name
 from resources.typingutils import PrivateKeySig
+from robot.api.deco import not_keyword
 
+from pq_logic import pq_compute_utils
 from pq_logic.combined_factory import CombinedKeyFactory
-from pq_logic.hybrid_sig.certdiscovery import compare_alg_id_without_tag
 from pq_logic.hybrid_structures import (
     DeltaCertificateDescriptor,
     DeltaCertificateRequestSignatureValue,
     DeltaCertificateRequestValue,
 )
-from pq_logic.pq_compute_utils import verify_csr_signature
-from pq_logic.py_verify_logic import verify_signature_with_alg_id
 from pq_logic.tmp_oids import (
     id_at_deltaCertificateRequest,
     id_at_deltaCertificateRequestSignature,
@@ -55,7 +66,7 @@ def _prepare_issuer_and_subject(
     return dcd
 
 
-def prepare_dcd_extension_from_delta(delta_cert, base_cert):
+def prepare_dcd_extension_from_delta(delta_cert: rfc9480.CMPCertificate, base_cert: rfc9480.CMPCertificate):
     """Prepare a Delta Certificate Descriptor (DCD) extension from a parsed Delta Certificate and Base Certificate.
 
     :param delta_cert: Parsed Delta Certificate structure.
@@ -81,14 +92,13 @@ def prepare_dcd_extension_from_delta(delta_cert, base_cert):
     )
 
     if not same_alg_id:
-        # TODO fix
         dcd["signature"]["algorithm"] = delta_cert["tbsCertificate"]["signature"]["algorithm"]
 
     same_issuer = compare_pyasn1_names(delta_cert["tbsCertificate"]["issuer"], base_cert["tbsCertificate"]["issuer"])
 
     if not same_issuer:
         obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
-        name_obj = copy_name(delta_cert["tbsCertificate"]["issuer"], name=obj)
+        name_obj = copy_name(filled_name=delta_cert["tbsCertificate"]["issuer"], target=obj)
         dcd["issuer"] = name_obj
 
     val1 = encoder.encode(delta_cert["tbsCertificate"]["validity"])
@@ -101,7 +111,7 @@ def prepare_dcd_extension_from_delta(delta_cert, base_cert):
 
     if not same_subject:
         obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
-        name_obj = copy_name(delta_cert["tbsCertificate"]["subject"], name=obj)
+        name_obj = copy_name(filled_name=delta_cert["tbsCertificate"]["subject"], target=obj)
         dcd["subject"] = name_obj
 
     dcd["subjectPublicKeyInfo"] = delta_cert["tbsCertificate"]["subjectPublicKeyInfo"]
@@ -135,7 +145,7 @@ def _prepare_dcd_extensions(
     If the extensions field is absent, then all extensions in the Delta Certificate 
     MUST have the same criticality and DER-encoded value as the Base Certificate 
     (except for the DCD extension, which MUST be absent from the Delta Certificate)
-    """
+    """  # noqa: W291 Trailing whitespace
 
     differing_extensions = []
     for ext_id, ext in delta_extensions.items():
@@ -157,11 +167,12 @@ def _prepare_dcd_extensions(
 ### as of Section 4.2. Issuing a Base Certificate
 
 
-def issue_base_certificate(
+def build_chameleon_base_certificate(
     delta_cert: rfc9480.CMPCertificate,
     base_tbs_cert: rfc5280.TBSCertificate,
     ca_key: PrivateKeySig,
     use_rsa_pss: bool = False,
+    hash_alg: Optional[str] = None,
 ) -> rfc9480.CMPCertificate:
     """Issue a Base Certificate with the Delta Certificate Descriptor (DCD) extension.
 
@@ -186,7 +197,7 @@ def issue_base_certificate(
     # validity periods of the Base Certificate and Delta Certificate be identical, or that if the
     # Delta Certificate is revoked, the Base Certificate must also be revoked.
 
-    hash_alg = get_hash_from_oid(delta_cert["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
+    hash_alg = hash_alg or get_hash_from_oid(delta_cert["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
 
     base_cert = rfc9480.CMPCertificate()
     base_cert["tbsCertificate"] = base_tbs_cert
@@ -199,15 +210,9 @@ def issue_base_certificate(
     dcd_extension["extnValue"] = univ.OctetString(encoder.encode(dcd))
     base_tbs_cert["extensions"].append(dcd_extension)
 
-    tbs_base_der = encoder.encode(base_tbs_cert)
-    base_signature = sign_data(data=tbs_base_der, key=ca_key, hash_alg=hash_alg)
-
     base_cert = rfc9480.CMPCertificate()
-    sig_alg = prepare_sig_alg_id(use_rsa_pss=use_rsa_pss, signing_key=ca_key, hash_alg=hash_alg)
     base_cert["tbsCertificate"] = base_tbs_cert
-    base_cert["signatureAlgorithm"] = sig_alg
-    base_cert["signature"] = univ.BitString.fromOctetString(base_signature)
-
+    base_cert = sign_cert(cert=base_cert, signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
     return base_cert
 
 
@@ -256,6 +261,16 @@ def prepare_delta_cert_req(
     use_rsa_pss: bool = False,
     omit_sig_alg_id: bool = False,
 ) -> DeltaCertificateRequestValue:
+    """Prepare a Delta Certificate Request.
+
+    :param signing_key: The private key of the subject of the Delta Certificate.
+    :param delta_common_name: The subject name of the Delta Certificate.
+    :param extensions: The extensions for the Delta Certificate.
+    :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use PSS-padding for signing. Defaults to False.
+    :param omit_sig_alg_id: Whether to omit the signature algorithm ID. Defaults to False.
+    :return: The populated `DeltaCertificateRequestValue` structure.
+    """
     if not signing_key:
         raise ValueError("SubjectPublicKeyInfo is required.")
 
@@ -268,7 +283,7 @@ def prepare_delta_cert_req(
 
     delta_req["subjectPKInfo"] = subjectPublicKeyInfo_from_pubkey(signing_key.public_key())
 
-    if extensions:
+    if extensions is not None:
         delta_req["extensions"].extend(extensions)
 
     if not omit_sig_alg_id:
@@ -283,19 +298,6 @@ def prepare_delta_cert_req(
         delta_req["signatureAlgorithm"] = alg_id
 
     return delta_req
-
-
-def _prepare_attr(attr_type: univ.ObjectIdentifier, attr_value: Any) -> rfc5652.Attribute:
-    """Prepare an attribute for a CSR.
-
-    :param attr_type: The Object Identifier (OID) for the attribute.
-    :param attr_value: The value of the attribute to be encoded.
-    :return: The populated `Attribute` structure.
-    """
-    attr = rfc5652.Attribute()
-    attr["attrType"] = attr_type
-    attr["attrValues"][0] = encoder.encode(attr_value)
-    return attr
 
 
 def build_paired_csrs(
@@ -340,7 +342,7 @@ def build_paired_csrs(
     )
 
     # Step 3: Add attribute.
-    delta_cert_attr = _prepare_attr(id_at_deltaCertificateRequest, delta_request)
+    delta_cert_attr = prepare_single_value_attr(id_at_deltaCertificateRequest, delta_request)
     base_csr["certificationRequestInfo"]["attributes"].append(delta_cert_attr)
 
     # Step 4: Sign the CertificationRequestInfo using the private key of the delta certificate
@@ -349,7 +351,7 @@ def build_paired_csrs(
     delta_signature = sign_data(data=tmp_der_data, key=delta_private_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
     # Step 5: Prepare
-    delta_sig_attr = _prepare_attr(
+    delta_sig_attr = prepare_single_value_attr(
         id_at_deltaCertificateRequestSignature, DeltaCertificateRequestSignatureValue.fromOctetString(delta_signature)
     )
 
@@ -376,11 +378,14 @@ def build_paired_csrs(
 ###################
 
 
-def _extract_attributes(attributes):
+@not_keyword
+def extract_chameleon_attributes(
+    csr: rfc6402.CertificationRequest,
+) -> Tuple[List[rfc5652.Attribute], DeltaCertificateRequestValue, DeltaCertificateRequestSignatureValue]:
     """
     Extract attributes from the CSR, excluding the signature attribute.
 
-    :param attributes: The list of attributes in the CertificationRequestInfo.
+    :param csr: The `CertificationRequest` to extract attributes from.
     :return: A tuple containing:
         - All attributes except the signature one.
         - The Delta Certificate Request attribute.
@@ -389,6 +394,8 @@ def _extract_attributes(attributes):
     non_signature_attributes = []
     delta_cert_request = None
     delta_cert_request_signature = None
+
+    attributes = csr["certificationRequestInfo"]["attributes"]
 
     for attr in attributes:
         if attr["attrType"] == id_at_deltaCertificateRequest:
@@ -405,17 +412,27 @@ def _extract_attributes(attributes):
     return non_signature_attributes, delta_cert_request, delta_cert_request_signature
 
 
-# TODO fix doc
-def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> None:
+def verify_paired_csr_signature(  # noqa: D417 Missing argument description in the docstring
+    csr: rfc6402.CertificationRequest,
+) -> DeltaCertificateRequestValue:
     """Verify the signature of a paired CSR.
 
-    :param csr: The CertificationRequest to verify.
-    :raises ValueError: If the Delta Certificate Request attribute is missing.
+    Arguments:
+    ---------
+       - `csr`: The CertificationRequest to verify.
+
+    Returns:
+    -------
+         - The Delta Certificate Request attribute.
+
+    Raises:
+    ------
+        - ValueError: If the Delta Certificate Request attribute is missing.
+        - BadPOP: If the signature is invalid.
 
     """
-    verify_csr_signature(csr=csr)
-    attributes = csr["certificationRequestInfo"]["attributes"]
-    attributes, delta_req, delta_sig = _extract_attributes(attributes)
+    pq_compute_utils.verify_csr_signature(csr=csr)
+    attributes, delta_req, delta_sig = extract_chameleon_attributes(csr=csr)
 
     if delta_req is None:
         raise ValueError("Delta Certificate Request attribute is missing.")
@@ -441,4 +458,190 @@ def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> None:
     public_key = CombinedKeyFactory.load_public_key_from_spki(delta_req["subjectPKInfo"])
 
     data = encoder.encode(csr["certificationRequestInfo"])
-    verify_signature_with_alg_id(alg_id=sig_alg_id, data=data, public_key=public_key, signature=delta_sig.asOctets())
+    try:
+        pq_compute_utils.verify_signature_with_alg_id(
+            alg_id=sig_alg_id, data=data, public_key=public_key, signature=delta_sig.asOctets()
+        )
+    except InvalidSignature:
+        raise BadPOP("Invalid signature")
+
+    return delta_req
+
+
+def build_delta_cert(
+    csr: rfc6402.CertificationRequest,
+    delta_value: DeltaCertificateRequestValue,
+    ca_key: PrivateKeySig,
+    ca_cert: rfc9480.CMPCertificate,
+    alt_sign_key: Optional[PrivateKeySig] = None,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = False,
+) -> rfc9480.CMPCertificate:
+    """Prepare a Delta Certificate from a paired CSR.
+
+    :param csr: The paired CSR.
+    :param delta_value: The Delta Certificate Request attribute.
+    :param ca_key: The CA key for signing the certificate.
+    :param ca_cert: The CA certificate matching the CA key.
+    :param alt_sign_key: An alternative signing key for the certificate.
+    :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use PSS-padding for signing. Defaults to False.
+    :return: The populated `TBSCertificate` structure.
+    """
+    csr_tmp = rfc6402.CertificationRequest()
+
+    if delta_value["subject"].isValue:
+        csr_tmp["certificationRequestInfo"]["subject"] = delta_value["subject"]
+    else:
+        csr_tmp["certificationRequestInfo"]["subject"] = csr["certificationRequestInfo"]["subject"]
+
+    csr_tmp["certificationRequestInfo"]["subjectPublicKeyInfo"] = delta_value["subjectPKInfo"]
+
+    if delta_value["extensions"].isValue:
+        csr_tmp = csr_add_extensions(
+            csr_tmp,
+            delta_value["extensions"],
+        )
+
+    return build_cert_from_csr(csr=csr_tmp, ca_key=ca_key, ca_cert=ca_cert, alt_sign_key=alt_sign_key)
+
+
+def build_chameleon_cert_from_paired_csr(
+    csr: rfc6402.CertificationRequest,
+    ca_key: PrivateKeySig,
+    ca_cert: rfc9480.CMPCertificate,
+    alt_key: Optional[PrivateKeySig] = None,
+    use_rsa_pss: bool = False,
+    hash_alg: str = "sha256",
+) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
+    """Build a paired certificate from a paired CSR.
+
+    :param csr: The paired CSR.
+    :param ca_key: The CA key for signing the certificate.
+    :param ca_cert: The CA certificate matching the CA key.
+    :param alt_key: An alternative signing key for the certificate.
+    :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use PSS-padding for signing.
+    :return: The paired certificate.
+    Starts with the Base and then Delta Certificate.
+    """
+    delta_req = verify_paired_csr_signature(csr=csr)
+    cert = build_cert_from_csr(csr=csr, ca_key=ca_key, ca_cert=ca_cert, alt_sign_key=alt_key, use_rsa_pss=use_rsa_pss)
+
+    delta_cert = build_delta_cert(
+        csr=csr,
+        delta_value=delta_req,
+        ca_key=ca_key,
+        ca_cert=ca_cert,
+        alt_sign_key=alt_key,
+        use_rsa_pss=use_rsa_pss,
+        hash_alg=hash_alg,
+    )
+
+    paired_cert = build_chameleon_base_certificate(
+        delta_cert=delta_cert,
+        base_tbs_cert=cert["tbsCertificate"],
+        ca_key=ca_key,
+        use_rsa_pss=use_rsa_pss,
+        hash_alg=None,  # only supposed to be used for negative testing.
+    )
+
+    return paired_cert, delta_cert
+
+
+def build_delta_cert_from_paired_cert(paired_cert: rfc9480.CMPCertificate) -> rfc9480.CMPCertificate:
+    """Prepare a paired certificate from a Base Certificate with a Delta Certificate Descriptor (DCD) extension.
+
+    :param paired_cert: The Base Certificate with the DCD extension.
+    :return: The paired certificate.
+    """
+    paired_cert_tmp = copy_asn1_certificate(paired_cert)
+
+    dcd = get_extension(paired_cert_tmp["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
+
+    if dcd is None:
+        raise ValueError("DCD extension not found in the Base Certificate.")
+
+    dcd, rest = decoder.decode(dcd["extnValue"], asn1Spec=DeltaCertificateDescriptor())
+
+    if rest:
+        raise BadAsn1Data("DeltaCertificateDescriptor")
+
+    delta_cert = rfc9480.CMPCertificate()
+    delta_cert["tbsCertificate"] = paired_cert_tmp["tbsCertificate"]
+
+    # Remove the DCD extension from the Delta Certificate template
+    extensions = []
+
+    for ext in delta_cert["tbsCertificate"]["extensions"]:
+        if ext["extnID"] != id_ce_deltaCertificateDescriptor:
+            extensions.append(ext)
+
+    tmp_extn = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
+    if extensions:
+        tmp_extn.extend(extensions)
+        delta_cert["tbsCertificate"]["extensions"] = tmp_extn
+
+    delta_cert["tbsCertificate"]["extensions"] = tmp_extn
+
+    # Replace fields based on the DCD extension
+    delta_cert["tbsCertificate"]["serialNumber"] = int(dcd["serialNumber"])
+
+    if dcd["signature"].isValue:
+        delta_cert["tbsCertificate"]["signature"]["algorithm"] = dcd["signature"]["algorithm"]
+        delta_cert["tbsCertificate"]["signature"]["parameters"] = dcd["signature"]["parameters"]
+        delta_cert["signatureAlgorithm"]["algorithm"] = dcd["signature"]["algorithm"]
+        delta_cert["signatureAlgorithm"]["parameters"] = dcd["signature"]["parameters"]
+
+    else:
+        delta_cert["signatureAlgorithm"]["algorithm"] = paired_cert_tmp["signatureAlgorithm"]["algorithm"]
+        delta_cert["signatureAlgorithm"]["parameters"] = paired_cert_tmp["signatureAlgorithm"]["parameters"]
+
+    if dcd["issuer"].isValue:
+        issuer = copy_name(filled_name=dcd["issuer"], target=rfc5280.Name())
+        delta_cert["tbsCertificate"]["issuer"] = issuer
+
+    if dcd["validity"].isValue:
+        validity = copy_validity(dcd["validity"])
+        delta_cert["tbsCertificate"]["validity"] = validity
+
+    delta_cert["tbsCertificate"]["subjectPublicKeyInfo"] = dcd["subjectPublicKeyInfo"]
+
+    if dcd["subject"].isValue:
+        subject = copy_name(filled_name=dcd["subject"], target=rfc5280.Name())
+        delta_cert["tbsCertificate"]["subject"] = subject
+
+    if dcd["extensions"].isValue:
+        for dcd_ext in dcd["extensions"]:
+            found = False
+            for ext in delta_cert["tbsCertificate"]["extensions"]:
+                if ext["extnID"] == dcd_ext["extnID"]:
+                    ext["critical"] = dcd_ext["critical"]
+                    ext["extnValue"] = dcd_ext["extnValue"]
+                    found = True
+                    break
+            if not found:
+                raise ValueError(f"Extension {dcd_ext['extnID']} not found in the Delta Certificate template.")
+
+    delta_cert["signature"] = dcd["signatureValue"]
+
+    return delta_cert
+
+
+def get_chameleon_delta_public_key(paired_cert: rfc9480.CMPCertificate) -> rfc5280.SubjectPublicKeyInfo:
+    """Extract the delta public key from a paired certificate.
+
+    :param paired_cert: The paired certificate.
+    :return: The extracted public key.
+    """
+    dcd = get_extension(paired_cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
+
+    if dcd is None:
+        raise ValueError("DCD extension not found in the Base Certificate.")
+
+    dcd, rest = decoder.decode(dcd["extnValue"], asn1Spec=DeltaCertificateDescriptor())
+
+    if rest:
+        raise BadAsn1Data("DeltaCertificateDescriptor")
+
+    return dcd["subjectPublicKeyInfo"]

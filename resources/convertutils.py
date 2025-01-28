@@ -27,7 +27,7 @@ from resources.typingutils import PrivateKeySig, PublicKey
 @not_keyword
 def ensure_is_sign_key(key: Any) -> PrivateKeySig:
     """Ensure provided key is allowed to sign."""
-    if not isinstance(key, PrivateKeySig):
+    if not isinstance(key, PrivateKeySig) or isinstance(key, AbstractCompositePublicKey):
         raise ValueError(f"the provided key is not allowed to be used for signing: {type(key)}")
     return key
 

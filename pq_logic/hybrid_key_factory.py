@@ -2,7 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Optional, Dict
+"""Factory for creating hybrid keys based on pq and traditional components."""
+
+from typing import List, Optional
 
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x448, x25519
 from resources import keyutils
@@ -169,9 +171,7 @@ def _get_kem_comp_combinations(
 
 
 class HybridKeyFactory:
-    """
-    Factory for creating composite keys based on classical key types.
-    """
+    """Factory for creating composite keys based on classical key types."""
 
     @staticmethod
     def from_keys(algorithm: str, pq_key, trad_key):
@@ -330,8 +330,11 @@ class HybridKeyFactory:
     ):
         """Generate a hybrid key.
 
+        :param algorithm: The hybrid key algorithm.
         :param pq_name: Name of the post-quantum key algorithm.
         :param trad_name: Name of the traditional key algorithm.
+        :param length: Length of the RSA key.
+        :param curve: Curve of the EC key.
         :return: Instance of a Hybrid key.
         """
         if algorithm == "xwing":
