@@ -7,6 +7,7 @@
 import logging
 from typing import List, Optional, Tuple, Union
 
+from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
@@ -17,7 +18,7 @@ from resources.certbuildutils import prepare_sig_alg_id
 from resources.certextractutils import get_extension
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
 from resources.cryptoutils import sign_data, verify_signature
-from resources.exceptions import BadAsn1Data
+from resources.exceptions import BadAsn1Data, BadPOP
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME, \
@@ -75,7 +76,7 @@ def verify_csr_signature(csr: rfc6402.CertificationRequest) -> None:
 
     :param csr: THe certification request (`CertificationRequest`) to be verified.
     :raises ValueError: If the algorithm OID in the CSR is unsupported or invalid.
-    :raises InvalidSignature: If the signature verification fails.
+    :raises BadPOP: If the signature verification fails.
     """
     alg_id = csr["signatureAlgorithm"]
     spki = csr["certificationRequestInfo"]["subjectPublicKeyInfo"]
@@ -91,8 +92,10 @@ def verify_csr_signature(csr: rfc6402.CertificationRequest) -> None:
     signature = csr["signature"].asOctets()
     alg_id = csr["signatureAlgorithm"]
     data = encoder.encode(csr["certificationRequestInfo"])
-    verify_signature_with_alg_id(public_key=public_key, alg_id=alg_id, signature=signature, data=data)
-
+    try:
+       verify_signature_with_alg_id(public_key=public_key, alg_id=alg_id, signature=signature, data=data)
+    except InvalidSignature as e:
+        raise BadPOP("The signature verification failed.") from e
 
 def may_extract_alt_key_from_cert(
     cert: rfc9480.CMPCertificate, other_certs: Optional[List[rfc9480.CMPCertificate]] = None
