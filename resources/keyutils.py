@@ -175,7 +175,7 @@ def _check_starts_with(algorithm: str, prefixes: List[str]) -> bool:
     return any(algorithm.startswith(prefix) for prefix in prefixes)
 
 
-# TODO fix docstring
+
 def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 for RF docs
     """Generate a `cryptography` key based on the specified algorithm.
 
@@ -235,9 +235,9 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
     Additional Hybrid Parameters:
     ----------------------------
         - pq_name (str): The name of the post-quantum algorithm.
-        - trad_param (str): The name of the traditional algorithm. needs to be ecdh for
+        - trad_param (str): The name of the traditional algorithm. needs to be `ecdh` for
         composite-kem/composite-dhkem/chempat and
-        ecdsa for composite-sig.
+        `ecdsa` for composite-sig.
         - pq_key (PQPrivateKey): The post-quantum private key.
         - trad_key (ECDHPrivateKey or RSA): The traditional private key.
 
