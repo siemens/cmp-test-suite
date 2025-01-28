@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
+"""Mapping functions for the Object Identifiers."""
+
 from typing import Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import ec, rsa, x448, x25519

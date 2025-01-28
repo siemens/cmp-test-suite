@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""ASN.1 structures for hybrid cryptographic schemes/mechanisms."""
 
 from pyasn1.type import char, constraint, namedtype, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5958
@@ -32,7 +33,7 @@ class XWingPublicKeyASN1(univ.OctetString):
 
 
 class CompositeCiphertextValue(univ.SequenceOf):
-    """Define CompositeCiphertextValue as a SequenceOf BIT STRING of size 2."""
+    """Define CompositeCiphertextValue as a SequenceOf OCTET STRING of size 2."""
 
     componentType = univ.OctetString()
     subtypeSpec = constraint.ValueSizeConstraint(2, float("inf"))
@@ -269,5 +270,26 @@ class DeltaCertificateRequestSignatureValue(univ.BitString):
 
     DeltaCertificateRequestSignatureValue ::= BIT STRING
     """
+
+    pass
+
+
+# Catalyst X.509 Certificate Extension Classes.
+
+
+class SubjectAltPublicKeyInfoExt(rfc5280.SubjectPublicKeyInfo):
+    """Extension for alternative public key information."""
+
+    pass
+
+
+class AltSignatureAlgorithmExt(rfc5280.AlgorithmIdentifier):
+    """Extension for alternative signature algorithm."""
+
+    pass
+
+
+class AltSignatureValueExt(univ.BitString):
+    """Extension for alternative signature value."""
 
     pass

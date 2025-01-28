@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""Handles Calalyst Certificates and related functionality."""
+
 import logging
 from typing import Optional, Union
 
@@ -10,40 +12,25 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from pyasn1_alt_modules.rfc4210 import CMPCertificate
+from resources import certutils, cryptoutils, utils
 from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, sign_cert
-from resources.certutils import verify_cert_signature
+from resources.certextractutils import get_extension
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
-from resources.cryptoutils import sign_data, verify_signature
+from resources.exceptions import BadAlg, BadAsn1Data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
-from resources.typingutils import PrivateKey, PrivateKeySig
+from resources.oidutils import (
+    PQ_NAME_2_OID,
+    id_ce_altSignatureAlgorithm,
+    id_ce_altSignatureValue,
+    id_ce_subjectAltPublicKeyInfo,
+)
+from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey, TradSigPrivKey
 
 from pq_logic.combined_factory import CombinedKeyFactory
+from pq_logic.hybrid_structures import AltSignatureValueExt, SubjectAltPublicKeyInfoExt
+from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-
-# Extension Object Identifiers (OIDs)
-id_ce_subjectAltPublicKeyInfo = rfc5280.id_ce + (72,)
-id_ce_altSignatureAlgorithm = rfc5280.id_ce + (73,)
-id_ce_altSignatureValue = rfc5280.id_ce + (74,)
-
-
-# X.509 Certificate Extension Classes
-class SubjectAltPublicKeyInfoExt(rfc5280.SubjectPublicKeyInfo):
-    """Extension for alternative public key information."""
-
-    pass
-
-
-class AltSignatureAlgorithmExt(rfc5280.AlgorithmIdentifier):
-    """Extension for alternative signature algorithm."""
-
-    pass
-
-
-class AltSignatureValueExt(univ.BitString):
-    """Extension for alternative signature value."""
-
-    pass
 
 
 def prepare_subject_alt_public_key_info_extn(
@@ -67,14 +54,33 @@ def prepare_subject_alt_public_key_info_extn(
     return spki_ext
 
 
-def _prepare_sig_alt_extn(alg_id: rfc5280.AlgorithmIdentifier, critical: bool) -> rfc5280.Extension:
-    """
-    Prepare the altSignatureAlgorithm extension.
+def prepare_alt_sig_alg_id_extn(
+    alg_id: Optional[rfc5280.AlgorithmIdentifier] = None,
+    critical: bool = False,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = False,
+    use_pre_hash: bool = False,
+    key: Optional[PrivateKeySig] = None,
+) -> rfc5280.Extension:
+    """Prepare the altSignatureAlgorithm extension.
 
     :param alg_id: The alternative AlgorithmIdentifier.
-    :param critical: Whether the extension is critical.
+    :param critical: Whether the extension is critical. Defaults to `False`.
+    :param hash_alg: The hash algorithm to use. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
+    :param use_pre_hash: Whether to use the pre-hash key. Defaults to `False`.
+    :param key: Key to prepare the signature algorithm for. Defaults to `None`.
     :return: The prepared Extension object.
+    :raises ValueError: If neither `alg_id` nor `key` is provided.
     """
+    if alg_id is None and key is None:
+        raise ValueError("Either `alg_id` or `key` must be provided.")
+
+    if key is not None:
+        alg_id = prepare_sig_alg_id(
+            signing_key=key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+        )
+
     alt_signature_algorithm_extension = rfc5280.Extension()
     alt_signature_algorithm_extension["extnID"] = id_ce_altSignatureAlgorithm
     alt_signature_algorithm_extension["critical"] = critical
@@ -83,9 +89,8 @@ def _prepare_sig_alt_extn(alg_id: rfc5280.AlgorithmIdentifier, critical: bool) -
     return alt_signature_algorithm_extension
 
 
-def _prepare_alt_signature_value(signature: bytes, critical: bool) -> rfc5280.Extension:
-    """
-    Prepare the altSignatureValue extension.
+def prepare_alt_signature_value_extn(signature: bytes, critical: bool) -> rfc5280.Extension:
+    """Prepare the altSignatureValue extension.
 
     :param signature: The alternative signature bytes.
     :param critical: Whether the extension is critical.
@@ -154,7 +159,7 @@ def prepare_alt_signature_data(
 def sign_cert_catalyst(
     cert: rfc9480.CMPCertificate,
     pq_key: PQSignaturePrivateKey,
-    trad_key,
+    trad_key: TradSigPrivKey,
     exclude_catalyst_extensions: bool = False,
     pq_hash_alg: Optional[str] = None,
     hash_alg: str = "sha256",
@@ -182,7 +187,7 @@ def sign_cert_catalyst(
     cert["tbsCertificate"]["signature"] = trad_alg_id
     cert["signatureAlgorithm"] = trad_alg_id
 
-    cert["tbsCertificate"]["extensions"].append(_prepare_sig_alt_extn(alt_alg_id, critical=critical))
+    cert["tbsCertificate"]["extensions"].append(prepare_alt_sig_alg_id_extn(alt_alg_id, critical=critical))
 
     cert["tbsCertificate"]["extensions"].append(
         prepare_subject_alt_public_key_info_extn(public_key=pq_key.public_key(), critical=critical)
@@ -190,15 +195,17 @@ def sign_cert_catalyst(
 
     alt_sig_data = prepare_alt_signature_data(cert)
 
-    alt_signature = sign_data(data=alt_sig_data, key=pq_key, hash_alg=pq_hash_alg)
+    alt_signature = cryptoutils.sign_data(data=alt_sig_data, key=pq_key, hash_alg=pq_hash_alg)
 
-    alt_extn = _prepare_alt_signature_value(signature=alt_signature, critical=critical)
+    alt_extn = prepare_alt_signature_value_extn(signature=alt_signature, critical=critical)
     cert["tbsCertificate"]["extensions"].append(alt_extn)
 
     return sign_cert(signing_key=trad_key, cert=cert, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
 
-def validate_catalyst_extension(cert: rfc9480.CMPCertificate) -> Union[None, dict]:
+def validate_catalyst_extension(
+    cert: rfc9480.CMPCertificate, sig_alg_must_be: Optional[str] = None
+) -> Union[None, dict]:
     """Check if the certificate contains all required catalyst extensions.
 
     Required Extensions:
@@ -207,8 +214,12 @@ def validate_catalyst_extension(cert: rfc9480.CMPCertificate) -> Union[None, dic
     - altSignatureValue
 
     :param cert: The certificate to check.
+    :param sig_alg_must_be: The signature algorithm that the alternative signature must match.
     :return: A dictionary with extension values if all are present, else None.
+    (keys are: "signature", "spki", "alg_id")
     :raises ValueError: If only some catalyst extensions are present or if extensions are malformed.
+    :raises BadAlg: If the signature algorithm does not match the expected value.
+    :raises KeyError: If the signature algorithm is not PQ-signature algorithm.
     """
     required_extensions = {id_ce_subjectAltPublicKeyInfo, id_ce_altSignatureAlgorithm, id_ce_altSignatureValue}
 
@@ -238,6 +249,14 @@ def validate_catalyst_extension(cert: rfc9480.CMPCertificate) -> Union[None, dic
 
         if rest:
             raise ValueError("Invalid altSignatureValue extension content.")
+
+        if sig_alg_must_be is not None:
+            if "." in sig_alg_must_be:
+                if str(alt_signature_algorithm["algorithm"]) != sig_alg_must_be:
+                    raise BadAlg(f"Signature algorithm must be {sig_alg_must_be}.")
+            else:
+                if str(PQ_NAME_2_OID[sig_alg_must_be]) != str(alt_signature_algorithm["algorithm"]):
+                    raise BadAlg(f"Signature algorithm must be {sig_alg_must_be}.")
 
         return {
             "signature": alt_signature_value.asOctets(),
@@ -274,7 +293,7 @@ def verify_catalyst_signature_migrated(
 
     # Step 1: Verify the native signature
     issuer_pub_key = issuer_pub_key or load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
-    verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
+    certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
 
     # Step 2: Verify the alternative signature
     pq_pub_key = CombinedKeyFactory.load_public_key_from_spki(catalyst_ext["spki"])
@@ -284,7 +303,9 @@ def verify_catalyst_signature_migrated(
         cert, exclude_alt_extensions=exclude_alt_extensions, only_tbs_cert=only_tbs_cert
     )
 
-    verify_signature(public_key=pq_pub_key, hash_alg=hash_alg, data=alt_sig_data, signature=catalyst_ext["signature"])
+    cryptoutils.verify_signature(
+        public_key=pq_pub_key, hash_alg=hash_alg, data=alt_sig_data, signature=catalyst_ext["signature"]
+    )
 
     logging.info("Alternative signature verification succeeded.")
 
@@ -313,7 +334,7 @@ def verify_catalyst_signature(
         if catalyst_ext:
             logging.info("Catalyst extensions detected. Verifying native signature.")
             if include_extensions:
-                verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
+                certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
             else:
                 raise NotImplementedError("Excluding extensions is not supported for non-migrated parties.")
         else:
@@ -325,11 +346,11 @@ def verify_catalyst_signature(
             verify_catalyst_signature_migrated(cert, public_key2)
         else:
             logging.info("No catalyst extensions present. Verifying native signature.")
-            verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
+            certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
 
 
-def generate_catalyst_cert(
-    trad_key,
+def build_catalyst_cert(
+    trad_key: TradSigPrivKey,
     pq_key: PQSignaturePrivateKey,
     client_key: PrivateKey,
     common_name: str = "CN=Hans Mustermann",
@@ -357,3 +378,107 @@ def generate_catalyst_cert(
     cert = rfc9480.CMPCertificate()
     cert["tbsCertificate"] = tbs_cert
     return sign_cert_catalyst(cert, trad_key=trad_key, pq_key=pq_key, use_rsa_pss=use_pss)
+
+
+def load_catalyst_public_key(extensions: rfc9480.Extensions) -> PublicKey:
+    """Load a public key from the newly defined AltPublicKeyInfo extension.
+
+    :param extensions: The extensions to load the public key from.
+    :return: The loaded public key.
+    :raises ValueError: If the extension is not found.
+    """
+    extn_alt_spki = get_extension(extensions, id_ce_subjectAltPublicKeyInfo)
+    if extn_alt_spki is None:
+        raise ValueError("AltPublicKeyInfo extension not found.")
+
+    spki, rest = decoder.decode(extn_alt_spki["extnValue"].asOctets(), SubjectAltPublicKeyInfoExt())
+    if rest:
+        raise BadAsn1Data("The alternative public key extension contains remainder data.", overwrite=True)
+    alt_issuer_key = load_public_key_from_spki(spki)
+    return alt_issuer_key
+
+
+def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
+    crl: rfc5280.CertificateList,
+    ca_private_key: PrivateKeySig,
+    alt_private_key: Optional[PrivateKeySig] = None,
+    include_alt_public_key: bool = False,
+    hash_alg: str = "sha256",
+    alt_hash_alg: Optional[str] = None,
+    use_pre_hash: bool = False,
+    use_rsa_pss: bool = False,
+    critical: bool = False,
+    bad_sig: bool = False,
+    bad_alt_sig: bool = False,
+) -> rfc5280.CertificateList:
+    """Sign a CRL with a CA certificate and private key.
+
+    Can also be used to sign the CRL with an alternative key.
+
+    Arguments:
+    ---------
+       - `crl`: The CRL to sign.
+       - `ca_private_key`: The CA private key to use for signing.
+       - `alt_private_key`: An alternative private key to use for signing. Defaults to `None`.
+       - `include_alt_public_key`: Whether to include the alternative public key in the CRL extensions.
+            Defaults to `False`.
+       - `hash_alg`: The hash algorithm to use. Defaults to "sha256".
+       - `alt_hash_alg`: The hash algorithm to use for the alternative signature. Defaults to `None`.
+       (if not provided, will use the same as `hash_alg`)
+        - `use_pre_hash`: Whether to use the pre-hash version for a CompositeKey. Defaults to `False`.
+        - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
+        - `critical`: Whether the extensions are critical. Defaults to `False`.
+        - `bad_sig`: Whether to manipulate the signature to be invalid. Defaults to `False`.
+        - `bad_alt_sig`: Whether to manipulate the alternative signature to be invalid. Defaults to `False`.
+
+    Returns:
+    -------
+         - The signed CRL.
+
+    """
+    crl["signatureAlgorithm"] = prepare_sig_alg_id(
+        signing_key=ca_private_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg, use_pre_hash=use_pre_hash
+    )
+
+    if alt_private_key is not None:
+        extn = prepare_alt_sig_alg_id_extn(
+            alg_id=None,
+            hash_alg=alt_hash_alg or hash_alg,
+            key=alt_private_key,
+            use_pre_hash=use_pre_hash,
+            use_rsa_pss=use_rsa_pss,
+            critical=critical,
+        )
+
+        crl["tbsCertList"]["crlExtensions"].append(extn)
+        if include_alt_public_key:
+            extn = prepare_subject_alt_public_key_info_extn(
+                public_key=alt_private_key.public_key(),
+                critical=critical,
+            )
+            crl["tbsCertList"]["crlExtensions"].append(extn)
+
+        data = encoder.encode(crl["tbsCertList"]) + encoder.encode(crl["signatureAlgorithm"])
+        alt_sig_value = cryptoutils.sign_data(data=data, key=alt_private_key, hash_alg=alt_hash_alg or hash_alg)
+
+        if bad_alt_sig:
+            if isinstance(alt_private_key, AbstractCompositeSigPrivateKey):
+                alt_sig_value = utils.manipulate_composite_sig(alt_sig_value)
+            else:
+                alt_sig_value = utils.manipulate_first_byte(alt_sig_value)
+
+        alt_sig_ext = prepare_alt_signature_value_extn(signature=alt_sig_value, critical=critical)
+        crl["tbsCertList"]["crlExtensions"].append(alt_sig_ext)
+
+    crl_tbs = encoder.encode(crl["tbsCertList"])
+    crl_signature = cryptoutils.sign_data(data=crl_tbs, key=ca_private_key, hash_alg=hash_alg)
+
+    if bad_sig:
+        if isinstance(ca_private_key, AbstractCompositeSigPrivateKey):
+            crl_signature = utils.manipulate_composite_sig(crl_signature)
+        else:
+            crl_signature = utils.manipulate_first_byte(crl_signature)
+
+    crl["signature"] = univ.BitString.fromOctetString(crl_signature)
+
+    return crl

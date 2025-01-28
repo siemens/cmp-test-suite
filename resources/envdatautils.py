@@ -123,7 +123,7 @@ def prepare_encrypted_content_info(
 
 @not_keyword
 def prepare_enveloped_data(
-    recipient_infos: List[rfc5652.RecipientInfo],
+    recipient_infos: Union[rfc5652.RecipientInfo, List[rfc5652.RecipientInfo]],
     cek: bytes,
     data_to_protect: bytes,
     version: int = 2,
@@ -150,6 +150,8 @@ def prepare_enveloped_data(
 
     target["version"] = version
     infos = rfc5652.RecipientInfos()
+    if isinstance(recipient_infos, rfc5652.RecipientInfo):
+        recipient_infos = [recipient_infos]
     infos.extend(recipient_infos)
 
     target["encryptedContentInfo"] = prepare_encrypted_content_info(
@@ -611,7 +613,7 @@ def _encrypt_rsa_oaep(key: rsa.RSAPublicKey, alg_id: rfc5280.AlgorithmIdentifier
 @not_keyword
 def prepare_ktri(
     ee_key: rsa.RSAPublicKey,
-    server_cert: Optional[rfc9480.CMPCertificate],
+    cmp_protection_cert: Optional[rfc9480.CMPCertificate],
     cek: bytes,
     use_rsa_oaep: bool = True,
     issuer_and_ser: Optional[rfc5652.IssuerAndSerialNumber] = None,
@@ -619,7 +621,7 @@ def prepare_ktri(
     """Prepare a KeyTransRecipientInfo object for testing.
 
     :param ee_key: The RSA public key of the end entity.
-    :param server_cert: The certificate of the server.
+    :param cmp_protection_cert: The certificate of the server.
     :param cek: The content encryption key to be encrypted.
     :param use_rsa_oaep: Boolean indicating whether to use RSA-OAEP or RSA PKCS#1 v1.5 padding.
     :param issuer_and_ser: The optional `IssuerAndSerialNumber` structure to use. Defaults to None.
@@ -635,7 +637,7 @@ def prepare_ktri(
     ktri = prepare_key_transport_recipient_info(
         version=2,
         key_enc_alg_id=key_enc_alg_id,
-        cert=server_cert,
+        cert=cmp_protection_cert,
         encrypted_key=encrypted_key,
         iss_and_ser=issuer_and_ser,
     )
@@ -940,7 +942,7 @@ def build_env_data_for_exchange(
     public_key_recip: PublicKey,
     data: bytes,
     private_key: Optional[ECDHPrivateKey] = None,
-    cert_recip: Optional[rfc9480.CMPCertificate] = None,
+    cert_sender: Optional[rfc9480.CMPCertificate] = None,
     cek: Optional[Union[str, bytes]] = None,
     target: Optional[rfc9480.EnvelopedData] = None,
     issuer_and_ser: Optional[rfc5652.IssuerAndSerialNumber] = None,
@@ -956,7 +958,7 @@ def build_env_data_for_exchange(
     :param public_key_recip: The public key of the recipient.
     :param data: The data to be encrypted.
     :param private_key: The private key used for key agreement.
-    :param cert_recip: The certificate of the sender.
+    :param cert_sender: The certificate of the sender.
     :param cek: The content encryption key to use. Defaults to 32 random bytes.
     :param target: An optional `EnvelopedData` structure to populate. Defaults to None.
     :param use_rsa_oaep: Boolean indicating whether to use RSA-OAEP or RSA PKCS#1 v1.5 padding.
@@ -971,7 +973,9 @@ def build_env_data_for_exchange(
     cek = str_to_bytes(cek)
 
     if isinstance(public_key_recip, rsa.RSAPublicKey):
-        kari = prepare_ktri(public_key_recip, cert_recip, cek, use_rsa_oaep=use_rsa_oaep, issuer_and_ser=issuer_and_ser)
+        kari = prepare_ktri(
+            public_key_recip, cert_sender, cek, use_rsa_oaep=use_rsa_oaep, issuer_and_ser=issuer_and_ser
+        )
         return prepare_enveloped_data(
             recipient_infos=[kari], cek=cek, target=target, data_to_protect=data, enc_oid=enc_oid
         )
@@ -988,7 +992,7 @@ def build_env_data_for_exchange(
 
     elif is_kem_public_key(public_key_recip):
         kem_recip_info = prepare_kem_recip_info(
-            server_cert=cert_recip,
+            server_cert=cert_sender,
             public_key_recip=public_key_recip,
             cek=cek,
             issuer_and_ser=issuer_and_ser,
@@ -1018,6 +1022,8 @@ def prepare_kem_recip_info(
     kemct: Optional[bytes] = None,
     issuer_and_ser: Optional[rfc5652.IssuerAndSerialNumber] = None,
     hybrid_key_recip: Optional[HybridKEMPrivateKey] = None,
+    shared_secret: Optional[bytes] = None,
+    kem_oid: Optional[univ.ObjectIdentifier] = None,
 ) -> rfc9629.KEMRecipientInfo:
     """Prepare a KEMRecipientInfo structure.
 
@@ -1049,9 +1055,17 @@ def prepare_kem_recip_info(
     kem_recip_info = rfc9629.KEMRecipientInfo()
     kem_recip_info["version"] = univ.Integer(version)
     kem_recip_info["rid"] = rid
-    kem_recip_info["kem"] = rfc9480.AlgorithmIdentifier()
 
-    if server_cert or public_key_recip:
+    if kem_oid is not None:
+        kem_recip_info["kem"]["algorithm"] = kem_oid
+
+    if kemct is not None:
+        kem_recip_info["kemct"] = univ.OctetString(kemct)
+
+    if kemct is not None and shared_secret is not None:
+        pass
+
+    elif server_cert or public_key_recip:
         if server_cert:
             server_pub_key = keyutils.load_public_key_from_spki(server_cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
@@ -1062,24 +1076,26 @@ def prepare_kem_recip_info(
         if not is_kem_public_key(server_pub_key):
             raise ValueError(f"The server's public key is not a `KEMPublicKey`. Got: {type(server_pub_key).__name__}.")
 
-        kem_recip_info["kem"]["algorithm"] = get_kem_oid_from_key(server_pub_key)
+        if kem_oid is None:
+            kem_recip_info["kem"]["algorithm"] = get_kem_oid_from_key(server_pub_key)
 
         if hybrid_key_recip is None:
             shared_secret, kemct = server_pub_key.encaps()
         else:
             shared_secret, kemct = hybrid_key_recip.encaps(server_pub_key)  # type: ignore
 
-        logging.debug(f"Shared secret: {shared_secret.hex()}")
-        kem_recip_info["kemct"] = univ.OctetString(kemct)
-        key_enc_key = compute_hkdf(hash_alg=hash_alg, key_material=shared_secret, ukm=ukm, length=32)
-
-        if encrypted_key is None:
-            encrypted_key = keywrap.aes_key_wrap(wrapping_key=key_enc_key, key_to_wrap=cek)
-    elif kemct:
-        kem_recip_info["kemct"] = kemct
+        logging.debug(f"Computed Shared secret: {shared_secret.hex()}")
+        if kemct is not None:
+            kem_recip_info["kemct"] = univ.OctetString(kemct)
 
     else:
         raise ValueError("Either `kemct` or `server_cert` or the `public_key` must be provided.")
+
+    if shared_secret is not None:
+        key_enc_key = compute_hkdf(hash_alg=hash_alg, key_material=shared_secret, ukm=ukm, length=32)
+
+    if encrypted_key is None:
+        encrypted_key = keywrap.aes_key_wrap(wrapping_key=key_enc_key, key_to_wrap=cek)
 
     kem_recip_info["kdf"] = prepare_kdf(kdf_name=f"{kdf_name}-{hash_alg}")
 

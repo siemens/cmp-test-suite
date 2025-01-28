@@ -47,7 +47,7 @@ from resources import (
 from resources.convertutils import str_to_bytes
 from resources.cryptoutils import compute_ansi_x9_63_kdf, compute_hkdf, perform_ecdh
 from resources.envdatautils import get_aes_length
-from resources.exceptions import BadAlgError, BadAsn1Data
+from resources.exceptions import BadAlg, BadAsn1Data
 from resources.oid_mapping import (
     compute_hash,
     get_hash_from_oid,
@@ -511,7 +511,7 @@ def validate_enveloped_data(
     expected_size: int = 1,
     ee_key: Optional[EnvDataPrivateKey] = None,
     expected_raw_data: bool = False,
-    for_pop: bool = False,
+    for_enc_rand: bool = False,
 ) -> bytes:
     """Validate and decrypt the `EnvelopedData` structure from a PKIMessage and extract the private key.
 
@@ -528,7 +528,7 @@ def validate_enveloped_data(
     :param expected_size: The expected size of the entries inside the `RecipientInfos` structure.
     :param ee_key: Optional private key of the end-entity used for `kari` or `ktri`.
     :param expected_raw_data: Return the raw DER-encoded bytes, which were decrypted.
-    :param for_pop: Whether the decryption is for proof-of-possession (POP) purposes.
+    :param for_enc_rand: Whether the decryption is for proof-of-possession (POP) purposes.
     (skip the validation for the `rid` field)
     :return: The decrypted raw DER-encoded bytes.
     :raises ValueError: If validation fails due to incorrect `RecipientInfo`, version mismatch, or decryption issues.
@@ -544,7 +544,7 @@ def validate_enveloped_data(
             )
 
     content_encryption_key = extract_content_encryption_key(
-        env_data, pki_message, password, ee_key, cmp_protection_cert, expected_size=expected_size, for_pop=for_pop
+        env_data, pki_message, password, ee_key, cmp_protection_cert, expected_size=expected_size, for_pop=for_enc_rand
     )
 
     decrypted_data = validate_encrypted_content_info(
@@ -586,7 +586,7 @@ def validate_encrypted_content_info(
         raise ValueError("The `contentType` MUST be id-signedData!")
 
     if enc_content_info["contentEncryptionAlgorithm"]["algorithm"] not in PROT_SYM_ALG:
-        raise BadAlgError("Only AES-CBC is allowed!")
+        raise BadAlg("Only AES-CBC is allowed!")
 
     if not enc_content_info["contentEncryptionAlgorithm"]["parameters"].isValue:
         raise BadAsn1Data("AES-CBC must have the IV set inside the `parameters` field", overwrite=True)
@@ -1512,7 +1512,7 @@ def validate_kem_recip_info_structure(
 
     kem_oid = kem_recip_info["kem"]["algorithm"]
     if kem_oid not in KEM_OID_2_NAME and str(kem_oid) not in KEM_OID_2_NAME:
-        raise BadAlgError(f"The `kem` OID must be a known KEM id! Found: {kem_oid}")
+        raise BadAlg(f"The `kem` OID must be a known KEM id! Found: {kem_oid}")
 
     if not kem_recip_info["kemct"].isValue:
         raise ValueError("The `kemct` (encapsulated ciphertext) field of the `KEMRecipientInfo` structure is missing!")

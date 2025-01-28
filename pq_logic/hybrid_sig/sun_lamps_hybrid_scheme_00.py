@@ -16,28 +16,35 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
-import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
-from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
-from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, prepare_validity
+from pyasn1_alt_modules import rfc2986, rfc4211, rfc5280, rfc6402, rfc9480
+from resources import keyutils, utils
+from resources.certbuildutils import (
+    prepare_sig_alg_id,
+    prepare_tbs_certificate,
+    prepare_tbs_certificate_from_template,
+    prepare_validity,
+)
 from resources.certextractutils import get_extension
 from resources.convertutils import copy_asn1_certificate
 from resources.cryptoutils import sign_data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
 from resources.protectionutils import prepare_sha_alg_id
-from resources.utils import get_openssl_name_notation
+from resources.typingutils import PublicKey
+from robot.api.deco import not_keyword
 
+from pq_logic import pq_compute_utils
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.hybrid_structures import AltSignatureExt, AltSubPubKeyExt, UniformResourceIdentifier
 from pq_logic.keys.comp_sig_cms03 import (
     CompositeSigCMSPublicKey,
     compute_hash,
 )
-from pq_logic.py_verify_logic import verify_signature_with_alg_id
+from pq_logic.pq_utils import fetch_value_from_location
 from pq_logic.tmp_oids import (
     CMS_COMPOSITE_OID_2_HASH,
     id_altSignatureExt,
@@ -304,6 +311,7 @@ def sun_csr_to_cert(
     alt_private_key,
     issuer_cert: Optional[rfc9480.CMPCertificate] = None,
     hash_alg: str = "sha256",
+    serial_number: Optional[int] = None,
     extensions: Optional[List[rfc5280.Extension]] = None,
 ) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Convert a CSR to a certificate, with the sun hybrid method.
@@ -313,31 +321,31 @@ def sun_csr_to_cert(
     :param issuer_private_key: The private key of the issuer for signing.
     :param alt_private_key: The certificate of the issuer.Optional alternative private key for creating AltSignatureExt.
     :param hash_alg: Hash algorithm for signing the certificate (e.g., "sha256").
+    :param serial_number: The serial number to use for the certificate. Defaults to `None`.
     :param extensions: Optional list of additional extensions to include in the certificate.
     :return: A tuple of the Form4 and Form1 certificates.
     """
     public_key = CompositeSigCMSPublicKey.from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
-
     oid = csr["signatureAlgorithm"]["algorithm"]
-
     data: dict = _extract_sun_hybrid_attrs_from_csr(csr)
 
     if data["pub_key_hash_id"] is None:
-        data["pub_key_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or "sha256"
+        data["pub_key_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or hash_alg
     else:
         data["pub_key_hash_id"] = get_hash_from_oid(data["pub_key_hash_id"]["algorithm"])
 
     if data["sig_hash_id"] is None:
-        data["sig_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or "sha256"
+        data["sig_hash_id"] = CMS_COMPOSITE_OID_2_HASH[oid] or hash_alg
     else:
         data["sig_hash_id"] = get_hash_from_oid(data["sig_hash_id"]["algorithm"])
 
     not_before = datetime.now()
-    not_after = datetime.now() + timedelta(days=365)
+    not_after = datetime.now() + timedelta(days=365 * 10)
     validity = prepare_validity(not_before=not_before, not_after=not_after)
-    cert_form4, ext_sig, ext_pub = _prepare_pre_tbs_certificate(
+    cert_form4, ext_sig, ext_pub = prepare_sun_hybrid_pre_tbs_certificate(
         public_key,
         alt_private_key=alt_private_key,
+        serial_number=serial_number,
         issuer_private_key=issuer_private_key,
         csr=csr,
         validity=validity,
@@ -356,7 +364,108 @@ def sun_csr_to_cert(
     return cert_form4, cert_form1
 
 
-def _prepare_pre_tbs_certificate(
+def sun_cert_template_to_cert(
+    cert_template: rfc4211.CertTemplate,
+    issuer_cert: rfc9480.CMPCertificate,
+    issuer_private_key,
+    alt_private_key,
+    pub_key_loc: Optional[str],
+    sig_loc: Optional[str],
+    hash_alg: Optional[str] = None,
+    serial_number: Optional[int] = None,
+) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
+    """Convert a certificate template to a certificate, with the sun hybrid method.
+
+    :param cert_template: The certificate template, to built the certificate from.
+    :param issuer_cert: The issuer's certificate to use for constructing the certificate.
+    :param issuer_private_key: The private key of the issuer for signing.
+    :param alt_private_key: The alternative private key for creating the alternative signature.
+    :param pub_key_loc: The location of the alternative public key.
+    :param sig_loc: The location of the alternative signature.
+    :param hash_alg: The hash algorithm to use for signing the certificate (e.g., "sha256").
+    :param serial_number: The serial number to use for the certificate. Defaults to `None`.
+    :return: A tuple of the Form4 and Form1 certificates.
+    """
+    tbs_cert = prepare_tbs_certificate_from_template(
+        cert_template=cert_template,
+        issuer_cert=issuer_cert["tbsCertificate"]["subject"],
+        serial_number=serial_number,
+    )
+
+    composite_key = load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+    oid = composite_key.get_oid()
+    hash_alg = CMS_COMPOSITE_OID_2_HASH[oid] or hash_alg or "sha256"
+    extn_alt_pub, extn_alt_pub2 = _prepare_public_key_extensions(composite_key, hash_alg, pub_key_loc)
+
+    tbs_cert["extensions"].append(extn_alt_pub)
+
+    pre_tbs_cert = tbs_cert
+    data = encoder.encode(pre_tbs_cert)
+    signature = sign_data(key=alt_private_key, data=data, hash_alg=hash_alg)
+    sig_alg_id = prepare_sig_alg_id(signing_key=alt_private_key, hash_alg=hash_alg, use_rsa_pss=False)
+
+    extn_alt_sig = prepare_sun_hybrid_alt_signature_ext(
+        signature=signature, by_val=False, hash_alg=hash_alg, alt_sig_algorithm=sig_alg_id, location=sig_loc
+    )
+
+    extn_alt_sig2 = prepare_sun_hybrid_alt_signature_ext(
+        signature=signature, by_val=True, hash_alg=hash_alg, alt_sig_algorithm=sig_alg_id, location=sig_loc
+    )
+
+    # as of 4.3.2:
+    # Sign the preTbsCertificate constructed in Section 4.3.1 with the issuer's
+    # alternative private key to obtain the alternative signature.
+    pre_tbs_cert["extensions"].append(extn_alt_sig)
+
+    # Sign with the first public key.
+    final_tbs_cert_data = encoder.encode(pre_tbs_cert)
+    signature = sign_data(key=issuer_private_key, data=final_tbs_cert_data, hash_alg=hash_alg)
+    sig_alg_id = prepare_sig_alg_id(signing_key=issuer_private_key, hash_alg=hash_alg, use_rsa_pss=False)
+
+    cert_form4 = rfc9480.CMPCertificate()
+    cert_form4["tbsCertificate"] = pre_tbs_cert
+    cert_form4["signature"] = univ.BitString.fromOctetString(signature)
+    cert_form4["signatureAlgorithm"] = sig_alg_id
+
+    cert_form1 = copy_asn1_certificate(cert_form4)
+
+    # build Form1
+
+    cert_form1["tbsCertificate"]["extensions"] = _patch_extensions(
+        cert_form1["tbsCertificate"]["extensions"], extn_alt_pub2
+    )
+    cert_form1["tbsCertificate"]["extensions"] = _patch_extensions(
+        cert_form1["tbsCertificate"]["extensions"], extn_alt_sig2
+    )
+
+    return cert_form4, cert_form1
+
+
+def _prepare_public_key_extensions(
+    composite_key: CompositeSigCMSPublicKey,
+    pub_key_hash_id: str,
+    pub_key_loc: Optional[str],
+) -> Tuple[rfc5280.Extension, rfc5280.Extension]:
+    """Prepare the public key extensions for the Sun-Hybrid certificate.
+
+    :param composite_key: The composite key containing both the primary and alternative keys.
+    :param pub_key_hash_id: The hash algorithm identifier for hashing the alternative public key.
+    :param pub_key_loc: The location of the alternative public key.
+    :return: THe public key in Form4 and Form1.
+    """
+    # Compute a hash by hashing pk_2
+    extn_alt_pub = prepare_sun_hybrid_alt_sub_pub_key_ext(
+        composite_key.pq_key, hash_alg=pub_key_hash_id, by_val=False, location=pub_key_loc
+    )
+    # Prepare pk_2 for Form1
+    extn_alt_pub2 = prepare_sun_hybrid_alt_sub_pub_key_ext(
+        public_key=composite_key.pq_key, hash_alg=pub_key_hash_id, by_val=True, location=pub_key_loc
+    )
+    return extn_alt_pub, extn_alt_pub2
+
+
+@not_keyword
+def prepare_sun_hybrid_pre_tbs_certificate(
     composite_key: CompositeSigCMSPublicKey,
     issuer_private_key,
     alt_private_key,
@@ -369,12 +478,14 @@ def _prepare_pre_tbs_certificate(
     pub_key_loc: Optional[str],
     sig_loc: Optional[str],
     extensions: List[rfc5280.Extension],
+    serial_number: Optional[int] = None,
 ):
     """Prepare a `TBSCertificate` structure with alternative public key and signature extensions.
 
     :param composite_key: The composite key containing both the primary and alternative keys.
     :param issuer_private_key: The issuer's private key for signing the certificate.
     :param alt_private_key: The alternative private key used for the alternative signature.
+    :param issuer_cert: The issuer's certificate to use for constructing the certificate.
     :param csr: The certificate signing request from which to construct the certificate.
     :param pub_key_hash_id: The hash algorithm identifier for hashing the alternative public key.
     :param sig_hash_id: The hash algorithm identifier for hashing the alternative signature.
@@ -382,17 +493,13 @@ def _prepare_pre_tbs_certificate(
     :param validity: The validity object for the certificate.
     :param pub_key_loc: An optional URI representing the location of the alternative public key.
     :param sig_loc: An optional URI representing the location of the alternative signature.
+    :param extensions: Optional list of additional extensions to include in the certificate.
+    :param serial_number: The serial number to use for the certificate. Defaults to `None`.
     :return: A fully prepared TBSCertificate wrapped in a certificate structure.
     :raises ValueError: If required parameters are missing or invalid.
     """
-    # Compute a hash by hashing pk_2
-    extn_alt_pub = prepare_sun_hybrid_alt_sub_pub_key_ext(
-        composite_key.trad_key, hash_alg=pub_key_hash_id, by_val=False, location=pub_key_loc
-    )
-    # Prepare pk_2 for Form1
-    extn_alt_pub2 = prepare_sun_hybrid_alt_sub_pub_key_ext(
-        public_key=composite_key.trad_key, hash_alg=pub_key_hash_id, by_val=True, location=pub_key_loc
-    )
+    # Compute a hash by hashing pk_1
+    extn_alt_pub, extn_alt_pub2 = _prepare_public_key_extensions(composite_key, pub_key_hash_id, pub_key_loc)
 
     # After creating an AltSubPubKeyExt extension, an issuer constructs a TBSCertificate
     # object from attributes in the given
@@ -400,12 +507,13 @@ def _prepare_pre_tbs_certificate(
     # The constructed TBSCertificate object is the preTbsCertificate field, which MUST
     # include the created AltSubPubKeyExt extension.
 
-    subject = get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
+    subject = utils.get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
     pre_tbs_cert = prepare_tbs_certificate(
         subject=subject,
+        serial_number=serial_number,
         signing_key=issuer_private_key,
         issuer_cert=issuer_cert,
-        public_key=composite_key.pq_key,  # Construct a SubjectPublicKeyInfo object from pk_1
+        public_key=composite_key.trad_key,  # Construct a SubjectPublicKeyInfo object from pk_1
         validity=validity,
         hash_alg=hash_alg,
         extensions=[extn_alt_pub] + []
@@ -444,23 +552,6 @@ def _prepare_pre_tbs_certificate(
     return cert, extn_alt_sig2, extn_alt_pub2
 
 
-def fetch_value_from_location(location: str) -> Optional[bytes]:
-    """Fetch the actual value from a location (e.g., URL) if provided.
-
-    :param location: The URI or location to fetch the value from.
-    :return: The fetched value as bytes:
-    :raise: ValueError, if the data can not be fetched.
-    """
-    if not location:
-        return None
-    try:
-        response = requests.get(location)
-        response.raise_for_status()
-        return response.content
-    except Exception as e:
-        raise ValueError(f"Failed to fetch value from {location}: {e}")
-
-
 def validate_alt_pub_key_extn(cert: rfc9480.CMPCertificate):
     """Validate the `AltSubPubKeyExt` extension in a certificate.
 
@@ -487,8 +578,12 @@ def validate_alt_pub_key_extn(cert: rfc9480.CMPCertificate):
         raise ValueError("MUST be in Form 4 for verification.")
 
     location = decoded_ext["location"]
-    actual_value = fetch_value_from_location(str(location)) if location.isValue else None
-    public_key = _process_public_key(actual_value)
+
+    if not location.isValue:
+        raise ValueError("The location is not a value, the public key can not be fetched.")
+
+    actual_value = fetch_value_from_location(str(location))
+    public_key = process_public_key(actual_value)
 
     hash_alg_oid = decoded_ext["hashAlg"]["algorithm"]
     hash_alg = get_hash_from_oid(hash_alg_oid)
@@ -500,7 +595,7 @@ def validate_alt_pub_key_extn(cert: rfc9480.CMPCertificate):
     if computed_hash != decoded_ext["plainOrHash"].asOctets():
         raise ValueError(
             f"Hash mismatch for ByReference extension:\n"
-            f" Found: {decoded_ext['plainOrHash'].asOctets().hex()}\n"
+            f" Found:    {decoded_ext['plainOrHash'].asOctets().hex()}\n"
             f" Computed: {computed_hash.hex()}"
         )
 
@@ -510,6 +605,27 @@ def validate_alt_pub_key_extn(cert: rfc9480.CMPCertificate):
         raise ValueError("The algorithm is not the same as inside the `AltSubPubKeyExt` structure")
 
     return CombinedKeyFactory.load_public_key_from_spki(spki)
+
+
+def get_sun_hybrid_alt_sig(cert: rfc9480.CMPCertificate) -> bytes:
+    """Get the alternative signature extension from the certificate.
+
+    Expects the certificate to be in Form 1.
+
+    :param cert: The certificate to extract the extension from.
+    :return: The alternative signature.
+    """
+    decoded_ext = None
+    for x in cert["tbsCertificate"]["extensions"]:
+        if x["extnID"] == id_altSignatureExt:
+            decoded_ext, _ = decoder.decode(x["extnValue"].asOctets(), AltSignatureExt())
+
+    if not decoded_ext:
+        raise ValueError("The `AltSignatureExt` was not inside the certificate.")
+    return decoded_ext["plainOrHash"].asOctets()
+
+
+
 
 
 def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: Optional[bytes] = None):
@@ -550,7 +666,9 @@ def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: 
     if hashed_sig != compute_hash(alg_name=hash_alg, data=signature):
         raise ValueError("The fetched signature was invalid!")
 
-    verify_signature_with_alg_id(alg_id=sig_alg_id, public_key=alt_pub_key, data=data, signature=signature)
+    pq_compute_utils.verify_signature_with_alg_id(
+        alg_id=sig_alg_id, public_key=alt_pub_key, data=data, signature=signature
+    )
 
 
 def _patch_extensions(extensions: rfc9480.Extensions, extension: rfc5280.Extension) -> rfc9480.Extensions:
@@ -616,18 +734,6 @@ def parse_alt_sig_extension(cert: rfc9480.CMPCertificate, to_by_val: bool) -> rf
     return cert
 
 
-def _process_public_key(data: bytes):
-    """Process the public key from the given bytes, in any sun hybrid form (1-4).
-
-    :param data: The DER encoded public key.
-    :return: The loaded public key object.
-    """
-    obj, rest = decoder.decode(data, rfc5280.SubjectPublicKeyInfo())
-    if rest != b"":
-        raise ValueError("Decoding of the public key had trailing data.")
-    return load_public_key_from_spki(obj)
-
-
 def parse_alt_sub_pub_key_extension(cert: rfc9480.CMPCertificate, to_by_val: bool) -> rfc9480.CMPCertificate:
     """Parse and convert the AltSubPubKeyExt extension in the given certificate.
 
@@ -656,12 +762,12 @@ def parse_alt_sub_pub_key_extension(cert: rfc9480.CMPCertificate, to_by_val: boo
         if not loc:
             raise ValueError("Location is required to fetch the public key for ByValue conversion.")
 
-        public_key = _process_public_key(public_key)
+        public_key = process_public_key(public_key)
         logging.info("used hash alg %s", hash_alg)
 
     else:
         public_key = fetch_value_from_location(loc)
-        public_key = _process_public_key(public_key)
+        public_key = process_public_key(public_key)
 
     new_extension = prepare_sun_hybrid_alt_sub_pub_key_ext(
         public_key=public_key,
@@ -710,3 +816,47 @@ def convert_cert_to_target_form(cert, target_form: str):
     cert = parse_alt_sig_extension(cert, to_by_val_alt_sig)
 
     return cert
+
+
+def process_public_key(data: bytes):
+    """Process the public key from the given bytes, in any sun hybrid form (1-4).
+
+    :param data: The DER encoded public key.
+    :return: The loaded public key object.
+    """
+    obj, rest = decoder.decode(data, rfc5280.SubjectPublicKeyInfo())
+    if rest != b"":
+        raise ValueError("Decoding of the public key had trailing data.")
+    return load_public_key_from_spki(obj)
+
+
+def get_sun_hybrid_alt_pub_key(extensions: rfc9480.Extensions) -> Optional[PublicKey]:
+    """Extract the alternative public key from a certificate.
+
+    :param extensions: The extensions of the certificate.
+    :return: The alternative public key.
+    """
+    extn = get_extension(extensions, id_altSubPubKeyExt)
+
+    if extn is None:
+        return None
+
+    decoded_ext, _ = decoder.decode(extn["extnValue"].asOctets(), AltSubPubKeyExt())
+
+    if decoded_ext["byVal"]:
+        return keyutils.load_public_key_from_spki(decoded_ext["plainOrHash"].asOctets())
+
+    location = decoded_ext["location"]
+
+    if not location.isValue:
+        raise ValueError(
+            "The location in the AltSubPubKeyExt extension must be a value,to load the public key from the location."
+        )
+
+    actual_value = fetch_value_from_location(str(location))
+
+    obj, rest = decoder.decode(actual_value, rfc5280.SubjectPublicKeyInfo())
+    if rest != b"":
+        raise ValueError("Decoding of the public key had trailing data.")
+
+    return keyutils.load_public_key_from_spki(obj)

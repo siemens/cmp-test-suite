@@ -47,10 +47,7 @@ def _any_string_in_string(string: str, options: list[str]) -> str:
 
 # TODO update for Chempat and other Hybrid-KEM keys.
 class CombinedKeyFactory:
-    """
-    Factory for creating all known key types, combining traditional, post-quantum,
-    and composite keys.
-    """
+    """Factory for creating all known key types."""
 
     @staticmethod
     def generate_key(algorithm: str, **kwargs):

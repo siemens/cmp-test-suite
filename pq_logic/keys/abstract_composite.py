@@ -352,11 +352,6 @@ class AbstractCompositeKEMPrivateKey(AbstractCompositePrivateKey, ABC):
         return b"ABSTRACT COMPOSITE KEM KEY"
 
     @abstractmethod
-    def generate(self, pq_name: Optional[str] = None, trad_param: Optional[Union[int, str]] = None):
-        """Generate a new CompositeKEMPrivateKey."""
-        pass
-
-    @abstractmethod
     def public_key(self) -> AbstractCompositeKEMPublicKey:
         """Return the corresponding public key class."""
         pass

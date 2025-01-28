@@ -8,14 +8,13 @@ import base64
 import logging
 import os
 import re
-import sys
 import textwrap
 from base64 import b64decode, b64encode
 from collections import Counter
 from itertools import combinations
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
-from pq_logic.hybrid_structures import CompositeSignatureValue
+from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import base, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
@@ -545,7 +544,6 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
     return True
 
 
-# TODO fix for pq
 def check_if_private_key_in_list(  # noqa D417 undocumented-param
     keys: List[PrivateKey], new_key: PrivateKey
 ) -> bool:
@@ -621,11 +619,22 @@ def ensure_list(data: Optional[Union[List[Any], Any]]) -> list:
     return [data]
 
 
-def manipulate_composite_sig(sig: bytes) -> bytes:
+def manipulate_composite_sig(# noqa: D417 Missing argument description in the docstring
+        sig: bytes) -> bytes:
     """Manipulate the first signature of a CompositeSignature.
 
-    :param sig: The DER-encoded signature.
-    :return: The modified signature.
+    Arguments:
+    ---------
+       - `sig`: The DER-encoded signature.
+
+    Returns:
+    -------
+         - The modified signature.
+
+    Raises:
+    ------
+            - `pyasn1.error.PyAsn1Error`: if the provided `sig` is not a valid `CompositeSignatureValue`.
+
     """
     obj, _ = decoder.decode(sig, CompositeSignatureValue())
 
@@ -644,7 +653,35 @@ def manipulate_composite_sig(sig: bytes) -> bytes:
     return encoder.encode(out)
 
 
-def load_code():
-    """Load the code from the resources directory."""
-    sys.path.append(os.path.join(os.path.dirname(__file__), "..", "resources"))
-    sys.path.append(os.path.join(os.path.dirname(__file__), "..", "pq_logic"))
+def manipulate_composite_kemct(# noqa: D417 Missing argument description in the docstring
+        kem_ct: bytes) -> bytes:
+    """Manipulate the first ct of the `CompositeCiphertextValue`.
+
+    Arguments:
+    ---------
+       - `kem_ct`: The DER-encoded `CompositeCiphertextValue`.
+
+    Returns:
+    -------
+       - The modified `CompositeCiphertextValue` as DER-encoded bytes.
+
+    Raises:
+    ------
+       - `pyasn1.error.PyAsn1Error`: if the provided `kem_ct` is not a valid `CompositeCiphertextValue`.
+
+    """
+    obj, _ = decoder.decode(kem_ct, CompositeCiphertextValue())
+
+    kem_ct1 = obj[0].asOctets()
+    kem_ct2 = obj[1].asOctets()
+
+    kem_ct1 = manipulate_first_byte(kem_ct1)
+
+    kem_ct1 = univ.OctetString(kem_ct1)
+    kem_ct2 = univ.OctetString(kem_ct2)
+
+    out = CompositeCiphertextValue()
+
+    out.append(kem_ct1)
+    out.append(kem_ct2)
+    return encoder.encode(out)

@@ -18,28 +18,22 @@ import logging
 from typing import List, Optional, Set, Tuple, Union
 
 import pyasn1.error
-from pq_logic.keys.abstract_pq import PQKEMPublicKey
+from pq_logic.migration_typing import HybridKEMPublicKey, KEMPrivateKey
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
+from pq_logic.trad_typing import ECDHPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ, useful
 from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
 from resources import certutils, cmputils, utils
-from resources.certutils import (
-    build_cert_chain_from_dir,
-    build_crl_chain_from_list,
-    certificates_are_trustanchors,
-    load_certificates_from_dir,
-    load_truststore,
-    verify_cert_chain_openssl,
-)
+from resources.asn1_structures import InfoTypeAndValueAsn1, KemCiphertextInfoAsn1, PKIMessageTMP
 from resources.cmputils import get_value_from_seq_of_info_value_field, prepare_info_value
 from resources.convertutils import copy_asn1_certificate, pyasn1_time_obj_to_py_datetime
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import CURVE_OIDS_2_NAME
-from resources.protectionutils import prepare_kem_ciphertextinfo
 from resources.suiteenums import GeneralInfoOID
 from resources.typingutils import Strint
 
@@ -648,13 +642,13 @@ def _validate_crls(
     :param timeout: The timeout for the validation process. Defaults to 60 seconds.
     :return: None
     """
-    ca_certs = load_certificates_from_dir(path=ca_certs)
-    trust_anchors = load_truststore(path=trustanchors, allow_os_store=allow_os_store)
+    ca_certs = certutils.load_certificates_from_dir(path=ca_certs)
+    trust_anchors = certutils.load_truststore(path=trustanchors, allow_os_store=allow_os_store)
 
     certs = ca_certs + trust_anchors
     for i, crl in enumerate(crl_value):
         crl: rfc9480.CertificateList
-        crl_chain = build_crl_chain_from_list(crl=crl, certs=certs)
+        crl_chain = certutils.build_crl_chain_from_list(crl=crl, certs=certs)
         try:
             certutils.verify_openssl_crl(crl_chain, timeout=timeout)
         except ValueError:
@@ -827,13 +821,13 @@ def validate_general_response(  # noqa D417 undocumented-param
 
 # TODO maybe change to MUST prepare crl_update_retrieval by the user before hand.
 def build_general_message(  # noqa D417 undocumented-param
-    add_messages: str,
+    add_messages: Optional[str] = None,
     recipient: str = "test-cmp-srv@example.com",
     sender: str = "test-cmp-cli@example.com",
     exclude_fields: Optional[str] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     crl_cert: Optional[rfc9480.CMPCertificate] = None,
-    info_values: Optional[rfc9480.InfoTypeAndValue] = None,
+    info_values: Optional[Union[rfc9480.InfoTypeAndValue, List[rfc9480.InfoTypeAndValue]]] = None,
     negative: bool = False,
     ca_name: Optional[str] = None,
     ca_crl_url: Optional[str] = None,
@@ -910,6 +904,9 @@ def build_general_message(  # noqa D417 undocumented-param
         )
 
     if info_values is not None:
+        if isinstance(info_values, rfc9480.InfoTypeAndValue):
+            info_values = [info_values]
+
         body_content.extend(info_values)
 
     body_content = _append_messages(messages=messages, body_content=body_content, fill_value=negative, ca_cert=ca_cert)
@@ -974,12 +971,12 @@ def validate_preferred_ca_prot_enc_cert(  # noqa D417 undocumented-param
         # is a single cert, CMPCertificate
         ca_prot_cert = decoder.decode(data["infoValue"], rfc9480.CAProtEncCertValue())
 
-        cert_chain = build_cert_chain_from_dir(
+        cert_chain = certutils.build_cert_chain_from_dir(
             ee_cert=ca_prot_cert, cert_chain_dir=cert_chain_dir, root_dir=trustanchors
         )
 
-        certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, verbose=True)
-        verify_cert_chain_openssl(cert_chain=cert_chain)
+        certutils.certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, verbose=True)
+        certutils.verify_cert_chain_openssl(cert_chain=cert_chain)
 
         return ca_prot_cert
 
@@ -1260,39 +1257,142 @@ def validate_supported_language_tags(  # noqa D417 undocumented-param
     logging.info("Chosen language tag: %s", lang_list[0])
 
 
-def validate_genp_kem_ct_info_from_genm(
-    pki_message: rfc9480.PKIMessage, expected_size: int = 1
-) -> Tuple[bytes, rfc9480.InfoTypeAndValue]:
+def validate_genm_message_size(# noqa: D417 Missing argument description in the docstring
+    genm: rfc9480.PKIMessage,
+    expected_size: int = 1,
+) -> None:
+    """Validate the General Message PKIMessage.
+
+    Validates only the size and the body name.
+
+    Arguments:
+    ---------
+        - `genm`: The General Message PKIMessage.
+        - `expected_size`: The expected number of messages in the response.
+
+    Raises:
+    ------
+        - `ValueError`: If the PKIMessage does not contain a General Message body.
+        - `ValueError`: If the response does not have the expected size.
+
+    """
+    if genm["body"].getName() != "genm":
+        raise ValueError("The PKIMessage does not contain a General Message body.")
+
+    if len(genm["body"]["genm"]) != expected_size:
+        raise ValueError(f"Expected {expected_size} messages in the General Message body.")
+
+
+def build_genp_kem_ct_info_from_genm(# noqa: D417 Missing argument description in the docstring
+    genm: PKIMessageTMP, expected_size: int = 1, ca_key: Optional[ECDHPrivateKey] = None, **kwargs
+) -> Tuple[bytes, PKIMessageTMP]:
+    """Build the KEMCiphertextInfo from a General Message PKIMessage.
+
+    Arguments:
+    ---------
+        - `pki_message`: The General Message PKIMessage.
+        - `expected_size`: The expected number of messages in the response.
+        - `ca_key`: The CA's private key to perform the decapsulation with.
+        - `**kwargs`: Additional parameters for the PKIHeader.
+
+    Returns:
+    -------
+        - The shared secret and the General Response PKIMessage.
+
+    Raises:
+    ------
+        - `ValueError`: If the response does not contain the `KEMCiphertextInfo` OID.
+        - `ValueError`: If the `KEMCiphertextInfo` value was not absent.
+        - `ValueError`: If the response does not contain the `extraCerts` field.
+        - `ValueError`: If the public key was not a KEM public key.
+
+    """
+    validate_genm_message_size(genm=genm, expected_size=expected_size)
+
+    value = get_value_from_seq_of_info_value_field(genm["body"]["genm"], oid=id_it_KemCiphertextInfo)
+
+    if value is None:
+        raise ValueError("The response did not contain the `KEMCiphertextInfo`.")
+
+    if len(genm["extraCerts"]) < 1:
+        raise ValueError("The response did not contain the extraCerts field.")
+
+    cert: rfc9480.CMPCertificate = genm["extraCerts"][0]
+    public_key = load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+
+    if not is_kem_public_key(public_key):
+        raise ValueError("The public key was not a KEM public key.")
+
+    if isinstance(public_key, HybridKEMPublicKey):
+        ss, ct = public_key.encaps(ca_key)
+    else:
+        ss, ct = public_key.encaps()
+
+    kem_oid = get_kem_oid_from_key(public_key)
+
+    genm = cmputils._prepare_pki_message(**kwargs)
+
+    kem_ct_info = KemCiphertextInfoAsn1()
+    kem_ct_info["ct"] = univ.OctetString(ct)
+    kem_ct_info["kem"]["algorithm"] = kem_oid
+
+    info_val = InfoTypeAndValueAsn1()
+    info_val["infoType"] = id_it_KemCiphertextInfo
+    info_val["infoValue"] = encoder.encode(kem_ct_info)
+
+    genm2 = PKIMessageTMP()
+    for field in genm["header"].keys():
+        genm2["header"][field] = genm["header"][field]
+
+    genm2["body"]["genp"].append(info_val)
+    return ss, genm2
+
+
+def validate_genp_kem_ct_info(# noqa: D417 Missing argument description in the docstring
+    genp: PKIMessageTMP,
+    client_private_key: Optional[KEMPrivateKey],
+    expected_size: int = 1,
+) -> bytes:
     """Validate the KEMCiphertextInfo in a General Response PKIMessage.
 
     For more information, please look at the workflow of RFC4210bis-16,
     Appendix E. Variants of Using KEM Keys for PKI Message Protection
 
-    :param pki_message: The General Response PKIMessage.
-    :param expected_size: The expected number of messages in the response.
-    :return: The shared secret and the `KEMCiphertextInfo` inside the InfoTypeAndValue structure.
-    """
-    validate_general_response(pki_message=pki_message, expected_size=expected_size)
+    Arguments:
+    ---------
+        - `genp`: The General Response PKIMessage.
+        - `client_private_key`: The client's private key, to perform the decapsulation with.
+        - `expected_size`: The expected number of messages in the response.
 
-    value = get_value_from_seq_of_info_value_field(pki_message["genp"], oid=id_it_KemCiphertextInfo)
+    Returns:
+    -------
+        - The shared secret.
+
+    Raises:
+    ------
+        - `ValueError`: If the response did not contain the `KEMCiphertextInfo` OID.
+        - `ValueError`: If the `KEMCiphertextInfo` value was absent.
+        - `ValueError`: If the private key was not a KEM private key.
+
+    """
+    validate_general_response(pki_message=genp, expected_size=expected_size)
+
+    value = get_value_from_seq_of_info_value_field(genp["body"]["genp"], oid=id_it_KemCiphertextInfo)
 
     if value is None:
         raise ValueError("The response did not contain the KEMCiphertextInfo OID.")
 
-    if value.isValue:
-        raise ValueError("The KEMCiphertextInfo value was not absent.")
+    if not value.isValue:
+        raise ValueError("The KEMCiphertextInfo value was absent.")
 
-    cert: rfc9480.CMPCertificate = pki_message["extraCerts"][0]
+    kem_ct_info, rest = decoder.decode(value.asOctets(), KemCiphertextInfoAsn1())
 
-    public_key = load_public_key_from_spki(cert["cert"]["subjectPublicKeyInfo"])
+    if not is_kem_private_key(client_private_key):
+        raise ValueError("The private key was not a KEM private key.")
 
-    if not isinstance(public_key, PQKEMPublicKey):
-        raise ValueError("The public key was not a PQ KEM public key.")
+    ss = client_private_key.decaps(kem_ct_info["ct"].asOctets())
 
-    ss, ct = public_key.encaps()
-
-    info_val = prepare_kem_ciphertextinfo(public_key, ct=ct)
-    return ss, info_val
+    return ss
 
 
 # TODO add params.

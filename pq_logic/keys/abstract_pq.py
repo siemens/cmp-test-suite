@@ -2,10 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Utility for preparing and generating post-quantum keys.
-
-
-"""
+"""Utility for preparing and generating post-quantum keys."""
 
 import base64
 import logging
@@ -138,7 +135,7 @@ class PQPrivateKey(ABC):
         self._check_name(name=alg_name)
         self._name = alg_name
         self._private_key = private_bytes
-        self._public_key = public_key
+        self._public_key_bytes = public_key
 
     def _one_asym_key(self) -> rfc5958.OneAsymmetricKey:
         """Prepare a PyAsn1 OneAsymmetricKey structure."""
@@ -254,7 +251,9 @@ class PQSignaturePublicKey(PQPublicKey, ABC):
         self._public_key_bytes = public_key
 
     @abstractmethod
-    def check_hash_alg(self, hash_alg: Union[None, str,hashes.HashAlgorithm], allow_failure: bool = True) -> Optional[str]:
+    def check_hash_alg(
+        self, hash_alg: Union[None, str, hashes.HashAlgorithm], allow_failure: bool = True
+    ) -> Optional[str]:
         """Check if the hash algorithm is valid and return the name of the hash algorithm.
 
         If the name is invalid returns `None`.
@@ -326,7 +325,9 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
         """Derive the corresponding public key."""
         pass
 
-    def check_hash_alg(self, hash_alg: Union[None, str, hashes.HashAlgorithm], allow_failure: bool = True) -> Optional[str]:
+    def check_hash_alg(
+        self, hash_alg: Union[None, str, hashes.HashAlgorithm], allow_failure: bool = True
+    ) -> Optional[str]:
         """Check if a specified or parsed hash algorithm is allowed."""
         return self.public_key().check_hash_alg(hash_alg)
 

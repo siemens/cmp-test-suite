@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""Contains the KEM mechanisms for the PQ Logic."""
+
 import logging
 import os
 import random
@@ -12,10 +14,36 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from resources.cryptoutils import perform_ecdh
 from resources.oid_mapping import hash_name_to_instance
 
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+
+
+def perform_ecdh(private_key: ECDHPrivateKey, public_key: ECDHPublicKey) -> bytes:
+    """Derive a shared secret using Elliptic Curve Diffie-Hellman (ECDH) key exchange.
+
+    Supports `ec`, `x25519`, and `x448` curves.
+
+    :param private_key: The private key for generating the shared secret.
+    :param public_key: The public key to perform the exchange with.
+    :return: The derived shared secret as bytes.
+    :raises ValueError: If `public_key` or `private_key` are not compatible.
+    """
+    if isinstance(private_key, ec.EllipticCurvePrivateKey) and isinstance(public_key, ec.EllipticCurvePublicKey):
+        return private_key.exchange(ec.ECDH(), public_key)
+
+    if isinstance(private_key, x25519.X25519PrivateKey) and isinstance(public_key, x25519.X25519PublicKey):
+        return private_key.exchange(public_key)
+
+    if isinstance(private_key, x448.X448PrivateKey) and isinstance(public_key, x448.X448PublicKey):
+        return private_key.exchange(public_key)
+
+    raise ValueError(
+        f"Incompatible key types for ECDH key exchange: "
+        f"private_key is {type(private_key).__name__}, "
+        f"public_key is {type(public_key).__name__}"
+    )
+
 
 #####################################
 # KemMechanism Interface

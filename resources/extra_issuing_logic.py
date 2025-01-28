@@ -17,12 +17,10 @@ from typing import Optional, Tuple, Union
 import pyasn1.error
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from pq_logic.kem_mechanism import ECDHKEM
-from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.migration_typing import HybridKEMPrivateKey
-from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.trad_typing import ECDHPrivateKey
+from pq_logic.pq_utils import is_kem_private_key, is_kem_public_key
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1.type.base import Asn1Type
@@ -30,19 +28,19 @@ from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6955, rfc9480, rfc9
 from robot.api.deco import keyword, not_keyword
 from unit_tests.asn1_wrapper_class.pki_message_wrapper import PKIMessage, prepare_name
 
-from resources import asn1utils, protectionutils
-from resources.asn1_structures import POPODecKeyChallContentAsn1
+from resources import asn1utils, protectionutils, utils
+from resources.asn1_structures import ChallengeASN1, POPODecKeyChallContentAsn1
 from resources.ca_kga_logic import validate_enveloped_data
 from resources.certutils import load_public_key_from_cert
 from resources.cmputils import _prepare_pki_message, compare_general_name_and_name, prepare_general_name
 from resources.convertutils import str_to_bytes
-from resources.cryptoutils import compute_hmac, perform_ecdh
+from resources.cryptoutils import compute_aes_cbc, compute_hmac, perform_ecdh
 from resources.envdatautils import (
     build_env_data_for_exchange,
     prepare_issuer_and_serial_number,
     prepare_one_asymmetric_key,
 )
-from resources.exceptions import InvalidKeyCombination
+from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import compute_hash
 from resources.protectionutils import compute_and_prepare_mac
@@ -177,7 +175,7 @@ def prepare_kem_env_data_for_popo(
 
     env_data = build_env_data_for_exchange(
         public_key_recip=ca_public_key,
-        cert_recip=ca_cert,
+        cert_sender=ca_cert,
         cek=cek,
         target=env_data,
         data=data,
@@ -382,7 +380,7 @@ def process_pkimessage_with_popdecc(
                 raise ValueError(f"Expected sender name: {expected_sender}. Got: {rand_name}")
 
     else:
-        ss = _process_challenge(challenge, ee_key)
+        ss = process_simple_challenge(challenge, ee_key)
         if request is None:
             raise ValueError("The original PKIMessage request is required to build the new one for the challenge.")
 
@@ -473,25 +471,47 @@ def _process_encrypted_rand(
     return obj
 
 
-def _process_challenge(challenge_val: bytes, ee_key) -> bytes:
-    """Process the challenge value by decrypting or decapuslating it with the end-entity private key.
+@not_keyword
+def process_simple_challenge(
+    challenge: ChallengeASN1,
+    iv: Union[str, bytes],
+    ee_key: PrivateKey,
+    ca_pub_key: Optional[ECDHPublicKey] = None,
+    kemct: Optional[bytes] = None,
+) -> rfc9480.Rand:
+    """Process the challenge value by decrypting or decapuslation it with the end-entity private key.
 
-    :param challenge_val: The `Challenge` to process.
-    :param ee_key: The private key to decrypt or decapsulate the challenge.
+    :param challenge: The `Challenge` to process.
+    :param iv: The initialization vector to use for the AES decryption.
+    :param ee_key: The private key to decrypt the challenge.
+    :param ca_pub_key: The CA's public key to use for the ECDH key exchange.
+    :param kemct: The KEM ciphertext.
     :return: The shared secret as the password field in the PKIMessage.
+    :raises ValueError: If the private key type is not supported.
     """
-    if isinstance(ee_key, rsa.RSAPrivateKey):
-        ss = ee_key.decrypt(challenge_val, padding=padding.PKCS1v15())
-    elif isinstance(ee_key, ECDHPrivateKey):
-        ss = ECDHKEM(private_key=ee_key).decaps(challenge_val)
-    elif isinstance(ee_key, PQKEMPrivateKey):
-        ss = ee_key.decaps(challenge_val)
-    elif isinstance(ee_key, AbstractCompositeKEMPrivateKey):
-        ss = ee_key.decaps(challenge_val)
-    else:
-        raise ValueError("Unsupported key type")
+    challenge_val = challenge["challenge"].asOctets()
 
-    return ss
+    if isinstance(ee_key, rsa.RSAPrivateKey):
+        rand_data = ee_key.decrypt(challenge_val, padding=padding.PKCS1v15())
+        rand_obj, rest = decoder.decode(rand_data, asn1Spec=rfc9480.Rand())
+        if rest:
+            raise BadAsn1Data("Rand")
+        return rand_obj
+
+    if isinstance(ee_key, ECDHPrivateKey):
+        ss = perform_ecdh(ee_key, ca_pub_key)
+    elif is_kem_private_key(ee_key):
+        ss = ee_key.decaps(kemct)
+    else:
+        raise ValueError(
+            f"The private key type is not supported, for processing the challenge.: {type(ee_key).__name__}"
+        )
+
+    rand_data = compute_aes_cbc(key=ss, data=challenge_val, iv=str_to_bytes(iv), decrypt=True)
+    rand_obj, rest = decoder.decode(rand_data, asn1Spec=rfc9480.Rand())
+    if rest:
+        raise BadAsn1Data("Rand")
+    return rand_obj
 
 
 def _compute_ss(client_key, ca_cert):
@@ -516,7 +536,7 @@ def _compute_ss(client_key, ca_cert):
 
 # TODO fix doc
 def _prepare_pkmac_val(
-    shared_secret: bytes, data: bytes, mac_alg: str, for_agreement: bool = True, **mac_params
+    shared_secret: bytes, data: bytes, mac_alg: str, for_agreement: bool = True, bad_pop: bool = False, **mac_params
 ) -> rfc4211.ProofOfPossession:
     """Prepare the PKMAC value for the Proof-of-Possession structure.
 
@@ -525,10 +545,15 @@ def _prepare_pkmac_val(
     :param mac_alg: The MAC algorithm to use for the PKMAC value.
     :param for_agreement: The flag to indicate whether the PKMAC value is for key agreement. Defaults to `True`.
     :param mac_params: The additional parameters to use for the MAC algorithm.
+    :param bad_pop: Whether to manipulate the first byte of the MAC value. Defaults to `False`.
     :return: The populated Proof-of-Possession structure with the `agreeMAC` field set.
     """
     pkmac_value = rfc4211.PKMACValue().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
     alg_id, mac_value = compute_and_prepare_mac(key=shared_secret, data=data, mac_alg=mac_alg, **mac_params)
+
+    if bad_pop:
+        mac_value = utils.manipulate_first_byte(mac_value)
+
     pkmac_value["algId"]["algorithm"] = alg_id["algorithm"]
     pkmac_value["algId"]["parameters"] = alg_id["parameters"]
     pkmac_value["value"] = univ.BitString.fromOctetString(mac_value)
@@ -549,14 +574,16 @@ def _prepare_pkmac_val(
     return popo_structure
 
 
-def prepare_agree_key_popo(
+@keyword(name="Prepare keyAgreement POPO")
+def prepare_key_agreement_popo(
     use_encr_cert: bool = True,
     env_data: Optional[rfc9480.EnvelopedData] = None,
     client_key: Optional[ECDHPrivKeyTypes] = None,
     shared_secret: Optional[bytes] = None,
-    cert_request: Optional[bytes] = None,
+    cert_request: Optional[Union[bytes, rfc4211.CertRequest]] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     mac_alg: str = "password_based_mac",
+    bad_pop: bool = False,
     **mac_params,
 ) -> rfc4211.ProofOfPossession:
     """Prepare a Proof-of-Possession (PoP) structure for a Key Agreement (KA) key.
@@ -570,20 +597,34 @@ def prepare_agree_key_popo(
     :param env_data: Optional `EnvelopedData` object containing encrypted key material.
     :param client_key: Optional client-side private key for key agreement (ECDH).
     :param ca_cert: Optional CA certificate containing the public key for key agreement.
+    :param shared_secret: Optional shared secret for key agreement.
+    :param cert_request: Optional certificate request to authenticate with the MAC.
+    :param mac_alg: The MAC algorithm to use for the PoP structure. Defaults to `password_based_mac`.
     :return: A populated `rfc4211.ProofOfPossession` structure for key agreement.
     """
     if client_key is not None and ca_cert is not None:
         shared_secret = _compute_ss(client_key, ca_cert=ca_cert)
 
     popo_priv_key = rfc4211.POPOPrivKey().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
-    if env_data is None and shared_secret:
+    if env_data is None and shared_secret is None:
         option = "encrCert" if use_encr_cert else "challenge"
         popo_priv_key["subsequentMessage"] = rfc4211.SubsequentMessage(option).subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)
         )
     elif shared_secret is not None:
+        if cert_request is None:
+            raise ValueError("The certificate request is required for `agreeMAC` PoP.")
+
+        if not isinstance(cert_request, bytes):
+            cert_request = encoder.encode(cert_request)
+
         return _prepare_pkmac_val(
-            shared_secret=shared_secret, cert_request=cert_request, for_agreement=True, mac_alg=mac_alg, **mac_params
+            shared_secret=shared_secret,
+            data=cert_request,
+            for_agreement=True,
+            mac_alg=mac_alg,
+            bad_pop=bad_pop,
+            **mac_params,
         )
     else:
         popo_priv_key["encryptedKey"] = env_data

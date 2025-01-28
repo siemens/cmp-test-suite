@@ -129,10 +129,10 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
 
             if private_bytes is None:
                 d, z = os.urandom(32), os.urandom(32)
-                self._public_key, self._private_key = self.ml_class.keygen_internal(d=d, z=z)
+                self._public_key_bytes, self._private_key = self.ml_class.keygen_internal(d=d, z=z)
             else:
                 self._private_key = private_bytes
-                self._public_key = public_key
+                self._public_key_bytes = public_key
 
     def _get_key_name(self) -> bytes:
         return b"ML-KEM"

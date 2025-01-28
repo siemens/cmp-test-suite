@@ -17,6 +17,7 @@ from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from resources import certutils
 from resources.certutils import check_is_cert_signer, verify_cert_chain_openssl
+from resources.compareutils import compare_alg_id_without_tag
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME
 
 from pq_logic.hybrid_structures import OnRelatedCertificateDescriptor, RelatedCertificateDescriptor
@@ -118,8 +119,8 @@ def extract_sia_extension_for_cert_discovery(
     means that all entries are checked.
     :raises ValueError: If the `accessMethod` does not match `id_ad_certDiscovery` or the `type-id` does not
                         match `id_ad_relatedCertificateDescriptor`.
-    :return: The extracted `RelatedCertificateDescriptor` object containing details such as the `uniformResourceIdentifier`,
-             `signatureAlgorithm`, and `publicKeyAlgorithm`.
+    :return: The extracted `RelatedCertificateDescriptor` object containing details such as
+    the `uniformResourceIdentifier`, `signatureAlgorithm`, and `publicKeyAlgorithm`.
     """
     sia, _ = decoder.decode(extension["extnValue"].asOctets(), rfc5280.SubjectInfoAccessSyntax())
 
@@ -142,7 +143,7 @@ def extract_sia_extension_for_cert_discovery(
     return obj
 
 
-def get_secondary_certificate(uri: str) -> rfc9480.CMPCertificate:
+def get_cert_discovery_cert(uri: str) -> rfc9480.CMPCertificate:
     """Get the secondary certificate using the provided URI.
 
     :param uri: The URI of the secondary certificate.
@@ -162,24 +163,6 @@ def get_secondary_certificate(uri: str) -> rfc9480.CMPCertificate:
         raise ValueError(f"Failed to fetch secondary certificate: {e}")
 
 
-def compare_alg_id_without_tag(first: rfc9480.AlgorithmIdentifier, second: rfc9480.AlgorithmIdentifier) -> bool:
-    """Compare `AlgorithmIdentifier` without considering the tag.
-
-    :param first: The first `AlgorithmIdentifier` to compare.
-    :param second: The second `AlgorithmIdentifier` to compare.
-    :return: `True` if both the OID and parameters match, `False` otherwise.
-    """
-    oid_first, params_first = first["algorithm"], first["parameters"]
-    oid_second, params_second = second["algorithm"], second["parameters"]
-    if oid_first != oid_second:
-        return False
-
-    if sum([params_first.isValue, params_second.isValue]) in [0, 2]:
-        return params_first == params_second
-    else:
-        return False
-
-
 def validate_alg_ids(other_cert: rfc9480.CMPCertificate, rel_cert_desc: RelatedCertificateDescriptor) -> None:
     """Validate that the algorithms in the RelatedCertificateDescriptor match those in the Secondary Certificate.
 
@@ -192,7 +175,8 @@ def validate_alg_ids(other_cert: rfc9480.CMPCertificate, rel_cert_desc: RelatedC
             rel_cert_desc["signatureAlgorithm"], other_cert["tbsCertificate"]["signature"]
         ):
             raise ValueError(
-                "The `signatureAlgorithm` in the secondary certificate does not match the RelatedCertificateDescriptor's one."
+                "The `signatureAlgorithm` in the secondary certificate does not match the "
+                "RelatedCertificateDescriptor's one."
             )
 
     if rel_cert_desc["publicKeyAlgorithm"].isValue:
@@ -200,7 +184,8 @@ def validate_alg_ids(other_cert: rfc9480.CMPCertificate, rel_cert_desc: RelatedC
             rel_cert_desc["publicKeyAlgorithm"], other_cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]
         ):
             raise ValueError(
-                "The `publicKeyAlgorithm` in the secondary certificate does not match the RelatedCertificateDescriptor's one."
+                "The `publicKeyAlgorithm` in the secondary certificate does not "
+                "match the RelatedCertificateDescriptor's one."
             )
 
 
@@ -219,7 +204,7 @@ def validate_cert_discovery(
     )
     url = str(rel_cert_desc["uniformResourceIdentifier"])
 
-    other_cert = get_secondary_certificate(url)
+    other_cert = get_cert_discovery_cert(url)
     validate_alg_ids(other_cert, rel_cert_desc)
 
     if check_is_cert_signer(cert=other_cert, poss_issuer=issuer_cert):

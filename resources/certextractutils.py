@@ -10,11 +10,13 @@ as the `senderKID` for the `PKIHeader` or inside the recipient identifier in the
 structure, which is used to securely exchange data between two parties.
 """
 
+import logging
 from typing import Optional, Union
 
 from pyasn1.codec.der import decoder
 from pyasn1.type import base, univ
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
+from pyasn1_alt_modules.rfc5652 import Attribute
 from robot.api.deco import not_keyword
 
 from resources import asn1utils
@@ -37,6 +39,10 @@ def get_extension(
     :param must_be_crit: If True, ensure the extension is critical. Defaults to disabled.
     :return: The matching extension, or None if not found.
     """
+    if not extensions.isValue:
+        logging.info("No `extensions` found in the certificate.")
+        return None
+
     for ext in extensions:
         if ext["extnID"] == oid:
             if must_be_non_crit and ext["critical"] and must_be_non_crit is not None:
@@ -160,7 +166,7 @@ def get_field_from_certificate(  # noqa D417 undocumented-param
 
 
 @not_keyword
-def extract_extension_from_csr(csr: rfc6402.CertificationRequest) -> Union[rfc9480.Extensions, None]:
+def extract_extension_from_csr(csr: rfc6402.CertificationRequest) -> Optional[rfc9480.Extensions]:
     """Extract extensions from a CertificationRequest object if present.
 
     :param csr: The CSR object from which to extract extensions, if possible.
@@ -170,10 +176,11 @@ def extract_extension_from_csr(csr: rfc6402.CertificationRequest) -> Union[rfc94
         return None
 
     ext_oid = univ.ObjectIdentifier("1.2.840.113549.1.9.14")
+    attr: Attribute()
+
     for attr in csr["certificationRequestInfo"]["attributes"]:
         if attr["attrType"] == ext_oid:
-            for value in attr["attrValues"]:
-                extn, _ = decoder.decode(value, rfc9480.Extensions())
-                return extn
+            extn, _ = decoder.decode(attr["attrValues"][0].asOctets(), asn1Spec=rfc9480.Extensions())
+            return extn
 
     return None

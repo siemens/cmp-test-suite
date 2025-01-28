@@ -4,10 +4,10 @@
 
 """Logic to build and modify `CertTemplate`, `CMPCertificate` or CSR objects."""
 
-import datetime
 import logging
 import os
-from typing import List, Optional, Tuple, Union
+from datetime import datetime, timedelta
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -17,14 +17,12 @@ from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_oid_cms_
 from pq_logic.tmp_oids import id_rsa_kem_spki
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ, useful
-from pyasn1.type.tag import Tag, tagClassContext, tagFormatConstructed
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc6402, rfc9480, rfc9481
-from pyasn1_alt_modules.rfc2314 import Attributes
-from pyasn1_alt_modules.rfc2459 import Attribute, AttributeValue
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6402, rfc9480, rfc9481
+from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
-import resources.certextractutils
 from resources import (
+    certextractutils,
     certutils,
     cmputils,
     convertutils,
@@ -37,6 +35,7 @@ from resources import (
 )
 from resources.certextractutils import extract_extension_from_csr
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
+from resources.exceptions import BadCertTemplate
 from resources.oidutils import CMP_EKU_OID_2_NAME, RSA_SHA_OID_2_NAME
 from resources.prepareutils import prepare_name
 from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey
@@ -45,8 +44,8 @@ from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey
 # TODO verify if `utcTime` is allowed for CertTemplate, because is not allowed
 # for CMPCertificate.
 def prepare_validity(  # noqa D417 undocumented-param
-    not_before: Optional[datetime.datetime] = None,
-    not_after: Optional[datetime.datetime] = None,
+    not_before: Optional[datetime] = None,
+    not_after: Optional[datetime] = None,
     before_use_utc: bool = True,
     after_use_utc: bool = True,
 ) -> rfc5280.Validity:
@@ -95,7 +94,7 @@ def prepare_validity(  # noqa D417 undocumented-param
 
     return validity
 
-@not_keyword
+
 def prepare_sig_alg_id(
     signing_key: PrivateKeySig,
     hash_alg: str,
@@ -192,10 +191,7 @@ def sign_csr(  # noqa D417 undocumented-param
         logging.info(f"Modified CSR signature: {signature}")
 
     csr["signature"] = univ.BitString.fromOctetString(signature)
-    csr["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key,
-                                                   hash_alg=hash_alg,
-                                                   use_rsa_pss=use_rsa_pss,
-    use_pre_hash=use_pre_hash)
+    csr["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
     # Needs to be en and decoded otherwise is the structure empty.
     der_data = encoder.encode(csr)
@@ -208,7 +204,7 @@ def sign_csr(  # noqa D417 undocumented-param
 def build_csr(  # noqa D417 undocumented-param
     signing_key: PrivateKeySig,
     common_name: str = "CN=Hans Mustermann",
-    extensions: Optional[rfc9480.Extensions] = None,
+    extensions: Optional[Sequence[rfc5280.Extension]] = None,
     hash_alg: Union[None, str] = "sha256",
     use_rsa_pss: bool = False,
     subjectAltName: Optional[str] = None,
@@ -352,65 +348,6 @@ def generate_signed_csr(  # noqa D417 undocumented-param
         return utils.pyasn1_csr_to_pem(csr), key  # type: ignore
 
     return csr, key  # type: ignore
-
-
-@not_keyword
-def prepare_tbs_certificate(
-    subject: str,
-    signing_key: PrivateKeySig,
-    public_key: typingutils.PublicKey,
-    serial_number: Optional[int] = None,
-    issuer_cert: Optional[rfc9480.CMPCertificate] = None,
-    extensions: Optional[rfc9480.Extensions] = None,
-    validity: Optional[rfc5280.Validity] = None,
-    days: int = 365,
-    use_rsa_pss: bool = False,
-    hash_alg: str = "sha256",
-) -> rfc5280.TBSCertificate:
-    """Prepare the `TBSCertificate` structure for a certificate with specified parameters.
-
-    :param subject: The subject's distinguished name in OpenSSL notation (e.g., "C=US, ST=California, L=San Francisco").
-    :param signing_key: Private key used for signing.
-    :param public_key: Public key associated with the subject.
-    :param serial_number: Serial number of the certificate.
-    :param issuer_cert: Optional, the issuer's certificate (self-signed if not provided).
-    :param extensions: Optional extensions to include in the certificate.
-    :param validity: Optional `Validity` object defining the certificate's validity period.
-    :param days: Number of days the certificate is valid if `validity` is not provided. Defaults to 365 days.
-    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
-    :param hash_alg: Hash algorithm used for signing (e.g., "sha256"). Defaults to "sha256".
-    :return: `rfc5280.TBSCertificate` object configured with the provided parameters.
-    """
-    tbs_cert = rfc5280.TBSCertificate()
-
-    if extensions is not None:
-        exts = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
-        for ext in extensions:
-            exts.append(ext)
-        tbs_cert["extensions"] = exts
-
-    subject = prepare_name(subject)  # type: ignore
-
-    if issuer_cert is None:
-        issuer = subject
-    else:
-        issuer = copyasn1utils.copy_name(rfc9480.Name(), issuer_cert["tbsCertificate"]["subject"])
-
-    if validity is None:
-        not_before = datetime.datetime.now(datetime.timezone.utc)
-        not_after = not_before + datetime.timedelta(days=days)
-        validity = prepare_validity(not_before=not_before, not_after=not_after)
-
-    tbs_cert["validity"] = validity
-    tbs_cert["subjectPublicKeyInfo"] = convertutils.subjectPublicKeyInfo_from_pubkey(public_key)
-    tbs_cert["signature"] = prepare_sig_alg_id(signing_key, hash_alg, use_rsa_pss=use_rsa_pss)
-    tbs_cert["issuer"] = issuer
-    tbs_cert["subject"] = subject
-    tbs_cert["serialNumber"] = serial_number or x509.random_serial_number()
-    tbs_cert["version"] = rfc5280.Version("v3").subtype(
-        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
-    )
-    return tbs_cert
 
 
 def _prepare_extended_key_usage(oids: List[univ.ObjectIdentifier]) -> rfc5280.Extension:
@@ -629,13 +566,14 @@ def _prepare_invalid_extensions(
     return extensions
 
 
-@not_keyword
+# TODO fix doc
 def sign_cert(
     signing_key: typingutils.PrivSignCertKey,
     cert: rfc9480.CMPCertificate,
     hash_alg: str = "sha256",
     use_rsa_pss: bool = False,
     modify_signature: bool = False,
+    bad_sig: bool = False,
 ) -> rfc9480.CMPCertificate:
     """Sign a `CMPCertificate` object with the provided private key.
 
@@ -647,16 +585,19 @@ def sign_cert(
     :return: The signed `CMPCertificate` object.
     """
     der_tbs_cert = encoder.encode(cert["tbsCertificate"])
-    if use_rsa_pss:
-        signature = cryptoutils.sign_data_rsa_pss(data=der_tbs_cert, private_key=signing_key, hash_alg=hash_alg)
-    else:
-        signature = cryptoutils.sign_data(data=der_tbs_cert, key=signing_key, hash_alg=hash_alg)
+    signature = cryptoutils.sign_data(data=der_tbs_cert, key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
     logging.info("Certificate signature: %s", signature.hex())
 
     if modify_signature:
         signature = utils.manipulate_first_byte(signature)
         logging.info("Modified certificate signature: %s", signature.hex())
+
+    if bad_sig:
+        if isinstance(signing_key, AbstractCompositeSigPrivateKey):
+            signature = utils.manipulate_composite_sig(signature)
+        else:
+            signature = utils.manipulate_first_byte(signature)
 
     cert["signature"] = univ.BitString.fromOctetString(signature)
     cert["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
@@ -673,7 +614,7 @@ def generate_certificate(
     serial_number: Optional[typingutils.Strint] = None,
     signing_key: Optional[typingutils.PrivSignCertKey] = None,
     issuer_cert: Optional[rfc9480.CMPCertificate] = None,
-    extensions: Optional[rfc9480.Extensions] = None,
+    extensions: Optional[Sequence[rfc5280.Extension]] = None,
     days: int = 365,
     use_rsa_pss: bool = False,
 ) -> rfc9480.CMPCertificate:
@@ -825,7 +766,7 @@ def modify_common_name_cert(  # noqa D417 undocumented-param
         field = "subject"
 
     issuer_name: dict = utils.get_openssl_name_notation(
-        resources.certextractutils.get_field_from_certificate(cert, field),  # type: ignore
+        certextractutils.get_field_from_certificate(cert, field),  # type: ignore
         oids=None,
         return_dict=True,
     )
@@ -950,7 +891,7 @@ def prepare_cert_template(  # noqa D417 undocumented-param
     serial_number: Optional[typingutils.Strint] = None,
     version: Optional[typingutils.Strint] = None,
     validity: Optional[rfc5280.Validity] = None,
-    extensions: Optional[rfc5280.Extensions] = None,
+    extensions: Optional[Sequence[rfc5280.Extension]] = None,
     for_kga: bool = False,
     cert: Optional[rfc9480.CMPCertificate] = None,
     include_cert_extensions: bool = True,
@@ -1055,8 +996,8 @@ def prepare_cert_template(  # noqa D417 undocumented-param
 
 
 def _prepare_optional_validity(
-    not_before: Optional[datetime.datetime] = None,
-    not_after: Optional[datetime.datetime] = None,
+    not_before: Optional[datetime] = None,
+    not_after: Optional[datetime] = None,
     asn1cert: Optional[rfc9480.CMPCertificate] = None,
     validity: Optional[rfc5280.Validity] = None,
 ) -> Union[None, rfc4211.OptionalValidity]:
@@ -1171,25 +1112,31 @@ def csr_add_extensions(  # noqa D417 undocumented-param
     | ${updated_csr}= | CSR Add Extensions | csr=${csr} | extensions=${extensions_list} |
 
     """
-    # extensions are kept in a `SetOf Attributes` and are explicitly tagged 0
-    extension_set = univ.SetOf()
-    attributes = Attributes().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 0))
-
-    # the attribute type we need is a `x509 v3 extension` with the corresponding OID
-    attribute = Attribute()
-    attribute["type"] = univ.ObjectIdentifier("1.2.840.113549.1.9.14")
-
     # the extensions are wrapped in a sequence before they go into the set
     wrapping_sequence = univ.Sequence()
     for index, extension in enumerate(extensions):
         wrapping_sequence[index] = AttributeValue(encoder.encode(extension))
 
-    extension_set[0] = wrapping_sequence
-    attribute["vals"] = extension_set
-    attributes[0] = attribute
+    # rfc2985.pkcs_9_at_extensionRequest
+    attribute = prepare_single_value_attr(
+        attr_type=univ.ObjectIdentifier("1.2.840.113549.1.9.14"), attr_value=wrapping_sequence
+    )
 
-    csr["certificationRequestInfo"]["attributes"] = attributes
+    csr["certificationRequestInfo"]["attributes"].append(attribute)
     return csr
+
+
+def prepare_single_value_attr(attr_type: univ.ObjectIdentifier, attr_value: Any) -> rfc5652.Attribute:
+    """Prepare an attribute for a CSR.
+
+    :param attr_type: The Object Identifier (OID) for the attribute.
+    :param attr_value: The value of the attribute to be encoded.
+    :return: The populated `Attribute` structure.
+    """
+    attr = rfc5652.Attribute()
+    attr["attrType"] = attr_type
+    attr["attrValues"][0] = encoder.encode(attr_value)
+    return attr
 
 
 @keyword(name="CSR Extend Subject")
@@ -1323,3 +1270,308 @@ def _prepare_spki_for_kga(
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     return spki
+
+
+def _default_validity(
+    days: int = 3650,
+    optional_validity: Optional[rfc5280.Validity] = None,
+    max_days_before: Optional[Union[int, str]] = 10,
+) -> rfc5280.Validity:
+    """Prepare a default `Validity` structure for a certificate.
+
+    :param days: The number of days for which the certificate remains valid. Defaults to `3650` days.
+    :param optional_validity: Optional `rfc5280.Validity` object to use for the certificate. Defaults to `None`.
+    :param max_days_before: Specifies the maximum allowable difference, in days, between
+    the `notBefore` date and the current date. Defaults to `10` days.
+    :return: The prepared `Validity` structure.
+    """
+    not_before = datetime.now()
+    if optional_validity is not None:
+        # print(cert_template["validity"].isValue)
+        # bug in pyasn1-alt-modules, validity is always a value.
+        # even if it is not set.
+        # if cert_template["validity"].isValue: is always `True`.
+        if optional_validity["notBefore"].isValue:
+            time_type = optional_validity["notBefore"].getName()
+            tmp = optional_validity["notBefore"][time_type].asDateTime
+
+            if tmp < datetime.now() - timedelta(days=max_days_before):
+                raise BadCertTemplate("The `notBefore` date is too far in the past.")
+
+            not_before = tmp
+
+        if optional_validity["notAfter"].isValue:
+            time_type = optional_validity["notAfter"].getName()
+            not_after = optional_validity["notAfter"][time_type].asDateTime
+        else:
+            not_after = not_before + timedelta(days=days)
+        return prepare_validity(not_before, not_after)
+
+    not_before = datetime.now()
+    not_after = not_before + timedelta(days=days)
+    return prepare_validity(not_before, not_after)
+
+
+@keyword(name="Build Cert From CertTemplate")
+def build_cert_from_cert_template(
+    cert_template: rfc9480.CertTemplate,
+    ca_cert: rfc9480.CMPCertificate,
+    ca_key: PrivateKey,
+    use_rsa_pss: bool = True,
+    use_pre_hash: bool = False,
+    hash_alg: str = "sha256",
+) -> rfc9480.CMPCertificate:
+    """Build a certificate from a CertTemplate.
+
+    :param cert_template: The CertTemplate to build the certificate from.
+    :param ca_cert: The CA certificate.
+    :param ca_key: The CA private key.
+    :param use_rsa_pss: Whether to use RSA-PSS or not. Defaults to `True`.
+    :param use_pre_hash: Whether to use pre-hash or not. Defaults to `False`.
+    :param hash_alg: The hash algorithm to use (e.g. "sha256").
+    """
+    tbs_certs = prepare_tbs_certificate_from_template(
+        cert_template=cert_template,
+        issuer=ca_cert["tbsCertificate"]["subject"],
+        ca_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=use_pre_hash,
+    )
+    cert = rfc9480.CMPCertificate()
+    cert["tbsCertificate"] = tbs_certs
+    return sign_cert(
+        cert=cert,
+        signing_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+    )
+
+
+def _prepare_shared_tbs_cert(
+    subject: Union[str, rfc9480.Name],
+    issuer: Union[rfc9480.CMPCertificate, rfc9480.Name],
+    serial_number: Optional[int] = None,
+    validity: Optional[Union[rfc4211.OptionalValidity, rfc5280.Validity]] = None,
+    days: int = 3650,
+    public_key: Optional[rfc5280.SubjectPublicKeyInfo] = None,
+) -> rfc5280.TBSCertificate:
+    """Prepare some attributes of `TBSCertificate` structure, for a certificate.
+
+    :param subject: The subject of the certificate, either a string or a `Name` object.
+    :param issuer: The issuer of the certificate, either a `CMPCertificate` or a `Name` object.
+    :param serial_number: The serial number for the certificate. Defaults to `None`.
+    :param validity: The validity of the certificate. Defaults to `None`.
+    :param days: The number of days for which the certificate remains valid. Defaults to `3650` days.
+    :return: The populated `TBSCertificate` structure.
+    """
+    tbs_cert = rfc5280.TBSCertificate()
+
+    if isinstance(subject, rfc9480.Name):
+        subject = subject["rdnSequence"]
+    else:
+        subject = prepare_name(common_name=subject)["rdnSequence"]
+
+    tbs_cert["subject"]["rdnSequence"] = subject
+
+    if isinstance(issuer, rfc9480.CMPCertificate):
+        issuer = issuer["tbsCertificate"]["subject"]
+
+    tbs_cert["issuer"] = issuer
+    if serial_number is None:
+        serial_number = x509.random_serial_number()
+    tbs_cert["serialNumber"] = serial_number
+    tbs_cert["version"] = rfc5280.Version("v3").subtype(
+        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+    )
+
+    tbs_cert["subjectPublicKeyInfo"] = copyasn1utils.copy_subject_public_key_info(
+        target=rfc5280.SubjectPublicKeyInfo(), filled_sub_pubkey_info=public_key
+    )
+
+    if isinstance(validity, rfc5280.Validity):
+        tbs_cert["validity"] = validity
+    else:
+        tbs_cert["validity"] = _default_validity(days=days, optional_validity=validity)
+
+    return tbs_cert
+
+
+@not_keyword
+def prepare_tbs_certificate_from_template(
+    cert_template: rfc4211.CertTemplate,
+    issuer: rfc9480.Name,
+    ca_key: PrivateKey,
+    serial_number: Optional[int] = None,
+    hash_alg: str = "sha256",
+    days: int = 3650,
+    use_rsa_pss: bool = True,
+    use_pre_hash: bool = False,
+) -> rfc5280.TBSCertificate:
+    """Prepare a `TBSCertificate` structure from a `CertTemplate`.
+
+    :param cert_template: The `CertTemplate` to prepare the `TBSCertificate` from.
+    :param issuer: The issuer of the certificate.
+    :param ca_key: The CA private key.
+    :param serial_number: The serial number for the certificate. Defaults to `None`.
+    :param hash_alg: The hash algorithm to use. Defaults to `sha256`.
+    :param days: The number of days for which the certificate remains valid. Defaults to `3650` days.
+    :param use_rsa_pss: Whether to use RSA-PSS or not. Defaults to `True`.
+    :param use_pre_hash: Whether to use pre-hash or not. Defaults to `False`.
+    :return: The prepared `TBSCertificate` structure.
+    """
+    if serial_number is None:
+        if cert_template["serialNumber"].isValue:
+            serial_number = int(cert_template["serialNumber"])
+
+    tbs_cert = _prepare_shared_tbs_cert(
+        issuer=issuer,
+        subject=cert_template["subject"],
+        serial_number=serial_number,
+        validity=cert_template["validity"],
+        days=days,
+        public_key=cert_template["publicKey"],
+    )
+
+    tbs_cert["signature"] = prepare_sig_alg_id(
+        signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+    )
+    # check if the public key is correct.
+    _ = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+    return tbs_cert
+
+
+@keyword(name="Build Cert from CSR")
+def build_cert_from_csr(
+    csr: rfc6402.CertificationRequest,
+    ca_key: PrivateKey,
+    extensions: Optional[rfc5280.Extensions] = None,
+    serial_number: Optional[Union[str, int]] = None,
+    validity: Optional[rfc5280.Validity] = None,
+    issuer: Optional[rfc9480.Name] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    hash_alg: str = "sha256",
+    include_extensions: bool = True,
+    alt_sign_key: Optional[PrivateKeySig] = None,
+    **kwargs,
+) -> rfc9480.CMPCertificate:
+    """Build a certificate from a CSR.
+
+    :param csr: The CSR to build the certificate from.
+    :param ca_cert: The CA certificate.
+    :param ca_key: The CA private key.
+    :param extensions: Optional extensions to include in the certificate. Defaults to `None`.
+    If set, will exclude the extensions from the CSR.
+    :param serial_number: Optional serial number for the certificate. Defaults to `None`.
+    :param validity: Optional validity period for the certificate. Defaults to `None`.
+    :param issuer: The issuer of the certificate. Defaults to `None`.
+    :param hash_alg: The hash algorithm to use for signing. Defaults to `sha256`.
+    :param include_extensions: Whether to include the extensions from the CSR. Defaults to `True`.
+    :param alt_sign_key: Optional alternative signing key to use. Defaults to `None`.
+    :return: The certificate as raw bytes.
+    :raises ValueError: If neither the issuer nor the CA certificate is provided.
+    """
+    if issuer is None and ca_cert is None:
+        raise ValueError(
+            "Either the issuer or the CA certificate have to be provided.to build a certificate, from a CSR."
+        )
+    if ca_cert is not None:
+        issuer = ca_cert["tbsCertificate"]["subject"]
+
+    tbs_cert = _prepare_shared_tbs_cert(
+        issuer=issuer,
+        subject=csr["certificationRequestInfo"]["subject"],
+        serial_number=serial_number,
+        validity=validity,
+        days=kwargs.get("days", 3650),
+        public_key=csr["certificationRequestInfo"]["subjectPublicKeyInfo"],
+    )
+
+    tbs_cert["signature"] = prepare_sig_alg_id(
+        signing_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=kwargs.get("use_rsa_pss", True),
+        use_pre_hash=kwargs.get("use_pre_hash", False),
+    )
+    if include_extensions:
+        extn = extract_extension_from_csr(csr=csr)
+        if extensions is not None and extn is not None:
+            tbs_cert["extensions"] = extn
+        elif extensions is not None:
+            tbs_cert["extensions"] = extensions
+    cert = rfc9480.CMPCertificate()
+    cert["tbsCertificate"] = tbs_cert
+
+    if alt_sign_key is not None:
+        # so that the catalyst logic can be in the matching file.
+        from pq_logic.hybrid_sig.catalyst_logic import sign_cert_catalyst
+
+        return sign_cert_catalyst(cert=cert, trad_key=ca_key, pq_key=alt_sign_key, hash_alg=hash_alg, **kwargs)
+
+    return sign_cert(cert=cert, signing_key=ca_key, hash_alg=hash_alg, **kwargs)
+
+
+@not_keyword
+def prepare_tbs_certificate(
+    subject: str,
+    signing_key: PrivateKeySig,
+    public_key: typingutils.PublicKey,
+    serial_number: Optional[int] = None,
+    issuer_cert: Optional[rfc9480.CMPCertificate] = None,
+    extensions: Optional[rfc9480.Extensions] = None,
+    validity: Optional[rfc5280.Validity] = None,
+    days: int = 3650,
+    use_rsa_pss: bool = False,
+    hash_alg: str = "sha256",
+    use_pre_hash: bool = False,
+    use_rsa_pss_pubkey: bool = False,
+    use_pre_hash_pubkey: bool = False,
+) -> rfc5280.TBSCertificate:
+    """Prepare the `TBSCertificate` structure for a certificate with specified parameters.
+
+    :param subject: The subject's distinguished name in OpenSSL notation (e.g., "C=US, ST=California, L=San Francisco").
+    :param signing_key: Private key used for signing.
+    :param public_key: Public key associated with the subject.
+    :param serial_number: Serial number of the certificate.
+    :param issuer_cert: Optional, the issuer's certificate (self-signed if not provided).
+    :param extensions: Optional extensions to include in the certificate.
+    :param validity: Optional `Validity` object defining the certificate's validity period.
+    :param days: Number of days the certificate is valid if `validity` is not provided. Defaults to 365 days.
+    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
+    :param hash_alg: Hash algorithm used for signing (e.g., "sha256"). Defaults to "sha256".
+    :param use_pre_hash: Whether to use pre-hash for signing. Defaults to `False`.
+    :param use_rsa_pss_pubkey: Whether to use RSA-PSS for the CompositeSigKey public key. Defaults to `False`.
+    :param use_pre_hash_pubkey: Whether to use pre-hash for the CompositeSigKey public key. Defaults to `False`.
+    :return: `rfc5280.TBSCertificate` object configured with the provided parameters.
+    """
+    subject = prepare_name(subject)  # type: ignore
+
+    if issuer_cert is None:
+        issuer = subject
+    else:
+        issuer = copyasn1utils.copy_name(rfc9480.Name(), issuer_cert["tbsCertificate"]["subject"])
+
+    pub_key = convertutils.subjectPublicKeyInfo_from_pubkey(
+        public_key=public_key, use_rsa_pss=use_rsa_pss_pubkey, use_pre_hash=use_pre_hash_pubkey
+    )
+    tbs_cert = _prepare_shared_tbs_cert(
+        issuer=issuer,
+        subject=subject,
+        serial_number=serial_number,
+        validity=validity,
+        days=days,
+        public_key=pub_key,
+    )
+    if extensions is not None:
+        exts = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
+        for ext in extensions:
+            exts.append(ext)
+        tbs_cert["extensions"] = exts
+
+    tbs_cert["signature"] = prepare_sig_alg_id(
+        signing_key=signing_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=use_pre_hash,
+    )
+    return tbs_cert

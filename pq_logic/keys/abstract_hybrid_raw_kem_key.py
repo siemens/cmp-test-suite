@@ -19,13 +19,15 @@ from pyasn1_alt_modules import rfc5280, rfc5958
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.serialize_utils import prepare_enc_key_pem
+from pq_logic.trad_typing import ECDHPrivateKey
 
 
 class AbstractHybridRawPublicKey(ABC):
     """Abstract class for a raw hybrid public key."""
 
-    def __eq__(self, other):
-        if not type(self) == type(other):
+    def __eq__(self, other: "AbstractHybridRawPublicKey"):
+        """Check if two keys are equal."""
+        if type(self) is not type(other):
             raise ValueError(f"Cannot compare `{type(self)}` with `{type(other)}`")
         return self.pq_key == other.pq_key and self.trad_key == other.trad_key
 
@@ -98,6 +100,15 @@ class AbstractHybridRawPublicKey(ABC):
         raise ValueError(
             "Unsupported combination of encoding and format. Only Raw-Raw, DER-SPKI, and PEM-SPKI are supported."
         )
+
+    @abstractmethod
+    def encaps(self, private_key: ECDHPrivateKey) -> Tuple[bytes, bytes]:
+        """Encapsulate the shared secret and ciphertext using the peer's public key.
+
+        :param private_key: The peer's private key.
+        :return: A tuple containing the encapsulated shared secret and the encapsulated ciphertext.
+        """
+        pass
 
 
 class AbstractHybridRawPrivateKey(ABC):

@@ -9,7 +9,8 @@ from resources.checkutils import validate_ca_message_body
 from resources.cmputils import prepare_extra_certs
 from resources.utils import load_and_decode_pem_file
 
-from unit_tests.prepare_ca_response import build_ca_pki_message, prepare_cert_response
+from unit_tests.prepare_ca_response import build_ca_pki_message
+from resources.ca_ra_utils import prepare_cert_response
 
 
 class TestValidateCAMessageBody(unittest.TestCase):

@@ -84,109 +84,15 @@ from typing import List, Optional
 from pyasn1.codec.der import encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1_alt_modules import rfc5652, rfc9480
-from resources.cmputils import patch_extra_certs, prepare_pkistatusinfo
-from resources.convertutils import copy_asn1_certificate
+
+from resources.ca_ra_utils import prepare_cert_response
+from resources.cmputils import patch_extra_certs
 from resources.envdatautils import prepare_enveloped_data, prepare_signed_data
 from resources.typingutils import PrivateKey
 
 from unit_tests.utils_for_test import prepare_pki_header
 
 # TODO refactor this to ca_ra_utils.py
-
-def prepare_enc_key(env_data: rfc5652.EnvelopedData, explicit_tag: int = 0) -> rfc9480.EncryptedKey:
-    """Prepare an EncryptedKey structure by encapsulating the provided EnvelopedData.
-
-    :param env_data: The EnvelopedData to wrap in the `EncryptedKey` structure.
-    :param explicit_tag: The explicitTag id set for the `EncryptedKey` structure
-    :return: An `EncryptedKey` object with encapsulated EnvelopedData.
-    """
-    enc_key = rfc9480.EncryptedKey().subtype(
-        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, explicit_tag)
-    )
-
-    enc_key["envelopedData"] = env_data
-    return enc_key
-
-
-def prepare_cert_or_enc_cert(
-    cert: rfc9480.CMPCertificate, enc_cert: rfc5652.EnvelopedData = None
-) -> rfc9480.CertOrEncCert:
-    """Prepare a CertOrEncCert structure containing either a certificate or encrypted certificate.
-
-    :param cert: A certificate object representing the certificate to include.
-    :param enc_cert: An optional EnvelopedData object representing an encrypted certificate.
-    :return: A populated CertOrEncCert structure.
-    """
-    cert_or_enc_cert = rfc9480.CertOrEncCert()
-    if cert is not None:
-        cert2 = rfc9480.CMPCertificate().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0))
-        cert_or_enc_cert["certificate"] = copy_asn1_certificate(cert, cert2)
-
-    if enc_cert is not None:
-        enc_key = prepare_enc_key(env_data=enc_cert, explicit_tag=1)
-        cert_or_enc_cert["encryptedCert"] = enc_key
-
-    return cert_or_enc_cert
-
-
-def prepare_certified_key_pair(
-    cert: Optional[rfc9480.CMPCertificate] = None,
-    enc_cert: Optional[rfc9480.EnvelopedData] = None,
-    private_key: Optional[rfc9480.EnvelopedData] = None,
-) -> rfc9480.CertifiedKeyPair:
-    """Prepare a CertifiedKeyPair structure containing certificate or encrypted certificate and an optional private key.
-
-    :param cert: An optional certificate representing the certificate.
-    :param enc_cert: An optional EnvelopedData object for the encrypted certificate.
-    :param private_key: An optional EnvelopedData object representing the private key.
-    :raises ValueError: If both cert and enc_cert are not provided.
-    :return: A populated CertifiedKeyPair structure.
-    """
-    if not cert and not enc_cert:
-        raise ValueError("At least one of `cert` or `enc_cert` must be provided to prepare a CertifiedKeyPair.")
-
-    certified_key_pair = rfc9480.CertifiedKeyPair()
-    certified_key_pair["certOrEncCert"] = prepare_cert_or_enc_cert(cert=cert, enc_cert=enc_cert)
-
-    if private_key is not None:
-        enc_key = rfc9480.EncryptedKey().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
-
-        enc_key["envelopedData"] = private_key
-        certified_key_pair["privateKey"] = enc_key
-
-    return certified_key_pair
-
-
-def prepare_cert_response(
-    cert_req_id: int = 0,
-    status: str = "accepted",
-    text: str = None,
-    failinfo: str = None,
-    cert=None,
-    enc_cert=None,
-    private_key=None,
-) -> rfc9480.CertResponse:
-    """Prepare a CertResponse structure for responding to a certificate request.
-
-    :param cert_req_id: The ID of the certificate request being responded to.
-    :param status: The status of the certificate request (e.g., "accepted" or "rejected").
-    :param text: Optional status text.
-    :param failinfo: Optional failure information.
-    :param cert: An optional certificate object.
-    :param enc_cert: Optional encrypted certificate as EnvelopedData.
-    :param private_key: Optional private key as EnvelopedData.
-    :return: A populated CertResponse structure.
-    """
-    cert_response = rfc9480.CertResponse()
-    cert_response["certReqId"] = univ.Integer(cert_req_id)
-    cert_response["status"] = prepare_pkistatusinfo(texts=text, status=status, failinfo=failinfo)
-
-    if cert or enc_cert or private_key:
-        cert_response["certifiedKeyPair"] = prepare_certified_key_pair(cert, enc_cert, private_key)
-
-    cert_response["rspInfo"] = univ.OctetString("")
-
-    return cert_response
 
 
 def _prepare_resp_seq(cert: Optional[rfc9480.CMPCertificate], **params) -> univ.SequenceOf:

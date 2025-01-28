@@ -1,4 +1,9 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Utility functions for preparing data which is not tied to a specific keyword."""
+
 from typing import Optional
 
 from cryptography import x509

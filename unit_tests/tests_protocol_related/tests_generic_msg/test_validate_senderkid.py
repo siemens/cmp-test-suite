@@ -81,7 +81,7 @@ class TestValidateSenderKID(unittest.TestCase):
             protection="signature",
             password=None,
             exclude_cert=False,
-            no_patch=True
+            do_patch=False,
         )
 
 
