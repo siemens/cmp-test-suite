@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x448, x25519
 from resources import keyutils
@@ -37,8 +37,8 @@ ALL_CHEMPAT_POSS_COMBINATIONS = [
     {"pq_name": "mceliece-8192128", "trad_name": "x448", "curve": None},
     {"pq_name": "ml-kem-768", "trad_name": "x25519", "curve": None},
     {"pq_name": "ml-kem-1024", "trad_name": "x448", "curve": None},
-    {"pq_name": "ml-kem-768", "trad_name": "ecdh", "curve": "sepc256r1"},
-    {"pq_name": "ml-kem-1024", "trad_name": "ecdh", "curve": "sepc384r1"},
+    {"pq_name": "ml-kem-768", "trad_name": "ecdh", "curve": "secp256r1"},
+    {"pq_name": "ml-kem-1024", "trad_name": "ecdh", "curve": "secp384r1"},
     {"pq_name": "ml-kem-768", "trad_name": "ecdh", "curve": "brainpoolP256r1"},
     {"pq_name": "ml-kem-1024", "trad_name": "ecdh", "curve": "brainpoolP384r1"},
 ]
@@ -46,8 +46,8 @@ ALL_CHEMPAT_POSS_COMBINATIONS = [
 CHEMPAT_FRODOKEM_POSS_COMBINATIONS = [
     {"pq_name": "frodokem-976-aes", "trad_name": "x25519", "curve": None},
     {"pq_name": "frodokem-976-shake", "trad_name": "x25519", "curve": None},
-    {"pq_name": "frodokem-976-aes", "trad_name": "ecdh", "curve": "sepc256r1"},
-    {"pq_name": "frodokem-976-shake", "trad_name": "ecdh", "curve": "sepc256r1"},
+    {"pq_name": "frodokem-976-aes", "trad_name": "ecdh", "curve": "secp256r1"},
+    {"pq_name": "frodokem-976-shake", "trad_name": "ecdh", "curve": "secp256r1"},
     {"pq_name": "frodokem-976-aes", "trad_name": "ecdh", "curve": "brainpoolP256r1"},
     {"pq_name": "frodokem-976-shake", "trad_name": "ecdh", "curve": "brainpoolP256r1"},
     {"pq_name": "frodokem-1344-aes", "trad_name": "ecdh", "curve": "secp384r1"},
@@ -308,8 +308,12 @@ class HybridKeyFactory:
             raise NotImplementedError(f"Unsupported hybrid algorithm: {algorithm}")
 
     @staticmethod
-    def get_all_kem_coms():
-        return ALL_COMPOSITE_KEM_COMBINATIONS + ALL_CHEMPAT_POSS_COMBINATIONS + [{"xwing"}]
+    def get_all_kem_coms_as_dict() ->Dict[str, List[Dict]]:
+        """Return a dictionary of all possible hybrid key combinations to generate a stat table."""
+        data = {"xwing": [{}]}
+        data["composite-kem"] = ALL_COMPOSITE_KEM_COMBINATIONS
+        data["chempat"] = ALL_CHEMPAT_POSS_COMBINATIONS
+        return data
 
     @staticmethod
     def supported_algorithms() -> List[str]:

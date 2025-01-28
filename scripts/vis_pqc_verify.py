@@ -6,7 +6,7 @@ import os.path
 import pandas as pd
 
 
-file_path = 'validation_pem_files.txt'
+file_path = '../validation_pem_files.txt'
 
 
 cert_data = []

@@ -3,11 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1.type import univ
+
+from pq_logic.stat_utils import TRAD_ALG_2_NENC, get_ec_trad_name
 from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.kem_mechanism import DHKEMRFC9180
@@ -27,29 +29,6 @@ from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_mapping import get_oid_for_chemnpat
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 
-CURVE_NAME_2_CONTEXT_NAME = {
-    "secp256r1": "P256",
-    "brainpoolP256r1": "brainpoolP256",
-    "secp384r1": "P384",
-    "brainpoolP384r1": "brainpoolP384",
-}
-
-
-TRAD_ALG_2_NENC = {"brainpoolP384": 48, "P256": 32, "brainpoolP256": 32, "X448": 56, "X25519": 32, "P384": 48}
-
-
-def _get_trad_name(trad_key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> str:
-    """Return the traditional name to generate the context string"""
-    if isinstance(trad_key, (ec.EllipticCurvePrivateKey, ec.EllipticCurvePublicKey)):
-        name = CURVE_NAME_2_CONTEXT_NAME[trad_key.curve.name]
-    elif isinstance(trad_key, (x448.X448PrivateKey, x448.X448PublicKey)):
-        name = "X448"
-    elif isinstance(trad_key, (x25519.X25519PrivateKey, x25519.X25519PublicKey)):
-        name = "X25519"
-    else:
-        raise ValueError("Unsupported key type.")
-    return name
-
 
 class ChempatKEM:
     """
@@ -57,7 +36,7 @@ class ChempatKEM:
     with a post-quantum KEM (PQKEM).
     """
 
-    def __init__(self, pq_key: PQKEMPrivateKey, trad_key: Optional[ECDHPrivateKey] = None):
+    def __init__(self, pq_key: Optional[PQKEMPrivateKey] = None, trad_key: Optional[ECDHPrivateKey] = None):
         """Initialize the ChempatKEM instance with keys.
 
         :param trad_key: Traditional private.
@@ -90,7 +69,7 @@ class ChempatKEM:
         else:
             raise InvalidKeyCombination(f"Unsupported post-quantum key type for Chempat.: {self.pq_key.name}")
 
-        name = bytes(_get_trad_name(self.trad_key), "utf-8")
+        name = bytes(get_ec_trad_name(self.trad_key), "utf-8")
 
         return b"Chempat-" + name + b"-" + bytes(pq_name, "utf-8")
 
@@ -113,6 +92,7 @@ class ChempatKEM:
         :return: A tuple containing the kem combined shared secret and combined ciphertext
         """
         dhkem = DHKEMRFC9180(private_key=self.trad_key)
+        self.trad_key = dhkem.private_key
         ss_T, ct_T = dhkem.encaps(trad_pk)
         ss_PQ, ct_PQ = peer_pq_key.encaps()
 
@@ -129,7 +109,7 @@ class ChempatKEM:
         :return: The combined shared secret as bytes.
         :raises ValueError: If the input ciphertext length does not match the expected value.
         """
-        nenc = TRAD_ALG_2_NENC[_get_trad_name(self.trad_key)]
+        nenc = TRAD_ALG_2_NENC[get_ec_trad_name(self.trad_key)]
 
         if len(ct) != nenc + self.pq_key.ct_length:
             raise ValueError(
@@ -185,6 +165,8 @@ class ChempatKEM:
 class ChempatPublicKey(AbstractHybridRawPublicKey):
     """Public key class for the Chempat hybrid key encapsulation mechanism."""
 
+    trad_key: Optional[ECDHPublicKey]
+
     def __eq__(self, other):
         if isinstance(other, ChempatPublicKey):
             return self.pq_key == other.pq_key and self.trad_key == other.trad_key
@@ -235,14 +217,19 @@ class ChempatPublicKey(AbstractHybridRawPublicKey):
     @property
     def ct_length(self) -> int:
         """Return the length of the ciphertext."""
-        nenc = TRAD_ALG_2_NENC[_get_trad_name(self.trad_key)]
+        nenc = TRAD_ALG_2_NENC[get_ec_trad_name(self.trad_key)]
         return self.pq_key.ct_length + nenc
 
     @property
     def key_size(self) -> int:
         """Return the key size of the Chempat key."""
-        trad_size = TRAD_ALG_2_NENC[_get_trad_name(self.trad_key)]
+        trad_size = TRAD_ALG_2_NENC[get_ec_trad_name(self.trad_key)]
         return self.pq_key.key_size + trad_size
+
+    @property
+    def name(self) -> str:
+        """Return the name of the key."""
+        return "chempat-" + self.pq_key.name + "-" + get_ec_trad_name(self.trad_key)
 
 
 class ChempatPrivateKey(AbstractHybridRawPrivateKey):
@@ -338,14 +325,19 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
     @property
     def key_size(self) -> int:
         """Return the key size of the Chempat key."""
-        trad_size = TRAD_ALG_2_NENC[_get_trad_name(self.trad_key)]
+        trad_size = TRAD_ALG_2_NENC[get_ec_trad_name(self.trad_key)]
         return self.pq_key.key_size + trad_size
 
     @property
     def ct_length(self) -> int:
         """Return the length of the ciphertext."""
-        nenc = TRAD_ALG_2_NENC[_get_trad_name(self.trad_key)]
+        nenc = TRAD_ALG_2_NENC[get_ec_trad_name(self.trad_key)]
         return self.pq_key.ct_length + nenc
+
+    @property
+    def name(self) -> str:
+        """Return the name of the key."""
+        return "chempat-" + self.pq_key.name + "-" + get_ec_trad_name(self.trad_key)
 
 
 class ChempatSntrup761PublicKey(ChempatPublicKey):
