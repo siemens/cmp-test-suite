@@ -2388,7 +2388,7 @@ def _process_kem_other_info(kem_other_info: bytes, expected_tx_id: Optional[byte
     if kem_info["kemContext"].isValue:
         raise NotImplementedError("KEMContext inside the `KemOtherInfo` structure is not yet supported.")
 
-
+@not_keyword
 def verify_kem_based_mac_protection(
     pki_message: rfc9480.PKIMessage,
     private_key: Optional[PQKEMPrivateKey] = None,
