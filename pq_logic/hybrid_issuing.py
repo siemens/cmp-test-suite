@@ -46,7 +46,7 @@ from resources.cmputils import (
     prepare_popo_challenge_for_non_signing_key,
 )
 from resources.convertutils import copy_asn1_certificate
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, UnknownOID, InvalidAltSignature
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidAltSignature, InvalidKeyCombination, UnknownOID
 from resources.keyutils import generate_key, generate_key_based_on_alg_id
 from resources.oidutils import (
     CMS_COMPOSITE_OID_2_NAME,
@@ -67,18 +67,18 @@ from pq_logic.hybrid_sig.catalyst_logic import (
     prepare_subject_alt_public_key_info_extn,
     sign_cert_catalyst,
 )
-from pq_logic.hybrid_structures import AltSignatureValueExt
 from pq_logic.hybrid_sig.chameleon_logic import build_chameleon_cert_from_paired_csr
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import sun_cert_template_to_cert, sun_csr_to_cert
+from pq_logic.hybrid_structures import AltSignatureValueExt
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey, AbstractCompositeSigPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, CompositeSigCMSPublicKey
 from pq_logic.migration_typing import HybridKEMPrivateKey, HybridKEMPublicKey
 from pq_logic.pq_compute_utils import sign_data_with_alg_id, verify_csr_signature, verify_signature_with_alg_id
-from pq_logic.trad_typing import ECDHPrivateKey, CA_RESPONSE, CA_CERT_RESPONSE, CA_CERT_RESPONSES
+from pq_logic.trad_typing import CA_CERT_RESPONSE, CA_CERT_RESPONSES, CA_RESPONSE, ECDHPrivateKey
 
 
-def build_sun_hybrid_cert_from_request(
+def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
     signing_key: AbstractCompositeSigPrivateKey,
     protection_key: PrivateKey,
@@ -95,7 +95,7 @@ def build_sun_hybrid_cert_from_request(
     The certificate in form 1 is at the second position in the `extraCerts` list.
 
     Arguments:
-    --------
+    ---------
        - `request`: The PKIMessage request.
        - `signing_key`: The key to sign the certificate with.
        - `protection_key`: The key to protect the certificate with.
@@ -254,7 +254,7 @@ def build_enc_cert_response(
     return pki_message
 
 
-def build_cert_from_catalyst_request(
+def build_cert_from_catalyst_request(  # noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
     ca_cert: rfc9480.CMPCertificate,
     ca_key: PrivateKey,
@@ -273,8 +273,8 @@ def build_cert_from_catalyst_request(
     - Third use hybrid KEMs, by making use of the Traditional Key as signing key.
      (the first key will be chosen based on the Key in the `CertTemplate` structure.)
 
-     Arguments:
-     ---------
+    Arguments:
+    ---------
          - `request`: The PKIMessage request.
          - `ca_cert`: The CA certificate.
          - `ca_key`: The CA key.
@@ -284,10 +284,11 @@ def build_cert_from_catalyst_request(
          - `use_composite_sig`: Whether to use composite signature keys. Defaults to `False`.
          - `bad_sig`: Whether to manipulate the POP. Defaults to `False`.
 
-     Returns:
-     -------
+    Returns:
+    -------
             - The PKIMessage with the certificate response.
             - The issued certificate.
+
     """
     if request["body"].getName() == "p10cr":
         raise ValueError("Only IR or CR is supported to build a encrypted certificate response.")
@@ -447,16 +448,17 @@ def _verify_alt_sig_for_pop(
 
 
 @keyword(name="Verify Catalyst CertReqMsg")
-def verify_sig_popo_catalyst_cert_req_msg(cert_req_msg: rfc4211.CertReqMsg) -> None:
+def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descriptions in the docstring
+    cert_req_msg: rfc4211.CertReqMsg,
+) -> None:
     """Verify a `Catalyst` certificate request message.
-
 
     Arguments:
     ---------
         - `cert_req_msg`: The certificate request message.
 
     Raises:
-    -------
+    ------
         - `InvalidSignature`: If the signature is invalid.
         - `ValueError`: If the alternative signature or algorithm is missing.
         - `InvalidAltSignature`: If the alternative signature is invalid.
@@ -841,7 +843,7 @@ def _process_catalyst_requests(
     return responses, certs
 
 
-def build_catalyst_signed_cert_from_req(
+def build_catalyst_signed_cert_from_req(  # noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
     ca_cert: rfc9480.CMPCertificate,
     ca_key: PrivateKey,
@@ -855,7 +857,7 @@ def build_catalyst_signed_cert_from_req(
     """Build a certificate from a Catalyst request.
 
     Arguments:
-    ----------
+    ---------
         - `request`: The PKIMessage request.
         - `ca_cert`: The CA certificate matching the CA key.
         - `ca_key`: The CA key to sign the certificate with.
@@ -871,6 +873,7 @@ def build_catalyst_signed_cert_from_req(
     -------
         - The PKIMessage with the certificate response.
         - The issued certificates.
+
     """
     if request["body"].getName() == "p10cr":
         cert_responses, cert = build_catalyst_signed_cert_from_p10cr(
@@ -923,7 +926,7 @@ def build_catalyst_signed_cert_from_req(
     return pki_message, certs
 
 
-def build_chameleon_from_p10cr(
+def build_chameleon_from_p10cr(  # noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
     ca_cert: rfc9480.CMPCertificate,
     ca_key: PrivateKey,
@@ -933,7 +936,7 @@ def build_chameleon_from_p10cr(
     """Build a Chameleon certificate from a `p10cr` request.
 
     Arguments:
-    ----------
+    ---------
         - `request`: The PKIMessage request.
         - `ca_cert`: The CA certificate matching the CA key.
         - `ca_key`: The CA key to sign the certificate with.
@@ -948,7 +951,7 @@ def build_chameleon_from_p10cr(
         - The delta certificate.
 
     Raises:
-    -------
+    ------
         - ValueError: If the request type is not `p10cr`.
         - ValueError: If the key type is invalid.
         - BadAsn1Data: If the ASN.1 data is invalid.

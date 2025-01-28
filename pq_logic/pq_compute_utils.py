@@ -11,8 +11,6 @@ from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
-
-from pq_logic.hybrid_sig import chameleon_logic
 from resources import utils
 from resources.certbuildutils import prepare_sig_alg_id
 from resources.certextractutils import get_extension
@@ -26,9 +24,9 @@ from resources.oidutils import (
     MSG_SIG_ALG,
     PQ_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
-    id_ce_subjectAltPublicKeyInfo,
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
+    id_ce_subjectAltPublicKeyInfo,
 )
 from resources.protectionutils import (
     patch_sender_and_sender_kid,
@@ -39,17 +37,18 @@ from resources.typingutils import PrivateKeySig, PublicKeySig
 from robot.api.deco import not_keyword
 
 import pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00
-from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
+from pq_logic.hybrid_sig import chameleon_logic
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import get_related_cert_from_list
 from pq_logic.hybrid_sig.certdiscovery import (
     extract_sia_extension_for_cert_discovery,
     get_cert_discovery_cert,
     validate_alg_ids,
 )
+from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, CompositeSigCMSPublicKey
 from pq_logic.pq_key_factory import PQKeyFactory
-from pq_logic.tmp_oids import id_altSubPubKeyExt, id_relatedCert, id_ce_deltaCertificateDescriptor
+from pq_logic.tmp_oids import id_altSubPubKeyExt, id_ce_deltaCertificateDescriptor, id_relatedCert
 
 
 def sign_data_with_alg_id(key, alg_id: rfc9480.AlgorithmIdentifier, data: bytes) -> bytes:

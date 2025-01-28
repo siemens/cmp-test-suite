@@ -6,16 +6,15 @@
 
 import logging
 import os
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives import keywrap, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.keywrap import aes_key_wrap
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPublicKey
-from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.keys.kem_keys import MLKEMPublicKey
 from pq_logic.migration_typing import HybridKEMPrivateKey, KEMPublicKey
-from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ

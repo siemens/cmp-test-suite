@@ -12,27 +12,24 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from pyasn1_alt_modules.rfc4210 import CMPCertificate
-
-from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt, AltSignatureValueExt
-from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
-from resources import utils
+from resources import certutils, cryptoutils, utils
 from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, sign_cert
 from resources.certextractutils import get_extension
-from resources import certutils
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
-from resources import cryptoutils
 from resources.exceptions import BadAlg, BadAsn1Data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import (
     PQ_NAME_2_OID,
-    id_ce_subjectAltPublicKeyInfo,
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
+    id_ce_subjectAltPublicKeyInfo,
 )
 from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey, TradSigPrivKey
 
 from pq_logic.combined_factory import CombinedKeyFactory
+from pq_logic.hybrid_structures import AltSignatureValueExt, SubjectAltPublicKeyInfoExt
+from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 
 
@@ -401,7 +398,7 @@ def load_catalyst_public_key(extensions: rfc9480.Extensions) -> PublicKey:
     return alt_issuer_key
 
 
-def sign_crl_catalyst(
+def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
     crl: rfc5280.CertificateList,
     ca_private_key: PrivateKeySig,
     alt_private_key: Optional[PrivateKeySig] = None,
@@ -435,10 +432,10 @@ def sign_crl_catalyst(
         - `bad_alt_sig`: Whether to manipulate the alternative signature to be invalid. Defaults to `False`.
 
     Returns:
-    --------
+    -------
          - The signed CRL.
-    """
 
+    """
     crl["signatureAlgorithm"] = prepare_sig_alg_id(
         signing_key=ca_private_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg, use_pre_hash=use_pre_hash
     )

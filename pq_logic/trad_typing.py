@@ -4,7 +4,7 @@
 
 """Includes typing for traditional cryptography keys, to not access `typingutils`."""
 
-from typing import Union, Tuple, List
+from typing import List, Tuple, Union
 
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1_alt_modules import rfc9480

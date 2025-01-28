@@ -110,7 +110,6 @@ class XWingPublicKey(AbstractHybridRawPublicKey):
         :param private_key: The private key to encapsulate the shared secret for.
         :return: The shared secret and ciphertext.
         """
-
         if not isinstance(private_key, x25519.X25519PrivateKey):
             private_key = x25519.X25519PrivateKey.generate()
 

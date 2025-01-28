@@ -372,7 +372,6 @@ def sun_cert_template_to_cert(
 ) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Convert a certificate template to a certificate, with the sun hybrid method.
 
-
     :param cert_template: The certificate template, to built the certificate from.
     :param issuer_cert: The issuer's certificate to use for constructing the certificate.
     :param issuer_private_key: The private key of the issuer for signing.

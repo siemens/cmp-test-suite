@@ -16,24 +16,22 @@ from typing import List, Optional, Sequence, Tuple
 from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
-from pyasn1_alt_modules import rfc5280, rfc9480, rfc9481, rfc5480
-
-import pq_logic
-from resources import keyutils
-from resources import certutils
-from resources.exceptions import BadMessageCheck, UnknownOID, BadAsn1Data, InvalidAltSignature
+from pyasn1_alt_modules import rfc5280, rfc9480
+from resources import certutils, keyutils
+from resources.exceptions import BadAsn1Data, BadMessageCheck, InvalidAltSignature, UnknownOID
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import (
     CMS_COMPOSITE_OID_2_NAME,
     MSG_SIG_ALG,
     PQ_OID_2_NAME,
     TRAD_STR_OID_TO_KEY_NAME,
-    id_ce_subjectAltPublicKeyInfo,
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
+    id_ce_subjectAltPublicKeyInfo,
 )
-from resources.typingutils import PublicKeySig, PublicKey
+from resources.typingutils import PublicKey, PublicKeySig
 
+import pq_logic
 from pq_logic import pq_compute_utils
 from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPublicKey
@@ -173,6 +171,7 @@ def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
         - `InvalidSignature`: If the signature verification fails.
         - `ValueError`: If the `cert` contains a PQ signature algorithm.
         - It Should be a traditional algorithm for migration strategy.
+
     """
     if sig_alg["algorithm"] not in CMS_COMPOSITE_OID_2_NAME:
         raise ValueError("The signature algorithm is not a composite signature.")
@@ -229,6 +228,7 @@ def verify_sun_hybrid_cert(  # noqa D417 undocumented-param
         - `ValueError`: If validation fails for the certificate or its extensions.
         - `ValueError`: If the alternative issuer key is not found.
         - `BadAsn1Data`: If the AlternativePublicKeyInfo extension contains remainder data.
+
     """
     if alt_issuer_key is None:
         alt_issuer_key = pq_compute_utils.may_extract_alt_key_from_cert(issuer_cert, other_certs=other_certs)

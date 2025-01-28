@@ -12,13 +12,12 @@ import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
-
 from pq_logic.key_pyasn1_utils import parse_key_from_one_asym_key
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.migration_typing import HybridKEMPrivateKey, HybridKEMPublicKey
 from pq_logic.pq_compute_utils import verify_csr_signature, verify_signature_with_alg_id
-from pq_logic.pq_utils import is_kem_public_key, get_kem_oid_from_key
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey, CA_RESPONSE
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
+from pq_logic.trad_typing import CA_RESPONSE, ECDHPrivateKey, ECDHPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc9480
@@ -42,8 +41,8 @@ from resources.cmputils import compare_general_name_and_name, prepare_general_na
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.cryptoutils import compute_aes_cbc, perform_ecdh
 from resources.envdatautils import (
-    build_env_data_for_exchange,
     _prepare_recip_info,
+    build_env_data_for_exchange,
     prepare_enveloped_data,
     prepare_kem_recip_info,
 )
@@ -542,7 +541,7 @@ def _verify_ra_verified(
         raise NotAuthorized("RA certificate not trusted.") from err
 
 
-def verify_popo_for_cert_request(
+def verify_popo_for_cert_request(  # noqa: D417 Missing argument descriptions in the docstring
     pki_message: rfc9480.PKIMessage,
     allowed_ra_dir: str = "data/trusted_ras",
     trustanchor: Optional[str] = None,
@@ -570,6 +569,7 @@ def verify_popo_for_cert_request(
         - NotImplementedError: If the request is for key agreement.
         - BadPOP: If the POP verification fails.
         - NotAuthorized: If the RA certificate is not trusted.
+
     """
     if pki_message["body"].getName() not in {"ir", "cr", "kur", "crr"}:
         raise ValueError(f"Invalid PKIMessage body: {pki_message['body'].getName()} Expected: ir, cr, kur, crr")
@@ -870,7 +870,7 @@ def _process_cert_requests(
     return responses, certs
 
 
-def build_cp_cmp_message(
+def build_cp_cmp_message(  # noqa: D417 Missing argument descriptions in the docstring
     request: Optional[rfc9480.PKIMessage] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
     enc_cert: Optional[rfc5652.EnvelopedData] = None,
@@ -884,7 +884,6 @@ def build_cp_cmp_message(
     **kwargs,
 ) -> CA_RESPONSE:
     """Build a CMP message for a certificate response.
-
 
     Arguments:
     ---------
@@ -958,7 +957,7 @@ def build_cp_cmp_message(
 
 
 @keyword(name="Enforce LwCMP For CA")
-def enforce_lwcmp_for_ca(
+def enforce_lwcmp_for_ca(  # noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
 ) -> None:
     """Enforce the Lightweight CMP (LwCMP) for a CA.
@@ -974,8 +973,8 @@ def enforce_lwcmp_for_ca(
         - BadRequest: If the `certReqId` is invalid.
         - BadRequest: If the request length is invalid.
         - BadRequest: If the request type is invalid.
-    """
 
+    """
     if request["body"].getName() == "p10cr":
         pass
     elif request["body"].getName() in {"ir", "cr", "kur", "crr"}:
@@ -1000,7 +999,7 @@ def enforce_lwcmp_for_ca(
         )
 
 
-def build_ip_cmp_message(
+def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the docstring
     cert: Optional[rfc9480.CMPCertificate] = None,
     enc_cert: Optional[rfc5652.EnvelopedData] = None,
     cert_req_id: Optional[int] = None,
@@ -1014,7 +1013,7 @@ def build_ip_cmp_message(
     """Build a CMP message for an initialization response.
 
     Arguments:
-    ----------
+    ---------
         - `cert`: The certificate to build the response for. Defaults to `None`.
         - `enc_cert`: The encrypted certificate to build the response for. Defaults to `None`.
         - `cert_req_id`: The certificate request ID. Defaults to `None`.
@@ -1222,7 +1221,7 @@ def _verify_encrypted_key_popo(
 
 
 @keyword(name="Process POPOPrivKey")
-def process_popo_priv_key(
+def process_popo_priv_key(  # noqa: D417 Missing argument descriptions in the docstring
     cert_req_msg: rfc4211.CertReqMsg,
     ca_key: PrivateKey,
     password: Optional[str] = None,

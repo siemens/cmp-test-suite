@@ -19,7 +19,7 @@ from resources.certbuildutils import (
     sign_cert,
 )
 from resources.certextractutils import get_extension
-from resources.compareutils import compare_pyasn1_names, compare_alg_id_without_tag
+from resources.compareutils import compare_alg_id_without_tag, compare_pyasn1_names
 from resources.convertutils import copy_asn1_certificate, subjectPublicKeyInfo_from_pubkey
 from resources.copyasn1utils import copy_name, copy_validity
 from resources.cryptoutils import sign_data
@@ -412,7 +412,9 @@ def extract_chameleon_attributes(
     return non_signature_attributes, delta_cert_request, delta_cert_request_signature
 
 
-def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> DeltaCertificateRequestValue:
+def verify_paired_csr_signature(  # noqa: D417 Missing argument description in the docstring
+    csr: rfc6402.CertificationRequest,
+) -> DeltaCertificateRequestValue:
     """Verify the signature of a paired CSR.
 
     Arguments:
@@ -420,13 +422,14 @@ def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> DeltaCerti
        - `csr`: The CertificationRequest to verify.
 
     Returns:
-    --------
+    -------
          - The Delta Certificate Request attribute.
 
     Raises:
-    -------
+    ------
         - ValueError: If the Delta Certificate Request attribute is missing.
         - BadPOP: If the signature is invalid.
+
     """
     pq_compute_utils.verify_csr_signature(csr=csr)
     attributes, delta_req, delta_sig = extract_chameleon_attributes(csr=csr)
@@ -459,7 +462,7 @@ def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> DeltaCerti
         pq_compute_utils.verify_signature_with_alg_id(
             alg_id=sig_alg_id, data=data, public_key=public_key, signature=delta_sig.asOctets()
         )
-    except InvalidSignature as e:
+    except InvalidSignature:
         raise BadPOP("Invalid signature")
 
     return delta_req
@@ -631,7 +634,6 @@ def get_chameleon_delta_public_key(paired_cert: rfc9480.CMPCertificate) -> rfc52
     :param paired_cert: The paired certificate.
     :return: The extracted public key.
     """
-
     dcd = get_extension(paired_cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
 
     if dcd is None:

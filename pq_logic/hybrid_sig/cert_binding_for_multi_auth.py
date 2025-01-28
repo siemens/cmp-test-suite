@@ -27,7 +27,7 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from pyasn1_alt_modules.rfc7906 import BinaryTime
-from resources import cmputils, utils
+from resources import cmputils, cryptoutils, utils
 from resources.asn1utils import get_set_bitstring_names
 from resources.ca_kga_logic import validate_issuer_and_serial_number_field
 from resources.certextractutils import extract_extension_from_csr, get_extension, get_field_from_certificate
@@ -39,7 +39,6 @@ from resources.certutils import (
     verify_cert_chain_openssl,
 )
 from resources.convertutils import pyasn1_time_obj_to_py_datetime
-from resources import cryptoutils
 from resources.envdatautils import prepare_issuer_and_serial_number
 from resources.exceptions import BadAsn1Data
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
