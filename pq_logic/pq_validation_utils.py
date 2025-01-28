@@ -6,12 +6,11 @@
 
 import logging
 
-from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9480
 from resources import asn1utils
 from resources.certextractutils import get_field_from_certificate
 from resources.certutils import load_public_key_from_cert
-from resources.oidutils import PQ_OID_2_NAME
+from resources.oidutils import PQ_OID_2_NAME, PQ_NAME_2_OID, HYBRID_NAME_2_OID
 
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQPublicKey, PQSignaturePublicKey
@@ -22,22 +21,6 @@ from pq_logic.keys.xwing import XWingPublicKey
 # When any of the ML-KEM AlgorithmIdentifier appears in the
 # SubjectPublicKeyInfo field of an X.509 certificate, the key usage
 # certificate extension MUST only contain `keyEncipherment`.
-
-NIST_ALGORITHMS = "2.16.840.1.101.3.4"
-SIG_ALGS = f"{NIST_ALGORITHMS}.3"
-
-id_SLH_DSA_SHA2_128S = univ.ObjectIdentifier(f"{SIG_ALGS}.20")
-id_SLH_DSA_SHA2_128F = univ.ObjectIdentifier(f"{SIG_ALGS}.21")
-id_SLH_DSA_SHA2_192S = univ.ObjectIdentifier(f"{SIG_ALGS}.22")
-id_SLH_DSA_SHA2_192F = univ.ObjectIdentifier(f"{SIG_ALGS}.23")
-id_SLH_DSA_SHA2_256S = univ.ObjectIdentifier(f"{SIG_ALGS}.24")
-id_SLH_DSA_SHA2_256F = univ.ObjectIdentifier(f"{SIG_ALGS}.25")
-id_SLH_DSA_SHAKE_128S = univ.ObjectIdentifier(f"{SIG_ALGS}.26")
-id_SLH_DSA_SHAKE_128F = univ.ObjectIdentifier(f"{SIG_ALGS}.27")
-id_SLH_DSA_SHAKE_192S = univ.ObjectIdentifier(f"{SIG_ALGS}.28")
-id_SLH_DSA_SHAKE_192F = univ.ObjectIdentifier(f"{SIG_ALGS}.29")
-id_SLH_DSA_SHAKE_256S = univ.ObjectIdentifier(f"{SIG_ALGS}.30")
-id_SLH_DSA_SHAKE_256F = univ.ObjectIdentifier(f"{SIG_ALGS}.31")
 
 
 def validate_migration_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
@@ -81,6 +64,7 @@ def validate_migration_certificate_key_usage(cert: rfc9480.CMPCertificate) -> No
         if set(key_usage) & ml_dsa_disallowed:
             raise ValueError(f"ML-DSA keyUsage must not include: {ml_dsa_disallowed}")
 
+    # TODO fix if UpdateVis is accepted.
     elif isinstance(public_key, PQKEMPublicKey):
         ml_kem_allowed = {"keyEncipherment"}
         if set(key_usage) != ml_kem_allowed:
@@ -98,3 +82,29 @@ def validate_migration_certificate_key_usage(cert: rfc9480.CMPCertificate) -> No
 
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
+
+
+def validate_migration_oid_in_certificate(cert: rfc9480.CMPCertificate, name: str) -> None:
+    """Validate the OID of the public key in the certificate.
+
+    Arguments:
+    ----------
+        - `cert`: The certificate to validate.
+        - `name`: The name of the public key algorithm.
+
+    Raises:
+    -------
+        - `ValueError`: If the OID does not match the name.
+        - `NotImplementedError`: If the OID is not supported.
+    """
+    pub_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+
+    if PQ_NAME_2_OID.get(name) is not None:
+        if str(pub_oid) != str(PQ_NAME_2_OID[name]):
+            raise ValueError(f"The OID {pub_oid} does not match the name {name}.")
+
+    elif HYBRID_NAME_2_OID.get(name) is not None:
+        if str(pub_oid) != str(HYBRID_NAME_2_OID[name]):
+            raise ValueError(f"The OID {pub_oid} does not match the name {name}.")
+    else:
+        raise NotImplementedError(f"Unsupported OID: {pub_oid}")

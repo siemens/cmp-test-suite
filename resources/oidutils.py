@@ -401,21 +401,35 @@ ML_DSA_OID_2_NAME.update(ML_DSA_PRE_HASH_OID_2_NAME)
 
 ML_DSA_NAME_2_OID = {y: x for x, y in ML_DSA_OID_2_NAME.items()}
 
-SLH_DSA_NAME_2_OID = {
-    "slh-dsa-sha2-128s": sig_algorithms_oid + (20,),
-    "slh-dsa-sha2-128f": sig_algorithms_oid + (21,),
-    "slh-dsa-sha2-192s": sig_algorithms_oid + (22,),
-    "slh-dsa-sha2-192f": sig_algorithms_oid + (23,),
-    "slh-dsa-sha2-256s": sig_algorithms_oid + (24,),
-    "slh-dsa-sha2-256f": sig_algorithms_oid + (25,),
-    "slh-dsa-shake-128s": sig_algorithms_oid + (26,),
-    "slh-dsa-shake-128f": sig_algorithms_oid + (27,),
-    "slh-dsa-shake-192s": sig_algorithms_oid + (28,),
-    "slh-dsa-shake-192f": sig_algorithms_oid + (29,),
-    "slh-dsa-shake-256s": sig_algorithms_oid + (30,),
-    "slh-dsa-shake-256f": sig_algorithms_oid + (31,),
-}
 
+SIG_ALGS = "2.16.840.1.101.3.4.3"
+id_SLH_DSA_SHA2_128S = f"{SIG_ALGS}.20"
+id_SLH_DSA_SHA2_128F = f"{SIG_ALGS}.21"
+id_SLH_DSA_SHA2_192S = f"{SIG_ALGS}.22"
+id_SLH_DSA_SHA2_192F = f"{SIG_ALGS}.23"
+id_SLH_DSA_SHA2_256S = f"{SIG_ALGS}.24"
+id_SLH_DSA_SHA2_256F = f"{SIG_ALGS}.25"
+id_SLH_DSA_SHAKE_128S = f"{SIG_ALGS}.26"
+id_SLH_DSA_SHAKE_128F = f"{SIG_ALGS}.27"
+id_SLH_DSA_SHAKE_192S = f"{SIG_ALGS}.28"
+id_SLH_DSA_SHAKE_192F = f"{SIG_ALGS}.29"
+id_SLH_DSA_SHAKE_256S = f"{SIG_ALGS}.30"
+id_SLH_DSA_SHAKE_256F = f"{SIG_ALGS}.31"
+
+SLH_DSA_NAME_2_OID = {
+    "slh-dsa-sha2-128s": univ.ObjectIdentifier(id_SLH_DSA_SHA2_128S),
+    "slh-dsa-sha2-128f": univ.ObjectIdentifier(id_SLH_DSA_SHA2_128F),
+    "slh-dsa-sha2-192s": univ.ObjectIdentifier(id_SLH_DSA_SHA2_192S),
+    "slh-dsa-sha2-192f": univ.ObjectIdentifier(id_SLH_DSA_SHA2_192F),
+    "slh-dsa-sha2-256s": univ.ObjectIdentifier(id_SLH_DSA_SHA2_256S),
+    "slh-dsa-sha2-256f": univ.ObjectIdentifier(id_SLH_DSA_SHA2_256F),
+    "slh-dsa-shake-128s": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_128S),
+    "slh-dsa-shake-128f": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_128F),
+    "slh-dsa-shake-192s": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_192S),
+    "slh-dsa-shake-192f": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_192F),
+    "slh-dsa-shake-256s": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_256S),
+    "slh-dsa-shake-256f": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_256F),
+}
 
 SLH_DSA_NAME_2_OID_PRE_HASH = {
     "slh-dsa-sha2-128s-sha256": sig_algorithms_oid + (35,),
@@ -489,7 +503,7 @@ ALL_KNOWN_PROTECTION_OIDS.update(ML_DSA_NAME_2_OID)
 XWING_OID_STR = "1.3.6.1.4.1.62253.25722"
 
 
-ALL_POSS_COMBINATIONS = [
+ALL_POSS_COMPOSITE_SIG_COMBINATIONS = [
     {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
     {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
     {"pq_name": "ml-dsa-44", "trad_name": "ed25519", "curve": None},
@@ -545,6 +559,13 @@ KEM_OID_2_NAME.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
 KEM_OID_2_NAME.update(COMPOSITE_KEM_OID_2_NAME)
 
 
+HYBRID_NAME_2_OID = {}
+HYBRID_NAME_2_OID.update(COMPOSITE_KEM_OID_2_NAME)
+HYBRID_NAME_2_OID.update(CHEMPAT_OID_2_NAME)
+HYBRID_NAME_2_OID.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
+HYBRID_NAME_2_OID.update(CMS_COMPOSITE_NAME_2_OID)
+
 ALL_KNOWN_PROTECTION_OIDS.update(PQ_OID_2_NAME)
 ALL_KNOWN_PROTECTION_OIDS.update(KEM_OID_2_NAME)
 ALL_KNOWN_PROTECTION_OIDS.update({rfc9481.rsaEncryption: "rsa_encryption"})
+

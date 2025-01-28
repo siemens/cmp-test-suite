@@ -21,7 +21,7 @@ from resources import oid_mapping
 from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import get_curve_instance, sha_alg_name_to_oid
 from resources.oidutils import (
-    ALL_POSS_COMBINATIONS,
+    ALL_POSS_COMPOSITE_SIG_COMBINATIONS,
     CMS_COMPOSITE_NAME_2_OID,
     CURVE_NAMES_TO_INSTANCES,
 )
@@ -49,7 +49,7 @@ def get_valid_comb(
     if pq_name is None and trad_name is None:
         return {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"}
 
-    for entry in ALL_POSS_COMBINATIONS:
+    for entry in ALL_POSS_COMPOSITE_SIG_COMBINATIONS:
         if pq_name and entry["pq_name"] == pq_name:
             return entry
 
