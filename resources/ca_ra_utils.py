@@ -1344,7 +1344,32 @@ def build_cert_from_cert_req_msg(# noqa: D417 Missing argument descriptions in t
     return cert_response
 
 
-def prepare_enc_cert_for_request(# noqa: D417 Missing argument descriptions in the docstring
+def _perform_encaps_with_keys(
+    public_key: PublicKey,
+    hybrid_kem_key: Optional[Union[ECDHPrivateKey, HybridKEMPrivateKey]] = None,
+) -> Tuple[bytes, bytes, univ.ObjectIdentifier]:
+    """Perform encapsulation with the provided keys.
+
+    :param public_key: The public key to encapsulate.
+    :param hybrid_kem_key: The hybrid KEM key to use for encapsulation. Defaults to `None`.
+    :return: The shared secret and the encapsulated key.
+    :raises ValueError: If the public key is not a KEM public key.
+    """
+    if not is_kem_public_key(public_key):
+        raise ValueError(f"Invalid public key for `keyEncipherment`: {type(public_key)}")
+
+    if isinstance(hybrid_kem_key, HybridKEMPrivateKey):
+        ss, ct = hybrid_kem_key.encaps(public_key) # type: ignore
+        kem_oid = get_kem_oid_from_key(hybrid_kem_key)
+    elif isinstance(public_key, HybridKEMPublicKey):
+        ss, ct = public_key.encaps(hybrid_kem_key) # type: ignore
+        kem_oid = get_kem_oid_from_key(public_key)
+    else:
+        ss, ct = public_key.encaps()
+        kem_oid = get_kem_oid_from_key(public_key)
+
+    return ss, ct, kem_oid
+
     cert_req_msg: rfc4211.CertReqMsg,
     signing_key: PrivateKey,
     hash_alg: str,
