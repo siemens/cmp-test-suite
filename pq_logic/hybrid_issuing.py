@@ -618,6 +618,45 @@ def prepare_catalyst_cert_req_msg_approach(
     return cert_req_msg
 
 
+def _generate_catalyst_alt_sig_key(
+        alt_sig_alg: Optional[rfc5280.Extension],
+        alt_key: Optional[Union[PQSignaturePrivateKey, TradSigPrivKey]],
+        allow_chosen_sig_alg: bool,
+        extensions: Optional[rfc9480.Extensions] = None,
+):
+    """Generate an alternative key for the Catalyst signed certificate.
+
+    :param alt_sig_alg: The alternative signature algorithm.
+    :param alt_key: The alternative key to use for signing.
+    :param allow_chosen_sig_alg: Whether to allow the chosen signature algorithm.
+    :return: The alternative key and the optional alternative hash algorithm.
+    :raises BadAsn1Data: If the ASN.1 data is invalid.
+    :raises BadAlg: If the algorithm is not supported.
+    """
+    if extensions is not None:
+        alt_sig_alg = get_extension(extensions, id_ce_altSignatureAlgorithm)
+
+    pq_hash_alg = None
+    if alt_sig_alg is not None and allow_chosen_sig_alg:
+        alt_sig_alg, rest = decoder.decode(alt_sig_alg["extnValue"], asn1Spec=rfc5280.AlgorithmIdentifier())
+        if rest:
+            raise BadAsn1Data("AltSignatureAlgorithm")
+        try:
+            alt_key = generate_key_based_on_alg_id(alt_sig_alg)
+        except NotImplementedError as e:
+            raise BadAlg("The provided signature algorithm is not supported.", extra_details=str(e)) from e
+        except UnknownOID as e:
+            raise BadAlg("The provided signature algorithm is not supported.", extra_details=e.message) from e
+
+        if alt_sig_alg["algorithm"] in PQ_SIG_PRE_HASH_OID_2_NAME:
+            pq_hash_alg = PQ_SIG_PRE_HASH_OID_2_NAME[alt_sig_alg["algorithm"]].split("-")[-1]
+
+    elif alt_key is None:
+        alt_key = generate_key("ml-dsa-65")
+
+    return alt_key, pq_hash_alg
+
+
 def build_chameleon_from_p10cr(
         request: rfc9480.PKIMessage,
         ca_cert: rfc9480.CMPCertificate,
