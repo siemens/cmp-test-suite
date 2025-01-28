@@ -182,6 +182,74 @@ def build_sun_hybrid_cert_from_request(
 
     return pki_message
 
+@not_keyword
+def build_enc_cert_response(
+        request: rfc9480.PKIMessage,
+        ca_cert: rfc9480.CMPCertificate,
+        signing_key: Optional[PrivateKey] = None,
+        new_ee_cert: Optional[rfc9480.CMPCertificate] = None,
+        hash_alg: str = "sha256",
+        cert_index: Optional[int] = None,
+        cert_req_id: Optional[int] = None,
+        hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
+        client_pub_key: Optional[PQKEMPublicKey] = None,
+) -> rfc9480.PKIMessage:
+    """Build an encrypted certificate response.
+
+    :param request: The certificate request.
+    :param new_ee_cert: The newly created end-entity certificate.
+    :param ca_cert: The CA certificate.
+    :param signing_key: The key to sign the certificate with.
+    :param hash_alg: The hash algorithm to use for signing the certificate. Defaults to "sha256".
+    :param cert_index: The index of the certificate request to use. Defaults to 0.
+    :param cert_req_id: The certificate request ID. Defaults to the ID inside the request.
+    :param hybrid_kem_key: The optional hybrid key, to use for the HybridKEM key encapsulation.
+    :param client_pub_key: The optional client public key, to use for the HybridKEM key encapsulation.
+    (only needed for the proposed catalyst approach.)
+    :return: PKIMessage with the encrypted certificate response.
+    """
+    if request["body"].getName() == "p10cr":
+        raise ValueError("Only IR or CR is supported to build a encrypted certificate response.")
+
+    cert_index = cert_index if cert_index is not None else 0
+
+    if cert_index is None:
+        # Should be updated to handle multiple request.
+        # TODO fix for multiple request.
+        pass
+
+    cert_req_msg: rfc4211.CertReqMsg = request["body"]["ir"][cert_index]
+    cert_req_id = cert_req_id or cert_req_msg["certReq"]["certReqId"]
+
+    enc_cert = prepare_encr_cert_for_request(
+        cert_req_msg=cert_req_msg,
+        signing_key=signing_key,
+        hash_alg=hash_alg,
+        ca_cert=ca_cert,
+        new_ee_cert=new_ee_cert,
+        hybrid_kem_key=hybrid_kem_key,
+        client_pub_key=client_pub_key,
+    )
+
+    cert_response = prepare_cert_response(
+        request=request,
+        enc_cert=enc_cert,
+        cert_req_id=cert_req_id,
+        text="Issued encrypted certificate please verify with `CertConf`",
+    )
+
+    if request["body"].getName() == "ir":
+        body_name = "ip"
+    else:
+        body_name = "cp"
+
+    pki_message = build_ca_pki_message(body_type=body_name, responses=[cert_response])
+    pki_message = patch_pkimessage_header_with_other_message(
+        target=pki_message, other_message=request, for_exchange=True
+    )
+    return pki_message
+
+
 def build_chameleon_from_p10cr(
         request: rfc9480.PKIMessage,
         ca_cert: rfc9480.CMPCertificate,
