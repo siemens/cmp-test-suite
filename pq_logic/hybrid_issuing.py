@@ -84,12 +84,13 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
     protection_key: PrivateKey,
     pub_key_loc: str,
     sig_loc: str,
+    serial_number: Optional[int] = None,
     protection: str = "password_based_mac",
     password: Optional[str] = None,
     issuer_cert: Optional[rfc9480.CMPCertificate] = None,
     cert_chain: Optional[Sequence[rfc9480.CMPCertificate]] = None,
     cert_index: Optional[int] = None,
-) -> rfc9480.PKIMessage:
+) -> Tuple[rfc9480.PKIMessage, rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Build a Sun-Hybrid certificate from a request.
 
     The certificate in form 1 is at the second position in the `extraCerts` list.
@@ -121,6 +122,7 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
             csr=request["body"]["p10cr"],
             issuer_private_key=signing_key.trad_key,
             alt_private_key=signing_key.pq_key,
+            serial_number=serial_number,
             issuer_cert=issuer_cert,
         )
         pki_message = build_cp_from_p10cr(request=request, cert=cert4, cert_req_id=-1)
@@ -150,6 +152,7 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
             cert4, cert1 = sun_cert_template_to_cert(
                 cert_template=cert_req_msg["certReq"]["certTemplate"],
                 issuer_cert=issuer_cert,
+                serial_number=serial_number,
                 issuer_private_key=signing_key.trad_key,
                 alt_private_key=signing_key.pq_key,
                 pub_key_loc=pub_key_loc,
@@ -183,7 +186,7 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
         if cert_chain is not None:
             pki_message["extraCerts"].extend(cert_chain[:1])
 
-    return pki_message
+    return pki_message, cert4, cert1
 
 
 @not_keyword

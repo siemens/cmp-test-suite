@@ -311,6 +311,7 @@ def sun_csr_to_cert(
     alt_private_key,
     issuer_cert: Optional[rfc9480.CMPCertificate] = None,
     hash_alg: str = "sha256",
+    serial_number: Optional[int] = None,
     extensions: Optional[List[rfc5280.Extension]] = None,
 ) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Convert a CSR to a certificate, with the sun hybrid methode.
@@ -320,6 +321,7 @@ def sun_csr_to_cert(
     :param issuer_private_key: The private key of the issuer for signing.
     :param alt_private_key: The certificate of the issuer.Optional alternative private key for creating AltSignatureExt.
     :param hash_alg: Hash algorithm for signing the certificate (e.g., "sha256").
+    :param serial_number: The serial number to use for the certificate. Defaults to `None`.
     :param extensions: Optional list of additional extensions to include in the certificate.
     :return: A tuple of the Form4 and Form1 certificates.
     """
@@ -343,6 +345,7 @@ def sun_csr_to_cert(
     cert_form4, ext_sig, ext_pub = prepare_sun_hybrid_pre_tbs_certificate(
         public_key,
         alt_private_key=alt_private_key,
+        serial_number=serial_number,
         issuer_private_key=issuer_private_key,
         csr=csr,
         validity=validity,
@@ -369,6 +372,7 @@ def sun_cert_template_to_cert(
     pub_key_loc: Optional[str],
     sig_loc: Optional[str],
     hash_alg: Optional[str] = None,
+    serial_number: Optional[int] = None,
 ) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Convert a certificate template to a certificate, with the sun hybrid method.
 
@@ -379,11 +383,13 @@ def sun_cert_template_to_cert(
     :param pub_key_loc: The location of the alternative public key.
     :param sig_loc: The location of the alternative signature.
     :param hash_alg: The hash algorithm to use for signing the certificate (e.g., "sha256").
+    :param serial_number: The serial number to use for the certificate. Defaults to `None`.
     :return: A tuple of the Form4 and Form1 certificates.
     """
     tbs_cert = prepare_tbs_certificate_from_template(
         cert_template=cert_template,
         issuer_cert=issuer_cert["tbsCertificate"]["subject"],
+        serial_number=serial_number,
     )
 
     composite_key = load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
@@ -472,6 +478,7 @@ def prepare_sun_hybrid_pre_tbs_certificate(
     pub_key_loc: Optional[str],
     sig_loc: Optional[str],
     extensions: List[rfc5280.Extension],
+    serial_number: Optional[int] = None,
 ):
     """Prepare a `TBSCertificate` structure with alternative public key and signature extensions.
 
@@ -486,6 +493,8 @@ def prepare_sun_hybrid_pre_tbs_certificate(
     :param validity: The validity object for the certificate.
     :param pub_key_loc: An optional URI representing the location of the alternative public key.
     :param sig_loc: An optional URI representing the location of the alternative signature.
+    :param extensions: Optional list of additional extensions to include in the certificate.
+    :param serial_number: The serial number to use for the certificate. Defaults to `None`.
     :return: A fully prepared TBSCertificate wrapped in a certificate structure.
     :raises ValueError: If required parameters are missing or invalid.
     """
@@ -501,6 +510,7 @@ def prepare_sun_hybrid_pre_tbs_certificate(
     subject = utils.get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
     pre_tbs_cert = prepare_tbs_certificate(
         subject=subject,
+        serial_number=serial_number,
         signing_key=issuer_private_key,
         issuer_cert=issuer_cert,
         public_key=composite_key.trad_key,  # Construct a SubjectPublicKeyInfo object from pk_1
@@ -595,6 +605,27 @@ def validate_alt_pub_key_extn(cert: rfc9480.CMPCertificate):
         raise ValueError("The algorithm is not the same as inside the `AltSubPubKeyExt` structure")
 
     return CombinedKeyFactory.load_public_key_from_spki(spki)
+
+
+def get_sun_hybrid_alt_sig(cert: rfc9480.CMPCertificate) -> bytes:
+    """Get the alternative signature extension from the certificate.
+
+    Expects the certificate to be in Form 1.
+
+    :param cert: The certificate to extract the extension from.
+    :return: The alternative signature.
+    """
+    decoded_ext = None
+    for x in cert["tbsCertificate"]["extensions"]:
+        if x["extnID"] == id_altSignatureExt:
+            decoded_ext, _ = decoder.decode(x["extnValue"].asOctets(), AltSignatureExt())
+
+    if not decoded_ext:
+        raise ValueError("The `AltSignatureExt` was not inside the certificate.")
+    return decoded_ext["plainOrHash"].asOctets()
+
+
+
 
 
 def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: Optional[bytes] = None):
