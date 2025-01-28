@@ -360,3 +360,84 @@ def verify_hybrid_pkimessage_protection(
             data=data,
             signature=alt_sig,
         )
+
+
+def verify_crl_signature(crl: rfc5280.CertificateList,
+                         ca_cert: rfc9480.CMPCertificate,
+                         alt_public_key: Optional[PublicKey] = None,
+                         must_be_catalyst_signed: bool = False) -> None:
+    """Verify the signature of a CRL with a CA certificate.
+
+    Can also be used to verify the signature of a CRL signed with an alternative key.
+
+    :param crl: The CRL to verify.
+    :param ca_cert: The CA certificate to use for verification.
+    :param alt_public_key: An alternative public key to use for verification. Defaults to `None`.
+    :param must_be_catalyst_signed: If set, the CRL is also signed with an
+    alternative key. Defaults to `False`.
+    :raises InvalidSignature: If the signature is invalid.
+    :raises InvalidAltSignature: If the alternative signature is invalid.
+    """
+    crl_tbs = encoder.encode(crl["tbsCertList"])
+    crl_signature = crl["signature"].asOctets()
+    hash_oid = crl["signatureAlgorithm"]["algorithm"]
+    hash_alg = get_hash_from_oid(hash_oid, only_hash=True)
+    certutils.verify_signature_with_cert(signature=crl_signature, hash_alg=hash_alg, data=crl_tbs,
+                               asn1cert=ca_cert)
+
+    alt_extn = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+    if crl["tbsCertList"]["crlExtensions"].isValue:
+        crl_extensions = crl["tbsCertList"]["crlExtensions"]
+        alt_sig_alg = None
+        alt_sig_value = None
+        for extn in crl_extensions:
+            if extn["extnID"] == id_ce_altSignatureValue:
+                alt_sig, rest = decoder.decode(extn["extnValue"], univ.BitString())
+                if rest:
+                    raise BadAsn1Data("AltSignatureValue")
+                alt_sig_value = alt_sig.asOctets()
+
+            elif extn["extnID"] == id_ce_altSignatureAlgorithm:
+                alt_extn.append(extn)
+                alt_sig_alg, rest = decoder.decode(extn["extnValue"], rfc5280.AlgorithmIdentifier())
+                if rest:
+                    raise BadAsn1Data("AltSignatureAlgorithm")
+
+            elif extn["extnID"] == id_ce_subjectAltPublicKeyInfo:
+                alt_extn.append(extn)
+                alt_spki, rest = decoder.decode(extn["extnValue"], rfc5280.SubjectPublicKeyInfo())
+                if rest:
+                    raise BadAsn1Data("AltSubjectAltPublicKeyInfo")
+
+                if alt_public_key is None:
+                    alt_public_key = keyutils.load_public_key_from_spki(alt_spki)
+                else:
+                    logging.debug("Found an alternative public key in the CRL.")
+
+            else:
+                alt_extn.append(extn)
+
+        crl["tbsCertList"]["crlExtensions"] = alt_extn
+        if alt_sig_alg is None:
+            raise ValueError("The CRL does not contain an alternative signature algorithm.")
+
+        if alt_public_key is None:
+            raise ValueError("The CRL does not contain an alternative public key.")
+
+        if alt_sig_value is None:
+            raise ValueError("The CRL does not contain an alternative signature.")
+
+        data = encoder.encode(crl["tbsCertList"]) + encoder.encode(crl["signatureAlgorithm"])
+        try:
+            pq_logic.pq_compute_utils.verify_signature_with_alg_id(
+            public_key=alt_public_key,
+            alg_id=alt_sig_alg,
+            signature=alt_sig_value,
+            data=data,
+            )
+        except InvalidSignature as e:
+            key_name = alt_public_key.name if hasattr(alt_public_key, "name") else type(alt_public_key)
+            raise InvalidAltSignature("The alternative signature is invalid, for key: %s" % key_name) from e
+
+    elif must_be_catalyst_signed:
+        raise ValueError("The CRL was not signed by the an alternative key.")
