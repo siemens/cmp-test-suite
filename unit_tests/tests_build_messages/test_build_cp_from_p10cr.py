@@ -38,7 +38,7 @@ class TestBuildCpFromP10cr(unittest.TestCase):
             csr=csr,
             sender=self.common_name,
         )
-        response = build_cp_from_p10cr(
+        response, _ = build_cp_from_p10cr(
             request=request,
             common_name=self.common_name,
             ca_key=self.pq_mldsa,

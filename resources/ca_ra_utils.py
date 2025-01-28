@@ -740,7 +740,7 @@ def build_cp_from_p10cr( # noqa: D417 Missing argument descriptions in the docst
     ca_key: Optional[PrivateKey] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     **kwargs,
-) -> rfc9480.PKIMessage:
+) -> Tuple[rfc9480.PKIMessage, rfc9480.CMPCertificate]:
     """Build a CMP message for a certificate request.
 
     Arguments:
@@ -785,7 +785,7 @@ def build_cp_from_p10cr( # noqa: D417 Missing argument descriptions in the docst
     body = _prepare_ca_body(body_name="cp", responses=responses, ca_pubs=ca_pubs)
     pki_message = cmputils._prepare_pki_message(**kwargs)
     pki_message["body"] = body
-    return pki_message
+    return pki_message, cert
 
 
 def _process_one_cert_request(
