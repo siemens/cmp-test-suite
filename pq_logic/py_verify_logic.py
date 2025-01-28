@@ -138,29 +138,33 @@ def _verify_signature_with_other_cert(
     pq_compute_utils.verify_signature_with_alg_id(public_key, sig_alg, data, signature)
 
 
-def verify_composite_signature_with_hybrid_cert(
-    data: bytes,
-    signature: bytes,
-    sig_alg: rfc9480.AlgorithmIdentifier,
-    cert: rfc9480.CMPCertificate,
-    other_certs: Optional[CertOrCerts] = None,
-) -> None:
+def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
+        data: bytes,
+        signature: bytes,
+        sig_alg: rfc9480.AlgorithmIdentifier,
+        cert: rfc9480.CMPCertificate,
+        other_certs: Optional[CertOrCerts]=None) -> None:
     """Verify a signature using a hybrid certificate.
 
     Expected to either get a composite signature certificate or a certificate with a related certificate extension.
     or a certificate with a cert discovery extension. So that the second certificate can be extracted.
 
-    :param data: The data to verify.
-    :param signature: The signature to verify against the data.
-    :param sig_alg: The signature algorithm identifier.
-    :param cert: The certificate may contain a composite signature key or a single key.
-    :param other_certs: A single certificate or a sequence of certificates to extract
-    the related certificate from.
-    :raises ValueError: If the alternative key cannot be obtained.
-    :raises UnknownOID: If the signature algorithm OID is not supported.
-    :raises InvalidSignature: If the signature verification fails.
-    :raises ValueError: If the `cert` contains a PQ signature algorithm.
-    It Should be a traditional algorithm for migration strategy.
+    Arguments:
+    ---------
+        - `data`: The data to verify.
+        - `signature`: The signature to verify against the data.
+        - `sig_alg`: The signature algorithm identifier.
+        - `cert`: The certificate may contain a composite signature key or a single key.
+        - `other_certs`: A single certificate or a sequence of certificates to extract
+        - the related certificate from.
+
+    Raises:
+    ------
+        - `ValueError`: If the alternative key cannot be obtained.
+        - `UnknownOID`: If the signature algorithm OID is not supported.
+        - `InvalidSignature`: If the signature verification fails.
+        - `ValueError`: If the `cert` contains a PQ signature algorithm.
+        - It Should be a traditional algorithm for migration strategy.
     """
     if sig_alg["algorithm"] not in CMS_COMPOSITE_OID_2_NAME:
         raise ValueError("The signature algorithm is not a composite signature.")
