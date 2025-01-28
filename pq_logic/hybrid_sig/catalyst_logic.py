@@ -24,14 +24,16 @@ from resources import cryptoutils
 from resources.exceptions import BadAlg, BadAsn1Data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
-from resources.oidutils import PQ_NAME_2_OID, id_ce_subjectAltPublicKeyInfo, id_ce_altSignatureAlgorithm, \
-    id_ce_altSignatureValue
+from resources.oidutils import (
+    PQ_NAME_2_OID,
+    id_ce_subjectAltPublicKeyInfo,
+    id_ce_altSignatureAlgorithm,
+    id_ce_altSignatureValue,
+)
 from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey, TradSigPrivKey
 
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-
-
 
 
 def prepare_subject_alt_public_key_info_extn(
@@ -304,7 +306,9 @@ def verify_catalyst_signature_migrated(
         cert, exclude_alt_extensions=exclude_alt_extensions, only_tbs_cert=only_tbs_cert
     )
 
-    cryptoutils.verify_signature(public_key=pq_pub_key, hash_alg=hash_alg, data=alt_sig_data, signature=catalyst_ext["signature"])
+    cryptoutils.verify_signature(
+        public_key=pq_pub_key, hash_alg=hash_alg, data=alt_sig_data, signature=catalyst_ext["signature"]
+    )
 
     logging.info("Alternative signature verification succeeded.")
 
@@ -397,19 +401,19 @@ def load_catalyst_public_key(extensions: rfc9480.Extensions) -> PublicKey:
     return alt_issuer_key
 
 
-
-def sign_crl_catalyst(crl: rfc5280.CertificateList,
-                      ca_private_key: PrivateKeySig,
-                      alt_private_key: Optional[PrivateKeySig] = None,
-                      include_alt_public_key: bool = False,
-                      hash_alg: str = "sha256",
-                      alt_hash_alg: Optional[str] = None,
-                      use_pre_hash: bool = False,
-                      use_rsa_pss: bool = False,
-                      critical: bool = False,
-                      bad_sig: bool = False,
-                      bad_alt_sig: bool = False,
-                      ) -> rfc5280.CertificateList:
+def sign_crl_catalyst(
+    crl: rfc5280.CertificateList,
+    ca_private_key: PrivateKeySig,
+    alt_private_key: Optional[PrivateKeySig] = None,
+    include_alt_public_key: bool = False,
+    hash_alg: str = "sha256",
+    alt_hash_alg: Optional[str] = None,
+    use_pre_hash: bool = False,
+    use_rsa_pss: bool = False,
+    critical: bool = False,
+    bad_sig: bool = False,
+    bad_alt_sig: bool = False,
+) -> rfc5280.CertificateList:
     """Sign a CRL with a CA certificate and private key.
 
     Can also be used to sign the CRL with an alternative key.
@@ -435,35 +439,30 @@ def sign_crl_catalyst(crl: rfc5280.CertificateList,
          - The signed CRL.
     """
 
-    crl["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=ca_private_key,
-                                                   use_rsa_pss=use_rsa_pss,
-                                                   hash_alg=hash_alg,
-                                                   use_pre_hash=use_pre_hash)
-
-
-
+    crl["signatureAlgorithm"] = prepare_sig_alg_id(
+        signing_key=ca_private_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg, use_pre_hash=use_pre_hash
+    )
 
     if alt_private_key is not None:
-        extn = prepare_alt_sig_alg_id_extn(alg_id=None,
-                                           hash_alg=alt_hash_alg or hash_alg,
-                                           key=alt_private_key,
-                                           use_pre_hash=use_pre_hash,
-                                           use_rsa_pss=use_rsa_pss,
-                                           critical=critical
-                                           )
+        extn = prepare_alt_sig_alg_id_extn(
+            alg_id=None,
+            hash_alg=alt_hash_alg or hash_alg,
+            key=alt_private_key,
+            use_pre_hash=use_pre_hash,
+            use_rsa_pss=use_rsa_pss,
+            critical=critical,
+        )
 
         crl["tbsCertList"]["crlExtensions"].append(extn)
         if include_alt_public_key:
-            extn = prepare_subject_alt_public_key_info_extn(public_key=alt_private_key.public_key(),
-                                                     critical=critical,
-                                                     )
+            extn = prepare_subject_alt_public_key_info_extn(
+                public_key=alt_private_key.public_key(),
+                critical=critical,
+            )
             crl["tbsCertList"]["crlExtensions"].append(extn)
 
         data = encoder.encode(crl["tbsCertList"]) + encoder.encode(crl["signatureAlgorithm"])
-        alt_sig_value = cryptoutils.sign_data(data=data,
-                                              key=alt_private_key,
-                                              hash_alg=alt_hash_alg or hash_alg
-                                              )
+        alt_sig_value = cryptoutils.sign_data(data=data, key=alt_private_key, hash_alg=alt_hash_alg or hash_alg)
 
         if bad_alt_sig:
             if isinstance(alt_private_key, AbstractCompositeSigPrivateKey):

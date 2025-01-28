@@ -536,12 +536,7 @@ def _compute_ss(client_key, ca_cert):
 
 # TODO fix doc
 def _prepare_pkmac_val(
-    shared_secret: bytes,
-    data: bytes,
-    mac_alg: str,
-    for_agreement: bool = True,
-    bad_pop: bool = False,
-    **mac_params
+    shared_secret: bytes, data: bytes, mac_alg: str, for_agreement: bool = True, bad_pop: bool = False, **mac_params
 ) -> rfc4211.ProofOfPossession:
     """Prepare the PKMAC value for the Proof-of-Possession structure.
 
@@ -577,6 +572,7 @@ def _prepare_pkmac_val(
     popo_structure = rfc4211.ProofOfPossession()
     popo_structure[option] = popo_priv_key
     return popo_structure
+
 
 @keyword(name="Prepare keyAgreement POPO")
 def prepare_key_agreement_popo(
@@ -616,7 +612,6 @@ def prepare_key_agreement_popo(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)
         )
     elif shared_secret is not None:
-
         if cert_request is None:
             raise ValueError("The certificate request is required for `agreeMAC` PoP.")
 
@@ -626,9 +621,10 @@ def prepare_key_agreement_popo(
         return _prepare_pkmac_val(
             shared_secret=shared_secret,
             data=cert_request,
-            for_agreement=True, mac_alg=mac_alg,
+            for_agreement=True,
+            mac_alg=mac_alg,
             bad_pop=bad_pop,
-            **mac_params
+            **mac_params,
         )
     else:
         popo_priv_key["encryptedKey"] = env_data

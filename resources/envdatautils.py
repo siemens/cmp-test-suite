@@ -1001,8 +1001,7 @@ def build_env_data_for_exchange(
         )
         kem_recip_info = _prepare_recip_info(kem_recip_info)
         return prepare_enveloped_data(
-            recipient_infos=[kem_recip_info], cek=cek, target=target, data_to_protect=data,
-            enc_oid=enc_oid
+            recipient_infos=[kem_recip_info], cek=cek, target=target, data_to_protect=data, enc_oid=enc_oid
         )
 
     else:
@@ -1061,7 +1060,6 @@ def prepare_kem_recip_info(
     if kem_oid is not None:
         kem_recip_info["kem"]["algorithm"] = kem_oid
 
-
     if kemct is not None:
         kem_recip_info["kemct"] = univ.OctetString(kemct)
 
@@ -1080,7 +1078,7 @@ def prepare_kem_recip_info(
             raise ValueError(f"The server's public key is not a `KEMPublicKey`. Got: {type(server_pub_key).__name__}.")
 
         if kem_oid is None:
-           kem_recip_info["kem"]["algorithm"] = get_kem_oid_from_key(server_pub_key)
+            kem_recip_info["kem"]["algorithm"] = get_kem_oid_from_key(server_pub_key)
 
         if hybrid_key_recip is None:
             shared_secret, kemct = server_pub_key.encaps()
@@ -1095,11 +1093,10 @@ def prepare_kem_recip_info(
         raise ValueError("Either `kemct` or `server_cert` or the `public_key` must be provided.")
 
     if shared_secret is not None:
-       key_enc_key = compute_hkdf(hash_alg=hash_alg, key_material=shared_secret, ukm=ukm, length=32)
+        key_enc_key = compute_hkdf(hash_alg=hash_alg, key_material=shared_secret, ukm=ukm, length=32)
 
     if encrypted_key is None:
         encrypted_key = keywrap.aes_key_wrap(wrapping_key=key_enc_key, key_to_wrap=cek)
-
 
     kem_recip_info["kdf"] = prepare_kdf(kdf_name=f"{kdf_name}-{hash_alg}")
 

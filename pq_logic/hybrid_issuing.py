@@ -48,8 +48,12 @@ from resources.cmputils import (
 from resources.convertutils import copy_asn1_certificate
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, UnknownOID, InvalidAltSignature
 from resources.keyutils import generate_key, generate_key_based_on_alg_id
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, PQ_SIG_PRE_HASH_OID_2_NAME, id_ce_altSignatureAlgorithm, \
-    id_ce_altSignatureValue
+from resources.oidutils import (
+    CMS_COMPOSITE_OID_2_NAME,
+    PQ_SIG_PRE_HASH_OID_2_NAME,
+    id_ce_altSignatureAlgorithm,
+    id_ce_altSignatureValue,
+)
 from resources.protectionutils import protect_pkimessage
 from resources.typingutils import PrivateKey, TradSigPrivKey
 from resources.utils import manipulate_composite_sig, manipulate_first_byte
@@ -64,8 +68,7 @@ from pq_logic.hybrid_sig.catalyst_logic import (
     sign_cert_catalyst,
 )
 from pq_logic.hybrid_structures import AltSignatureValueExt
-from pq_logic.hybrid_sig.chameleon_logic import \
-    build_chameleon_cert_from_paired_csr
+from pq_logic.hybrid_sig.chameleon_logic import build_chameleon_cert_from_paired_csr
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import sun_cert_template_to_cert, sun_csr_to_cert
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey, AbstractCompositeSigPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
@@ -76,16 +79,16 @@ from pq_logic.trad_typing import ECDHPrivateKey, CA_RESPONSE, CA_CERT_RESPONSE, 
 
 
 def build_sun_hybrid_cert_from_request(
-        request: rfc9480.PKIMessage,
-        signing_key: AbstractCompositeSigPrivateKey,
-        protection_key: PrivateKey,
-        pub_key_loc: str,
-        sig_loc: str,
-        protection: str = "password_based_mac",
-        password: Optional[str] = None,
-        issuer_cert: Optional[rfc9480.CMPCertificate] = None,
-        cert_chain: Optional[Sequence[rfc9480.CMPCertificate]] = None,
-        cert_index: Optional[int] = None,
+    request: rfc9480.PKIMessage,
+    signing_key: AbstractCompositeSigPrivateKey,
+    protection_key: PrivateKey,
+    pub_key_loc: str,
+    sig_loc: str,
+    protection: str = "password_based_mac",
+    password: Optional[str] = None,
+    issuer_cert: Optional[rfc9480.CMPCertificate] = None,
+    cert_chain: Optional[Sequence[rfc9480.CMPCertificate]] = None,
+    cert_index: Optional[int] = None,
 ) -> rfc9480.PKIMessage:
     """Build a Sun-Hybrid certificate from a request.
 
@@ -182,17 +185,18 @@ def build_sun_hybrid_cert_from_request(
 
     return pki_message
 
+
 @not_keyword
 def build_enc_cert_response(
-        request: rfc9480.PKIMessage,
-        ca_cert: rfc9480.CMPCertificate,
-        signing_key: Optional[PrivateKey] = None,
-        new_ee_cert: Optional[rfc9480.CMPCertificate] = None,
-        hash_alg: str = "sha256",
-        cert_index: Optional[int] = None,
-        cert_req_id: Optional[int] = None,
-        hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
-        client_pub_key: Optional[PQKEMPublicKey] = None,
+    request: rfc9480.PKIMessage,
+    ca_cert: rfc9480.CMPCertificate,
+    signing_key: Optional[PrivateKey] = None,
+    new_ee_cert: Optional[rfc9480.CMPCertificate] = None,
+    hash_alg: str = "sha256",
+    cert_index: Optional[int] = None,
+    cert_req_id: Optional[int] = None,
+    hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
+    client_pub_key: Optional[PQKEMPublicKey] = None,
 ) -> rfc9480.PKIMessage:
     """Build an encrypted certificate response.
 
@@ -251,13 +255,13 @@ def build_enc_cert_response(
 
 
 def build_cert_from_catalyst_request(
-        request: rfc9480.PKIMessage,
-        ca_cert: rfc9480.CMPCertificate,
-        ca_key: PrivateKey,
-        cert_index: Union[str, int] = 0,
-        hash_alg: str = "sha256",
-        use_rsa_pss: bool = True,
-        bad_sig: bool = False,
+    request: rfc9480.PKIMessage,
+    ca_cert: rfc9480.CMPCertificate,
+    ca_key: PrivateKey,
+    cert_index: Union[str, int] = 0,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = True,
+    bad_sig: bool = False,
 ) -> Tuple[rfc9480.PKIMessage, rfc9480.CMPCertificate]:
     """Build a certificate from a Catalyst request.
 
@@ -369,11 +373,11 @@ def _prepare_sig_popo(signing_key, data, hash_alg: str, use_rsa_pss: bool) -> rf
 
 
 def _compute_second_pop_catalyst(
-        alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey],
-        cert_request: rfc4211.CertRequest,
-        hash_alg: str,
-        use_rsa_pss: bool,
-        bad_alt_pop: bool,
+    alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey],
+    cert_request: rfc4211.CertRequest,
+    hash_alg: str,
+    use_rsa_pss: bool,
+    bad_alt_pop: bool,
 ) -> rfc4211.CertRequest:
     """Compute the second `POP` for a Catalyst request.
 
@@ -400,10 +404,10 @@ def _compute_second_pop_catalyst(
 
 
 def _verify_alt_sig_for_pop(
-        alt_pub_key: Union[PQSignaturePublicKey],
-        cert_req_msg: rfc4211.CertReqMsg,
-        alt_sig_alg_id: rfc5280.Extension,
-        alt_sig: rfc5280.Extension,
+    alt_pub_key: Union[PQSignaturePublicKey],
+    cert_req_msg: rfc4211.CertReqMsg,
+    alt_sig_alg_id: rfc5280.Extension,
+    alt_sig: rfc5280.Extension,
 ) -> None:
     """Verify the alternative signature for the `POP`.
 
@@ -522,15 +526,15 @@ def verify_sig_popo_catalyst_cert_req_msg(cert_req_msg: rfc4211.CertReqMsg) -> N
 
 @keyword(name="Prepare Catalyst CertReqMsg Approach")
 def prepare_catalyst_cert_req_msg_approach(
-        first_key,
-        alt_key,
-        cert_req_id: Union[int, str] = 0,
-        hash_alg: str = "sha256",
-        subject: str = "CN=CMP Catalyst Test",
-        use_rsa_pss: bool = True,
-        use_composite_sig: bool = False,
-        bad_pop: bool = False,
-        bad_alt_pop: bool = False,
+    first_key,
+    alt_key,
+    cert_req_id: Union[int, str] = 0,
+    hash_alg: str = "sha256",
+    subject: str = "CN=CMP Catalyst Test",
+    use_rsa_pss: bool = True,
+    use_composite_sig: bool = False,
+    bad_pop: bool = False,
+    bad_alt_pop: bool = False,
 ) -> rfc4211.CertReqMsg:
     """Prepare a `Catalyst` approach for a certificate request message.
 
@@ -560,7 +564,7 @@ def prepare_catalyst_cert_req_msg_approach(
         extn = prepare_subject_alt_public_key_info_extn(alt_key.public_key(), critical=False)
         cert_req["certTemplate"]["extensions"].append(extn)
         data = encoder.encode(cert_req)
-        sig_alg = prepare_sig_alg_id(signing_key=comp_key, use_rsa_pss=True, hash_alg=hash_alg) # type: ignore
+        sig_alg = prepare_sig_alg_id(signing_key=comp_key, use_rsa_pss=True, hash_alg=hash_alg)  # type: ignore
         sig = sign_data_with_alg_id(key=comp_key, alg_id=sig_alg, data=data)
 
         if bad_pop:
@@ -579,7 +583,7 @@ def prepare_catalyst_cert_req_msg_approach(
         )
 
     elif isinstance(alt_key, (PQSignaturePrivateKey, TradSigPrivKey)) and isinstance(
-            first_key, (PQSignaturePrivateKey, TradSigPrivKey)
+        first_key, (PQSignaturePrivateKey, TradSigPrivKey)
     ):
         # means that both are signature keys.
         cert_req = _compute_second_pop_catalyst(
@@ -592,7 +596,7 @@ def prepare_catalyst_cert_req_msg_approach(
         popo = prepare_popo(signature=sig, signing_key=first_key, alg_oid=sig_alg["algorithm"])
 
     elif isinstance(alt_key, PQKEMPrivateKey) and isinstance(first_key, TradSigPrivKey):
-        extn = prepare_subject_alt_public_key_info_extn(alt_key.public_key(), critical=False) # type: ignore
+        extn = prepare_subject_alt_public_key_info_extn(alt_key.public_key(), critical=False)  # type: ignore
         cert_template["extensions"].append(extn)
         cert_req["certTemplate"] = cert_template
 
@@ -619,10 +623,10 @@ def prepare_catalyst_cert_req_msg_approach(
 
 
 def _generate_catalyst_alt_sig_key(
-        alt_sig_alg: Optional[rfc5280.Extension],
-        alt_key: Optional[Union[PQSignaturePrivateKey, TradSigPrivKey]],
-        allow_chosen_sig_alg: bool,
-        extensions: Optional[rfc9480.Extensions] = None,
+    alt_sig_alg: Optional[rfc5280.Extension],
+    alt_key: Optional[Union[PQSignaturePrivateKey, TradSigPrivKey]],
+    allow_chosen_sig_alg: bool,
+    extensions: Optional[rfc9480.Extensions] = None,
 ):
     """Generate an alternative key for the Catalyst signed certificate.
 
@@ -659,14 +663,14 @@ def _generate_catalyst_alt_sig_key(
 
 @not_keyword
 def build_catalyst_signed_cert_from_p10cr(
-        request: rfc9480.PKIMessage,
-        ca_key: PrivateKey,
-        ca_cert: rfc9480.CMPCertificate,
-        alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
-        hash_alg: str = "sha256",
-        use_rsa_pss: bool = True,
-        cert_req_id: Optional[Union[int, str]] = None,
-        allow_chosen_sig_alg: bool = True,
+    request: rfc9480.PKIMessage,
+    ca_key: PrivateKey,
+    ca_cert: rfc9480.CMPCertificate,
+    alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = True,
+    cert_req_id: Optional[Union[int, str]] = None,
+    allow_chosen_sig_alg: bool = True,
 ) -> Tuple[rfc9480.PKIMessage, rfc9480.CMPCertificate]:
     """Build a certificate from a request, which want to be signed with an alternative key.
 
@@ -713,15 +717,15 @@ def build_catalyst_signed_cert_from_p10cr(
 
 
 def _process_single_catalyst_request(
-        cert_req_msg: rfc4211.CertReqMsg,
-        ca_cert: rfc9480.CMPCertificate,
-        ca_key: PrivateKey,
-        alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
-        allow_chosen_sig_alg: bool = True,
-        hash_alg: str = "sha256",
-        use_rsa_pss: bool = True,
-        cert_req_id: Optional[Union[int, str]] = None,
-        hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
+    cert_req_msg: rfc4211.CertReqMsg,
+    ca_cert: rfc9480.CMPCertificate,
+    ca_key: PrivateKey,
+    alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
+    allow_chosen_sig_alg: bool = True,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = True,
+    cert_req_id: Optional[Union[int, str]] = None,
+    hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
 ) -> CA_CERT_RESPONSE:
     """Process a single Catalyst request.
 
@@ -788,14 +792,14 @@ def _process_single_catalyst_request(
 
 
 def _process_catalyst_requests(
-        requests: rfc9480.PKIMessage,
-        ca_cert: rfc9480.CMPCertificate,
-        ca_key: PrivateKey,
-        alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
-        allow_chosen_sig_alg: bool = True,
-        hash_alg: str = "sha256",
-        use_rsa_pss: bool = True,
-        hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
+    requests: rfc9480.PKIMessage,
+    ca_cert: rfc9480.CMPCertificate,
+    ca_key: PrivateKey,
+    alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
+    allow_chosen_sig_alg: bool = True,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = True,
+    hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
 ) -> CA_CERT_RESPONSES:
     """Process multiple Catalyst requests.
 
@@ -838,15 +842,15 @@ def _process_catalyst_requests(
 
 
 def build_catalyst_signed_cert_from_req(
-        request: rfc9480.PKIMessage,
-        ca_cert: rfc9480.CMPCertificate,
-        ca_key: PrivateKey,
-        alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
-        cert_index: Optional[Union[str, int]] = None,
-        hash_alg: str = "sha256",
-        use_rsa_pss: bool = True,
-        allow_chosen_sig_alg: bool = True,
-        hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
+    request: rfc9480.PKIMessage,
+    ca_cert: rfc9480.CMPCertificate,
+    ca_key: PrivateKey,
+    alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
+    cert_index: Optional[Union[str, int]] = None,
+    hash_alg: str = "sha256",
+    use_rsa_pss: bool = True,
+    allow_chosen_sig_alg: bool = True,
+    hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
 ) -> CA_RESPONSE:
     """Build a certificate from a Catalyst request.
 
@@ -920,11 +924,11 @@ def build_catalyst_signed_cert_from_req(
 
 
 def build_chameleon_from_p10cr(
-        request: rfc9480.PKIMessage,
-        ca_cert: rfc9480.CMPCertificate,
-        ca_key: PrivateKey,
-        cmp_protection_cert: Optional[rfc9480.CMPCertificate] = None,
-        **kwargs,
+    request: rfc9480.PKIMessage,
+    ca_cert: rfc9480.CMPCertificate,
+    ca_key: PrivateKey,
+    cmp_protection_cert: Optional[rfc9480.CMPCertificate] = None,
+    **kwargs,
 ) -> Tuple[rfc9480.PKIMessage, rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Build a Chameleon certificate from a `p10cr` request.
 
@@ -962,9 +966,3 @@ def build_chameleon_from_p10cr(
 
     pki_message["extraCerts"].append(delta_cert)
     return pki_message, cert, delta_cert
-
-
-
-
-
-

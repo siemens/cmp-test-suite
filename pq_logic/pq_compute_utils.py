@@ -21,8 +21,15 @@ from resources.cryptoutils import sign_data, verify_signature
 from resources.exceptions import BadAsn1Data, BadPOP
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME, \
-    id_ce_subjectAltPublicKeyInfo, id_ce_altSignatureAlgorithm, id_ce_altSignatureValue
+from resources.oidutils import (
+    CMS_COMPOSITE_OID_2_NAME,
+    MSG_SIG_ALG,
+    PQ_OID_2_NAME,
+    RSASSA_PSS_OID_2_NAME,
+    id_ce_subjectAltPublicKeyInfo,
+    id_ce_altSignatureAlgorithm,
+    id_ce_altSignatureValue,
+)
 from resources.protectionutils import (
     patch_sender_and_sender_kid,
     prepare_pki_protection_field,
@@ -93,9 +100,10 @@ def verify_csr_signature(csr: rfc6402.CertificationRequest) -> None:
     alg_id = csr["signatureAlgorithm"]
     data = encoder.encode(csr["certificationRequestInfo"])
     try:
-       verify_signature_with_alg_id(public_key=public_key, alg_id=alg_id, signature=signature, data=data)
+        verify_signature_with_alg_id(public_key=public_key, alg_id=alg_id, signature=signature, data=data)
     except InvalidSignature as e:
         raise BadPOP("The signature verification failed.") from e
+
 
 def may_extract_alt_key_from_cert(
     cert: rfc9480.CMPCertificate, other_certs: Optional[List[rfc9480.CMPCertificate]] = None

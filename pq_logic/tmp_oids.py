@@ -323,8 +323,7 @@ COMPOSITE_KEM_DHKEMRFC9180_NAME_2_OID = {
     "dhkemrfc9180-frodokem-1344-aes-ecdh-brainpoolP384r1": id_composite_frodokem_1344_aes_dhkemrfc9180_brainpoolP384r1,
     "dhkemrfc9180-frodokem-1344-aes-x448": id_composite_frodokem_1344_aes_dhkemrfc9180_X448,
     "dhkemrfc9180-frodokem-1344-shake-ecdh-secp384r1": id_composite_frodokem_1344_shake_dhkemrfc9180_P384,
-    "dhkemrfc9180-frodokem-1344-shake-ecdh-brainpoolP384r1":
-        id_composite_frodokem_1344_shake_dhkemrfc9180_brainpoolP384r1,
+    "dhkemrfc9180-frodokem-1344-shake-ecdh-brainpoolP384r1": id_composite_frodokem_1344_shake_dhkemrfc9180_brainpoolP384r1,
     "dhkemrfc9180-frodokem-1344-shake-x448": id_composite_frodokem_1344_shake_dhkemrfc9180_X448,
 }
 

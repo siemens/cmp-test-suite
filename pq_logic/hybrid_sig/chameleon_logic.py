@@ -625,9 +625,7 @@ def build_delta_cert_from_paired_cert(paired_cert: rfc9480.CMPCertificate) -> rf
     return delta_cert
 
 
-def get_chameleon_delta_public_key(
-   paired_cert: rfc9480.CMPCertificate
-) -> rfc5280.SubjectPublicKeyInfo:
+def get_chameleon_delta_public_key(paired_cert: rfc9480.CMPCertificate) -> rfc5280.SubjectPublicKeyInfo:
     """Extract the delta public key from a paired certificate.
 
     :param paired_cert: The paired certificate.
@@ -645,6 +643,3 @@ def get_chameleon_delta_public_key(
         raise BadAsn1Data("DeltaCertificateDescriptor")
 
     return dcd["subjectPublicKeyInfo"]
-
-
-

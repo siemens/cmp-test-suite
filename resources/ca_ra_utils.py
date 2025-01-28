@@ -41,8 +41,12 @@ from resources.certutils import (
 from resources.cmputils import compare_general_name_and_name, prepare_general_name, prepare_pkistatusinfo
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.cryptoutils import compute_aes_cbc, perform_ecdh
-from resources.envdatautils import build_env_data_for_exchange, _prepare_recip_info, prepare_enveloped_data, \
-    prepare_kem_recip_info
+from resources.envdatautils import (
+    build_env_data_for_exchange,
+    _prepare_recip_info,
+    prepare_enveloped_data,
+    prepare_kem_recip_info,
+)
 from resources.exceptions import BadAsn1Data, BadPOP, BadRequest, NotAuthorized
 from resources.extra_issuing_logic import is_null_dn
 from resources.keyutils import load_public_key_from_spki
@@ -162,8 +166,9 @@ def prepare_challenge(
     challenge_obj["challenge"] = univ.OctetString(enc_data)
     return challenge_obj, shared_secret, info_val
 
+
 @keyword(name="Prepare Challenge Encrypted Rand")
-def prepare_challenge_enc_rand(# noqa: D417 Missing argument descriptions in the docstring
+def prepare_challenge_enc_rand(  # noqa: D417 Missing argument descriptions in the docstring
     public_key: PublicKey,
     sender: Optional[Union[rfc9480.GeneralName, str]],
     rand_int: Optional[int] = None,
@@ -391,9 +396,11 @@ def build_ckuann(
     pki_message["body"] = body
     return pki_message
 
+
 @keyword("Get CertReqMsg From PKIMessage")
-def get_cert_req_msg_from_pkimessage(# noqa: D417 Missing argument descriptions in the docstring
-        pki_message: rfc9480.PKIMessage, index: int = 0) -> rfc4211.CertReqMsg:
+def get_cert_req_msg_from_pkimessage(  # noqa: D417 Missing argument descriptions in the docstring
+    pki_message: rfc9480.PKIMessage, index: int = 0
+) -> rfc4211.CertReqMsg:
     """Extract the certificate request from a PKIMessage.
 
     Arguments:
@@ -418,8 +425,9 @@ def get_cert_req_msg_from_pkimessage(# noqa: D417 Missing argument descriptions 
     raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr")
 
 
-def validate_cert_request_cert_id(# noqa: D417 Missing argument descriptions in the docstring
-        pki_message: rfc9480.PKIMessage, cert_req_id: Union[str, int] = 0) -> None:
+def validate_cert_request_cert_id(  # noqa: D417 Missing argument descriptions in the docstring
+    pki_message: rfc9480.PKIMessage, cert_req_id: Union[str, int] = 0
+) -> None:
     """Validate the certificate request certificate ID.
 
     Used for LwCMP to ensure the certReqId in the PKIMessage matches
@@ -533,6 +541,7 @@ def _verify_ra_verified(
     except InvalidSignature as err:
         raise NotAuthorized("RA certificate not trusted.") from err
 
+
 def verify_popo_for_cert_request(
     pki_message: rfc9480.PKIMessage,
     allowed_ra_dir: str = "data/trusted_ras",
@@ -573,18 +582,15 @@ def verify_popo_for_cert_request(
     elif name == "signature":
         verify_sig_pop_for_pki_request(pki_message)
     elif name == "keyEncipherment":
-
         public_key = get_public_key_from_cert_req_msg(cert_req_msg=cert_req_msg)
 
         if not is_kem_public_key(public_key):
             raise ValueError("Invalid public key type, for `keyEncipherment`.")
 
-
     elif name == "keyAgreement":
         public_key = get_public_key_from_cert_req_msg(cert_req_msg=cert_req_msg)
         if not isinstance(public_key, ECDHPublicKey):
             raise ValueError("Invalid public key type, for `keyAgreement`.")
-
 
     else:
         raise ValueError(
@@ -593,7 +599,7 @@ def verify_popo_for_cert_request(
 
 
 @keyword(name="Respond To CertReqMsg")
-def respond_to_cert_req_msg(# noqa: D417 Missing argument descriptions in the docstring
+def respond_to_cert_req_msg(  # noqa: D417 Missing argument descriptions in the docstring
     cert_req_msg: rfc4211.CertReqMsg,
     ca_key: PrivateKey,
     ca_cert: rfc9480.CMPCertificate,
@@ -659,8 +665,9 @@ def respond_to_cert_req_msg(# noqa: D417 Missing argument descriptions in the do
 
 
 @keyword(name="Verify POP Signature For PKI Request")
-def verify_sig_pop_for_pki_request(# noqa: D417 Missing argument descriptions in the docstring
-        pki_message: rfc9480.PKIMessage, cert_index: Union[int, str] = 0) -> None:
+def verify_sig_pop_for_pki_request(  # noqa: D417 Missing argument descriptions in the docstring
+    pki_message: rfc9480.PKIMessage, cert_index: Union[int, str] = 0
+) -> None:
     """Verify the POP in the PKIMessage.
 
     Arguments:
@@ -731,7 +738,7 @@ def _set_header_fields(request: rfc9480.PKIMessage, kwargs: dict) -> dict:
     return kwargs
 
 
-def build_cp_from_p10cr( # noqa: D417 Missing argument descriptions in the docstring
+def build_cp_from_p10cr(  # noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
     cert: Optional[rfc9480.CMPCertificate] = None,
     set_header_fields: bool = True,
@@ -949,6 +956,7 @@ def build_cp_cmp_message(
     pki_message["body"] = body
     return pki_message, certs
 
+
 @keyword(name="Enforce LwCMP For CA")
 def enforce_lwcmp_for_ca(
     request: rfc9480.PKIMessage,
@@ -978,7 +986,7 @@ def enforce_lwcmp_for_ca(
             raise BadRequest("Invalid certReqId for LwCMP.")
 
     elif request["body"].getName() == "certConf":
-         if len(request["body"]["certConf"]) != 1:
+        if len(request["body"]["certConf"]) != 1:
             raise BadRequest("Only one certificate confirmation is allowed for LwCMP.")
 
     elif request["body"].getName() == "rr":
@@ -986,9 +994,10 @@ def enforce_lwcmp_for_ca(
             raise BadRequest("Only one revocation request is allowed for LwCMP.")
 
     else:
-        raise BadRequest("Invalid PKIMessage body for LwCMP. Expected: ir, cr, kur, crr, rr, certConf or p10cr."
-                         f"Got: {request['body'].getName()}.")
-
+        raise BadRequest(
+            "Invalid PKIMessage body for LwCMP. Expected: ir, cr, kur, crr, rr, certConf or p10cr."
+            f"Got: {request['body'].getName()}."
+        )
 
 
 def build_ip_cmp_message(
@@ -1032,7 +1041,6 @@ def build_ip_cmp_message(
 
     elif request and cert is None and enc_cert is None:
         if request["body"].getName() != "p10cr":
-
             responses, certs = _process_cert_requests(
                 request=request,
                 **kwargs,
@@ -1212,6 +1220,7 @@ def _verify_encrypted_key_popo(
     if private_key.public_key() != client_public_key:
         raise ValueError("The decrypted key does not match the public key in the certificate request.")
 
+
 @keyword(name="Process POPOPrivKey")
 def process_popo_priv_key(
     cert_req_msg: rfc4211.CertReqMsg,
@@ -1279,7 +1288,6 @@ def process_popo_priv_key(
             raise BadPOP("Invalid `agreeMAC` value as `POP`.")
 
     elif name == "subsequentMessage":
-
         if type_name == "keyAgreement":
             if not isinstance(client_public_key, ECDHPublicKey):
                 raise BadRequest("ECDH public key is required for key agreement subsequent message.")
@@ -1288,11 +1296,13 @@ def process_popo_priv_key(
                 raise BadRequest("KEM public key is required for `keyEncipherment` subsequent message.")
 
     else:
-        raise NotImplementedError(f"Invalid POP structure: {name}. Expected: `encryptedKey`, `agreeMAC` or `subsequentMessage`")
+        raise NotImplementedError(
+            f"Invalid POP structure: {name}. Expected: `encryptedKey`, `agreeMAC` or `subsequentMessage`"
+        )
 
 
 @keyword(name="Build Cert from CertReqMsg")
-def build_cert_from_cert_req_msg(# noqa: D417 Missing argument descriptions in the docstring
+def build_cert_from_cert_req_msg(  # noqa: D417 Missing argument descriptions in the docstring
     request: rfc4211.CertReqMsg,
     ca_signing_key: PrivateKey,
     cert: Optional[rfc9480.CMPCertificate] = None,
@@ -1370,10 +1380,10 @@ def _perform_encaps_with_keys(
         raise ValueError(f"Invalid public key for `keyEncipherment`: {type(public_key)}")
 
     if isinstance(hybrid_kem_key, HybridKEMPrivateKey):
-        ss, ct = hybrid_kem_key.encaps(public_key) # type: ignore
+        ss, ct = hybrid_kem_key.encaps(public_key)  # type: ignore
         kem_oid = get_kem_oid_from_key(hybrid_kem_key)
     elif isinstance(public_key, HybridKEMPublicKey):
-        ss, ct = public_key.encaps(hybrid_kem_key) # type: ignore
+        ss, ct = public_key.encaps(hybrid_kem_key)  # type: ignore
         kem_oid = get_kem_oid_from_key(public_key)
     else:
         ss, ct = public_key.encaps()
@@ -1381,8 +1391,9 @@ def _perform_encaps_with_keys(
 
     return ss, ct, kem_oid
 
+
 # TODO think about also always returning both certificates.
-def prepare_encr_cert_for_request(# noqa: D417 Missing argument descriptions in the docstring
+def prepare_encr_cert_for_request(  # noqa: D417 Missing argument descriptions in the docstring
     cert_req_msg: rfc4211.CertReqMsg,
     signing_key: PrivateKey,
     hash_alg: str,
@@ -1454,11 +1465,11 @@ def prepare_encr_cert_for_request(# noqa: D417 Missing argument descriptions in 
         target=target,
         data_to_protect=data,
         enc_oid=rfc5652.id_encryptedData,
-
     )
 
+
 @keyword(name="Build pkiconf from CertConf")
-def build_pki_conf_from_cert_conf(# noqa: D417 Missing argument descriptions in the docstring
+def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions in the docstring
     request: rfc9480.PKIMessage,
     issued_certs: List[rfc9480.CMPCertificate],
     exclude_fields: Optional[str] = None,

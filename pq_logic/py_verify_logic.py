@@ -23,8 +23,15 @@ from resources import keyutils
 from resources import certutils
 from resources.exceptions import BadMessageCheck, UnknownOID, BadAsn1Data, InvalidAltSignature
 from resources.oid_mapping import get_hash_from_oid
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, TRAD_STR_OID_TO_KEY_NAME, \
-    id_ce_subjectAltPublicKeyInfo, id_ce_altSignatureAlgorithm, id_ce_altSignatureValue
+from resources.oidutils import (
+    CMS_COMPOSITE_OID_2_NAME,
+    MSG_SIG_ALG,
+    PQ_OID_2_NAME,
+    TRAD_STR_OID_TO_KEY_NAME,
+    id_ce_subjectAltPublicKeyInfo,
+    id_ce_altSignatureAlgorithm,
+    id_ce_altSignatureValue,
+)
 from resources.typingutils import PublicKeySig, PublicKey
 
 from pq_logic import pq_compute_utils
@@ -139,11 +146,12 @@ def _verify_signature_with_other_cert(
 
 
 def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
-        data: bytes,
-        signature: bytes,
-        sig_alg: rfc9480.AlgorithmIdentifier,
-        cert: rfc9480.CMPCertificate,
-        other_certs: Optional[CertOrCerts]=None) -> None:
+    data: bytes,
+    signature: bytes,
+    sig_alg: rfc9480.AlgorithmIdentifier,
+    cert: rfc9480.CMPCertificate,
+    other_certs: Optional[CertOrCerts] = None,
+) -> None:
     """Verify a signature using a hybrid certificate.
 
     Expected to either get a composite signature certificate or a certificate with a related certificate extension.
@@ -195,11 +203,12 @@ def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
 
 
 def verify_sun_hybrid_cert(  # noqa D417 undocumented-param
-        cert: rfc9480.CMPCertificate,
-        issuer_cert: rfc9480.CMPCertificate,
-        alt_issuer_key: Optional[PublicKeySig]=None,
-        check_alt_sig: bool=True,
-        other_certs: Optional[List[rfc9480.CMPCertificate]]=None) -> None:
+    cert: rfc9480.CMPCertificate,
+    issuer_cert: rfc9480.CMPCertificate,
+    alt_issuer_key: Optional[PublicKeySig] = None,
+    check_alt_sig: bool = True,
+    other_certs: Optional[List[rfc9480.CMPCertificate]] = None,
+) -> None:
     """Verify a Sun hybrid certificate.
 
     Validates the primary and alternative signatures in a certificate.
@@ -337,7 +346,7 @@ def verify_hybrid_pkimessage_protection(
             other_certs = pki_message["extraCerts"][1:]
 
         pq_compute_utils.verify_signature_with_alg_id(
-            public_key= certutils.load_public_key_from_cert(pki_message["extraCerts"][0]),
+            public_key=certutils.load_public_key_from_cert(pki_message["extraCerts"][0]),
             alg_id=prot_alg_id,
             data=data,
             signature=pki_message["protection"].asOctets(),
@@ -362,10 +371,12 @@ def verify_hybrid_pkimessage_protection(
         )
 
 
-def verify_crl_signature(crl: rfc5280.CertificateList,
-                         ca_cert: rfc9480.CMPCertificate,
-                         alt_public_key: Optional[PublicKey] = None,
-                         must_be_catalyst_signed: bool = False) -> None:
+def verify_crl_signature(
+    crl: rfc5280.CertificateList,
+    ca_cert: rfc9480.CMPCertificate,
+    alt_public_key: Optional[PublicKey] = None,
+    must_be_catalyst_signed: bool = False,
+) -> None:
     """Verify the signature of a CRL with a CA certificate.
 
     Can also be used to verify the signature of a CRL signed with an alternative key.
@@ -382,8 +393,7 @@ def verify_crl_signature(crl: rfc5280.CertificateList,
     crl_signature = crl["signature"].asOctets()
     hash_oid = crl["signatureAlgorithm"]["algorithm"]
     hash_alg = get_hash_from_oid(hash_oid, only_hash=True)
-    certutils.verify_signature_with_cert(signature=crl_signature, hash_alg=hash_alg, data=crl_tbs,
-                               asn1cert=ca_cert)
+    certutils.verify_signature_with_cert(signature=crl_signature, hash_alg=hash_alg, data=crl_tbs, asn1cert=ca_cert)
 
     alt_extn = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
     if crl["tbsCertList"]["crlExtensions"].isValue:
@@ -430,10 +440,10 @@ def verify_crl_signature(crl: rfc5280.CertificateList,
         data = encoder.encode(crl["tbsCertList"]) + encoder.encode(crl["signatureAlgorithm"])
         try:
             pq_logic.pq_compute_utils.verify_signature_with_alg_id(
-            public_key=alt_public_key,
-            alg_id=alt_sig_alg,
-            signature=alt_sig_value,
-            data=data,
+                public_key=alt_public_key,
+                alg_id=alt_sig_alg,
+                signature=alt_sig_value,
+                data=data,
             )
         except InvalidSignature as e:
             key_name = alt_public_key.name if hasattr(alt_public_key, "name") else type(alt_public_key)

@@ -1088,8 +1088,9 @@ def csr_add_extensions(  # noqa D417 undocumented-param
         wrapping_sequence[index] = AttributeValue(encoder.encode(extension))
 
     # rfc2985.pkcs_9_at_extensionRequest
-    attribute = prepare_single_value_attr(attr_type=univ.ObjectIdentifier("1.2.840.113549.1.9.14"),
-                                          attr_value=wrapping_sequence)
+    attribute = prepare_single_value_attr(
+        attr_type=univ.ObjectIdentifier("1.2.840.113549.1.9.14"), attr_value=wrapping_sequence
+    )
 
     csr["certificationRequestInfo"]["attributes"].append(attribute)
     return csr

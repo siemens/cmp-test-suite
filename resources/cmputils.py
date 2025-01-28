@@ -952,8 +952,7 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
         pass
 
     elif isinstance(private_key, PQKEMPrivateKey) or is_kem_private_key(private_key):
-        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert,
-                                                          use_key_enc=True)
+        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert, use_key_enc=True)
         cert_request_msg["popo"] = popo
 
     elif not isinstance(private_key, (x448.X448PrivateKey, x25519.X25519PrivateKey, dh.DHPrivateKey)):
@@ -970,8 +969,7 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
         popo = prepare_popo(signature=signature, signing_key=private_key, ra_verified=ra_verified)
         cert_request_msg["popo"] = popo
     elif isinstance(private_key, (x448.X448PrivateKey, x25519.X25519PrivateKey)):
-        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert,
-                                                          use_key_enc=False)
+        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=use_encr_cert, use_key_enc=False)
         cert_request_msg["popo"] = popo
 
     return cert_request_msg

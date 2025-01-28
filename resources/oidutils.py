@@ -565,7 +565,10 @@ id_ce_subjectAltPublicKeyInfo = rfc5280.id_ce + (72,)
 id_ce_altSignatureAlgorithm = rfc5280.id_ce + (73,)
 id_ce_altSignatureValue = rfc5280.id_ce + (74,)
 
-ALL_KNOWN_PROTECTION_OIDS.update({id_ce_subjectAltPublicKeyInfo: "alt-pub-key",
-                                  id_ce_altSignatureAlgorithm: "alt-sig-alg",
-                                  id_ce_altSignatureValue: "alt-sig-val"}
-                                 )
+ALL_KNOWN_PROTECTION_OIDS.update(
+    {
+        id_ce_subjectAltPublicKeyInfo: "alt-pub-key",
+        id_ce_altSignatureAlgorithm: "alt-sig-alg",
+        id_ce_altSignatureValue: "alt-sig-val",
+    }
+)

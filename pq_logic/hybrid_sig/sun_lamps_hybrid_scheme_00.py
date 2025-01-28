@@ -819,8 +819,9 @@ def get_sun_hybrid_alt_pub_key(extensions: rfc9480.Extensions) -> Optional[Publi
     location = decoded_ext["location"]
 
     if not location.isValue:
-        raise ValueError("The location in the AltSubPubKeyExt extension must be a value,"
-                         "to load the public key from the location.")
+        raise ValueError(
+            "The location in the AltSubPubKeyExt extension must be a value,to load the public key from the location."
+        )
 
     actual_value = fetch_value_from_location(str(location))
 

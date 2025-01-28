@@ -92,7 +92,9 @@ class AlgorithmProfileError(CMPTestSuiteError):
 
 class InvalidAltSignature(InvalidSignature):
     """Raised when the alternative signature is invalid."""
+
     pass
+
 
 #########################
 # CMP Protocol Errors
