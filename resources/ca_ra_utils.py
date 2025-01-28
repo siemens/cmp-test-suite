@@ -1039,6 +1039,7 @@ def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
         responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
 
     elif request and cert is None and enc_cert is None:
+        kwargs["eku_strict"] = kwargs.get("eku_strict", True)
         if request["body"].getName() != "p10cr":
             responses, certs = _process_cert_requests(
                 request=request,
