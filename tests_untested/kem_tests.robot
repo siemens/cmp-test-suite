@@ -99,7 +99,7 @@ CA MUST Accept Challenge For ML-KEM
     [Tags]   ir  positive  challenge
     ${key}=   Generate Key    ${DEFAULT_ML_KEM_KEY}
     ${cm}=    Get Next Common Name
-    ${popo}=  Prepare Agree Key Popo   use_encr_cert=False
+    ${popo}=  Prepare Popo Challenge For Non Signing Key    use_encr_cert=False    use_key_enc=True
     ${ir}=    Build Ir From Key    ${key}   ${cm}   popo_structure=${popo}   pvno=3   sender=${SENDER}   omit_fields=senderKID,sender
     ${protected_ir}=    Protect PKIMessage
     ...    pki_message=${ir}
@@ -188,7 +188,12 @@ CA MUST Accept PKMACValue For ML-KEM
 
 
 CA MUST support KEMBasedMAC
-    Skip    Not implemented yet
+    [Documentation]    
+    [Tags]  
+    ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
+    SKIP IF  not ${result}    KEM Certificate and Key not set
+    Prepare KEM CiphertextInfo
+      
 
 CA MUST not reuse the same ss for KEMBASEDMAC
     Skip    Not implemented yet
