@@ -559,3 +559,13 @@ ALL_KNOWN_PROTECTION_OIDS.update(PQ_OID_2_NAME)
 ALL_KNOWN_PROTECTION_OIDS.update(KEM_OID_2_NAME)
 ALL_KNOWN_PROTECTION_OIDS.update({rfc9481.rsaEncryption: "rsa_encryption"})
 ALL_KNOWN_PROTECTION_OIDS.update(TRAD_STR_OID_TO_KEY_NAME)
+
+# Extension Object Identifiers (OIDs)
+id_ce_subjectAltPublicKeyInfo = rfc5280.id_ce + (72,)
+id_ce_altSignatureAlgorithm = rfc5280.id_ce + (73,)
+id_ce_altSignatureValue = rfc5280.id_ce + (74,)
+
+ALL_KNOWN_PROTECTION_OIDS.update({id_ce_subjectAltPublicKeyInfo: "alt-pub-key",
+                                  id_ce_altSignatureAlgorithm: "alt-sig-alg",
+                                  id_ce_altSignatureValue: "alt-sig-val"}
+                                 )
