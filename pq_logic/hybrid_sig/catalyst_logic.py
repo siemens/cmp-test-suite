@@ -14,6 +14,7 @@ from pyasn1_alt_modules import rfc5280, rfc9480
 from pyasn1_alt_modules.rfc4210 import CMPCertificate
 
 from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt, AltSignatureValueExt
+from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
 from resources import utils
 from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, sign_cert
 from resources.certextractutils import get_extension
@@ -394,3 +395,94 @@ def load_catalyst_public_key(extensions: rfc9480.Extensions) -> PublicKey:
         raise BadAsn1Data("The alternative public key extension contains remainder data.", overwrite=True)
     alt_issuer_key = load_public_key_from_spki(spki)
     return alt_issuer_key
+
+
+
+def sign_crl_catalyst(crl: rfc5280.CertificateList,
+                      ca_private_key: PrivateKeySig,
+                      alt_private_key: Optional[PrivateKeySig] = None,
+                      include_alt_public_key: bool = False,
+                      hash_alg: str = "sha256",
+                      alt_hash_alg: Optional[str] = None,
+                      use_pre_hash: bool = False,
+                      use_rsa_pss: bool = False,
+                      critical: bool = False,
+                      bad_sig: bool = False,
+                      bad_alt_sig: bool = False,
+                      ) -> rfc5280.CertificateList:
+    """Sign a CRL with a CA certificate and private key.
+
+    Can also be used to sign the CRL with an alternative key.
+
+    Arguments:
+    ---------
+       - `crl`: The CRL to sign.
+       - `ca_private_key`: The CA private key to use for signing.
+       - `alt_private_key`: An alternative private key to use for signing. Defaults to `None`.
+       - `include_alt_public_key`: Whether to include the alternative public key in the CRL extensions.
+            Defaults to `False`.
+       - `hash_alg`: The hash algorithm to use. Defaults to "sha256".
+       - `alt_hash_alg`: The hash algorithm to use for the alternative signature. Defaults to `None`.
+       (if not provided, will use the same as `hash_alg`)
+        - `use_pre_hash`: Whether to use the pre-hash version for a CompositeKey. Defaults to `False`.
+        - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
+        - `critical`: Whether the extensions are critical. Defaults to `False`.
+        - `bad_sig`: Whether to manipulate the signature to be invalid. Defaults to `False`.
+        - `bad_alt_sig`: Whether to manipulate the alternative signature to be invalid. Defaults to `False`.
+
+    Returns:
+    --------
+         - The signed CRL.
+    """
+
+    crl["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=ca_private_key,
+                                                   use_rsa_pss=use_rsa_pss,
+                                                   hash_alg=hash_alg,
+                                                   use_pre_hash=use_pre_hash)
+
+
+
+
+    if alt_private_key is not None:
+        extn = prepare_alt_sig_alg_id_extn(alg_id=None,
+                                           hash_alg=alt_hash_alg or hash_alg,
+                                           key=alt_private_key,
+                                           use_pre_hash=use_pre_hash,
+                                           use_rsa_pss=use_rsa_pss,
+                                           critical=critical
+                                           )
+
+        crl["tbsCertList"]["crlExtensions"].append(extn)
+        if include_alt_public_key:
+            extn = prepare_subject_alt_public_key_info_extn(public_key=alt_private_key.public_key(),
+                                                     critical=critical,
+                                                     )
+            crl["tbsCertList"]["crlExtensions"].append(extn)
+
+        data = encoder.encode(crl["tbsCertList"]) + encoder.encode(crl["signatureAlgorithm"])
+        alt_sig_value = cryptoutils.sign_data(data=data,
+                                              key=alt_private_key,
+                                              hash_alg=alt_hash_alg or hash_alg
+                                              )
+
+        if bad_alt_sig:
+            if isinstance(alt_private_key, AbstractCompositeSigPrivateKey):
+                alt_sig_value = utils.manipulate_composite_sig(alt_sig_value)
+            else:
+                alt_sig_value = utils.manipulate_first_byte(alt_sig_value)
+
+        alt_sig_ext = prepare_alt_signature_value_extn(signature=alt_sig_value, critical=critical)
+        crl["tbsCertList"]["crlExtensions"].append(alt_sig_ext)
+
+    crl_tbs = encoder.encode(crl["tbsCertList"])
+    crl_signature = cryptoutils.sign_data(data=crl_tbs, key=ca_private_key, hash_alg=hash_alg)
+
+    if bad_sig:
+        if isinstance(ca_private_key, AbstractCompositeSigPrivateKey):
+            crl_signature = utils.manipulate_composite_sig(crl_signature)
+        else:
+            crl_signature = utils.manipulate_first_byte(crl_signature)
+
+    crl["signature"] = univ.BitString.fromOctetString(crl_signature)
+
+    return crl
