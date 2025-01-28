@@ -106,6 +106,25 @@ class CAKeyUpdContent(univ.Choice):
         ),
     )
 
+# Needs to be here, because of the `InfoTypeAndValue` class,
+# cms opentype map.
+class InfoTypeAndValueAsn1(univ.Sequence):
+    """`InfoTypeAndValue` structure.
+
+    InfoTypeAndValue ::= SEQUENCE {
+        infoType OBJECT IDENTIFIER,
+        infoValue OPTIONAL ANY DEFINED BY infoType
+    }
+    """
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("infoType", univ.ObjectIdentifier()),
+        namedtype.OptionalNamedType('infoValue', univ.Any()),
+    )
+
+class GenRepContentAsn1(univ.SequenceOf):
+    componentType = InfoTypeAndValueAsn1()
+
 
 # The challenge change, so that the PKIBody needs to be overwritten.
 # So the only difference is the `popdecc: POPODecKeyChallContentAsn1`
@@ -194,7 +213,7 @@ class PKIBodyTMP(univ.Choice):
             "genm", rfc9480.GenMsgContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 21))
         ),
         namedtype.NamedType(
-            "genp", rfc9480.GenRepContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 22))
+            "genp", GenRepContentAsn1().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 22))
         ),
         namedtype.NamedType(
             "error",
