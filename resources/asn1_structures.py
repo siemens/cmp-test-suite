@@ -106,6 +106,7 @@ class CAKeyUpdContent(univ.Choice):
         ),
     )
 
+
 # Needs to be here, because of the `InfoTypeAndValue` class,
 # cms opentype map.
 class InfoTypeAndValueAsn1(univ.Sequence):
@@ -119,8 +120,9 @@ class InfoTypeAndValueAsn1(univ.Sequence):
 
     componentType = namedtype.NamedTypes(
         namedtype.NamedType("infoType", univ.ObjectIdentifier()),
-        namedtype.OptionalNamedType('infoValue', univ.Any()),
+        namedtype.OptionalNamedType("infoValue", univ.Any()),
     )
+
 
 class GenRepContentAsn1(univ.SequenceOf):
     componentType = InfoTypeAndValueAsn1()

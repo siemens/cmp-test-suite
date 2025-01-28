@@ -35,8 +35,17 @@ from robot.api.deco import keyword, not_keyword
 from robot.libraries.DateTime import convert_date
 
 import resources.prepareutils
-from resources import asn1utils, certbuildutils, certutils, convertutils, cryptoutils, oid_mapping, utils, keyutils, \
-    protectionutils
+from resources import (
+    asn1utils,
+    certbuildutils,
+    certutils,
+    convertutils,
+    cryptoutils,
+    oid_mapping,
+    utils,
+    keyutils,
+    protectionutils,
+)
 from resources.asn1_structures import KemCiphertextInfoAsn1
 from resources.certextractutils import get_field_from_certificate
 from resources.compareutils import compare_pyasn1_names
@@ -3964,12 +3973,13 @@ def prepare_popo_challenge_for_non_signing_key(
     popo_structure[option]["subsequentMessage"] = challenge
     return popo_structure
 
+
 def build_kem_based_mac_protected_message(
-        request: rfc9480.PKIMessage,
-        shared_secret: Optional[bytes] = None,
-        ca_cert: Optional[rfc9480.CMPCertificate] = None,
-        kem_ct_info: Optional[rfc9480.InfoTypeAndValue] = None,
-        client_key=None,
+    request: rfc9480.PKIMessage,
+    shared_secret: Optional[bytes] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    kem_ct_info: Optional[rfc9480.InfoTypeAndValue] = None,
+    client_key=None,
 ) -> Tuple[bytes, rfc9480.PKIMessage]:
     """Build a KEM based MAC protected message.
 
@@ -4007,9 +4017,7 @@ def build_kem_based_mac_protected_message(
         shared_secret = client_key.decaps(obj["ct"].asOctets())
 
     elif ca_cert is not None:
-
-        ca_key = keyutils.load_public_key_from_spki(
-            ca_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+        ca_key = keyutils.load_public_key_from_spki(ca_cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
         if not is_kem_public_key(ca_key):
             raise ValueError(f"Invalid public key for `keyEncipherment`: {type(ca_key)}")
@@ -4029,4 +4037,3 @@ def build_kem_based_mac_protected_message(
         pki_message=request,
         shared_secret=shared_secret,
     )
-

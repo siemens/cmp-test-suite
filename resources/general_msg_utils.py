@@ -1258,8 +1258,8 @@ def validate_supported_language_tags(  # noqa D417 undocumented-param
 
 
 def validate_genm_message_size(
-        genm: rfc9480.PKIMessage,
-        expected_size: int = 1,
+    genm: rfc9480.PKIMessage,
+    expected_size: int = 1,
 ) -> None:
     """Validate the General Message PKIMessage.
 
@@ -1282,11 +1282,9 @@ def validate_genm_message_size(
     if len(genm["body"]["genm"]) != expected_size:
         raise ValueError(f"Expected {expected_size} messages in the General Message body.")
 
+
 def build_genp_kem_ct_info_from_genm(
-    genm: PKIMessageTMP,
-    expected_size: int = 1,
-    ca_key: Optional[ECDHPrivateKey] = None,
-    **kwargs
+    genm: PKIMessageTMP, expected_size: int = 1, ca_key: Optional[ECDHPrivateKey] = None, **kwargs
 ) -> Tuple[bytes, PKIMessageTMP]:
     """Build the KEMCiphertextInfo from a General Message PKIMessage.
 
@@ -1311,9 +1309,7 @@ def build_genp_kem_ct_info_from_genm(
     """
     validate_genm_message_size(genm=genm, expected_size=expected_size)
 
-
-    value = get_value_from_seq_of_info_value_field(genm["body"]["genm"],
-                                                   oid=id_it_KemCiphertextInfo)
+    value = get_value_from_seq_of_info_value_field(genm["body"]["genm"], oid=id_it_KemCiphertextInfo)
 
     if value is None:
         raise ValueError("The response did not contain the `KEMCiphertextInfo`.")
@@ -1327,18 +1323,14 @@ def build_genp_kem_ct_info_from_genm(
     if not is_kem_public_key(public_key):
         raise ValueError("The public key was not a KEM public key.")
 
-
     if isinstance(public_key, HybridKEMPublicKey):
         ss, ct = public_key.encaps(ca_key)
     else:
-       ss, ct = public_key.encaps()
-
+        ss, ct = public_key.encaps()
 
     kem_oid = get_kem_oid_from_key(public_key)
 
-    genm = cmputils._prepare_pki_message(
-        **kwargs
-    )
+    genm = cmputils._prepare_pki_message(**kwargs)
 
     kem_ct_info = KemCiphertextInfoAsn1()
     kem_ct_info["ct"] = univ.OctetString(ct)
@@ -1352,11 +1344,9 @@ def build_genp_kem_ct_info_from_genm(
     for field in genm["header"].keys():
         genm2["header"][field] = genm["header"][field]
 
-
-    genm2["body"]["genp"].append(
-        info_val
-    )
+    genm2["body"]["genp"].append(info_val)
     return ss, genm2
+
 
 def validate_genp_kem_ct_info(
     genp: PKIMessageTMP,

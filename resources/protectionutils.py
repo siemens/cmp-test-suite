@@ -2336,10 +2336,7 @@ def protect_pkimessage_kem_based_mac(
     :raises ValueError: If neither `kem_ct_info` nor (`private_key` and `peer_cert`) are provided.
     """
     if private_key is None and kem_ct_info is None and not peer_cert and shared_secret is None:
-        raise ValueError("Either `kem_ct_info` and `private_key` or `peer_cert` or "
-                         "`shared_secret` must be provided."
-                          )
-
+        raise ValueError("Either `kem_ct_info` and `private_key` or `peer_cert` or `shared_secret` must be provided.")
 
     if shared_secret is not None:
         pass
@@ -2393,6 +2390,7 @@ def _process_kem_other_info(kem_other_info: bytes, expected_tx_id: Optional[byte
 
     if kem_info["kemContext"].isValue:
         raise NotImplementedError("KEMContext inside the `KemOtherInfo` structure is not yet supported.")
+
 
 @not_keyword
 def verify_kem_based_mac_protection(

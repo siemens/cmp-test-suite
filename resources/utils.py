@@ -651,9 +651,8 @@ def manipulate_composite_sig(sig: bytes) -> bytes:
     out.append(sig2)
     return encoder.encode(out)
 
-def manipulate_composite_kemct(
-        kem_ct: bytes
-) -> bytes:
+
+def manipulate_composite_kemct(kem_ct: bytes) -> bytes:
     """Manipulate the first ct of the `CompositeCiphertextValue`.
 
     Arguments:
