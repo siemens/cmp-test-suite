@@ -1023,6 +1023,8 @@ def prepare_kem_recip_info(
     kemct: Optional[bytes] = None,
     issuer_and_ser: Optional[rfc5652.IssuerAndSerialNumber] = None,
     hybrid_key_recip: Optional[HybridKEMPrivateKey] = None,
+    shared_secret: Optional[bytes] = None,
+    kem_oid: Optional[univ.ObjectIdentifier] = None,
 ) -> rfc9629.KEMRecipientInfo:
     """Prepare a KEMRecipientInfo structure.
 
@@ -1054,9 +1056,18 @@ def prepare_kem_recip_info(
     kem_recip_info = rfc9629.KEMRecipientInfo()
     kem_recip_info["version"] = univ.Integer(version)
     kem_recip_info["rid"] = rid
-    kem_recip_info["kem"] = rfc9480.AlgorithmIdentifier()
 
-    if server_cert or public_key_recip:
+    if kem_oid is not None:
+        kem_recip_info["kem"]["algorithm"] = kem_oid
+
+
+    if kemct is not None:
+        kem_recip_info["kemct"] = univ.OctetString(kemct)
+
+    if kemct is not None and shared_secret is not None:
+        pass
+
+    elif server_cert or public_key_recip:
         if server_cert:
             server_pub_key = keyutils.load_public_key_from_spki(server_cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
@@ -1067,24 +1078,27 @@ def prepare_kem_recip_info(
         if not is_kem_public_key(server_pub_key):
             raise ValueError(f"The server's public key is not a `KEMPublicKey`. Got: {type(server_pub_key).__name__}.")
 
-        kem_recip_info["kem"]["algorithm"] = get_kem_oid_from_key(server_pub_key)
+        if kem_oid is None:
+           kem_recip_info["kem"]["algorithm"] = get_kem_oid_from_key(server_pub_key)
 
         if hybrid_key_recip is None:
             shared_secret, kemct = server_pub_key.encaps()
         else:
             shared_secret, kemct = hybrid_key_recip.encaps(server_pub_key)  # type: ignore
 
-        logging.debug(f"Shared secret: {shared_secret.hex()}")
-        kem_recip_info["kemct"] = univ.OctetString(kemct)
-        key_enc_key = compute_hkdf(hash_alg=hash_alg, key_material=shared_secret, ukm=ukm, length=32)
-
-        if encrypted_key is None:
-            encrypted_key = keywrap.aes_key_wrap(wrapping_key=key_enc_key, key_to_wrap=cek)
-    elif kemct:
-        kem_recip_info["kemct"] = kemct
+        logging.debug(f"Computed Shared secret: {shared_secret.hex()}")
+        if kemct is not None:
+            kem_recip_info["kemct"] = univ.OctetString(kemct)
 
     else:
         raise ValueError("Either `kemct` or `server_cert` or the `public_key` must be provided.")
+
+    if shared_secret is not None:
+       key_enc_key = compute_hkdf(hash_alg=hash_alg, key_material=shared_secret, ukm=ukm, length=32)
+
+    if encrypted_key is None:
+        encrypted_key = keywrap.aes_key_wrap(wrapping_key=key_enc_key, key_to_wrap=cek)
+
 
     kem_recip_info["kdf"] = prepare_kdf(kdf_name=f"{kdf_name}-{hash_alg}")
 
