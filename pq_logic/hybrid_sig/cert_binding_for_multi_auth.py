@@ -39,12 +39,11 @@ from resources.certutils import (
     verify_cert_chain_openssl,
 )
 from resources.convertutils import pyasn1_time_obj_to_py_datetime
-from resources.cryptoutils import sign_data, verify_signature
+from resources import cryptoutils
 from resources.envdatautils import prepare_issuer_and_serial_number
 from resources.exceptions import BadAsn1Data
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.typingutils import PrivateKey
-from resources.utils import manipulate_first_byte
 from robot.api.deco import keyword
 from unit_tests.utils_for_test import convert_to_crypto_lib_cert
 
@@ -111,11 +110,11 @@ def prepare_requester_certificate(
         # TODO maybe file an issue on github or aks if this is allowed solution.
         hash_alg = get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"])
 
-    signature = sign_data(data=data, key=cert_a_key, hash_alg=hash_alg)
+    signature = cryptoutils.sign_data(data=data, key=cert_a_key, hash_alg=hash_alg)
 
     logging.info(f"Signature: {signature}")
     if bad_pop:
-        signature = manipulate_first_byte(signature)
+        signature = utils.manipulate_first_byte(signature)
 
     req_cert["signature"] = univ.BitString.fromOctetString(signature)
     return req_cert
@@ -389,7 +388,7 @@ def validate_multi_auth_binding_csr(
     # extra the bound value to verify the signature
     data = encoder.encode(attributes["requestTime"]) + encoder.encode(attributes["certID"])
 
-    verify_signature(data=data, hash_alg=hash_alg, public_key=public_key, signature=signature)
+    cryptoutils.verify_signature(data=data, hash_alg=hash_alg, public_key=public_key, signature=signature)
 
     certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, allow_os_store=allow_os_store)
     verify_cert_chain_openssl(cert_chain=cert_chain, crl_check=crl_check)

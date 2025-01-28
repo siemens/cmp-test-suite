@@ -19,7 +19,7 @@ from resources.certbuildutils import (
     sign_cert,
 )
 from resources.certextractutils import get_extension
-from resources.compareutils import compare_pyasn1_names
+from resources.compareutils import compare_pyasn1_names, compare_alg_id_without_tag
 from resources.convertutils import copy_asn1_certificate, subjectPublicKeyInfo_from_pubkey
 from resources.copyasn1utils import copy_name, copy_validity
 from resources.cryptoutils import sign_data
@@ -31,7 +31,6 @@ from robot.api.deco import not_keyword
 
 from pq_logic import pq_compute_utils
 from pq_logic.combined_factory import CombinedKeyFactory
-from pq_logic.hybrid_sig.certdiscovery import compare_alg_id_without_tag
 from pq_logic.hybrid_structures import (
     DeltaCertificateDescriptor,
     DeltaCertificateRequestSignatureValue,
