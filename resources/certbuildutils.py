@@ -191,7 +191,11 @@ def sign_csr(  # noqa D417 undocumented-param
         logging.info(f"Modified CSR signature: {signature}")
 
     csr["signature"] = univ.BitString.fromOctetString(signature)
-    csr["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
+    csr["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key,
+                                                   hash_alg=hash_alg,
+                                                   use_rsa_pss=use_rsa_pss,
+                                                   use_pre_hash=use_pre_hash,
+                                                   )
 
     # Needs to be en and decoded otherwise is the structure empty.
     der_data = encoder.encode(csr)
@@ -256,9 +260,9 @@ def build_csr(  # noqa D417 undocumented-param
     csr["certificationRequestInfo"]["version"] = univ.Integer(0)
     csr["certificationRequestInfo"]["subject"] = prepare_name(common_name)
 
-    pub_pre_hash = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
+    use_pre_hash_pub_key = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
     spki = spki or convertutils.subjectPublicKeyInfo_from_pubkey(
-        public_key=signing_key.public_key(), use_rsa_pss=use_rsa_pss, use_pre_hash=pub_pre_hash
+        public_key=signing_key.public_key(), use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash_pub_key
     )
     if for_kga:
         spki_kga = rfc5280.SubjectPublicKeyInfo()
