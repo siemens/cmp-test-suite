@@ -412,13 +412,21 @@ def extract_chameleon_attributes(
     return non_signature_attributes, delta_cert_request, delta_cert_request_signature
 
 
-# TODO fix doc for rf
 def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> DeltaCertificateRequestValue:
     """Verify the signature of a paired CSR.
 
-    :param csr: The CertificationRequest to verify.
-    :raises ValueError: If the Delta Certificate Request attribute is missing.
+    Arguments:
+    ---------
+       - `csr`: The CertificationRequest to verify.
 
+    Returns:
+    --------
+         - The Delta Certificate Request attribute.
+
+    Raises:
+    -------
+        - ValueError: If the Delta Certificate Request attribute is missing.
+        - BadPOP: If the signature is invalid.
     """
     pq_compute_utils.verify_csr_signature(csr=csr)
     attributes, delta_req, delta_sig = extract_chameleon_attributes(csr=csr)
@@ -452,7 +460,7 @@ def verify_paired_csr_signature(csr: rfc6402.CertificationRequest) -> DeltaCerti
             alg_id=sig_alg_id, data=data, public_key=public_key, signature=delta_sig.asOctets()
         )
     except InvalidSignature as e:
-        raise BadPOP("Invalid signature", error_details=e)
+        raise BadPOP("Invalid signature")
 
     return delta_req
 
