@@ -14,7 +14,8 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dh, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.pq_utils import get_kem_oid_from_key
+from pq_logic.migration_typing import KEMPublicKey, HybridKEMPublicKey, HybridKEMPrivateKey, KEMPrivateKey
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
