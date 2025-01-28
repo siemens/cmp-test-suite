@@ -41,7 +41,8 @@ from resources.certutils import (
 from resources.cmputils import compare_general_name_and_name, prepare_general_name, prepare_pkistatusinfo
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.cryptoutils import compute_aes_cbc, perform_ecdh
-from resources.envdatautils import build_env_data_for_exchange
+from resources.envdatautils import build_env_data_for_exchange, _prepare_recip_info, prepare_enveloped_data, \
+    prepare_kem_recip_info
 from resources.exceptions import BadAsn1Data, BadPOP, BadRequest, NotAuthorized
 from resources.extra_issuing_logic import is_null_dn
 from resources.keyutils import load_public_key_from_spki
@@ -639,7 +640,7 @@ def respond_to_cert_req_msg(# noqa: D417 Missing argument descriptions in the do
             ca_key=ca_key,
             ca_cert=ca_cert,
         )
-        enc_cert = prepare_enc_cert_for_request(
+        enc_cert = prepare_encr_cert_for_request(
             cert_req_msg=cert_req_msg,
             signing_key=ca_key,
             hash_alg=hash_alg,
@@ -1170,7 +1171,7 @@ def _verify_encrypted_key_popo(
         env_data=popo_priv_key["encryptedKey"],
         password=password,
         ee_key=ca_key,
-        for_pop=False,
+        for_enc_rand=False,
         cmp_protection_cert=client_cert,
         protection_salt=protection_salt,
     )
