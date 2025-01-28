@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import unittest
 
 from pq_logic.tmp_oids import (id_MLDSA44_RSA2048_PKCS15, id_MLDSA44_RSA2048_PSS,
