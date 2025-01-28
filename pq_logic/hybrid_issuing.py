@@ -867,19 +867,6 @@ def build_catalyst_signed_cert_from_req(
     -------
         - The PKIMessage with the certificate response.
         - The issued certificates.
-
-
-    :param request: The certificate request.
-    :param ca_cert: The CA certificate to use for signing the certificate.
-    :param ca_key: The CA key to use for signing the certificate.
-    :param alt_key: The alternative key to use for Catalyst signature.
-    :param cert_index: The index of the certificate request to use. Defaults to None.
-    (all requests will be processed.)
-    :param hash_alg: The hash algorithm to use for signing. Defaults to "sha256".
-    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `True`.
-    :param allow_chosen_sig_alg: Whether to allow the client to choose the alternative signature algorithm.
-    :param hybrid_kem_key: The optional hybrid key to use for the HybridKEM key encapsulation.
-    :return: The PKIMessage with the certificate response and the issued certificates.
     """
     if request["body"].getName() == "p10cr":
         cert_responses, cert = build_catalyst_signed_cert_from_p10cr(
@@ -941,7 +928,6 @@ def build_chameleon_from_p10cr(
 ) -> Tuple[rfc9480.PKIMessage, rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Build a Chameleon certificate from a `p10cr` request.
 
-
     Arguments:
     ----------
         - `request`: The PKIMessage request.
@@ -976,3 +962,9 @@ def build_chameleon_from_p10cr(
 
     pki_message["extraCerts"].append(delta_cert)
     return pki_message, cert, delta_cert
+
+
+
+
+
+
