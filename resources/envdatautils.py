@@ -1001,7 +1001,8 @@ def build_env_data_for_exchange(
         )
         kem_recip_info = _prepare_recip_info(kem_recip_info)
         return prepare_enveloped_data(
-            recipient_infos=[kem_recip_info], cek=cek, target=target, data_to_protect=data, enc_oid=enc_oid
+            recipient_infos=[kem_recip_info], cek=cek, target=target, data_to_protect=data,
+            enc_oid=enc_oid
         )
 
     else:
