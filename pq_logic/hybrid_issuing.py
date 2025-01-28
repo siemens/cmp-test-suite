@@ -520,6 +520,104 @@ def verify_sig_popo_catalyst_cert_req_msg(cert_req_msg: rfc4211.CertReqMsg) -> N
         )
 
 
+@keyword(name="Prepare Catalyst CertReqMsg Approach")
+def prepare_catalyst_cert_req_msg_approach(
+        first_key,
+        alt_key,
+        cert_req_id: Union[int, str] = 0,
+        hash_alg: str = "sha256",
+        subject: str = "CN=CMP Catalyst Test",
+        use_rsa_pss: bool = True,
+        use_composite_sig: bool = False,
+        bad_pop: bool = False,
+        bad_alt_pop: bool = False,
+) -> rfc4211.CertReqMsg:
+    """Prepare a `Catalyst` approach for a certificate request message.
+
+    :param first_key: The first key to use for the request.
+    :param alt_key: The alternative key to use for the request.
+    :param cert_req_id: The certificate request ID. Defaults to `0`.
+    :param hash_alg: The hash algorithm to use for signing. Defaults to "sha256".
+    :param subject: The subject to use for the certificate. Defaults to "CN=CMP Catalyst Test".
+    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `True`.
+    :param use_composite_sig: Whether to use composite signature keys. Defaults to `False`.
+    :param bad_pop: Whether to manipulate the POP. Defaults to `False`.
+    :param bad_alt_pop: Whether to manipulate the alternative POP. Defaults to `False`.
+    :return: The populated `CertReqMsg` structure.
+    """
+    cert_req_msg = rfc4211.CertReqMsg()
+    cert_req = rfc4211.CertRequest()
+    cert_req["certReqId"] = int(cert_req_id)
+
+    cert_template = prepare_cert_template(key=first_key, subject=subject)
+    cert_req["certTemplate"] = cert_template
+
+    if use_composite_sig:
+        if not isinstance(first_key, PQSignaturePrivateKey):
+            first_key, alt_key = alt_key, first_key
+
+        comp_key = CompositeSigCMSPrivateKey(first_key, alt_key)
+        extn = prepare_subject_alt_public_key_info_extn(alt_key.public_key(), critical=False)
+        cert_req["certTemplate"]["extensions"].append(extn)
+        data = encoder.encode(cert_req)
+        sig_alg = prepare_sig_alg_id(signing_key=comp_key, use_rsa_pss=True, hash_alg=hash_alg) # type: ignore
+        sig = sign_data_with_alg_id(key=comp_key, alg_id=sig_alg, data=data)
+
+        if bad_pop:
+            sig = manipulate_composite_sig(sig)
+
+        popo = prepare_popo(signature=sig, alg_oid=sig_alg["algorithm"])
+
+    elif isinstance(first_key, PQKEMPrivateKey) and isinstance(alt_key, TradSigPrivKey):
+        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=True)
+        cert_req = _compute_second_pop_catalyst(
+            alt_key=alt_key,
+            cert_request=cert_req,
+            hash_alg=hash_alg,
+            use_rsa_pss=use_rsa_pss,
+            bad_alt_pop=bad_alt_pop,
+        )
+
+    elif isinstance(alt_key, (PQSignaturePrivateKey, TradSigPrivKey)) and isinstance(
+            first_key, (PQSignaturePrivateKey, TradSigPrivKey)
+    ):
+        # means that both are signature keys.
+        cert_req = _compute_second_pop_catalyst(
+            alt_key=alt_key, cert_request=cert_req, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, bad_alt_pop=bad_alt_pop
+        )
+
+        data = encoder.encode(cert_req)
+        sig_alg = prepare_sig_alg_id(signing_key=first_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg)
+        sig = sign_data_with_alg_id(key=first_key, alg_id=sig_alg, data=data)
+        popo = prepare_popo(signature=sig, signing_key=first_key, alg_oid=sig_alg["algorithm"])
+
+    elif isinstance(alt_key, PQKEMPrivateKey) and isinstance(first_key, TradSigPrivKey):
+        extn = prepare_subject_alt_public_key_info_extn(alt_key.public_key(), critical=False) # type: ignore
+        cert_template["extensions"].append(extn)
+        cert_req["certTemplate"] = cert_template
+
+        data = encoder.encode(cert_req)
+        sig_alg = prepare_sig_alg_id(signing_key=first_key, use_rsa_pss=True, hash_alg=hash_alg)
+        sig = sign_data_with_alg_id(key=first_key, alg_id=sig_alg, data=data)
+
+        if bad_pop:
+            sig = manipulate_first_byte(sig)
+
+        popo = prepare_popo(signature=sig, signing_key=first_key, alg_oid=sig_alg["algorithm"])
+
+    else:
+        raise InvalidKeyCombination(
+            "Invalid key combination for `Catalyst` request."
+            "Allowed are PQKEMPublicKey<->TradSigPrivKey, "
+            "PQSignaturePrivateKey<->TradSigPrivKey."
+            f"Got: {first_key} and {alt_key}"
+        )
+
+    cert_req_msg["certReq"] = cert_req
+    cert_req_msg["popo"] = popo
+    return cert_req_msg
+
+
 def build_chameleon_from_p10cr(
         request: rfc9480.PKIMessage,
         ca_cert: rfc9480.CMPCertificate,
