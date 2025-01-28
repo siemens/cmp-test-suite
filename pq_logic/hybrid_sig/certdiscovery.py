@@ -17,6 +17,7 @@ from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from resources import certutils
 from resources.certutils import check_is_cert_signer, verify_cert_chain_openssl
+from resources.compareutils import compare_alg_id_without_tag
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME
 
 from pq_logic.hybrid_structures import OnRelatedCertificateDescriptor, RelatedCertificateDescriptor
@@ -160,24 +161,6 @@ def get_cert_discovery_cert(uri: str) -> rfc9480.CMPCertificate:
 
     except requests.RequestException as e:
         raise ValueError(f"Failed to fetch secondary certificate: {e}")
-
-
-def compare_alg_id_without_tag(first: rfc9480.AlgorithmIdentifier, second: rfc9480.AlgorithmIdentifier) -> bool:
-    """Compare `AlgorithmIdentifier` without considering the tag.
-
-    :param first: The first `AlgorithmIdentifier` to compare.
-    :param second: The second `AlgorithmIdentifier` to compare.
-    :return: `True` if both the OID and parameters match, `False` otherwise.
-    """
-    oid_first, params_first = first["algorithm"], first["parameters"]
-    oid_second, params_second = second["algorithm"], second["parameters"]
-    if oid_first != oid_second:
-        return False
-
-    if sum([params_first.isValue, params_second.isValue]) in [0, 2]:
-        return params_first == params_second
-    else:
-        return False
 
 
 def validate_alg_ids(other_cert: rfc9480.CMPCertificate, rel_cert_desc: RelatedCertificateDescriptor) -> None:
