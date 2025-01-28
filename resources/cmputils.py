@@ -12,12 +12,13 @@ import random
 import string
 import sys
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 from cryptography.hazmat.primitives.asymmetric import dh, x448, x25519
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
-from pq_logic.pq_utils import is_kem_private_key
+from pq_logic.migration_typing import HybridKEMPublicKey
+from pq_logic.pq_utils import is_kem_private_key, get_kem_oid_from_key, is_kem_public_key
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, namedtype, tag, univ, useful
@@ -34,10 +35,15 @@ from robot.api.deco import keyword, not_keyword
 from robot.libraries.DateTime import convert_date
 
 import resources.prepareutils
-from resources import asn1utils, certbuildutils, certutils, convertutils, cryptoutils, oid_mapping, utils
+from resources import asn1utils, certbuildutils, certutils, convertutils, cryptoutils, oid_mapping, utils, keyutils, \
+    protectionutils
+from resources.asn1_structures import KemCiphertextInfoAsn1
 from resources.certextractutils import get_field_from_certificate
 from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
+from resources.exceptions import BadAsn1Data
+from resources.keyutils import load_public_key_from_spki
+from resources.protectionutils import protect_pkimessage, prepare_kem_ciphertextinfo
 from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKey, Strint, TradSigPrivKey
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
@@ -3959,3 +3965,70 @@ def prepare_popo_challenge_for_non_signing_key(
     popo_structure = rfc4211.ProofOfPossession()
     popo_structure[option]["subsequentMessage"] = challenge
     return popo_structure
+
+def build_kem_based_mac_protected_message(
+        request: rfc9480.PKIMessage,
+        shared_secret: Optional[bytes] = None,
+        ca_cert: Optional[rfc9480.CMPCertificate] = None,
+        kem_ct_info: Optional[rfc9480.InfoTypeAndValue] = None,
+        client_key=None,
+) -> Tuple[bytes, rfc9480.PKIMessage]:
+    """Build a KEM based MAC protected message.
+
+    Either sends the kem ciphertextinfo inside the general message or uses
+    the shared secret to protect the message.
+
+    Arguments:
+    ---------
+        - `shared_secret`: The shared secret to use for the MAC. Defaults to `None`.
+        - `ca_cert`: The CA certificate to use for encapsulation. Defaults to `None`.
+        - `request`: The PKIMessage with the request. Defaults to `None`.
+        - `client_key`: The client key used for the pkiMessage, if request is not provided. Defaults to `None`.
+        (The default message is "ir".)
+
+    Returns:
+    -------
+        - The protected PKIMessage.
+    """
+
+    if kem_ct_info is not None and client_key is None:
+        raise ValueError("Client key must be provided if kem_ct_info is used.")
+
+    if shared_secret is not None:
+        pass
+
+    elif client_key is not None and kem_ct_info is not None:
+        obj, rest = decoder.decode(kem_ct_info["infoValue"].asOctets(), asn1Spec=KemCiphertextInfoAsn1())
+
+        if rest:
+            raise BadAsn1Data("KemCiphertextInfo")
+
+        if get_kem_oid_from_key(client_key) != obj["kem"]["algorithm"]:
+            raise ValueError("KEM algorithm mismatch.")
+
+        shared_secret = client_key.decaps(obj["ct"].asOctets())
+
+    elif ca_cert is not None:
+
+        ca_key = keyutils.load_public_key_from_spki(
+            ca_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+
+        if not is_kem_public_key(ca_key):
+            raise ValueError(f"Invalid public key for `keyEncipherment`: {type(ca_key)}")
+
+        if isinstance(ca_key, HybridKEMPublicKey):
+            shared_secret, ct = ca_key.encaps(client_key)
+        else:
+            shared_secret, ct = ca_key.encaps()
+
+        kem_ct_info = prepare_kem_ciphertextinfo(
+            key=ca_key,
+            ct=ct,
+        )
+        request["header"]["generalInfo"].append(kem_ct_info)
+
+    return shared_secret, protectionutils.protect_pkimessage_kem_based_mac(
+        pki_message=request,
+        shared_secret=shared_secret,
+    )
+
