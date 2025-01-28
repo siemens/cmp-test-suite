@@ -1227,6 +1227,12 @@ def process_popo_priv_key(
     ------
         - ValueError: client public key does not match the private key.
         - ValueError: If the decrypted key does not match the public key in the certificate request.
+        - ValueError: If the EncKeyWithID identifier name mismatch.
+        - BadAsn1Data: If the EncKeyWithID data is invalid.
+        - BadPOP: If the `agreeMac` POP is invalid.
+        - NotImplementedError: If the POP structure is not supported.
+        Supported are: `encryptedKey`, `agreeMAC` or `subsequentMessage`.
+
     """
     popo: rfc4211.ProofOfPossession = cert_req_msg["popo"]
     type_name = popo.getName()
@@ -1259,15 +1265,19 @@ def process_popo_priv_key(
         )
 
         if mac != popo_priv_key["agreeMAC"]["value"].asOctets():
-            raise ValueError("Invalid `agreeMAC` value as `POP`.")
+            raise BadPOP("Invalid `agreeMAC` value as `POP`.")
 
     elif name == "subsequentMessage":
-        if str(popo_priv_key["subsequentMessage"]) == "encrCert":
-            raise ValueError("Invalid subsequentMessage value.")
-        elif str(popo_priv_key["subsequentMessage"]) == "challengeResp":
-            raise ValueError("Invalid subsequentMessage value.")
+
+        if type_name == "keyAgreement":
+            if not isinstance(client_public_key, ECDHPublicKey):
+                raise BadRequest("ECDH public key is required for key agreement subsequent message.")
         else:
-            raise ValueError("Invalid subsequentMessage value.")
+            if not is_kem_public_key(client_public_key):
+                raise BadRequest("KEM public key is required for `keyEncipherment` subsequent message.")
+
+    else:
+        raise NotImplementedError(f"Invalid POP structure: {name}. Expected: `encryptedKey`, `agreeMAC` or `subsequentMessage`")
 
 
 @keyword(name="Build Cert from CertReqMsg")
