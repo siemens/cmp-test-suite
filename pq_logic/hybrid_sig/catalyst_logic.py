@@ -14,25 +14,21 @@ from pyasn1_alt_modules import rfc5280, rfc9480
 from pyasn1_alt_modules.rfc4210 import CMPCertificate
 
 from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt, AltSignatureValueExt
+from resources import utils
 from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, sign_cert
 from resources.certextractutils import get_extension
-from resources.certutils import verify_cert_signature
+from resources import certutils
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
-from resources.cryptoutils import sign_data, verify_signature
+from resources import cryptoutils
 from resources.exceptions import BadAlg, BadAsn1Data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
-from resources.oidutils import PQ_NAME_2_OID
+from resources.oidutils import PQ_NAME_2_OID, id_ce_subjectAltPublicKeyInfo, id_ce_altSignatureAlgorithm, \
+    id_ce_altSignatureValue
 from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey, TradSigPrivKey
 
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-
-# Extension Object Identifiers (OIDs)
-id_ce_subjectAltPublicKeyInfo = rfc5280.id_ce + (72,)
-id_ce_altSignatureAlgorithm = rfc5280.id_ce + (73,)
-id_ce_altSignatureValue = rfc5280.id_ce + (74,)
-
 
 
 
@@ -199,7 +195,7 @@ def sign_cert_catalyst(
 
     alt_sig_data = prepare_alt_signature_data(cert)
 
-    alt_signature = sign_data(data=alt_sig_data, key=pq_key, hash_alg=pq_hash_alg)
+    alt_signature = cryptoutils.sign_data(data=alt_sig_data, key=pq_key, hash_alg=pq_hash_alg)
 
     alt_extn = prepare_alt_signature_value_extn(signature=alt_signature, critical=critical)
     cert["tbsCertificate"]["extensions"].append(alt_extn)
@@ -297,7 +293,7 @@ def verify_catalyst_signature_migrated(
 
     # Step 1: Verify the native signature
     issuer_pub_key = issuer_pub_key or load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
-    verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
+    certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
 
     # Step 2: Verify the alternative signature
     pq_pub_key = CombinedKeyFactory.load_public_key_from_spki(catalyst_ext["spki"])
@@ -307,7 +303,7 @@ def verify_catalyst_signature_migrated(
         cert, exclude_alt_extensions=exclude_alt_extensions, only_tbs_cert=only_tbs_cert
     )
 
-    verify_signature(public_key=pq_pub_key, hash_alg=hash_alg, data=alt_sig_data, signature=catalyst_ext["signature"])
+    cryptoutils.verify_signature(public_key=pq_pub_key, hash_alg=hash_alg, data=alt_sig_data, signature=catalyst_ext["signature"])
 
     logging.info("Alternative signature verification succeeded.")
 
@@ -336,7 +332,7 @@ def verify_catalyst_signature(
         if catalyst_ext:
             logging.info("Catalyst extensions detected. Verifying native signature.")
             if include_extensions:
-                verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
+                certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
             else:
                 raise NotImplementedError("Excluding extensions is not supported for non-migrated parties.")
         else:
@@ -348,7 +344,7 @@ def verify_catalyst_signature(
             verify_catalyst_signature_migrated(cert, public_key2)
         else:
             logging.info("No catalyst extensions present. Verifying native signature.")
-            verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
+            certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
 
 
 def build_catalyst_cert(

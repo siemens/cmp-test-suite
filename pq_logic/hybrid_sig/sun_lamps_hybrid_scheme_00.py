@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc2986, rfc4211, rfc5280, rfc6402, rfc9480
-from resources import keyutils
+from resources import keyutils, utils
 from resources.certbuildutils import (
     prepare_sig_alg_id,
     prepare_tbs_certificate,
@@ -35,7 +35,6 @@ from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
 from resources.protectionutils import prepare_sha_alg_id
 from resources.typingutils import PublicKey
-from resources.utils import get_openssl_name_notation
 from robot.api.deco import not_keyword
 
 from pq_logic import pq_compute_utils
@@ -500,7 +499,7 @@ def prepare_sun_hybrid_pre_tbs_certificate(
     # The constructed TBSCertificate object is the preTbsCertificate field, which MUST
     # inlude the created AltSubPubKeyExt extension.
 
-    subject = get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
+    subject = utils.get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
     pre_tbs_cert = prepare_tbs_certificate(
         subject=subject,
         signing_key=issuer_private_key,

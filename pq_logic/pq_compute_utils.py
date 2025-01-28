@@ -20,7 +20,8 @@ from resources.cryptoutils import sign_data, verify_signature
 from resources.exceptions import BadAsn1Data
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, MSG_SIG_ALG, PQ_OID_2_NAME, RSASSA_PSS_OID_2_NAME, \
+    id_ce_subjectAltPublicKeyInfo, id_ce_altSignatureAlgorithm, id_ce_altSignatureValue
 from resources.protectionutils import (
     patch_sender_and_sender_kid,
     prepare_pki_protection_field,
@@ -30,11 +31,6 @@ from resources.typingutils import PrivateKeySig, PublicKeySig
 from robot.api.deco import not_keyword
 
 import pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00
-from pq_logic.hybrid_sig.catalyst_logic import (
-    id_ce_altSignatureAlgorithm,
-    id_ce_altSignatureValue,
-    id_ce_subjectAltPublicKeyInfo,
-)
 from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import get_related_cert_from_list
 from pq_logic.hybrid_sig.certdiscovery import (
