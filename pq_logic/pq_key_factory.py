@@ -8,7 +8,7 @@ from typing import List
 
 import resources.oidutils
 from pyasn1_alt_modules import rfc5280, rfc5958
-from resources.oidutils import PQ_SIG_PRE_HASH_OID_2_NAME
+from resources.oidutils import PQ_SIG_PRE_HASH_OID_2_NAME, MCELIECE_NAME_2_OID, FRODOKEM_NAME_2_OID, PQ_NAME_2_OID
 
 from pq_logic.keys.kem_keys import (
     FrodoKEMPrivateKey,
@@ -37,22 +37,35 @@ def _check_starts_with(algorithm: str, prefixes: List[str]) -> bool:
 class PQKeyFactory:
     """Factory class for creating post-quantum keys from various input formats."""
 
+
+    @staticmethod
+    def get_all_kem_alg():
+        """Return a list of all supported post-quantum KEM algorithms."""
+        return (["ml-kem-512", "ml-kem-768", "ml-kem-1024", "sntrup761"] +
+                list(MCELIECE_NAME_2_OID.keys()) + list(
+                    FRODOKEM_NAME_2_OID.keys()))
+
     @staticmethod
     def supported_algorithms() -> List[str]:
         """Return a list of supported post-quantum algorithms."""
+
         return [
             "slh-dsa",
             "sntrup761",
             "mceliece",
             "falcon",
-            "frodokem",
-            "ml-kem-512",
-            "ml-kem-768",
-            "ml-kem-1024",
-            "ml-dsa-44",
-            "ml-dsa-65",
-            "ml-dsa-87",
+            "frodokem"
+            "ml-kem",
+            "ml-dsa",
         ]
+
+    @staticmethod
+    def get_all_callable_algs() -> List[str]:
+        """Return a list of all supported post-quantum algorithms.
+
+        Which the Test-Suite currently can generate and operate with.
+        """
+        return list(PQ_NAME_2_OID.keys())
 
     @staticmethod
     def generate_pq_key(algorithm: str):

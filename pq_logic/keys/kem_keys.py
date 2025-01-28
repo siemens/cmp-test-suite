@@ -100,6 +100,11 @@ class MLKEMPublicKey(PQKEMPublicKey):
         """Get the size of the key."""
         return {"ml-kem-768": 1184, "ml-kem-512": 800, "ml-kem-1024": 1568}[self.name]
 
+    @property
+    def claimed_nist_level(self) -> int:
+        """Get the claimed NIST level."""
+        return {"ml-kem-768": 3, "ml-kem-512": 1, "ml-kem-1024": 5}[self.name]
+
 
 class MLKEMPrivateKey(PQKEMPrivateKey):
     """Represents an ML-KEM private key.
@@ -151,6 +156,7 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
         :return: The name of the algorithm (e.g., "ml-kem-512").
         """
         return self.kem_alg.lower()
+
 
     def public_key(self) -> MLKEMPublicKey:
         """Derive the corresponding ML-KEM public key from this private key.
@@ -214,6 +220,11 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
     def key_size(self) -> int:
         """Get the size of the key."""
         return {"ml-kem-768": 2400, "ml-kem-512": 1632, "ml-kem-1024": 3168}[self.name]
+
+    @property
+    def claimed_nist_level(self) -> int:
+        """Get the claimed NIST level."""
+        return {"ml-kem-768": 3, "ml-kem-512": 1, "ml-kem-1024": 5}[self.name]
 
     @classmethod
     def key_gen(cls, name: str, d: bytes, z: bytes) -> "MLKEMPrivateKey":

@@ -125,9 +125,15 @@ class CompositeKEMPublicKey(AbstractCompositeKEMPublicKey):
         return self.pq_key == other.pq_key and self.trad_key == other.trad_key
 
 
+
 class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
     pq_key: MLKEMPrivateKey
     _alternative_hash = False
+
+    @property
+    def name(self) -> str:
+        """Return the name of the composite KEM."""
+        return f"composite-kem-{self.pq_key.name}-" + type(self.trad_key).__name__.lower()
 
     def _get_key_name(self) -> bytes:
         """Return the key name of the composite KEM, for the PEM-header."""
@@ -224,10 +230,27 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
         )
         return combined_ss
 
+    @property
+    def name(self) -> str:
+        """Return the name of the composite KEM."""
+        return self.public_key().name
+
 
 class CompositeMLKEMRSAPublicKey(CompositeKEMPublicKey):
     def get_oid(self, *args, **kwargs) -> univ.ObjectIdentifier:
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
+
+    @property
+    def ct_length(self) -> int:
+        """Return the length of the ciphertext."""
+        # because of OAEP-sha256
+        return self.pq_key.ct_length + 256
+
+    @property
+    def name(self) -> str:
+        """Return the name of the composite KEM."""
+        return f"composite-kem-{self.pq_key.name}-rsa{self.trad_key.key_size}"
+
 
 
 class CompositeMLKEMRSAPrivateKey(CompositeKEMPrivateKey):
@@ -262,12 +285,22 @@ class CompositeMLKEMRSAPrivateKey(CompositeKEMPrivateKey):
         trad_key = generate_key("rsa", length=trad_param)
         return CompositeMLKEMRSAPrivateKey(pq_key, trad_key)
 
+    @property
+    def ct_length(self) -> int:
+        """Return the length of the ciphertext."""
+        return self.public_key().ct_length
+
+
 
 class CompositeMLKEMECPublicKey(CompositeKEMPublicKey):
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
+    @property
+    def name(self) -> str:
+        """Return the name of the composite KEM."""
+        return f"composite-kem-{self.pq_key.name}-ecdh-{self.trad_key.curve.name}"
 
 class CompositeMLKEMECPrivateKey(CompositeKEMPrivateKey):
     @staticmethod
@@ -277,7 +310,7 @@ class CompositeMLKEMECPrivateKey(CompositeKEMPrivateKey):
             PQKeyFactory.generate_pq_key(pq_name or "ml-kem-768"), generate_key("ec", curve=trad_param or "secp384r1")
         )
 
-    def public_key(self) -> AbstractCompositeKEMPublicKey:
+    def public_key(self) -> CompositeMLKEMECPublicKey:
         """Return the public key of the composite KEM."""
         return CompositeMLKEMECPublicKey(self.pq_key.public_key(), self.trad_key.public_key())
 
@@ -299,6 +332,11 @@ class CompositeMLKEMXPublicKey(CompositeKEMPublicKey):
     def get_oid(self) -> univ.ObjectIdentifier:
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key)
 
+    @property
+    def name(self) -> str:
+        """Return the name of the composite KEM."""
+        trad_key_name = "x25519" if isinstance(self.trad_key, x25519.X25519PublicKey) else "x448"
+        return f"composite-kem-{self.pq_key.name}-{trad_key_name}"
 
 class CompositeMLKEMXPrivateKey(CompositeKEMPrivateKey):
     trad_key: Union[x25519.X25519PrivateKey, x448.X448PrivateKey]
@@ -332,6 +370,19 @@ class CompositeDHKEMRFC9180PublicKey(CompositeKEMPublicKey):
     def get_oid(self) -> univ.ObjectIdentifier:
         return get_oid_for_composite_kem(self.pq_key.name, self.trad_key, use_dhkemrfc9180=True)
 
+    @property
+    def name(self) -> str:
+        """Return the name of the composite KEM."""
+        if isinstance(self.trad_key, x25519.X25519PublicKey):
+            trad_key_name = "x25519"
+        elif isinstance(self.trad_key, x448.X448PublicKey):
+            trad_key_name = "x448"
+        elif isinstance(self.trad_key, ec.EllipticCurvePublicKey):
+            trad_key_name = "ecdh-" + self.trad_key.curve.name
+        else:
+            raise ValueError(f"Unsupported traditional key type.: {type(self.trad_key).__name__}")
+
+        return f"composite-dhkem-{self.pq_key.name}-{trad_key_name}"
 
 class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
     def _get_key_name(self) -> bytes:

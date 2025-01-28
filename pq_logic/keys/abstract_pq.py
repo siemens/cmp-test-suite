@@ -414,6 +414,11 @@ class PQKEMPublicKey(PQPublicKey, ABC):
         ct, ss = self.kem_method.encap_secret(self._public_key_bytes)
         return ss, ct
 
+    @property
+    def claimed_nist_level(self) -> str:
+        """Return the claimed NIST security level as string."""
+        return self.kem_methode.details["claimed_nist_level"]
+
 
 class PQKEMPrivateKey(PQPrivateKey, ABC):
     """Concrete implementation of a Post-Quantum KEM Private Key.
@@ -480,3 +485,8 @@ class PQKEMPrivateKey(PQPrivateKey, ABC):
         if len(data) != key.key_size:
             raise ValueError(f"Invalid private key size for {cls.name}. Expected {key.key_size}, got {len(data)}")
         return key
+
+    @property
+    def claimed_nist_level(self) -> str:
+        """Return the claimed NIST security level as string."""
+        return self.public_key().claimed_nist_level

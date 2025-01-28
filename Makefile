@@ -12,6 +12,8 @@ help:
 	@echo  '  autoformat   - Run ruff on all the source files, to resolve all issues automatically '
 	@echo  '  verify  - Run a bunch of checks, to see if there are any obvious deficiencies in the code '
 	@echo  '  verifyformat   -  Check formatting only '
+	@echo  '  stats   -  Write the key encapsulation statistics to a data/stats/ directory '
+	@echo  '  invalid-sig   -  Verify all pqc-certificates in data/pqc-certificates/ and show all invalid signatures '
 	@echo  ''
 
 
@@ -80,3 +82,10 @@ verifyformat:
 dryrun:
 	robot --dryrun --pythonpath=./ --variable environment:$(env) tests
 	robot --dryrun --pythonpath=./ --variable environment:$(env) tests_untested
+
+stats:
+	python scripts/write_stats.py
+
+invalid-sigs:
+	python test_load_pqc.py
+	python vis_pqc_verify.py
