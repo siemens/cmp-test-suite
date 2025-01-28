@@ -7,6 +7,7 @@
 from abc import ABC
 from typing import List, Optional, Union
 
+from cryptography.exceptions import InvalidSignature
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9480
 
@@ -88,6 +89,10 @@ class AlgorithmProfileError(CMPTestSuiteError):
         self.message = message
         super().__init__(message)
 
+
+class InvalidAltSignature(InvalidSignature):
+    """Raised when the alternative signature is invalid."""
+    pass
 
 #########################
 # CMP Protocol Errors
