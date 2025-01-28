@@ -2308,6 +2308,7 @@ def prepare_kem_other_info(
 def protect_pkimessage_kem_based_mac(
     pki_message: rfc9480.PKIMessage,
     private_key: Optional[PQKEMPrivateKey] = None,
+    shared_secret: Optional[bytes] = None,
     peer_cert: Optional[rfc9480.CMPCertificate] = None,
     kem_ct_info: Optional[KemCiphertextInfoAsn1] = None,
     kdf: str = "kdf3",
@@ -2317,23 +2318,31 @@ def protect_pkimessage_kem_based_mac(
 ) -> rfc9480.PKIMessage:
     """Protect a `PKIMessage` using KEMBasedMac.
 
+
     :param pki_message: The `PKIMessage` to protect.
     :param private_key: The private key of the sender. if before the `genm` message
      exchange was done.
+    :param shared_secret: The shared secret to use for protection. Defaults to `None`.
     :param peer_cert: The optional peer's certificate containing the public key.
     :param kem_ct_info: The optional KEM ciphertext information structure.
     :param kdf: The key derivation function to use (e.g., "pbkdf2", "kdf2", "kdf3"). Defaults to "kdf3".
     :param kem_context: Optional context information for the KEM operation. Defaults to `None`.
     :param context: Optional context information for the KEM operation. Defaults to `None`.
     :param hash_alg: The hash algorithm to use for key derivation. Defaults to "sha256".
+
     :return: The protected `PKIMessage`.
     :raises ValueError: If neither `kem_ct_info` nor (`private_key` and `peer_cert`) are provided.
     """
-    if private_key is None and kem_ct_info is None and not peer_cert:
-        raise ValueError("Either `kem_ct_info` and `private_key` or `peer_cert` must be provided.")
+    if private_key is None and kem_ct_info is None and not peer_cert and shared_secret is None:
+        raise ValueError("Either `kem_ct_info` and `private_key` or `peer_cert` or "
+                         "`shared_secret` must be provided."
+                          )
 
-    # TODO fix to perform_key_encapsulation_method
-    if kem_ct_info is not None:
+
+    if shared_secret is not None:
+        pass
+
+    elif kem_ct_info is not None:
         ct = kem_ct_info["ct"].asOctets()
         shared_secret = private_key.decaps(ct)
     else:
