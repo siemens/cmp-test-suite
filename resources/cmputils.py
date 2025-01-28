@@ -42,8 +42,6 @@ from resources.certextractutils import get_field_from_certificate
 from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data
-from resources.keyutils import load_public_key_from_spki
-from resources.protectionutils import protect_pkimessage, prepare_kem_ciphertextinfo
 from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKey, Strint, TradSigPrivKey
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
@@ -4021,7 +4019,7 @@ def build_kem_based_mac_protected_message(
         else:
             shared_secret, ct = ca_key.encaps()
 
-        kem_ct_info = prepare_kem_ciphertextinfo(
+        kem_ct_info = protectionutils.prepare_kem_ciphertextinfo(
             key=ca_key,
             ct=ct,
         )
