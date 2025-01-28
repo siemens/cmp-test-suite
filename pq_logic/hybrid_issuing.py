@@ -657,6 +657,61 @@ def _generate_catalyst_alt_sig_key(
     return alt_key, pq_hash_alg
 
 
+@not_keyword
+def build_catalyst_signed_cert_from_p10cr(
+        request: rfc9480.PKIMessage,
+        ca_key: PrivateKey,
+        ca_cert: rfc9480.CMPCertificate,
+        alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
+        hash_alg: str = "sha256",
+        use_rsa_pss: bool = True,
+        cert_req_id: Optional[Union[int, str]] = None,
+        allow_chosen_sig_alg: bool = True,
+) -> Tuple[rfc9480.PKIMessage, rfc9480.CMPCertificate]:
+    """Build a certificate from a request, which want to be signed with an alternative key.
+
+    :param request: The `p10cr` request.
+    :param ca_key: The CA key to use for signing the certificate.
+    :param ca_cert: The CA certificate matching the CA key.
+    :param alt_key: The alternative key to use for signing. Defaults to
+    either the chosen key from the `AltSignatureAlgorithm` extension or a `ml-dsa-65` key.
+    :param hash_alg: The hash algorithm to use for signing. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `True`.
+    :param cert_req_id: The certificate request ID. Defaults to `None`.
+    :param allow_chosen_sig_alg: Whether to allow the chosen signature algorithm. Defaults to `True`.
+    (indicated by the `AltSignatureAlgorithm` extension.)
+    :return:
+    """
+    verify_csr_signature(csr=request["body"]["p10cr"])
+    crs_extensions = extract_extension_from_csr(request["body"]["p10cr"])
+
+    alt_sig_alg = None
+    if crs_extensions is not None:
+        alt_sig_alg = get_extension(crs_extensions, id_ce_altSignatureAlgorithm)
+
+    alt_key, pq_hash_alg = _generate_catalyst_alt_sig_key(
+        alt_sig_alg=alt_sig_alg, alt_key=alt_key, allow_chosen_sig_alg=allow_chosen_sig_alg
+    )
+
+    cert = build_cert_from_csr(
+        csr=request["body"]["p10cr"],
+        ca_key=ca_key,
+        ca_cert=ca_cert,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        include_extensions=False,
+    )
+
+    cert = sign_cert_catalyst(
+        cert=cert, trad_key=ca_key, pq_key=alt_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg, pq_hash_alg=pq_hash_alg
+    )
+
+    if cert_req_id is None:
+        cert_req_id = -1
+
+    return build_cp_from_p10cr(cert=cert, request=request, cert_req_id=int(cert_req_id))
+
+
 def _process_single_catalyst_request(
         cert_req_msg: rfc4211.CertReqMsg,
         ca_cert: rfc9480.CMPCertificate,
