@@ -37,7 +37,7 @@ for dir_path in ["./resources", "./pq_logic", "./unit_tests", "./scripts", "./mo
         add_header_to_file(file)
 
 print("Python files done")
-
+"""
 for dir_path in ["./data", "./unit_tests"]:
     for file in glob.iglob(f"{dir_path}/**/*.pem", recursive=True):
         add_header_to_file(file)
@@ -52,7 +52,7 @@ print("CRL files done")
 for dir_path in ["./data"]:
     for file in glob.iglob(f"{dir_path}/**/*.csr", recursive=True):
         add_header_to_file(file)
-
+"""
 for dir_path in ["./"]:
     for file in glob.iglob(f"{dir_path}/**/*.robot", recursive=True):
         add_header_to_file(file)

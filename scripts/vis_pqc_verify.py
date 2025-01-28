@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Display the data of the invalid signatures from the validation_pem_files.txt file."""
 
 # Run: pip install pandas
