@@ -351,6 +351,54 @@ def build_cert_from_catalyst_request(
     return pki_message, issued_cert
 
 
+def _prepare_sig_popo(signing_key, data, hash_alg: str, use_rsa_pss: bool) -> rfc4211.ProofOfPossession:
+    """Prepare a signature proof of possession.
+
+    :param signing_key: The key to sign the data with.
+    :param data: The data to sign.
+    :param hash_alg: The hash algorithm to use for signing.
+    :param use_rsa_pss: Whether to use RSA-PSS for signing.
+    :return: The populated `ProofOfPossession` structure.
+    """
+    popo: rfc4211.ProofOfPossession
+    sig_alg = prepare_sig_alg_id(signing_key=signing_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg)
+    sig = sign_data_with_alg_id(key=signing_key, alg_id=sig_alg, data=data)
+    popo = prepare_popo(signature=sig, signing_key=signing_key)
+    popo["signature"]["signature"] = univ.BitString.fromOctetString(sig)
+    return popo
+
+
+def _compute_second_pop_catalyst(
+        alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey],
+        cert_request: rfc4211.CertRequest,
+        hash_alg: str,
+        use_rsa_pss: bool,
+        bad_alt_pop: bool,
+) -> rfc4211.CertRequest:
+    """Compute the second `POP` for a Catalyst request.
+
+    :param alt_key: The key to sign the data with.
+    :param cert_request: The certificate request.
+    :param hash_alg: The hash algorithm to use for signing.
+    :param use_rsa_pss: Whether to use RSA-PSS for signing.
+    :param bad_alt_pop: Whether to manipulate the first byte of the POP.
+    :return: The updated `CertRequest`.
+    """
+    sig_alg = prepare_sig_alg_id(signing_key=alt_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg)
+    alt_sig_id_extn = prepare_alt_sig_alg_id_extn(alg_id=sig_alg, critical=False)
+    alt_spki = prepare_subject_alt_public_key_info_extn(alt_key.public_key(), critical=False)
+    cert_request["certTemplate"]["extensions"].append(alt_sig_id_extn)
+    cert_request["certTemplate"]["extensions"].append(alt_spki)
+
+    data = encoder.encode(cert_request)
+    sig = sign_data_with_alg_id(key=alt_key, alg_id=sig_alg, data=data)
+    if bad_alt_pop:
+        sig = manipulate_first_byte(sig)
+    extn = prepare_alt_signature_value_extn(signature=sig, critical=False)
+    cert_request["certTemplate"]["extensions"].append(extn)
+    return cert_request
+
+
 def build_chameleon_from_p10cr(
         request: rfc9480.PKIMessage,
         ca_cert: rfc9480.CMPCertificate,
