@@ -1431,18 +1431,31 @@ def prepare_encr_cert_for_request(# noqa: D417 Missing argument descriptions in 
     if str(popo_type["subsequentMessage"]) != "encrCert":
         raise ValueError("Only encrCert is supported for KEM keys")
 
-    data = encoder.encode(new_ee_cert)
     public_key = client_pub_key or load_public_key_from_spki(new_ee_cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
     target = rfc5652.EnvelopedData().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
-    target = build_env_data_for_exchange(
+
+    ss, ct, kem_oid = _perform_encaps_with_keys(public_key, hybrid_kem_key)
+    cek = kwargs.get("cek") or os.urandom(32)
+    kem_recip_info = prepare_kem_recip_info(
+        server_cert=ca_cert,
         public_key_recip=public_key,
+        cek=cek,
         hybrid_key_recip=hybrid_kem_key,
-        cert_sender=ca_cert,
-        data=data,
-        target=target,
+        kemct=ct,
+        shared_secret=ss,
+        kem_oid=kem_oid,
     )
-    return target
+    data = encoder.encode(new_ee_cert)
+    kem_recip_info = _prepare_recip_info(kem_recip_info)
+    return prepare_enveloped_data(
+        recipient_infos=[kem_recip_info],
+        cek=cek,
+        target=target,
+        data_to_protect=data,
+        enc_oid=rfc5652.id_encryptedData,
+
+    )
 
 @keyword(name="Build pkiconf from CertConf")
 def build_pki_conf_from_cert_conf(# noqa: D417 Missing argument descriptions in the docstring
