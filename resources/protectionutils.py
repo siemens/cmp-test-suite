@@ -13,9 +13,10 @@ import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dh, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
+
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.migration_typing import KEMPublicKey, HybridKEMPublicKey, HybridKEMPrivateKey, KEMPrivateKey
-from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
+from pq_logic.migration_typing import KEMPublicKey, KEMPrivateKey
+from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
@@ -2315,6 +2316,7 @@ def protect_pkimessage_kem_based_mac(
     kem_context: Optional[KemOtherInfoAsn1] = None,
     context: Optional[bytes] = None,
     hash_alg: str = "sha256",
+    bad_message_check: bool = True,
 ) -> rfc9480.PKIMessage:
     """Protect a `PKIMessage` using KEMBasedMac.
 
@@ -2329,7 +2331,7 @@ def protect_pkimessage_kem_based_mac(
     :param kem_context: Optional context information for the KEM operation. Defaults to `None`.
     :param context: Optional context information for the KEM operation. Defaults to `None`.
     :param hash_alg: The hash algorithm to use for key derivation. Defaults to "sha256".
-
+    :param bad_message_check: Whether to manipulate the message protection value. Defaults to `True`.
     :return: The protected `PKIMessage`.
     :raises ValueError: If neither `kem_ct_info` nor (`private_key` and `peer_cert`) are provided.
     """
@@ -2362,6 +2364,10 @@ def protect_pkimessage_kem_based_mac(
 
     data = extract_protected_part(pki_message)
     mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=prot_alg_id, ss=shared_secret)
+
+    if bad_message_check:
+        mac = utils.manipulate_first_byte(mac)
+
     pki_message["protection"] = prepare_pki_protection_field(mac)
     return pki_message
 
