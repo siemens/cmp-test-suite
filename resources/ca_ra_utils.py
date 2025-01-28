@@ -15,9 +15,9 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 
 from pq_logic.key_pyasn1_utils import parse_key_from_one_asym_key
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
-from pq_logic.migration_typing import HybridKEMPrivateKey
+from pq_logic.migration_typing import HybridKEMPrivateKey, HybridKEMPublicKey
 from pq_logic.pq_compute_utils import verify_csr_signature, verify_signature_with_alg_id
-from pq_logic.pq_utils import is_kem_public_key
+from pq_logic.pq_utils import is_kem_public_key, get_kem_oid_from_key
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey, CA_RESPONSE
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
@@ -1166,7 +1166,18 @@ def _verify_encrypted_key_popo(
     client_cert: Optional[rfc9480.CMPCertificate] = None,
     protection_salt: Optional[bytes] = None,
     expected_name: Optional[str] = None,
-):
+) -> None:
+    """Verify the `keyEncipherment` and `keyAgreement` POPO processing.
+
+    :param popo_priv_key: The POPOPrivKey structure to verify.
+    :param client_public_key: The public key of the client.
+    :param ca_key: The CA private key used to unwrap the private key.
+    :param password: The password to use for decryption the private key.
+    :param client_cert: The client certificate. Defaults to `None`.
+    :param protection_salt: The protection salt used to compare to the PWRI protection salt.
+    Defaults to `None`.
+    :param expected_name: The expected identifier name. Defaults to `None`.
+    """
     data = validate_enveloped_data(
         env_data=popo_priv_key["encryptedKey"],
         password=password,
@@ -1202,7 +1213,6 @@ def _verify_encrypted_key_popo(
         raise ValueError("The decrypted key does not match the public key in the certificate request.")
 
 @keyword(name="Process POPOPrivKey")
-
 def process_popo_priv_key(
     cert_req_msg: rfc4211.CertReqMsg,
     ca_key: PrivateKey,
