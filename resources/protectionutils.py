@@ -2315,7 +2315,7 @@ def protect_pkimessage_kem_based_mac(
     kem_context: Optional[KemOtherInfoAsn1] = None,
     context: Optional[bytes] = None,
     hash_alg: str = "sha256",
-    bad_message_check: bool = True,
+    bad_message_check: bool = False,
 ) -> rfc9480.PKIMessage:
     """Protect a `PKIMessage` using KEMBasedMac.
 
