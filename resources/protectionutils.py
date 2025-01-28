@@ -1327,6 +1327,10 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
     protection_value: bytes = pki_message["protection"].asOctets()
     protection_type_oid = pki_message["header"]["protectionAlg"]["algorithm"]
 
+    if protection_type_oid == id_KemBasedMac:
+        verify_kem_based_mac_protection(pki_message=pki_message, private_key=private_key, shared_secret=shared_secret)
+        return
+
     if protection_type_oid == rfc9480.id_DHBasedMac:
         if not shared_secret:
             if not isinstance(private_key, (dh.DHPrivateKey, dh.DHPublicKey)) or password is None:
