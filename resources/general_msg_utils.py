@@ -1369,36 +1369,51 @@ def build_genp_kem_ct_info_from_genm(
     )
     return ss, genm2
 
+def validate_genp_kem_ct_info(
+    genp: PKIMessageTMP,
+    client_private_key: Optional[KEMPrivateKey],
+    expected_size: int = 1,
+) -> bytes:
     """Validate the KEMCiphertextInfo in a General Response PKIMessage.
 
     For more information, please look at the workflow of RFC4210bis-16,
     Appendix E. Variants of Using KEM Keys for PKI Message Protection
 
-    :param pki_message: The General Response PKIMessage.
-    :param expected_size: The expected number of messages in the response.
-    :return: The shared secret and the `KEMCiphertextInfo` inside the InfoTypeAndValue structure.
-    """
-    validate_general_response(pki_message=pki_message, expected_size=expected_size)
+    Arguments:
+    ---------
+        - `genp`: The General Response PKIMessage.
+        - `client_private_key`: The client's private key, to perform the decapsulation with.
+        - `expected_size`: The expected number of messages in the response.
 
-    value = get_value_from_seq_of_info_value_field(pki_message["genp"], oid=id_it_KemCiphertextInfo)
+    Returns:
+    -------
+        - The shared secret.
+
+    Raises:
+    ------
+        - `ValueError`: If the response did not contain the `KEMCiphertextInfo` OID.
+        - `ValueError`: If the `KEMCiphertextInfo` value was absent.
+        - `ValueError`: If the private key was not a KEM private key.
+
+    """
+    validate_general_response(pki_message=genp, expected_size=expected_size)
+
+    value = get_value_from_seq_of_info_value_field(genp["body"]["genp"], oid=id_it_KemCiphertextInfo)
 
     if value is None:
         raise ValueError("The response did not contain the KEMCiphertextInfo OID.")
 
-    if value.isValue:
-        raise ValueError("The KEMCiphertextInfo value was not absent.")
+    if not value.isValue:
+        raise ValueError("The KEMCiphertextInfo value was absent.")
 
-    cert: rfc9480.CMPCertificate = pki_message["extraCerts"][0]
+    kem_ct_info, rest = decoder.decode(value.asOctets(), KemCiphertextInfoAsn1())
 
-    public_key = load_public_key_from_spki(cert["cert"]["subjectPublicKeyInfo"])
+    if not is_kem_private_key(client_private_key):
+        raise ValueError("The private key was not a KEM private key.")
 
-    if not isinstance(public_key, PQKEMPublicKey):
-        raise ValueError("The public key was not a PQ KEM public key.")
+    ss = client_private_key.decaps(kem_ct_info["ct"].asOctets())
 
-    ss, ct = public_key.encaps()
-
-    info_val = prepare_kem_ciphertextinfo(public_key, ct=ct)
-    return ss, info_val
+    return ss
 
 
 # TODO add params.
