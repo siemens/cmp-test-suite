@@ -827,13 +827,13 @@ def validate_general_response(  # noqa D417 undocumented-param
 
 # TODO maybe change to MUST prepare crl_update_retrieval by the user before hand.
 def build_general_message(  # noqa D417 undocumented-param
-    add_messages: str,
+    add_messages: Optional[str] = None,
     recipient: str = "test-cmp-srv@example.com",
     sender: str = "test-cmp-cli@example.com",
     exclude_fields: Optional[str] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     crl_cert: Optional[rfc9480.CMPCertificate] = None,
-    info_values: Optional[rfc9480.InfoTypeAndValue] = None,
+    info_values: Optional[Union[rfc9480.InfoTypeAndValue, List[rfc9480.InfoTypeAndValue]]] = None,
     negative: bool = False,
     ca_name: Optional[str] = None,
     ca_crl_url: Optional[str] = None,
@@ -910,6 +910,9 @@ def build_general_message(  # noqa D417 undocumented-param
         )
 
     if info_values is not None:
+        if isinstance(info_values, rfc9480.InfoTypeAndValue):
+            info_values = [info_values]
+
         body_content.extend(info_values)
 
     body_content = _append_messages(messages=messages, body_content=body_content, fill_value=negative, ca_cert=ca_cert)
