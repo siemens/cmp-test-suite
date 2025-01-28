@@ -2409,7 +2409,10 @@ def verify_kem_based_mac_protection(
     if private_key is None and shared_secret is None:
         raise ValueError("Either `private_key` or `shared_secret` must be provided.")
 
-    if private_key is not None:
+    if shared_secret is not None:
+        pass
+
+    elif private_key is not None:
         kem_ct_info = None
         for x in pki_message["header"]["generalInfo"]:
             if x["infoType"] == id_it_KemCiphertextInfo:
