@@ -59,7 +59,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
         decoded, _ = decoder.decode(der_data, rfc4211.ProofOfPossession())
         env_data = decoded["keyEncipherment"]["encryptedKey"]
 
-        secure_data = validate_enveloped_data(env_data=env_data, for_pop=True, ee_key=self.kem_key)
+        secure_data = validate_enveloped_data(env_data=env_data, for_enc_rand=True, ee_key=self.kem_key)
         self.assertEqual(secure_data, b"AAAAAAAAA")
 
     def test_prepare_env_data_with_xwing(self):
@@ -84,7 +84,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
         decoded, _ = decoder.decode(der_data, rfc4211.ProofOfPossession())
         env_data = decoded["keyEncipherment"]["encryptedKey"]
 
-        secure_data = validate_enveloped_data(env_data=env_data, for_pop=True, ee_key=self.xwing_key)
+        secure_data = validate_enveloped_data(env_data=env_data, for_enc_rand=True, ee_key=self.xwing_key)
         self.assertEqual(secure_data, b"AAAAAAAAA")
 
 
@@ -110,5 +110,5 @@ class TestValidateEnvDataPOP(unittest.TestCase):
         decoded, _ = decoder.decode(der_data, rfc4211.ProofOfPossession())
         env_data = decoded["keyEncipherment"]["encryptedKey"]
 
-        secure_data = validate_enveloped_data(env_data=env_data, for_pop=True, ee_key=self.private_key_rsa_2)
+        secure_data = validate_enveloped_data(env_data=env_data, for_enc_rand=True, ee_key=self.private_key_rsa_2)
         self.assertEqual(secure_data, b"AAAAAAAAA")
