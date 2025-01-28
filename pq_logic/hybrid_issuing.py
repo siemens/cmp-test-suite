@@ -399,6 +399,127 @@ def _compute_second_pop_catalyst(
     return cert_request
 
 
+def _verify_alt_sig_for_pop(
+        alt_pub_key: Union[PQSignaturePublicKey],
+        cert_req_msg: rfc4211.CertReqMsg,
+        alt_sig_alg_id: rfc5280.Extension,
+        alt_sig: rfc5280.Extension,
+) -> None:
+    """Verify the alternative signature for the `POP`.
+
+    :param alt_pub_key: The alternative public key to use for verification.
+    :param cert_req_msg: The certificate request message.
+    :param alt_sig_alg_id: The alternative signature algorithm identifier.
+    :param alt_sig: The alternative signature value.
+    :raises InvalidSignature: If the signature is invalid.
+    :raises ValueError: If the alternative signature or algorithm is missing.
+    """
+    if alt_sig_alg_id is None or alt_sig is None:
+        raise ValueError(
+            "AltSignatureAlgorithm and AltSignatureValue must not present, "
+            "if the public key inside the `CertTemplate` is a KEM key."
+        )
+
+    cert_template = cert_req_msg["certReq"]["certTemplate"]
+    extension = rfc5280.Extensions().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 9))
+
+    for x in cert_template["extensions"]:
+        if x["extnID"] != id_ce_altSignatureValue:
+            extension.append(x)
+
+    cert_req_msg["certReq"]["certTemplate"]["extensions"] = extension
+
+    alt_signature_algorithm = decoder.decode(alt_sig_alg_id["extnValue"], asn1Spec=rfc5280.AlgorithmIdentifier())[0]
+    alt_signature_value, _ = decoder.decode(alt_sig["extnValue"], asn1Spec=AltSignatureValueExt())
+    try:
+        verify_signature_with_alg_id(
+            public_key=alt_pub_key,
+            signature=alt_signature_value.asOctets(),
+            alg_id=alt_signature_algorithm,
+            data=encoder.encode(cert_req_msg["certReq"]),
+        )
+    except InvalidSignature as e:
+        raise InvalidAltSignature("Invalid signature for the alternative `POP`.") from e
+
+
+@keyword(name="Verify Catalyst CertReqMsg")
+def verify_sig_popo_catalyst_cert_req_msg(cert_req_msg: rfc4211.CertReqMsg) -> None:
+    """Verify a `Catalyst` certificate request message.
+
+
+    Arguments:
+    ---------
+        - `cert_req_msg`: The certificate request message.
+
+    Raises:
+    -------
+        - `InvalidSignature`: If the signature is invalid.
+        - `ValueError`: If the alternative signature or algorithm is missing.
+        - `InvalidAltSignature`: If the alternative signature is invalid.
+
+    """
+    cert_template = cert_req_msg["certReq"]["certTemplate"]
+    alt_pub_key = load_catalyst_public_key(cert_template["extensions"])
+    alt_sig_alg_id = get_extension(cert_template["extensions"], id_ce_altSignatureAlgorithm)
+    alt_sig = get_extension(cert_template["extensions"], id_ce_altSignatureValue)
+
+    first_key = get_public_key_from_cert_req_msg(cert_req_msg)
+
+    if cert_req_msg["popo"].getName() == "keyEncipherment":
+        _verify_alt_sig_for_pop(
+            alt_pub_key=alt_pub_key,
+            cert_req_msg=cert_req_msg,
+            alt_sig_alg_id=alt_sig_alg_id,
+            alt_sig=alt_sig,
+        )
+        return
+
+    sig_alg_oid = cert_req_msg["popo"]["signature"]["algorithmIdentifier"]
+    oid = sig_alg_oid["algorithm"]
+    if oid in CMS_COMPOSITE_OID_2_NAME or str(oid) in CMS_COMPOSITE_OID_2_NAME:
+        if not isinstance(first_key, PQSignaturePublicKey):
+            first_key, alt_pub_key = alt_pub_key, first_key
+
+        public_key = CompositeSigCMSPublicKey(pq_key=first_key, trad_key=alt_pub_key)
+        CompositeSigCMSPublicKey.validate_oid(oid, public_key)
+        verify_signature_with_alg_id(
+            public_key=public_key,
+            alg_id=sig_alg_oid,
+            data=encoder.encode(cert_req_msg["certReq"]),
+            signature=cert_req_msg["popo"]["signature"]["signature"].asOctets(),
+        )
+        return
+
+    elif isinstance(alt_pub_key, PQKEMPublicKey):
+        alg_id = cert_req_msg["popo"]["signature"]["algorithmIdentifier"]
+        data = encoder.encode(cert_req_msg["certReq"])
+        verify_signature_with_alg_id(
+            public_key=first_key,
+            alg_id=alg_id,
+            data=data,
+            signature=cert_req_msg["popo"]["signature"]["signature"].asOctets(),
+        )
+    else:
+        alg_id = cert_req_msg["popo"]["signature"]["algorithmIdentifier"]
+
+        try:
+            verify_signature_with_alg_id(
+                public_key=first_key,
+                signature=cert_req_msg["popo"]["signature"]["signature"].asOctets(),
+                alg_id=alg_id,
+                data=encoder.encode(cert_req_msg["certReq"]),
+            )
+        except InvalidSignature as e:
+            raise InvalidSignature("Invalid signature for the `POP`.") from e
+
+        _verify_alt_sig_for_pop(
+            alt_pub_key=alt_pub_key,
+            cert_req_msg=cert_req_msg,
+            alt_sig_alg_id=alt_sig_alg_id,
+            alt_sig=alt_sig,
+        )
+
+
 def build_chameleon_from_p10cr(
         request: rfc9480.PKIMessage,
         ca_cert: rfc9480.CMPCertificate,
