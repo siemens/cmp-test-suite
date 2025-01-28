@@ -2237,18 +2237,28 @@ def _prepare_gen_hybrid_param(aes_wrap: str = "aes256-wrap") -> rfc9480.Algorith
     return hybrid_param
 
 
-@not_keyword
 def prepare_kem_ciphertextinfo(
-    key: Union[PQKEMPrivateKey, PQKEMPublicKey], ct: Optional[bytes] = None
+    key: Union[KEMPublicKey, KEMPrivateKey],
+    ct: Optional[bytes] = None,
 ) -> rfc9480.InfoTypeAndValue:
     """Prepare a `KemCiphertextInfo` structure.
 
     Used to encapsulate a secret, so that one party can ask for the necessary information for the
     KEMBasedMac.
 
-    :param key: The private key instance used to identify the KEM algorithm.
-    :param ct: The ciphertext data to be.
-    :return: The populated `InfoTypeAndValue` structure.
+    Arguments:
+    ---------
+       - `key`: The private key of the client to get the KEM algorithm.
+       - `ct`: The ciphertext data to be encapsulated.
+
+    Returns:
+    -------
+        - The populated `InfoTypeAndValue` object.
+
+    Raises:
+    ------
+        - `ValueError`: if the `key` is not a `KEMPublicKey` or `KEMPrivateKey`.
+
     """
     oid = get_kem_oid_from_key(key)
 
