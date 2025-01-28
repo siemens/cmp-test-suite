@@ -948,6 +948,47 @@ def build_cp_cmp_message(
     pki_message["body"] = body
     return pki_message, certs
 
+@keyword(name="Enforce LwCMP For CA")
+def enforce_lwcmp_for_ca(
+    request: rfc9480.PKIMessage,
+) -> None:
+    """Enforce the Lightweight CMP (LwCMP) for a CA.
+
+    When the request is "ir", "cr", "kur", or "crr", the `certReqId` **MUST** be `0`,
+    and only one **MUST** be present.
+
+    Arguments:
+    ---------
+      - `request`: The PKIMessage to enforce the LwCMP for.
+
+    Raises:
+        - BadRequest: If the `certReqId` is invalid.
+        - BadRequest: If the request length is invalid.
+        - BadRequest: If the request type is invalid.
+    """
+
+    if request["body"].getName() == "p10cr":
+        pass
+    elif request["body"].getName() in {"ir", "cr", "kur", "crr"}:
+        if len(request["body"][request["body"].getName()]) != 1:
+            raise BadRequest("Only one certificate request is allowed for LwCMP.")
+
+        if request["body"][request["body"].getName()][0]["certReq"]["certReqId"] != 0:
+            raise BadRequest("Invalid certReqId for LwCMP.")
+
+    elif request["body"].getName() == "certConf":
+         if len(request["body"]["certConf"]) != 1:
+            raise BadRequest("Only one certificate confirmation is allowed for LwCMP.")
+
+    elif request["body"].getName() == "rr":
+        if len(request["body"]["rr"]) != 1:
+            raise BadRequest("Only one revocation request is allowed for LwCMP.")
+
+    else:
+        raise BadRequest("Invalid PKIMessage body for LwCMP. Expected: ir, cr, kur, crr, rr, certConf or p10cr."
+                         f"Got: {request['body'].getName()}.")
+
+
 
 def build_ip_cmp_message(
     cert: Optional[rfc9480.CMPCertificate] = None,
