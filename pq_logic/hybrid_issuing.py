@@ -657,6 +657,131 @@ def _generate_catalyst_alt_sig_key(
     return alt_key, pq_hash_alg
 
 
+def _process_single_catalyst_request(
+        cert_req_msg: rfc4211.CertReqMsg,
+        ca_cert: rfc9480.CMPCertificate,
+        ca_key: PrivateKey,
+        alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
+        allow_chosen_sig_alg: bool = True,
+        hash_alg: str = "sha256",
+        use_rsa_pss: bool = True,
+        cert_req_id: Optional[Union[int, str]] = None,
+        hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
+) -> CA_CERT_RESPONSE:
+    """Process a single Catalyst request.
+
+    :param cert_req_msg: The certificate request message.
+    :param ca_cert: The CA certificate matching the CA key.
+    :param ca_key: The CA key to sign the certificate with.
+    :param alt_key: The alternative key to use for Catalyst signature.
+    :param allow_chosen_sig_alg: Whether to allow the client to choose the signature algorithm.
+    Defaults to `True`.
+    :param hash_alg: The hash algorithm to use for signing. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `True`.
+    :param cert_req_id: The certificate request ID. Defaults to `None`.
+    :param hybrid_kem_key: The optional hybrid key to use for the HybridKEM key encapsulation.
+    :return: The certificate response and the issued certificate.
+    """
+    cert_template = cert_req_msg["certReq"]["certTemplate"]
+
+    alt_key, pq_hash_alg = _generate_catalyst_alt_sig_key(
+        alt_sig_alg=None,
+        alt_key=alt_key,
+        allow_chosen_sig_alg=allow_chosen_sig_alg,
+        extensions=cert_template["extensions"],
+    )
+
+    new_ee_cert = build_cert_from_cert_template(
+        cert_template=cert_template,
+        ca_cert=ca_cert,
+        ca_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=False,
+    )
+    new_ee_cert = sign_cert_catalyst(
+        cert=new_ee_cert,
+        trad_key=ca_key,
+        pq_key=alt_key,
+        use_rsa_pss=use_rsa_pss,
+        hash_alg=hash_alg,
+        pq_hash_alg=pq_hash_alg,
+    )
+
+    if cert_req_id is None:
+        cert_req_id = 0
+
+    enc_cert = None
+    if cert_req_msg["popo"].getName() == "keyEncipherment":
+        enc_cert = prepare_encr_cert_for_request(
+            cert_req_msg=cert_req_msg,
+            signing_key=ca_key,
+            hash_alg=hash_alg,
+            ca_cert=ca_cert,
+            new_ee_cert=new_ee_cert,
+            hybrid_kem_key=hybrid_kem_key,
+            client_pub_key=None,
+        )
+
+    cert_response = prepare_cert_response(
+        cert=new_ee_cert,
+        cert_req_id=int(cert_req_id),
+        enc_cert=enc_cert,
+    )
+
+    return cert_response, new_ee_cert
+
+
+def _process_catalyst_requests(
+        requests: rfc9480.PKIMessage,
+        ca_cert: rfc9480.CMPCertificate,
+        ca_key: PrivateKey,
+        alt_key: Union[PQSignaturePrivateKey, TradSigPrivKey] = None,
+        allow_chosen_sig_alg: bool = True,
+        hash_alg: str = "sha256",
+        use_rsa_pss: bool = True,
+        hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
+) -> CA_CERT_RESPONSES:
+    """Process multiple Catalyst requests.
+
+    :param requests: The PKIMessage with the requests.
+    :param ca_cert: The CA certificate matching the CA key.
+    :param ca_key: The CA key to sign the certificate with.
+    :param alt_key: The alternative key to use for Catalyst signature.
+    :param allow_chosen_sig_alg: Whether to allow the client to choose the signature algorithm.
+    Defaults to `True`.
+    :param hash_alg: The hash algorithm to use for signing. Defaults to "sha256".
+    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `True`.
+    :param hybrid_kem_key: The optional hybrid key to use for the HybridKEM key encapsulation.
+    (when build an encrypted certificate response.)
+    :return: A list of certificate responses and a list of issued certificates.
+    """
+    responses = []
+    certs = []
+
+    body_name = requests["body"].getName()
+    for idx, cert_req_ms in enumerate(requests["body"][body_name]):
+        verify_sig_pop_for_pki_request(
+            pki_message=requests,
+            cert_index=idx,
+        )
+        cert_response, cert = _process_single_catalyst_request(
+            cert_req_msg=cert_req_ms,
+            ca_cert=ca_cert,
+            ca_key=ca_key,
+            alt_key=alt_key,
+            allow_chosen_sig_alg=allow_chosen_sig_alg,
+            hash_alg=hash_alg,
+            use_rsa_pss=use_rsa_pss,
+            cert_req_id=None,
+            hybrid_kem_key=hybrid_kem_key,
+        )
+        responses.append(cert_response)
+        certs.append(cert)
+
+    return responses, certs
+
+
 def build_chameleon_from_p10cr(
         request: rfc9480.PKIMessage,
         ca_cert: rfc9480.CMPCertificate,
