@@ -18,17 +18,17 @@ import logging
 from typing import List, Optional, Set, Tuple, Union
 
 import pyasn1.error
-from pq_logic.migration_typing import KEMPrivateKey, HybridKEMPublicKey
-from pq_logic.pq_utils import is_kem_public_key, get_kem_oid_from_key, is_kem_private_key
+from pq_logic.migration_typing import HybridKEMPublicKey, KEMPrivateKey
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
+from pq_logic.trad_typing import ECDHPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ, useful
 from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.trad_typing import ECDHPrivateKey
 from resources import certutils, cmputils, utils
-from resources.asn1_structures import KemCiphertextInfoAsn1, PKIMessageTMP, InfoTypeAndValueAsn1
+from resources.asn1_structures import InfoTypeAndValueAsn1, KemCiphertextInfoAsn1, PKIMessageTMP
 from resources.cmputils import get_value_from_seq_of_info_value_field, prepare_info_value
 from resources.convertutils import copy_asn1_certificate, pyasn1_time_obj_to_py_datetime
 from resources.keyutils import load_public_key_from_spki
@@ -1257,7 +1257,7 @@ def validate_supported_language_tags(  # noqa D417 undocumented-param
     logging.info("Chosen language tag: %s", lang_list[0])
 
 
-def validate_genm_message_size(
+def validate_genm_message_size(# noqa: D417 Missing argument description in the docstring
     genm: rfc9480.PKIMessage,
     expected_size: int = 1,
 ) -> None:
@@ -1283,7 +1283,7 @@ def validate_genm_message_size(
         raise ValueError(f"Expected {expected_size} messages in the General Message body.")
 
 
-def build_genp_kem_ct_info_from_genm(
+def build_genp_kem_ct_info_from_genm(# noqa: D417 Missing argument description in the docstring
     genm: PKIMessageTMP, expected_size: int = 1, ca_key: Optional[ECDHPrivateKey] = None, **kwargs
 ) -> Tuple[bytes, PKIMessageTMP]:
     """Build the KEMCiphertextInfo from a General Message PKIMessage.
@@ -1348,7 +1348,7 @@ def build_genp_kem_ct_info_from_genm(
     return ss, genm2
 
 
-def validate_genp_kem_ct_info(
+def validate_genp_kem_ct_info(# noqa: D417 Missing argument description in the docstring
     genp: PKIMessageTMP,
     client_private_key: Optional[KEMPrivateKey],
     expected_size: int = 1,

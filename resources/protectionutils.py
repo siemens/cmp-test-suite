@@ -13,9 +13,8 @@ import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dh, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
-
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.migration_typing import KEMPublicKey, KEMPrivateKey
+from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from pyasn1.codec.der import decoder, encoder
@@ -2243,7 +2242,7 @@ def _prepare_gen_hybrid_param(aes_wrap: str = "aes256-wrap") -> rfc9480.Algorith
     return hybrid_param
 
 
-def prepare_kem_ciphertextinfo(
+def prepare_kem_ciphertextinfo(# noqa: D417 Missing argument description in the docstring
     key: Union[KEMPublicKey, KEMPrivateKey],
     ct: Optional[bytes] = None,
 ) -> rfc9480.InfoTypeAndValue:
@@ -2319,7 +2318,6 @@ def protect_pkimessage_kem_based_mac(
     bad_message_check: bool = True,
 ) -> rfc9480.PKIMessage:
     """Protect a `PKIMessage` using KEMBasedMac.
-
 
     :param pki_message: The `PKIMessage` to protect.
     :param private_key: The private key of the sender. if before the `genm` message

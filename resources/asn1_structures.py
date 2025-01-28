@@ -125,6 +125,11 @@ class InfoTypeAndValueAsn1(univ.Sequence):
 
 
 class GenRepContentAsn1(univ.SequenceOf):
+    """`GenRepContent` structure.
+
+    GenRepContent ::= SEQUENCE OF InfoTypeAndValue
+    """
+
     componentType = InfoTypeAndValueAsn1()
 
 

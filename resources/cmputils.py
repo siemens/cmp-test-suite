@@ -12,13 +12,13 @@ import random
 import string
 import sys
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Tuple, Union
 
 from cryptography.hazmat.primitives.asymmetric import dh, x448, x25519
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
 from pq_logic.migration_typing import HybridKEMPublicKey
-from pq_logic.pq_utils import is_kem_private_key, get_kem_oid_from_key, is_kem_public_key
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, namedtype, tag, univ, useful
@@ -41,10 +41,10 @@ from resources import (
     certutils,
     convertutils,
     cryptoutils,
-    oid_mapping,
-    utils,
     keyutils,
+    oid_mapping,
     protectionutils,
+    utils,
 )
 from resources.asn1_structures import KemCiphertextInfoAsn1
 from resources.certextractutils import get_field_from_certificate
@@ -3974,7 +3974,7 @@ def prepare_popo_challenge_for_non_signing_key(
     return popo_structure
 
 
-def build_kem_based_mac_protected_message(
+def build_kem_based_mac_protected_message(# noqa: D417 Missing argument description in the docstring
     request: rfc9480.PKIMessage,
     shared_secret: Optional[bytes] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
@@ -3997,8 +3997,8 @@ def build_kem_based_mac_protected_message(
     Returns:
     -------
         - The protected PKIMessage.
-    """
 
+    """
     if kem_ct_info is not None and client_key is None:
         raise ValueError("Client key must be provided if kem_ct_info is used.")
 

@@ -14,13 +14,12 @@ from collections import Counter
 from itertools import combinations
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
-from pq_logic.hybrid_structures import CompositeSignatureValue, CompositeCiphertextValue
+from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import base, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.keys.composite_kem_pki import CompositeKEMPrivateKey
 from resources import certutils, keyutils
 from resources.oidutils import PYASN1_CM_NAME_2_OIDS
 from resources.typingutils import PrivateKey, Strint
@@ -620,7 +619,8 @@ def ensure_list(data: Optional[Union[List[Any], Any]]) -> list:
     return [data]
 
 
-def manipulate_composite_sig(sig: bytes) -> bytes:
+def manipulate_composite_sig(# noqa: D417 Missing argument description in the docstring
+        sig: bytes) -> bytes:
     """Manipulate the first signature of a CompositeSignature.
 
     Arguments:
@@ -632,8 +632,9 @@ def manipulate_composite_sig(sig: bytes) -> bytes:
          - The modified signature.
 
     Raises:
-    -------
+    ------
             - `pyasn1.error.PyAsn1Error`: if the provided `sig` is not a valid `CompositeSignatureValue`.
+
     """
     obj, _ = decoder.decode(sig, CompositeSignatureValue())
 
@@ -652,7 +653,8 @@ def manipulate_composite_sig(sig: bytes) -> bytes:
     return encoder.encode(out)
 
 
-def manipulate_composite_kemct(kem_ct: bytes) -> bytes:
+def manipulate_composite_kemct(# noqa: D417 Missing argument description in the docstring
+        kem_ct: bytes) -> bytes:
     """Manipulate the first ct of the `CompositeCiphertextValue`.
 
     Arguments:
