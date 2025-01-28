@@ -929,7 +929,8 @@ def prepare_cert_template(  # noqa D417 undocumented-param
         - `include_cert_extensions`: Indicates if the extensions from the certificate should be added to the extensions,
         if provided. Defaults to `True`.
         - `spki`: The `SubjectPublicKeyInfo` object to include in the template. Defaults to `None`.
-        - `use_pre_hash`: Whether to prepare the public key as a pre-hash version, for a `CompositeKey`. Defaults to `False`.
+        - `use_pre_hash`: Whether to prepare the public key as a pre-hash version, for a `
+        CompositeKey`. Defaults to `False`.
 
     Returns:
     -------

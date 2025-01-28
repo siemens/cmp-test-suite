@@ -936,6 +936,7 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
         Proof-of-Possession.
         - `use_encr_cert`: If `True`, the certificate will be encrypted by the CA using the public key of the client.
         - `spki`: The SubjectPublicKeyInfo structure to use for the certificate request. Defaults to `None`.
+
     Returns:
     -------
         - The populated `CertReqMsg` object, ready for use in a certificate request.
