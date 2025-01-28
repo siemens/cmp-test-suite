@@ -640,3 +640,37 @@ def manipulate_composite_sig(sig: bytes) -> bytes:
     out.append(sig1)
     out.append(sig2)
     return encoder.encode(out)
+
+def manipulate_composite_kemct(
+        kem_ct: bytes
+) -> bytes:
+    """Manipulate the first ct of the `CompositeCiphertextValue`.
+
+    Arguments:
+    ---------
+       - `kem_ct`: The DER-encoded `CompositeCiphertextValue`.
+
+    Returns:
+    -------
+       - The modified `CompositeCiphertextValue` as DER-encoded bytes.
+
+    Raises:
+    ------
+       - `pyasn1.error.PyAsn1Error`: if the provided `kem_ct` is not a valid `CompositeCiphertextValue`.
+
+    """
+    obj, _ = decoder.decode(kem_ct, CompositeCiphertextValue())
+
+    kem_ct1 = obj[0].asOctets()
+    kem_ct2 = obj[1].asOctets()
+
+    kem_ct1 = manipulate_first_byte(kem_ct1)
+
+    kem_ct1 = univ.OctetString(kem_ct1)
+    kem_ct2 = univ.OctetString(kem_ct2)
+
+    out = CompositeCiphertextValue()
+
+    out.append(kem_ct1)
+    out.append(kem_ct2)
+    return encoder.encode(out)
