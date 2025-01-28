@@ -1147,6 +1147,7 @@ def protect_pkimessage(  # noqa: D417
     cert_chain_fpath: Optional[str] = None,
     certs_dir: str = "./data/cert_logs",
     shared_secret: Optional[Union[bytes, str]] = None,
+    bad_message_check: bool = False,
     **params,
 ) -> rfc9480.PKIMessage:
     """Apply protection to a PKIMessage based on the provided protection type (e.g., signature, PBMAC1).
@@ -1173,6 +1174,7 @@ def protect_pkimessage(  # noqa: D417
         - `certs_dir`: Directory containing intermediate certificates to build a certificate chain.
           Defaults to `"./cert_logs"`.
         - `shared_secret`: Shared secret for DH-based MAC protection, if applicable.
+        - `bad_message_check`: Whether to manipulate the message protection.
 
     `**params`: Additional options for customization:
         - `salt` (str, bytes): The salt value for key derivation functions (KDF).
@@ -1269,6 +1271,9 @@ def protect_pkimessage(  # noqa: D417
             private_key=private_key,  # type: ignore
             cert=cert,  # type: ignore
         )
+
+    if bad_message_check:
+        protection_value = utils.manipulate_first_byte(protection_value)
 
     pki_message["protection"] = prepare_pki_protection_field(protection_value)
     return pki_message
