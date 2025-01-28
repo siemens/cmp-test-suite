@@ -250,6 +250,107 @@ def build_enc_cert_response(
     return pki_message
 
 
+def build_cert_from_catalyst_request(
+        request: rfc9480.PKIMessage,
+        ca_cert: rfc9480.CMPCertificate,
+        ca_key: PrivateKey,
+        cert_index: Union[str, int] = 0,
+        hash_alg: str = "sha256",
+        use_rsa_pss: bool = True,
+        bad_sig: bool = False,
+) -> Tuple[rfc9480.PKIMessage, rfc9480.CMPCertificate]:
+    """Build a certificate from a Catalyst request.
+
+    This is an experimental approach to show how to build a certificate from a Catalyst request.
+
+    This includes three different methods.
+    - First sign an additional signature
+    - Second use composite.
+    - Third use hybrid KEMs, by making use of the Traditional Key as signing key.
+     (the first key will be chosen based on the Key in the `CertTemplate` structure.)
+
+     Arguments:
+     ---------
+         - `request`: The PKIMessage request.
+         - `ca_cert`: The CA certificate.
+         - `ca_key`: The CA key.
+         - `cert_index`: The index of the certificate request to use. Defaults to 0.
+         - `hash_alg`: The hash algorithm to use for signing. Defaults to "sha256".
+         - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `True`.
+         - `use_composite_sig`: Whether to use composite signature keys. Defaults to `False`.
+         - `bad_sig`: Whether to manipulate the POP. Defaults to `False`.
+
+     Returns:
+     -------
+            - The PKIMessage with the certificate response.
+            - The issued certificate.
+    """
+    if request["body"].getName() == "p10cr":
+        raise ValueError("Only IR or CR is supported to build a encrypted certificate response.")
+
+    cert_req_msg = get_cert_req_msg_from_pkimessage(
+        pki_message=request,
+        index=cert_index,
+    )
+
+    popo: rfc4211.ProofOfPossession = cert_req_msg["popo"]
+
+    if cert_req_msg["certReq"]["certTemplate"]["publicKey"]["algorithm"]["algorithm"] in CMS_COMPOSITE_OID_2_NAME:
+        raise ValueError("Composite keys are not supported for Catalyst certificates.")
+
+    cert_template = cert_req_msg["certReq"]["certTemplate"]
+    second_key = load_catalyst_public_key(cert_template["extensions"])
+
+    verify_sig_popo_catalyst_cert_req_msg(
+        cert_req_msg=cert_req_msg,
+    )
+    tbs_certs = prepare_tbs_certificate_from_template(
+        cert_template=cert_template,
+        issuer=ca_cert["tbsCertificate"]["subject"],
+        ca_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=False,
+    )
+
+    alt_spki_extn = prepare_subject_alt_public_key_info_extn(public_key=second_key, critical=False)
+
+    tbs_certs["extensions"].append(alt_spki_extn)
+    cert = rfc9480.CMPCertificate()
+    cert["tbsCertificate"] = tbs_certs
+    cert = sign_cert(
+        cert=cert,
+        signing_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        bad_sig=bad_sig,
+    )
+    issued_cert = copy_asn1_certificate(cert=cert)
+    if popo.getName() == "keyEncipherment" or isinstance(second_key, PQKEMPublicKey):
+        if isinstance(second_key, PQKEMPublicKey):
+            public_key = second_key
+        else:
+            public_key = None
+
+        pki_message = build_enc_cert_response(
+            new_ee_cert=cert,
+            ca_cert=ca_cert,
+            signing_key=ca_key,
+            request=request,
+            cert_index=cert_index,
+            hash_alg=hash_alg,
+            client_pub_key=public_key,
+        )
+    else:
+        pki_message, _ = build_ip_cmp_message(
+            cert=cert,
+            request=request,
+            cert_req_id=int(cert_req_msg["certReq"]["certReqId"]),
+        )
+
+    return pki_message, issued_cert
+
+
 def build_chameleon_from_p10cr(
         request: rfc9480.PKIMessage,
         ca_cert: rfc9480.CMPCertificate,
