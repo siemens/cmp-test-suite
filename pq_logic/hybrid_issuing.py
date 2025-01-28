@@ -46,7 +46,7 @@ from resources.cmputils import (
     prepare_popo_challenge_for_non_signing_key,
 )
 from resources.convertutils import copy_asn1_certificate
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, UnknownOID
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, UnknownOID, InvalidAltSignature
 from resources.keyutils import generate_key, generate_key_based_on_alg_id
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, PQ_SIG_PRE_HASH_OID_2_NAME, id_ce_altSignatureAlgorithm, \
     id_ce_altSignatureValue
@@ -74,6 +74,113 @@ from pq_logic.migration_typing import HybridKEMPrivateKey, HybridKEMPublicKey
 from pq_logic.pq_compute_utils import sign_data_with_alg_id, verify_csr_signature, verify_signature_with_alg_id
 from pq_logic.trad_typing import ECDHPrivateKey, CA_RESPONSE, CA_CERT_RESPONSE, CA_CERT_RESPONSES
 
+
+def build_sun_hybrid_cert_from_request(
+        request: rfc9480.PKIMessage,
+        signing_key: AbstractCompositeSigPrivateKey,
+        protection_key: PrivateKey,
+        pub_key_loc: str,
+        sig_loc: str,
+        protection: str = "password_based_mac",
+        password: Optional[str] = None,
+        issuer_cert: Optional[rfc9480.CMPCertificate] = None,
+        cert_chain: Optional[Sequence[rfc9480.CMPCertificate]] = None,
+        cert_index: Optional[int] = None,
+) -> rfc9480.PKIMessage:
+    """Build a Sun-Hybrid certificate from a request.
+
+    The certificate in form 1 is at the second position in the `extraCerts` list.
+
+    Arguments:
+    --------
+       - `request`: The PKIMessage request.
+       - `signing_key`: The key to sign the certificate with.
+       - `protection_key`: The key to protect the certificate with.
+       - `pub_key_loc`: The location of the public key.
+       - `sig_loc`: The location of the signature.
+       - `protection`: The protection to use. Defaults to "password_based_mac".
+       - `password`: The password to use for protection. Defaults to `None`.
+       - `issuer_cert`: The issuer certificate. Defaults to `None`.
+       - `cert_chain`: The certificate chain. Defaults to `None`.
+       - `cert_index`: The certificate index. Defaults to `None`.
+
+    Returns:
+    -------
+       - The PKIMessage with the certificate response.
+
+    """
+    if issuer_cert is None:
+        issuer_cert = cert_chain[0]
+
+    if request["body"].getName() == "p10cr":
+        verify_csr_signature(csr=request["body"]["p10cr"])
+        cert4, cert1 = sun_csr_to_cert(
+            csr=request["body"]["p10cr"],
+            issuer_private_key=signing_key.trad_key,
+            alt_private_key=signing_key.pq_key,
+            issuer_cert=issuer_cert,
+        )
+        pki_message = build_cp_from_p10cr(request=request, cert=cert4, cert_req_id=-1)
+
+    elif request["body"].getName() in ["ir", "cr"]:
+        cert_index = cert_index if cert_index is not None else 0
+        cert_req_msg: rfc4211.CertReqMsg = request["body"]["ir"][cert_index]
+        public_key = get_public_key_from_cert_req_msg(cert_req_msg)
+        if isinstance(public_key, AbstractCompositeSigPublicKey):
+            verify_sig_pop_for_pki_request(request, cert_index)
+            cert4, cert1 = sun_cert_template_to_cert(
+                cert_template=cert_req_msg["certReq"]["certTemplate"],
+                issuer_cert=issuer_cert,
+                issuer_private_key=signing_key.trad_key,
+                alt_private_key=signing_key.pq_key,
+                pub_key_loc=pub_key_loc,
+                sig_loc=sig_loc,
+            )
+
+            pki_message, _ = build_ip_cmp_message(
+                cert=cert4,
+                request=request,
+                cert_req_id=cert_req_msg or cert_req_msg["certReq"]["certReqId"],
+            )
+
+        elif isinstance(public_key, HybridKEMPublicKey):
+            cert4, cert1 = sun_cert_template_to_cert(
+                cert_template=cert_req_msg["certReq"]["certTemplate"],
+                issuer_cert=issuer_cert,
+                issuer_private_key=signing_key.trad_key,
+                alt_private_key=signing_key.pq_key,
+                pub_key_loc=pub_key_loc,
+                sig_loc=sig_loc,
+            )
+
+            pki_message = build_enc_cert_response(
+                new_ee_cert=cert4,
+                ca_cert=issuer_cert,
+                request=request,
+            )
+        else:
+            raise ValueError(f"Invalid key type: {type(public_key).__name__}")
+
+    else:
+        raise ValueError(f"Invalid request type: {request['body'].getName()}")
+
+    if password is not None:
+        pki_message = protect_pkimessage(pki_message, password, protection=protection)
+        pki_message["extraCerts"].append(cert4)
+    else:
+        pki_message = protect_pkimessage(
+            pki_message=pki_message,
+            private_key=protection_key,
+            protection=protection,
+            cert=cert_chain[0],
+            exclude_cert=True,
+        )
+        pki_message["extraCerts"].append(cert_chain[0])
+        pki_message["extraCerts"].append(cert4)
+        if cert_chain is not None:
+            pki_message["extraCerts"].extend(cert_chain[:1])
+
+    return pki_message
 
 def build_chameleon_from_p10cr(
         request: rfc9480.PKIMessage,
