@@ -19,13 +19,17 @@ from typing import List, Optional, Set, Tuple, Union
 
 import pyasn1.error
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
+from pq_logic.migration_typing import KEMPrivateKey, HybridKEMPublicKey
+from pq_logic.pq_utils import is_kem_public_key, get_kem_oid_from_key, is_kem_private_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ, useful
 from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.trad_typing import ECDHPrivateKey
 from resources import certutils, cmputils, utils
+from resources.asn1_structures import KemCiphertextInfoAsn1, PKIMessageTMP, InfoTypeAndValueAsn1
 from resources.certutils import (
     build_cert_chain_from_dir,
     build_crl_chain_from_list,
@@ -36,6 +40,7 @@ from resources.certutils import (
 )
 from resources.cmputils import get_value_from_seq_of_info_value_field, prepare_info_value
 from resources.convertutils import copy_asn1_certificate, pyasn1_time_obj_to_py_datetime
+from resources.exceptions import BadAsn1Data, BadAlg
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import CURVE_OIDS_2_NAME
@@ -1263,9 +1268,31 @@ def validate_supported_language_tags(  # noqa D417 undocumented-param
     logging.info("Chosen language tag: %s", lang_list[0])
 
 
-def validate_genp_kem_ct_info_from_genm(
-    pki_message: rfc9480.PKIMessage, expected_size: int = 1
-) -> Tuple[bytes, rfc9480.InfoTypeAndValue]:
+def validate_genm_message_size(
+        genm: rfc9480.PKIMessage,
+        expected_size: int = 1,
+) -> None:
+    """Validate the General Message PKIMessage.
+
+    Validates only the size and the body name.
+
+    Arguments:
+    ---------
+        - `genm`: The General Message PKIMessage.
+        - `expected_size`: The expected number of messages in the response.
+
+    Raises:
+    ------
+        - `ValueError`: If the PKIMessage does not contain a General Message body.
+        - `ValueError`: If the response does not have the expected size.
+
+    """
+    if genm["body"].getName() != "genm":
+        raise ValueError("The PKIMessage does not contain a General Message body.")
+
+    if len(genm["body"]["genm"]) != expected_size:
+        raise ValueError(f"Expected {expected_size} messages in the General Message body.")
+
     """Validate the KEMCiphertextInfo in a General Response PKIMessage.
 
     For more information, please look at the workflow of RFC4210bis-16,
