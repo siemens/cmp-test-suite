@@ -35,7 +35,6 @@ class TestMayLoadAltPublicKey(unittest.TestCase):
         WHEN loading the public key,
         THEN the public key is loaded correctly.
         """
-
         csr = build_sun_hybrid_composite_csr(
             signing_key=self.comp_key,
             common_name="CN=Hans the Tester",

@@ -71,9 +71,6 @@ class TestBuildCatalystCertFromP10cr(unittest.TestCase):
         WHEN the `build_catalyst_cert_from_p10cr` function is called.
         THEN is the message correctly built.
         """
-
-
-
         csr = build_csr(
             signing_key=self.ca_key,
             extensions=[self.sig_alg_id_extn],
