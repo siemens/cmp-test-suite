@@ -194,28 +194,32 @@ def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
         raise UnknownOID(sig_alg["algorithm"], extra_info="Composite signature can not be verified.")
 
 
-def verify_sun_hybrid_cert(
-    cert: rfc9480.CMPCertificate,
-    issuer_cert: rfc9480.CMPCertificate,
-    alt_issuer_key: Optional[PublicKeySig] = None,
-    check_alt_sig: bool = True,
-    other_certs: Optional[List[rfc9480.CMPCertificate]] = None,
-):
+def verify_sun_hybrid_cert(  # noqa D417 undocumented-param
+        cert: rfc9480.CMPCertificate,
+        issuer_cert: rfc9480.CMPCertificate,
+        alt_issuer_key: Optional[PublicKeySig]=None,
+        check_alt_sig: bool=True,
+        other_certs: Optional[List[rfc9480.CMPCertificate]]=None) -> None:
     """Verify a Sun hybrid certificate.
 
     Validates the primary and alternative signatures in a certificate.
     The main signature is verified using the issuer's tradition key inside the certificate public key.
     And the alternative signature is verified using the issuer's alternative key.
 
-    :param cert: The SUN hybrid certificate to verify.
-    :param issuer_cert: The issuer's certificate for verifying the main signature.
-    :param check_alt_sig: Whether to validate the alternative signature (default: True).
-    :param alt_issuer_key: The issuer's public key for verifying the alternative signature.
-    Otherwise, will need to get the public key from the issuer's certificate.
-    :param other_certs: A list of other certificates to search for the related certificate.
-    :raises ValueError: If validation fails for the certificate or its extensions.
-    :raises ValueError: If the alternative issuer key is not found.
-    :raises BadAsn1Data: If the AlternativePublicKeyInfo extension contains remainder data.
+    Arguments:
+    ---------
+        - `cert`: The SUN hybrid certificate to verify.
+        - `issuer_cert`: The issuer's certificate for verifying the main signature.
+        - `check_alt_sig`: Whether to validate the alternative signature (default: True).
+        - `alt_issuer_key`: The issuer's public key for verifying the alternative signature.
+        - Otherwise, will need to get the public key from the issuer's certificate.
+        - `other_certs`: A list of other certificates to search for the related certificate.
+
+    Raises:
+    ------
+        - `ValueError`: If validation fails for the certificate or its extensions.
+        - `ValueError`: If the alternative issuer key is not found.
+        - `BadAsn1Data`: If the AlternativePublicKeyInfo extension contains remainder data.
     """
     if alt_issuer_key is None:
         alt_issuer_key = pq_compute_utils.may_extract_alt_key_from_cert(issuer_cert, other_certs=other_certs)
