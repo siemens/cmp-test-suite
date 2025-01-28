@@ -1,10 +1,11 @@
+"""Contains stats information for the hybrid ciphertext length."""
 from typing import Union
 
-from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, rsa, x448, x25519
 
 from pq_logic.trad_typing import ECDHPrivateKey
 
-TRAD_ALG_2_NENC = {"brainpoolP384": 48, "P256": 32, "brainpoolP256": 32, "X448": 56, "X25519": 32, "P384": 48}
+TRAD_ALG_2_NENC = {"brainpoolP384": 97, "P256": 65, "brainpoolP256": 65, "X448": 56, "X25519": 32, "P384": 97}
 
 CURVE_NAME_2_CONTEXT_NAME = {
     "secp256r1": "P256",
@@ -26,6 +27,7 @@ def get_ec_trad_name(trad_key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> str:
         raise ValueError("Unsupported key type.")
     return name
 
+
 def get_ct_length_for_trad_key(key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> int:
     """Get the ciphertext length for traditional keys.
 
@@ -34,6 +36,7 @@ def get_ct_length_for_trad_key(key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> in
     """
     name = get_ec_trad_name(key)
     return TRAD_ALG_2_NENC[name]
+
 
 def get_trad_key_length(key: Union[ECDHPrivateKey, ECDHPrivateKey, rsa.RSAPrivateKey, rsa.RSAPublicKey]) -> int:
     """Return the key size of the traditional key.

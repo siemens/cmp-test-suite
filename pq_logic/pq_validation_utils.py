@@ -10,7 +10,7 @@ from pyasn1_alt_modules import rfc9480
 from resources import asn1utils
 from resources.certextractutils import get_field_from_certificate
 from resources.certutils import load_public_key_from_cert
-from resources.oidutils import PQ_OID_2_NAME, PQ_NAME_2_OID, HYBRID_NAME_2_OID
+from resources.oidutils import HYBRID_NAME_2_OID, PQ_NAME_2_OID, PQ_OID_2_NAME
 
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQPublicKey, PQSignaturePublicKey
@@ -84,18 +84,20 @@ def validate_migration_certificate_key_usage(cert: rfc9480.CMPCertificate) -> No
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
 
 
-def validate_migration_oid_in_certificate(cert: rfc9480.CMPCertificate, name: str) -> None:
+def validate_migration_oid_in_certificate(# noqa: D417 Missing argument descriptions in the docstring
+        cert: rfc9480.CMPCertificate, name: str) -> None:
     """Validate the OID of the public key in the certificate.
 
     Arguments:
-    ----------
+    ---------
         - `cert`: The certificate to validate.
         - `name`: The name of the public key algorithm.
 
     Raises:
-    -------
+    ------
         - `ValueError`: If the OID does not match the name.
         - `NotImplementedError`: If the OID is not supported.
+
     """
     pub_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
 

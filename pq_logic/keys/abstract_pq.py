@@ -384,7 +384,7 @@ class PQKEMPublicKey(PQPublicKey, ABC):
         :param public_key: The public key as raw bytes.
         """
         self._check_name(name=kem_alg)
-        self.kem_method= oqs.KeyEncapsulation(self.kem_alg)
+        self.kem_method = oqs.KeyEncapsulation(self.kem_alg)
         self._public_key_bytes = public_key
 
     @property
@@ -418,7 +418,7 @@ class PQKEMPublicKey(PQPublicKey, ABC):
     @property
     def claimed_nist_level(self) -> str:
         """Return the claimed NIST security level as string."""
-        return self.kem_methode.details["claimed_nist_level"]
+        return self.kem_method.details["claimed_nist_level"]
 
 
 class PQKEMPrivateKey(PQPrivateKey, ABC):

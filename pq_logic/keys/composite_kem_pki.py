@@ -190,7 +190,6 @@ class CompositeKEMPublicKey(AbstractCompositeKEMPublicKey):
         return combined_ss, encoder.encode(ct_vals)
 
 
-
 class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
     """Composite KEM private key."""
 
@@ -295,11 +294,6 @@ class CompositeKEMPrivateKey(AbstractCompositeKEMPrivateKey):
         )
         return combined_ss
 
-    @property
-    def name(self) -> str:
-        """Return the name of the composite KEM."""
-        return self.public_key().name
-
 
 class CompositeMLKEMRSAPublicKey(CompositeKEMPublicKey):
     """Composite ML-KEM public key with RSA-based traditional KEM."""
@@ -318,7 +312,6 @@ class CompositeMLKEMRSAPublicKey(CompositeKEMPublicKey):
     def name(self) -> str:
         """Return the name of the composite KEM."""
         return f"composite-kem-{self.pq_key.name}-rsa{self.trad_key.key_size}"
-
 
 
 class CompositeMLKEMRSAPrivateKey(CompositeKEMPrivateKey):
@@ -365,7 +358,6 @@ class CompositeMLKEMRSAPrivateKey(CompositeKEMPrivateKey):
         return self.public_key().ct_length
 
 
-
 class CompositeMLKEMECPublicKey(CompositeKEMPublicKey):
     """Composite ML-KEM public key with EC-based traditional KEM."""
 
@@ -377,6 +369,7 @@ class CompositeMLKEMECPublicKey(CompositeKEMPublicKey):
     def name(self) -> str:
         """Return the name of the composite KEM."""
         return f"composite-kem-{self.pq_key.name}-ecdh-{self.trad_key.curve.name}"
+
 
 class CompositeMLKEMECPrivateKey(CompositeKEMPrivateKey):
     """Composite ML-KEM private key with EC-based traditional KEM."""
@@ -418,6 +411,7 @@ class CompositeMLKEMXPublicKey(CompositeKEMPublicKey):
         """Return the name of the composite KEM."""
         trad_key_name = "x25519" if isinstance(self.trad_key, x25519.X25519PublicKey) else "x448"
         return f"composite-kem-{self.pq_key.name}-{trad_key_name}"
+
 
 class CompositeMLKEMXPrivateKey(CompositeKEMPrivateKey):
     """Composite ML-KEM private key with X25519/X448-based traditional KEM."""
@@ -469,6 +463,7 @@ class CompositeDHKEMRFC9180PublicKey(CompositeKEMPublicKey):
             raise ValueError(f"Unsupported traditional key type.: {type(self.trad_key).__name__}")
 
         return f"composite-dhkem-{self.pq_key.name}-{trad_key_name}"
+
 
 class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
     """Composite DHKEMRFC9180 private key."""

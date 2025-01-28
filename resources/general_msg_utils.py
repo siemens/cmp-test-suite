@@ -1257,7 +1257,7 @@ def validate_supported_language_tags(  # noqa D417 undocumented-param
     logging.info("Chosen language tag: %s", lang_list[0])
 
 
-def validate_genm_message_size(# noqa: D417 Missing argument description in the docstring
+def validate_genm_message_size(  # noqa: D417 Missing argument description in the docstring
     genm: rfc9480.PKIMessage,
     expected_size: int = 1,
 ) -> None:
@@ -1283,7 +1283,7 @@ def validate_genm_message_size(# noqa: D417 Missing argument description in the 
         raise ValueError(f"Expected {expected_size} messages in the General Message body.")
 
 
-def build_genp_kem_ct_info_from_genm(# noqa: D417 Missing argument description in the docstring
+def build_genp_kem_ct_info_from_genm(  # noqa: D417 Missing argument description in the docstring
     genm: PKIMessageTMP, expected_size: int = 1, ca_key: Optional[ECDHPrivateKey] = None, **kwargs
 ) -> Tuple[bytes, PKIMessageTMP]:
     """Build the KEMCiphertextInfo from a General Message PKIMessage.
@@ -1348,7 +1348,7 @@ def build_genp_kem_ct_info_from_genm(# noqa: D417 Missing argument description i
     return ss, genm2
 
 
-def validate_genp_kem_ct_info(# noqa: D417 Missing argument description in the docstring
+def validate_genp_kem_ct_info(  # noqa: D417 Missing argument description in the docstring
     genp: PKIMessageTMP,
     client_private_key: Optional[KEMPrivateKey],
     expected_size: int = 1,

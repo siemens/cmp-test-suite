@@ -157,7 +157,6 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
         """
         return self.kem_alg.lower()
 
-
     def public_key(self) -> MLKEMPublicKey:
         """Derive the corresponding ML-KEM public key from this private key.
 

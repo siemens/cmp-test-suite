@@ -2242,7 +2242,7 @@ def _prepare_gen_hybrid_param(aes_wrap: str = "aes256-wrap") -> rfc9480.Algorith
     return hybrid_param
 
 
-def prepare_kem_ciphertextinfo(# noqa: D417 Missing argument description in the docstring
+def prepare_kem_ciphertextinfo(  # noqa: D417 Missing argument description in the docstring
     key: Union[KEMPublicKey, KEMPrivateKey],
     ct: Optional[bytes] = None,
 ) -> rfc9480.InfoTypeAndValue:

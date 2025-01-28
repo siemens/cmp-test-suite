@@ -625,9 +625,6 @@ def get_sun_hybrid_alt_sig(cert: rfc9480.CMPCertificate) -> bytes:
     return decoded_ext["plainOrHash"].asOctets()
 
 
-
-
-
 def validate_alt_sig_extn(cert: rfc9480.CMPCertificate, alt_pub_key, signature: Optional[bytes] = None):
     """Validate the `AltSignatureExt` extension in a certificate.
 

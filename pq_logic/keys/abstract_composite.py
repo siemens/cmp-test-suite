@@ -20,8 +20,6 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280
 from pyasn1_alt_modules.rfc5958 import OneAsymmetricKey
-
-from pq_logic.stat_utils import get_ct_length_for_trad_key, get_trad_key_length
 from resources.oid_mapping import hash_name_to_instance
 
 from pq_logic.hybrid_structures import (
@@ -29,9 +27,10 @@ from pq_logic.hybrid_structures import (
     CompositeSignaturePublicKeyAsn1,
     CompositeSignatureValue,
 )
-from pq_logic.keys.abstract_pq import PQPrivateKey, PQPublicKey, PQKEMPublicKey, PQKEMPrivateKey
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQPrivateKey, PQPublicKey
 from pq_logic.keys.serialize_utils import prepare_enc_key_pem
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
+from pq_logic.stat_utils import get_ct_length_for_trad_key, get_trad_key_length
 
 # Define the traditional public key types,
 # for correct type hinting in the CompositePublicKey class.
@@ -342,6 +341,7 @@ class AbstractCompositeKEMPublicKey(AbstractCompositePublicKey, ABC):
         """Get the size of the key."""
         return self.pq_key.key_size + get_trad_key_length(self.trad_key)
 
+
 class AbstractCompositeKEMPrivateKey(AbstractCompositePrivateKey, ABC):
     """Abstract class for Composite KEM private keys."""
 
@@ -388,7 +388,6 @@ class AbstractCompositeKEMPrivateKey(AbstractCompositePrivateKey, ABC):
     def ct_length(self) -> int:
         """Get the length of the ciphertext."""
         return self.public_key().ct_length
-
 
 
 ######################
