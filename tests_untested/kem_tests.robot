@@ -14,6 +14,7 @@ Library             ../resources/cmputils.py
 Library             ../resources/certutils.py
 Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
+Library             ../resources/general_msg_utils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
 Library             ../resources/extra_issuing_logic.py
@@ -188,12 +189,43 @@ CA MUST Accept PKMACValue For ML-KEM
 
 
 CA MUST support KEMBasedMAC
-    [Documentation]    
-    [Tags]  
+    [Documentation]    According to rfc4210bis16 Section 5.1.3.4. Key Encapsulation
+    ...                The CA MUST perform the encapsulation of the shared secret and
+    ...                return the ciphertext to the client. We send then a valid KEMBasedMAC protected
+    ...                message. The CA MUST process the request and respond with an `accepted` status.
+    [Tags]    kem-based-mac   genm
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
-    Prepare KEM CiphertextInfo
-      
+    ${info_val}=    Prepare KEM CiphertextInfo   ${KEM_KEY}
+    ${genm}=   Build General Message   ${info_val}   sender=${SENDER}   recipient=${RECIPIENT}
+    ${genp}=   Exchange PKIMessage    ${genm}
+    ${ss}=   Validate Genp Kem Ct Info    ${genp}    ${KEM_KEY}
+    ${key}=  Generate Default Key
+    ${ir}=    Build ir from key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
+    ${protected_ir}=  Protect Pkimessage Kem Based Mac    ${ir}    shared_secret=${ss}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be    ${response}   accepted
+
+CA Reject invalid KEMBasedMAC Protected Message
+    [Documentation]    According to rfc4210bis16 Section 5.1.3.4. Key Encapsulation
+    ...                The CA MUST perform the encapsulation of the shared secret and
+    ...                return the ciphertext to the client. We send then a invalid KEMBasedMAC protected
+    ...                message. The CA MUST detected the invalid protection and MAY return the
+    ...                optional failInfo `badMessageCheck`.
+    [Tags]    kem-based-mac   genm
+    ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
+    SKIP IF  not ${result}    KEM Certificate and Key not set
+    ${info_val}=    Prepare KEM CiphertextInfo   ${KEM_KEY}
+    ${genm}=   Build General Message   ${info_val}   sender=${SENDER}   recipient=${RECIPIENT}
+    ${genp}=   Exchange PKIMessage    ${genm}
+    ${ss}=   Validate Genp Kem Ct Info    ${genp}    ${KEM_KEY}
+    ${key}=  Generate Default Key
+    ${ir}=    Build ir from key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
+    ${protected_ir}=  Protect Pkimessage Kem Based Mac    ${ir}    shared_secret=${ss}    bad_message_check=True
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be    ${response}   rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}   badMessageCheck
+    
 
 CA MUST not reuse the same ss for KEMBASEDMAC
     Skip    Not implemented yet
