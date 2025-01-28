@@ -4,7 +4,7 @@
 
 """Factory for creating hybrid keys based on pq and traditional components."""
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x448, x25519
 from resources import keyutils
@@ -308,7 +308,7 @@ class HybridKeyFactory:
             raise NotImplementedError(f"Unsupported hybrid algorithm: {algorithm}")
 
     @staticmethod
-    def get_all_kem_coms_as_dict() ->Dict[str, List[Dict]]:
+    def get_all_kem_coms_as_dict() -> Dict[str, List[Dict]]:
         """Return a dictionary of all possible hybrid key combinations to generate a stat table."""
         data = {"xwing": [{}]}
         data["composite-kem"] = ALL_COMPOSITE_KEM_COMBINATIONS

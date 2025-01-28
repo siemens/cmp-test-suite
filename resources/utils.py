@@ -619,8 +619,9 @@ def ensure_list(data: Optional[Union[List[Any], Any]]) -> list:
     return [data]
 
 
-def manipulate_composite_sig(# noqa: D417 Missing argument description in the docstring
-        sig: bytes) -> bytes:
+def manipulate_composite_sig(  # noqa: D417 Missing argument description in the docstring
+    sig: bytes,
+) -> bytes:
     """Manipulate the first signature of a CompositeSignature.
 
     Arguments:
@@ -653,8 +654,9 @@ def manipulate_composite_sig(# noqa: D417 Missing argument description in the do
     return encoder.encode(out)
 
 
-def manipulate_composite_kemct(# noqa: D417 Missing argument description in the docstring
-        kem_ct: bytes) -> bytes:
+def manipulate_composite_kemct(  # noqa: D417 Missing argument description in the docstring
+    kem_ct: bytes,
+) -> bytes:
     """Manipulate the first ct of the `CompositeCiphertextValue`.
 
     Arguments:

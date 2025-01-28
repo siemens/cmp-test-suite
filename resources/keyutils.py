@@ -186,7 +186,6 @@ def _check_starts_with(algorithm: str, prefixes: List[str]) -> bool:
     return any(algorithm.startswith(prefix) for prefix in prefixes)
 
 
-
 def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 for RF docs
     """Generate a `cryptography` key based on the specified algorithm.
 

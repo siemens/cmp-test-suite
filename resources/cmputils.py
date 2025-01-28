@@ -871,7 +871,9 @@ def prepare_cert_request(  # noqa D417 undocumented-param
         if common_name is None:
             raise ValueError("A `common_name` must be provided if `cert_template` is not specified.")
         cert_template = certbuildutils.prepare_cert_template(
-            key=key, subject=common_name, extensions=extensions,
+            key=key,
+            subject=common_name,
+            extensions=extensions,
             for_kga=for_kga,
             use_pre_hash=use_pre_hash,
             spki=spki,
@@ -961,7 +963,6 @@ def prepare_cert_req_msg(  # noqa D417 undocumented-param
         controls=controls,
         for_kga=for_kga,
         spki=spki,
-
     )
 
     cert_request_msg["certReq"] = cert_request
@@ -3971,7 +3972,7 @@ def prepare_popo_challenge_for_non_signing_key(
 ) -> rfc4211.ProofOfPossession:
     """Prepare a Proof-of-Possession (PoP) structure for Key encipherment or key agreement.
 
-    Using either the encrypted certificate or the challenge methode.
+    Using either the encrypted certificate or the challenge method.
 
     :param use_encr_cert: A flag indicating whether to use an encrypted certificate (`True`) or
                            a challenge-based message (`False`). Defaults to `True`.
@@ -3987,7 +3988,7 @@ def prepare_popo_challenge_for_non_signing_key(
     return popo_structure
 
 
-def build_kem_based_mac_protected_message(# noqa: D417 Missing argument description in the docstring
+def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument description in the docstring
     request: rfc9480.PKIMessage,
     shared_secret: Optional[bytes] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,

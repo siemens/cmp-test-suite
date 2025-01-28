@@ -592,4 +592,3 @@ ALL_KNOWN_PROTECTION_OIDS.update(
         id_ce_altSignatureValue: "alt-sig-val",
     }
 )
-

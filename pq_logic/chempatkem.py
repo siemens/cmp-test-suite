@@ -10,8 +10,6 @@ from typing import List, Optional, Tuple, Union
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1.type import univ
-
-from pq_logic.stat_utils import TRAD_ALG_2_NENC, get_ec_trad_name
 from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.kem_mechanism import DHKEMRFC9180
@@ -28,6 +26,7 @@ from pq_logic.keys.kem_keys import (
     Sntrup761PublicKey,
 )
 from pq_logic.pq_key_factory import PQKeyFactory
+from pq_logic.stat_utils import TRAD_ALG_2_NENC, get_ec_trad_name
 from pq_logic.tmp_mapping import get_oid_for_chemnpat
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 
@@ -37,10 +36,6 @@ CURVE_NAME_2_CONTEXT_NAME = {
     "secp384r1": "P384",
     "brainpoolP384r1": "brainpoolP384",
 }
-
-
-TRAD_ALG_2_NENC = {"brainpoolP384": 97, "P256": 65, "brainpoolP256": 65, "X448": 56, "X25519": 32, "P384": 97}
-
 
 def _get_trad_name(trad_key: Union[ECDHPrivateKey, ECDHPrivateKey]) -> str:
     """Return the traditional name to generate the context string"""
@@ -540,6 +535,7 @@ class ChempatMLKEMPrivateKey(ChempatPrivateKey):
         raise NotImplementedError("Currently only x25519 is supported.")
 
     def public_key(self) -> ChempatMLKEMPublicKey:
+        """Return the corresponding public key class."""
         return ChempatMLKEMPublicKey(self.pq_key.public_key(), self.trad_key.public_key())
 
 

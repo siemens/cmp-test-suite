@@ -236,7 +236,7 @@ def build_csr(  # noqa D417 undocumented-param
         - `use_pre_hash`: Whether to use the pre-hashed version for PQ-keys and CompositeSig-keys.
         - `use_pre_hash_pub_key`: Whether to use the pre-hashed version for the public key.
         Defaults to `use_pre_hash`.
-        - `spki`: Optional `SubjectPublicKeyInfo` object to popolate the CSR with. Defaults to `None`.
+        - `spki`: Optional `SubjectPublicKeyInfo` object to populate the CSR with. Defaults to `None`.
 
 
     Returns:
@@ -257,10 +257,9 @@ def build_csr(  # noqa D417 undocumented-param
     csr["certificationRequestInfo"]["subject"] = prepare_name(common_name)
 
     pub_pre_hash = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
-    spki = spki or convertutils.subjectPublicKeyInfo_from_pubkey(public_key=signing_key.public_key(),
-                                                         use_rsa_pss=use_rsa_pss,
-                                                         use_pre_hash=pub_pre_hash
-                                                         )
+    spki = spki or convertutils.subjectPublicKeyInfo_from_pubkey(
+        public_key=signing_key.public_key(), use_rsa_pss=use_rsa_pss, use_pre_hash=pub_pre_hash
+    )
     if for_kga:
         spki_kga = rfc5280.SubjectPublicKeyInfo()
         spki_kga["algorithm"] = spki["algorithm"]
@@ -279,8 +278,14 @@ def build_csr(  # noqa D417 undocumented-param
         csr = csr_add_extensions(csr=csr, extensions=extensions)
 
     if not exclude_signature and not for_kga:
-        csr = sign_csr(csr=csr, signing_key=signing_key, hash_alg=hash_alg,
-                       use_rsa_pss=use_rsa_pss, bad_sig=bad_sig, use_pre_hash=use_pre_hash)
+        csr = sign_csr(
+            csr=csr,
+            signing_key=signing_key,
+            hash_alg=hash_alg,
+            use_rsa_pss=use_rsa_pss,
+            bad_sig=bad_sig,
+            use_pre_hash=use_pre_hash,
+        )
 
     elif for_kga:
         csr["signature"] = univ.BitString("")
@@ -989,7 +994,9 @@ def prepare_cert_template(  # noqa D417 undocumented-param
         spki_temp = convertutils.copy_subject_public_key_info(target=public_key_obj, filled_sub_pubkey_info=spki)
         cert_template["publicKey"] = spki_temp
     if "publicKey" not in exclude_list:
-        cert_template["publicKey"] = _prepare_public_key_for_cert_template(key=key, for_kga=for_kga, asn1cert=cert, use_pre_hash=use_pre_hash)
+        cert_template["publicKey"] = _prepare_public_key_for_cert_template(
+            key=key, for_kga=for_kga, asn1cert=cert, use_pre_hash=use_pre_hash
+        )
 
     logging.info("%s", cert_template.prettyPrint())
     return cert_template
@@ -1074,7 +1081,9 @@ def _prepare_public_key_for_cert_template(
         key = key.public_key()
 
     if not for_kga:
-        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(public_key=key, use_pre_hash=use_pre_hash, use_rsa_pss=use_rsa_pss)
+        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(
+            public_key=key, use_pre_hash=use_pre_hash, use_rsa_pss=use_rsa_pss
+        )
         public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
         )
@@ -1082,7 +1091,9 @@ def _prepare_public_key_for_cert_template(
             target=public_key_obj, filled_sub_pubkey_info=cert_public_key
         )
     else:
-        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(public_key=key, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash)
+        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(
+            public_key=key, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+        )
         public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
         )
@@ -1217,10 +1228,9 @@ def prepare_subject_public_key_info(
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(der_data)
 
     else:
-        spki = subjectPublicKeyInfo_from_pubkey(public_key=key,
-                                                use_rsa_pss=use_rsa_pss,
-                                                use_pre_hash=use_pre_hash,
-                                                hash_alg=hash_alg)
+        spki = subjectPublicKeyInfo_from_pubkey(
+            public_key=key, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash, hash_alg=hash_alg
+        )
 
     return spki
 
@@ -1259,10 +1269,7 @@ def _prepare_spki_for_kga(
         from pq_logic.combined_factory import CombinedKeyFactory
 
         key = CombinedKeyFactory.generate_key(key_name).public_key()
-        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key,
-                                                    use_rsa_pss=use_pss,
-                                                    use_pre_hash=use_pre_hash
-                                                    )
+        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_rsa_pss=use_pss, use_pre_hash=use_pre_hash)
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     elif key is not None:

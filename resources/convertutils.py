@@ -59,8 +59,7 @@ def subjectPublicKeyInfo_from_pubkey(
     :return: An `rfc5280.SubjectPublicKeyInfo` structure containing the public key information.
     """
     if isinstance(public_key, AbstractCompositePublicKey):
-        return public_key.to_spki(use_pss=use_rsa_pss, pre_hash=use_pre_hash,
-                                  use_2_spki=use_2_spkis)
+        return public_key.to_spki(use_pss=use_rsa_pss, pre_hash=use_pre_hash, use_2_spki=use_2_spkis)
 
     oid = None
     if hash_alg is not None and isinstance(public_key, PQSignaturePublicKey):
@@ -70,8 +69,7 @@ def subjectPublicKeyInfo_from_pubkey(
         oid = PQ_NAME_2_OID[public_key.name + "-" + hash_alg]
 
     der_data = public_key.public_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
+        encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
 
     subject_public_key_info, _ = decoder.decode(der_data, asn1Spec=rfc5280.SubjectPublicKeyInfo())
@@ -79,7 +77,7 @@ def subjectPublicKeyInfo_from_pubkey(
         subject_public_key_info = copy_subject_public_key_info(target, subject_public_key_info)
 
     if oid is not None:
-       subject_public_key_info["algorithm"]["algorithm"] = oid
+        subject_public_key_info["algorithm"]["algorithm"] = oid
 
     return subject_public_key_info
 

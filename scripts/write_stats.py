@@ -29,8 +29,8 @@ for alg_name, options in HybridKeyFactory.get_all_kem_coms_as_dict().items():
     if alg_name not in data:
         data[alg_name] = []
 
-    for methode in options:
-        key = generate_key(algorithm=alg_name, **methode)
+    for method in options:
+        key = generate_key(algorithm=alg_name, **method)
         entry = {"name": key.name, "public_key_size": key.public_key().key_size, "private_key_size": key.key_size, "ct_length": key.ct_length}
         data[alg_name].append(entry)
 
