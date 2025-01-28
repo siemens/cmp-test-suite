@@ -28,7 +28,7 @@ from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6955, rfc9480, rfc9
 from robot.api.deco import keyword, not_keyword
 from unit_tests.asn1_wrapper_class.pki_message_wrapper import PKIMessage, prepare_name
 
-from resources import asn1utils, protectionutils
+from resources import asn1utils, protectionutils, utils
 from resources.asn1_structures import ChallengeASN1, POPODecKeyChallContentAsn1
 from resources.ca_kga_logic import validate_enveloped_data
 from resources.certutils import load_public_key_from_cert
@@ -536,7 +536,12 @@ def _compute_ss(client_key, ca_cert):
 
 # TODO fix doc
 def _prepare_pkmac_val(
-    shared_secret: bytes, data: bytes, mac_alg: str, for_agreement: bool = True, **mac_params
+    shared_secret: bytes,
+    data: bytes,
+    mac_alg: str,
+    for_agreement: bool = True,
+    bad_pop: bool = False,
+    **mac_params
 ) -> rfc4211.ProofOfPossession:
     """Prepare the PKMAC value for the Proof-of-Possession structure.
 
@@ -545,10 +550,15 @@ def _prepare_pkmac_val(
     :param mac_alg: The MAC algorithm to use for the PKMAC value.
     :param for_agreement: The flag to indicate whether the PKMAC value is for key agreement. Defaults to `True`.
     :param mac_params: The additional parameters to use for the MAC algorithm.
+    :param bad_pop: Whether to manipulate the first byte of the MAC value. Defaults to `False`.
     :return: The populated Proof-of-Possession structure with the `agreeMAC` field set.
     """
     pkmac_value = rfc4211.PKMACValue().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
     alg_id, mac_value = compute_and_prepare_mac(key=shared_secret, data=data, mac_alg=mac_alg, **mac_params)
+
+    if bad_pop:
+        mac_value = utils.manipulate_first_byte(mac_value)
+
     pkmac_value["algId"]["algorithm"] = alg_id["algorithm"]
     pkmac_value["algId"]["parameters"] = alg_id["parameters"]
     pkmac_value["value"] = univ.BitString.fromOctetString(mac_value)
@@ -568,15 +578,16 @@ def _prepare_pkmac_val(
     popo_structure[option] = popo_priv_key
     return popo_structure
 
-
-def prepare_agree_key_popo(
+@keyword(name="Prepare keyAgreement POPO")
+def prepare_key_agreement_popo(
     use_encr_cert: bool = True,
     env_data: Optional[rfc9480.EnvelopedData] = None,
     client_key: Optional[ECDHPrivKeyTypes] = None,
     shared_secret: Optional[bytes] = None,
-    cert_request: Optional[bytes] = None,
+    cert_request: Optional[Union[bytes, rfc4211.CertRequest]] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     mac_alg: str = "password_based_mac",
+    bad_pop: bool = False,
     **mac_params,
 ) -> rfc4211.ProofOfPossession:
     """Prepare a Proof-of-Possession (PoP) structure for a Key Agreement (KA) key.
@@ -590,20 +601,34 @@ def prepare_agree_key_popo(
     :param env_data: Optional `EnvelopedData` object containing encrypted key material.
     :param client_key: Optional client-side private key for key agreement (ECDH).
     :param ca_cert: Optional CA certificate containing the public key for key agreement.
+    :param shared_secret: Optional shared secret for key agreement.
+    :param cert_request: Optional certificate request to authenticate with the MAC.
+    :param mac_alg: The MAC algorithm to use for the PoP structure. Defaults to `password_based_mac`.
     :return: A populated `rfc4211.ProofOfPossession` structure for key agreement.
     """
     if client_key is not None and ca_cert is not None:
         shared_secret = _compute_ss(client_key, ca_cert=ca_cert)
 
     popo_priv_key = rfc4211.POPOPrivKey().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
-    if env_data is None and shared_secret:
+    if env_data is None and shared_secret is None:
         option = "encrCert" if use_encr_cert else "challenge"
         popo_priv_key["subsequentMessage"] = rfc4211.SubsequentMessage(option).subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)
         )
     elif shared_secret is not None:
+
+        if cert_request is None:
+            raise ValueError("The certificate request is required for `agreeMAC` PoP.")
+
+        if not isinstance(cert_request, bytes):
+            cert_request = encoder.encode(cert_request)
+
         return _prepare_pkmac_val(
-            shared_secret=shared_secret, cert_request=cert_request, for_agreement=True, mac_alg=mac_alg, **mac_params
+            shared_secret=shared_secret,
+            data=cert_request,
+            for_agreement=True, mac_alg=mac_alg,
+            bad_pop=bad_pop,
+            **mac_params
         )
     else:
         popo_priv_key["encryptedKey"] = env_data
