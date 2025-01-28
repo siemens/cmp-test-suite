@@ -1370,6 +1370,8 @@ def _perform_encaps_with_keys(
 
     return ss, ct, kem_oid
 
+# TODO think about also always returning both certificates.
+def prepare_encr_cert_for_request(# noqa: D417 Missing argument descriptions in the docstring
     cert_req_msg: rfc4211.CertReqMsg,
     signing_key: PrivateKey,
     hash_alg: str,
@@ -1377,6 +1379,7 @@ def _perform_encaps_with_keys(
     new_ee_cert: Optional[rfc9480.CMPCertificate] = None,
     hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
     client_pub_key: Optional[PQKEMPublicKey] = None,
+    **kwargs,
 ) -> rfc9480.EnvelopedData:
     """Prepare an encrypted certificate for a request.
 
