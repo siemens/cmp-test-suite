@@ -18,7 +18,6 @@ import logging
 from typing import List, Optional, Set, Tuple, Union
 
 import pyasn1.error
-from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.migration_typing import KEMPrivateKey, HybridKEMPublicKey
 from pq_logic.pq_utils import is_kem_public_key, get_kem_oid_from_key, is_kem_private_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
@@ -30,21 +29,11 @@ from robot.api.deco import keyword, not_keyword
 from pq_logic.trad_typing import ECDHPrivateKey
 from resources import certutils, cmputils, utils
 from resources.asn1_structures import KemCiphertextInfoAsn1, PKIMessageTMP, InfoTypeAndValueAsn1
-from resources.certutils import (
-    build_cert_chain_from_dir,
-    build_crl_chain_from_list,
-    certificates_are_trustanchors,
-    load_certificates_from_dir,
-    load_truststore,
-    verify_cert_chain_openssl,
-)
 from resources.cmputils import get_value_from_seq_of_info_value_field, prepare_info_value
 from resources.convertutils import copy_asn1_certificate, pyasn1_time_obj_to_py_datetime
-from resources.exceptions import BadAsn1Data, BadAlg
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import CURVE_OIDS_2_NAME
-from resources.protectionutils import prepare_kem_ciphertextinfo
 from resources.suiteenums import GeneralInfoOID
 from resources.typingutils import Strint
 
@@ -653,13 +642,13 @@ def _validate_crls(
     :param timeout: The timeout for the validation process. Defaults to 60 seconds.
     :return: None
     """
-    ca_certs = load_certificates_from_dir(path=ca_certs)
-    trust_anchors = load_truststore(path=trustanchors, allow_os_store=allow_os_store)
+    ca_certs = certutils.load_certificates_from_dir(path=ca_certs)
+    trust_anchors = certutils.load_truststore(path=trustanchors, allow_os_store=allow_os_store)
 
     certs = ca_certs + trust_anchors
     for i, crl in enumerate(crl_value):
         crl: rfc9480.CertificateList
-        crl_chain = build_crl_chain_from_list(crl=crl, certs=certs)
+        crl_chain = certutils.build_crl_chain_from_list(crl=crl, certs=certs)
         try:
             certutils.verify_openssl_crl(crl_chain, timeout=timeout)
         except ValueError:
@@ -982,12 +971,12 @@ def validate_preferred_ca_prot_enc_cert(  # noqa D417 undocumented-param
         # is a single cert, CMPCertificate
         ca_prot_cert = decoder.decode(data["infoValue"], rfc9480.CAProtEncCertValue())
 
-        cert_chain = build_cert_chain_from_dir(
+        cert_chain = certutils.build_cert_chain_from_dir(
             ee_cert=ca_prot_cert, cert_chain_dir=cert_chain_dir, root_dir=trustanchors
         )
 
-        certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, verbose=True)
-        verify_cert_chain_openssl(cert_chain=cert_chain)
+        certutils.certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, verbose=True)
+        certutils.verify_cert_chain_openssl(cert_chain=cert_chain)
 
         return ca_prot_cert
 
