@@ -83,11 +83,9 @@ Load And Parse Example CSR
 Exchange Data With CA
     [Documentation]    Send a HTTP POST request to a server, and return the response.
     [Arguments]    ${payload}
-    Log Base64    ${payload}
 #    Run Keyword And Ignore Error    Try to Log PKIMessage as ASN1    ${payload}
     Try To Log PKIMessage    ${payload}
     # TODO check if type of payload is a pyasn1 structure, and if it is, der-encode it automatically? Maybe?
-
     VAR    &{headers}    Content-Type=application/pkixcmp    Accept-Type=application/pkixcmp
     ${response}=    POST
     ...    url=${CA_CMP_URL}
@@ -95,8 +93,6 @@ Exchange Data With CA
     ...    headers=&{headers}
     ...    verify=${False}
     ...    expected_status=any
-    Log    ${response.content}
-    Log Base64    ${response.content}
     Try To Log PKIMessage    ${response.content}
     RETURN    ${response}
 
