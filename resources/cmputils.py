@@ -1802,14 +1802,14 @@ def prepare_certstatus(  # noqa D417 undocumented-param
         status_info = prepare_pkistatusinfo(status, failinfo=failinfo, texts=text)
         cert_status["statusInfo"] = status_info
 
-    if hash_alg is None and cert is not None:
-        sig_algorithm = cert["signatureAlgorithm"]["algorithm"]
-        hash_alg = oid_mapping.get_hash_from_oid(sig_algorithm, only_hash=True)
-
     if hash_alg is not None:
         alg_id = rfc9480.AlgorithmIdentifier().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
         alg_id["algorithm"] = oid_mapping.sha_alg_name_to_oid(hash_alg)
         cert_status["hashAlg"] = alg_id
+
+    if hash_alg is None and cert is not None:
+        sig_algorithm = cert["signatureAlgorithm"]["algorithm"]
+        hash_alg = oid_mapping.get_hash_from_oid(sig_algorithm, only_hash=True)
 
     if cert is not None and not cert_hash and hash_alg:
         cert_hash = oid_mapping.compute_hash(alg_name=hash_alg, data=encoder.encode(cert))
@@ -2076,11 +2076,12 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
         entry: rfc9480.CertResponse
         for i, entry in enumerate(cert_resp_msg):
             # remove the tagging.
+            cert_req_id = int(entry["certReqId"])
             cert = copy_asn1_certificate(cert=entry["certifiedKeyPair"]["certOrEncCert"]["certificate"])
             cert_status = prepare_certstatus(
                 hash_alg=hash_alg,
                 cert=cert,
-                cert_req_id=i,
+                cert_req_id=cert_req_id,
                 status="accepted",
                 status_info=None,
             )
