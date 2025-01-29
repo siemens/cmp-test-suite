@@ -1000,13 +1000,13 @@ def enforce_lwcmp_for_ca(  # noqa: D417 Missing argument descriptions in the doc
 
 
 def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the docstring
+    request: Optional[rfc9480.PKIMessage] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
     enc_cert: Optional[rfc5652.EnvelopedData] = None,
     cert_req_id: Optional[int] = None,
     ca_pubs: Optional[Sequence[rfc9480.CMPCertificate]] = None,
     responses: Optional[Union[Sequence[rfc9480.CertResponse], rfc9480.CertResponse]] = None,
     exclude_fields: Optional[str] = None,
-    request: Optional[rfc9480.PKIMessage] = None,
     set_header_fields: bool = True,
     **kwargs,
 ) -> CA_RESPONSE:
@@ -1040,6 +1040,8 @@ def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
 
     elif request and cert is None and enc_cert is None:
         kwargs["eku_strict"] = kwargs.get("eku_strict", True)
+        if kwargs.get("enforce_lwcmp", True):
+            enforce_lwcmp_for_ca(request)
         if request["body"].getName() != "p10cr":
             responses, certs = _process_cert_requests(
                 request=request,
@@ -1049,14 +1051,14 @@ def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
             logging.warning("Request was a p10cr, this is not allowed for IP messages.")
             verify_csr_signature(request["body"]["p10cr"])
             cert = build_cert_from_csr(
-                request["body"]["p10cr"],
+                csr=request["body"]["p10cr"],
                 ca_key=kwargs.get("ca_key"),
                 ca_cert=kwargs.get("ca_cert"),
                 hash_alg=kwargs.get("hash_alg", "sha256"),
             )
             cert_req_id = kwargs.get("cert_req_id") or -1
             certs = [cert]
-        responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
+            responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
     else:
         certs = [cert]
         responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
