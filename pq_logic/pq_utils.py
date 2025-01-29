@@ -63,7 +63,7 @@ def is_kem_private_key(key: Any) -> bool:
 
     return False
 
-
+@not_keyword
 def fetch_value_from_location(location: str) -> Optional[bytes]:
     """Fetch the actual value from a location (e.g., URL) if provided.
 

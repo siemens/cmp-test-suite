@@ -17,7 +17,7 @@ from typing import List, Optional, Tuple, Union
 from cryptography.hazmat.primitives.asymmetric import dh, x448, x25519
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
-from pq_logic.migration_typing import HybridKEMPublicKey
+from pq_logic.migration_typing import HybridKEMPublicKey, KEMPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
@@ -32,13 +32,15 @@ from pyasn1_alt_modules import (
     rfc9480,
 )
 from robot.api.deco import keyword, not_keyword
-from robot.libraries.DateTime import convert_date
+from robot.libraries import DateTime
 
 import resources.prepareutils
 from resources import (
     asn1utils,
     certbuildutils,
+    certextractutils,
     certutils,
+    compareutils,
     convertutils,
     cryptoutils,
     keyutils,
@@ -47,8 +49,6 @@ from resources import (
     utils,
 )
 from resources.asn1_structures import KemCiphertextInfoAsn1
-from resources.certextractutils import get_field_from_certificate
-from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data
 from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKey, Strint, TradSigPrivKey
@@ -494,7 +494,7 @@ def validate_archive_options(
         raise ValueError("Missing PKIArchiveOptions in controls.")
 
     if not found:
-        return
+        return None
 
     archive_options, rest = decoder.decode(archive_options, rfc4211.PKIArchiveOptions())
     if rest != b"":
@@ -1220,6 +1220,7 @@ def build_ir_from_key(  # noqa D417 undocumented-param
             cert_template=params.get("cert_template"),
             popo_structure=params.get("popo_structure"),
             bad_pop=bad_pop,
+            spki=spki,
         )
 
     pvno = 2
@@ -2590,7 +2591,7 @@ def compare_general_name_and_name(  # noqa D417 # undocumented-param
 
     """
     if general_name.getName() == "directoryName":
-        return compare_pyasn1_names(general_name["directoryName"], name, "without_tag")
+        return compareutils.compare_pyasn1_names(general_name["directoryName"], name, "without_tag")
 
     if general_name.getName() == "rfc822Name":
         str_name = utils.get_openssl_name_notation(name, oids=None)
@@ -2898,7 +2899,7 @@ def patch_messageTime(  # noqa D417 undocumented-param pylint: disable=invalid-n
 
     if new_time is not None:
         if isinstance(new_time, str):
-            new_time = convert_date(new_time)
+            new_time = DateTime.convert_date(new_time)
 
     new_time = new_time or datetime.now(timezone.utc)
     message_time = useful.GeneralizedTime().fromDateTime(new_time)
@@ -2979,7 +2980,7 @@ def patch_senderkid(  # noqa D417 undocumented-param
 
     """
     if isinstance(sender_kid, rfc9480.CMPCertificate):
-        sender_kid = get_field_from_certificate(sender_kid, extension="ski")  # type: ignore
+        sender_kid = certextractutils.get_field_from_certificate(sender_kid, extension="ski")  # type: ignore
         if sender_kid is None:
             raise ValueError("The certificate did not contain the SubjectKeyIdentifier extension!")
 
@@ -3994,7 +3995,7 @@ def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument descri
     shared_secret: Optional[bytes] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     kem_ct_info: Optional[rfc9480.InfoTypeAndValue] = None,
-    client_key=None,
+    client_key: Optional[KEMPublicKey]=None,
 ) -> Tuple[bytes, rfc9480.PKIMessage]:
     """Build a KEM based MAC protected message.
 
@@ -4038,7 +4039,7 @@ def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument descri
             raise ValueError(f"Invalid public key for `keyEncipherment`: {type(ca_key)}")
 
         if isinstance(ca_key, HybridKEMPublicKey):
-            shared_secret, ct = ca_key.encaps(client_key)
+            shared_secret, ct = ca_key.encaps(client_key) #type: ignore
         else:
             shared_secret, ct = ca_key.encaps()
 

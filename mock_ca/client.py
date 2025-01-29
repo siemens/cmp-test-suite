@@ -1,14 +1,13 @@
-import requests
-from pyasn1.codec.der import encoder, decoder
 import sys
 
+import requests
+from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc9480
 
 sys.path.append('.')
 sys.path.append('.')
+from resources import cmputils, keyutils
 from resources.asn1_structures import PKIMessageTMP
-from resources import cmputils
-from resources import keyutils
 
 
 def send_request_to_static_cert1():

@@ -27,19 +27,10 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from pyasn1_alt_modules.rfc7906 import BinaryTime
-from resources import cmputils, cryptoutils, utils
+from resources import certextractutils, certutils, cmputils, cryptoutils, envdatautils, utils
 from resources.asn1utils import get_set_bitstring_names
 from resources.ca_kga_logic import validate_issuer_and_serial_number_field
-from resources.certextractutils import extract_extension_from_csr, get_extension, get_field_from_certificate
-from resources.certutils import (
-    build_cert_chain_from_dir,
-    certificates_are_trustanchors,
-    load_public_key_from_cert,
-    parse_certificate,
-    verify_cert_chain_openssl,
-)
 from resources.convertutils import pyasn1_time_obj_to_py_datetime
-from resources.envdatautils import prepare_issuer_and_serial_number
 from resources.exceptions import BadAsn1Data
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.typingutils import PrivateKey
@@ -50,6 +41,7 @@ from pq_logic.hybrid_structures import RelatedCertificate, RequesterCertificate
 from pq_logic.tmp_oids import id_aa_relatedCertRequest, id_relatedCert
 
 
+@keyword(name="Prepare RequesterCertificate")
 def prepare_requester_certificate(
     cert_a: rfc9480.CMPCertificate,
     cert_a_key: PrivateKey,
@@ -82,7 +74,7 @@ def prepare_requester_certificate(
     # get current UNIX time
     current_time = request_time or (int(time.time()) + freshness)
     bin_time = BinaryTime(current_time)
-    cert_id = prepare_issuer_and_serial_number(
+    cert_id = envdatautils.prepare_issuer_and_serial_number(
         cert=cert_a, invalid_serial_number=invalid_serial_number, invalid_issuer=invalid_issuer
     )
 
@@ -239,20 +231,20 @@ def validate_ku_and_eku_related_cert(cert_a: rfc9480.CMPCertificate, related_cer
     # MUST ensure that the related certificate at least contains the KU bits and EKU
     # OIDs being asserted in the certificate being issued
 
-    eku_cert_a = get_field_from_certificate(cert_a, extension="eku")
-    eku_cert_b = get_field_from_certificate(cert_a, extension="eku")
+    eku_cert_a = certextractutils.get_field_from_certificate(cert_a, extension="eku")
+    eku_cert_b = certextractutils.get_field_from_certificate(cert_a, extension="eku")
 
     if eku_cert_a is not None:
         for eku_oid in eku_cert_b:
             if eku_oid not in related_cert:
                 raise ValueError()
 
-    ku_cert_a = get_field_from_certificate(cert_a, extension="key_usage")
-    ku_cert_b = get_field_from_certificate(related_cert, extension="key_usage")
+    ku_cert_a = certextractutils.get_field_from_certificate(cert_a, extension="key_usage")
+    ku_cert_b = certextractutils.get_field_from_certificate(related_cert, extension="key_usage")
 
     if ku_cert_a is not None:
-        set_a = set(get_set_bitstring_names(ku_cert_a))
-        set_b = set(get_set_bitstring_names(ku_cert_b))
+        set_a = set(get_set_bitstring_names(ku_cert_a)) # type: ignore
+        set_b = set(get_set_bitstring_names(ku_cert_b)) # type: ignore
 
         if ku_cert_b is None or set_a - set_b:
             raise ValueError()
@@ -325,7 +317,7 @@ def load_certificate_from_uri(uri: str, load_chain: bool) -> List[rfc9480.CMPCer
     else:
         certs = response.content.split(b"-----END CERTIFICATE-----\n")
         certs = [cert for cert in certs if cert.strip()]
-        cert = [parse_certificate(utils.decode_pem_string(cert)) for cert in certs]
+        cert = [certutils.parse_certificate(utils.decode_pem_string(cert)) for cert in certs]
         return cert
 
 
@@ -366,15 +358,15 @@ def validate_multi_auth_binding_csr(
     cert_chain = load_certificate_from_uri(location_info, load_chain=load_chain)
     cert_a = cert_chain[0]
 
-    extensions = extract_extension_from_csr(csr)
+    extensions = certextractutils.extract_extension_from_csr(csr)
     # For certificate chains, this extension MUST only be included in the end-entity certificate.
     if extensions is not None:
-        ca_extn = get_extension(extensions, rfc5280.id_ce_basicConstraints)
+        ca_extn = certextractutils.get_extension(extensions, rfc5280.id_ce_basicConstraints)
         if ca_extn["cA"]:
             raise ValueError("The `Cert B` MUST be an end entity certificate.")
 
     # validate binding
-    public_key = load_public_key_from_cert(cert_a)
+    public_key = certutils.load_public_key_from_cert(cert_a)
     hash_alg = get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
 
     sig_name = may_return_oid_to_name(cert_a["tbsCertificate"]["signature"]["algorithm"])
@@ -389,8 +381,8 @@ def validate_multi_auth_binding_csr(
 
     cryptoutils.verify_signature(data=data, hash_alg=hash_alg, public_key=public_key, signature=signature)
 
-    certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, allow_os_store=allow_os_store)
-    verify_cert_chain_openssl(cert_chain=cert_chain, crl_check=crl_check)
+    certutils.certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, allow_os_store=allow_os_store)
+    certutils.verify_cert_chain_openssl(cert_chain=cert_chain, crl_check=crl_check)
     return cert_a
 
 
@@ -403,7 +395,7 @@ def server_side_validate_cert_binding_for_multi_auth(ee_cert, related_cert) -> N
     :param related_cert: The related certificate (Cert A) being validated.
     """
     # Only on ee-certificates
-    extn = get_extension(ee_cert["extensions"], rfc5280.id_ce_basicConstraints)
+    extn = certextractutils.get_extension(ee_cert["extensions"], rfc5280.id_ce_basicConstraints)
 
     if extn is not None:
         if extn["cA"]:
@@ -447,8 +439,8 @@ def generate_certs_only_message(cert_path: str, cert_dir: str) -> bytes:
     :param cert_dir: The directory where the chain is stored.
     :return: DER-encoded CMS 'certs-only' message as bytes.
     """
-    ee_cert = parse_certificate(utils.load_and_decode_pem_file(cert_path))
-    cert_chain = build_cert_chain_from_dir(ee_cert, cert_chain_dir=cert_dir)
+    ee_cert = certutils.parse_certificate(utils.load_and_decode_pem_file(cert_path))
+    cert_chain = certutils.build_cert_chain_from_dir(ee_cert, cert_chain_dir=cert_dir)
 
     cms_message = pkcs7.PKCS7SignatureBuilder().set_data(b"")
     for cert in cert_chain:
