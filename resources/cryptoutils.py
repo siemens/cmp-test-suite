@@ -493,7 +493,7 @@ def compute_ansi_x9_63_kdf(
 
     return keying_material[:key_length]
 
-
+@not_keyword
 def compute_hkdf(hash_alg: str, key_material: bytes, ukm: Optional[bytes] = None, length: int = 32) -> bytes:
     """Compute the HKDF output for the given hash algorithm, key material, and optional user key material (UKM).
 

@@ -28,11 +28,10 @@ from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6955, rfc9480, rfc9
 from robot.api.deco import keyword, not_keyword
 from unit_tests.asn1_wrapper_class.pki_message_wrapper import PKIMessage, prepare_name
 
-from resources import asn1utils, protectionutils, utils
+from resources import asn1utils, cmputils, keyutils, protectionutils, utils
 from resources.asn1_structures import ChallengeASN1, POPODecKeyChallContentAsn1
 from resources.ca_kga_logic import validate_enveloped_data
 from resources.certutils import load_public_key_from_cert
-from resources.cmputils import _prepare_pki_message, compare_general_name_and_name, prepare_general_name
 from resources.convertutils import str_to_bytes
 from resources.cryptoutils import compute_aes_cbc, compute_hmac, perform_ecdh
 from resources.envdatautils import (
@@ -41,7 +40,6 @@ from resources.envdatautils import (
     prepare_one_asymmetric_key,
 )
 from resources.exceptions import BadAsn1Data, InvalidKeyCombination
-from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import compute_hash
 from resources.protectionutils import compute_and_prepare_mac
 from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
@@ -118,7 +116,7 @@ def prepare_private_key_for_pop(
         if use_string:
             data["identifier"]["string"] = sender
         else:
-            data["identifier"]["generalName"] = prepare_general_name("directoryName", sender)
+            data["identifier"]["generalName"] = cmputils.prepare_general_name("directoryName", sender)
 
     logging.debug(f"Private key for PoP: {data.prettyPrint()}")
     return data
@@ -168,7 +166,7 @@ def prepare_kem_env_data_for_popo(
 
     env_data = rfc5652.EnvelopedData().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 4))
 
-    ca_public_key = load_public_key_from_spki(ca_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+    ca_public_key = keyutils.load_public_key_from_spki(ca_cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
     if not is_kem_public_key(ca_public_key):
         raise InvalidKeyCombination(f"The KEM env data got an invalid key: {type(ca_public_key).__name__}")
@@ -375,7 +373,7 @@ def process_pkimessage_with_popdecc(
         num = rand["int"]
         if expected_sender is not None:
             sender = prepare_name(expected_sender)
-            if compare_general_name_and_name(rand["sender"], sender):
+            if cmputils.compare_general_name_and_name(rand["sender"], sender):
                 rand_name = get_openssl_name_notation(rand["sender"])
                 raise ValueError(f"Expected sender name: {expected_sender}. Got: {rand_name}")
 
@@ -384,7 +382,7 @@ def process_pkimessage_with_popdecc(
         if request is None:
             raise ValueError("The original PKIMessage request is required to build the new one for the challenge.")
 
-        pki_message = _prepare_pki_message(
+        pki_message = cmputils._prepare_pki_message(
             sender=request["header"]["sender"],
             recipient=request["header"]["recipient"],
             transaction_id=request["header"]["transactionID"].asOctets(),

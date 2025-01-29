@@ -10,6 +10,7 @@ from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
+from resources import certextractutils, compareutils
 from resources.certbuildutils import (
     build_cert_from_csr,
     build_csr,
@@ -18,8 +19,6 @@ from resources.certbuildutils import (
     prepare_single_value_attr,
     sign_cert,
 )
-from resources.certextractutils import get_extension
-from resources.compareutils import compare_alg_id_without_tag, compare_pyasn1_names
 from resources.convertutils import copy_asn1_certificate, subjectPublicKeyInfo_from_pubkey
 from resources.copyasn1utils import copy_name, copy_validity
 from resources.cryptoutils import sign_data
@@ -53,19 +52,19 @@ def _prepare_issuer_and_subject(
     :param base_cert: Parsed Base Certificate structure.
     :return: The may updated `DeltaCertificateDescriptor` structure.
     """
-    if not compare_pyasn1_names(delta_cert["tbsCertificate"]["issuer"], base_cert["tbsCertificate"]["issuer"]):
+    if not compareutils.compare_pyasn1_names(delta_cert["tbsCertificate"]["issuer"], base_cert["tbsCertificate"]["issuer"]):
         issuer_obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
         issuer = copy_name(delta_cert["tbsCertificate"]["issuer"], name=issuer_obj)
         dcd["issuer"] = issuer
 
-    if not compare_pyasn1_names(delta_cert["tbsCertificate"]["subject"], base_cert["tbsCertificate"]["subject"]):
+    if not compareutils.compare_pyasn1_names(delta_cert["tbsCertificate"]["subject"], base_cert["tbsCertificate"]["subject"]):
         subject_obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
         subject = copy_name(delta_cert["tbsCertificate"]["subject"], name=subject_obj)
         dcd["subject"] = subject
 
     return dcd
 
-
+@not_keyword
 def prepare_dcd_extension_from_delta(delta_cert: rfc9480.CMPCertificate, base_cert: rfc9480.CMPCertificate):
     """Prepare a Delta Certificate Descriptor (DCD) extension from a parsed Delta Certificate and Base Certificate.
 
@@ -87,14 +86,14 @@ def prepare_dcd_extension_from_delta(delta_cert: rfc9480.CMPCertificate, base_ce
 
     dcd["serialNumber"] = delta_cert["tbsCertificate"]["serialNumber"]
 
-    same_alg_id = compare_alg_id_without_tag(
+    same_alg_id = compareutils.compare_alg_id_without_tag(
         delta_cert["tbsCertificate"]["signature"], base_cert["tbsCertificate"]["signature"]
     )
 
     if not same_alg_id:
         dcd["signature"]["algorithm"] = delta_cert["tbsCertificate"]["signature"]["algorithm"]
 
-    same_issuer = compare_pyasn1_names(delta_cert["tbsCertificate"]["issuer"], base_cert["tbsCertificate"]["issuer"])
+    same_issuer = compareutils.compare_pyasn1_names(delta_cert["tbsCertificate"]["issuer"], base_cert["tbsCertificate"]["issuer"])
 
     if not same_issuer:
         obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
@@ -107,7 +106,7 @@ def prepare_dcd_extension_from_delta(delta_cert: rfc9480.CMPCertificate, base_ce
     if val1 != val2:
         dcd["validity"] = delta_cert["tbsCertificate"]["validity"]
 
-    same_subject = compare_pyasn1_names(delta_cert["tbsCertificate"]["subject"], base_cert["tbsCertificate"]["subject"])
+    same_subject = compareutils.compare_pyasn1_names(delta_cert["tbsCertificate"]["subject"], base_cert["tbsCertificate"]["subject"])
 
     if not same_subject:
         obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
@@ -557,7 +556,7 @@ def build_delta_cert_from_paired_cert(paired_cert: rfc9480.CMPCertificate) -> rf
     """
     paired_cert_tmp = copy_asn1_certificate(paired_cert)
 
-    dcd = get_extension(paired_cert_tmp["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
+    dcd = certextractutils.get_extension(paired_cert_tmp["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
 
     if dcd is None:
         raise ValueError("DCD extension not found in the Base Certificate.")
@@ -634,7 +633,7 @@ def get_chameleon_delta_public_key(paired_cert: rfc9480.CMPCertificate) -> rfc52
     :param paired_cert: The paired certificate.
     :return: The extracted public key.
     """
-    dcd = get_extension(paired_cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
+    dcd = certextractutils.get_extension(paired_cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
 
     if dcd is None:
         raise ValueError("DCD extension not found in the Base Certificate.")

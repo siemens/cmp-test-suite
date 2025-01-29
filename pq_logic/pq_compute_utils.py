@@ -11,11 +11,9 @@ from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
-from resources import utils
-from resources.certbuildutils import prepare_sig_alg_id
+from resources import certbuildutils, cryptoutils, utils
 from resources.certextractutils import get_extension
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
-from resources.cryptoutils import sign_data, verify_signature
 from resources.exceptions import BadAsn1Data, BadPOP
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
@@ -42,7 +40,7 @@ from pq_logic.hybrid_sig.cert_binding_for_multi_auth import get_related_cert_fro
 from pq_logic.hybrid_sig.certdiscovery import (
     extract_sia_extension_for_cert_discovery,
     get_cert_discovery_cert,
-    validate_alg_ids,
+    validate_related_certificate_descriptor_alg_ids,
 )
 from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
@@ -71,7 +69,7 @@ def sign_data_with_alg_id(key, alg_id: rfc9480.AlgorithmIdentifier, data: bytes)
     elif oid in PQ_OID_2_NAME or oid in MSG_SIG_ALG or oid in RSASSA_PSS_OID_2_NAME or str(oid) in PQ_OID_2_NAME:
         hash_alg = get_hash_from_oid(oid, only_hash=True)
         use_pss = oid in RSASSA_PSS_OID_2_NAME
-        return sign_data(key=key, data=data, hash_alg=hash_alg, use_rsa_pss=use_pss)
+        return cryptoutils.sign_data(key=key, data=data, hash_alg=hash_alg, use_rsa_pss=use_pss)
     else:
         raise ValueError(f"Unsupported private key type: {type(key).__name__} oid:{may_return_oid_to_name(oid)}")
 
@@ -168,7 +166,7 @@ def may_extract_alt_key_from_cert(
         logging.info("Validate signature with cert discovery.")
         uri = str(rel_cert_desc["uniformResourceIdentifier"])
         other_cert = get_cert_discovery_cert(uri)
-        validate_alg_ids(other_cert, rel_cert_desc=rel_cert_desc)
+        validate_related_certificate_descriptor_alg_ids(other_cert, rel_cert_desc=rel_cert_desc)
         pq_key = load_public_key_from_spki(other_cert["tbsCertificate"]["subjectPublicKeyInfo"])
         return pq_key
 
@@ -215,7 +213,7 @@ def verify_signature_with_alg_id(public_key, alg_id: rfc9480.AlgorithmIdentifier
 
     elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
         hash_alg = get_hash_from_oid(oid, only_hash=True)
-        verify_signature(public_key=public_key, signature=signature, data=data, hash_alg=hash_alg)
+        cryptoutils.verify_signature(public_key=public_key, signature=signature, data=data, hash_alg=hash_alg)
     else:
         raise ValueError(f"Unsupported public key type: {type(public_key).__name__}.")
 
@@ -261,7 +259,7 @@ def _compute_protection(
     :param use_pre_hash: Whether to use pre-hashing for signing.
     :return: The protected PKIMessage.
     """
-    prot_alg_id = prepare_sig_alg_id(
+    prot_alg_id = certbuildutils.prepare_sig_alg_id(
         signing_key=signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
@@ -350,13 +348,13 @@ def protect_hybrid_pkimessage(
         )
 
     else:
-        alt_prot_alg_id = prepare_sig_alg_id(
+        alt_prot_alg_id = certbuildutils.prepare_sig_alg_id(
             signing_key=alt_signing_key,
             hash_alg=params.get("hash_alg", "sha256"),
             use_rsa_pss=params.get("use_rsa_pss", True),
             use_pre_hash=params.get("use_pre_hash", False),
         )
-        prot_alg_id = prepare_sig_alg_id(
+        prot_alg_id = certbuildutils.prepare_sig_alg_id(
             signing_key=private_key,
             hash_alg=params.get("hash_alg", "sha256"),
             use_rsa_pss=params.get("use_rsa_pss", True),

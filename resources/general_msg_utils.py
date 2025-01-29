@@ -27,11 +27,9 @@ from pyasn1.type import char, tag, univ, useful
 from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
-from resources import certutils, cmputils, utils
+from resources import certutils, cmputils, keyutils, utils
 from resources.asn1_structures import InfoTypeAndValueAsn1, KemCiphertextInfoAsn1, PKIMessageTMP
-from resources.cmputils import get_value_from_seq_of_info_value_field, prepare_info_value
 from resources.convertutils import copy_asn1_certificate, pyasn1_time_obj_to_py_datetime
-from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import CURVE_OIDS_2_NAME
 from resources.suiteenums import GeneralInfoOID
@@ -78,7 +76,7 @@ def _prepare_get_ca_certs(fill_info_value: bool = False) -> rfc9480.InfoTypeAndV
     :return: The filled `InfoTypeAndValue` structure
     """
     # as of Section 4.3.1 Get CA Certificates infoValue of the Request must be Absent.
-    return prepare_info_value(
+    return cmputils.prepare_info_value(
         oid=rfc9480.id_it_caCerts,
         fill_random=fill_info_value,
     )
@@ -300,7 +298,7 @@ def _prepare_get_certificate_request_template(fill_info_val: bool = False) -> rf
     because it MUST be absent.Defaults to `False`.
     :return: The filled `InfoTypeAndValue` structure
     """
-    return prepare_info_value(oid=rfc9480.id_it_certReqTemplate, fill_random=fill_info_val)
+    return cmputils.prepare_info_value(oid=rfc9480.id_it_certReqTemplate, fill_random=fill_info_val)
 
 
 def _get_type_inside_controls(controls, oid: univ.ObjectIdentifier) -> Union[None, univ.Any]:
@@ -627,7 +625,7 @@ def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
 
     status_list_val = rfc9480.CRLStatusListValue()
     status_list_val.append(status)
-    return prepare_info_value(rfc9480.id_it_crlStatusList, value=status_list_val)
+    return cmputils.prepare_info_value(rfc9480.id_it_crlStatusList, value=status_list_val)
 
 
 def _validate_crls(
@@ -745,7 +743,7 @@ def prepare_current_crl(fill_value: bool = False) -> rfc9480.InfoTypeAndValue:
     # As of Section 4.3.4:
     # Note: If the EE does not want to request a specific CRL, it
     # instead use a general message with OID id-it-currentCrl as specified in Section 5.3.19.6 of [RFC4210]
-    return prepare_info_value(oid=rfc9480.id_it_currentCRL, fill_random=fill_value)
+    return cmputils.prepare_info_value(oid=rfc9480.id_it_currentCRL, fill_random=fill_value)
 
 
 # TODO maybe Update check
@@ -939,7 +937,7 @@ def prepare_ca_protocol_enc_cert(fill_value: bool = False):
     :return: The populated `InfoTypeAndValue` structure.
 
     """
-    return prepare_info_value(rfc9480.id_it_caProtEncCert, fill_random=fill_value)
+    return cmputils.prepare_info_value(rfc9480.id_it_caProtEncCert, fill_random=fill_value)
 
 
 def validate_preferred_ca_prot_enc_cert(  # noqa D417 undocumented-param
@@ -998,7 +996,7 @@ def prepare_signing_key_types(fill_value: bool = False) -> rfc9480.InfoTypeAndVa
     :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
     :return: The populated `InfoTypeAndValue` structure.
     """
-    return prepare_info_value(rfc9480.id_it_signKeyPairTypes, fill_random=fill_value)
+    return cmputils.prepare_info_value(rfc9480.id_it_signKeyPairTypes, fill_random=fill_value)
 
 
 def validate_signing_key_types(  # noqa D417 undocumented-param
@@ -1050,7 +1048,7 @@ def prepare_enc_key_agreement_types(fill_value: bool = False) -> rfc9480.InfoTyp
     :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
     :return: The populated `InfoTypeAndValue` structure.
     """
-    return prepare_info_value(rfc9480.id_it_keyPairParamReq, fill_random=fill_value)
+    return cmputils.prepare_info_value(rfc9480.id_it_keyPairParamReq, fill_random=fill_value)
 
 
 def validate_key_agreement_types(  # noqa D417 undocumented-param
@@ -1107,7 +1105,7 @@ def prepare_preferred_sym_alg(fill_value: bool = False) -> rfc9480.InfoTypeAndVa
     :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
     :return: The populated `InfoTypeAndValue` structure.
     """
-    return prepare_info_value(rfc9480.id_it_preferredSymmAlg, fill_random=fill_value)
+    return cmputils.prepare_info_value(rfc9480.id_it_preferredSymmAlg, fill_random=fill_value)
 
 
 def validate_preferred_sym_alg(  # noqa D417 undocumented-param
@@ -1161,7 +1159,7 @@ def _prepare_revocation_passphrase(env_data: rfc9480.EnvelopedData) -> rfc9480.I
     """
     enc_key = rfc9480.EncryptedKey()
     enc_key["envelopedData"] = env_data
-    return prepare_info_value(rfc9480.id_it_revPassphrase, value=enc_key)
+    return cmputils.prepare_info_value(rfc9480.id_it_revPassphrase, value=enc_key)
 
 
 def validate_revocation_passphrase_response(  # noqa D417 undocumented-param
@@ -1309,7 +1307,7 @@ def build_genp_kem_ct_info_from_genm(  # noqa: D417 Missing argument description
     """
     validate_genm_message_size(genm=genm, expected_size=expected_size)
 
-    value = get_value_from_seq_of_info_value_field(genm["body"]["genm"], oid=id_it_KemCiphertextInfo)
+    value = cmputils.get_value_from_seq_of_info_value_field(genm["body"]["genm"], oid=id_it_KemCiphertextInfo)
 
     if value is None:
         raise ValueError("The response did not contain the `KEMCiphertextInfo`.")
@@ -1318,7 +1316,7 @@ def build_genp_kem_ct_info_from_genm(  # noqa: D417 Missing argument description
         raise ValueError("The response did not contain the extraCerts field.")
 
     cert: rfc9480.CMPCertificate = genm["extraCerts"][0]
-    public_key = load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+    public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
     if not is_kem_public_key(public_key):
         raise ValueError("The public key was not a KEM public key.")
@@ -1377,7 +1375,7 @@ def validate_genp_kem_ct_info(  # noqa: D417 Missing argument description in the
     """
     validate_general_response(pki_message=genp, expected_size=expected_size)
 
-    value = get_value_from_seq_of_info_value_field(genp["body"]["genp"], oid=id_it_KemCiphertextInfo)
+    value = cmputils.get_value_from_seq_of_info_value_field(genp["body"]["genp"], oid=id_it_KemCiphertextInfo)
 
     if value is None:
         raise ValueError("The response did not contain the KEMCiphertextInfo OID.")
@@ -1482,7 +1480,7 @@ def _append_messages(
         body_content.append(_prepare_revocation_passphrase(env_data=rev_passphrase))
 
     if "kem_ct_info" in messages:
-        body_content.append(prepare_info_value(id_it_KemCiphertextInfo, fill_random=fill_value))
+        body_content.append(cmputils.prepare_info_value(id_it_KemCiphertextInfo, fill_random=fill_value))
 
     return body_content
 
@@ -1548,7 +1546,7 @@ def prepare_simple_info_types(  # noqa D417 undocumented-param
 
     """
     oid = GeneralInfoOID.get_oid(name)
-    return prepare_info_value(oid, value, fill_random=fill_random)
+    return cmputils.prepare_info_value(oid, value, fill_random=fill_random)
 
 
 # TODO fix implementation
