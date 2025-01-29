@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import requests
+from pyasn1.codec.der import encoder, decoder
 import sys
 
 import requests
