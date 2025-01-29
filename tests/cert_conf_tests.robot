@@ -116,7 +116,6 @@ CA MUST Reject Invalid certReqId Inside The certConf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    cert_req_id=${-1}
-    ...    cert_hash=${cert_hash}
     ...    recipient=${RECIPIENT}
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
