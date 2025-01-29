@@ -16,6 +16,8 @@ Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
+Library             ../resources/extra_issuing_logic.py
+Library             ../resources/certextractutils.py
 
 Suite Setup         Initialize Global Variables
 
@@ -1023,12 +1025,12 @@ Do Cert Conf If Needed Init
     ${result}=    Find OID In GeneralInfo    ${response}    1.3.6.1.5.5.7.4.13
     IF    ${result}    RETURN
     ${cert_conf}=    Build Cert Conf From Resp    ${response}    sender=${SENDER}    recipient=${RECIPIENT}
-    IF    ${protection} == mac
+    IF    "${protection} == mac"
         ${cert_conf}=    Protect PKIMessage
-        ...    ${p10cr}
+        ...    ${cert_conf}
         ...    protection=${DEFAULT_MAC_ALGORITHM}
         ...    password=${PRESHARED_SECRET}
-    ELSE IF    ${protection} == sig
+    ELSE IF    "${protection} == sig"
         ${cert_conf}=    Protect PKIMessage
         ...    ${cert_conf}
         ...    protection=signature
