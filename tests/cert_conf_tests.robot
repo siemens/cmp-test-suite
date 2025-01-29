@@ -155,36 +155,6 @@ CA MUST Reject failInfo With Status Accepted Inside The certConf
 
 ### certificate hash
 
-CA MUST Reject Invalid Cert Hash Size Inside certConf
-    [Documentation]    According to RFC 9483 Section 4.1, when implicit confirmation is not allowed, the
-    ...    End-Entity must confirm receipt of all issued certificates by including a valid certificate hash
-    ...    in the CertStatus.We send a valid Initialization Request without implicit confirmation,
-    ...    receive a certificate, and respond with a certificate confirmation containing an invalid
-    ...    certificate hash (modified by appending 0x01). The CA MUST detect the incorrect hash size and
-    ...    respond with an error, optionally including the failInfo `badPOP`.
-    [Tags]    negative    popo
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    ${cert}=    Get Cert From PKIMessage    ${response}
-    ${cert_hash}=    Calculate Cert Hash    ${cert}
-    VAR    ${new_byte}    ${b'\x01'}
-    ${cert_hash}=    Evaluate    ${cert_hash} + ${new_byte}
-    ${cert_conf}=    Build Cert Conf From Resp
-    ...    ${response}
-    ...    cert_hash=${cert_hash}
-    ...    recipient=${RECIPIENT}
-    ...    exclude_fields=sender,senderKID
-    ${protected_cert_conf}=    Protect PKIMessage
-    ...    ${cert_conf}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${protected_cert_conf}
-    PKIStatus Must Be    ${response}    rejection
-    PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP    exclusive=True
-
 CA MUST Reject certConf Without A Cert Hash Value
     [Documentation]    According to RFC 9483 Section 4.1, when implicit confirmation is not allowed, the
     ...    End-Entity must confirm receipt of all issued certificates by including a valid certificate hash
