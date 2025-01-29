@@ -455,7 +455,6 @@ CA MUST Reject CertConf with Different transactionID
     ...    a modified `transactionID`. The CA MUST detect the mismatch and reject the message, optionally
     ...    responding with the failInfo `transactionIdInUse` or `badRequest`.
     [Tags]    negative    rfc9483-header
-
     ${protected_ir}=    Generate Default IR Sig Protected
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
@@ -471,7 +470,7 @@ CA MUST Reject CertConf with Different transactionID
     ...    ${patched_cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    cert=${cert}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=transactionIdInUse,badRequest    exclusive=True
