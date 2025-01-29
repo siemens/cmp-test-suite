@@ -1151,6 +1151,7 @@ def prepare_cert_response(
     :param cert: An optional certificate object.
     :param enc_cert: Optional encrypted certificate as EnvelopedData.
     :param private_key: Optional private key as EnvelopedData.
+    :param rspInfo: Optional response information. Defaults to `None`.
     :return: A populated CertResponse structure.
     """
     cert_response = rfc9480.CertResponse()
