@@ -7,24 +7,10 @@ version = 1
 SPDX-FileCopyrightText = "Copyright 2024 Siemens AG"
 SPDX-License-Identifier = "Apache-2.0"
 
-[[annotations]]
-path = [
-  "tests/*.robot",
-  "resources/*.py",
-  "resources/*.robot",
-  "unit_tests/*.py",
-  "Makefile",
-  "Makefile_EJBCA",
-  "data/keys/*.pem",
-  "data/unittest/*.pem",
-  "data/unittest/*.crl",
-  "data/unittest/*.der"
-]
-
 # these are config files or sample payloads which may be in formats that cannot
 # be annotated, hence we mention the relevant information here
 [[annotations]]
-path = ["config/cert/**", "data/**"]
+path = ["config/cert/**", "data/**", "unit_tests/**", "scripts/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright 2024 Siemens AG"
 SPDX-License-Identifier = "Apache-2.0"

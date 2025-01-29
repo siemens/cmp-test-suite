@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # This produces base image that contains the dependencies required for the test
 # suite, including the build environment for liboqs; and a dev image, which is
 # used to run code quality checks in the CI pipeline
