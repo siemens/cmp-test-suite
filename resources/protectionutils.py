@@ -60,6 +60,7 @@ from resources.oid_mapping import (
     may_return_oid_to_name,
     sha_alg_name_to_oid,
 )
+from resources import certextractutils
 from resources.oidutils import (
     AES_GMAC_NAME_2_OID,
     AES_GMAC_OID_2_NAME,
@@ -2349,7 +2350,7 @@ def protect_pkimessage_kem_based_mac(
         ct = kem_ct_info["ct"].asOctets()
         shared_secret = private_key.decaps(ct)
     else:
-        public_key: PQKEMPublicKey = keyutils.load_public_key_from_spki(peer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+        public_key = keyutils.load_public_key_from_spki(peer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
         _ = get_kem_oid_from_key(public_key)
         shared_secret, kem_ct = public_key.encaps()
         info_val = prepare_kem_ciphertextinfo(key=public_key, ct=kem_ct)
