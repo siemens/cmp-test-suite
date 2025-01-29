@@ -13,7 +13,7 @@ import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dh, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
@@ -38,6 +38,7 @@ from robot.api.deco import keyword, not_keyword
 from resources import (
     asn1utils,
     certbuildutils,
+    certextractutils,
     certutils,
     cmputils,
     convertutils,
@@ -60,7 +61,6 @@ from resources.oid_mapping import (
     may_return_oid_to_name,
     sha_alg_name_to_oid,
 )
-from resources import certextractutils
 from resources.oidutils import (
     AES_GMAC_NAME_2_OID,
     AES_GMAC_OID_2_NAME,
