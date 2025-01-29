@@ -1,19 +1,12 @@
 import json
 
-from pyasn1.codec.der import encoder
-
-from pq_logic.chempatkem import ChempatMLKEMPublicKey, ChempatSntrup761PrivateKey, ChempatMcEliecePublicKey
-from pq_logic.hybrid_key_factory import HybridKeyFactory
-from pq_logic.keys.composite_kem_pki import CompositeKEMPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
-from pq_logic.keys.xwing import XWingPrivateKey
+from pyasn1.codec.der import encoder
 from resources import utils
-from resources.certbuildutils import prepare_cert_template
 from resources.certutils import parse_certificate
 from resources.cmputils import build_ir_from_key
-from resources.envdatautils import prepare_kem_recip_info, prepare_issuer_and_serial_number
-from resources.extra_issuing_logic import prepare_kem_env_data_for_popo
-from resources.keyutils import generate_key, load_public_key_from_spki
+from resources.envdatautils import prepare_issuer_and_serial_number, prepare_kem_recip_info
+from resources.keyutils import generate_key
 from unit_tests.utils_for_test import private_key_to_pkcs8
 
 key = generate_key("ml-kem-768")
@@ -27,7 +20,6 @@ f.close()
 
 def write_kem_recip_info_example() -> None:
     """Generate the KEM Recipient Info example file."""
-
     ca_cert = parse_certificate(utils.load_and_decode_pem_file("data/unittest/pq_cert_ml_kem_768.pem"))
 
     d = b"A" * 32
