@@ -4,8 +4,6 @@ from typing import Optional, Set, List, Tuple, Dict
 
 import sys
 
-from pq_logic.py_verify_logic import verify_hybrid_pkimessage_protection
-
 sys.path.append('.')
 sys.path.append('.')
 
@@ -29,6 +27,8 @@ from resources.keyutils import load_private_key_from_file
 from resources.protectionutils import verify_pkimessage_protection
 from resources.typingutils import PrivateKey, PublicKey
 from resources.utils import load_and_decode_pem_file
+
+from pq_logic.py_verify_logic import verify_hybrid_pkimessage_protection
 
 import logging
 
