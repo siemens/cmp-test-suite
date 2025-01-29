@@ -23,7 +23,7 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from resources import certbuildutils, cmputils
+from resources import certbuildutils, cmputils, protectionutils
 from resources.asn1_structures import CAKeyUpdContent, ChallengeASN1
 from resources.ca_kga_logic import validate_enveloped_data
 from resources.certbuildutils import build_cert_from_cert_template, build_cert_from_csr
@@ -849,6 +849,7 @@ def _process_cert_requests(
     :param eku_strict: The strictness of the EKU bits.
     :return: The certificate responses and the certificates.
     """
+
     responses = []
     certs = []
 
