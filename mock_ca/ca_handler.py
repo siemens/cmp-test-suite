@@ -1,37 +1,39 @@
 import logging
-from dataclasses import dataclass, field
-from typing import Optional, Set, List, Tuple, Dict
-
 import sys
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Set, Tuple
 
 sys.path.append('.')
 sys.path.append('.')
 
 from cryptography import x509
-from flask import Flask
-from flask import request, Response
-from pyasn1.codec.der import encoder, decoder
-from pyasn1_alt_modules import rfc9480, rfc5280
-
+from flask import Flask, Response, request
 from pq_logic.hybrid_issuing import build_chameleon_from_p10cr, build_sun_hybrid_cert_from_request
 from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import get_sun_hybrid_alt_sig
-from resources.ca_ra_utils import get_public_key_from_cert_req_msg, build_cp_from_p10cr, build_pki_conf_from_cert_conf, \
-    build_cp_cmp_message, build_ip_cmp_message, build_rp_from_rr
+from pq_logic.py_verify_logic import verify_hybrid_pkimessage_protection
+from pyasn1.codec.der import decoder, encoder
+from pyasn1_alt_modules import rfc9480
+from resources.ca_ra_utils import (
+    build_cp_cmp_message,
+    build_cp_from_p10cr,
+    build_ip_cmp_message,
+    build_pki_conf_from_cert_conf,
+    build_rp_from_rr,
+)
 from resources.certbuildutils import generate_certificate
 from resources.certutils import parse_certificate
 from resources.cmputils import build_cmp_error_message
-from resources.exceptions import TransactionIdInUse, CMPTestSuiteError
+from resources.exceptions import CMPTestSuiteError, TransactionIdInUse
 from resources.general_msg_utils import build_genp_kem_ct_info_from_genm
 from resources.keyutils import load_private_key_from_file
-from resources.protectionutils import verify_pkimessage_protection, get_protection_type_from_pkimessage, \
-    protect_pkimessage
+from resources.protectionutils import (
+    get_protection_type_from_pkimessage,
+    protect_pkimessage,
+    verify_pkimessage_protection,
+)
 from resources.typingutils import PrivateKey, PublicKey
 from resources.utils import load_and_decode_pem_file
-
-from pq_logic.py_verify_logic import verify_hybrid_pkimessage_protection
-
-import logging
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)  # Set to DEBUG to see detailed logs
@@ -40,6 +42,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SunHybridState:
     """A simple class to store the state of the SunHybridHandler."""
+
     sun_hybrid_certs: Dict[int, rfc9480.CMPCertificate] = field(default_factory=dict)
     sun_hybrid_pub_keys: Dict[int, PublicKey] = field(default_factory=dict)
     sun_hybrid_signatures: Dict[int, bytes] = field(default_factory=dict)
@@ -56,6 +59,7 @@ class MockCAState:
         to_be_confirmed_certs: The certificates to be confirmed.
 
     """
+
     currently_used_ids: Set[bytes] = field(default_factory=set)
     issued_certs: List[rfc9480.CMPCertificate] = field(default_factory=list)
     # stores the transaction id mapped to the shared secret.
@@ -77,7 +81,6 @@ class MockCAState:
         :param certs: A list of certificates to store.
         :raises TransactionIdInUse: If the transaction ID is already in use.
         """
-
         if transaction_id in self.currently_used_ids:
             raise TransactionIdInUse(f"Transaction ID {transaction_id.hex()} already exists for sender {sender}")
 
@@ -166,7 +169,6 @@ class CAHandler:
         :param response: The PKI message to sign.
         :return: The signed PKI message.
         """
-
         if get_protection_type_from_pkimessage(request) == "mac":
             pki_message = protect_pkimessage(pki_message=response,
                                       password=self.shared_secrets,

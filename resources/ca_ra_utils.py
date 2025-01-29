@@ -849,7 +849,6 @@ def _process_cert_requests(
     :param eku_strict: The strictness of the EKU bits.
     :return: The certificate responses and the certificates.
     """
-
     responses = []
     certs = []
 
@@ -1601,7 +1600,6 @@ def build_rp_from_rr(
     :param set_header_fields: Whether to set the header fields. Defaults to `True`.
     :return: The built PKIMessage for the revocation response.
     """
-
     if kwargs.get("enforce_lwcmp", True):
         enforce_lwcmp_for_ca(request)
 

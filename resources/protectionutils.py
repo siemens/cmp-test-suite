@@ -75,7 +75,7 @@ from resources.oidutils import (
     RSASSA_PSS_OID_2_NAME,
     SHA_OID_2_NAME,
     SYMMETRIC_PROT_ALGO,
-    id_KemBasedMac, PQ_SIG_NAME_2_OID,
+    id_KemBasedMac,
 )
 from resources.suiteenums import ProtectionAlgorithm
 from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKeySig
