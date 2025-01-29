@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import json
 
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
@@ -13,7 +17,7 @@ key = generate_key("ml-kem-768")
 
 ir = build_ir_from_key(key)
 
-with open("./ir_ml_kem_768.der", "wb") as f:
+with open("data/ir_ml_kem_768.der", "wb") as f:
     f.write(encoder.encode(ir))
 f.close()
 
@@ -51,7 +55,7 @@ def write_kem_recip_info_example() -> None:
     data_map["private_key_pkcs8"] = private_key_to_pkcs8(key).hex()
     data_map["private_key_raw_bytes"] = ca_key.private_bytes_raw().hex()
 
-    with open("./kem_recip_info_example.json", "w") as f:
+    with open("data/kem_recip_info_example.json", "w") as f:
         json.dump(data_map, f, indent=4)
     f.close()
 
