@@ -1532,7 +1532,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
 
         if entry["hashAlg"]["algorithm"].isValue:
             if int(request["header"]["pvno"]) != 3:
-                raise BadRequest("Hash algorithm is missing in CertConf message,but the version is not 3.")
+                raise BadRequest("Hash algorithm is set in CertConf message, but the version is not 3.")
             hash_alg = get_hash_from_oid(entry["hashAlg"]["algorithm"], only_hash=False)
         else:
             alg_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
