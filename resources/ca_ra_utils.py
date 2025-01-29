@@ -1579,3 +1579,51 @@ def get_correct_ca_body_name(request: rfc9480.PKIMessage) -> str:
         return "ccp"
 
     raise ValueError(f"Invalid body name: {body_name}")
+
+
+def build_rp_from_rr(
+        request: rfc9480.PKIMessage,
+        shared_secret: Optional[bytes] = None,
+        set_header_fields: bool = True,
+        **kwargs,
+) -> rfc9480.PKIMessage:
+    """Build a PKIMessage for a revocation request.
+
+    :param request: The Revocation Request message.
+    :param shared_secret: The shared secret to use for the response. Defaults to `None`.
+    :param set_header_fields: Whether to set the header fields. Defaults to `True`.
+    :return: The built PKIMessage for the revocation response.
+    """
+
+    if kwargs.get("enforce_lwcmp", True):
+        enforce_lwcmp_for_ca(request)
+
+    status = "accepted"
+    fail_info = None
+    try:
+       protectionutils.verify_pkimessage_protection(request, shared_secret=shared_secret)
+    except Exception:
+        logging.debug("Failed to verify the PKIMessage protection.")
+        status = "rejection"
+        fail_info = "badPOP"
+
+
+
+    if request and set_header_fields:
+        kwargs = _set_header_fields(request, kwargs)
+
+    pki_message = cmputils._prepare_pki_message(**kwargs)
+
+    body = rfc9480.PKIBody()
+    rfc9480.RevRepContent()
+
+    for i in range(len(request["body"]["rr"])):
+        status_info = prepare_pkistatusinfo(status=status, failinfo=fail_info)
+        body["rr"]["status"].append(status_info)
+
+    pki_message["body"] = body
+
+    return pki_message
+
+
+
