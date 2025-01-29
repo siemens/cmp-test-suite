@@ -518,7 +518,7 @@ CA SHOULD Send certConfirmed When Valid certConf Is Sent Again
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
     ...    protection=signature
-    ...    private_key=${private_key}
+    ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     Exchange PKIMessage    ${protected_cert_conf}
     ${pki_conf2}=    Exchange PKIMessage    ${protected_cert_conf}
