@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Verify the signatures of the certificates in the pqc-certificates repository."""
 import argparse
 import glob
@@ -147,6 +151,8 @@ if __name__ == "__main__":
                pem_files.append(file)
 
        f = open("validation_pem_files.txt", "w", encoding='utf-8')
+       f.write("Validation of PQC Certificates\n")
+       f.write("# SPDX-FileCopyrightText: Copyright 2024 Siemens AG\n# # SPDX-License-Identifier: Apache-2.0\n")
        f.write(f"Last Time Verified: {datetime.now()}\n")
        f.write(f"Collected {len(pem_files)}.pem files:\n\n")
        for pem in pem_files:

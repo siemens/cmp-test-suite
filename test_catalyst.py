@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
+
 """Try out all possible combinations of alternative signature data and verify the signature of a catalyst certificate."""
 import glob
 import pprint
