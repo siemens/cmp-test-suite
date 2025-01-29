@@ -862,7 +862,7 @@ def _process_cert_requests(
             **kwargs,
         )
         certs.append(cert)
-        cert_req_id = request["body"]["cr"][i]["certReq"]["certReqId"]
+        cert_req_id = int(request["body"][body_name][i]["certReq"]["certReqId"])
         response = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
 
         responses.append(response)
@@ -1064,6 +1064,7 @@ def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
         responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
 
     body = _prepare_ca_body("ip", responses=responses, ca_pubs=ca_pubs)
+
     pki_message = cmputils._prepare_pki_message(exclude_fields=exclude_fields, **kwargs)
     pki_message["body"] = body
     return pki_message, certs
