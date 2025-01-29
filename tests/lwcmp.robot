@@ -16,7 +16,7 @@ Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
-
+Library             ../resources/certextractutils.py
 
 *** Variables ***
 # normally this would be provided from the command line
