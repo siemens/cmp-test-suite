@@ -734,7 +734,9 @@ def _set_header_fields(request: rfc9480.PKIMessage, kwargs: dict) -> dict:
     """Set header fields for a new PKIMessage, by extracting them from the request."""
     kwargs["recip_kid"] = kwargs.get("recip_kid") or request["header"]["senderKID"].asOctets()
     kwargs["recip_nonce"] = kwargs.get("recip_nonce") or request["header"]["senderNonce"].asOctets()
-    kwargs["sender_nonce"] = kwargs.get("sender_nonce") or os.urandom(16)
+    alt_nonce =  os.urandom(16) if not request["header"]["recipNonce"].isValue else request["header"]["recipNonce"].asOctets()
+    kwargs["sender_nonce"] = kwargs.get("sender_nonce") or alt_nonce
+    kwargs["transaction_id"] = kwargs.get("transaction_id") or request["header"]["transactionID"].asOctets()
     return kwargs
 
 
