@@ -75,7 +75,7 @@ from resources.oidutils import (
     RSASSA_PSS_OID_2_NAME,
     SHA_OID_2_NAME,
     SYMMETRIC_PROT_ALGO,
-    id_KemBasedMac,
+    id_KemBasedMac, PQ_SIG_NAME_2_OID,
 )
 from resources.suiteenums import ProtectionAlgorithm
 from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKeySig
@@ -1128,7 +1128,7 @@ def patch_sender_and_sender_kid(
     :param cert: The certificate to use for patching.
     :return: The patched or unpached PKIMessage.
     """
-    if do_patch:
+    if not do_patch:
         logging.info("Skipped patch of sender and senderKID, for signature-based protection.")
     elif cert is None:
         logging.info(
@@ -1138,6 +1138,12 @@ def patch_sender_and_sender_kid(
         sender_kid = certextractutils.get_field_from_certificate(cert, extension="ski")  # type: ignore
         if sender_kid is not None:
             pki_message = cmputils.patch_senderkid(pki_message, sender_kid)  # type: ignore
+        else:
+            logging.info("Certificate does not have a Subject Key Identifier (SKI) field!")
+            if not pki_message["header"]["senderKID"].isValue:
+                cm = utils.get_openssl_name_notation(cert["tbsCertificate"]["subject"])
+                pki_message = cmputils.patch_senderkid(pki_message=pki_message, sender_kid=cm.encode("utf-8"))
+
 
         pki_message = cmputils.patch_sender(pki_message, cert=cert)
 
@@ -1242,7 +1248,8 @@ def protect_pkimessage(  # noqa: D417
         cert = certutils.parse_certificate(der_data)
 
     if protection in ["signature", "rsassa-pss", "rsassa_pss"]:
-        patch_sender_and_sender_kid(do_patch=not params.get("no_patch", False), pki_message=pki_message, cert=cert)
+        pki_message = patch_sender_and_sender_kid(do_patch=params.get("do_patch", True),
+                                    pki_message=pki_message, cert=cert)
 
     pki_message["header"]["protectionAlg"] = _prepare_prot_alg_id(
         protection=protection,
