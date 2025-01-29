@@ -42,7 +42,7 @@ CA MUST Accept Valid MAC Protected Issuing Process
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    pkiconf
 
@@ -68,7 +68,7 @@ CA MUST Accept EE Rejection Of The Issued Certificate
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    pkiconf
 
@@ -91,7 +91,7 @@ CA MUST Reject More Than One CertStatus Inside The certConf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    recipient=${My List}
-    ...    cert_status=${ISSUED_KEY}
+    ...    cert_status=${cert_status}
     ...    exclude_fields=sender,senderKID
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
@@ -266,7 +266,7 @@ CA MUST Reject certConf Signed With The Newly Issued Certificate
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${private_key}
-    ...    certificate=${cert}
+    ...    cert=${cert}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck,badRequest    exclusive=True
@@ -343,7 +343,7 @@ CA MUST Reject CertConf With No senderNonce
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badSenderNonce    exclusive=True
@@ -370,7 +370,7 @@ CA MUST Reject CertConf With Different senderNonce
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badSenderNonce    exclusive=True
@@ -395,7 +395,7 @@ CA MUST Reject certConf With No recipNonce
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRecipientNonce    exclusive=True
@@ -422,7 +422,7 @@ CA MUST Reject CertConf With Different recipNonce
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRecipientNonce    exclusive=True
@@ -445,7 +445,7 @@ CA MUST Reject CertConf with omitted transactionID
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
@@ -472,7 +472,7 @@ CA MUST Reject CertConf with Different transactionID
     ...    ${patched_cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${cert}
+    ...    cert=${cert}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=transactionIdInUse,badRequest    exclusive=True
@@ -498,7 +498,7 @@ CA MAY Reject CertConf With implicitConfirm
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${pki_conf2}    error
     PKIStatusInfo Failinfo Bit Must Be   ${pki_conf2}    failinfo=badRequest   exclusive=True
@@ -521,7 +521,7 @@ CA SHOULD Send certConfirmed When Valid certConf Is Sent Again
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${private_key}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     Exchange PKIMessage    ${protected_cert_conf}
     ${pki_conf2}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${pki_conf2}    error
