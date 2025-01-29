@@ -7,11 +7,12 @@ import unittest
 from pyasn1.codec.der import encoder, decoder
 from pyasn1_alt_modules import rfc5652, rfc9480
 from resources.ca_ra_utils import build_ip_cmp_message, prepare_cert_response
-from resources.certbuildutils import build_certificate
+from resources.certbuildutils import build_certificate, build_csr
 from resources.certutils import parse_certificate
-from resources.cmputils import build_p10cr_from_csr, parse_csr
+from resources.cmputils import build_p10cr_from_csr, parse_csr, prepare_cert_req_msg, build_ir_from_key
 from resources.envdatautils import prepare_enveloped_data, prepare_ktri
-from resources.keyutils import load_private_key_from_file
+from resources.exceptions import BadRequest
+from resources.keyutils import load_private_key_from_file, generate_key
 from resources.utils import load_and_decode_pem_file
 
 
@@ -22,6 +23,11 @@ class TestBuildIpCmpMessage(unittest.TestCase):
         cls.cek = b"A" * 32
         cls.rsa_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.rsa_cert = parse_certificate(load_and_decode_pem_file("data/unittest/bare_certificate.pem"))
+
+        cls.common_name = "CN=Hans the Tester"
+        cls.ca_cert = parse_certificate(load_and_decode_pem_file("data/unittest/bare_certificate.pem"))
+        cls.ca_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
+
 
         kari = prepare_ktri(
             cmp_protection_cert=cls.rsa_cert,
@@ -112,6 +118,95 @@ class TestBuildIpCmpMessage(unittest.TestCase):
         """
         with self.assertRaises(ValueError):
             build_ip_cmp_message()
+
+    def test_build_ip_cmp_message_from_p10cr(self):
+        """
+        GIVEN a P10CR.
+        WHEN the IP PKIMessage is built from the P10CR.
+        THEN a valid PKIMessage is created.
+        """
+        key = generate_key("composite-sig")
+        csr = build_csr(key)
+        p10cr = build_p10cr_from_csr(csr)
+        ip, certs = build_ip_cmp_message(
+            request=p10cr,
+            ca_cert=self.ca_cert,
+            ca_key=self.ca_key,
+        )
+        self.assertEqual(len(certs), 1)
+        self.assertEqual(len(ip["body"]["ip"]["response"]), 1)
+
+        der_data = encoder.encode(ip)
+        decoded_ip, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
+        self.assertEqual(rest, b"")
+
+    def test_build_ip_cmp_message_multi_requests(self):
+        """
+        GIVEN multiple certificate requests.
+        WHEN the IP PKIMessage is built from the requests.
+        THEN a valid PKIMessage is created.
+        """
+        key = generate_key("rsa")
+
+        cert_req_msg = prepare_cert_req_msg(
+            common_name=self.common_name,
+            private_key=key,
+            cert_req_id=1,
+        )
+        key2 = generate_key("rsa")
+        cert_req_msg2 = prepare_cert_req_msg(
+            common_name=self.common_name,
+            private_key=key2,
+            cert_req_id=1,
+        )
+
+        ir = build_ir_from_key(
+            signing_key=None,
+            cert_req_msg=[cert_req_msg, cert_req_msg2],
+        )
+        ip, certs = build_ip_cmp_message(
+            request=ir,
+            ca_cert=self.ca_cert,
+            ca_key=self.ca_key,
+            enforce_lwcmp=False,
+        )
+        self.assertEqual(len(ip["body"]["ip"]["response"]), 2)
+        self.assertEqual(len(certs), 2)
+        der_data = encoder.encode(ip)
+        decoded_ip, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
+        self.assertEqual(rest, b"")
+
+    def test_build_ip_cmp_message_multi_requests_but_lwcmp(self):
+        """
+        GIVEN multiple certificate requests.
+        WHEN the IP PKIMessage is built from the requests with lwcmp enforcement.
+        THEN a BadRequest is raised.
+        """
+        key = generate_key("rsa")
+
+        cert_req_msg = prepare_cert_req_msg(
+            common_name=self.common_name,
+            private_key=key,
+            cert_req_id=0,
+        )
+        key2 = generate_key("rsa")
+        cert_req_msg2 = prepare_cert_req_msg(
+            common_name=self.common_name,
+            private_key=key2,
+            cert_req_id=1,
+        )
+
+        ir = build_ir_from_key(
+            signing_key=None,
+            cert_req_msg=[cert_req_msg, cert_req_msg2],
+        )
+        with self.assertRaises(BadRequest):
+            _ = build_ip_cmp_message(
+                request=ir,
+                ca_cert=self.ca_cert,
+                ca_key=self.ca_key,
+                enforce_lwcmp=True,
+            )
 
 if __name__ == "__main__":
     unittest.main()
