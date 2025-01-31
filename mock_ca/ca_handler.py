@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
 sys.path.append('.')
-sys.path.append('.')
 
 from cryptography import x509
 from flask import Flask, Response, request
