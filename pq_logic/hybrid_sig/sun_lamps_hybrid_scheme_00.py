@@ -21,17 +21,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc2986, rfc4211, rfc5280, rfc6402, rfc9480
-from resources import keyutils, utils
-from resources.certbuildutils import (
-    prepare_sig_alg_id,
-    prepare_tbs_certificate,
-    prepare_tbs_certificate_from_template,
-    prepare_validity,
-)
-from resources.certextractutils import get_extension
+from resources import certbuildutils, certextractutils, cryptoutils, keyutils, utils
 from resources.convertutils import copy_asn1_certificate
-from resources.cryptoutils import sign_data
-from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
 from resources.protectionutils import prepare_sha_alg_id
 from resources.typingutils import PublicKey
@@ -341,7 +332,7 @@ def sun_csr_to_cert(
 
     not_before = datetime.now()
     not_after = datetime.now() + timedelta(days=365 * 10)
-    validity = prepare_validity(not_before=not_before, not_after=not_after)
+    validity = certbuildutils.prepare_validity(not_before=not_before, not_after=not_after)
     cert_form4, ext_sig, ext_pub = prepare_sun_hybrid_pre_tbs_certificate(
         public_key,
         alt_private_key=alt_private_key,
@@ -386,13 +377,13 @@ def sun_cert_template_to_cert(
     :param serial_number: The serial number to use for the certificate. Defaults to `None`.
     :return: A tuple of the Form4 and Form1 certificates.
     """
-    tbs_cert = prepare_tbs_certificate_from_template(
+    tbs_cert = certbuildutils.prepare_tbs_certificate_from_template(
         cert_template=cert_template,
         issuer_cert=issuer_cert["tbsCertificate"]["subject"],
         serial_number=serial_number,
     )
 
-    composite_key = load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+    composite_key = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
     oid = composite_key.get_oid()
     hash_alg = CMS_COMPOSITE_OID_2_HASH[oid] or hash_alg or "sha256"
     extn_alt_pub, extn_alt_pub2 = _prepare_public_key_extensions(composite_key, hash_alg, pub_key_loc)
@@ -401,8 +392,8 @@ def sun_cert_template_to_cert(
 
     pre_tbs_cert = tbs_cert
     data = encoder.encode(pre_tbs_cert)
-    signature = sign_data(key=alt_private_key, data=data, hash_alg=hash_alg)
-    sig_alg_id = prepare_sig_alg_id(signing_key=alt_private_key, hash_alg=hash_alg, use_rsa_pss=False)
+    signature = cryptoutils.sign_data(key=alt_private_key, data=data, hash_alg=hash_alg)
+    sig_alg_id = certbuildutils.prepare_sig_alg_id(signing_key=alt_private_key, hash_alg=hash_alg, use_rsa_pss=False)
 
     extn_alt_sig = prepare_sun_hybrid_alt_signature_ext(
         signature=signature, by_val=False, hash_alg=hash_alg, alt_sig_algorithm=sig_alg_id, location=sig_loc
@@ -419,8 +410,8 @@ def sun_cert_template_to_cert(
 
     # Sign with the first public key.
     final_tbs_cert_data = encoder.encode(pre_tbs_cert)
-    signature = sign_data(key=issuer_private_key, data=final_tbs_cert_data, hash_alg=hash_alg)
-    sig_alg_id = prepare_sig_alg_id(signing_key=issuer_private_key, hash_alg=hash_alg, use_rsa_pss=False)
+    signature = cryptoutils.sign_data(key=issuer_private_key, data=final_tbs_cert_data, hash_alg=hash_alg)
+    sig_alg_id = certbuildutils.prepare_sig_alg_id(signing_key=issuer_private_key, hash_alg=hash_alg, use_rsa_pss=False)
 
     cert_form4 = rfc9480.CMPCertificate()
     cert_form4["tbsCertificate"] = pre_tbs_cert
@@ -508,7 +499,7 @@ def prepare_sun_hybrid_pre_tbs_certificate(
     # include the created AltSubPubKeyExt extension.
 
     subject = utils.get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
-    pre_tbs_cert = prepare_tbs_certificate(
+    pre_tbs_cert = certbuildutils.prepare_tbs_certificate(
         subject=subject,
         serial_number=serial_number,
         signing_key=issuer_private_key,
@@ -523,8 +514,8 @@ def prepare_sun_hybrid_pre_tbs_certificate(
     )
 
     data = encoder.encode(pre_tbs_cert)
-    signature = sign_data(key=alt_private_key, data=data, hash_alg=sig_hash_id)
-    sig_alg_id = prepare_sig_alg_id(signing_key=alt_private_key, hash_alg=sig_hash_id, use_rsa_pss=False)
+    signature = cryptoutils.sign_data(key=alt_private_key, data=data, hash_alg=sig_hash_id)
+    sig_alg_id = certbuildutils.prepare_sig_alg_id(signing_key=alt_private_key, hash_alg=sig_hash_id, use_rsa_pss=False)
 
     extn_alt_sig = prepare_sun_hybrid_alt_signature_ext(
         signature=signature, by_val=False, hash_alg=sig_hash_id, alt_sig_algorithm=sig_alg_id, location=sig_loc
@@ -541,8 +532,8 @@ def prepare_sun_hybrid_pre_tbs_certificate(
 
     # Sign with the first public key.
     final_tbs_cert_data = encoder.encode(pre_tbs_cert)
-    signature = sign_data(key=issuer_private_key, data=final_tbs_cert_data, hash_alg=hash_alg)
-    sig_alg_id = prepare_sig_alg_id(signing_key=issuer_private_key, hash_alg=hash_alg, use_rsa_pss=False)
+    signature = cryptoutils.sign_data(key=issuer_private_key, data=final_tbs_cert_data, hash_alg=hash_alg)
+    sig_alg_id = certbuildutils.prepare_sig_alg_id(signing_key=issuer_private_key, hash_alg=hash_alg, use_rsa_pss=False)
 
     cert = rfc9480.CMPCertificate()
     cert["tbsCertificate"] = pre_tbs_cert
@@ -695,7 +686,7 @@ def parse_alt_sig_extension(cert: rfc9480.CMPCertificate, to_by_val: bool) -> rf
     :raises ValueError: If the AltSignatureExt is missing or invalid.
     """
     extensions = cert["tbsCertificate"]["extensions"]
-    extension = get_extension(extensions, id_altSignatureExt, must_be_non_crit=True)
+    extension = certextractutils.get_extension(extensions, id_altSignatureExt, must_be_non_crit=True)
     if not extension:
         raise ValueError("AltSignatureExt not found in the provided extensions.")
 
@@ -742,7 +733,7 @@ def parse_alt_sub_pub_key_extension(cert: rfc9480.CMPCertificate, to_by_val: boo
     :raises ValueError: If the AltSubPubKeyExt is missing or invalid.
     """
     extensions = cert["tbsCertificate"]["extensions"]
-    extension = get_extension(extensions, id_altSubPubKeyExt, must_be_non_crit=True)
+    extension = certextractutils.get_extension(extensions, id_altSubPubKeyExt, must_be_non_crit=True)
     if not extension:
         raise ValueError("AltSignatureExt not found in the provided extensions.")
 
@@ -824,7 +815,7 @@ def process_public_key(data: bytes):
     obj, rest = decoder.decode(data, rfc5280.SubjectPublicKeyInfo())
     if rest != b"":
         raise ValueError("Decoding of the public key had trailing data.")
-    return load_public_key_from_spki(obj)
+    return keyutils.load_public_key_from_spki(obj)
 
 
 def get_sun_hybrid_alt_pub_key(extensions: rfc9480.Extensions) -> Optional[PublicKey]:
@@ -833,7 +824,7 @@ def get_sun_hybrid_alt_pub_key(extensions: rfc9480.Extensions) -> Optional[Publi
     :param extensions: The extensions of the certificate.
     :return: The alternative public key.
     """
-    extn = get_extension(extensions, id_altSubPubKeyExt)
+    extn = certextractutils.get_extension(extensions, id_altSubPubKeyExt)
 
     if extn is None:
         return None

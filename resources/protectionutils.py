@@ -13,7 +13,7 @@ import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dh, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
@@ -35,10 +35,18 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import keyword, not_keyword
 
-import resources.certextractutils
-import resources.cryptoutils
-import resources.oid_mapping
-from resources import asn1utils, certbuildutils, certutils, cmputils, convertutils, cryptoutils, keyutils, utils
+from resources import (
+    asn1utils,
+    certbuildutils,
+    certextractutils,
+    certutils,
+    cmputils,
+    convertutils,
+    cryptoutils,
+    keyutils,
+    oid_mapping,
+    utils,
+)
 from resources.asn1_structures import (
     KemBMParameterAsn1,
     KemCiphertextInfoAsn1,
@@ -46,7 +54,6 @@ from resources.asn1_structures import (
     KemOtherInfoAsn1,
 )
 from resources.cryptoutils import compute_ansi_x9_63_kdf, compute_hkdf, compute_pbkdf2_from_parameter
-from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import (
     get_alg_oid_from_key_hash,
     get_hash_from_oid,
@@ -470,7 +477,7 @@ def add_cert_to_pkimessage_used_by_protection(
         )
 
         try:
-            resources.cryptoutils.verify_signature(
+            cryptoutils.verify_signature(
                 public_key=certutils.load_public_key_from_cert(cert),  # type: ignore
                 signature=signature,
                 data=data,
@@ -535,7 +542,7 @@ def _dh_based_mac_derive_key(
 
     for i in range(1, rounds):
         next_input = f"{i}".encode("ascii") + basekey
-        tmp = resources.cryptoutils.compute_hash(alg_name=owf, data=next_input)
+        tmp = cryptoutils.compute_hash(alg_name=owf, data=next_input)
         derived_key.extend(tmp)
 
     return bytes(derived_key[:desired_length])
@@ -580,7 +587,7 @@ def compute_dh_based_mac_from_alg_id(
         raise ValueError("The `owf` field must not have parameters.")
 
     owf = SHA_OID_2_NAME[owf_oid["algorithm"]]
-    derived_key = resources.oid_mapping.compute_hash(alg_name=owf, data=shared_secret)
+    derived_key = oid_mapping.compute_hash(alg_name=owf, data=shared_secret)
 
     mac_alg_oid = params["mac"]["algorithm"]
 
@@ -597,7 +604,7 @@ def compute_dh_based_mac_from_alg_id(
             gmac_params = params["mac"]["parameters"]
 
         nonce = gmac_params["nonce"].asOctets()
-        mac = resources.cryptoutils.compute_gmac(data=data, key=derived_key, iv=nonce)
+        mac = cryptoutils.compute_gmac(data=data, key=derived_key, iv=nonce)
 
     elif mac_alg_oid in KMAC_OID_2_NAME:
         derived_key = _dh_based_mac_derive_key(basekey=shared_secret, desired_length=32, owf=owf)
@@ -1121,16 +1128,22 @@ def patch_sender_and_sender_kid(
     :param cert: The certificate to use for patching.
     :return: The patched or unpached PKIMessage.
     """
-    if do_patch:
+    if not do_patch:
         logging.info("Skipped patch of sender and senderKID, for signature-based protection.")
     elif cert is None:
         logging.info(
             "Protect PKIMessage did not patch the sender and senderKID field,because the `cert` parameter was absent!"
         )
     else:
-        sender_kid = resources.certextractutils.get_field_from_certificate(cert, extension="ski")  # type: ignore
+        sender_kid = certextractutils.get_field_from_certificate(cert, extension="ski")  # type: ignore
         if sender_kid is not None:
             pki_message = cmputils.patch_senderkid(pki_message, sender_kid)  # type: ignore
+        else:
+            logging.info("Certificate does not have a Subject Key Identifier (SKI) field!")
+            if not pki_message["header"]["senderKID"].isValue:
+                cm = utils.get_openssl_name_notation(cert["tbsCertificate"]["subject"])
+                pki_message = cmputils.patch_senderkid(pki_message=pki_message, sender_kid=cm.encode("utf-8"))
+
 
         pki_message = cmputils.patch_sender(pki_message, cert=cert)
 
@@ -1235,7 +1248,8 @@ def protect_pkimessage(  # noqa: D417
         cert = certutils.parse_certificate(der_data)
 
     if protection in ["signature", "rsassa-pss", "rsassa_pss"]:
-        patch_sender_and_sender_kid(do_patch=not params.get("no_patch", False), pki_message=pki_message, cert=cert)
+        pki_message = patch_sender_and_sender_kid(do_patch=params.get("do_patch", True),
+                                    pki_message=pki_message, cert=cert)
 
     pki_message["header"]["protectionAlg"] = _prepare_prot_alg_id(
         protection=protection,
@@ -1384,7 +1398,7 @@ def _verify_pki_message_sig(pki_message: rfc9480.PKIMessage, public_key: Optiona
         hash_alg = get_hash_from_oid(protection_type_oid)
         hash_alg = hash_alg if hash_alg is None else hash_alg.split("-")[-1]
         if public_key is not None:
-            resources.cryptoutils.verify_signature(
+            cryptoutils.verify_signature(
                 public_key=public_key, data=encoded, signature=protection_value, hash_alg=hash_alg
             )
             return
@@ -2343,7 +2357,7 @@ def protect_pkimessage_kem_based_mac(
         ct = kem_ct_info["ct"].asOctets()
         shared_secret = private_key.decaps(ct)
     else:
-        public_key: PQKEMPublicKey = load_public_key_from_spki(peer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+        public_key = keyutils.load_public_key_from_spki(peer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
         _ = get_kem_oid_from_key(public_key)
         shared_secret, kem_ct = public_key.encaps()
         info_val = prepare_kem_ciphertextinfo(key=public_key, ct=kem_ct)

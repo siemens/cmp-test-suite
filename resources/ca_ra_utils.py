@@ -23,7 +23,7 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from resources import certbuildutils, cmputils
+from resources import certbuildutils, cmputils, protectionutils
 from resources.asn1_structures import CAKeyUpdContent, ChallengeASN1
 from resources.ca_kga_logic import validate_enveloped_data
 from resources.certbuildutils import build_cert_from_cert_template, build_cert_from_csr
@@ -734,7 +734,9 @@ def _set_header_fields(request: rfc9480.PKIMessage, kwargs: dict) -> dict:
     """Set header fields for a new PKIMessage, by extracting them from the request."""
     kwargs["recip_kid"] = kwargs.get("recip_kid") or request["header"]["senderKID"].asOctets()
     kwargs["recip_nonce"] = kwargs.get("recip_nonce") or request["header"]["senderNonce"].asOctets()
-    kwargs["sender_nonce"] = kwargs.get("sender_nonce") or os.urandom(16)
+    alt_nonce =  os.urandom(16) if not request["header"]["recipNonce"].isValue else request["header"]["recipNonce"].asOctets()
+    kwargs["sender_nonce"] = kwargs.get("sender_nonce") or alt_nonce
+    kwargs["transaction_id"] = kwargs.get("transaction_id") or request["header"]["transactionID"].asOctets()
     return kwargs
 
 
@@ -862,7 +864,7 @@ def _process_cert_requests(
             **kwargs,
         )
         certs.append(cert)
-        cert_req_id = request["body"]["cr"][i]["certReq"]["certReqId"]
+        cert_req_id = int(request["body"][body_name][i]["certReq"]["certReqId"])
         response = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
 
         responses.append(response)
@@ -1000,13 +1002,13 @@ def enforce_lwcmp_for_ca(  # noqa: D417 Missing argument descriptions in the doc
 
 
 def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the docstring
+    request: Optional[rfc9480.PKIMessage] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
     enc_cert: Optional[rfc5652.EnvelopedData] = None,
     cert_req_id: Optional[int] = None,
     ca_pubs: Optional[Sequence[rfc9480.CMPCertificate]] = None,
     responses: Optional[Union[Sequence[rfc9480.CertResponse], rfc9480.CertResponse]] = None,
     exclude_fields: Optional[str] = None,
-    request: Optional[rfc9480.PKIMessage] = None,
     set_header_fields: bool = True,
     **kwargs,
 ) -> CA_RESPONSE:
@@ -1040,6 +1042,8 @@ def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
 
     elif request and cert is None and enc_cert is None:
         kwargs["eku_strict"] = kwargs.get("eku_strict", True)
+        if kwargs.get("enforce_lwcmp", True):
+            enforce_lwcmp_for_ca(request)
         if request["body"].getName() != "p10cr":
             responses, certs = _process_cert_requests(
                 request=request,
@@ -1049,19 +1053,20 @@ def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
             logging.warning("Request was a p10cr, this is not allowed for IP messages.")
             verify_csr_signature(request["body"]["p10cr"])
             cert = build_cert_from_csr(
-                request["body"]["p10cr"],
+                csr=request["body"]["p10cr"],
                 ca_key=kwargs.get("ca_key"),
                 ca_cert=kwargs.get("ca_cert"),
                 hash_alg=kwargs.get("hash_alg", "sha256"),
             )
             cert_req_id = kwargs.get("cert_req_id") or -1
             certs = [cert]
-        responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
+            responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
     else:
         certs = [cert]
         responses = prepare_cert_response(cert=cert, enc_cert=enc_cert, cert_req_id=cert_req_id)
 
     body = _prepare_ca_body("ip", responses=responses, ca_pubs=ca_pubs)
+
     pki_message = cmputils._prepare_pki_message(exclude_fields=exclude_fields, **kwargs)
     pki_message["body"] = body
     return pki_message, certs
@@ -1151,6 +1156,7 @@ def prepare_cert_response(
     :param cert: An optional certificate object.
     :param enc_cert: Optional encrypted certificate as EnvelopedData.
     :param private_key: Optional private key as EnvelopedData.
+    :param rspInfo: Optional response information. Defaults to `None`.
     :return: A populated CertResponse structure.
     """
     cert_response = rfc9480.CertResponse()
@@ -1532,7 +1538,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
 
         if entry["hashAlg"]["algorithm"].isValue:
             if int(request["header"]["pvno"]) != 3:
-                raise BadRequest("Hash algorithm is missing in CertConf message,but the version is not 3.")
+                raise BadRequest("Hash algorithm is set in CertConf message, but the version is not 3.")
             hash_alg = get_hash_from_oid(entry["hashAlg"]["algorithm"], only_hash=False)
         else:
             alg_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
@@ -1579,3 +1585,50 @@ def get_correct_ca_body_name(request: rfc9480.PKIMessage) -> str:
         return "ccp"
 
     raise ValueError(f"Invalid body name: {body_name}")
+
+
+def build_rp_from_rr(
+        request: rfc9480.PKIMessage,
+        shared_secret: Optional[bytes] = None,
+        set_header_fields: bool = True,
+        **kwargs,
+) -> rfc9480.PKIMessage:
+    """Build a PKIMessage for a revocation request.
+
+    :param request: The Revocation Request message.
+    :param shared_secret: The shared secret to use for the response. Defaults to `None`.
+    :param set_header_fields: Whether to set the header fields. Defaults to `True`.
+    :return: The built PKIMessage for the revocation response.
+    """
+    if kwargs.get("enforce_lwcmp", True):
+        enforce_lwcmp_for_ca(request)
+
+    status = "accepted"
+    fail_info = None
+    try:
+       protectionutils.verify_pkimessage_protection(request, shared_secret=shared_secret)
+    except Exception:
+        logging.debug("Failed to verify the PKIMessage protection.")
+        status = "rejection"
+        fail_info = "badPOP"
+
+
+
+    if request and set_header_fields:
+        kwargs = _set_header_fields(request, kwargs)
+
+    pki_message = cmputils._prepare_pki_message(**kwargs)
+
+    body = rfc9480.PKIBody()
+    rfc9480.RevRepContent()
+
+    for i in range(len(request["body"]["rr"])):
+        status_info = prepare_pkistatusinfo(status=status, failinfo=fail_info)
+        body["rr"]["status"].append(status_info)
+
+    pki_message["body"] = body
+
+    return pki_message
+
+
+

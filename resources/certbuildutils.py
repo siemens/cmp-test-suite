@@ -1448,8 +1448,13 @@ def prepare_tbs_certificate_from_template(
     tbs_cert["signature"] = prepare_sig_alg_id(
         signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
     )
-    # check if the public key is correct.
-    _ = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+    public_key = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+    tbs_cert["extensions"].extend(
+        prepare_extensions(
+            key=public_key,
+        )
+    )
+
     return tbs_cert
 
 

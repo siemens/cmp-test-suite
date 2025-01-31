@@ -16,7 +16,7 @@ Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
-
+Library             ../resources/certextractutils.py
 
 *** Variables ***
 # normally this would be provided from the command line
@@ -198,7 +198,7 @@ CA MUST Reject PKIMessage With Invalid Sender Field For Signature Based Protecti
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    ...    no_patch=True
+    ...    do_patch=False
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck    exclusive=True
@@ -310,7 +310,7 @@ CA MUST Reject Signature Protected PKIMessage Without SenderKID
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    ...    no_patch=True
+    ...    do_patch=False
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck    exclusive=True
@@ -342,7 +342,7 @@ CA MUST Reject Signature Protected PKIMessage With Invalid SenderKID
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    ...    no_patch=True
+    ...    do_patch=False
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck    exclusive=True

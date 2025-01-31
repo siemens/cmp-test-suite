@@ -21,6 +21,7 @@ from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc9480
+from resources import cmputils, keyutils, protectionutils
 from resources.ca_ra_utils import (
     build_cp_from_p10cr,
     build_ip_cmp_message,
@@ -40,26 +41,20 @@ from resources.certbuildutils import (
     sign_cert,
 )
 from resources.certextractutils import extract_extension_from_csr, get_extension
-from resources.cmputils import (
-    patch_pkimessage_header_with_other_message,
-    prepare_popo,
-    prepare_popo_challenge_for_non_signing_key,
-)
 from resources.convertutils import copy_asn1_certificate
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidAltSignature, InvalidKeyCombination, UnknownOID
-from resources.keyutils import generate_key, generate_key_based_on_alg_id
 from resources.oidutils import (
     CMS_COMPOSITE_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
 )
-from resources.protectionutils import protect_pkimessage
 from resources.typingutils import PrivateKey, TradSigPrivKey
 from resources.utils import manipulate_composite_sig, manipulate_first_byte
 from robot.api.deco import keyword, not_keyword
 from unit_tests.prepare_ca_response import build_ca_pki_message
 
+from pq_logic.hybrid_sig import chameleon_logic, sun_lamps_hybrid_scheme_00
 from pq_logic.hybrid_sig.catalyst_logic import (
     load_catalyst_public_key,
     prepare_alt_sig_alg_id_extn,
@@ -67,8 +62,6 @@ from pq_logic.hybrid_sig.catalyst_logic import (
     prepare_subject_alt_public_key_info_extn,
     sign_cert_catalyst,
 )
-from pq_logic.hybrid_sig.chameleon_logic import build_chameleon_cert_from_paired_csr
-from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import sun_cert_template_to_cert, sun_csr_to_cert
 from pq_logic.hybrid_structures import AltSignatureValueExt
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey, AbstractCompositeSigPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
@@ -118,7 +111,7 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
 
     if request["body"].getName() == "p10cr":
         verify_csr_signature(csr=request["body"]["p10cr"])
-        cert4, cert1 = sun_csr_to_cert(
+        cert4, cert1 = sun_lamps_hybrid_scheme_00.sun_csr_to_cert(
             csr=request["body"]["p10cr"],
             issuer_private_key=signing_key.trad_key,
             alt_private_key=signing_key.pq_key,
@@ -133,7 +126,7 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
         public_key = get_public_key_from_cert_req_msg(cert_req_msg)
         if isinstance(public_key, AbstractCompositeSigPublicKey):
             verify_sig_pop_for_pki_request(request, cert_index)
-            cert4, cert1 = sun_cert_template_to_cert(
+            cert4, cert1 = sun_lamps_hybrid_scheme_00.sun_cert_template_to_cert(
                 cert_template=cert_req_msg["certReq"]["certTemplate"],
                 issuer_cert=issuer_cert,
                 issuer_private_key=signing_key.trad_key,
@@ -149,7 +142,7 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
             )
 
         elif isinstance(public_key, HybridKEMPublicKey):
-            cert4, cert1 = sun_cert_template_to_cert(
+            cert4, cert1 = sun_lamps_hybrid_scheme_00.sun_cert_template_to_cert(
                 cert_template=cert_req_msg["certReq"]["certTemplate"],
                 issuer_cert=issuer_cert,
                 serial_number=serial_number,
@@ -171,10 +164,10 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
         raise ValueError(f"Invalid request type: {request['body'].getName()}")
 
     if password is not None:
-        pki_message = protect_pkimessage(pki_message, password, protection=protection)
+        pki_message = protectionutils.protect_pkimessage(pki_message, password, protection=protection)
         pki_message["extraCerts"].append(cert4)
     else:
-        pki_message = protect_pkimessage(
+        pki_message = protectionutils.protect_pkimessage(
             pki_message=pki_message,
             private_key=protection_key,
             protection=protection,
@@ -251,7 +244,7 @@ def build_enc_cert_response(
         body_name = "cp"
 
     pki_message = build_ca_pki_message(body_type=body_name, responses=[cert_response])
-    pki_message = patch_pkimessage_header_with_other_message(
+    pki_message = cmputils.patch_pkimessage_header_with_other_message(
         target=pki_message, other_message=request, for_exchange=True
     )
     return pki_message
@@ -371,7 +364,7 @@ def _prepare_sig_popo(signing_key, data, hash_alg: str, use_rsa_pss: bool) -> rf
     popo: rfc4211.ProofOfPossession
     sig_alg = prepare_sig_alg_id(signing_key=signing_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg)
     sig = sign_data_with_alg_id(key=signing_key, alg_id=sig_alg, data=data)
-    popo = prepare_popo(signature=sig, signing_key=signing_key)
+    popo = cmputils.prepare_popo(signature=sig, signing_key=signing_key)
     popo["signature"]["signature"] = univ.BitString.fromOctetString(sig)
     return popo
 
@@ -575,10 +568,10 @@ def prepare_catalyst_cert_req_msg_approach(
         if bad_pop:
             sig = manipulate_composite_sig(sig)
 
-        popo = prepare_popo(signature=sig, alg_oid=sig_alg["algorithm"])
+        popo = cmputils.prepare_popo(signature=sig, alg_oid=sig_alg["algorithm"])
 
     elif isinstance(first_key, PQKEMPrivateKey) and isinstance(alt_key, TradSigPrivKey):
-        popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=True)
+        popo = cmputils.prepare_popo_challenge_for_non_signing_key(use_encr_cert=True)
         cert_req = _compute_second_pop_catalyst(
             alt_key=alt_key,
             cert_request=cert_req,
@@ -598,7 +591,7 @@ def prepare_catalyst_cert_req_msg_approach(
         data = encoder.encode(cert_req)
         sig_alg = prepare_sig_alg_id(signing_key=first_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg)
         sig = sign_data_with_alg_id(key=first_key, alg_id=sig_alg, data=data)
-        popo = prepare_popo(signature=sig, signing_key=first_key, alg_oid=sig_alg["algorithm"])
+        popo = cmputils.prepare_popo(signature=sig, signing_key=first_key, alg_oid=sig_alg["algorithm"])
 
     elif isinstance(alt_key, PQKEMPrivateKey) and isinstance(first_key, TradSigPrivKey):
         extn = prepare_subject_alt_public_key_info_extn(alt_key.public_key(), critical=False)  # type: ignore
@@ -612,7 +605,7 @@ def prepare_catalyst_cert_req_msg_approach(
         if bad_pop:
             sig = manipulate_first_byte(sig)
 
-        popo = prepare_popo(signature=sig, signing_key=first_key, alg_oid=sig_alg["algorithm"])
+        popo = cmputils.prepare_popo(signature=sig, signing_key=first_key, alg_oid=sig_alg["algorithm"])
 
     else:
         raise InvalidKeyCombination(
@@ -651,7 +644,7 @@ def _generate_catalyst_alt_sig_key(
         if rest:
             raise BadAsn1Data("AltSignatureAlgorithm")
         try:
-            alt_key = generate_key_based_on_alg_id(alt_sig_alg)
+            alt_key = keyutils.generate_key_based_on_alg_id(alt_sig_alg)
         except NotImplementedError as e:
             raise BadAlg("The provided signature algorithm is not supported.", extra_details=str(e)) from e
         except UnknownOID as e:
@@ -661,7 +654,7 @@ def _generate_catalyst_alt_sig_key(
             pq_hash_alg = PQ_SIG_PRE_HASH_OID_2_NAME[alt_sig_alg["algorithm"]].split("-")[-1]
 
     elif alt_key is None:
-        alt_key = generate_key("ml-dsa-65")
+        alt_key = keyutils.generate_key("ml-dsa-65")
 
     return alt_key, pq_hash_alg
 
@@ -961,7 +954,7 @@ def build_chameleon_from_p10cr(  # noqa: D417 Missing argument descriptions in t
         - BadPOP: If the POP is invalid.
 
     """
-    cert, delta_cert = build_chameleon_cert_from_paired_csr(
+    cert, delta_cert = chameleon_logic.build_chameleon_cert_from_paired_csr(
         csr=request["body"]["p10cr"],
         ca_cert=ca_cert,
         ca_key=ca_key,

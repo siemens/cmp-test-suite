@@ -32,8 +32,7 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import not_keyword
 
-from resources import certbuildutils, keyutils
-from resources.certextractutils import get_field_from_certificate
+from resources import certbuildutils, certextractutils, keyutils
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.copyasn1utils import copy_name
 from resources.cryptoutils import (
@@ -185,7 +184,7 @@ def prepare_recipient_identifier(
         recip_id["issuerAndSerialNumber"] = iss_and_ser
         return recip_id
 
-    ski = ski or get_field_from_certificate(cert, extension="ski")
+    ski = ski or certextractutils.get_field_from_certificate(cert, extension="ski")
     if ski is not None:
         recip_id["subjectKeyIdentifier"] = rfc5652.SubjectKeyIdentifier(ski).subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
@@ -249,7 +248,7 @@ def prepare_signer_identifier(cert: rfc9480.CMPCertificate) -> rfc5652.SignerIde
     :param cert: Certificate to derive the identifier from (CMP protection certificate).
     :return: A `SignerIdentifier` structure identifying the signer.
     """
-    ski = get_field_from_certificate(cert, extension="ski")
+    ski = certextractutils.get_field_from_certificate(cert, extension="ski")
     sid = rfc5652.SignerIdentifier()
     if ski is not None:
         val = rfc5652.SubjectKeyIdentifier(ski).subtype(
@@ -1214,7 +1213,7 @@ def prepare_originator_identifier_or_key(
     :param cert: Certificate to derive the originator identifier from (typically CMP protection certificate).
     :return: An `OriginatorIdentifierOrKey` structure identifying the originator.
     """
-    ski = get_field_from_certificate(cert, extension="ski")
+    ski = certextractutils.get_field_from_certificate(cert, extension="ski")
     originator = rfc5652.OriginatorIdentifierOrKey().subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0)
     )

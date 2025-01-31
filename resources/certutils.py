@@ -21,9 +21,9 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc5280, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-import resources.certextractutils
 from resources import (
     asn1utils,
+    certextractutils,
     cmputils,
     compareutils,
     convertutils,
@@ -437,7 +437,7 @@ def validate_cmp_extended_key_usage(  # noqa D417 undocumented-param
         logging.info("ExtendedKeyUsage Check is disabled!")
         return
 
-    cert_eku_obj = resources.certextractutils.get_field_from_certificate(cert=cert, extension="eku")  # ignore: type
+    cert_eku_obj = certextractutils.get_field_from_certificate(cert=cert, extension="eku")  # ignore: type
     if cert_eku_obj is None:
         if val_strict in [KeyUsageStrictness.ABS_STRICT, KeyUsageStrictness.STRICT]:
             raise ValueError(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
@@ -537,7 +537,7 @@ def validate_key_usage(  # noqa D417 undocumented-param
         logging.info("KeyUsage Check is disabled!")
         return
 
-    usage = resources.certextractutils.get_field_from_certificate(cert=cert, extension="key_usage")  # ignore: type
+    usage = certextractutils.get_field_from_certificate(cert=cert, extension="key_usage")  # ignore: type
 
     if usage is None:
         if val_strict in [KeyUsageStrictness.ABS_STRICT, KeyUsageStrictness.STRICT]:
