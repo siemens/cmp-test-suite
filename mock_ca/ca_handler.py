@@ -41,9 +41,6 @@ from resources.protectionutils import (
 from resources.typingutils import PrivateKey, PublicKey
 from resources.utils import load_and_decode_pem_file
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)  # Set to DEBUG to see detailed logs
-logger = logging.getLogger(__name__)
 
 @dataclass
 class SunHybridState:
@@ -322,7 +319,7 @@ class CAHandler:
         :param pki_message: The IR message.
         :return: The PKI message containing the response.
         """
-        logger.debug("Processing IR message")
+        logging.debug("Processing IR message")
         logging.debug("CA Key: {}".format(self.ca_key))
 
         pki_message, certs = build_ip_cmp_message(
