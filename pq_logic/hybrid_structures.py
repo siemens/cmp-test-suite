@@ -198,12 +198,12 @@ class DeltaCertificateDescriptor(univ.Sequence):
 
     DeltaCertificateDescriptor ::= SEQUENCE {
         serialNumber CertificateSerialNumber,
-        signature [0] IMPLICIT AlgorithmIdentifier OPTIONAL,
-        issuer [1] IMPLICIT Name OPTIONAL,
-        validity [2] IMPLICIT Validity OPTIONAL,
-        subject [3] IMPLICIT Name OPTIONAL,
+        signature [0] EXPLICIT AlgorithmIdentifier OPTIONAL,
+        issuer [1] EXPLICIT Name OPTIONAL,
+        validity [2] EXPLICIT Validity OPTIONAL,
+        subject [3] EXPLICIT Name OPTIONAL,
         subjectPublicKeyInfo SubjectPublicKeyInfo,
-        extensions [4] IMPLICIT Extensions OPTIONAL,
+        extensions [4] EXPLICIT Extensions OPTIONAL,
         signatureValue BIT STRING
     }
 
@@ -240,10 +240,10 @@ class DeltaCertificateRequestValue(univ.Sequence):
     """ASN.1 Definition of the `DeltaCertificateRequestValue` structure.
 
     DeltaCertificateRequestValue ::= SEQUENCE {
-        subject [0] IMPLICIT Name OPTIONAL,
+        subject [0] EXPLICIT Name OPTIONAL,
         subjectPKInfo SubjectPublicKeyInfo,
-        extensions [1] IMPLICIT Extensions OPTIONAL,
-        signatureAlgorithm [2] IMPLICIT AlgorithmIdentifier OPTIONAL
+        extensions [1] EXPLICIT Extensions OPTIONAL,
+        signatureAlgorithm [2] EXPLICIT AlgorithmIdentifier OPTIONAL
     }
     """
 
