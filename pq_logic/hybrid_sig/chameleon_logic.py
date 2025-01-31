@@ -290,7 +290,6 @@ def prepare_delta_cert_req(
         alg_id = rfc5280.AlgorithmIdentifier().subtype(
             explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 2)
         )
-
         alg_id["algorithm"] = sig_alg_id["algorithm"]
         alg_id["parameters"] = sig_alg_id["parameters"]
 
@@ -601,8 +600,9 @@ def build_delta_cert_from_paired_cert(paired_cert: rfc9480.CMPCertificate) -> rf
         delta_cert["tbsCertificate"]["issuer"] = issuer
 
     if dcd["validity"].isValue:
-        validity = copy_validity(dcd["validity"])
-        delta_cert["tbsCertificate"]["validity"] = validity
+        DeltaCertificateDescriptor
+        target = rfc5280.Validity().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 2))
+        delta_cert["tbsCertificate"]["validity"] = copy_validity(filled_validity=dcd["validity"], target=target)
 
     delta_cert["tbsCertificate"]["subjectPublicKeyInfo"] = dcd["subjectPublicKeyInfo"]
 
