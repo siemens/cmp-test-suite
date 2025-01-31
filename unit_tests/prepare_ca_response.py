@@ -84,6 +84,7 @@ from typing import List, Optional
 from pyasn1.codec.der import encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1_alt_modules import rfc5652, rfc9480
+from robot.api.deco import not_keyword
 
 from resources.ca_ra_utils import prepare_cert_response
 from resources.cmputils import patch_extra_certs
@@ -184,7 +185,7 @@ def prepare_cert_rep_msg(
 
     return cert_rep_msg
 
-
+@not_keyword
 def build_ca_pki_message(
     body_type: str = "ip",
     ca_pubs: Optional[List[rfc9480.CMPCertificate]] = None,

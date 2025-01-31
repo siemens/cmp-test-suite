@@ -4,10 +4,11 @@
 
 """Look for improperly Capitalized words in the docstrings and comments."""
 
+import argparse
 import ast
 import os
-import argparse
 import re
+
 
 def load_exceptions(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:

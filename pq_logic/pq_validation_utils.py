@@ -7,8 +7,7 @@
 import logging
 
 from pyasn1_alt_modules import rfc9480
-from resources import asn1utils
-from resources.certextractutils import get_field_from_certificate
+from resources import asn1utils, certextractutils
 from resources.certutils import load_public_key_from_cert
 from resources.oidutils import HYBRID_NAME_2_OID, PQ_NAME_2_OID, PQ_OID_2_NAME
 
@@ -46,7 +45,7 @@ def validate_migration_certificate_key_usage(cert: rfc9480.CMPCertificate) -> No
     :return: None
     """
     public_key: PQPublicKey = load_public_key_from_cert(cert)  # type: ignore
-    key_usage = get_field_from_certificate(cert, extension="key_usage")
+    key_usage = certextractutils.get_field_from_certificate(cert, extension="key_usage")
 
     if key_usage is None:
         logging.info("Key usage extension was not present parsed certificate.")

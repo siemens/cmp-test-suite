@@ -19,11 +19,13 @@ from resources import certutils
 from resources.certutils import check_is_cert_signer, verify_cert_chain_openssl
 from resources.compareutils import compare_alg_id_without_tag
 from resources.oidutils import CMS_COMPOSITE_OID_2_NAME
+from robot.api.deco import keyword
 
 from pq_logic.hybrid_structures import OnRelatedCertificateDescriptor, RelatedCertificateDescriptor
 from pq_logic.tmp_oids import id_ad_certDiscovery, id_ad_relatedCertificateDescriptor
 
 
+@keyword(name="Prepare RelatedCertificateDescriptor")
 def prepare_related_certificate_descriptor(
     url: str,
     other_cert: rfc9480.CMPCertificate = None,
@@ -68,7 +70,7 @@ def prepare_related_certificate_descriptor(
     gen_name["otherName"] = other_name
     return gen_name
 
-
+@keyword(name="Prepare SubjectInfoAccessSyntax Extension")
 def prepare_subject_info_access_syntax_extension(
     url: str = "https://example.com/secondary_certificate.pem",
     critical: bool = False,
@@ -142,7 +144,7 @@ def extract_sia_extension_for_cert_discovery(
 
     return obj
 
-
+@keyword(name="Get Cert Discovery Cert")
 def get_cert_discovery_cert(uri: str) -> rfc9480.CMPCertificate:
     """Get the secondary certificate using the provided URI.
 
@@ -162,8 +164,8 @@ def get_cert_discovery_cert(uri: str) -> rfc9480.CMPCertificate:
     except requests.RequestException as e:
         raise ValueError(f"Failed to fetch secondary certificate: {e}")
 
-
-def validate_alg_ids(other_cert: rfc9480.CMPCertificate, rel_cert_desc: RelatedCertificateDescriptor) -> None:
+@keyword(name="Validate RelatedCertificateDescriptor Alg IDs")
+def validate_related_certificate_descriptor_alg_ids(other_cert: rfc9480.CMPCertificate, rel_cert_desc: RelatedCertificateDescriptor) -> None:
     """Validate that the algorithms in the RelatedCertificateDescriptor match those in the Secondary Certificate.
 
     :param other_cert: The Secondary Certificate as a CMPCertificate.
@@ -205,7 +207,7 @@ def validate_cert_discovery(
     url = str(rel_cert_desc["uniformResourceIdentifier"])
 
     other_cert = get_cert_discovery_cert(url)
-    validate_alg_ids(other_cert, rel_cert_desc)
+    validate_related_certificate_descriptor_alg_ids(other_cert, rel_cert_desc)
 
     if check_is_cert_signer(cert=other_cert, poss_issuer=issuer_cert):
         raise ValueError("The Signature was correct, with traditional algorithm!")

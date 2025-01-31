@@ -112,7 +112,7 @@ CA MUST Reject Revocation Request With Issuer As Sender
     ...    protection=signature
     ...    cert=${REVOCATION_CERT}
     ...    private_key=${REVOCATION_KEY}
-    ...    no_patch=True
+    ...    do_patch=False
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck    exclusive=True

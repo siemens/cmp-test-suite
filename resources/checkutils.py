@@ -22,9 +22,16 @@ from pyasn1_alt_modules import rfc5280, rfc6664, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2437 import rsaEncryption
 from robot.api.deco import keyword, not_keyword
 
-import resources.certextractutils
-from resources import asn1utils, certutils, cmputils, convertutils, protectionutils, utils
-from resources.compareutils import compare_cert_template_and_cert
+from resources import (
+    asn1utils,
+    certextractutils,
+    certutils,
+    cmputils,
+    compareutils,
+    convertutils,
+    protectionutils,
+    utils,
+)
 from resources.oid_mapping import (
     get_hash_from_oid,
 )
@@ -576,7 +583,7 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
 
     if protection_type == "sig":
         # For signature-based protection, the senderKID must match the certificate's SubjectKeyIdentifier
-        subject_ski = resources.certextractutils.get_subject_key_identifier(protection_cert)  # type: ignore
+        subject_ski = certextractutils.get_subject_key_identifier(protection_cert)  # type: ignore
         if subject_ski is None:
             logging.info("The CMP protection certificate does not contain a SubjectKeyIdentifier.")
             return
@@ -1638,7 +1645,7 @@ def check_for_granted_with_mods(  # noqa D417 undocumented-param
         )
 
     issued_cert = cmputils.get_cert_from_pkimessage(pki_message_response)
-    is_equal = compare_cert_template_and_cert(
+    is_equal = compareutils.compare_cert_template_and_cert(
         cert_template,
         issued_cert=issued_cert,
         include_fields=include_fields,

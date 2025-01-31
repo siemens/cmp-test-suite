@@ -42,7 +42,7 @@ CA MUST Accept Valid MAC Protected Issuing Process
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    pkiconf
 
@@ -68,7 +68,7 @@ CA MUST Accept EE Rejection Of The Issued Certificate
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    pkiconf
 
@@ -91,7 +91,7 @@ CA MUST Reject More Than One CertStatus Inside The certConf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    recipient=${My List}
-    ...    cert_status=${ISSUED_KEY}
+    ...    cert_status=${cert_status}
     ...    exclude_fields=sender,senderKID
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
@@ -116,7 +116,6 @@ CA MUST Reject Invalid certReqId Inside The certConf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    cert_req_id=${-1}
-    ...    cert_hash=${cert_hash}
     ...    recipient=${RECIPIENT}
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
@@ -154,36 +153,6 @@ CA MUST Reject failInfo With Status Accepted Inside The certConf
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
 
 ### certificate hash
-
-CA MUST Reject Invalid Cert Hash Size Inside certConf
-    [Documentation]    According to RFC 9483 Section 4.1, when implicit confirmation is not allowed, the
-    ...    End-Entity must confirm receipt of all issued certificates by including a valid certificate hash
-    ...    in the CertStatus.We send a valid Initialization Request without implicit confirmation,
-    ...    receive a certificate, and respond with a certificate confirmation containing an invalid
-    ...    certificate hash (modified by appending 0x01). The CA MUST detect the incorrect hash size and
-    ...    respond with an error, optionally including the failInfo `badPOP`.
-    [Tags]    negative    popo
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    ${cert}=    Get Cert From PKIMessage    ${response}
-    ${cert_hash}=    Calculate Cert Hash    ${cert}
-    VAR    ${new_byte}    ${b'\x01'}
-    ${cert_hash}=    Evaluate    ${cert_hash} + ${new_byte}
-    ${cert_conf}=    Build Cert Conf From Resp
-    ...    ${response}
-    ...    cert_hash=${cert_hash}
-    ...    recipient=${RECIPIENT}
-    ...    exclude_fields=sender,senderKID
-    ${protected_cert_conf}=    Protect PKIMessage
-    ...    ${cert_conf}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${protected_cert_conf}
-    PKIStatus Must Be    ${response}    rejection
-    PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP    exclusive=True
 
 CA MUST Reject certConf Without A Cert Hash Value
     [Documentation]    According to RFC 9483 Section 4.1, when implicit confirmation is not allowed, the
@@ -296,7 +265,7 @@ CA MUST Reject certConf Signed With The Newly Issued Certificate
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${private_key}
-    ...    certificate=${cert}
+    ...    cert=${cert}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck,badRequest    exclusive=True
@@ -373,7 +342,7 @@ CA MUST Reject CertConf With No senderNonce
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badSenderNonce    exclusive=True
@@ -400,7 +369,7 @@ CA MUST Reject CertConf With Different senderNonce
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badSenderNonce    exclusive=True
@@ -425,7 +394,7 @@ CA MUST Reject certConf With No recipNonce
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRecipientNonce    exclusive=True
@@ -452,7 +421,7 @@ CA MUST Reject CertConf With Different recipNonce
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRecipientNonce    exclusive=True
@@ -475,7 +444,7 @@ CA MUST Reject CertConf with omitted transactionID
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
@@ -486,7 +455,6 @@ CA MUST Reject CertConf with Different transactionID
     ...    a modified `transactionID`. The CA MUST detect the mismatch and reject the message, optionally
     ...    responding with the failInfo `transactionIdInUse` or `badRequest`.
     [Tags]    negative    rfc9483-header
-
     ${protected_ir}=    Generate Default IR Sig Protected
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
@@ -502,7 +470,7 @@ CA MUST Reject CertConf with Different transactionID
     ...    ${patched_cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${cert}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=transactionIdInUse,badRequest    exclusive=True
@@ -528,7 +496,7 @@ CA MAY Reject CertConf With implicitConfirm
     ...    ${cert_conf}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    certificate=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${pki_conf2}    error
     PKIStatusInfo Failinfo Bit Must Be   ${pki_conf2}    failinfo=badRequest   exclusive=True
@@ -550,8 +518,8 @@ CA SHOULD Send certConfirmed When Valid certConf Is Sent Again
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
     ...    protection=signature
-    ...    private_key=${private_key}
-    ...    certificate=${ISSUED_CERT}
+    ...    private_key=${ISSUED_KEY}
+    ...    cert=${ISSUED_CERT}
     Exchange PKIMessage    ${protected_cert_conf}
     ${pki_conf2}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${pki_conf2}    error

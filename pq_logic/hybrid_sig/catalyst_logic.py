@@ -12,12 +12,9 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from pyasn1_alt_modules.rfc4210 import CMPCertificate
-from resources import certutils, cryptoutils, utils
-from resources.certbuildutils import prepare_sig_alg_id, prepare_tbs_certificate, sign_cert
-from resources.certextractutils import get_extension
+from resources import certbuildutils, certextractutils, certutils, cryptoutils, keyutils, utils
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
 from resources.exceptions import BadAlg, BadAsn1Data
-from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import (
     PQ_NAME_2_OID,
@@ -27,7 +24,6 @@ from resources.oidutils import (
 )
 from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey, TradSigPrivKey
 
-from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.hybrid_structures import AltSignatureValueExt, SubjectAltPublicKeyInfoExt
 from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
@@ -77,7 +73,7 @@ def prepare_alt_sig_alg_id_extn(
         raise ValueError("Either `alg_id` or `key` must be provided.")
 
     if key is not None:
-        alg_id = prepare_sig_alg_id(
+        alg_id = certbuildutils.prepare_sig_alg_id(
             signing_key=key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
         )
 
@@ -181,8 +177,8 @@ def sign_cert_catalyst(
     if exclude_catalyst_extensions:
         raise NotImplementedError("Excluding catalyst extensions is not implemented.")
 
-    alt_alg_id = prepare_sig_alg_id(pq_key, hash_alg=pq_hash_alg, use_rsa_pss=use_rsa_pss)
-    trad_alg_id = prepare_sig_alg_id(trad_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
+    alt_alg_id = certbuildutils.prepare_sig_alg_id(pq_key, hash_alg=pq_hash_alg, use_rsa_pss=use_rsa_pss)
+    trad_alg_id = certbuildutils.prepare_sig_alg_id(trad_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
     cert["tbsCertificate"]["signature"] = trad_alg_id
     cert["signatureAlgorithm"] = trad_alg_id
@@ -200,7 +196,7 @@ def sign_cert_catalyst(
     alt_extn = prepare_alt_signature_value_extn(signature=alt_signature, critical=critical)
     cert["tbsCertificate"]["extensions"].append(alt_extn)
 
-    return sign_cert(signing_key=trad_key, cert=cert, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
+    return certbuildutils.sign_cert(signing_key=trad_key, cert=cert, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
 
 def validate_catalyst_extension(
@@ -292,11 +288,11 @@ def verify_catalyst_signature_migrated(
         raise ValueError("Catalyst extensions are not present, cannot perform migrated verification.")
 
     # Step 1: Verify the native signature
-    issuer_pub_key = issuer_pub_key or load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+    issuer_pub_key = issuer_pub_key or keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
     certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
 
     # Step 2: Verify the alternative signature
-    pq_pub_key = CombinedKeyFactory.load_public_key_from_spki(catalyst_ext["spki"])
+    pq_pub_key = keyutils.load_public_key_from_spki(catalyst_ext["spki"])
     hash_alg = get_hash_from_oid(catalyst_ext["alg_id"]["algorithm"], only_hash=True)
 
     alt_sig_data = prepare_alt_signature_data(
@@ -328,7 +324,7 @@ def verify_catalyst_signature(
     :raises NotImplementedError: If certain verification paths are not implemented.
     """
     catalyst_ext = validate_catalyst_extension(cert)
-    public_key2 = load_public_key_from_spki(catalyst_ext["spki"])
+    public_key2 = keyutils.load_public_key_from_spki(catalyst_ext["spki"])
 
     if not migrated:
         if catalyst_ext:
@@ -367,7 +363,7 @@ def build_catalyst_cert(
     :param extensions: Optional extensions to include in the certificate.
     :return: The created `CMPCertificate`.
     """
-    tbs_cert = prepare_tbs_certificate(
+    tbs_cert = certbuildutils.prepare_tbs_certificate(
         subject=common_name,
         signing_key=trad_key,
         public_key=client_key.public_key(),
@@ -387,14 +383,14 @@ def load_catalyst_public_key(extensions: rfc9480.Extensions) -> PublicKey:
     :return: The loaded public key.
     :raises ValueError: If the extension is not found.
     """
-    extn_alt_spki = get_extension(extensions, id_ce_subjectAltPublicKeyInfo)
+    extn_alt_spki = certextractutils.get_extension(extensions, id_ce_subjectAltPublicKeyInfo)
     if extn_alt_spki is None:
         raise ValueError("AltPublicKeyInfo extension not found.")
 
     spki, rest = decoder.decode(extn_alt_spki["extnValue"].asOctets(), SubjectAltPublicKeyInfoExt())
     if rest:
         raise BadAsn1Data("The alternative public key extension contains remainder data.", overwrite=True)
-    alt_issuer_key = load_public_key_from_spki(spki)
+    alt_issuer_key = keyutils.load_public_key_from_spki(spki)
     return alt_issuer_key
 
 
@@ -436,7 +432,7 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
          - The signed CRL.
 
     """
-    crl["signatureAlgorithm"] = prepare_sig_alg_id(
+    crl["signatureAlgorithm"] = certbuildutils.prepare_sig_alg_id(
         signing_key=ca_private_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg, use_pre_hash=use_pre_hash
     )
 

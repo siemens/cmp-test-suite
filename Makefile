@@ -14,6 +14,8 @@ help:
 	@echo  '  verifyformat   -  Check formatting only '
 	@echo  '  stats   -  Write the key encapsulation statistics to a data/stats/ directory '
 	@echo  '  invalid-sig   -  Verify all pqc-certificates in data/pqc-certificates/ and show all invalid signatures '
+	@echo  '  start-mock-ca   -  Start the mock CA server, so that it can listens to requests '
+	@echo  '  test-mock-ca   -  Run the test against the mock CA server '
 	@echo  ''
 
 
@@ -91,3 +93,10 @@ stats:
 invalid-sigs:
 	python test_load_pqc.py
 	python vis_pqc_verify.py
+
+start-mock-ca:
+	python ./mock_ca/ca_handler.py
+
+test-mock-ca:
+	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests
+

@@ -27,6 +27,7 @@ from resources.oidutils import (
     TRAD_STR_OID_TO_KEY_NAME,
     XWING_OID_STR,
 )
+from robot.api.deco import not_keyword
 
 from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1
 from pq_logic.keys.abstract_pq import PQPrivateKey
@@ -149,7 +150,7 @@ def _get_pem_header(key) -> bytes:
         return key_map[key_name].encode("utf-8")
     raise ValueError(f"Unsupported key type: {key_name}")
 
-
+@not_keyword
 def load_enc_key(password: str, data: bytes) -> bytes:
     """Load PEM formatted encrypted key.
 
@@ -187,6 +188,8 @@ def load_enc_key(password: str, data: bytes) -> bytes:
 
 # TODO fix for all keys.
 # missing are Chempat, sntrup761, McEliece, old-CompositeSig, CompositeKEM
+
+@not_keyword
 def parse_key_from_one_asym_key(data: bytes):
     """Parse and load a private key from its OneAsymmetricKey encoding.
 
@@ -273,7 +276,7 @@ def parse_key_from_one_asym_key(data: bytes):
 
     return private_key
 
-
+@not_keyword
 def derive_and_encrypt_key(password: str, data: bytes, decrypt: bool, iv: Optional[bytes] = None) -> (bytes, bytes):
     """Derive an encryption key using PBKDF2 and encrypts data using AES-CBC.
 
