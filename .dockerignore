@@ -1,4 +1,10 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 venv*
 __pycache__
 .git
 liboqs-python
+data/EJBCA/*.tar.gz
+data/pqc-certificates

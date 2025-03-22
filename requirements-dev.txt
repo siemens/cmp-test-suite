@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-safety>= 3.2.8, < 4.0.0
-pylint>= 3.3.1, < 4.0.0
+safety>= 3.2.14, < 4.0.0
+pylint>= 3.3.3, < 4.0.0
 black>= 24.8.0, < 25.0.0
-ruff>= 0.7.0, < 1.0.0
-robotframework-robocop==5.4.0
-pyright==1.1.385
-reuse==5.0.0
+ruff>= 0.8.6, < 1.0.0
+robotframework-robocop==5.7.0
+robotframework-tidy==4.15.0
+pyright==1.1.391
+codespell==2.4.0
+reuse==5.0.2
