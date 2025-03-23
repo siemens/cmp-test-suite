@@ -7,7 +7,7 @@
 import requests
 from pyasn1.error import PyAsn1Error
 
-from resources import cmputils
+import cmputils
 
 
 def http_response_contains_pki_message(data: requests.Response) -> bool:  # noqa: D417 for RF docs
@@ -32,7 +32,7 @@ def http_response_contains_pki_message(data: requests.Response) -> bool:  # noqa
         return False
 
     try:
-        cmputils.parse_pkimessage(data.content)
+        cmputils.parse_pki_message(data.content)
         return True
     except PyAsn1Error:
         return False
