@@ -3,9 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 src = ["resources"]
-exclude = ["venv*", "unit_tests", "config", "tests", "doc", "pq_logic/fips/*"]
-# pq_logic/fips/* is excluded because we use it "as is" from the original repo,
-# https://github.com/mjosaarinen/py-acvp-pqc, and we keep it that way
+exclude = ["venv*", "unit_tests", "config", "tests", "doc"]
 line-length = 120
 respect-gitignore = true
 
