@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass, field
-from typing import Optional, Set, List, Tuple, Dict
+"""Logic that imlements a mock CA suitable for testing purposes."""
 
 import logging
 import sys
@@ -134,6 +133,7 @@ def _build_error_from_exception(e: CMPTestSuiteError) -> rfc9480.PKIMessage:
 
 
 class CAHandler:
+    """Mock CA class"""
 
     def __init__(self, ca_cert: rfc9480.CMPCertificate, ca_key: PrivateKey,
                  config: dict, ca_alt_key: Optional[PrivateKey] = None):
@@ -213,7 +213,8 @@ class CAHandler:
         except CMPTestSuiteError as e:
             return _build_error_from_exception(e)
         except Exception as e:
-            return _build_error_from_exception(CMPTestSuiteError(f"An error occurred: {str(e)}", failinfo="systemFailure"))
+            return _build_error_from_exception(CMPTestSuiteError(f"An error occurred: "
+                                                                 f"{str(e)}", failinfo="systemFailure"))
 
         return self.sign_response(response=response, request=pki_message)
 
@@ -410,12 +411,14 @@ handler.state = state
 
 @app.route("/pubkey/<serial_number>", methods=["GET"])
 def get_pubkey(serial_number):
+    """Retrieve a public key knowing the certificate serial number."""
     serial_number = int(serial_number)
     sun_hybrid_cert = state.sun_hybrid_state.sun_hybrid_pub_keys[serial_number]
     return encoder.encode(sun_hybrid_cert)
 
 @app.route("/sig/<serial_number>", methods=["GET"])
 def get_signature(serial_number):
+    """Retrieve a certificate's signature knowing its serial number."""
     serial_number = int(serial_number)
     alt_sig = state.sun_hybrid_state.sun_hybrid_signatures[serial_number]
     return alt_sig

@@ -288,7 +288,8 @@ def verify_catalyst_signature_migrated(
         raise ValueError("Catalyst extensions are not present, cannot perform migrated verification.")
 
     # Step 1: Verify the native signature
-    issuer_pub_key = issuer_pub_key or keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+    issuer_pub_key = issuer_pub_key or keyutils.load_public_key_from_spki(
+        cert["tbsCertificate"]["subjectPublicKeyInfo"])
     certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
 
     # Step 2: Verify the alternative signature

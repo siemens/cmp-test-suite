@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 src = ["resources"]
-exclude = ["venv*", "unit_tests", "config", "tests", "doc", "pq_logic/fips/*"]
+exclude = ["venv*", "unit_tests", "config", "tests", "doc", "pq_logic/fips/*",
+"scripts/docstring-check.py", "scripts/add_license.py", "scripts/write_stats.py"]
 # pq_logic/fips/* is excluded because we use it "as is" from the original repo,
 # https://github.com/mjosaarinen/py-acvp-pqc, and we keep it that way
 line-length = 120

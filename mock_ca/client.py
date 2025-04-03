@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import requests
-from pyasn1.codec.der import encoder, decoder
+"""Minimal client that sends a CMP request to the mock CA."""
+
 import sys
 
 import requests
@@ -16,6 +16,7 @@ from resources.asn1_structures import PKIMessageTMP
 
 
 def send_request_to_static_cert1():
+    """Send a request to the mock CA."""
     url = "http://127.0.0.1:5000/issuing"
     key = keyutils.generate_key("composite-sig")
     pki_message = cmputils.build_cr_from_key(key)

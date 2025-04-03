@@ -165,7 +165,8 @@ def get_cert_discovery_cert(uri: str) -> rfc9480.CMPCertificate:
         raise ValueError(f"Failed to fetch secondary certificate: {e}")
 
 @keyword(name="Validate RelatedCertificateDescriptor Alg IDs")
-def validate_related_certificate_descriptor_alg_ids(other_cert: rfc9480.CMPCertificate, rel_cert_desc: RelatedCertificateDescriptor) -> None:
+def validate_related_certificate_descriptor_alg_ids(other_cert: rfc9480.CMPCertificate,
+                                                    rel_cert_desc: RelatedCertificateDescriptor) -> None:
     """Validate that the algorithms in the RelatedCertificateDescriptor match those in the Secondary Certificate.
 
     :param other_cert: The Secondary Certificate as a CMPCertificate.

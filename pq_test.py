@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""Standalone tool to invoke logic related to ML-KEM"""
+
 import json
 
 from pq_logic.keys.kem_keys import MLKEMPrivateKey

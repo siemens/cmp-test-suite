@@ -34,6 +34,7 @@ def check_capitalization(line, exceptions):
     return issues
 
 def process_docstring(docstring, exceptions, debug=False):
+    """Evaluate docstring for violations of capitalization rules"""
     results = []
     for line in docstring.splitlines():
         stripped_line = line.lstrip()
@@ -63,6 +64,7 @@ def process_docstring(docstring, exceptions, debug=False):
     return results
 
 def find_incorrect_capitalization(file_path, exceptions, debug=False):
+    """Look for incorrect capitalization in the strings of a file"""
     with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
 
@@ -84,15 +86,17 @@ def find_incorrect_capitalization(file_path, exceptions, debug=False):
                     print(f"In {file_path}: '{line.strip()}' contains capitalized mid-sentence words: {issues}")
 
 def scan_directory_for_issues(directory, exceptions, debug=False):
+    """Traverse directory in search of files with strings with problematic capitalization"""
     for root, _, files in os.walk(directory):
         for file in files:
             if file.endswith('.py'):
                 find_incorrect_capitalization(os.path.join(root, file), exceptions, debug=debug)
 
 def main():
+    """Parse command line arguments for main function"""
     parser = argparse.ArgumentParser(description="Check for unnecessary capitalized words mid-sentence in docstrings.")
     parser.add_argument('directory', nargs='?', default='.', help='Directory to scan (default: current directory)')
-    parser.add_argument('--exceptions', default='exceptions.txt', help='Path to exceptions file (default: exceptions.txt)')
+    parser.add_argument('--exceptions', default='exceptions.txt', help='Path to exceptions (default: exceptions.txt)')
     parser.add_argument('--debug', action='store_true', help='Enable debug output')
 
     args = parser.parse_args()
