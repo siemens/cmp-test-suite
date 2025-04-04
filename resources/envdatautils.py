@@ -1083,7 +1083,7 @@ def prepare_kem_recip_info(
         else:
             shared_secret, kemct = hybrid_key_recip.encaps(server_pub_key)  # type: ignore
 
-        logging.debug(f"Computed Shared secret: {shared_secret.hex()}")
+        logging.debug("Computed shared secret: %s", shared_secret.hex())
         if kemct is not None:
             kem_recip_info["kemct"] = univ.OctetString(kemct)
 

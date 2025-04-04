@@ -182,13 +182,13 @@ def sign_csr(  # noqa D417 undocumented-param
     """
     der_data = encoder.encode(csr["certificationRequestInfo"])
     signature = cryptoutils.sign_data(data=der_data, key=other_key or signing_key, hash_alg=hash_alg)
-    logging.info(f"CSR Signature: {signature}")
+    logging.info("CSR Signature: %s", signature)
     if bad_sig:
         if isinstance(signing_key, AbstractCompositeSigPrivateKey):
             signature = utils.manipulate_composite_sig(signature)
         else:
             signature = utils.manipulate_first_byte(signature)
-        logging.info(f"Modified CSR signature: {signature}")
+        logging.info("Modified CSR signature: %s", signature)
 
     csr["signature"] = univ.BitString.fromOctetString(signature)
     csr["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key,

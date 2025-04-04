@@ -2457,8 +2457,8 @@ def verify_kem_based_mac_protection(
     data = extract_protected_part(pki_message)
     alg_id = pki_message["header"]["protectionAlg"]
     computed_mac = compute_kem_based_mac_from_alg_id(data, alg_id, shared_secret)
-    logging.debug(f"Computed MAC: {computed_mac.hex()}")
-    logging.debug(f"Received MAC: {pki_message['protection'].asOctets().hex()}")
+    logging.debug("Computed MAC: %s", computed_mac.hex())
+    logging.debug("Received MAC: %s", pki_message['protection'].asOctets().hex())
     if computed_mac != pki_message["protection"].asOctets():
         raise ValueError("The KEMBasedMac verification failed.")
 

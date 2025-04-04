@@ -118,7 +118,7 @@ def prepare_private_key_for_pop(
         else:
             data["identifier"]["generalName"] = cmputils.prepare_general_name("directoryName", sender)
 
-    logging.debug(f"Private key for PoP: {data.prettyPrint()}")
+    logging.debug("Private key for PoP: %s", data.prettyPrint())
     return data
 
 
