@@ -341,8 +341,8 @@ def _extract_and_format_key(pem_file_path: str) -> bytes:
             + b" PRIVATE KEY-----\n"
         )
         return pem_data
-    else:
-        raise ValueError("No valid private key found in the file.")
+
+    raise ValueError("No valid private key found in the file.")
 
 
 def _clean_data(data: bytes) -> bytes:

@@ -649,10 +649,9 @@ def _validate_crls(
         crl_chain = certutils.build_crl_chain_from_list(crl=crl, certs=certs)
         try:
             certutils.verify_openssl_crl(crl_chain, timeout=timeout)
-        except ValueError:
-            # TODO fix for better logging.
+        except ValueError as exc:
             logging.info("CRL at index: %d\n %s", i, crl.prettyPrint())
-            raise ValueError(f"The CRL at index: {i} was invalid")
+            raise ValueError(f"The CRL at index: {i} was invalid") from exc
 
 
 @keyword(name="Validate CRL Update Retrieval")
@@ -1383,7 +1382,7 @@ def validate_genp_kem_ct_info(  # noqa: D417 Missing argument description in the
     if not value.isValue:
         raise ValueError("The KEMCiphertextInfo value was absent.")
 
-    kem_ct_info, rest = decoder.decode(value.asOctets(), KemCiphertextInfoAsn1())
+    kem_ct_info, _rest = decoder.decode(value.asOctets(), KemCiphertextInfoAsn1())
 
     if not is_kem_private_key(client_private_key):
         raise ValueError("The private key was not a KEM private key.")

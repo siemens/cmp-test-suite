@@ -90,8 +90,8 @@ def asn1_must_have_values_set(asn1_obj: base.Asn1Type, queries: str):  # noqa D4
                 obj_name = type(tmp).__name__
                 logging.debug("%s", asn1_obj.prettyPrint())
                 raise ValueError(f"The pyasn1 object: `{obj_name}` did not had a value set for the query: '{entry}'.")
-        except KeyError:
-            raise ValueError(f"The query '{entry}' is not present in the structure.")
+        except KeyError as e:
+            raise ValueError(f"The query '{entry}' is not present in the structure.") from e
 
 
 def asn1_must_contain_fields(data: base.Asn1Type, fields: str):  # noqa D417 undocumented-param

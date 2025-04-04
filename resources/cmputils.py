@@ -503,9 +503,9 @@ def validate_archive_options(
     option = archive_options.getName()
     if option == "encryptedPrivKey":
         return archive_options["encryptedPrivKey"]
-    elif option == "keyGenParameters":
+    if option == "keyGenParameters":
         raise NotImplementedError("KeyGenParameters not supported.")
-    elif option == "archiveRemGenPrivKey":
+    if option == "archiveRemGenPrivKey":
         logging.info("PKIArchiveOptions: archiveRemGenPrivKey was: %s", str(archive_options["archiveRemGenPrivKey"]))
 
 
@@ -888,7 +888,7 @@ def prepare_cert_request(  # noqa D417 undocumented-param
 
 
 @keyword(name="Prepare CertReqMsg")
-def prepare_cert_req_msg(  # noqa D417 undocumented-param
+def prepare_cert_req_msg(  # noqa D417, W0613 undocumented-param, unused-argument
     private_key: PrivateKey,
     common_name: Optional[str] = None,
     cert_req_id: Strint = 0,
@@ -2074,7 +2074,7 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
     if cert_status is None:
         cert_resp_msg: rfc9480.CertRepMessage = ca_message["body"][message_type]["response"]
         entry: rfc9480.CertResponse
-        for i, entry in enumerate(cert_resp_msg):
+        for _i, entry in enumerate(cert_resp_msg):
             # remove the tagging.
             cert_req_id = int(entry["certReqId"])
             cert = copy_asn1_certificate(cert=entry["certifiedKeyPair"]["certOrEncCert"]["certificate"])
@@ -2553,7 +2553,7 @@ def prepare_general_name(name_type: str, name_str: str) -> rfc9480.GeneralName:
     if name_type == "rfc822Name":
         return rfc9480.GeneralName().setComponentByName("rfc822Name", name_str)
 
-    if name_type == "uniformResourceIdentifier" or name_type == "uri":
+    if name_type in {"uniformResourceIdentifier", "uri"}:
         return rfc9480.GeneralName().setComponentByName("uniformResourceIdentifier", name_str)
 
     raise NotImplementedError(f"GeneralName name_type is Unsupported: {name_type}")
@@ -3312,13 +3312,13 @@ def build_cmp_revoke_request(  # noqa D417 undocumented-param
 
 
 @keyword(name="Build CMP Revive Request")
-def build_cmp_revive_request(  # noqa: D103 undocumented-public-function
+def build_cmp_revive_request(
     serial_number: Optional[Strint] = None,
     sender: str = "test-cli@test.com",
     recipient: str = "test-srv@test.com",
     **params,
 ):
-    # No docstring, this is just a wrapper
+    """Wrap build_cmp_revoke_request"""
     return build_cmp_revoke_request(
         serial_number=serial_number, sender=sender, recipient=recipient, reason="removeFromCRL", **params
     )
@@ -3532,8 +3532,6 @@ def get_pkistatusinfo(pki_message: rfc9480.PKIMessage, index: Strint = 0) -> rfc
 
     return pki_status_info
 
-
-# TODO decide to completely remove.
 
 
 @keyword(name="Verify PKIStatusInfo")

@@ -996,8 +996,7 @@ def _prepare_mac_alg_id(protection: str, **params) -> rfc9480.AlgorithmIdentifie
             nonce=salt,
         )
     else:
-        # TODO fix
-        raise ValueError()
+        raise ValueError(f"Unknown protectin algorithm: {protection}")
 
     return prot_alg_id
 
@@ -2039,7 +2038,7 @@ def compute_kdf_from_alg_id(kdf_alg_id: rfc9480.AlgorithmIdentifier, ss: bytes, 
         hash_alg = HKDF_OID_2_NAME[kdf_alg_id["algorithm"]].split("-")[1]
         return compute_hkdf(hash_alg=hash_alg, length=length, key_material=ss, ukm=ukm)
 
-    elif kdf_alg_id["algorithm"] in [rfc5990.id_kdf_kdf2, rfc5990.id_kdf_kdf3]:
+    if kdf_alg_id["algorithm"] in [rfc5990.id_kdf_kdf2, rfc5990.id_kdf_kdf3]:
         if not isinstance(kdf_alg_id["parameters"], rfc9480.AlgorithmIdentifier):
             sha_alg_id = decoder.decode(kdf_alg_id["parameters"], asn1Spec=rfc9480.AlgorithmIdentifier())[0]
         else:
@@ -2055,7 +2054,7 @@ def compute_kdf_from_alg_id(kdf_alg_id: rfc9480.AlgorithmIdentifier, ss: bytes, 
             use_version_2=(kdf_alg_id["algorithm"] == rfc5990.id_kdf_kdf2),
         )
 
-    elif kdf_alg_id["algorithm"] == rfc9481.id_PBKDF2:
+    if kdf_alg_id["algorithm"] == rfc9481.id_PBKDF2:
         if isinstance(kdf_alg_id["parameters"], rfc8018.PBKDF2_params):
             pbkdf2_params = decoder.decode(kdf_alg_id["parameters"], asn1Spec=rfc9480.AlgorithmIdentifier())[0]
         else:
@@ -2063,8 +2062,7 @@ def compute_kdf_from_alg_id(kdf_alg_id: rfc9480.AlgorithmIdentifier, ss: bytes, 
 
         return compute_pbkdf2_from_parameter(key=ss, parameters=pbkdf2_params)
 
-    else:
-        raise ValueError(f"Unsupported KDF algorithm: {kdf_alg_id['algorithm']}")
+    raise ValueError(f"Unsupported KDF algorithm: {kdf_alg_id['algorithm']}")
 
 
 @not_keyword
@@ -2104,10 +2102,10 @@ def compute_kem_based_mac_from_alg_id(
         mac_alg = HMAC_OID_2_NAME[mac_oid].split("-")[1]
         return cryptoutils.compute_hmac(key=mac_key, data=data, hash_alg=mac_alg)
 
-    elif mac_oid in KMAC_OID_2_NAME:
+    if mac_oid in KMAC_OID_2_NAME:
         return cryptoutils.compute_kmac_from_alg_id(key=mac_key, data=data, alg_id=mac_alg_id)
-    else:
-        raise ValueError(f"Unsupported MAC algorithm: {may_return_oid_to_name(mac_oid)}")
+
+    raise ValueError(f"Unsupported MAC algorithm: {may_return_oid_to_name(mac_oid)}")
 
 
 def prepare_kem_based_mac_alg_id(
@@ -2187,10 +2185,10 @@ def prepare_kdf(kdf_name: str, fill_value: bool = False) -> rfc9480.AlgorithmIde
     """
     if kdf_name.startswith("hkdf-"):
         return _prepare_hkdf(kdf_name, fill_value)
-    elif kdf_name.startswith("kdf"):
+    if kdf_name.startswith("kdf"):
         return _prepare_ansi_x9_kdf(kdf_name, fill_value)
-    else:
-        raise ValueError(f"Unsupported KDF algorithm: {kdf_name}")
+
+    raise ValueError(f"Unsupported KDF algorithm: {kdf_name}")
 
 
 def prepare_wrap_alg_id(name: str, negative: bool = False) -> rfc9629.KeyEncryptionAlgorithmIdentifier:

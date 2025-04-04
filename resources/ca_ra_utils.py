@@ -640,7 +640,7 @@ def respond_to_cert_req_msg(  # noqa: D417 Missing argument descriptions in the 
         )
         return cert, None
 
-    elif name == "keyEncipherment":
+    if name == "keyEncipherment":
         cert = build_cert_from_cert_template(
             cert_template=cert_req_msg["certReq"]["certTemplate"],
             ca_key=ca_key,
@@ -657,11 +657,11 @@ def respond_to_cert_req_msg(  # noqa: D417 Missing argument descriptions in the 
 
         return cert, enc_cert
 
-    elif name == "keyAgreement":
+    if name == "keyAgreement":
         raise NotImplementedError("Key agreement is not allowed.")
-    else:
-        name = cert_req_msg["popo"].getName()
-        raise ValueError(f"Invalid POP structure: {name}.")
+
+    name = cert_req_msg["popo"].getName()
+    raise ValueError(f"Invalid POP structure: {name}.")
 
 
 @keyword(name="Verify POP Signature For PKI Request")
@@ -697,7 +697,7 @@ def verify_sig_pop_for_pki_request(  # noqa: D417 Missing argument descriptions 
         try:
             verify_csr_signature(csr)
         except InvalidSignature:
-            raise BadPOP("POP verification for `p10cr` failed.")
+            raise BadPOP("POP verification for `p10cr` failed.")  # pylint: disable=raise-missing-from
 
     else:
         raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr or p10cr")
@@ -1535,7 +1535,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
                 logging.debug("Certificate status was rejection.")
                 continue
 
-            elif str(entry["status"]) != "accepted":
+            if str(entry["status"]) != "accepted":
                 raise BadRequest(
                     "Invalid certificate status in CertConf message."
                     f"Expected 'accepted' or 'rejection', got {entry['status'].getName()}"
@@ -1549,10 +1549,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
             alg_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
             hash_alg = get_hash_from_oid(alg_oid, only_hash=True)
 
-        computed_hash = compute_hash(
-            alg_name=hash_alg,
-            data=encoder.encode(issued_cert),
-        )
+        computed_hash = compute_hash(alg_name=hash_alg, data=encoder.encode(issued_cert))
 
         if entry["certHash"].asOctets() != computed_hash:
             raise BadPOP("Invalid certificate hash in CertConf message.")
@@ -1611,13 +1608,11 @@ def build_rp_from_rr(
     status = "accepted"
     fail_info = None
     try:
-       protectionutils.verify_pkimessage_protection(request, shared_secret=shared_secret)
+        protectionutils.verify_pkimessage_protection(request, shared_secret=shared_secret)
     except Exception:
         logging.debug("Failed to verify the PKIMessage protection.")
         status = "rejection"
         fail_info = "badPOP"
-
-
 
     if request and set_header_fields:
         kwargs = _set_header_fields(request, kwargs)
@@ -1627,13 +1622,10 @@ def build_rp_from_rr(
     body = rfc9480.PKIBody()
     rfc9480.RevRepContent()
 
-    for i in range(len(request["body"]["rr"])):
+    for _i in range(len(request["body"]["rr"])):
         status_info = prepare_pkistatusinfo(status=status, failinfo=fail_info)
         body["rr"]["status"].append(status_info)
 
     pki_message["body"] = body
 
     return pki_message
-
-
-

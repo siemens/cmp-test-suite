@@ -410,5 +410,5 @@ def compare_alg_id_without_tag(first: rfc9480.AlgorithmIdentifier, second: rfc94
 
     if sum([params_first.isValue, params_second.isValue]) in [0, 2]:
         return params_first == params_second
-    else:
-        return False
+
+    return False

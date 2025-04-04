@@ -433,8 +433,8 @@ def process_other_recip_info(
         return process_kem_recip_info(
             kem_recip_info=kem_recip_info, server_cert=server_cert, private_key=recip_private_key, for_pop=for_pop
         )
-    else:
-        raise ValueError(f"Got a unknown `oriType`: {other_info['oriType']}")
+
+    raise ValueError(f"Got a unknown `oriType`: {other_info['oriType']}")
 
 
 def extract_content_encryption_key(
@@ -761,7 +761,6 @@ def _validate_kga_certificate(
     :param trustanchors: The path to the directory where the trust anchors are saved.
     :raises ValueError: If the signing certificate is not found, not trusted, or not in the expected position.
     """
-    # TODO: ask Alex if self-signed certificates are acceptable for the Test-Suite.
     if len(certs) == 0:
         logging.info("Used a self-signed certificate to sign the `SignedData` content")
     else:

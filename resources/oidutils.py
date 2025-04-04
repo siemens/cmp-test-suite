@@ -109,15 +109,15 @@ SHA_OID_2_NAME = {
     rfc5480.id_sha512: "sha512",
 }
 
-id_hash_algs = "2.16.840.1.101.3.4.2"
+ID_HASH_ALGS = "2.16.840.1.101.3.4.2"
 
 SHA3_OID_2_NAME = {
-    univ.ObjectIdentifier(f"{id_hash_algs}.7"): "sha3-224",
-    univ.ObjectIdentifier(f"{id_hash_algs}.8"): "sha3-256",
-    univ.ObjectIdentifier(f"{id_hash_algs}.9"): "sha3-384",
-    univ.ObjectIdentifier(f"{id_hash_algs}.10"): "sha3-512",
-    univ.ObjectIdentifier(f"{id_hash_algs}.11"): "shake128",
-    univ.ObjectIdentifier(f"{id_hash_algs}.12"): "shake256",
+    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.7"): "sha3-224",
+    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.8"): "sha3-256",
+    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.9"): "sha3-384",
+    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.10"): "sha3-512",
+    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.11"): "shake128",
+    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.12"): "shake256",
 }
 
 
@@ -209,7 +209,6 @@ ALLOWED_HASH_TYPES = {
 }
 
 
-# TODO update for more.
 CURVE_NAMES_TO_OIDS = {
     "secp192r1": rfc5480.secp192r1,  # NIST P-192
     "prime192v1": rfc5480.secp192r1,  # NIST P-192 (alias)
@@ -405,32 +404,32 @@ ML_DSA_NAME_2_OID = {y: x for x, y in ML_DSA_OID_2_NAME.items()}
 
 
 SIG_ALGS = "2.16.840.1.101.3.4.3"
-id_SLH_DSA_SHA2_128S = f"{SIG_ALGS}.20"
-id_SLH_DSA_SHA2_128F = f"{SIG_ALGS}.21"
-id_SLH_DSA_SHA2_192S = f"{SIG_ALGS}.22"
-id_SLH_DSA_SHA2_192F = f"{SIG_ALGS}.23"
-id_SLH_DSA_SHA2_256S = f"{SIG_ALGS}.24"
-id_SLH_DSA_SHA2_256F = f"{SIG_ALGS}.25"
-id_SLH_DSA_SHAKE_128S = f"{SIG_ALGS}.26"
-id_SLH_DSA_SHAKE_128F = f"{SIG_ALGS}.27"
-id_SLH_DSA_SHAKE_192S = f"{SIG_ALGS}.28"
-id_SLH_DSA_SHAKE_192F = f"{SIG_ALGS}.29"
-id_SLH_DSA_SHAKE_256S = f"{SIG_ALGS}.30"
-id_SLH_DSA_SHAKE_256F = f"{SIG_ALGS}.31"
+ID_SLH_DSA_SHA2_128S = f"{SIG_ALGS}.20"
+ID_SLH_DSA_SHA2_128F = f"{SIG_ALGS}.21"
+ID_SLH_DSA_SHA2_192S = f"{SIG_ALGS}.22"
+ID_SLH_DSA_SHA2_192F = f"{SIG_ALGS}.23"
+ID_SLH_DSA_SHA2_256S = f"{SIG_ALGS}.24"
+ID_SLH_DSA_SHA2_256F = f"{SIG_ALGS}.25"
+ID_SLH_DSA_SHAKE_128S = f"{SIG_ALGS}.26"
+ID_SLH_DSA_SHAKE_128F = f"{SIG_ALGS}.27"
+ID_SLH_DSA_SHAKE_192S = f"{SIG_ALGS}.28"
+ID_SLH_DSA_SHAKE_192F = f"{SIG_ALGS}.29"
+ID_SLH_DSA_SHAKE_256S = f"{SIG_ALGS}.30"
+ID_SLH_DSA_SHAKE_256F = f"{SIG_ALGS}.31"
 
 SLH_DSA_NAME_2_OID = {
-    "slh-dsa-sha2-128s": univ.ObjectIdentifier(id_SLH_DSA_SHA2_128S),
-    "slh-dsa-sha2-128f": univ.ObjectIdentifier(id_SLH_DSA_SHA2_128F),
-    "slh-dsa-sha2-192s": univ.ObjectIdentifier(id_SLH_DSA_SHA2_192S),
-    "slh-dsa-sha2-192f": univ.ObjectIdentifier(id_SLH_DSA_SHA2_192F),
-    "slh-dsa-sha2-256s": univ.ObjectIdentifier(id_SLH_DSA_SHA2_256S),
-    "slh-dsa-sha2-256f": univ.ObjectIdentifier(id_SLH_DSA_SHA2_256F),
-    "slh-dsa-shake-128s": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_128S),
-    "slh-dsa-shake-128f": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_128F),
-    "slh-dsa-shake-192s": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_192S),
-    "slh-dsa-shake-192f": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_192F),
-    "slh-dsa-shake-256s": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_256S),
-    "slh-dsa-shake-256f": univ.ObjectIdentifier(id_SLH_DSA_SHAKE_256F),
+    "slh-dsa-sha2-128s": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_128S),
+    "slh-dsa-sha2-128f": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_128F),
+    "slh-dsa-sha2-192s": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_192S),
+    "slh-dsa-sha2-192f": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_192F),
+    "slh-dsa-sha2-256s": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_256S),
+    "slh-dsa-sha2-256f": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_256F),
+    "slh-dsa-shake-128s": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_128S),
+    "slh-dsa-shake-128f": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_128F),
+    "slh-dsa-shake-192s": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_192S),
+    "slh-dsa-shake-192f": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_192F),
+    "slh-dsa-shake-256s": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_256S),
+    "slh-dsa-shake-256f": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_256F),
 }
 
 SLH_DSA_NAME_2_OID_PRE_HASH = {

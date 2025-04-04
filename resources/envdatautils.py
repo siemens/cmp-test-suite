@@ -815,7 +815,7 @@ def prepare_recip_info(
             issuer_and_ser=issuer_and_ser,
         )
 
-    elif isinstance(public_key_recip, ec.EllipticCurvePublicKey):
+    if isinstance(public_key_recip, ec.EllipticCurvePublicKey):
         if private_key is None:
             raise ValueError("An ECDH private key must be provided for EC key exchange.")
         return prepare_kari(
@@ -824,7 +824,7 @@ def prepare_recip_info(
             issuer_and_ser=issuer_and_ser,
         )
 
-    elif isinstance(public_key_recip, MLKEMPublicKey) and use_encryption:
+    if isinstance(public_key_recip, MLKEMPublicKey) and use_encryption:
         return prepare_ktri(
             public_key=public_key_recip,
             sender_cert=cert_recip,
@@ -833,9 +833,7 @@ def prepare_recip_info(
             issuer_and_ser=issuer_and_ser,
         )
 
-    elif is_kem_public_key(
-        public_key_recip,
-    ):
+    if is_kem_public_key(public_key_recip):
         kem_recip_info = prepare_kem_recip_info(
             server_cert=cert_recip,
             public_key_recip=public_key_recip,
@@ -845,7 +843,7 @@ def prepare_recip_info(
         )
         return _prepare_recip_info(kem_recip_info)
 
-    elif password is None and public_key_recip is None:
+    if password is None and public_key_recip is None:
         raise ValueError(
             "A password must be provided for password recipient info structure, or a public key"
             "for key agreement or key transport recipient info structure, or KEM recipient info."
@@ -979,7 +977,7 @@ def build_env_data_for_exchange(
             recipient_infos=[kari], cek=cek, target=target, data_to_protect=data, enc_oid=enc_oid
         )
 
-    elif isinstance(public_key_recip, ECDHPublicKey):
+    if isinstance(public_key_recip, ECDHPublicKey):
         if private_key is None or not isinstance(private_key, ECDHPrivateKey):
             raise ValueError("Private key must be provided for EC key exchange.")
 
@@ -989,7 +987,7 @@ def build_env_data_for_exchange(
             recipient_infos=[kari], cek=cek, target=target, data_to_protect=data, enc_oid=enc_oid
         )
 
-    elif is_kem_public_key(public_key_recip):
+    if is_kem_public_key(public_key_recip):
         kem_recip_info = prepare_kem_recip_info(
             server_cert=cert_sender,
             public_key_recip=public_key_recip,
@@ -1002,8 +1000,7 @@ def build_env_data_for_exchange(
             recipient_infos=[kem_recip_info], cek=cek, target=target, data_to_protect=data, enc_oid=enc_oid
         )
 
-    else:
-        raise ValueError(f"Unsupported public key type: {type(public_key_recip)}")
+    raise ValueError(f"Unsupported public key type: {type(public_key_recip)}")
 
 
 def prepare_kem_recip_info(

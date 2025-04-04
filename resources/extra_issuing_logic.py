@@ -223,7 +223,7 @@ def _extract_rid(
 
         return rid["issuerAndSerialNumber"]
 
-    elif recipient_info.getName() == "ori":
+    if recipient_info.getName() == "ori":
         if recipient_info["ori"]["oriType"] != rfc9629.id_ori_kem:
             raise NotImplementedError("Unsupported `oriType` in OriginatorRecipientInfo. Expected `id_ori_kem`.")
 
@@ -234,13 +234,13 @@ def _extract_rid(
 
         return rid["issuerAndSerialNumber"]
 
-    elif recipient_info.getName() == "PasswordRecipientInfo":
+    if recipient_info.getName() == "PasswordRecipientInfo":
         if not allow_pwri:
             raise ValueError("The CA/RA responded with the `PasswordRecipientInfo`.")
 
         return None
 
-    elif recipient_info.getName() == "kari":
+    if recipient_info.getName() == "kari":
         recipient_encrypted_key = recipient_info["recipientEncryptedKeys"][kari_index]
         rid = recipient_encrypted_key["rid"]
         if rid.getName() != "issuerAndSerialNumber":
@@ -248,8 +248,7 @@ def _extract_rid(
 
         return rid["issuerAndSerialNumber"]
 
-    else:
-        raise ValueError("Unsupported recipient information type.")
+    raise ValueError("Unsupported recipient information type.")
 
 
 @not_keyword
@@ -397,18 +396,16 @@ def process_pkimessage_with_popdecc(
             pki_message["extraCerts"] = request["extraCerts"]
             return protectionutils.protect_pkimessage(pki_message, shared_secret=ss)
 
-        else:
-            body_name = request["body"].getName()
-            for x in request["body"][body_name]:
-                popo = prepare_pkmac_popo(
-                    request["body"][body_name][x]["certReq"], private_key=ee_key, shared_secret=ss
-                )
-                pki_message["body"][body_name][x]["popo"] = popo
+        body_name = request["body"].getName()
+        for x in request["body"][body_name]:
+            popo = prepare_pkmac_popo(
+                request["body"][body_name][x]["certReq"], private_key=ee_key, shared_secret=ss
+            )
+            pki_message["body"][body_name][x]["popo"] = popo
 
-            return pki_message
+        return pki_message
 
     msg["body"]["popdecr"].append(num)
-
     return msg
 
 
@@ -528,8 +525,8 @@ def _compute_ss(client_key, ca_cert):
     pub_key = load_public_key_from_cert(ca_cert)
     if isinstance(client_key, ECDHPrivKeyTypes):
         return perform_ecdh(client_key, pub_key)
-    else:
-        raise ValueError(f"The provided public key type is not expected: {type(client_key).__name__}")
+
+    raise ValueError(f"The provided public key type is not expected: {type(client_key).__name__}")
 
 
 # TODO fix doc
@@ -653,7 +650,7 @@ def compute_dh_static_pop(
     if not ss and not private_key:
         raise ValueError("Both the shared secret and private key cannot be None")
 
-    elif not ss:
+    if not ss:
         public_key = load_public_key_from_cert(ca_cert)
         ss = perform_ecdh(private_key=private_key, public_key=public_key)
 
@@ -752,7 +749,7 @@ def get_enc_cert_from_pkimessage(  # noqa D417 undocumented-param
         if rest != b"":
             raise ValueError(f"Unexpected data after decoding the encrypted certificate: {rest.hex()}")
 
-    except pyasn1.error.PyAsn1Error:
-        raise ValueError(f"The decrypted certificate was not decoded-able: {data.hex()}")  # type: ignore
+    except pyasn1.error.PyAsn1Error as exc:
+        raise ValueError(f"The decrypted certificate was not decoded-able: {data.hex()}") from exc  # type: ignore
 
     return cert

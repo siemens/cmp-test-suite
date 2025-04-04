@@ -466,8 +466,6 @@ def validate_extra_certs(  # noqa D417 undocumented-param
         _check_cmp_protection_for_extra_certs(pki_message, allow_self_signed)
 
 
-# TODO ask alex to maybe always has to start with CN=
-
 
 def _verify_senderkid_for_mac(pki_message: rfc9480.PKIMessage, allow_mac_failure: bool = False) -> None:
     """Verify the `senderKID` and `sender` fields in a PKIMessage for MAC-based protection.
