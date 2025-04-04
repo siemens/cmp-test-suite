@@ -15,14 +15,14 @@ import requests
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
-from resources import certutils
-from resources.certutils import check_is_cert_signer, verify_cert_chain_openssl
-from resources.compareutils import compare_alg_id_without_tag
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME
 from robot.api.deco import keyword
 
 from pq_logic.hybrid_structures import OnRelatedCertificateDescriptor, RelatedCertificateDescriptor
 from pq_logic.tmp_oids import id_ad_certDiscovery, id_ad_relatedCertificateDescriptor
+from resources import certutils
+from resources.certutils import check_is_cert_signer, verify_cert_chain_openssl
+from resources.compareutils import compare_alg_id_without_tag
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME
 
 
 @keyword(name="Prepare RelatedCertificateDescriptor")

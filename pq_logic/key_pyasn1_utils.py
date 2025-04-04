@@ -16,6 +16,15 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5958, rfc9481
+from robot.api.deco import not_keyword
+
+from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1
+from pq_logic.keys.abstract_pq import PQPrivateKey
+from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey
+from pq_logic.keys.kem_keys import FrodoKEMPrivateKey, McEliecePrivateKey, MLKEMPrivateKey, Sntrup761PrivateKey
+from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
+from pq_logic.keys.xwing import XWingPrivateKey
+from pq_logic.tmp_oids import FRODOKEM_OID_2_NAME, MCELIECE_OID_2_NAME, id_sntrup761_str
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     CMS_COMPOSITE_OID_2_NAME,
@@ -27,15 +36,6 @@ from resources.oidutils import (
     TRAD_STR_OID_TO_KEY_NAME,
     XWING_OID_STR,
 )
-from robot.api.deco import not_keyword
-
-from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1
-from pq_logic.keys.abstract_pq import PQPrivateKey
-from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey
-from pq_logic.keys.kem_keys import FrodoKEMPrivateKey, McEliecePrivateKey, MLKEMPrivateKey, Sntrup761PrivateKey
-from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
-from pq_logic.keys.xwing import XWingPrivateKey
-from pq_logic.tmp_oids import FRODOKEM_OID_2_NAME, MCELIECE_OID_2_NAME, id_sntrup761_str
 
 RawKeyType = Union[
     ed25519.Ed25519PrivateKey,

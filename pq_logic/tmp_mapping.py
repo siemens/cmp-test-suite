@@ -8,7 +8,6 @@ from typing import Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import ec, rsa, x448, x25519
 from pyasn1.type import univ
-from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.keys.kem_keys import (
@@ -21,6 +20,7 @@ from pq_logic.keys.kem_keys import (
 )
 from pq_logic.tmp_oids import CHEMPAT_NAME_2_OID, COMPOSITE_KEM_NAME_2_OID
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.exceptions import InvalidKeyCombination
 
 
 def get_oid_for_composite_kem(

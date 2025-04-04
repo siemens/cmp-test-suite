@@ -14,11 +14,16 @@ respect-gitignore = true
 ignore = ["D415", "D400", "D213", "D212", "D203"]
 #typing-modules = [""]
 select = [
-     "F", # pyflakes
+    "F", # pyflakes
     "E", "W", # Pycodestyle
-    "I001", # isort
+    "I", # isort
     "D",  # docstring checker
 ]
+
+[lint.isort]
+known-first-party = ["pq_logic", "resources", "unit_tests"]
+
+
 [format]
 docstring-code-format = true
 exclude = ["D213", "D212", "D211", "D200"]

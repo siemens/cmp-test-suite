@@ -8,6 +8,8 @@ import glob
 from itertools import product
 
 import oqs
+from pyasn1_alt_modules import rfc9480
+
 from pq_logic.fips.fips204 import ML_DSA
 from pq_logic.hybrid_sig.catalyst_logic import (
     prepare_alt_signature_data,
@@ -15,7 +17,6 @@ from pq_logic.hybrid_sig.catalyst_logic import (
 )
 from pq_logic.keys.abstract_pq import PQPrivateKey, PQPublicKey
 from pq_logic.keys.sig_keys import MLDSAPublicKey
-from pyasn1_alt_modules import rfc9480
 from resources.certutils import parse_certificate
 from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
 from unit_tests.utils_for_test import get_subject_and_issuer
@@ -105,10 +106,10 @@ def _try2(asn1cert: rfc9480.CMPCertificate,
 
                          if is_valid:
                            print(f"Verification successful with {sigalg} with: "
-                                   f"exclude_alt_extensions={exclude_alt_extensions}, "
-                                   f"only_tbs_cert={only_tbs_cert}, "
-                                   f"exclude_signature_field={exclude_signature_field}"
-                                   f"exclude_spki={exclude_spki}")
+                                 f"exclude_alt_extensions={exclude_alt_extensions}, "
+                                 f"only_tbs_cert={only_tbs_cert}, "
+                                 f"exclude_signature_field={exclude_signature_field}"
+                                 f"exclude_spki={exclude_spki}")
                            return True
                     except Exception:
                         #print(f"Verification failed for {sigalg}:", e)

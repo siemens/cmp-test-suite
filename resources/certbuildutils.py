@@ -11,16 +11,16 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeSigPrivateKey
-from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey
-from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_oid_cms_composite_signature
-from pq_logic.tmp_oids import id_rsa_kem_spki
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ, useful
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6402, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeSigPrivateKey
+from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey
+from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_oid_cms_composite_signature
+from pq_logic.tmp_oids import id_rsa_kem_spki
 from resources import (
     certextractutils,
     certutils,

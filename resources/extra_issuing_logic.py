@@ -17,17 +17,16 @@ from typing import Optional, Tuple, Union
 import pyasn1.error
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey
-from pq_logic.migration_typing import HybridKEMPrivateKey
-from pq_logic.pq_utils import is_kem_private_key, is_kem_public_key
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1.type.base import Asn1Type
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6955, rfc9480, rfc9629
 from robot.api.deco import keyword, not_keyword
-from unit_tests.asn1_wrapper_class.pki_message_wrapper import PKIMessage, prepare_name
 
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey
+from pq_logic.migration_typing import HybridKEMPrivateKey
+from pq_logic.pq_utils import is_kem_private_key, is_kem_public_key
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources import asn1utils, cmputils, keyutils, protectionutils, utils
 from resources.asn1_structures import ChallengeASN1, POPODecKeyChallContentAsn1
 from resources.ca_kga_logic import validate_enveloped_data
@@ -44,6 +43,7 @@ from resources.oid_mapping import compute_hash
 from resources.protectionutils import compute_and_prepare_mac
 from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
 from resources.utils import get_openssl_name_notation
+from unit_tests.asn1_wrapper_class.pki_message_wrapper import PKIMessage, prepare_name
 
 
 @keyword(name="Prepare PKMAC POPO")

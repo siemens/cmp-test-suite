@@ -18,15 +18,15 @@ import logging
 from typing import List, Optional, Set, Tuple, Union
 
 import pyasn1.error
-from pq_logic.migration_typing import HybridKEMPublicKey, KEMPrivateKey
-from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
-from pq_logic.tmp_oids import id_it_KemCiphertextInfo
-from pq_logic.trad_typing import ECDHPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ, useful
 from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.migration_typing import HybridKEMPublicKey, KEMPrivateKey
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
+from pq_logic.tmp_oids import id_it_KemCiphertextInfo
+from pq_logic.trad_typing import ECDHPrivateKey
 from resources import certutils, cmputils, keyutils, utils
 from resources.asn1_structures import InfoTypeAndValueAsn1, KemCiphertextInfoAsn1, PKIMessageTMP
 from resources.convertutils import copy_asn1_certificate, pyasn1_time_obj_to_py_datetime

@@ -8,8 +8,6 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc5280, rfc5958
-from resources.oid_mapping import get_curve_instance
-from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, PQ_OID_2_NAME, XWING_OID_STR
 
 from pq_logic.chempatkem import ChempatPublicKey
 from pq_logic.hybrid_key_factory import HybridKeyFactory
@@ -28,6 +26,8 @@ from pq_logic.keys.xwing import XWingPublicKey
 from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_oids import CHEMPAT_OID_2_NAME, COMPOSITE_KEM_OID_2_NAME
 from pq_logic.trad_key_factory import generate_trad_key
+from resources.oid_mapping import get_curve_instance
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, PQ_OID_2_NAME, XWING_OID_STR
 
 
 def _any_string_in_string(string: str, options: list[str]) -> str:

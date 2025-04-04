@@ -14,10 +14,11 @@ from datetime import datetime
 import cryptography
 import pyasn1
 from cryptography.exceptions import InvalidSignature
-from pq_logic.hybrid_sig.catalyst_logic import verify_catalyst_signature_migrated
-from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPublicKey
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc9480
+
+from pq_logic.hybrid_sig.catalyst_logic import verify_catalyst_signature_migrated
+from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPublicKey
 from resources.certutils import parse_certificate
 from resources.cryptoutils import verify_signature
 from resources.keyutils import load_public_key_from_spki

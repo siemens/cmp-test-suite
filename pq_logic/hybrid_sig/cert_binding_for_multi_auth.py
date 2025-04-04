@@ -27,6 +27,10 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from pyasn1_alt_modules.rfc7906 import BinaryTime
+from robot.api.deco import keyword
+
+from pq_logic.hybrid_structures import RelatedCertificate, RequesterCertificate
+from pq_logic.tmp_oids import id_aa_relatedCertRequest, id_relatedCert
 from resources import certextractutils, certutils, cmputils, cryptoutils, envdatautils, utils
 from resources.asn1utils import get_set_bitstring_names
 from resources.ca_kga_logic import validate_issuer_and_serial_number_field
@@ -34,11 +38,7 @@ from resources.convertutils import pyasn1_time_obj_to_py_datetime
 from resources.exceptions import BadAsn1Data
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.typingutils import PrivateKey
-from robot.api.deco import keyword
 from unit_tests.utils_for_test import convert_to_crypto_lib_cert
-
-from pq_logic.hybrid_structures import RelatedCertificate, RequesterCertificate
-from pq_logic.tmp_oids import id_aa_relatedCertRequest, id_relatedCert
 
 
 @keyword(name="Prepare RequesterCertificate")

@@ -9,21 +9,6 @@ from typing import Dict
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
-from pq_logic.tmp_oids import (
-    CHEMPAT_OID_2_NAME,
-    CMS_COMPOSITE_OID_2_HASH,
-    COMPOSITE_KEM_OID_2_NAME,
-    FALCON_NAME_2_OID,
-    FRODOKEM_NAME_2_OID,
-    FRODOKEM_OID_2_NAME,
-    HASH_COMPOSITE_NAME_TO_OID,
-    MCELIECE_NAME_2_OID,
-    MCELIECE_OID_2_NAME,
-    PREHASH_OID_2_HASH,
-    PURE_COMPOSITE_NAME_TO_OID,
-    PURE_OID_TO_HASH,
-    id_sntrup761_str,
-)
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
     rfc3370,
@@ -39,6 +24,22 @@ from pyasn1_alt_modules import (
     rfc8619,
     rfc9480,
     rfc9481,
+)
+
+from pq_logic.tmp_oids import (
+    CHEMPAT_OID_2_NAME,
+    CMS_COMPOSITE_OID_2_HASH,
+    COMPOSITE_KEM_OID_2_NAME,
+    FALCON_NAME_2_OID,
+    FRODOKEM_NAME_2_OID,
+    FRODOKEM_OID_2_NAME,
+    HASH_COMPOSITE_NAME_TO_OID,
+    MCELIECE_NAME_2_OID,
+    MCELIECE_OID_2_NAME,
+    PREHASH_OID_2_HASH,
+    PURE_COMPOSITE_NAME_TO_OID,
+    PURE_OID_TO_HASH,
+    id_sntrup761_str,
 )
 
 # In RFC 9480 Certificate Management Protocol (CMP) Updates

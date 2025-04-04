@@ -15,10 +15,6 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple, Union
 
 from cryptography.hazmat.primitives.asymmetric import dh, x448, x25519
-from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
-from pq_logic.migration_typing import HybridKEMPublicKey, KEMPublicKey
-from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import base, char, constraint, namedtype, tag, univ, useful
@@ -35,6 +31,10 @@ from robot.api.deco import keyword, not_keyword
 from robot.libraries import DateTime
 
 import resources.prepareutils
+from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
+from pq_logic.migration_typing import HybridKEMPublicKey, KEMPublicKey
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
 from resources import (
     asn1utils,
     certbuildutils,

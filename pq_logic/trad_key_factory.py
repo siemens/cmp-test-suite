@@ -7,6 +7,7 @@
 from typing import Optional
 
 from cryptography.hazmat.primitives.asymmetric import dh, dsa, ec, ed448, ed25519, rsa, x448, x25519
+
 from resources.oid_mapping import get_curve_instance
 from resources.typingutils import PrivateKey
 

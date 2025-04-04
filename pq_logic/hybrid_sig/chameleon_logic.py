@@ -10,6 +10,20 @@ from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
+from robot.api.deco import not_keyword
+
+from pq_logic import pq_compute_utils
+from pq_logic.combined_factory import CombinedKeyFactory
+from pq_logic.hybrid_structures import (
+    DeltaCertificateDescriptor,
+    DeltaCertificateRequestSignatureValue,
+    DeltaCertificateRequestValue,
+)
+from pq_logic.tmp_oids import (
+    id_at_deltaCertificateRequest,
+    id_at_deltaCertificateRequestSignature,
+    id_ce_deltaCertificateDescriptor,
+)
 from resources import certextractutils, compareutils
 from resources.certbuildutils import (
     build_cert_from_csr,
@@ -26,20 +40,6 @@ from resources.exceptions import BadAsn1Data, BadPOP
 from resources.oid_mapping import get_hash_from_oid
 from resources.prepareutils import prepare_name
 from resources.typingutils import PrivateKeySig
-from robot.api.deco import not_keyword
-
-from pq_logic import pq_compute_utils
-from pq_logic.combined_factory import CombinedKeyFactory
-from pq_logic.hybrid_structures import (
-    DeltaCertificateDescriptor,
-    DeltaCertificateRequestSignatureValue,
-    DeltaCertificateRequestValue,
-)
-from pq_logic.tmp_oids import (
-    id_at_deltaCertificateRequest,
-    id_at_deltaCertificateRequestSignature,
-    id_ce_deltaCertificateDescriptor,
-)
 
 
 def _prepare_issuer_and_subject(

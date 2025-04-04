@@ -28,13 +28,13 @@ from typing import Optional, Union
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from pyasn1.codec.der import encoder
-from resources.oid_mapping import compute_hash, sha_alg_name_to_oid
-from resources.oidutils import SLH_DSA_NAME_2_OID_PRE_HASH
 
 from pq_logic.fips import fips204, fips205
 from pq_logic.fips.fips204 import ML_DSA
 from pq_logic.fips.fips205 import SLH_DSA
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from resources.oid_mapping import compute_hash, sha_alg_name_to_oid
+from resources.oidutils import SLH_DSA_NAME_2_OID_PRE_HASH
 
 ##########################
 # ML-DSA

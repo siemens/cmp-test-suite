@@ -13,12 +13,13 @@ sys.path.append('.')
 
 from cryptography import x509
 from flask import Flask, Response, request
+from pyasn1.codec.der import decoder, encoder
+from pyasn1_alt_modules import rfc9480
+
 from pq_logic.hybrid_issuing import build_chameleon_from_p10cr, build_sun_hybrid_cert_from_request
 from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import get_sun_hybrid_alt_sig
 from pq_logic.py_verify_logic import verify_hybrid_pkimessage_protection
-from pyasn1.codec.der import decoder, encoder
-from pyasn1_alt_modules import rfc9480
 from resources.ca_ra_utils import (
     build_cp_cmp_message,
     build_cp_from_p10cr,

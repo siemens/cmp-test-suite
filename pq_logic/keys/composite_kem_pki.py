@@ -37,7 +37,6 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
-from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 
 from pq_logic.hybrid_structures import CompositeCiphertextValue
 from pq_logic.kem_mechanism import DHKEMRFC9180, ECDHKEM, RSAOaepKem
@@ -47,6 +46,7 @@ from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_mapping import get_oid_for_composite_kem
 from pq_logic.trad_key_factory import generate_trad_key as generate_key
 from pq_logic.trad_typing import ECDHPrivateKey
+from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 
 #####################################
 # OIDs and OID-to-KDF Mappings

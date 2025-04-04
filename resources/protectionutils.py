@@ -13,10 +13,6 @@ import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dh, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey
-from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey
-from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
@@ -35,6 +31,10 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey
+from pq_logic.migration_typing import KEMPrivateKey, KEMPublicKey
+from pq_logic.pq_utils import get_kem_oid_from_key
+from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from resources import (
     asn1utils,
     certbuildutils,

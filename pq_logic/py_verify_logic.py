@@ -17,6 +17,15 @@ from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
+
+import pq_logic
+from pq_logic import pq_compute_utils
+from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
+from pq_logic.keys.abstract_composite import AbstractCompositeSigPublicKey
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, CompositeSigCMSPublicKey
+from pq_logic.migration_typing import CertOrCerts
+from pq_logic.pq_key_factory import PQKeyFactory
 from resources import certutils, keyutils
 from resources.exceptions import BadAsn1Data, BadMessageCheck, InvalidAltSignature, UnknownOID
 from resources.oid_mapping import get_hash_from_oid
@@ -30,15 +39,6 @@ from resources.oidutils import (
     id_ce_subjectAltPublicKeyInfo,
 )
 from resources.typingutils import PublicKey, PublicKeySig
-
-import pq_logic
-from pq_logic import pq_compute_utils
-from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
-from pq_logic.keys.abstract_composite import AbstractCompositeSigPublicKey
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, CompositeSigCMSPublicKey
-from pq_logic.migration_typing import CertOrCerts
-from pq_logic.pq_key_factory import PQKeyFactory
 
 # TODO fix to include CRL-Verification
 # currently only works for PQ and traditional signatures.

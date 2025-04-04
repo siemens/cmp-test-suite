@@ -20,7 +20,6 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280
 from pyasn1_alt_modules.rfc5958 import OneAsymmetricKey
-from resources.oid_mapping import hash_name_to_instance
 
 from pq_logic.hybrid_structures import (
     CompositeSignaturePrivateKeyAsn1,
@@ -31,6 +30,7 @@ from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQPrivate
 from pq_logic.keys.serialize_utils import prepare_enc_key_pem
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
 from pq_logic.stat_utils import get_ct_length_for_trad_key, get_trad_key_length
+from resources.oid_mapping import hash_name_to_instance
 
 # Define the traditional public key types,
 # for correct type hinting in the CompositePublicKey class.

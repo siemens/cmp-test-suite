@@ -12,17 +12,17 @@ import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import tag, univ
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc9480
+from robot.api.deco import keyword, not_keyword
+
 from pq_logic.key_pyasn1_utils import parse_key_from_one_asym_key
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.migration_typing import HybridKEMPrivateKey, HybridKEMPublicKey
 from pq_logic.pq_compute_utils import verify_csr_signature, verify_signature_with_alg_id
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from pq_logic.trad_typing import CA_RESPONSE, ECDHPrivateKey, ECDHPublicKey
-from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc9480
-from robot.api.deco import keyword, not_keyword
-
 from resources import certbuildutils, cmputils, protectionutils
 from resources.asn1_structures import CAKeyUpdContent, ChallengeASN1
 from resources.ca_kga_logic import validate_enveloped_data
