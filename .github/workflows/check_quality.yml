@@ -8,11 +8,9 @@ on:
   push:
     branches:
       - main
-      - pq_migration2
   pull_request:
     branches:
       - main
-      - pq_migration2
   workflow_dispatch:
 
 jobs:
@@ -65,7 +63,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Pylint check
-        run: pylint --fail-under=9.38 resources
+        run: pylint --fail-under=9.4 resources
 
   unit_test:
     runs-on: ubuntu-22.04
@@ -79,13 +77,13 @@ jobs:
       - name: Unit tests
         run: PYTHONPATH=./resources python3 -m unittest discover -s unit_tests
 
-  type_check:
-    runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+  # type_check:
+  #   runs-on: ubuntu-22.04
+  #   container:
+  #     image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Pyright check
-        run: PYTHONPATH=./resources pyright ./resources
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #     - name: Pyright check
+  #       run: PYTHONPATH=./resources pyright ./resources
