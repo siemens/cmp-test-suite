@@ -6,5 +6,3 @@ venv*
 __pycache__
 .git
 liboqs-python
-data/EJBCA/*.tar.gz
-data/pqc-certificates
