@@ -10,7 +10,6 @@ from typing import List, Optional, Tuple, Union
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1.type import univ
-from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.kem_mechanism import DHKEMRFC9180
 from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
@@ -29,6 +28,7 @@ from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.stat_utils import TRAD_ALG_2_NENC, get_ec_trad_name
 from pq_logic.tmp_mapping import get_oid_for_chemnpat
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.exceptions import InvalidKeyCombination
 
 CURVE_NAME_2_CONTEXT_NAME = {
     "secp256r1": "P256",

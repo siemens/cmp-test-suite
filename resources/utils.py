@@ -14,12 +14,12 @@ from collections import Counter
 from itertools import combinations
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
-from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import base, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
 from resources import certutils, keyutils
 from resources.oidutils import PYASN1_CM_NAME_2_OIDS
 from resources.typingutils import PrivateKey, Strint

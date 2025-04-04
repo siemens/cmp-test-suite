@@ -12,17 +12,17 @@ import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import tag, univ
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc9480
+from robot.api.deco import keyword, not_keyword
+
 from pq_logic.key_pyasn1_utils import parse_key_from_one_asym_key
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.migration_typing import HybridKEMPrivateKey, HybridKEMPublicKey
 from pq_logic.pq_compute_utils import verify_csr_signature, verify_signature_with_alg_id
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from pq_logic.trad_typing import CA_RESPONSE, ECDHPrivateKey, ECDHPublicKey
-from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc9480
-from robot.api.deco import keyword, not_keyword
-
 from resources import certbuildutils, cmputils, protectionutils
 from resources.asn1_structures import CAKeyUpdContent, ChallengeASN1
 from resources.ca_kga_logic import validate_enveloped_data
@@ -640,7 +640,7 @@ def respond_to_cert_req_msg(  # noqa: D417 Missing argument descriptions in the 
         )
         return cert, None
 
-    elif name == "keyEncipherment":
+    if name == "keyEncipherment":
         cert = build_cert_from_cert_template(
             cert_template=cert_req_msg["certReq"]["certTemplate"],
             ca_key=ca_key,
@@ -657,11 +657,11 @@ def respond_to_cert_req_msg(  # noqa: D417 Missing argument descriptions in the 
 
         return cert, enc_cert
 
-    elif name == "keyAgreement":
+    if name == "keyAgreement":
         raise NotImplementedError("Key agreement is not allowed.")
-    else:
-        name = cert_req_msg["popo"].getName()
-        raise ValueError(f"Invalid POP structure: {name}.")
+
+    name = cert_req_msg["popo"].getName()
+    raise ValueError(f"Invalid POP structure: {name}.")
 
 
 @keyword(name="Verify POP Signature For PKI Request")
@@ -697,7 +697,7 @@ def verify_sig_pop_for_pki_request(  # noqa: D417 Missing argument descriptions 
         try:
             verify_csr_signature(csr)
         except InvalidSignature:
-            raise BadPOP("POP verification for `p10cr` failed.")
+            raise BadPOP("POP verification for `p10cr` failed.")  # pylint: disable=raise-missing-from
 
     else:
         raise ValueError(f"Invalid PKIMessage body: {body_name} Expected: ir, cr, kur, crr or p10cr")
@@ -734,7 +734,12 @@ def _set_header_fields(request: rfc9480.PKIMessage, kwargs: dict) -> dict:
     """Set header fields for a new PKIMessage, by extracting them from the request."""
     kwargs["recip_kid"] = kwargs.get("recip_kid") or request["header"]["senderKID"].asOctets()
     kwargs["recip_nonce"] = kwargs.get("recip_nonce") or request["header"]["senderNonce"].asOctets()
-    alt_nonce =  os.urandom(16) if not request["header"]["recipNonce"].isValue else request["header"]["recipNonce"].asOctets()
+
+    if request["header"]["recipNonce"].isValue:
+        alt_nonce = request["header"]["recipNonce"].asOctets()
+    else:
+        alt_nonce =  os.urandom(16)
+
     kwargs["sender_nonce"] = kwargs.get("sender_nonce") or alt_nonce
     kwargs["transaction_id"] = kwargs.get("transaction_id") or request["header"]["transactionID"].asOctets()
     return kwargs
@@ -1530,7 +1535,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
                 logging.debug("Certificate status was rejection.")
                 continue
 
-            elif str(entry["status"]) != "accepted":
+            if str(entry["status"]) != "accepted":
                 raise BadRequest(
                     "Invalid certificate status in CertConf message."
                     f"Expected 'accepted' or 'rejection', got {entry['status'].getName()}"
@@ -1544,10 +1549,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
             alg_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
             hash_alg = get_hash_from_oid(alg_oid, only_hash=True)
 
-        computed_hash = compute_hash(
-            alg_name=hash_alg,
-            data=encoder.encode(issued_cert),
-        )
+        computed_hash = compute_hash(alg_name=hash_alg, data=encoder.encode(issued_cert))
 
         if entry["certHash"].asOctets() != computed_hash:
             raise BadPOP("Invalid certificate hash in CertConf message.")
@@ -1606,13 +1608,11 @@ def build_rp_from_rr(
     status = "accepted"
     fail_info = None
     try:
-       protectionutils.verify_pkimessage_protection(request, shared_secret=shared_secret)
+        protectionutils.verify_pkimessage_protection(request, shared_secret=shared_secret)
     except Exception:
         logging.debug("Failed to verify the PKIMessage protection.")
         status = "rejection"
         fail_info = "badPOP"
-
-
 
     if request and set_header_fields:
         kwargs = _set_header_fields(request, kwargs)
@@ -1622,13 +1622,10 @@ def build_rp_from_rr(
     body = rfc9480.PKIBody()
     rfc9480.RevRepContent()
 
-    for i in range(len(request["body"]["rr"])):
+    for _i in range(len(request["body"]["rr"])):
         status_info = prepare_pkistatusinfo(status=status, failinfo=fail_info)
         body["rr"]["status"].append(status_info)
 
     pki_message["body"] = body
 
     return pki_message
-
-
-

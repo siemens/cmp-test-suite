@@ -6,10 +6,9 @@
 
 from typing import List
 
-import resources.oidutils
 from pyasn1_alt_modules import rfc5280, rfc5958
-from resources.oidutils import FRODOKEM_NAME_2_OID, MCELIECE_NAME_2_OID, PQ_NAME_2_OID, PQ_SIG_PRE_HASH_OID_2_NAME
 
+import resources.oidutils
 from pq_logic.keys.kem_keys import (
     FrodoKEMPrivateKey,
     FrodoKEMPublicKey,
@@ -27,6 +26,7 @@ from pq_logic.keys.sig_keys import (
     SLHDSAPrivateKey,
     SLHDSAPublicKey,
 )
+from resources.oidutils import FRODOKEM_NAME_2_OID, MCELIECE_NAME_2_OID, PQ_NAME_2_OID, PQ_SIG_PRE_HASH_OID_2_NAME
 
 
 def _check_starts_with(algorithm: str, prefixes: List[str]) -> bool:

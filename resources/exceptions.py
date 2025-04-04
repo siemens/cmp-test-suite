@@ -58,8 +58,6 @@ class InvalidKeyCombination(CMPTestSuiteError):
     As an example, a key combination for Chempat or Composite keys is invalid.
     """
 
-    pass
-
 
 class UnknownOID(CMPTestSuiteError):
     """Raised when an OID is unknown."""
@@ -92,8 +90,6 @@ class AlgorithmProfileError(CMPTestSuiteError):
 
 class InvalidAltSignature(InvalidSignature):
     """Raised when the alternative signature is invalid."""
-
-    pass
 
 
 #########################
@@ -197,7 +193,6 @@ class BadCertTemplate(CMPTestSuiteError):
 
     failinfo = "badCertTemplate"
     bit_num = 19
-    pass
 
 
 class TransactionIdInUse(CMPTestSuiteError):
@@ -205,7 +200,6 @@ class TransactionIdInUse(CMPTestSuiteError):
 
     failinfo = "transactionIdInUse"
     bit_num = 21
-    pass
 
 
 class NotAuthorized(CMPTestSuiteError):

@@ -18,15 +18,15 @@ import logging
 from typing import List, Optional, Set, Tuple, Union
 
 import pyasn1.error
-from pq_logic.migration_typing import HybridKEMPublicKey, KEMPrivateKey
-from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
-from pq_logic.tmp_oids import id_it_KemCiphertextInfo
-from pq_logic.trad_typing import ECDHPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ, useful
 from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.migration_typing import HybridKEMPublicKey, KEMPrivateKey
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
+from pq_logic.tmp_oids import id_it_KemCiphertextInfo
+from pq_logic.trad_typing import ECDHPrivateKey
 from resources import certutils, cmputils, keyutils, utils
 from resources.asn1_structures import InfoTypeAndValueAsn1, KemCiphertextInfoAsn1, PKIMessageTMP
 from resources.convertutils import copy_asn1_certificate, pyasn1_time_obj_to_py_datetime
@@ -649,10 +649,9 @@ def _validate_crls(
         crl_chain = certutils.build_crl_chain_from_list(crl=crl, certs=certs)
         try:
             certutils.verify_openssl_crl(crl_chain, timeout=timeout)
-        except ValueError:
-            # TODO fix for better logging.
+        except ValueError as exc:
             logging.info("CRL at index: %d\n %s", i, crl.prettyPrint())
-            raise ValueError(f"The CRL at index: {i} was invalid")
+            raise ValueError(f"The CRL at index: {i} was invalid") from exc
 
 
 @keyword(name="Validate CRL Update Retrieval")
@@ -1383,7 +1382,7 @@ def validate_genp_kem_ct_info(  # noqa: D417 Missing argument description in the
     if not value.isValue:
         raise ValueError("The KEMCiphertextInfo value was absent.")
 
-    kem_ct_info, rest = decoder.decode(value.asOctets(), KemCiphertextInfoAsn1())
+    kem_ct_info, _rest = decoder.decode(value.asOctets(), KemCiphertextInfoAsn1())
 
     if not is_kem_private_key(client_private_key):
         raise ValueError("The private key was not a KEM private key.")

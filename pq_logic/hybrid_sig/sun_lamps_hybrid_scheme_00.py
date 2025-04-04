@@ -21,11 +21,6 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc2986, rfc4211, rfc5280, rfc6402, rfc9480
-from resources import certbuildutils, certextractutils, cryptoutils, keyutils, utils
-from resources.convertutils import copy_asn1_certificate
-from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
-from resources.protectionutils import prepare_sha_alg_id
-from resources.typingutils import PublicKey
 from robot.api.deco import not_keyword
 
 from pq_logic import pq_compute_utils
@@ -45,6 +40,11 @@ from pq_logic.tmp_oids import (
     id_altSubPubKeyHashAlgAttr,
     id_altSubPubKeyLocAttr,
 )
+from resources import certbuildutils, certextractutils, cryptoutils, keyutils, utils
+from resources.convertutils import copy_asn1_certificate
+from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
+from resources.protectionutils import prepare_sha_alg_id
+from resources.typingutils import PublicKey
 
 
 def _hash_public_key(public_key, hash_alg: str) -> bytes:

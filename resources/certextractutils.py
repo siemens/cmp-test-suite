@@ -21,8 +21,6 @@ from robot.api.deco import not_keyword
 
 from resources import asn1utils
 
-# TODO refactor.
-
 
 @not_keyword
 def get_extension(

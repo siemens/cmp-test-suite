@@ -2,24 +2,23 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass, field
-from typing import Optional, Set, List, Tuple, Dict
+"""Logic that implements a mock CA suitable for testing purposes."""
 
 import logging
 import sys
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
-sys.path.append('.')
-
 from cryptography import x509
 from flask import Flask, Response, request
+from pyasn1.codec.der import decoder, encoder
+from pyasn1_alt_modules import rfc9480
+
+sys.path.append('.')
 from pq_logic.hybrid_issuing import build_chameleon_from_p10cr, build_sun_hybrid_cert_from_request
 from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import get_sun_hybrid_alt_sig
 from pq_logic.py_verify_logic import verify_hybrid_pkimessage_protection
-from pyasn1.codec.der import decoder, encoder
-from pyasn1_alt_modules import rfc9480
 from resources.ca_ra_utils import (
     build_cp_cmp_message,
     build_cp_from_p10cr,
@@ -134,6 +133,7 @@ def _build_error_from_exception(e: CMPTestSuiteError) -> rfc9480.PKIMessage:
 
 
 class CAHandler:
+    """Mock CA class"""
 
     def __init__(self, ca_cert: rfc9480.CMPCertificate, ca_key: PrivateKey,
                  config: dict, ca_alt_key: Optional[PrivateKey] = None):
@@ -191,29 +191,30 @@ class CAHandler:
 
         :return: The PKI message containing the response.
         """
-        logging.debug(f"Processing request with body: {pki_message['body'].getName()}")
+        body_type = pki_message["body"].getName()
+        logging.debug("Processing request with body: %s", body_type)
         try:
-            if pki_message["body"].getName() == "rr":
+            if body_type == "rr":
                 response =  self.process_rr(pki_message)
-            elif pki_message["body"].getName() == "certConf":
+            elif body_type == "certConf":
                 response =  self.process_cert_conf(pki_message)
-            elif pki_message["body"].getName() == "kur":
+            elif body_type == "kur":
                 response =  self.process_kur(pki_message)
-            elif pki_message["body"].getName() == "genm":
+            elif body_type == "genm":
                 response = self.process_genm(pki_message)
-            elif pki_message["body"].getName() == "cr":
+            elif body_type == "cr":
                 response = self.process_cr(pki_message)
-            elif pki_message["body"].getName() == "ir":
+            elif body_type == "ir":
                 response = self.process_ir(pki_message)
-            elif pki_message["body"].getName() == "p10cr":
+            elif body_type == "p10cr":
                 response = self.process_p10cr(pki_message)
             else:
-                raise NotImplementedError(f"Method not implemented, to handle the "
-                                          f"provided message: {pki_message['body'].getName()}.")
+                raise NotImplementedError(f"Cannot handle: {body_type}")
         except CMPTestSuiteError as e:
             return _build_error_from_exception(e)
         except Exception as e:
-            return _build_error_from_exception(CMPTestSuiteError(f"An error occurred: {str(e)}", failinfo="systemFailure"))
+            return _build_error_from_exception(CMPTestSuiteError(f"An error occurred: "
+                                                                 f"{str(e)}", failinfo="systemFailure"))
 
         return self.sign_response(response=response, request=pki_message)
 
@@ -320,7 +321,7 @@ class CAHandler:
         :return: The PKI message containing the response.
         """
         logging.debug("Processing IR message")
-        logging.debug("CA Key: {}".format(self.ca_key))
+        logging.debug("CA Key: %s", self.ca_key)
 
         pki_message, certs = build_ip_cmp_message(
             request=pki_message,
@@ -328,7 +329,7 @@ class CAHandler:
             ca_key=self.ca_key,
             implicit_confirm=True,
         )
-        logging.debug("RESPONSE: {}".format(pki_message.prettyPrint()))
+        logging.debug("RESPONSE: %s", pki_message.prettyPrint())
         self.state.store_transaction_certificate(
             transaction_id=pki_message["header"]["transactionID"].asOctets(),
             sender=pki_message["header"]["sender"],
@@ -353,9 +354,8 @@ class CAHandler:
                 certs=[paired_cert, delta_cert],
             )
             return pki_message
-        else:
-            raise NotImplementedError("Not implemented to handle a chameleon request with body: {}"
-                                      .format(pki_message["body"].getName()))
+
+        raise NotImplementedError("Only p10cr is supported for Chameleon")
 
 
     def process_sun_hybrid(self, pki_message: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
@@ -410,12 +410,14 @@ handler.state = state
 
 @app.route("/pubkey/<serial_number>", methods=["GET"])
 def get_pubkey(serial_number):
+    """Retrieve a public key knowing the certificate serial number."""
     serial_number = int(serial_number)
     sun_hybrid_cert = state.sun_hybrid_state.sun_hybrid_pub_keys[serial_number]
     return encoder.encode(sun_hybrid_cert)
 
 @app.route("/sig/<serial_number>", methods=["GET"])
 def get_signature(serial_number):
+    """Retrieve a certificate's signature knowing its serial number."""
     serial_number = int(serial_number)
     alt_sig = state.sun_hybrid_state.sun_hybrid_signatures[serial_number]
     return alt_sig
@@ -430,14 +432,13 @@ def handle_issuing() -> bytes:
     try:
         # Access the raw data from the request body
         data = request.get_data()
-        pki_message, rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
+        pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
         pki_message = handler.process_normal_request(pki_message)
-        logging.warning(f"Response: {pki_message.prettyPrint()}")
+        logging.warning(f"Response: %s", pki_message.prettyPrint())
         response_data = encoder.encode(pki_message)
         return Response(response_data, content_type="application/octet-stream")
     except Exception as e:
-        # Handle any errors gracefully
-        return Response(f"Error: {str(e)}", status=500, content_type="text/plain")
+        return Response(f"Error: {e}", status=500, content_type="text/plain")
 
 @app.route("/chameleon", methods=["POST"])
 def handle_chameleon():
@@ -446,7 +447,7 @@ def handle_chameleon():
     :return: The DER-encoded response.
     """
     data = request.get_data()
-    pki_message, rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
+    pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     pki_message = handler.process_normal_request(pki_message)
     return handler.process_chameleon(
         pki_message=pki_message,
@@ -459,7 +460,7 @@ def handle_sun_hybrid():
     :return: The DER-encoded response.
     """
     data = request.get_data()
-    pki_message, rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
+    pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     pki_message = handler.process_normal_request(pki_message)
     return handler.process_sun_hybrid(
         pki_message=pki_message,
@@ -472,7 +473,7 @@ def handle_multi_auth():
     :return: The DER-encoded response.
     """
     data = request.get_data()
-    pki_message, rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
+    pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     pki_message = handler.process_normal_request(pki_message)
     return handler.process_multi_auth(
         pki_message=pki_message,
@@ -485,7 +486,7 @@ def handle_cert_discovery():
     :return: The DER-encoded response.
     """
     data = request.get_data()
-    pki_message, rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
+    pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     pki_message = handler.process_cert_discovery(pki_message)
     return pki_message
 
@@ -496,7 +497,7 @@ def handle_related_cert():
     :return: The DER-encoded response.
     """
     data = request.get_data()
-    pki_message, rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
+    pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     pki_message = handler.process_related_cert(pki_message)
     return pki_message
 
@@ -507,7 +508,7 @@ def handle_catalyst_sig():
     :return: The DER-encoded response.
     """
     data = request.get_data()
-    pki_message, rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
+    pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     pki_message = handler.process_catalyst_sig(pki_message)
     return pki_message
 
@@ -518,7 +519,7 @@ def handle_catalyst():
     :return: The DER-encoded response.
     """
     data = request.get_data()
-    pki_message, rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
+    pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     pki_message = handler.process_catalyst(pki_message)
     return pki_message
 
@@ -526,4 +527,3 @@ def handle_catalyst():
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
-

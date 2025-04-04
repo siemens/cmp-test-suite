@@ -7,8 +7,8 @@
 # Run: pip install pandas
 # for better visualization of the data.
 import os.path
-import pandas as pd
 
+import pandas as pd
 
 file_path = '../validation_pem_files.txt'
 

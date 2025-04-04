@@ -11,16 +11,16 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeSigPrivateKey
-from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey
-from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_oid_cms_composite_signature
-from pq_logic.tmp_oids import id_rsa_kem_spki
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ, useful
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6402, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeSigPrivateKey
+from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey
+from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_oid_cms_composite_signature
+from pq_logic.tmp_oids import id_rsa_kem_spki
 from resources import (
     certextractutils,
     certutils,
@@ -182,13 +182,13 @@ def sign_csr(  # noqa D417 undocumented-param
     """
     der_data = encoder.encode(csr["certificationRequestInfo"])
     signature = cryptoutils.sign_data(data=der_data, key=other_key or signing_key, hash_alg=hash_alg)
-    logging.info(f"CSR Signature: {signature}")
+    logging.info("CSR Signature: %s", signature)
     if bad_sig:
         if isinstance(signing_key, AbstractCompositeSigPrivateKey):
             signature = utils.manipulate_composite_sig(signature)
         else:
             signature = utils.manipulate_first_byte(signature)
-        logging.info(f"Modified CSR signature: {signature}")
+        logging.info("Modified CSR signature: %s", signature)
 
     csr["signature"] = univ.BitString.fromOctetString(signature)
     csr["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key,

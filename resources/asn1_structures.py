@@ -201,7 +201,7 @@ class PKIBodyTMP(univ.Choice):
             ),
         ),
         namedtype.NamedType(
-            "cann",
+            "cann",  # codespell:ignore
             rfc9480.CertAnnContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 16)),
         ),
         namedtype.NamedType(

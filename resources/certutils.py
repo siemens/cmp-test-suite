@@ -716,7 +716,7 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
         os.mkdir(temp_dir)
 
     if not crl_check:
-        logging.warning("Please Note the CRL check is deactivate!")
+        logging.warning("Note, CRL check is deactivated!")
 
     command = ["openssl", "verify"]
     if crl_check:
@@ -921,7 +921,7 @@ def load_crl_from_der(der_data: bytes):
         crl, _ = decoder.decode(der_data, asn1Spec=rfc5280.CertificateList())
         return crl
     except Exception as e:
-        raise ValueError(f"Failed to load CRL from DER data: {e}")
+        raise ValueError(f"Failed to load CRL from DER data: {e}") from e
 
 
 def _write_crl_to_pem(crl: rfc5280.CertificateList, path: str):

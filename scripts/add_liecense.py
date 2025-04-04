@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# Add SPDX license identifier to all Python files that don't have it.
+"""Add SPDX license identifier to all Python files that don't have it."""
 
 import glob
 import os.path
@@ -18,6 +18,7 @@ SPDX-License-Identifier: Apache-2.0 -->
 
 
 def add_header_to_file(path: str, header: str = base_header):
+    """Add SPDX header to a file at a given path, if the header doesn't already exist."""
     with open(path, 'r', encoding="utf-8") as file:
         content = file.read()
 

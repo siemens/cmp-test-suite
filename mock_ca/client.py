@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import requests
-from pyasn1.codec.der import encoder, decoder
+"""Minimal client that sends a CMP request to the mock CA."""
+
 import sys
 
 import requests
@@ -16,6 +16,7 @@ from resources.asn1_structures import PKIMessageTMP
 
 
 def send_request_to_static_cert1():
+    """Send a request to the mock CA."""
     url = "http://127.0.0.1:5000/issuing"
     key = keyutils.generate_key("composite-sig")
     pki_message = cmputils.build_cr_from_key(key)
@@ -25,7 +26,7 @@ def send_request_to_static_cert1():
         if response.status_code == 200:
             print("Success:")
             der_data = response.content
-            response, rest = decoder.decode(der_data, asn1Spec=PKIMessageTMP())
+            response, _rest = decoder.decode(der_data, asn1Spec=PKIMessageTMP())
             print(response.prettyPrint())
         else:
             print(f"Error: {response.status_code}")
@@ -47,11 +48,11 @@ def send_pkimessage_to_mock_ca(pki_message: rfc9480.PKIMessage, url: str):
         if response.status_code == 200:
             print("Success:")
             der_data = response.content
-            response, rest = decoder.decode(der_data, asn1Spec=PKIMessageTMP())
+            response, _rest = decoder.decode(der_data, asn1Spec=PKIMessageTMP())
             return response
-        else:
-            print(f"Error: {response.status_code}")
-            print(response.text)
+
+        print(f"Error: {response.status_code}")
+        print(response.text)
     except requests.RequestException as e:
         print(f"Request failed: {e}")
 

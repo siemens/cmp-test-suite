@@ -7,13 +7,13 @@
 import logging
 
 from pyasn1_alt_modules import rfc9480
-from resources import asn1utils, certextractutils
-from resources.certutils import load_public_key_from_cert
-from resources.oidutils import HYBRID_NAME_2_OID, PQ_NAME_2_OID, PQ_OID_2_NAME
 
 from pq_logic.keys.abstract_composite import AbstractCompositeKEMPublicKey
 from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQPublicKey, PQSignaturePublicKey
 from pq_logic.keys.xwing import XWingPublicKey
+from resources import asn1utils, certextractutils
+from resources.certutils import load_public_key_from_cert
+from resources.oidutils import HYBRID_NAME_2_OID, PQ_NAME_2_OID, PQ_OID_2_NAME
 
 # https://www.ietf.org/archive/id/draft-ietf-lamps-kyber-certificates-06.txt
 # section 3:

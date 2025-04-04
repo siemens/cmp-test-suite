@@ -7,8 +7,8 @@ import argparse
 import glob
 import os
 import shutil
-import zipfile
 import subprocess
+import zipfile
 from datetime import datetime
 
 import cryptography
@@ -23,12 +23,11 @@ from resources.certutils import parse_certificate
 from resources.cryptoutils import verify_signature
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import get_hash_from_oid
-from resources.oidutils import PQ_OID_2_NAME, CMS_COMPOSITE_OID_2_NAME, PQ_KEM_OID_2_NAME
-
+from resources.oidutils import CMS_COMPOSITE_OID_2_NAME, PQ_KEM_OID_2_NAME, PQ_OID_2_NAME
 
 
 def main():
-
+    """Run main logic"""
     repo_url = "https://github.com/IETF-Hackathon/pqc-certificates"
     data_dir = "./data"
     providers_dir = os.path.join(data_dir, "pqc-certificates", "providers")
@@ -133,7 +132,8 @@ def verify_signature_with_alg_id(public_key, alg_id: rfc9480.AlgorithmIdentifier
 if __name__ == "__main__":
     pem_files = []
 
-    parser = argparse.ArgumentParser(description="Verify the signatures of the certificates in the pqc-certificates repository.")
+    parser = argparse.ArgumentParser(description="Verify the signatures of the certificates"
+                                     " in the pqc-certificates repository.")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing files.")
     args = parser.parse_args()
 

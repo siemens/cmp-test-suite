@@ -7,9 +7,6 @@
 from typing import Dict, List, Optional
 
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x448, x25519
-from resources import keyutils
-from resources.exceptions import InvalidKeyCombination
-from resources.typingutils import Strint
 
 from pq_logic.chempatkem import ChempatPrivateKey
 from pq_logic.keys.abstract_composite import (
@@ -24,6 +21,9 @@ from pq_logic.keys.composite_kem_pki import (
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.pq_key_factory import PQKeyFactory
 from pq_logic.trad_key_factory import generate_ec_key, generate_trad_key
+from resources import keyutils
+from resources.exceptions import InvalidKeyCombination
+from resources.typingutils import Strint
 
 ALL_CHEMPAT_POSS_COMBINATIONS = [
     {"pq_name": "sntrup761", "trad_name": "x25519", "curve": None},

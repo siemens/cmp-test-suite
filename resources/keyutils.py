@@ -26,12 +26,12 @@ from cryptography.hazmat.primitives.asymmetric import (
     x448,
     x25519,
 )
-from pq_logic.combined_factory import CombinedKeyFactory
-from pq_logic.key_pyasn1_utils import load_enc_key
 from pyasn1.codec.der import decoder
 from pyasn1_alt_modules import rfc5280, rfc5480, rfc6664
 from robot.api.deco import not_keyword
 
+from pq_logic.combined_factory import CombinedKeyFactory
+from pq_logic.key_pyasn1_utils import load_enc_key
 from resources import oid_mapping, utils
 from resources.exceptions import BadAsn1Data, UnknownOID
 from resources.oid_mapping import get_curve_instance
@@ -341,8 +341,8 @@ def _extract_and_format_key(pem_file_path: str) -> bytes:
             + b" PRIVATE KEY-----\n"
         )
         return pem_data
-    else:
-        raise ValueError("No valid private key found in the file.")
+
+    raise ValueError("No valid private key found in the file.")
 
 
 def _clean_data(data: bytes) -> bytes:

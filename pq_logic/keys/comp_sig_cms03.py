@@ -17,6 +17,11 @@ from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280
+
+from pq_logic.hybrid_structures import CompositeSignaturePublicKeyAsn1, CompositeSignatureValue
+from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey, AbstractCompositeSigPublicKey
+from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
+from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH, HASH_COMPOSITE_NAME_TO_OID, PURE_COMPOSITE_NAME_TO_OID
 from resources import oid_mapping
 from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import get_curve_instance, sha_alg_name_to_oid
@@ -25,11 +30,6 @@ from resources.oidutils import (
     CMS_COMPOSITE_NAME_2_OID,
     CURVE_NAMES_TO_INSTANCES,
 )
-
-from pq_logic.hybrid_structures import CompositeSignaturePublicKeyAsn1, CompositeSignatureValue
-from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey, AbstractCompositeSigPublicKey
-from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
-from pq_logic.tmp_oids import CMS_COMPOSITE_OID_2_HASH, HASH_COMPOSITE_NAME_TO_OID, PURE_COMPOSITE_NAME_TO_OID
 
 
 def get_valid_comb(

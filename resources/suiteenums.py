@@ -158,8 +158,8 @@ class GeneralInfoOID(enum.Enum):  #
         """
         try:
             return cls[name.upper()].value
-        except KeyError:
-            raise ValueError(f"Unknown OID name: {name} supported are: {', '.join(cls.get_names_lowercase())}")
+        except KeyError as e:
+            raise ValueError(f"Unknown OID name: {name} supported are: {', '.join(cls.get_names_lowercase())}") from e
 
     @classmethod
     def get_name(cls, oid: univ.ObjectIdentifier) -> str:

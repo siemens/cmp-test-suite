@@ -24,6 +24,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5958
+
 from resources.oidutils import PQ_NAME_2_OID
 
 

@@ -14,9 +14,9 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from resources.oid_mapping import hash_name_to_instance
 
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.oid_mapping import hash_name_to_instance
 
 
 def perform_ecdh(private_key: ECDHPrivateKey, public_key: ECDHPublicKey) -> bytes:

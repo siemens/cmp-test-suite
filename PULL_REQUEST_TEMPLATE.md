@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 (Provide a general summary of your changes in the Title above.)
 
 ## Description

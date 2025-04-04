@@ -15,6 +15,11 @@ from typing import Optional, Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, rsa
+from pyasn1.type import univ
+from pyasn1_alt_modules import rfc9481
+from pyasn1_alt_modules.rfc5480 import id_dsa_with_sha256
+from robot.api.deco import not_keyword
+
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.tmp_oids import (
     CMS_COMPOSITE_OID_2_HASH,
@@ -28,11 +33,6 @@ from pq_logic.tmp_oids import (
     id_MLKEM1024_ECDH_P384,
     id_MLKEM1024_X448,
 )
-from pyasn1.type import univ
-from pyasn1_alt_modules import rfc9481
-from pyasn1_alt_modules.rfc5480 import id_dsa_with_sha256
-from robot.api.deco import not_keyword
-
 from resources.oidutils import (
     ALL_KNOWN_PROTECTION_OIDS,
     ALLOWED_HASH_TYPES,

@@ -13,9 +13,6 @@ from typing import List, Optional, Union
 import pyasn1
 from cryptography.hazmat.primitives import keywrap, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa, x448, x25519
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey
-from pq_logic.migration_typing import KEMPrivateKey
-from pq_logic.tmp_oids import id_rsa_kem_spki
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
@@ -33,6 +30,9 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import not_keyword
 
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey
+from pq_logic.migration_typing import KEMPrivateKey
+from pq_logic.tmp_oids import id_rsa_kem_spki
 from resources import (
     asn1utils,
     certextractutils,
@@ -433,8 +433,8 @@ def process_other_recip_info(
         return process_kem_recip_info(
             kem_recip_info=kem_recip_info, server_cert=server_cert, private_key=recip_private_key, for_pop=for_pop
         )
-    else:
-        raise ValueError(f"Got a unknown `oriType`: {other_info['oriType']}")
+
+    raise ValueError(f"Got a unknown `oriType`: {other_info['oriType']}")
 
 
 def extract_content_encryption_key(
@@ -761,7 +761,6 @@ def _validate_kga_certificate(
     :param trustanchors: The path to the directory where the trust anchors are saved.
     :raises ValueError: If the signing certificate is not found, not trusted, or not in the expected position.
     """
-    # TODO: ask Alex if self-signed certificates are acceptable for the Test-Suite.
     if len(certs) == 0:
         logging.info("Used a self-signed certificate to sign the `SignedData` content")
     else:

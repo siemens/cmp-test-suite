@@ -12,6 +12,10 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from pyasn1_alt_modules.rfc4210 import CMPCertificate
+
+from pq_logic.hybrid_structures import AltSignatureValueExt, SubjectAltPublicKeyInfoExt
+from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from resources import certbuildutils, certextractutils, certutils, cryptoutils, keyutils, utils
 from resources.convertutils import subjectPublicKeyInfo_from_pubkey
 from resources.exceptions import BadAlg, BadAsn1Data
@@ -23,10 +27,6 @@ from resources.oidutils import (
     id_ce_subjectAltPublicKeyInfo,
 )
 from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey, TradSigPrivKey
-
-from pq_logic.hybrid_structures import AltSignatureValueExt, SubjectAltPublicKeyInfoExt
-from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 
 
 def prepare_subject_alt_public_key_info_extn(
@@ -288,7 +288,8 @@ def verify_catalyst_signature_migrated(
         raise ValueError("Catalyst extensions are not present, cannot perform migrated verification.")
 
     # Step 1: Verify the native signature
-    issuer_pub_key = issuer_pub_key or keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+    issuer_pub_key = issuer_pub_key or keyutils.load_public_key_from_spki(
+        cert["tbsCertificate"]["subjectPublicKeyInfo"])
     certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
 
     # Step 2: Verify the alternative signature
