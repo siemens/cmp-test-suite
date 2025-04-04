@@ -31,13 +31,11 @@ Create a Python virtual environment by installing the dependencies from `require
 
 1. Create a virtual environment: `python -m venv venv-cmp-tests`
    - If you use WSL 2.0, run `apt install libpython3-dev python3-venv` if the command above fails.
-   - And then run `python3 -m venv venv-cmp-tests`. Also on ubuntu and debian. 
 2. Activate the environment:
    - on Linux or cygwin: `source venv-cmp-tests/bin/activate`
    - on Windows with Powershell: `.\venv-cmp-tests\Scripts\Activate.ps1`
 3. Install the dependencies: `pip install -r requirements.txt`
 
-Note: If you use WSL 2.0, you might need to run this first `sudo apt update && sudo apt install libpython3-dev python3-venv`.
 
 
 # Usage
@@ -53,16 +51,6 @@ You can run specific tests on specific environments by adjusting command line op
 - `--variable environment:cloudpki` - use the settings given in the `config/cloudpki.robot` file (replace as needed)
 - `--include crypto` - run only the tests that have the `crypto` tag
 
-### Using the pre-configured EJBCA docker image
-The image is useful if you want to debug the test suite, but have no CA to test. This approach will spin up an
-instance of EJBCA with some preconfigured CMP endpoints, so you don't have to set up your own.
-
-To use this approach, adjust the command line arguments to `--variable environment:ejbca`.
-
-Prerequisites:
-- Linux or WSL (in this case, ensure to use the Linux filesystem).
-- Docker with [compose](https://github.com/docker/compose)
-
 
 ## Other useful commands
 - `make test` - run all the tests, store the results in `out/`, use the `config/local.robot` settings.
@@ -72,3 +60,8 @@ Prerequisites:
 - `make testlog env=ejbca` - as above, but use the `config/ejbca.robot` settings.
 - `make doc` - generate HTML documentation for test suites and available keywords, store in `doc/`.
 - `make unittest` - run unit tests that verify the functionality of the library itself.
+
+
+# Acknowledgments
+The development of the CMP test suite was partly funded by the German Federal Ministry of Education and Research
+in the project Quoryptan through grant number 16KIS2033.
