@@ -996,7 +996,7 @@ def _prepare_mac_alg_id(protection: str, **params) -> rfc9480.AlgorithmIdentifie
             nonce=salt,
         )
     else:
-        raise ValueError(f"Unknown protectin algorithm: {protection}")
+        raise ValueError(f"Unknown protection algorithm: {protection}")
 
     return prot_alg_id
 

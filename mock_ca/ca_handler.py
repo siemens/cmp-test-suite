@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Logic that imlements a mock CA suitable for testing purposes."""
+"""Logic that implements a mock CA suitable for testing purposes."""
 
 import logging
 import sys
