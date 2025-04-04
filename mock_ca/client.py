@@ -26,7 +26,7 @@ def send_request_to_static_cert1():
         if response.status_code == 200:
             print("Success:")
             der_data = response.content
-            response, rest = decoder.decode(der_data, asn1Spec=PKIMessageTMP())
+            response, _rest = decoder.decode(der_data, asn1Spec=PKIMessageTMP())
             print(response.prettyPrint())
         else:
             print(f"Error: {response.status_code}")
@@ -48,11 +48,11 @@ def send_pkimessage_to_mock_ca(pki_message: rfc9480.PKIMessage, url: str):
         if response.status_code == 200:
             print("Success:")
             der_data = response.content
-            response, rest = decoder.decode(der_data, asn1Spec=PKIMessageTMP())
+            response, _rest = decoder.decode(der_data, asn1Spec=PKIMessageTMP())
             return response
-        else:
-            print(f"Error: {response.status_code}")
-            print(response.text)
+
+        print(f"Error: {response.status_code}")
+        print(response.text)
     except requests.RequestException as e:
         print(f"Request failed: {e}")
 
