@@ -19,7 +19,9 @@ from typing import Optional, Tuple, Union
 #   test_slhdsa is only used by the unit test in the end
 # from test_slhdsa import test_slhdsa
 #   hashes
-from Crypto.Hash import SHA256, SHA512, SHAKE128, SHAKE256
+# from Crypto.Hash import SHA256, SHA512, SHAKE128, SHAKE256
+
+from pq_logic.fips._fips_utils import _compute_hash, _compute_shake
 
 
 class ADRS:
@@ -170,7 +172,8 @@ class SLH_DSA:
     #   10.1.   SLH-DSA Using SHAKE
     def shake256(self, x: bytes, length: int) -> bytes:
         """SHAKE256(x, l): Internal hook."""
-        return SHAKE256.new(x).read(length)
+        return _compute_shake("shake256", x, length)
+        #return SHAKE256.new(x).read(length)
 
     def shake_h_msg(self, r, pk_seed, pk_root, m):
         return self.shake256(r + pk_seed + pk_root + m, self.m)
@@ -193,7 +196,8 @@ class SLH_DSA:
         :param n: The number of bytes to return. Defaults to 32.
         :return: The truncated hash.
         """
-        return SHA256.new(x).digest()[0:n]
+        return _compute_hash("sha256", x)[0:n]
+        # return SHA256.new(x).digest()[0:n]
 
     def sha512(self, x: bytes, n: int = 64) -> bytes:
         """Tranc_n(SHA2-512(x)).
@@ -202,7 +206,8 @@ class SLH_DSA:
         :param n: The number of bytes to return. Defaults to 64.
         :return: The truncated hash.
         """
-        return SHA512.new(x).digest()[0:n]
+        return _compute_hash("sha512", x)[0:n]
+        #return SHA512.new(x).digest()[0:n]
 
     def mgf(self, hash_f, hash_l: int, mgf_seed: bytes, mask_len: int) -> bytes:
         """NIST SP 800-56B REV. 2 / The Mask Generation Function (MGF).
@@ -381,7 +386,7 @@ class SLH_DSA:
         pk = self.h_t(pk_seed, wotspk_adrs, tmp)
         return pk
 
-    def wots_sign(self, m, sk_seed, pk_seed, adrs):
+    def wots_sign(self, m: bytes, sk_seed: bytes, pk_seed: bytes, adrs: ADRS):
         """Algorithm 7: wots_sign(M, SK.seed, PK.seed, ADRS).
 
         Generate a WOTS+ signature on an n-byte message.
@@ -647,7 +652,7 @@ class SLH_DSA:
         pk_root = self.xmss_node(sk_seed, 0, self.hp, pk_seed, adrs)
         sk = sk_seed + sk_prf + pk_seed + pk_root
         pk = pk_seed + pk_root
-        return (pk, sk)  #   Alg 17 has (sk, pk)
+        return pk, sk  #   Alg 17 has (sk, pk)
 
     def split_digest(self, digest: bytes) -> Tuple[bytes, int, int]:
         """Helper: Lines 11-16 of Alg 18 / Lines 10-15 of Alg 19."""
@@ -725,6 +730,7 @@ class SLH_DSA:
 
         :param param: The parameter set to use, identified by the hash function.
         (e,g., "shake256").
+        :returns: The public and secret key.
         """
         if param is not None:
             self.__init__(param)
@@ -762,16 +768,20 @@ class SLH_DSA:
 
         if ph == "sha-256":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01])
-            phm = SHA256.new(m).digest()
+            # phm = SHA256.new(m).digest()
+            phm = _compute_hash("sha256", m)
         elif ph == "sha-512":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03])
-            phm = SHA512.new(m).digest()
+            # phm = SHA512.new(m).digest()
+            phm = _compute_hash("sha512", m)
         elif ph == "shake128":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x0B])
-            phm = SHAKE128.new(m).read(256 // 8)
+            # phm = SHAKE128.new(m).read(256 // 8)
+            phm = _compute_shake("shake128", m, 256 // 8)
         elif ph == "shake256":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x0C])
-            phm = SHAKE256.new(m).read(512 // 8)
+            # phm = SHAKE256.new(m).read(512 // 8)
+            phm = _compute_shake("shake256", m, 512 // 8)
         else:
             return None
 
@@ -819,16 +829,20 @@ class SLH_DSA:
 
         if ph == "SHA-256":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01])
-            phm = SHA256.new(m).digest()
+            # phm = SHA256.new(m).digest()
+            phm = _compute_hash("sha256", m)
         elif ph == "SHA-512":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03])
-            phm = SHA512.new(m).digest()
+            # phm = SHA512.new(m).digest()
+            phm = _compute_hash("sha512", m)
         elif ph == "SHAKE128":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x0B])
-            phm = SHAKE128.new(m).read(256 // 8)
+            # phm = SHAKE128.new(m).read(256 // 8)
+            phm = _compute_shake("shake128", m, 256 // 8)
         elif ph == "SHAKE256":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x0C])
-            phm = SHAKE256.new(m).read(512 // 8)
+            # phm = SHAKE256.new(m).read(512 // 8)
+            phm = _compute_shake("shake256", m, 512 // 8)
         else:
             raise ValueError(f"Unsupported hash function: {ph}")
 
