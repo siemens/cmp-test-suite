@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-
+# type: ignore
 """Defines ASN.1 structures which are updated or newly defined.
 
 Will be removed as soon as the draft becomes an RFC.
@@ -9,6 +9,22 @@ Will be removed as soon as the draft becomes an RFC.
 
 from pyasn1.type import constraint, namedtype, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
+
+class OIDs(univ.SequenceOf):
+    """Defines the ASN.1 structure for the `KeyPairParamRep`.
+
+    OIDs ::= SEQUENCE OF OBJECT IDENTIFIER
+    """
+
+    componentType = univ.ObjectIdentifier()
+
+class AlgorithmIdentifiers(univ.SequenceOf):
+    """Defines the ASN.1 structure for the `KeyPairParamRep`.
+
+    AlgorithmIdentifiers ::= SEQUENCE OF AlgorithmIdentifier
+    """
+
+    componentType = rfc9480.AlgorithmIdentifier()
 
 
 class KemBMParameterAsn1(univ.Sequence):
@@ -38,8 +54,8 @@ class KemCiphertextInfoAsn1(univ.Sequence):
     """Defines the ASN.1 structure for the `KemCiphertextInfo`.
 
     KemCiphertextInfo ::= SEQUENCE {
-      kem               AlgorithmIdentifier{KEM-ALGORITHM {...}},
-      ct                OCTET STRING
+      kem AlgorithmIdentifier{KEM-ALGORITHM {...}},
+      ct OCTET STRING
     }
     """
 
@@ -74,7 +90,15 @@ KemCiphertextInfoValue = KemCiphertextInfoAsn1
 
 # Ref: 5.2.8.3.3. Direct Method - Challenge-Response Protocol
 class ChallengeASN1(univ.Sequence):
-    """Defines the ASN.1 structure for the challenge."""
+    """Defines the ASN.1 structure for the challenge.
+
+    Challenge ::= SEQUENCE {
+        owf AlgorithmIdentifier OPTIONAL,
+        witness OCTET STRING,
+        challenge OCTET STRING,
+        encryptedRand [0] EnvelopedData OPTIONAL
+    }
+    """
 
     componentType = namedtype.NamedTypes(
         namedtype.OptionalNamedType("owf", rfc5280.AlgorithmIdentifier()),
@@ -82,7 +106,7 @@ class ChallengeASN1(univ.Sequence):
         namedtype.NamedType("challenge", univ.OctetString()),
         namedtype.OptionalNamedType(
             "encryptedRand",
-            rfc9480.EnvelopedData().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)),
+            rfc9480.EnvelopedData().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)),
         ),
     )
 
@@ -94,7 +118,13 @@ class POPODecKeyChallContentAsn1(univ.SequenceOf):
 
 
 class CAKeyUpdContent(univ.Choice):
-    """`CAKeyUpdContent` structure."""
+    """`CAKeyUpdContent` structure.
+
+    CAKeyUpdContent ::= CHOICE {
+        cAKeyUpdAnnV2       CAKeyUpdAnnContent,
+        cAKeyUpdAnnV3   [1] RootCaKeyUpdateContent
+    }
+    """
 
     componentType = namedtype.NamedTypes(
         namedtype.NamedType("cAKeyUpdAnnV2", rfc9480.CAKeyUpdAnnContent()),
@@ -109,7 +139,7 @@ class CAKeyUpdContent(univ.Choice):
 
 # Needs to be here, because of the `InfoTypeAndValue` class,
 # cms opentype map.
-class InfoTypeAndValueAsn1(univ.Sequence):
+class InfoTypeAndValue(univ.Sequence):
     """`InfoTypeAndValue` structure.
 
     InfoTypeAndValue ::= SEQUENCE {
@@ -130,7 +160,65 @@ class GenRepContentAsn1(univ.SequenceOf):
     GenRepContent ::= SEQUENCE OF InfoTypeAndValue
     """
 
-    componentType = InfoTypeAndValueAsn1()
+    componentType = InfoTypeAndValue()
+
+
+# TODO inform about the bug of using the wrong `CertifiedKeyPair` structure.
+
+
+class CertResponseTMP(univ.Sequence):
+    """Define the ASN.1 structure for the `CertResponse`.
+
+    CertResponse ::= SEQUENCE {
+        certReqId INTEGER,
+        status PKIStatusInfo,
+        certifiedKeyPair CertifiedKeyPair OPTIONAL,
+        rspInfo OCTET STRING OPTIONAL
+    }
+    """
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("certReqId", univ.Integer()),
+        namedtype.NamedType("status", rfc9480.PKIStatusInfo()),
+        namedtype.OptionalNamedType("certifiedKeyPair", rfc9480.CertifiedKeyPair()),
+        namedtype.OptionalNamedType("rspInfo", univ.OctetString()),
+    )
+
+
+class CertRepMessageTMP(univ.Sequence):
+    """Define the ASN.1 structure for the `CertRepMessage`.
+
+    CertRepMessage ::= SEQUENCE {
+         caPubs       [1] SEQUENCE SIZE (1..MAX) OF CMPCertificate
+                          OPTIONAL,
+         response         SEQUENCE OF CertResponse
+     }
+    """
+
+    componentType = namedtype.NamedTypes(
+        namedtype.OptionalNamedType(
+            "caPubs",
+            univ.SequenceOf(componentType=rfc9480.CMPCertificate()).subtype(
+                sizeSpec=constraint.ValueSizeConstraint(1, float("inf")),
+                explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1),
+            ),
+        ),
+        namedtype.NamedType("response", univ.SequenceOf(componentType=CertResponseTMP())),
+    )
+
+
+class NestedMessageContentTMP(univ.SequenceOf):
+    """Defines the ASN.1 structure for the `NestedMessageContent`.
+
+    NestedMessageContent ::= SEQUENCE OF PKIMessage
+    """
+
+    componentType = univ.Any()
+
+
+nestedMessageContent = NestedMessageContentTMP().subtype(
+    explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 20)
+)
 
 
 # The challenge change, so that the PKIBody needs to be overwritten.
@@ -145,14 +233,14 @@ class PKIBodyTMP(univ.Choice):
         ),
         namedtype.NamedType(
             "ip",
-            rfc9480.CertRepMessage().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1)),
+            CertRepMessageTMP().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1)),
         ),
         namedtype.NamedType(
             "cr", rfc9480.CertReqMessages().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 2))
         ),
         namedtype.NamedType(
             "cp",
-            rfc9480.CertRepMessage().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3)),
+            CertRepMessageTMP().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3)),
         ),
         namedtype.NamedType(
             "p10cr",
@@ -171,7 +259,7 @@ class PKIBodyTMP(univ.Choice):
         ),
         namedtype.NamedType(
             "kup",
-            rfc9480.CertRepMessage().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 8)),
+            CertRepMessageTMP().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 8)),
         ),
         namedtype.NamedType(
             "krr", rfc9480.CertReqMessages().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 9))
@@ -192,13 +280,11 @@ class PKIBodyTMP(univ.Choice):
         ),
         namedtype.NamedType(
             "ccp",
-            rfc9480.CertRepMessage().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 14)),
+            CertRepMessageTMP().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 14)),
         ),
         namedtype.NamedType(
             "ckuann",
-            rfc9480.CAKeyUpdAnnContent().subtype(
-                explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 15)
-            ),
+            CAKeyUpdContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 15)),
         ),
         namedtype.NamedType(
             "cann",  # codespell:ignore
@@ -215,7 +301,7 @@ class PKIBodyTMP(univ.Choice):
             "pkiconf",
             rfc9480.PKIConfirmContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 19)),
         ),
-        namedtype.NamedType("nested", rfc9480.nestedMessageContent),
+        namedtype.NamedType("nested", nestedMessageContent),
         namedtype.NamedType(
             "genm", rfc9480.GenMsgContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 21))
         ),
@@ -241,6 +327,9 @@ class PKIBodyTMP(univ.Choice):
     )
 
 
+MAX = float("inf")
+
+
 # Set the body to the temporary PKIBodyTMP.
 class PKIMessageTMP(univ.Sequence):
     """Defines the ASN.1 structure for the `PKIMessage`."""
@@ -255,7 +344,107 @@ class PKIMessageTMP(univ.Sequence):
         namedtype.OptionalNamedType(
             "extraCerts",
             univ.SequenceOf(componentType=rfc9480.CMPCertificate())
-            .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, float("inf")))
+            .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, MAX))
             .subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)),
+            ),
+    )
+
+
+class PKIMessagesTMP(univ.SequenceOf):
+    """Defines the ASN.1 structure for the `PKIMessages`.
+
+    PKIMessages ::= SEQUENCE OF PKIMessage
+    """
+
+    componentType = PKIMessageTMP()
+    subtypeSpec = constraint.ValueSizeConstraint(1, MAX)
+
+
+class ProtectedPartTMP(univ.Sequence):
+    """Defines the ASN.1 structure for the `ProtectedPart`.
+
+    ProtectedPart ::= SEQUENCE {
+        header PKIHeader,
+        body PKIBody
+    """
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("header", rfc9480.PKIHeader()), namedtype.NamedType("body", PKIBodyTMP())
+    )
+
+
+# Since pyasn1 does not naturally handle recursive definitions, this hack:
+#
+NestedMessageContentTMP._componentType = PKIMessagesTMP()  # pylint: disable=protected-access
+nestedMessageContent._componentType = PKIMessagesTMP()  # pylint: disable=protected-access
+
+
+class CatalystPreTBSCertificate(univ.Sequence):
+    """Defines the ASN.1 structure for the `CatalystPreTBSCertificate`."""
+
+
+CatalystPreTBSCertificate.componentType = namedtype.NamedTypes(
+    namedtype.DefaultedNamedType(
+        "version",
+        rfc5280.Version().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)).subtype(value="v1"),
+    ),
+    namedtype.NamedType("serialNumber", rfc5280.CertificateSerialNumber()),
+    namedtype.NamedType("issuer", rfc5280.Name()),
+    namedtype.NamedType("validity", rfc5280.Validity()),
+    namedtype.NamedType("subject", rfc5280.Name()),
+    namedtype.NamedType("subjectPublicKeyInfo", rfc5280.SubjectPublicKeyInfo()),
+    namedtype.OptionalNamedType(
+        "issuerUniqueID",
+        rfc5280.UniqueIdentifier().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)),
+    ),
+    namedtype.OptionalNamedType(
+        "subjectUniqueID",
+        rfc5280.UniqueIdentifier().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 2)),
+    ),
+    namedtype.OptionalNamedType(
+        "extensions", rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
+    ),
+)
+
+
+class CRLSourceAsn1(univ.Choice):
+    """Defines the ASN.1 structure for the `CRLSource`.
+
+    CRLSource ::= CHOICE {
+     dpn          [0] DistributionPointName,
+     issuer       [1] GeneralNames }
+    """
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType(
+            "dpn",
+            rfc5280.DistributionPointName().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)),
+        ),
+        namedtype.NamedType(
+            "issuer", rfc5280.GeneralNames().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1))
         ),
     )
+
+
+class CRLStatusAsn1(univ.Sequence):
+    """Defines the ASN.1 structure for the `CRLStatus`.
+
+    CRLStatus ::= SEQUENCE {
+        source CRLSource,
+        thisUpdate Time OPTIONAL
+    }
+    """
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("source", CRLSourceAsn1()), namedtype.OptionalNamedType("thisUpdate", rfc9480.Time())
+    )
+
+
+class CRLStatusListValueAsn1(univ.SequenceOf):
+    """Defines the ASN.1 structure for the `CRLStatusListValue`.
+
+    CRLStatusListValue ::= SEQUENCE OF CRLStatus SIZE (1..MAX)
+    """
+
+    componentType = CRLStatusAsn1()
+    subtypeSpec = constraint.ValueSizeConstraint(1, MAX)
