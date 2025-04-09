@@ -2207,7 +2207,7 @@ def build_cert_conf(  # noqa D417 undocumented-param
 
 
 @keyword(name="Parse PKIMessage")
-def parse_pkimessage(data: bytes) -> rfc9480.PKIMessage:  # noqa D417 undocumented-param
+def parse_pkimessage(data: bytes) -> PKIMessageTMP:  # noqa D417 undocumented-param
     """Parse input data to PKIMessage structure and return the resulting object.
 
     Arguments:
@@ -2228,7 +2228,20 @@ def parse_pkimessage(data: bytes) -> rfc9480.PKIMessage:  # noqa D417 undocument
 
     """
     try:
-        pki_message, _remainder = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
+        pki_message, _remainder = decoder.decode(data, asn1Spec=PKIMessageTMP())
+
+        if pki_message["body"].getName() == "nested":
+            data = pki_message["body"]["nested"]
+            msgs = PKIMessagesTMP().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 20))
+            der_data = encoder.encode(data)
+            msgs, _ = decoder.decode(der_data, msgs)
+            # to clear the entries.
+            pki_message["body"]["nested"] = PKIMessagesTMP().subtype(
+                explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 20)
+            )
+            for x in msgs:
+                pki_message["body"]["nested"].append(x)
+
     except PyAsn1Error as err:
         # Suppress detailed pyasn1 error messages; they are typically too verbose and
         # not helpful for non-pyasn1 experts. If debugging is needed, retrieve the server's
