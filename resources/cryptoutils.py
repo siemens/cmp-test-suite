@@ -30,7 +30,7 @@ from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKe
 from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey
 from resources import convertutils, keyutils, oid_mapping
 from resources.oid_mapping import compute_hash, get_hash_from_oid, hash_name_to_instance
-from resources.typingutils import ECDHPrivKeyTypes, ECDHPubKeyTypes, PrivateKeySig, PublicKeySig
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey, PrivateKeySig, PublicKeySig
 
 
 # TODO fix doc
@@ -428,7 +428,7 @@ def compute_aes_cbc(key: bytes, data: bytes, iv: bytes, decrypt: bool = True) ->
 
 
 @not_keyword
-def perform_ecdh(private_key: ECDHPrivKeyTypes, public_key: ECDHPubKeyTypes) -> bytes:
+def perform_ecdh(private_key: ECDHPrivateKey, public_key: ECDHPublicKey) -> bytes:
     """Derive a shared secret using Elliptic Curve Diffie-Hellman (ECDH) key exchange.
 
     Supports `ec`, `x25519`, and `x448` curves.

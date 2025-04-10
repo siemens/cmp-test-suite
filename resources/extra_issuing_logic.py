@@ -41,7 +41,7 @@ from resources.envdatautils import (
 from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import compute_hash
 from resources.protectionutils import compute_and_prepare_mac
-from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
+from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint
 from resources.utils import get_openssl_name_notation
 from unit_tests.asn1_wrapper_class.pki_message_wrapper import PKIMessage, prepare_name
 
@@ -523,7 +523,7 @@ def _compute_ss(client_key, ca_cert):
     :raises ValueError: If the client key is of an unsupported type.
     """
     pub_key = load_public_key_from_cert(ca_cert)
-    if isinstance(client_key, ECDHPrivKeyTypes):
+    if isinstance(client_key, ECDHPrivateKey):
         return perform_ecdh(client_key, pub_key)
 
     raise ValueError(f"The provided public key type is not expected: {type(client_key).__name__}")
@@ -573,7 +573,7 @@ def _prepare_pkmac_val(
 def prepare_key_agreement_popo(
     use_encr_cert: bool = True,
     env_data: Optional[rfc9480.EnvelopedData] = None,
-    client_key: Optional[ECDHPrivKeyTypes] = None,
+    client_key: Optional[ECDHPrivateKey] = None,
     shared_secret: Optional[bytes] = None,
     cert_request: Optional[Union[bytes, rfc4211.CertRequest]] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,

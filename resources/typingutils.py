@@ -124,11 +124,11 @@ EnvDataPrivateKey = Union[RSAPrivateKey, Ed25519PrivateKey, Ed448PrivateKey, Ell
 # private keys are used in ECDH-related operations.
 # Used in Key Generation Authority logic to make sure the key agreement
 # used the correct type.
-ECDHPrivKeyTypes = Union[EllipticCurvePrivateKey, X25519PrivateKey, X448PrivateKey]
+ECDHPrivateKey = Union[EllipticCurvePrivateKey, X25519PrivateKey, X448PrivateKey]
 
 # The `ECDHPubKeyTypes` includes all public key types supported
 # for ECDH operations. This type ensures that only compatible
 # public keys are used in ECDH-related operations.
 # Used in Key Generation Authority logic to make sure the key agreement
 # used the correct type.
-ECDHPubKeyTypes = Union[EllipticCurvePublicKey, X25519PublicKey, X448PublicKey]
+ECDHPublicKey = Union[EllipticCurvePublicKey, X25519PublicKey, X448PublicKey]

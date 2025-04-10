@@ -68,7 +68,7 @@ from resources.oidutils import (
 )
 from resources.protectionutils import compute_kdf_from_alg_id, get_rsa_oaep_padding
 from resources.suiteenums import KeyUsageStrictness
-from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
+from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint
 
 
 @not_keyword
@@ -128,7 +128,7 @@ def _check_kari_aes_size(ecc_cms_info: rfc5753.ECC_CMS_SharedInfo) -> int:
 @not_keyword
 def process_kari(
     alg_id: rfc5280.AlgorithmIdentifier,
-    private_key: ECDHPrivKeyTypes,
+    private_key: ECDHPrivateKey,
     ukm: Optional[bytes] = None,
     cmp_prot_cert: Optional[rfc9480.CMPCertificate] = None,
 ) -> bytes:
