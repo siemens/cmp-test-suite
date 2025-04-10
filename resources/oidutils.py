@@ -3,43 +3,53 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-
+# pylint: disable=invalid-name
 from typing import Dict
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
+from pq_logic.tmp_oids import (
+    CHEMPAT_OID_2_NAME,
+    CMS_COMPOSITE03_OID_2_HASH,
+    COMP_SIG03_PREHASH_OID_2_HASH,
+    COMPOSITE_KEM05_OID_2_NAME,
+    COMPOSITE_KEM06_OID_2_NAME,
+    COMPOSITE_SIG03_HASH_NAME_2_OID,
+    COMPOSITE_SIG03_OID_2_NAME,
+    COMPOSITE_SIG04_OID_2_NAME,
+    FALCON_NAME_2_OID,
+    FRODOKEM_NAME_2_OID,
+    FRODOKEM_OID_2_NAME,
+    MCELIECE_NAME_2_OID,
+    MCELIECE_OID_2_NAME,
+    PURE_COMPOSITE_SIG03_NAME_TO_OID,
+    PURE_OID_TO_HASH,
+    id_altSignatureExt,
+    id_altSubPubKeyExt,
+    id_ce_deltaCertificateDescriptor,
+    id_sntrup761_str,
+)
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
     rfc3370,
     rfc3565,
+    rfc5084,
     rfc5280,
     rfc5480,
     rfc5639,
     rfc5753,
     rfc5990,
     rfc6664,
+    rfc6960,
     rfc8017,
     rfc8018,
     rfc8619,
     rfc9480,
     rfc9481,
-)
-
-from pq_logic.tmp_oids import (
-    CHEMPAT_OID_2_NAME,
-    CMS_COMPOSITE_OID_2_HASH,
-    COMPOSITE_KEM_OID_2_NAME,
-    FALCON_NAME_2_OID,
-    FRODOKEM_NAME_2_OID,
-    FRODOKEM_OID_2_NAME,
-    HASH_COMPOSITE_NAME_TO_OID,
-    MCELIECE_NAME_2_OID,
-    MCELIECE_OID_2_NAME,
-    PREHASH_OID_2_HASH,
-    PURE_COMPOSITE_NAME_TO_OID,
-    PURE_OID_TO_HASH,
-    id_sntrup761_str,
+    rfc9688,
+    rfc9690,
+    rfc9708,
 )
 
 # In RFC 9480 Certificate Management Protocol (CMP) Updates
@@ -109,16 +119,49 @@ SHA_OID_2_NAME = {
     rfc5480.id_sha512: "sha512",
 }
 
-ID_HASH_ALGS = "2.16.840.1.101.3.4.2"
+id_hash_algs = "2.16.840.1.101.3.4.2"  # pylint: disable=invalid-name
+
 
 SHA3_OID_2_NAME = {
-    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.7"): "sha3-224",
-    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.8"): "sha3-256",
-    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.9"): "sha3-384",
-    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.10"): "sha3-512",
-    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.11"): "shake128",
-    univ.ObjectIdentifier(f"{ID_HASH_ALGS}.12"): "shake256",
+    univ.ObjectIdentifier(f"{id_hash_algs}.7"): "sha3-224",
+    univ.ObjectIdentifier(f"{id_hash_algs}.8"): "sha3-256",
+    univ.ObjectIdentifier(f"{id_hash_algs}.9"): "sha3-384",
+    univ.ObjectIdentifier(f"{id_hash_algs}.10"): "sha3-512",
+    univ.ObjectIdentifier(f"{id_hash_algs}.11"): "shake128",
+    univ.ObjectIdentifier(f"{id_hash_algs}.12"): "shake256",
 }
+
+SHA3_NAME_2_OID = {v: k for k, v in SHA3_OID_2_NAME.items()}
+
+ECDSA_SHA3_OID_2_NAME = {
+    rfc9688.id_ecdsa_with_sha3_224: "ecdsa-sha3_224",
+    rfc9688.id_ecdsa_with_sha3_256: "ecdsa-sha3_256",
+    rfc9688.id_ecdsa_with_sha3_384: "ecdsa-sha3_384",
+    rfc9688.id_ecdsa_with_sha3_512: "ecdsa-sha3_512",
+}
+RSA_SHA3_OID_2_NAME = {
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_224: "rsassa_pss-sha3_224",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_256: "rsassa_pss-sha3_256",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_384: "rsassa_pss-sha3_384",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_512: "rsassa_pss-sha3_512",
+}
+
+
+AES_CBC_NAME_2_OID = {
+    "aes128_cbc": rfc9481.id_aes128_CBC,
+    "aes192_cbc": rfc9481.id_aes192_CBC,
+    "aes256_cbc": rfc9481.id_aes256_CBC,
+}
+
+AES_CBC_OID_2_NAME = {v: k for k, v in AES_CBC_NAME_2_OID.items()}
+
+AES_GCM_NAME_2_OID = {
+    "aes128_gcm": rfc5084.id_aes128_GCM,
+    "aes192_gcm": rfc5084.id_aes192_GCM,
+    "aes256_gcm": rfc5084.id_aes256_GCM,
+}
+
+AES_GCM_OID_2_NAME = {v: k for k, v in AES_GCM_NAME_2_OID.items()}
 
 
 # map OIDs of signature algorithms to the names of the hash functions
@@ -142,13 +185,17 @@ MSG_SIG_ALG.update(RSA_SHA_OID_2_NAME)
 MSG_SIG_ALG.update(RSASSA_PSS_OID_2_NAME)
 MSG_SIG_ALG.update(ECDSA_SHA_OID_2_NAME)
 
+MSG_SIG_ALG_NAME_2_OID = {y: x for x, y in MSG_SIG_ALG.items()}
+
 LWCMP_MAC_OID_2_NAME = {rfc9480.id_PasswordBasedMac: "password_based_mac", rfc8018.id_PBMAC1: "pbmac1"}
 
+id_KemBasedMac = univ.ObjectIdentifier("1.2.840.113533.7.66.16")
 
 SYMMETRIC_PROT_ALGO = {}
 SYMMETRIC_PROT_ALGO.update(
     {
         rfc9480.id_DHBasedMac: "dh_based_mac",
+        id_KemBasedMac: "kem_based_mac",
     }
 )
 
@@ -177,6 +224,12 @@ PROT_SYM_ALG = {
 
 # map strings used in OpenSSL-like common name notation to objects of NameOID types that
 # cryptography.x509 uses internally
+
+SYMMETRIC_ENCR_ALG_OID_2_NAME = {}
+SYMMETRIC_ENCR_ALG_OID_2_NAME.update(AES_CBC_OID_2_NAME)
+
+SYMMETRIC_ENCR_ALG_NAME_2_OID = {v: k for k, v in SYMMETRIC_ENCR_ALG_OID_2_NAME.items()}
+
 NAME_MAP = {
     "C": NameOID.COUNTRY_NAME,
     "ST": NameOID.STATE_OR_PROVINCE_NAME,
@@ -206,22 +259,15 @@ ALLOWED_HASH_TYPES = {
     "sha512": hashes.SHA512(),
     "shake128": hashes.SHAKE128(32),
     "shake256": hashes.SHAKE256(64),
+    "sha3_224": hashes.SHA3_224(),
+    "sha3_256": hashes.SHA3_256(),
+    "sha3_384": hashes.SHA3_384(),
+    "sha3_512": hashes.SHA3_512(),
 }
 
-
-CURVE_NAMES_TO_OIDS = {
-    "secp192r1": rfc5480.secp192r1,  # NIST P-192
-    "prime192v1": rfc5480.secp192r1,  # NIST P-192 (alias)
-    "secp224r1": rfc5480.secp224r1,  # NIST P-224
-    "prime224v1": rfc5480.secp224r1,  # NIST P-224 (alias)
-    "secp256r1": rfc5480.secp256r1,  # NIST P-256
-    "prime256v1": rfc5480.secp256r1,  # NIST P-256 (alias)
-    "secp384r1": rfc5480.secp384r1,  # NIST P-384
-    "secp521r1": rfc5480.secp521r1,  # NIST P-521
-}
 
 # Saves the supported curves to perform a lookup for key generation.
-CURVE_NAMES_TO_INSTANCES = {
+CURVE_NAMES_TO_INSTANCES: Dict[str, ec.EllipticCurve] = {
     "secp192r1": ec.SECP192R1(),  # NIST P-192
     "prime192v1": ec.SECP192R1(),  # NIST P-192 (alias)
     "secp224r1": ec.SECP224R1(),  # NIST P-224
@@ -249,7 +295,7 @@ CURVE_NAMES_TO_INSTANCES = {
     "brainpoolp512r1": ec.BrainpoolP512R1(),  # Brainpool curve over a 512 bit prime field
 }
 
-CURVE_OIDS_2_NAME = {
+CURVE_OID_2_NAME = {
     rfc5480.secp192r1: "secp192r1",
     rfc5480.secp224r1: "secp224r1",
     rfc5480.secp256r1: "secp256r1",
@@ -273,6 +319,16 @@ CURVE_OIDS_2_NAME = {
     rfc5639.brainpoolP384r1: "brainpoolP384r1",
     rfc5639.brainpoolP512r1: "brainpoolP512r1",
 }
+
+
+CURVE_NAME_2_OID = {}
+
+for curve in CURVE_NAMES_TO_INSTANCES.values():
+    tmp_oid = getattr(ec.EllipticCurveOID(), curve.name.upper())
+    oid = univ.ObjectIdentifier(tmp_oid.dotted_string)
+    CURVE_OID_2_NAME[oid] = curve.name
+    CURVE_NAME_2_OID[curve.name] = oid
+
 
 KM_KA_ALG = {
     # Section 4.1.1: Diffie-Hellman
@@ -298,9 +354,70 @@ ECMQV = {
     rfc9481.mqvSinglePass_sha512kdf_scheme: "mqv-sha512",
 }
 
-KM_KA_ALG.update(ECMQV)
+CURVE_2_COFACTORS = {
+    # Curves over prime fields (Fp)
+    "secp112r1": 1,
+    "secp112r2": 4,
+    "secp128r1": 1,
+    "secp128r2": 4,
+    "secp160k1": 1,
+    "secp160r1": 1,
+    "secp160r2": 1,
+    "secp192k1": 1,
+    "secp192r1": 1,
+    "secp224k1": 1,
+    "secp224r1": 1,
+    "secp256k1": 1,
+    "secp256r1": 1,
+    "secp384r1": 1,
+    "secp521r1": 1,
+    # Curves over binary fields (F2m)
+    "sect113r1": 2,
+    "sect113r2": 2,
+    "sect131r1": 2,
+    "sect131r2": 2,
+    "sect163k1": 2,
+    "sect163r1": 2,
+    "sect163r2": 2,
+    "sect193r1": 2,
+    "sect193r2": 2,
+    "sect233k1": 4,
+    "sect233r1": 2,
+    "sect239k1": 4,
+    "sect283k1": 4,
+    "sect283r1": 2,
+    "sect409k1": 4,
+    "sect409r1": 2,
+    "sect571k1": 4,
+    "sect571r1": 2,
+    # Brainpool curves
+    "brainpoolP160r1": 1,
+    "brainpoolP192r1": 1,
+    "brainpoolP224r1": 1,
+    "brainpoolP256r1": 1,
+    "brainpoolP320r1": 1,
+    "brainpoolP384r1": 1,
+    "brainpoolP512r1": 1,
+    "brainpoolP160t1": 1,
+    "brainpoolP192t1": 1,
+    "brainpoolP224t1": 1,
+    "brainpoolP256t1": 1,
+    "brainpoolP320t1": 1,
+    "brainpoolP384t1": 1,
+    "brainpoolP512t1": 1,
+    # Montgomery and Edwards curves
+    "curve25519": 8,
+    "curve448": 4,
+    "edwards25519": 8,
+    "edwards448": 4,
+}
 
-KM_KD_ALG = {rfc9481.id_PBKDF2}  # As per Section 4.4 in RFC 9481
+
+ECMQV_NAME_2_OID = {y: x for x, y in ECMQV.items()}
+KM_KA_ALG.update(ECMQV)
+KM_KA_ALG_NAME_2_OID = {y: x for x, y in KM_KA_ALG.items()}
+
+KM_KD_ALG = {rfc9481.id_PBKDF2: "pbkdf2"}  # As per Section 4.4 in RFC 9481
 KM_KW_ALG = {
     rfc9481.id_aes128_wrap: "aes128_wrap",
     rfc9481.id_aes192_wrap: "aes192_wrap",
@@ -308,12 +425,12 @@ KM_KW_ALG = {
 }  # As per Section 4.3 in RFC 9481
 
 
-ALL_KNOWN_PROTECTION_OIDS = {}
-ALL_KNOWN_PROTECTION_OIDS.update({rfc6664.id_ecPublicKey: "ecPubKey"})
-ALL_KNOWN_PROTECTION_OIDS.update(SUPPORTED_MAC_OID_2_NAME)
-ALL_KNOWN_PROTECTION_OIDS.update(SYMMETRIC_PROT_ALGO)
-ALL_KNOWN_PROTECTION_OIDS.update(KMAC_OID_2_NAME)
-ALL_KNOWN_PROTECTION_OIDS.update(RSASSA_PSS_OID_2_NAME)
+ALL_KNOWN_OIDS_2_NAME = {}
+ALL_KNOWN_OIDS_2_NAME.update({rfc6664.id_ecPublicKey: "ecPublicKey"})
+ALL_KNOWN_OIDS_2_NAME.update(SUPPORTED_MAC_OID_2_NAME)
+ALL_KNOWN_OIDS_2_NAME.update(SYMMETRIC_PROT_ALGO)
+ALL_KNOWN_OIDS_2_NAME.update(KMAC_OID_2_NAME)
+ALL_KNOWN_OIDS_2_NAME.update(RSASSA_PSS_OID_2_NAME)
 
 
 ###########################
@@ -334,6 +451,17 @@ HKDF_NAME_2_OID = {
 
 HKDF_OID_2_NAME = {v: k for k, v in HKDF_NAME_2_OID.items()}
 
+
+KDF_OID_2_NAME = {}
+KDF_OID_2_NAME.update(KM_KD_ALG)
+KDF_OID_2_NAME.update(HKDF_OID_2_NAME)
+KDF_OID_2_NAME.update({rfc9690.id_kdf_kdf3: "kdf3", rfc9690.id_kdf_kdf2: "kdf2"})
+
+
+KDF_NAME_2_OID = {y: x for x, y in KDF_OID_2_NAME.items()}
+
+ALL_KNOWN_OIDS_2_NAME.update(KDF_OID_2_NAME)
+
 # ###################-----
 # PQ OIDs
 # ###################-----
@@ -349,22 +477,21 @@ kems_oid = nist_algorithms_oid + (4,)
 # ###################------
 # KEM OIDs
 # ###################------
-id_KemBasedMac = univ.ObjectIdentifier("1.2.840.113533.7.66.16")
 
 
-id_alg_ml_kem_512_oid = kems_oid + (1,)
-id_ml_kem_768_oid = kems_oid + (2,)
-id_alg_ml_kem_1024_oid = kems_oid + (3,)
+id_ml_kem_512 = kems_oid + (1,)
+id_ml_kem_768 = kems_oid + (2,)
+id_ml_kem_1024 = kems_oid + (3,)
 ML_KEM_OID_2_NAME = {
-    id_alg_ml_kem_512_oid: "ml-kem-512",
-    id_ml_kem_768_oid: "ml-kem-768",
-    id_alg_ml_kem_1024_oid: "ml-kem-1024",
+    id_ml_kem_512: "ml-kem-512",
+    id_ml_kem_768: "ml-kem-768",
+    id_ml_kem_1024: "ml-kem-1024",
 }
 
 ML_KEM_NAME_2_OID = {
-    "ml-kem-512": id_alg_ml_kem_512_oid,
-    "ml-kem-768": id_ml_kem_768_oid,
-    "ml-kem-1024": id_alg_ml_kem_1024_oid,
+    "ml-kem-512": id_ml_kem_512,
+    "ml-kem-768": id_ml_kem_768,
+    "ml-kem-1024": id_ml_kem_1024,
 }
 
 
@@ -374,7 +501,7 @@ PQ_KEM_NAME_2_OID.update(ML_KEM_NAME_2_OID)
 
 PQ_KEM_OID_2_NAME = {y: x for x, y in PQ_KEM_NAME_2_OID.items()}
 
-ALL_KNOWN_PROTECTION_OIDS.update(PQ_KEM_NAME_2_OID)
+ALL_KNOWN_OIDS_2_NAME.update(PQ_KEM_NAME_2_OID)
 
 # ###################------
 # PQ Sig OIDs
@@ -404,35 +531,35 @@ ML_DSA_NAME_2_OID = {y: x for x, y in ML_DSA_OID_2_NAME.items()}
 
 
 SIG_ALGS = "2.16.840.1.101.3.4.3"
-ID_SLH_DSA_SHA2_128S = f"{SIG_ALGS}.20"
-ID_SLH_DSA_SHA2_128F = f"{SIG_ALGS}.21"
-ID_SLH_DSA_SHA2_192S = f"{SIG_ALGS}.22"
-ID_SLH_DSA_SHA2_192F = f"{SIG_ALGS}.23"
-ID_SLH_DSA_SHA2_256S = f"{SIG_ALGS}.24"
-ID_SLH_DSA_SHA2_256F = f"{SIG_ALGS}.25"
-ID_SLH_DSA_SHAKE_128S = f"{SIG_ALGS}.26"
-ID_SLH_DSA_SHAKE_128F = f"{SIG_ALGS}.27"
-ID_SLH_DSA_SHAKE_192S = f"{SIG_ALGS}.28"
-ID_SLH_DSA_SHAKE_192F = f"{SIG_ALGS}.29"
-ID_SLH_DSA_SHAKE_256S = f"{SIG_ALGS}.30"
-ID_SLH_DSA_SHAKE_256F = f"{SIG_ALGS}.31"
+id_slh_dsa_sha2_128s = f"{SIG_ALGS}.20"
+id_slh_dsa_sha2_128f = f"{SIG_ALGS}.21"
+id_slh_dsa_sha2_192s = f"{SIG_ALGS}.22"
+id_slh_dsa_sha2_192f = f"{SIG_ALGS}.23"
+id_slh_dsa_sha2_256s = f"{SIG_ALGS}.24"
+id_slh_dsa_sha2_256f = f"{SIG_ALGS}.25"
+id_slh_dsa_shake_128s = f"{SIG_ALGS}.26"
+id_slh_dsa_shake_128f = f"{SIG_ALGS}.27"
+id_slh_dsa_shake_192s = f"{SIG_ALGS}.28"
+id_slh_dsa_shake_192f = f"{SIG_ALGS}.29"
+id_slh_dsa_shake_256s = f"{SIG_ALGS}.30"
+id_slh_dsa_shake_256f = f"{SIG_ALGS}.31"
 
 SLH_DSA_NAME_2_OID = {
-    "slh-dsa-sha2-128s": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_128S),
-    "slh-dsa-sha2-128f": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_128F),
-    "slh-dsa-sha2-192s": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_192S),
-    "slh-dsa-sha2-192f": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_192F),
-    "slh-dsa-sha2-256s": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_256S),
-    "slh-dsa-sha2-256f": univ.ObjectIdentifier(ID_SLH_DSA_SHA2_256F),
-    "slh-dsa-shake-128s": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_128S),
-    "slh-dsa-shake-128f": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_128F),
-    "slh-dsa-shake-192s": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_192S),
-    "slh-dsa-shake-192f": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_192F),
-    "slh-dsa-shake-256s": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_256S),
-    "slh-dsa-shake-256f": univ.ObjectIdentifier(ID_SLH_DSA_SHAKE_256F),
+    "slh-dsa-sha2-128s": univ.ObjectIdentifier(id_slh_dsa_sha2_128s),
+    "slh-dsa-sha2-128f": univ.ObjectIdentifier(id_slh_dsa_sha2_128f),
+    "slh-dsa-sha2-192s": univ.ObjectIdentifier(id_slh_dsa_sha2_192s),
+    "slh-dsa-sha2-192f": univ.ObjectIdentifier(id_slh_dsa_sha2_192f),
+    "slh-dsa-sha2-256s": univ.ObjectIdentifier(id_slh_dsa_sha2_256s),
+    "slh-dsa-sha2-256f": univ.ObjectIdentifier(id_slh_dsa_sha2_256f),
+    "slh-dsa-shake-128s": univ.ObjectIdentifier(id_slh_dsa_shake_128s),
+    "slh-dsa-shake-128f": univ.ObjectIdentifier(id_slh_dsa_shake_128f),
+    "slh-dsa-shake-192s": univ.ObjectIdentifier(id_slh_dsa_shake_192s),
+    "slh-dsa-shake-192f": univ.ObjectIdentifier(id_slh_dsa_shake_192f),
+    "slh-dsa-shake-256s": univ.ObjectIdentifier(id_slh_dsa_shake_256s),
+    "slh-dsa-shake-256f": univ.ObjectIdentifier(id_slh_dsa_shake_256f),
 }
 
-SLH_DSA_NAME_2_OID_PRE_HASH = {
+SLH_DSA_PRE_HASH_NAME_2_OID = {
     "slh-dsa-sha2-128s-sha256": sig_algorithms_oid + (35,),
     "slh-dsa-sha2-128f-sha256": sig_algorithms_oid + (36,),
     "slh-dsa-sha2-192s-sha512": sig_algorithms_oid + (37,),
@@ -447,23 +574,30 @@ SLH_DSA_NAME_2_OID_PRE_HASH = {
     "slh-dsa-shake-256f-shake256": sig_algorithms_oid + (46,),
 }
 
-SLH_DSA_OID_2_PRE_HASH_NAME = {y: x for x, y in SLH_DSA_NAME_2_OID_PRE_HASH.items()}
+SLH_DSA_PRE_HASH_OID_2_NAME = {y: x for x, y in SLH_DSA_PRE_HASH_NAME_2_OID.items()}
 
-SLH_DSA_NAME_2_OID.update(SLH_DSA_NAME_2_OID_PRE_HASH)
+SLH_DSA_NAME_2_OID.update(SLH_DSA_PRE_HASH_NAME_2_OID)
 
 SLH_DSA_OID_2_NAME = {y: x for x, y in SLH_DSA_NAME_2_OID.items()}
+
+
+STATEFUL_HASH_SIGNATURE_OID_2_NAME = {
+    rfc9708.id_alg_hss_lms_hashsig: "hss-lms-hashsig",
+}
+
+STATEFUL_HASH_SIGNATURE_NAME_2_OID = {y: x for x, y in STATEFUL_HASH_SIGNATURE_OID_2_NAME.items()}
 
 
 PQ_SIG_NAME_2_OID = {}
 PQ_SIG_NAME_2_OID.update(ML_DSA_NAME_2_OID)
 PQ_SIG_NAME_2_OID.update(SLH_DSA_NAME_2_OID)
 
+PQ_SIG_OID_2_NAME = {y: x for x, y in PQ_SIG_NAME_2_OID.items()}
+
 
 PQ_NAME_2_OID = {}
 PQ_NAME_2_OID.update(PQ_SIG_NAME_2_OID)
 PQ_NAME_2_OID.update(PQ_KEM_NAME_2_OID)
-
-PQ_OID_2_NAME = {y: x for x, y in PQ_NAME_2_OID.items()}
 
 PQ_NAME_2_OID.update(FALCON_NAME_2_OID)
 
@@ -485,7 +619,7 @@ KEY_WRAP_OID_2_NAME = {v: k for k, v in KEY_WRAP_NAME_2_OID.items()}
 # ###################
 
 OID_HASH_MAP.update(ML_DSA_OID_2_NAME)
-ALL_KNOWN_PROTECTION_OIDS.update(ML_DSA_NAME_2_OID)
+ALL_KNOWN_OIDS_2_NAME.update(ML_DSA_NAME_2_OID)
 
 
 # ###################
@@ -504,14 +638,11 @@ ALL_KNOWN_PROTECTION_OIDS.update(ML_DSA_NAME_2_OID)
 XWING_OID_STR = "1.3.6.1.4.1.62253.25722"
 
 
-ALL_POSS_COMPOSITE_SIG_COMBINATIONS = [
-    {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
+ALL_COMPOSITE_SIG_COMBINATIONS = [
     {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
     {"pq_name": "ml-dsa-44", "trad_name": "ed25519", "curve": None},
     {"pq_name": "ml-dsa-44", "trad_name": "ecdsa", "curve": "secp256r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "rsa", "length": "3072"},
-    {"pq_name": "ml-dsa-65", "trad_name": "rsa", "length": "3072"},
-    {"pq_name": "ml-dsa-65", "trad_name": "rsa", "length": "4096"},
     {"pq_name": "ml-dsa-65", "trad_name": "rsa", "length": "4096"},
     {"pq_name": "ml-dsa-65", "trad_name": "ecdsa", "curve": "secp384r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "ecdsa", "curve": "brainpoolP256r1"},
@@ -521,19 +652,19 @@ ALL_POSS_COMPOSITE_SIG_COMBINATIONS = [
     {"pq_name": "ml-dsa-87", "trad_name": "ed448", "curve": None},
 ]
 
-
-CMS_COMPOSITE_OID_2_HASH.update(PURE_OID_TO_HASH)
-CMS_COMPOSITE_OID_2_HASH.update(PREHASH_OID_2_HASH)
-
-# custom from oqs
+ALL_COMPOSITE_SIG04_COMBINATIONS = ALL_COMPOSITE_SIG_COMBINATIONS + [
+    {"pq_name": "ml-dsa-87", "trad_name": "rsa", "length": "4096"},
+]
 
 
-CMS_COMPOSITE_NAME_2_OID = {}
-CMS_COMPOSITE_NAME_2_OID.update(PURE_COMPOSITE_NAME_TO_OID)
-CMS_COMPOSITE_NAME_2_OID.update(HASH_COMPOSITE_NAME_TO_OID)
+CMS_COMPOSITE03_OID_2_HASH.update(PURE_OID_TO_HASH)
+CMS_COMPOSITE03_OID_2_HASH.update(COMP_SIG03_PREHASH_OID_2_HASH)
 
+CMS_COMPOSITE03_NAME_2_OID = {}
+CMS_COMPOSITE03_NAME_2_OID.update(PURE_COMPOSITE_SIG03_NAME_TO_OID)
+CMS_COMPOSITE03_NAME_2_OID.update(COMPOSITE_SIG03_HASH_NAME_2_OID)
 
-CMS_COMPOSITE_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {y: x for x, y in CMS_COMPOSITE_NAME_2_OID.items()}
+CMS_COMPOSITE_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {y: x for x, y in CMS_COMPOSITE03_NAME_2_OID.items()}
 
 
 PQ_SIG_NAME_2_OID.update(FALCON_NAME_2_OID)
@@ -544,11 +675,15 @@ PQ_KEM_NAME_2_OID.update(MCELIECE_NAME_2_OID)
 
 PQ_SIG_PRE_HASH_OID_2_NAME = {}
 PQ_SIG_PRE_HASH_OID_2_NAME.update(ML_DSA_PRE_HASH_OID_2_NAME)
-PQ_SIG_PRE_HASH_OID_2_NAME.update(SLH_DSA_OID_2_PRE_HASH_NAME)
+PQ_SIG_PRE_HASH_OID_2_NAME.update(SLH_DSA_PRE_HASH_OID_2_NAME)
+
+PQ_SIG_PRE_HASH_NAME_2_OID = {y: x for x, y in PQ_SIG_PRE_HASH_OID_2_NAME.items()}
 
 PQ_NAME_2_OID.update(PQ_KEM_NAME_2_OID)
 PQ_NAME_2_OID.update(PQ_SIG_NAME_2_OID)
 PQ_NAME_2_OID.update(FRODOKEM_NAME_2_OID)
+PQ_NAME_2_OID.update(MCELIECE_NAME_2_OID)
+
 PQ_OID_2_NAME = {y: x for x, y in PQ_NAME_2_OID.items()}
 
 
@@ -557,8 +692,11 @@ KEM_OID_2_NAME.update(FRODOKEM_OID_2_NAME)
 KEM_OID_2_NAME.update(MCELIECE_OID_2_NAME)
 KEM_OID_2_NAME.update(CHEMPAT_OID_2_NAME)
 KEM_OID_2_NAME.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
-KEM_OID_2_NAME.update(COMPOSITE_KEM_OID_2_NAME)
+KEM_OID_2_NAME.update(COMPOSITE_KEM05_OID_2_NAME)
+KEM_OID_2_NAME.update(COMPOSITE_KEM06_OID_2_NAME)
+KEM_OID_2_NAME.update({rfc5990.id_kem_rsa: "rsa-kem"})
 
+KEM_NAME_2_OID = {y: x for x, y in KEM_OID_2_NAME.items()}
 
 TRAD_STR_OID_TO_KEY_NAME = {
     "1.3.101.110": "x25519",
@@ -569,26 +707,90 @@ TRAD_STR_OID_TO_KEY_NAME = {
     "1.2.840.113549.1.9.16.3.14": "rsa-kem",
 }
 
-HYBRID_NAME_2_OID = {}
-HYBRID_NAME_2_OID.update(COMPOSITE_KEM_OID_2_NAME)
-HYBRID_NAME_2_OID.update(CHEMPAT_OID_2_NAME)
-HYBRID_NAME_2_OID.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
-HYBRID_NAME_2_OID.update(CMS_COMPOSITE_NAME_2_OID)
 
-ALL_KNOWN_PROTECTION_OIDS.update(PQ_OID_2_NAME)
-ALL_KNOWN_PROTECTION_OIDS.update(KEM_OID_2_NAME)
-ALL_KNOWN_PROTECTION_OIDS.update({rfc9481.rsaEncryption: "rsa_encryption"})
-ALL_KNOWN_PROTECTION_OIDS.update(TRAD_STR_OID_TO_KEY_NAME)
+HYBRID_KEM_OID_2_NAME = {}
+HYBRID_KEM_OID_2_NAME.update(COMPOSITE_KEM05_OID_2_NAME)
+HYBRID_KEM_OID_2_NAME.update(CHEMPAT_OID_2_NAME)
+HYBRID_KEM_OID_2_NAME.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
+HYBRID_KEM_OID_2_NAME.update(COMPOSITE_KEM06_OID_2_NAME)
 
+HYBRID_SIG_OID_2_NAME = {}
+HYBRID_SIG_OID_2_NAME.update(COMPOSITE_SIG03_OID_2_NAME)
+HYBRID_SIG_OID_2_NAME.update(COMPOSITE_SIG04_OID_2_NAME)
+
+HYBRID_SIG_NAME_2_OID = {y: x for x, y in HYBRID_SIG_OID_2_NAME.items()}
+
+HYBRID_OID_2_NAME = {}
+HYBRID_OID_2_NAME.update(HYBRID_SIG_OID_2_NAME)
+HYBRID_OID_2_NAME.update(HYBRID_KEM_OID_2_NAME)
+
+HYBRID_NAME_2_OID = {y: x for x, y in HYBRID_OID_2_NAME.items()}
+
+ALL_KNOWN_OIDS_2_NAME.update(PQ_OID_2_NAME)
+ALL_KNOWN_OIDS_2_NAME.update(KEM_OID_2_NAME)
+ALL_KNOWN_OIDS_2_NAME.update({rfc9481.rsaEncryption: "rsa"})
+ALL_KNOWN_OIDS_2_NAME.update(TRAD_STR_OID_TO_KEY_NAME)
+ALL_KNOWN_OIDS_2_NAME.update(HYBRID_OID_2_NAME)
 # Extension Object Identifiers (OIDs)
 id_ce_subjectAltPublicKeyInfo = rfc5280.id_ce + (72,)
 id_ce_altSignatureAlgorithm = rfc5280.id_ce + (73,)
 id_ce_altSignatureValue = rfc5280.id_ce + (74,)
 
-ALL_KNOWN_PROTECTION_OIDS.update(
-    {
-        id_ce_subjectAltPublicKeyInfo: "alt-pub-key",
-        id_ce_altSignatureAlgorithm: "alt-sig-alg",
-        id_ce_altSignatureValue: "alt-sig-val",
-    }
-)
+EXTENSION_NAME_2_OID = {
+    "ski": rfc5280.id_ce_subjectKeyIdentifier,
+    "aia": rfc5280.id_pe_authorityInfoAccess,
+    "key_usage": rfc5280.id_ce_keyUsage,
+    "eku": rfc5280.id_ce_extKeyUsage,
+    "basic_constraints": rfc5280.id_ce_basicConstraints,
+    "aki": rfc5280.id_ce_authorityKeyIdentifier,
+    "san": rfc5280.id_ce_subjectAltName,
+    "ian": rfc5280.id_ce_issuerAltName,
+    "dcd": id_ce_deltaCertificateDescriptor,
+    "alt_sig_alg": id_ce_altSignatureAlgorithm,
+    "alt_sig_val": id_ce_altSignatureValue,
+    "alt_spki": id_ce_subjectAltPublicKeyInfo,
+    "crl": rfc5280.id_ce_cRLDistributionPoints,
+    "ocsp": rfc6960.id_pkix_ocsp,
+    "sun_hybrid_alt_sig": id_altSignatureExt,
+    "sun_hybrid_alt_pubkey": id_altSubPubKeyExt,
+}
+
+EXTENSION_OID_2_SPECS = {
+    rfc5280.id_ce_authorityKeyIdentifier: rfc5280.AuthorityKeyIdentifier,
+    rfc5280.id_ce_basicConstraints: rfc5280.BasicConstraints,
+    rfc5280.id_ce_keyUsage: rfc5280.KeyUsage,
+    rfc5280.id_ce_extKeyUsage: rfc5280.ExtKeyUsageSyntax,
+    rfc5280.id_ce_subjectAltName: rfc5280.SubjectAltName,
+    rfc5280.id_ce_issuerAltName: rfc5280.IssuerAltName,
+    rfc5280.id_ce_subjectKeyIdentifier: rfc5280.SubjectKeyIdentifier,
+    rfc5280.id_ce_cRLDistributionPoints: rfc5280.CRLDistributionPoints,
+    rfc5280.id_pe_authorityInfoAccess: rfc5280.AuthorityInfoAccessSyntax,
+}
+
+ALL_SIG_ALG_OID_2_NAME = {}
+ALL_SIG_ALG_OID_2_NAME.update(MSG_SIG_ALG)
+ALL_SIG_ALG_OID_2_NAME.update(RSA_SHA3_OID_2_NAME)
+ALL_SIG_ALG_OID_2_NAME.update(ECDSA_SHA3_OID_2_NAME)
+ALL_SIG_ALG_OID_2_NAME.update(PQ_SIG_OID_2_NAME)
+ALL_SIG_ALG_OID_2_NAME.update(STATEFUL_HASH_SIGNATURE_NAME_2_OID)
+ALL_SIG_ALG_OID_2_NAME.update(HYBRID_SIG_OID_2_NAME)
+
+ALL_SIG_ALG_NAME_2_OID = {y: x for x, y in ALL_SIG_ALG_OID_2_NAME.items()}
+
+EXTENSION_OID_2_NAME = {y: x for x, y in EXTENSION_NAME_2_OID.items()}
+
+ALL_KNOWN_OIDS_2_NAME["id_ecPublicKey"] = rfc6664.id_ecPublicKey
+ALL_KNOWN_OIDS_2_NAME.update(EXTENSION_OID_2_NAME)
+ALL_KNOWN_OIDS_2_NAME.update(COMPOSITE_KEM06_OID_2_NAME)
+ALL_KNOWN_NAMES_2_OID = {y: x for x, y in ALL_KNOWN_OIDS_2_NAME.items()}
+
+
+ENC_KEY_AGREEMENT_TYPES_OID_2_NAME = {
+    rfc9481.rsaEncryption: "rsa",
+    rfc9481.id_X25519: "x25519",
+    rfc9481.id_X448: "x448",
+}
+
+ENC_KEY_AGREEMENT_TYPES_OID_2_NAME.update(CURVE_OID_2_NAME)
+
+ENC_KEY_AGREEMENT_TYPES_NAME_2_OID = {y: x for x, y in ENC_KEY_AGREEMENT_TYPES_OID_2_NAME.items()}
