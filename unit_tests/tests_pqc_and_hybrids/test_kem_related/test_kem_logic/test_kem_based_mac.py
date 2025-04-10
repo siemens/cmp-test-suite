@@ -12,12 +12,12 @@ from resources.cryptoutils import compute_ansi_x9_63_kdf, compute_hmac
 from resources.keyutils import load_private_key_from_file
 from resources.protectionutils import (
     compute_kem_based_mac_from_alg_id,
-    prepare_kem_based_mac_alg_id,
     prepare_kem_ciphertextinfo,
     prepare_kem_other_info,
     protect_pkimessage_kem_based_mac,
     verify_kem_based_mac_protection,
 )
+from resources.prepare_alg_ids import prepare_kem_based_mac_alg_id
 
 
 class TestKEMBasedMac(unittest.TestCase):
@@ -38,8 +38,6 @@ class TestKEMBasedMac(unittest.TestCase):
         self.assertIsNotNone(alg_id)
         decoded_alg_id, rest = decoder.decode(encoder.encode(alg_id), rfc9480.AlgorithmIdentifier())
         self.assertEqual(rest, b"")
-
-
 
     def test_compute_kem_based_mac(self):
         """
@@ -101,7 +99,7 @@ class TestKEMBasedMac(unittest.TestCase):
         kdf = "kdf3", hash_alg = "sha256")
 
         decoded_pki_message, _ = decoder.decode(encoder.encode(pki_message), rfc9480.PKIMessage())
-        verify_kem_based_mac_protection(decoded_pki_message, self.mlkem_key)
+        verify_kem_based_mac_protection(decoded_pki_message, private_key=self.mlkem_key)
 
 
 

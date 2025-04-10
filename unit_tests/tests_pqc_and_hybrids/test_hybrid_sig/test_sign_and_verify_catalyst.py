@@ -5,7 +5,7 @@
 import unittest
 
 from pq_logic.hybrid_sig import catalyst_logic
-from pq_logic.pq_key_factory import PQKeyFactory
+from pq_logic.keys.pq_key_factory import PQKeyFactory
 from resources.certbuildutils import prepare_extensions
 from resources.keyutils import generate_key
 
@@ -39,6 +39,5 @@ class TestVerifyCatalyst(unittest.TestCase):
         cert_ = catalyst_logic.build_catalyst_cert(trad_key=trad_key, pq_key=pq_key,
                                                    client_key=issued_key,
                                                    extensions=extensions)
-
-        catalyst_logic.verify_catalyst_signature_migrated(cert_,
-                                                          issuer_pub_key=trad_key.public_key())
+        catalyst_logic.verify_catalyst_signature(cert_,
+                                                 issuer_pub_key=trad_key.public_key())

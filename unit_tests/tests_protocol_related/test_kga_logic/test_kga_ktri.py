@@ -28,7 +28,7 @@ class TestValidationKTRI(unittest.TestCase):
         THEN the validation should not raise an exception.
         """
         ktri = prepare_key_transport_recipient_info(version=2, key_enc_alg_oid=rfc9481.id_RSAES_OAEP,
-                                                    encrypted_key=os.urandom(32), cert=self.cmp_cert)
+                                                    encrypted_key=os.urandom(32), cmp_protection_cert=self.cmp_cert)
 
         validate_key_trans_recipient_info(ktri, cmp_cert=self.cmp_cert)
 
@@ -40,7 +40,7 @@ class TestValidationKTRI(unittest.TestCase):
         THEN the validation should not raise an exception.
         """
         ktri = prepare_key_transport_recipient_info(version=2, key_enc_alg_oid=rfc9481.id_RSAES_OAEP,
-                                                    encrypted_key=os.urandom(32), cert=self.bare_cert)
+                                                    encrypted_key=os.urandom(32), cmp_protection_cert=self.bare_cert)
         validate_key_trans_recipient_info(ktri, cmp_cert=self.bare_cert)
 
 
@@ -53,7 +53,7 @@ class TestValidationKTRI(unittest.TestCase):
         """
         iss_and_ser = prepare_issuer_and_serial_number(self.cmp_cert)
         ktri = prepare_key_transport_recipient_info(version=2, key_enc_alg_oid=rfc9481.id_RSAES_OAEP,
-                                                    encrypted_key=os.urandom(32), iss_and_ser=iss_and_ser)
+                                                    encrypted_key=os.urandom(32), issuer_and_ser=iss_and_ser)
         with self.assertRaises(ValueError):
             validate_key_trans_recipient_info(ktri, cmp_cert=self.cmp_cert)
 
@@ -63,7 +63,7 @@ class TestValidationKTRI(unittest.TestCase):
         WHEN validate_key_trans_recipient_info is called.
         THEN it should raise a ValueError indicating that version is incorrectly set.
         """
-        ktri = prepare_key_transport_recipient_info(version=3)
+        ktri = prepare_key_transport_recipient_info(version=3, cmp_protection_cert=self.cmp_cert)
         with self.assertRaises(ValueError):
             validate_key_trans_recipient_info(ktri, cmp_cert=self.cmp_cert)
 
@@ -84,7 +84,7 @@ class TestValidationKTRI(unittest.TestCase):
         WHEN validate_key_trans_recipient_info is called.
         THEN it should raise a ValueError indicating that the encryption algorithm is incorrectly set.
         """
-        ktri = prepare_key_transport_recipient_info(version=2, cert=self.cmp_cert, key_enc_alg_oid=rfc9481.id_Ed25519)
+        ktri = prepare_key_transport_recipient_info(version=2, cmp_protection_cert=self.cmp_cert, key_enc_alg_oid=rfc9481.id_Ed25519)
         with self.assertRaises(ValueError):
             validate_key_trans_recipient_info(ktri, cmp_cert=self.cmp_cert)
 
@@ -94,7 +94,7 @@ class TestValidationKTRI(unittest.TestCase):
         WHEN validate_key_trans_recipient_info is called.
         THEN it should raise a ValueError indicating that the encryptedKey field is absent.
         """
-        ktri = prepare_key_transport_recipient_info(cert=self.cmp_cert, version=2, encrypted_key=None)
+        ktri = prepare_key_transport_recipient_info(cmp_protection_cert=self.cmp_cert, version=2, encrypted_key=None)
         with self.assertRaises(ValueError):
             validate_key_trans_recipient_info(ktri, cmp_cert=self.cmp_cert)
 

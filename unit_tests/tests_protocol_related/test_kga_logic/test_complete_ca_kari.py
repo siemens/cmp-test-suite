@@ -23,7 +23,7 @@ from resources.envdatautils import (
     prepare_mqv_user_keying_material,
 )
 from resources.keyutils import generate_key, load_private_key_from_file
-from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
+from resources.typingutils import ECDHPrivKeyTypes, ECDHPubKeyTypes
 from resources.utils import load_and_decode_pem_file
 
 from unit_tests.prepare_ca_response import build_complete_envelope_data_ca_msg
@@ -52,16 +52,16 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
 
         # Load server's X25519 key and certificate
         self.server_x25519_key = load_private_key_from_file(
-            "data/keys/server-key-x25519.pem", key_type="x25519"
+            "data/keys/private-key-x25519.pem"
         )
         self.server_x25519_cert = parse_certificate(
             utils.load_and_decode_pem_file("data/unittest/cmp_prot_kari_x25519.pem")
         )
 
-    def _prepare_kari(self, ee_pub_key: ECDHPublicKey,
+    def _prepare_kari(self, ee_pub_key: ECDHPubKeyTypes,
                       key_agreement_oid: univ.ObjectIdentifier,
                       exchange_cert: rfc9480.CMPCertificate,
-                      server_private_key: ECDHPrivateKey):
+                      server_private_key: ECDHPrivKeyTypes):
         """Prepare a KeyAgreeRecipientInfo object for testing.
 
         :param ee_pub_key: The end-entity's public key.
@@ -156,7 +156,7 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
         )
 
         # Client's X25519 private key requesting a new key
-        ee_key = load_private_key_from_file("data/keys/client-key-x25519.pem", key_type="x25519")
+        ee_key = load_private_key_from_file("data/keys/client-key-x25519.pem")
         ee_pub_key = ee_key.public_key()
 
         recip_info = self._prepare_kari(

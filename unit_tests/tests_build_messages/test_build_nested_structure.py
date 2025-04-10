@@ -4,16 +4,16 @@
 
 import unittest
 
-from pyasn1.codec.der import decoder, encoder
-from pyasn1_alt_modules import rfc9480
+from resources.asn1_structures import PKIMessageTMP
 from resources.cmputils import build_ir_from_key, build_nested_pkimessage
 from resources.keyutils import load_private_key_from_file
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
-def _nested_example() -> rfc9480.PKIMessage:  # noqa D417 undocumented-param
+def _nested_example() -> PKIMessageTMP:  # noqa D417 undocumented-param
     """Build fresh messages to ensure new ones can be added to a nested message."""
     messages = []
-    key = load_private_key_from_file("data/keys/private-key-ed25519.pem", key_type="ed25519")
+    key = load_private_key_from_file("data/keys/private-key-ed25519.pem")
 
     for x in range(5):
         pki_message = build_ir_from_key(key, sender=f"test{x}@example.com")
@@ -32,9 +32,7 @@ class TestNestedPKIMessage(unittest.TestCase):
         lost in the process.
         """
         original_message = build_nested_pkimessage(exclude_fields=None)
-        encoded_message = encoder.encode(original_message)
-        decoded_message, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        decoded_message = de_and_encode_pkimessage(original_message)
         self.assertTrue(decoded_message["body"].getName() == "nested")
 
     def test_append_to_nested_structure(self):
@@ -62,9 +60,7 @@ class TestNestedPKIMessage(unittest.TestCase):
             len(nested_message["body"]["nested"]), 5, "The nested structure should contain exactly 5 messages."
         )
 
-        der_data = encoder.encode(nested_message)
-        decoded_message, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        decoded_message = de_and_encode_pkimessage(nested_message)
         self.assertTrue(decoded_message["body"].getName() == "nested")
 
 

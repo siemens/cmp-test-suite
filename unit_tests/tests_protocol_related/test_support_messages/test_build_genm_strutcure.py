@@ -17,6 +17,7 @@ from pyasn1_alt_modules import rfc9480
 from resources.certutils import parse_certificate
 from resources.general_msg_utils import build_general_message
 from resources.utils import load_and_decode_pem_file
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
 def convert_to_asn1cert(cert: Union[rfc9480.CMPCertificate, x509.Certificate]) -> rfc9480.CMPCertificate:  # noqa D417 undocumented-param
@@ -167,9 +168,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         """
         add_messages = "get_ca_certs"
         genm = build_general_message(add_messages=add_messages, sender=self.sender, recipient=self.recipient)
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -191,9 +190,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
             add_messages=add_messages,
             negative=True, sender=self.sender, recipient=self.recipient
         )
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
 
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
@@ -213,9 +210,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         """
         add_messages = "get_root_ca_cert_update"
         genm = build_general_message(add_messages=add_messages, sender=self.sender, recipient=self.recipient)
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -236,9 +231,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         genm = build_general_message(
             add_messages=add_messages, ca_cert=self.cert, sender=self.sender, recipient=self.recipient
         )
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -256,9 +249,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         THEN the decoded message should correctly contain the certificate request template information type.
         """
         genm = build_general_message(add_messages="get_cert_template", sender=self.sender, recipient=self.recipient)
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -278,9 +269,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         genm = build_general_message(
             add_messages="get_cert_template", negative=True, sender=self.sender, recipient=self.recipient
         )
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -299,9 +288,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         THEN the decoded message should correctly contain the current CRL information type.
         """
         genm = build_general_message(add_messages="current_crl", sender=self.sender, recipient=self.recipient)
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -320,9 +307,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         genm = build_general_message(
             add_messages="current_crl", negative=True, sender=self.sender, recipient=self.recipient
         )
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -342,9 +327,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         genm = build_general_message(
             add_messages=add_messages, crl_cert=self.cert, sender=self.sender, recipient=self.recipient
         )
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -364,9 +347,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         genm = build_general_message(
             add_messages=add_messages, crl_cert=self.cert_issuing_dp, sender=self.sender, recipient=self.recipient
         )
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -390,9 +371,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
             sender=self.sender,
             recipient=self.recipient,
         )
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -413,9 +392,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
         genm = build_general_message(
             add_messages=add_messages, crl_cert=self.cert, negative=True, sender=self.sender, recipient=self.recipient
         )
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -444,9 +421,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
             sender=self.sender,
             recipient=self.recipient,
         )
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(
             len(dec_pki_msg["body"]["genm"]) == 1, f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}"
@@ -468,9 +443,7 @@ class TestBuildGeneralMessage(unittest.TestCase):
                                      sender=self.sender, recipient=self.recipient)
 
 
-        encoded_message = encoder.encode(genm)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(genm)
         self.assertTrue(dec_pki_msg["body"].getName() == "genm")
         self.assertTrue(len(dec_pki_msg["body"]["genm"]) == 1,
                         f"Decoded body looks like: {dec_pki_msg['body'].prettyPrint()}")

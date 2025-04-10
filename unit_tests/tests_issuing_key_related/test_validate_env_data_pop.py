@@ -4,7 +4,7 @@
 
 import unittest
 
-from pq_logic.keys.composite_kem_pki import CompositeMLKEMRSAPrivateKey
+from pq_logic.keys.composite_kem05 import CompositeKEMPrivateKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc4211
@@ -21,7 +21,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.kem_key: MLKEMPrivateKey = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
-        cls.x25519 = load_private_key_from_file("data/keys/private-key-x25519.pem", key_type="x25519")
+        cls.x25519 = load_private_key_from_file("data/keys/private-key-x25519.pem")
         cls.kem_cert = parse_certificate(
             load_and_decode_pem_file("data/unittest/pq_cert_ml_kem_768.pem"))
 
@@ -33,10 +33,11 @@ class TestValidateEnvDataPOP(unittest.TestCase):
         cls.xwing_cert = parse_certificate(load_and_decode_pem_file("data/unittest/hybrid_cert_xwing.pem"))
         cls.xwing_key_other = load_private_key_from_file("data/keys/private-key-xwing-other.pem")
 
-        cls.private_key_rsa_1 = CompositeMLKEMRSAPrivateKey.generate(pq_name="ml-kem-768", trad_param=2048)
-        cls.private_key_rsa_2 = CompositeMLKEMRSAPrivateKey.generate(pq_name="ml-kem-768", trad_param=2048)
+        rsa_key = generate_key("rsa", length=2048)
+        pq_key = generate_key("ml-kem-768")
 
-        cls.comp_cert = build_certificate(private_key=cls.private_key_rsa_2, signing_key=generate_key("rsa"))[0]
+        cls.private_key_rsa_1 = CompositeKEMPrivateKey(pq_key, rsa_key)
+        cls.comp_cert = build_certificate(private_key=cls.private_key_rsa_1, ca_key=generate_key("rsa"))[0]
 
     def test_prepare_kem_env_data_for_popo(self):
         """
@@ -59,7 +60,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
         decoded, _ = decoder.decode(der_data, rfc4211.ProofOfPossession())
         env_data = decoded["keyEncipherment"]["encryptedKey"]
 
-        secure_data = validate_enveloped_data(env_data=env_data, for_enc_rand=True, ee_key=self.kem_key)
+        secure_data = validate_enveloped_data(env_data=env_data, for_pop=True, ee_key=self.kem_key)
         self.assertEqual(secure_data, b"AAAAAAAAA")
 
     def test_prepare_env_data_with_xwing(self):
@@ -76,7 +77,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
             cert_req_id=0,
             enc_key_sender=self.enc_key_sender,
             key_encipherment=True,
-            hybrid_key_recip=self.xwing_key_other,
+            hybrid_key_recip=self.xwing_key_other.trad_key,
         )
 
         # To simulate, send over the wire, because ori uses ASN.1 Any.
@@ -84,7 +85,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
         decoded, _ = decoder.decode(der_data, rfc4211.ProofOfPossession())
         env_data = decoded["keyEncipherment"]["encryptedKey"]
 
-        secure_data = validate_enveloped_data(env_data=env_data, for_enc_rand=True, ee_key=self.xwing_key)
+        secure_data = validate_enveloped_data(env_data=env_data, for_pop=True, ee_key=self.xwing_key)
         self.assertEqual(secure_data, b"AAAAAAAAA")
 
 
@@ -103,12 +104,11 @@ class TestValidateEnvDataPOP(unittest.TestCase):
             cek=B"A" * 32,
             enc_key_sender="CN=Null-DN",
             key_encipherment=True,
-            hybrid_key_recip=self.private_key_rsa_1,
         )
 
         der_data = encoder.encode(popo_structure)
         decoded, _ = decoder.decode(der_data, rfc4211.ProofOfPossession())
         env_data = decoded["keyEncipherment"]["encryptedKey"]
 
-        secure_data = validate_enveloped_data(env_data=env_data, for_enc_rand=True, ee_key=self.private_key_rsa_2)
+        secure_data = validate_enveloped_data(env_data=env_data, for_pop=True, ee_key=self.private_key_rsa_1)
         self.assertEqual(secure_data, b"AAAAAAAAA")

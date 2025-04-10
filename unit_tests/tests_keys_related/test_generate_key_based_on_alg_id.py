@@ -7,7 +7,7 @@ import unittest
 from pyasn1_alt_modules import rfc9480
 
 from resources.keyutils import generate_key_based_on_alg_id
-from resources.oidutils import PQ_NAME_2_OID, TRAD_STR_OID_TO_KEY_NAME, PQ_SIG_PRE_HASH_OID_2_NAME
+from resources.oidutils import PQ_NAME_2_OID
 
 
 def _prepare_alg_id_by_name(name: str) -> rfc9480.AlgorithmIdentifier:
