@@ -28,7 +28,7 @@ from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_p
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from pq_logic.trad_typing import ECDHPrivateKey
 from resources import certutils, cmputils, keyutils, utils
-from resources.asn1_structures import InfoTypeAndValueAsn1, KemCiphertextInfoAsn1, PKIMessageTMP
+from resources.asn1_structures import InfoTypeAndValue, KemCiphertextInfoAsn1, PKIMessageTMP
 from resources.convertutils import copy_asn1_certificate, pyasn1_time_obj_to_py_datetime
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import CURVE_OIDS_2_NAME
