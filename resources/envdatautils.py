@@ -14,11 +14,6 @@ from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, paddin
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PublicKey
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey, HybridKEMPublicKey, KEMPublicKey
-from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
-from pq_logic.tmp_oids import CMS_COMPOSITE03_OID_2_HASH
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1.type.base import Asn1Item
@@ -37,6 +32,11 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey, HybridKEMPublicKey, KEMPublicKey
+from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
+from pq_logic.tmp_oids import CMS_COMPOSITE03_OID_2_HASH
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources import (
     asn1utils,
     certbuildutils,

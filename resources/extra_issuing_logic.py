@@ -13,9 +13,6 @@ from typing import Optional, Union
 
 import pyasn1.error
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, KEMPublicKey
-from pq_logic.pq_utils import is_kem_private_key, is_kem_public_key
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1.type.base import Asn1Type
@@ -23,6 +20,9 @@ from pyasn1_alt_modules import rfc4211, rfc5652, rfc9480, rfc9629
 from robot.api.deco import keyword, not_keyword
 
 import resources.prepareutils
+from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, KEMPublicKey
+from pq_logic.pq_utils import is_kem_private_key, is_kem_public_key
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources import (
     asn1utils,
     ca_kga_logic,

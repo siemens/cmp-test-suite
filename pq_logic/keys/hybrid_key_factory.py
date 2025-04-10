@@ -11,16 +11,6 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from pyasn1.codec.der import decoder
 from pyasn1_alt_modules import rfc5958
 
-from pq_logic.trad_typing import ECDHPrivateKey
-from resources.exceptions import BadAlg, InvalidKeyCombination
-from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
-from resources.oidutils import (
-    ALL_COMPOSITE_SIG04_COMBINATIONS,
-    ALL_COMPOSITE_SIG_COMBINATIONS,
-    XWING_OID_STR,
-)
-from resources.typingutils import Strint, ECSignKey
-
 from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey, PQPrivateKey, TradKEMPrivateKey
 from pq_logic.keys.chempat_key import ChempatPrivateKey, ChempatPublicKey
 from pq_logic.keys.composite_kem05 import (
@@ -33,10 +23,17 @@ from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.trad_key_factory import generate_trad_key
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import CHEMPAT_OID_2_NAME
+from pq_logic.trad_typing import ECDHPrivateKey
+from resources.exceptions import BadAlg, InvalidKeyCombination
+from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
+from resources.oidutils import (
+    ALL_COMPOSITE_SIG04_COMBINATIONS,
+    ALL_COMPOSITE_SIG_COMBINATIONS,
+    XWING_OID_STR,
+)
+from resources.typingutils import ECSignKey, Strint
 
-TradPartPrivateKey = Union[
-    ECSignKey, ECDHPrivateKey, RSAPrivateKey, TradKEMPrivateKey
-]
+TradPartPrivateKey = Union[ECSignKey, ECDHPrivateKey, RSAPrivateKey, TradKEMPrivateKey]
 
 ALL_CHEMPAT_COMBINATIONS = [
     {"pq_name": "sntrup761", "trad_name": "x25519"},
@@ -243,7 +240,7 @@ class HybridKeyFactory:
         trad_name: Optional[str] = None,
         length: Optional[Strint] = None,
         curve: Optional[str] = None,
-        trad_key: Optional[TradPartPrivateKey]=None,
+        trad_key: Optional[TradPartPrivateKey] = None,
         pq_key: Optional[PQPrivateKey] = None,
     ) -> HybridPrivateKey:
         """Generate a hybrid key based on the requested algorithm and optional parameters
@@ -267,7 +264,7 @@ class HybridKeyFactory:
         if all(x is None for x in [pq_name, trad_name, length, curve]):
             hybrid = algorithm.replace("composite-", "")
             default_entry = HybridKeyFactory.default_comb[hybrid]
-            return HybridKeyFactory.generate_hybrid_key(algorithm, **default_entry) # type: ignore
+            return HybridKeyFactory.generate_hybrid_key(algorithm, **default_entry)  # type: ignore
 
         return HybridKeyFactory._generate_default_hybrid_key(
             algorithm=algorithm,
@@ -386,7 +383,7 @@ class HybridKeyFactory:
         return _parse_private_keys(algorithm, pq_key, trad_key)
 
     @staticmethod
-    def from_one_asym_key(one_asym_key: Union[rfc5958.OneAsymmetricKey, bytes]) -> "HybridPrivateKey": #ytpe: ignore
+    def from_one_asym_key(one_asym_key: Union[rfc5958.OneAsymmetricKey, bytes]) -> "HybridPrivateKey":  # ytpe: ignore
         """Create a new hybrid key from an `OneAsymmetricKey` structure."""
         if isinstance(one_asym_key, bytes):
             one_asym_key = decoder.decode(one_asym_key, asn1Spec=rfc5958.OneAsymmetricKey())[0]

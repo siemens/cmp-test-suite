@@ -18,7 +18,6 @@ from typing import Optional, Tuple, Union
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import x25519
 from pyasn1.type import univ
-from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.keys.abstract_wrapper_keys import (
@@ -39,6 +38,7 @@ from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey
 from pq_logic.tmp_oids import CHEMPAT_NAME_2_OID
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.exceptions import InvalidKeyCombination
 
 CURVE_NAME_2_CONTEXT_NAME = {
     "secp256r1": "P256",
@@ -331,7 +331,6 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
         raise InvalidKeyCombination(f"Unsupported key combination: {pq_key.name}-{trad_key.get_trad_name}")
 
 
-
 class ChempatMLKEMPublicKey(ChempatPublicKey):
     """Chempat ML-KEM 768 public key class."""
 
@@ -378,7 +377,7 @@ class ChempatSntrup761PrivateKey(ChempatPrivateKey):
     @classmethod
     def generate(cls) -> "ChempatSntrup761PrivateKey":
         """Generate a ChempatSntrup761PrivateKey instance."""
-        return cls(PQKeyFactory.generate_pq_key("sntrup761"), x25519.X25519PrivateKey.generate()) #type: ignore
+        return cls(PQKeyFactory.generate_pq_key("sntrup761"), x25519.X25519PrivateKey.generate())  # type: ignore
 
     def public_key(self) -> ChempatSntrup761PublicKey:
         """Return the corresponding public key class."""

@@ -8,11 +8,15 @@ import logging
 from typing import Optional, Union
 
 import pyasn1.error
-import resources.prepare_alg_ids
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from pyasn1_alt_modules.rfc4210 import CMPCertificate
+from robot.api.deco import keyword, not_keyword
+
+import resources.prepare_alg_ids
+from pq_logic.hybrid_structures import AltSignatureValueExt, SubjectAltPublicKeyInfoExt
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from resources import certbuildutils, certextractutils, certutils, convertutils, cryptoutils, keyutils, utils
 from resources.asn1_structures import CatalystPreTBSCertificate
 from resources.convertutils import subject_public_key_info_from_pubkey
@@ -25,10 +29,6 @@ from resources.oidutils import (
     id_ce_subjectAltPublicKeyInfo,
 )
 from resources.typingutils import PrivateKey, PublicKey, SignKey, TradSignKey, VerifyKey
-from robot.api.deco import keyword, not_keyword
-
-from pq_logic.hybrid_structures import AltSignatureValueExt, SubjectAltPublicKeyInfoExt
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 
 
 @keyword(name="Prepare SubjectAltPublicKeyInfo Extension")

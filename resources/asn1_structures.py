@@ -10,6 +10,7 @@ Will be removed as soon as the draft becomes an RFC.
 from pyasn1.type import constraint, namedtype, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 
+
 class OIDs(univ.SequenceOf):
     """Defines the ASN.1 structure for the `KeyPairParamRep`.
 
@@ -17,6 +18,7 @@ class OIDs(univ.SequenceOf):
     """
 
     componentType = univ.ObjectIdentifier()
+
 
 class AlgorithmIdentifiers(univ.SequenceOf):
     """Defines the ASN.1 structure for the `KeyPairParamRep`.
@@ -346,7 +348,7 @@ class PKIMessageTMP(univ.Sequence):
             univ.SequenceOf(componentType=rfc9480.CMPCertificate())
             .subtype(subtypeSpec=constraint.ValueSizeConstraint(1, MAX))
             .subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)),
-            ),
+        ),
     )
 
 

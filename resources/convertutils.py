@@ -11,14 +11,14 @@ import datetime
 from typing import Any, Optional, Union
 
 from cryptography.hazmat.primitives import serialization
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, KEMPublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc9480
 from robot.api.deco import not_keyword
 
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, KEMPublicKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PublicKey
 from resources.copyasn1utils import copy_subject_public_key_info
 from resources.oidutils import PQ_NAME_2_OID
 from resources.typingutils import PublicKey, SignKey, TradSignKey, TradVerifyKey, VerifyKey

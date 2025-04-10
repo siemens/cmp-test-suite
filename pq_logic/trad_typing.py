@@ -8,6 +8,7 @@ from typing import List, Tuple, Union
 
 from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from pyasn1_alt_modules import rfc9480
+
 from resources.asn1_structures import CertResponseTMP, PKIMessageTMP
 
 ECDHPrivateKey = Union[ec.EllipticCurvePrivateKey, x25519.X25519PrivateKey, x448.X448PrivateKey]

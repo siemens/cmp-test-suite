@@ -12,13 +12,6 @@ from typing import List, Optional, Tuple, Union
 import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dsa, padding, rsa, x448, x25519
-from pq_logic import py_verify_logic
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
-from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, id_it_KemCiphertextInfo
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
@@ -36,6 +29,13 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic import py_verify_logic
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
+from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
+from pq_logic.pq_utils import get_kem_oid_from_key
+from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, id_it_KemCiphertextInfo
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources import (
     certbuildutils,
     certextractutils,

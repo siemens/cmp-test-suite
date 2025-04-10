@@ -9,8 +9,9 @@ Just to avoid import conflicts will be removed in the future.
 """
 
 from cryptography.hazmat.primitives import hashes
-from resources.oidutils import ALLOWED_HASH_TYPES
 from robot.api.deco import not_keyword
+
+from resources.oidutils import ALLOWED_HASH_TYPES
 
 
 @not_keyword

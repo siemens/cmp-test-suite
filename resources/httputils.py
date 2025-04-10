@@ -55,7 +55,7 @@ def http_response_contains_pki_message(data: requests.Response) -> bool:  # noqa
 
 @keyword(name="Add URL Suffix")
 def add_url_suffix(  # noqa: D417 Missing argument descriptions in the docstring
-        url: str, suffix: Optional[str]
+    url: str, suffix: Optional[str]
 ) -> str:
     """Add a suffix to a URL if it is not empty.
 
@@ -76,13 +76,13 @@ def add_url_suffix(  # noqa: D417 Missing argument descriptions in the docstring
 
 @keyword("Start SSL Server")
 def start_ssl_server(  # noqa: D417 Missing argument descriptions in the docstring
-        server_cert: str,
-        server_key: str,
-        client_ca: str,
-        host: str = "0.0.0.0",
-        port: Union[str, int] = 8443,
-        timeout: Union[str, int] = 20,
-        password: Optional[str] = None,
+    server_cert: str,
+    server_key: str,
+    client_ca: str,
+    host: str = "0.0.0.0",
+    port: Union[str, int] = 8443,
+    timeout: Union[str, int] = 20,
+    password: Optional[str] = None,
 ) -> Optional[bytes]:
     """Start a TLS server that listens for incoming connections and processes data.
 
@@ -164,7 +164,7 @@ def start_ssl_server(  # noqa: D417 Missing argument descriptions in the docstri
 
 @keyword("Start Unsafe TCP Server")
 def start_unsafe_tcp_server(  # noqa: D417 Missing argument descriptions in the docstring
-        host: str = "0.0.0.0", port: Union[str, int] = 8443, timeout: Union[str, int] = 20
+    host: str = "0.0.0.0", port: Union[str, int] = 8443, timeout: Union[str, int] = 20
 ):
     """Start a TCP `UNSAFE` server that listens for incoming connections and processes data.
 
@@ -230,12 +230,12 @@ if __name__ == "__main__":
 
 @not_keyword
 def ssl_client(
-        server_host: str,
-        server_port: Union[str, int],
-        client_cert: str,
-        client_key: str,
-        server_ca_cert: str,
-        message: bytes,
+    server_host: str,
+    server_port: Union[str, int],
+    client_cert: str,
+    client_key: str,
+    server_ca_cert: str,
+    message: bytes,
 ) -> None:
     """Connect to a TLS server and sends a message.
 

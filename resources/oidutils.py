@@ -9,27 +9,6 @@ from typing import Dict
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
-from pq_logic.tmp_oids import (
-    CHEMPAT_OID_2_NAME,
-    CMS_COMPOSITE03_OID_2_HASH,
-    COMP_SIG03_PREHASH_OID_2_HASH,
-    COMPOSITE_KEM05_OID_2_NAME,
-    COMPOSITE_KEM06_OID_2_NAME,
-    COMPOSITE_SIG03_HASH_NAME_2_OID,
-    COMPOSITE_SIG03_OID_2_NAME,
-    COMPOSITE_SIG04_OID_2_NAME,
-    FALCON_NAME_2_OID,
-    FRODOKEM_NAME_2_OID,
-    FRODOKEM_OID_2_NAME,
-    MCELIECE_NAME_2_OID,
-    MCELIECE_OID_2_NAME,
-    PURE_COMPOSITE_SIG03_NAME_TO_OID,
-    PURE_OID_TO_HASH,
-    id_altSignatureExt,
-    id_altSubPubKeyExt,
-    id_ce_deltaCertificateDescriptor,
-    id_sntrup761_str,
-)
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
     rfc3370,
@@ -50,6 +29,28 @@ from pyasn1_alt_modules import (
     rfc9688,
     rfc9690,
     rfc9708,
+)
+
+from pq_logic.tmp_oids import (
+    CHEMPAT_OID_2_NAME,
+    CMS_COMPOSITE03_OID_2_HASH,
+    COMP_SIG03_PREHASH_OID_2_HASH,
+    COMPOSITE_KEM05_OID_2_NAME,
+    COMPOSITE_KEM06_OID_2_NAME,
+    COMPOSITE_SIG03_HASH_NAME_2_OID,
+    COMPOSITE_SIG03_OID_2_NAME,
+    COMPOSITE_SIG04_OID_2_NAME,
+    FALCON_NAME_2_OID,
+    FRODOKEM_NAME_2_OID,
+    FRODOKEM_OID_2_NAME,
+    MCELIECE_NAME_2_OID,
+    MCELIECE_OID_2_NAME,
+    PURE_COMPOSITE_SIG03_NAME_TO_OID,
+    PURE_OID_TO_HASH,
+    id_altSignatureExt,
+    id_altSubPubKeyExt,
+    id_ce_deltaCertificateDescriptor,
+    id_sntrup761_str,
 )
 
 # In RFC 9480 Certificate Management Protocol (CMP) Updates

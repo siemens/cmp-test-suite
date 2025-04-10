@@ -17,21 +17,14 @@ from datetime import datetime, timedelta
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import pyasn1
-import resources.prepare_alg_ids
-import resources.protectionutils
 from cryptography.hazmat.primitives import serialization
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc2986, rfc4211, rfc5280, rfc6402, rfc9480
-from resources import certbuildutils, certextractutils, convertutils, cryptoutils, keyutils, utils
-from resources.convertutils import copy_asn1_certificate
-from resources.copyasn1utils import copy_subject_public_key_info
-from resources.exceptions import BadAsn1Data
-from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
-from resources.prepare_alg_ids import prepare_sha_alg_id
-from resources.typingutils import PublicKey, SignKey
 from robot.api.deco import keyword, not_keyword
 
+import resources.prepare_alg_ids
+import resources.protectionutils
 from pq_logic.hybrid_structures import AltSignatureExt, AltSubPubKeyExt, UniformResourceIdentifier
 from pq_logic.keys.abstract_wrapper_keys import HybridPublicKey
 from pq_logic.keys.composite_sig03 import (
@@ -47,6 +40,13 @@ from pq_logic.tmp_oids import (
     id_altSubPubKeyHashAlgAttr,
     id_altSubPubKeyLocAttr,
 )
+from resources import certbuildutils, certextractutils, convertutils, cryptoutils, keyutils, utils
+from resources.convertutils import copy_asn1_certificate
+from resources.copyasn1utils import copy_subject_public_key_info
+from resources.exceptions import BadAsn1Data
+from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
+from resources.prepare_alg_ids import prepare_sha_alg_id
+from resources.typingutils import PublicKey, SignKey
 
 
 def _hash_public_key(public_key: PublicKey, hash_alg: str) -> bytes:

@@ -13,11 +13,25 @@ Either has functionality to verify signatures of PKIMessages or certificates.
 import logging
 from typing import Iterable, List, Optional, Sequence, Tuple, Union
 
-import resources.protectionutils
 from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import constraint, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
+from robot.api.deco import keyword
+
+import resources.protectionutils
+from pq_logic.hybrid_sig import cert_binding_for_multi_auth, certdiscovery, chameleon_logic, sun_lamps_hybrid_scheme_00
+from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
+from pq_logic.keys.abstract_pq import PQSignaturePublicKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
+from pq_logic.keys.composite_sig04 import CompositeSig04PublicKey
+from pq_logic.keys.pq_key_factory import PQKeyFactory
+from pq_logic.tmp_oids import (
+    COMPOSITE_SIG04_OID_2_NAME,
+    id_altSubPubKeyExt,
+    id_ce_deltaCertificateDescriptor,
+    id_relatedCert,
+)
 from resources import certutils, compareutils, convertutils, keyutils, utils
 from resources.asn1_structures import PKIMessageTMP, ProtectedPartTMP
 from resources.certextractutils import get_extension
@@ -33,22 +47,6 @@ from resources.oidutils import (
     id_ce_subjectAltPublicKeyInfo,
 )
 from resources.typingutils import CertOrCerts, VerifyKey
-from robot.api.deco import keyword
-
-
-from pq_logic.hybrid_sig import cert_binding_for_multi_auth, certdiscovery, chameleon_logic, sun_lamps_hybrid_scheme_00
-from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
-from pq_logic.keys.abstract_pq import PQSignaturePublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PublicKey
-from pq_logic.keys.pq_key_factory import PQKeyFactory
-from pq_logic.tmp_oids import (
-    COMPOSITE_SIG04_OID_2_NAME,
-    id_altSubPubKeyExt,
-    id_ce_deltaCertificateDescriptor,
-    id_relatedCert,
-)
-
 
 
 def verify_cert_hybrid_signature(  # noqa D417 undocumented-param
@@ -431,7 +429,8 @@ def _get_catalyst_info_vals(
 ) -> Tuple[
     Optional[rfc9480.AlgorithmIdentifier],
     Optional[rfc5280.SubjectPublicKeyInfo],
-    Optional[bytes], Optional[Sequence[rfc9480.InfoTypeAndValue]]
+    Optional[bytes],
+    Optional[Sequence[rfc9480.InfoTypeAndValue]],
 ]:
     """Extract the catalyst protection mechanism values from the `generalInfo` field.
 
@@ -757,9 +756,7 @@ def may_extract_alt_key_from_cert(  # noqa: D417 Missing argument descriptions i
     oid = spki["algorithm"]["algorithm"]
 
     if extn_sun_hybrid is not None:
-        public_key = sun_lamps_hybrid_scheme_00.get_sun_hybrid_alt_pub_key(
-            cert["tbsCertificate"]["extensions"]
-        )
+        public_key = sun_lamps_hybrid_scheme_00.get_sun_hybrid_alt_pub_key(cert["tbsCertificate"]["extensions"])
         if public_key is not None:
             return public_key  # type: ignore
         raise ValueError("Could not extract the Sun-Hybrid alternative public key.")

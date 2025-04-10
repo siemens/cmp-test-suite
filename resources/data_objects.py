@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
-from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from pyasn1_alt_modules import rfc9480
 
-from resources.typingutils import ECDHPublicKey, ECDHPrivateKey
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 
 
 @dataclass
@@ -25,6 +25,7 @@ class ExtraIssuingData:
     regToken: Optional[str] = None
     found_regToken: bool = False
     authenticator: Optional[str] = None
+
 
 @dataclass
 class KARICertsAndKeys:
@@ -47,8 +48,7 @@ class KARICertsAndKeys:
     ecc_cert: Optional[rfc9480.CMPCertificate] = None
     ecc_key: Optional[EllipticCurvePrivateKey] = None
 
-    def get_cert_and_key(self, public_key: ECDHPublicKey) \
-            -> Tuple[rfc9480.CMPCertificate, ECDHPrivateKey]:
+    def get_cert_and_key(self, public_key: ECDHPublicKey) -> Tuple[rfc9480.CMPCertificate, ECDHPrivateKey]:
         """Get the certificate and key for the given public key.
 
         :param public_key: The public key for which to retrieve the certificate and key.
@@ -71,3 +71,18 @@ class KARICertsAndKeys:
         else:
             raise ValueError(f"Unsupported public key type: {type(public_key)}")
 
+    @staticmethod
+    def from_kwargs(**kwargs) -> "KARICertsAndKeys":
+        """Create an instance of `KARICertsAndKeys` from keyword arguments.
+
+        :param kwargs: Keyword arguments representing the attributes of the class.
+        :return: An instance of `KARICertsAndKeys`.
+        """
+        return KARICertsAndKeys(
+            x25519_cert=kwargs.get("x25519_cert"),
+            x25519_key=kwargs.get("x25519_key"),
+            x448_cert=kwargs.get("x448_cert"),
+            x448_key=kwargs.get("x448_key"),
+            ecc_cert=kwargs.get("ecc_cert"),
+            ecc_key=kwargs.get("ecc_key"),
+        )

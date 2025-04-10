@@ -11,10 +11,11 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import dh, dsa, ec, ed448, ed25519, rsa, x448, x25519
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc4211, rfc5958, rfc6664, rfc9481
+from robot.api.deco import not_keyword
+
 from resources.exceptions import BadAlg, BadAsn1Data
 from resources.oid_mapping import get_curve_instance, may_return_oid_to_name
 from resources.typingutils import PrivateKey
-from robot.api.deco import not_keyword
 
 
 @not_keyword

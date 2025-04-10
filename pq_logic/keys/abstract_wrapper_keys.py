@@ -56,11 +56,11 @@ from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5958
-from resources.oidutils import PQ_NAME_2_OID
 
 from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1, CompositeSignaturePublicKeyAsn1
 from pq_logic.keys.serialize_utils import prepare_enc_key_pem
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.oidutils import PQ_NAME_2_OID
 
 ECSignKey = Union[ec.EllipticCurvePrivateKey, Ed25519PrivateKey, Ed448PrivateKey]
 ECVerifyKey = Union[ec.EllipticCurvePublicKey, Ed25519PublicKey, Ed448PublicKey]
@@ -373,8 +373,8 @@ class PQPrivateKey(WrapperPrivateKey, ABC):
         :param seed: The seed used to generate the key pair.
         """
         self._name, self._other_name = self._check_name(alg_name)
-        self._private_key_bytes = private_bytes # type: ignore
-        self._public_key_bytes = public_key # type: ignore
+        self._private_key_bytes = private_bytes  # type: ignore
+        self._public_key_bytes = public_key  # type: ignore
         self._seed = seed
         self._initialize_key()
 
@@ -774,8 +774,8 @@ class AbstractCompositePublicKey(HybridPublicKey, ABC):
         """
         return self._export_public_key()
 
-
-    def _get_trad_key_name(self,
+    def _get_trad_key_name(
+        self,
         use_pss: bool = False,
     ) -> str:
         """Retrieve the traditional algorithm name based on the key type."""

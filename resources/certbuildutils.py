@@ -14,11 +14,6 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
-from pq_logic.keys.trad_kem_keys import RSAEncapKey
-from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.tmp_oids import COMPOSITE_SIG03_HASH_OID_2_NAME, COMPOSITE_SIG04_HASH_OID_2_NAME, id_rsa_kem_spki
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ, useful
 from pyasn1.type.base import Asn1Item, Asn1Type
@@ -26,6 +21,11 @@ from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc8
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
+from pq_logic.keys.trad_kem_keys import RSAEncapKey
+from pq_logic.pq_utils import is_kem_public_key
+from pq_logic.tmp_oids import COMPOSITE_SIG03_HASH_OID_2_NAME, COMPOSITE_SIG04_HASH_OID_2_NAME, id_rsa_kem_spki
 from resources import (
     asn1utils,
     certextractutils,

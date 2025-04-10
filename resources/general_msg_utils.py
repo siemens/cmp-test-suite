@@ -16,20 +16,19 @@ the target goal of the Test-Suite.
 import datetime
 import logging
 import os
-from typing import List, Optional, Set, Tuple, Union, Sequence
+from typing import List, Optional, Sequence, Set, Tuple, Union
 
 import pyasn1.error
-from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPrivateKey, KEMPublicKey
-from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import id_it_KemCiphertextInfo
-from pq_logic.trad_typing import ECDHPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ, useful
 from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc5652, rfc6664, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
-from unit_tests.utils_for_test import try_encode_pyasn1
 
 import resources.prepareutils
+from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPrivateKey, KEMPublicKey
+from pq_logic.pq_utils import get_kem_oid_from_key
+from pq_logic.tmp_oids import id_it_KemCiphertextInfo
+from pq_logic.trad_typing import ECDHPrivateKey
 from resources import ca_ra_utils, cert_linters_utils, certutils, cmputils, envdatautils, keyutils, utils
 from resources.asn1_structures import (
     AlgorithmIdentifiers,
@@ -58,6 +57,7 @@ from resources.oidutils import (
 from resources.suiteenums import GeneralInfoOID
 from resources.typingutils import EnvDataPublicKey, Strint
 from resources.utils import manipulate_bytes_based_on_key
+from unit_tests.utils_for_test import try_encode_pyasn1
 
 # TODO for the future, change references to new RFC.
 # currently uses the Draft version for messages not mentioned in RFC9483.
@@ -1156,11 +1156,9 @@ def prepare_enc_key_pair_types_response(
 
 
 @not_keyword
-def prepare_unsupported_oids_response(
-    oids: Sequence[univ.ObjectIdentifier]
-) -> rfc9480.InfoTypeAndValue:
+def prepare_unsupported_oids_response(oids: Sequence[univ.ObjectIdentifier]) -> rfc9480.InfoTypeAndValue:
     """Prepare the `InfoTypeAndValue` to respond with unsupported OIDs."""
-    oids_out = univ.SequenceOf(componentType=univ.ObjectIdentifier()) # type: ignore
+    oids_out = univ.SequenceOf(componentType=univ.ObjectIdentifier())  # type: ignore
 
     for entry in oids:  # type: ignore
         if entry not in ALL_KNOWN_OIDS_2_NAME:

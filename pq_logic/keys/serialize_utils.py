@@ -12,8 +12,9 @@ from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from pyasn1.codec.der import encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5915, rfc8017
-from resources.oidutils import CURVE_NAME_2_OID
 from robot.api.deco import not_keyword
+
+from resources.oidutils import CURVE_NAME_2_OID
 
 
 def prepare_enc_key_pem(password: str, one_asym_key: bytes, key_name: bytes) -> bytes:

@@ -15,16 +15,32 @@ mechanisms to issue a certificate.
 
 """
 
-from typing import Optional, Sequence, Tuple, Union, Any
+from typing import Any, Optional, Sequence, Tuple, Union
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import tag, univ
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc6402, rfc9480
+from robot.api.deco import keyword, not_keyword
 
 import resources.certutils
 import resources.prepare_alg_ids
 import resources.protectionutils
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey, RSAPrivateKey
-from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc6402, rfc9480
+from pq_logic.hybrid_sig import catalyst_logic, cert_binding_for_multi_auth, chameleon_logic, sun_lamps_hybrid_scheme_00
+from pq_logic.hybrid_sig.cert_binding_for_multi_auth import (
+    prepare_related_cert_extension,
+    validate_multi_auth_binding_csr,
+)
+from pq_logic.hybrid_sig.certdiscovery import prepare_subject_info_access_syntax_extension
+from pq_logic.hybrid_structures import AltSignatureValueExt
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPublicKey, KEMPublicKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
+from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
+from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
+from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME
+from pq_logic.trad_typing import CA_CERT_RESPONSE, CA_CERT_RESPONSES, CA_RESPONSE, ECDHPrivateKey
 from resources import ca_ra_utils, certbuildutils, cmputils, keyutils, utils
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import build_ca_message
@@ -43,24 +59,15 @@ from resources.oidutils import (
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
 )
-from resources.typingutils import ECVerifyKey, SignKey, Strint, TradSignKey, TradVerifyKey, ECSignKey, PrivateKey, \
-    PublicKey
-from robot.api.deco import keyword, not_keyword
-
-from pq_logic.hybrid_sig import catalyst_logic, cert_binding_for_multi_auth, chameleon_logic, sun_lamps_hybrid_scheme_00
-from pq_logic.hybrid_sig.cert_binding_for_multi_auth import (
-    prepare_related_cert_extension,
-    validate_multi_auth_binding_csr,
+from resources.typingutils import (
+    ECSignKey,
+    ECVerifyKey,
+    PublicKey,
+    SignKey,
+    Strint,
+    TradSignKey,
+    TradVerifyKey,
 )
-from pq_logic.hybrid_sig.certdiscovery import prepare_subject_info_access_syntax_extension
-from pq_logic.hybrid_structures import AltSignatureValueExt
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPublicKey, KEMPublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
-from pq_logic.keys.sig_keys import MLDSAPublicKey, MLDSAPrivateKey
-from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME
-from pq_logic.trad_typing import CA_CERT_RESPONSE, CA_CERT_RESPONSES, CA_RESPONSE, ECDHPrivateKey
 
 
 def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descriptions in the docstring
@@ -472,7 +479,6 @@ def verify_composite_signature_with_keys(
     :param second_key: The second key to be used in the composite signature key.
     :raises InvalidSignature: If the signature is invalid.
     """
-
     if first_key is None or second_key is None:
         raise ValueError("Both keys must be provided.")
 
@@ -486,10 +492,10 @@ def verify_composite_signature_with_keys(
         raise InvalidKeyCombination("The Composite signature trad-key is not a EC or RSA key.")
 
     if alg_id["algorithm"] in CMS_COMPOSITE_OID_2_NAME:
-        public_key = CompositeSig03PublicKey(pq_key=first_key, trad_key=second_key) #type: ignore
+        public_key = CompositeSig03PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
 
     elif alg_id["algorithm"] in COMPOSITE_SIG04_OID_2_NAME:
-        public_key = CompositeSig04PublicKey(pq_key=first_key, trad_key=second_key) # type: ignore
+        public_key = CompositeSig04PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
 
     else:
         raise BadAlg(f"Invalid algorithm for composite signature: {alg_id['algorithm']}")
@@ -607,6 +613,7 @@ def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descri
             alt_sig=alt_sig,
         )
 
+
 def _cast_to_composite_sig_private_key(
     first_key: Any,
     alt_key: Any,
@@ -627,6 +634,7 @@ def _cast_to_composite_sig_private_key(
         raise InvalidKeyCombination("The Composite signature trad-key is not a EC or RSA key.")
 
     return CompositeSig04PrivateKey(first_key, alt_key)
+
 
 @keyword(name="Prepare Catalyst CertReqMsg Approach")
 def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descriptions in the docstring
@@ -672,7 +680,6 @@ def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descr
     cert_req["certTemplate"] = cert_template
 
     if use_composite_sig:
-
         comp_key = _cast_to_composite_sig_private_key(first_key, alt_key)
         extn = catalyst_logic.prepare_subject_alt_public_key_info_extn(
             alt_key.public_key(),

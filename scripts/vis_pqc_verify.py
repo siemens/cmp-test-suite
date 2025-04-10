@@ -10,26 +10,25 @@ import os.path
 
 import pandas as pd
 
-file_path = '../validation_pem_files.txt'
+file_path = "../validation_pem_files.txt"
 
 
 cert_data = []
 
 
-with open(file_path, 'r', encoding='utf-8') as file:
+with open(file_path, "r", encoding="utf-8") as file:
     for line in file:
-
         if line.startswith("SKIPPING PUBLIC KEY FILE"):
             continue
 
         if line.startswith("INVALID SIGNATURE"):
-            parts = line.split('\t')
+            parts = line.split("\t")
             status = parts[0]
             file_path = parts[1].strip()
             cert_data.append({"status": status, "file": file_path})
 
         if line.startswith("VALID KEY LOAD CERT") or line.startswith("VALID SIGNATURE"):
-            parts = line.split('\t')
+            parts = line.split("\t")
             status = parts[0]
             key_name = parts[1]
             file_path = parts[2]
@@ -46,4 +45,3 @@ files = invalid_signatures["file"].tolist()
 for x in files:
     name = os.path.basename(x)
     print("file_name:", name)
-

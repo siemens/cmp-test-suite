@@ -14,11 +14,11 @@ from typing import List, Optional, Union
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
-from resources import certutils, compareutils, utils
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import OnRelatedCertificateDescriptor, RelatedCertificateDescriptor
 from pq_logic.tmp_oids import id_ad_certDiscovery, id_ad_relatedCertificateDescriptor
+from resources import certutils, compareutils, utils
 
 
 def _prepare_related_certificate_descriptor(
@@ -238,7 +238,6 @@ def validate_cert_discovery_cert(  # noqa: D417 Missing argument descriptions in
     | ${secondary_cert}= | Validate Cert Discovery | ${primary_cert} | ${cert_chain_secondary} | ${issuer_cert} |
 
     """
-
     rel_cert_desc: RelatedCertificateDescriptor = extract_related_cert_des_from_sis_extension(
         primary_cert["tbsCertificate"]["extensions"]
     )
@@ -250,11 +249,12 @@ def validate_cert_discovery_cert(  # noqa: D417 Missing argument descriptions in
     validate_related_certificate_descriptor_alg_ids(other_cert, rel_cert_desc)
 
     if cert_chain_secondary is None and issuer_cert is None:
-        raise ValueError("Either `cert_chain_secondary` or `issuer_cert` must be provided, "
-                         "to verify the secondary certificate.")
+        raise ValueError(
+            "Either `cert_chain_secondary` or `issuer_cert` must be provided, to verify the secondary certificate."
+        )
 
     if issuer_cert is None:
-        issuer_cert = cert_chain_secondary[1] # type: ignore
+        issuer_cert = cert_chain_secondary[1]  # type: ignore
 
     if not certutils.check_is_cert_signer(cert=other_cert, poss_issuer=issuer_cert):
         raise ValueError("The Signature was not correct, with the traditional algorithm!")

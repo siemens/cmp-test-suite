@@ -15,13 +15,13 @@ from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
-from resources.exceptions import InvalidKeyCombination
-from resources.oid_mapping import sha_alg_name_to_oid
 
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey, _compute_hash
 from pq_logic.keys.serialize_utils import prepare_rsa_private_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
 from pq_logic.tmp_oids import COMP_SIG04_PREHASH_OID_2_HASH, COMPOSITE_SIG04_NAME_2_OID
+from resources.exceptions import InvalidKeyCombination
+from resources.oid_mapping import sha_alg_name_to_oid
 from resources.typingutils import ECVerifyKey
 
 _PREFIX = b"CompositeAlgorithmSignatures2025"
@@ -47,8 +47,8 @@ class CompositeSig04PublicKey(CompositeSig03PublicKey):
         pq_key: MLDSAPublicKey,
         trad_key: Union[
             rsa.RSAPublicKey,
-        ECVerifyKey,
-        ]
+            ECVerifyKey,
+        ],
     ) -> None:
         """Initialize the CompositeSig04PublicKey.
 

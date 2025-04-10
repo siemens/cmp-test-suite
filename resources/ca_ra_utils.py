@@ -19,7 +19,11 @@ from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
-from resources.data_objects import ExtraIssuingData
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import tag, univ
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6664, rfc9480
+from robot.api.deco import keyword, not_keyword
+
 from pq_logic import py_verify_logic
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
@@ -34,11 +38,6 @@ from pq_logic.keys.abstract_wrapper_keys import (
 from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from pq_logic.trad_typing import CA_RESPONSE, ECDHPrivateKey, ECDHPublicKey
-from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6664, rfc9480
-from robot.api.deco import keyword, not_keyword
-
 from resources import (
     ca_kga_logic,
     certbuildutils,
@@ -64,6 +63,7 @@ from resources.convertutils import (
     str_to_bytes,
     subject_public_key_info_from_pubkey,
 )
+from resources.data_objects import ExtraIssuingData, KARICertsAndKeys
 from resources.exceptions import (
     AddInfoNotAvailable,
     BadAlg,
@@ -1570,15 +1570,18 @@ def process_encrypted_key(
         )
         if not isinstance(client_pub_key, ECDHPublicKey):
             raise ValueError("The recipient certificate must contain an ECDH key for KGA `KARI`.")
-        _, kari_key = _get_kari_matching_cert_key_pair(
-            client_pub_key=client_pub_key,
-            ecc_cert=kwargs.get("ecc_cert"),
-            ecc_key=kwargs.get("ecc_key"),
-            x25519_cert=kwargs.get("x25519_cert"),
-            x25519_key=kwargs.get("x25519_key"),
-            x448_cert=kwargs.get("x448_cert"),
-            x448_key=kwargs.get("x448_key"),
+
+        if kwargs.get("kari_cert_and_key") is None:
+            kari_certs = KARICertsAndKeys.from_kwargs(
+                **kwargs,
+            )
+        else:
+            kari_certs = kwargs.get("kari_cert_and_key")
+
+        _, kari_key = kari_certs.get_cert_and_key(
+            public_key=client_pub_key,
         )
+
         der_data = ca_kga_logic.validate_enveloped_data(
             env_data=env_data,
             pki_message=request,

@@ -14,7 +14,7 @@ from flask import Flask, Response, request
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc9480
 
-sys.path.append('.')
+sys.path.append(".")
 from pq_logic.hybrid_issuing import build_chameleon_from_p10cr, build_sun_hybrid_cert_from_request
 from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import get_sun_hybrid_alt_sig
@@ -72,9 +72,7 @@ class MockCAState:
     sun_hybrid_state: SunHybridState = field(default_factory=SunHybridState)
 
     def store_transaction_certificate(
-            self, transaction_id: bytes,
-            sender: rfc9480.GeneralName,
-            certs: List[rfc9480.CMPCertificate]
+        self, transaction_id: bytes, sender: rfc9480.GeneralName, certs: List[rfc9480.CMPCertificate]
     ) -> None:
         """Store a transaction certificate.
 
@@ -119,24 +117,22 @@ class MockCAState:
         return self.to_be_confirmed_certs[(transaction_id, der_sender)]
 
 
-
 def _build_error_from_exception(e: CMPTestSuiteError) -> rfc9480.PKIMessage:
     """Build an error response from an exception.
 
     :param e: The exception.
     :return: The error response, as raw bytes.
     """
-    msg = build_cmp_error_message(failinfo=e.failinfo, texts=e.message, status="rejection",
-                                  error_texts=e.error_details
-                                  )
+    msg = build_cmp_error_message(failinfo=e.failinfo, texts=e.message, status="rejection", error_texts=e.error_details)
     return msg
 
 
 class CAHandler:
     """Mock CA class"""
 
-    def __init__(self, ca_cert: rfc9480.CMPCertificate, ca_key: PrivateKey,
-                 config: dict, ca_alt_key: Optional[PrivateKey] = None):
+    def __init__(
+        self, ca_cert: rfc9480.CMPCertificate, ca_key: PrivateKey, config: dict, ca_alt_key: Optional[PrivateKey] = None
+    ):
         """Initialize the CA Handler.
 
         :param config: The configuration for the CA Handler.
@@ -156,15 +152,16 @@ class CAHandler:
             if config.get("hybrid_cert_path"):
                 self.hybrid_cert = parse_certificate(load_and_decode_pem_file(config["hybrid_cert_path"]))
             else:
-                self.hybrid_cert = generate_certificate(private_key=self.hybrid_kem, hash_alg="sha256",
-                                                         is_ca=True,
-                                                         common_name="CN=Hans the Tester",
-                                                        )
+                self.hybrid_cert = generate_certificate(
+                    private_key=self.hybrid_kem,
+                    hash_alg="sha256",
+                    is_ca=True,
+                    common_name="CN=Hans the Tester",
+                )
 
         else:
             self.xwing_cert = parse_certificate(load_and_decode_pem_file("data/unittest/hybrid_cert_xwing.pem"))
             self.xwing_key = load_private_key_from_file("data/keys/private-key-xwing.pem")
-
 
     def sign_response(self, response: rfc9480.PKIMessage, request: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
         """Sign the response.
@@ -173,18 +170,19 @@ class CAHandler:
         :return: The signed PKI message.
         """
         if get_protection_type_from_pkimessage(request) == "mac":
-            pki_message = protect_pkimessage(pki_message=response,
-                                      password=self.shared_secrets,
-                                      protection="password_based_mac",
-                                      )
+            pki_message = protect_pkimessage(
+                pki_message=response,
+                password=self.shared_secrets,
+                protection="password_based_mac",
+            )
             pki_message["extraCerts"].extend(self.cert_chain)
             return pki_message
-        return protect_pkimessage(pki_message=response,
-                                  private_key=self.ca_key,
-                                  protection="signature",
-                                  cert=self.ca_cert,
-                                  )
-
+        return protect_pkimessage(
+            pki_message=response,
+            private_key=self.ca_key,
+            protection="signature",
+            cert=self.ca_cert,
+        )
 
     def process_normal_request(self, pki_message: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
         """Process the normal request.
@@ -195,11 +193,11 @@ class CAHandler:
         logging.debug("Processing request with body: %s", body_type)
         try:
             if body_type == "rr":
-                response =  self.process_rr(pki_message)
+                response = self.process_rr(pki_message)
             elif body_type == "certConf":
-                response =  self.process_cert_conf(pki_message)
+                response = self.process_cert_conf(pki_message)
             elif body_type == "kur":
-                response =  self.process_kur(pki_message)
+                response = self.process_kur(pki_message)
             elif body_type == "genm":
                 response = self.process_genm(pki_message)
             elif body_type == "cr":
@@ -213,8 +211,9 @@ class CAHandler:
         except CMPTestSuiteError as e:
             return _build_error_from_exception(e)
         except Exception as e:
-            return _build_error_from_exception(CMPTestSuiteError(f"An error occurred: "
-                                                                 f"{str(e)}", failinfo="systemFailure"))
+            return _build_error_from_exception(
+                CMPTestSuiteError(f"An error occurred: {str(e)}", failinfo="systemFailure")
+            )
 
         return self.sign_response(response=response, request=pki_message)
 
@@ -225,11 +224,10 @@ class CAHandler:
         :return: The PKI message containing the response.
         """
         ss, genp = build_genp_kem_ct_info_from_genm(
-            genm=pki_message,# type: ignore
+            genm=pki_message,  # type: ignore
         )
         self.state.add_kem_mac_shared_secret(pki_message=pki_message, shared_secret=ss)
-        return genp # type: ignore
-
+        return genp  # type: ignore
 
     def process_rr(self, pki_message: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
         """Process the RR message.
@@ -242,9 +240,7 @@ class CAHandler:
             shared_secret=self.state.get_kem_mac_shared_secret(pki_message=pki_message),
         )
 
-    def process_kur(self,
-                    pki_message: rfc9480.PKIMessage
-                    ) -> rfc9480.PKIMessage:
+    def process_kur(self, pki_message: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
         """Process the KUR message.
 
         :param pki_message: The KUR message.
@@ -257,10 +253,7 @@ class CAHandler:
             password=self.shared_secrets,
         )
 
-
-
-        raise NotImplementedError("Method not implemented, to return a `rp` message,"
-                                  "but the protection was correct.")
+        raise NotImplementedError("Method not implemented, to return a `rp` message,but the protection was correct.")
 
     def process_cert_conf(self, pki_message: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
         """Process the CertConf message.
@@ -273,7 +266,6 @@ class CAHandler:
             issued_certs=self.state.get_issued_certs(pki_message=pki_message),
         )
 
-
     def process_p10cr(self, pki_message: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
         """Process the P10CR message.
 
@@ -281,10 +273,10 @@ class CAHandler:
         :return: The CA response.
         """
         pki_message, cert = build_cp_from_p10cr(
-                                   request=pki_message,
-                                   set_header_fields=True,
-                                   ca_key=self.ca_key,
-                                   ca_cert=self.ca_cert,
+            request=pki_message,
+            set_header_fields=True,
+            ca_key=self.ca_key,
+            ca_cert=self.ca_cert,
             implicit_confirm=True,
         )
         self.state.store_transaction_certificate(
@@ -294,8 +286,7 @@ class CAHandler:
         )
         return pki_message
 
-    def process_cr(self,
-        pki_message: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
+    def process_cr(self, pki_message: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
         """Process the CR message.
 
         :param pki_message: The client request.
@@ -344,10 +335,11 @@ class CAHandler:
         :return: The PKI message containing the response.
         """
         if pki_message["body"].getName() == "p10cr":
-            pki_message, paired_cert, delta_cert = build_chameleon_from_p10cr(request=pki_message,
-                                       ca_cert=self.ca_cert,
-                                       ca_key=self.ca_key,
-                                       )
+            pki_message, paired_cert, delta_cert = build_chameleon_from_p10cr(
+                request=pki_message,
+                ca_cert=self.ca_cert,
+                ca_key=self.ca_key,
+            )
             self.state.store_transaction_certificate(
                 transaction_id=pki_message["header"]["transactionID"].asOctets(),
                 sender=pki_message["header"]["sender"],
@@ -356,7 +348,6 @@ class CAHandler:
             return pki_message
 
         raise NotImplementedError("Only p10cr is supported for Chameleon")
-
 
     def process_sun_hybrid(self, pki_message: rfc9480.PKIMessage) -> rfc9480.PKIMessage:
         """Process the Sun Hybrid message.
@@ -378,12 +369,10 @@ class CAHandler:
             sig_loc=f"https://cmp-test-suite/sig/{serial_number}",
         )
 
-        public_key = sun_lamps_hybrid_scheme_00.get_sun_hybrid_alt_pub_key(
-            cert1["tbsCertificate"]["extensions"]
-        )
+        public_key = sun_lamps_hybrid_scheme_00.get_sun_hybrid_alt_pub_key(cert1["tbsCertificate"]["extensions"])
         alt_sig = get_sun_hybrid_alt_sig(cert1)
         self.state.sun_hybrid_state.sun_hybrid_certs[serial_number] = cert4
-        self.state.sun_hybrid_state.sun_hybrid_pub_keys[serial_number] =  public_key
+        self.state.sun_hybrid_state.sun_hybrid_pub_keys[serial_number] = public_key
         self.state.sun_hybrid_state.sun_hybrid_signatures[serial_number] = alt_sig
         return pki_message
 
@@ -408,12 +397,14 @@ ca_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=No
 handler = CAHandler(ca_cert=ca_cert, ca_key=ca_key, config={})
 handler.state = state
 
+
 @app.route("/pubkey/<serial_number>", methods=["GET"])
 def get_pubkey(serial_number):
     """Retrieve a public key knowing the certificate serial number."""
     serial_number = int(serial_number)
     sun_hybrid_cert = state.sun_hybrid_state.sun_hybrid_pub_keys[serial_number]
     return encoder.encode(sun_hybrid_cert)
+
 
 @app.route("/sig/<serial_number>", methods=["GET"])
 def get_signature(serial_number):
@@ -434,11 +425,12 @@ def handle_issuing() -> bytes:
         data = request.get_data()
         pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
         pki_message = handler.process_normal_request(pki_message)
-        logging.warning(f"Response: %s", pki_message.prettyPrint())
+        logging.warning("Response: %s", pki_message.prettyPrint())
         response_data = encoder.encode(pki_message)
         return Response(response_data, content_type="application/octet-stream")
     except Exception as e:
         return Response(f"Error: {e}", status=500, content_type="text/plain")
+
 
 @app.route("/chameleon", methods=["POST"])
 def handle_chameleon():
@@ -453,6 +445,7 @@ def handle_chameleon():
         pki_message=pki_message,
     )
 
+
 @app.route("/sun_hybrid", methods=["POST"])
 def handle_sun_hybrid():
     """Handle the Sun Hybrid request.
@@ -465,6 +458,7 @@ def handle_sun_hybrid():
     return handler.process_sun_hybrid(
         pki_message=pki_message,
     )
+
 
 @app.route("/multi-auth", methods=["POST"])
 def handle_multi_auth():
@@ -479,6 +473,7 @@ def handle_multi_auth():
         pki_message=pki_message,
     )
 
+
 @app.route("/cert_discovery", methods=["POST"])
 def handle_cert_discovery():
     """Handle the cert discovery request.
@@ -489,6 +484,7 @@ def handle_cert_discovery():
     pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     pki_message = handler.process_cert_discovery(pki_message)
     return pki_message
+
 
 @app.route("/related_cert", methods=["POST"])
 def handle_related_cert():
@@ -501,6 +497,7 @@ def handle_related_cert():
     pki_message = handler.process_related_cert(pki_message)
     return pki_message
 
+
 @app.route("/catalyst-sig", methods=["POST"])
 def handle_catalyst_sig():
     """Handle the catalyst sig request.
@@ -512,6 +509,7 @@ def handle_catalyst_sig():
     pki_message = handler.process_catalyst_sig(pki_message)
     return pki_message
 
+
 @app.route("/catalyst", methods=["POST"])
 def handle_catalyst():
     """Handle the catalyst request.
@@ -522,7 +520,6 @@ def handle_catalyst():
     pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
     pki_message = handler.process_catalyst(pki_message)
     return pki_message
-
 
 
 if __name__ == "__main__":

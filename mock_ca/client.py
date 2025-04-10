@@ -10,7 +10,7 @@ import requests
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc9480
 
-sys.path.append('.')
+sys.path.append(".")
 from resources import cmputils, keyutils
 from resources.asn1_structures import PKIMessageTMP
 
@@ -55,6 +55,7 @@ def send_pkimessage_to_mock_ca(pki_message: rfc9480.PKIMessage, url: str):
         print(response.text)
     except requests.RequestException as e:
         print(f"Request failed: {e}")
+
 
 if __name__ == "__main__":
     send_request_to_static_cert1()

@@ -15,15 +15,15 @@ from typing import Optional, Union
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dsa, ec
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
-from pq_logic.tmp_oids import (
-    CMS_COMPOSITE03_OID_2_HASH,
-)
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9481
 from pyasn1_alt_modules.rfc5480 import id_dsa_with_sha256
 from robot.api.deco import not_keyword
 
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
+from pq_logic.tmp_oids import (
+    CMS_COMPOSITE03_OID_2_HASH,
+)
 from resources.oidutils import (
     ALL_KNOWN_NAMES_2_OID,
     ALL_KNOWN_OIDS_2_NAME,

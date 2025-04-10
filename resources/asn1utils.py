@@ -279,7 +279,7 @@ def get_asn1_value_as_bytes(asn1_obj: base.Asn1Type, query: str) -> bytes:  # no
 
 
 def get_asn1_value_as_datetime(  # noqa D417 undocumented-param
-        asn1_obj: base.Asn1Type, query: str
+    asn1_obj: base.Asn1Type, query: str
 ) -> datetime:
     """Retrieve a value from a pyasn1 object and return it as a python `datetime.datetime` object.
 
@@ -358,9 +358,9 @@ def _is_bit_set_in_bitstring(asn1_bitstring: BitString, bit_index: Strint, exclu
 
 
 def _is_either_bit_set_in_bitstring(
-        asn1_bitstring: BitString,
-        bit_indices: List[int],
-        exclusive: bool = True,
+    asn1_bitstring: BitString,
+    bit_indices: List[int],
+    exclusive: bool = True,
 ) -> bool:
     """Check if one of the provided bit indices are set in a `univ.BitString` object. Either exclusive or not.
 
@@ -379,9 +379,9 @@ def _is_either_bit_set_in_bitstring(
 
 
 def is_bit_set(  # noqa D417 undocumented-param
-        asn1_bitstring: BitString,
-        bit_indices: Strint,
-        exclusive: bool = True,
+    asn1_bitstring: BitString,
+    bit_indices: Strint,
+    exclusive: bool = True,
 ) -> bool:
     """Verify if a specific bit or bits are set within a given `BitString` object.
 
@@ -534,11 +534,11 @@ def asn1_compare_named_integer(asn1_integer: univ.Integer, value: str) -> bool: 
 
 
 def asn1_compare_named_values(  # noqa D417 undocumented-param
-        asn1_object: base.Asn1Type,
-        values: str,
-        exclusive: bool = True,
-        raise_exception: bool = False,
-        query: Optional[str] = None,
+    asn1_object: base.Asn1Type,
+    values: str,
+    exclusive: bool = True,
+    raise_exception: bool = False,
+    query: Optional[str] = None,
 ) -> bool:
     """Verify if specific human-readable representations of values are set for `pyasn1` named object.
 
@@ -603,7 +603,7 @@ def asn1_compare_named_values(  # noqa D417 undocumented-param
 
 
 def encode_to_der(  # noqa D417 undocumented-param
-        asn1_structure: base.Asn1Item,
+    asn1_structure: base.Asn1Item,
 ) -> bytes:
     """DER-encode a `pyasn1` data structure.
 

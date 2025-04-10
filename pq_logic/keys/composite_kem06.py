@@ -16,7 +16,6 @@ from cryptography.hazmat.primitives.asymmetric import ec, x25519
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
-from resources.exceptions import InvalidKeyCombination
 
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.keys.abstract_wrapper_keys import TradKEMPrivateKey, TradKEMPublicKey
@@ -24,6 +23,7 @@ from pq_logic.keys.composite_kem05 import CompositeKEMPrivateKey, CompositeKEMPu
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey
 from pq_logic.tmp_oids import COMPOSITE_KEM06_NAME_2_OID
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.exceptions import InvalidKeyCombination
 
 
 def _get_composite_kem_hash_alg(pq_name: str, trad_key, alternative: bool = False) -> str:

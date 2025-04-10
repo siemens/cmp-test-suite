@@ -9,11 +9,11 @@ from typing import Any, Union
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5990
-from resources.oidutils import KEM_NAME_2_OID
 from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPublicKey, KEMPrivateKey, KEMPublicKey
+from resources.oidutils import KEM_NAME_2_OID
 
 
 @not_keyword

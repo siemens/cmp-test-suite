@@ -19,6 +19,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+from pyasn1_alt_modules import rfc5280, rfc5652, rfc9480, rfc9629
+
 from pq_logic.keys.abstract_pq import (
     PQSignaturePrivateKey,
     PQSignaturePublicKey,
@@ -32,7 +34,6 @@ from pq_logic.keys.abstract_wrapper_keys import (
     WrapperPublicKey,
 )
 from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
-from pyasn1_alt_modules import rfc5280, rfc5652, rfc9480, rfc9629
 
 ECSignKey = Union[
     Ed25519PrivateKey,

@@ -23,14 +23,14 @@ from cryptography.x509.oid import AuthorityInformationAccessOID
 from pkilint import loader, report
 from pkilint.pkix import certificate, extension, name
 from pkilint.validation import ValidationFindingSeverity
-from pq_logic.keys.abstract_pq import PQSignaturePublicKey
-from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PublicKey
-from pq_logic.pq_utils import is_kem_public_key
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.keys.abstract_pq import PQSignaturePublicKey
+from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PublicKey
+from pq_logic.pq_utils import is_kem_public_key
 from resources import (
     asn1utils,
     certextractutils,

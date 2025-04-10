@@ -33,7 +33,6 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPubl
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
-from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 
 from pq_logic.hybrid_structures import CompositeCiphertextValue
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
@@ -48,6 +47,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey, RSADecapKey, RSAEncapKey
 from pq_logic.tmp_oids import COMPOSITE_KEM05_NAME_2_OID
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 
 
 def _get_composite_kem_hash_alg(pq_name: str, trad_key, alternative: bool = False) -> str:

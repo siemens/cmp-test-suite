@@ -17,13 +17,6 @@ from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, paddin
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
-from resources import oid_mapping
-from resources.exceptions import BadAsn1Data, InvalidKeyCombination
-from resources.oid_mapping import sha_alg_name_to_oid
-from resources.oidutils import (
-    CMS_COMPOSITE03_NAME_2_OID,
-    CMS_COMPOSITE_OID_2_NAME,
-)
 from robot.api.deco import not_keyword
 
 from pq_logic.hybrid_structures import CompositeSignatureValue
@@ -41,6 +34,13 @@ from pq_logic.tmp_oids import (
     COMP_SIG03_PREHASH_OID_2_HASH,
     COMPOSITE_SIG03_HASH_NAME_2_OID,
     PURE_COMPOSITE_SIG03_NAME_TO_OID,
+)
+from resources import oid_mapping
+from resources.exceptions import BadAsn1Data, InvalidKeyCombination
+from resources.oid_mapping import sha_alg_name_to_oid
+from resources.oidutils import (
+    CMS_COMPOSITE03_NAME_2_OID,
+    CMS_COMPOSITE_OID_2_NAME,
 )
 
 

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Verify the signatures of the certificates in the pqc-certificates repository."""
+
 import argparse
 import glob
 import os
@@ -33,7 +34,6 @@ def main():
     providers_dir = os.path.join(data_dir, "pqc-certificates", "providers")
     pem_files = []
 
-
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
 
@@ -43,7 +43,6 @@ def main():
         subprocess.run(["git", "clone", repo_url, repo_path], check=True)
     else:
         print("Repository already cloned.")
-
 
     if os.path.exists(providers_dir):
         for root, dirs, files in os.walk(providers_dir):
@@ -55,16 +54,14 @@ def main():
                     extract_dir = os.path.join(root, "extracted", os.path.splitext(file)[0])
                     os.makedirs(extract_dir, exist_ok=True)
 
-                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    with zipfile.ZipFile(zip_path, "r") as zip_ref:
                         zip_ref.extractall(extract_dir)
-
 
                     for subdir, _, extracted_files in os.walk(extract_dir):
                         for extracted_file in extracted_files:
                             if extracted_file.endswith(".der"):
                                 pem_path = os.path.join(subdir, extracted_file)
                                 pem_files.append(pem_path)
-
 
 
 def verify_cert_sig(cert: rfc9480.CMPCertificate, verify_catalyst: bool = False):
@@ -90,9 +87,9 @@ def verify_cert_sig(cert: rfc9480.CMPCertificate, verify_catalyst: bool = False)
     return verify_signature_with_alg_id(public_key, alg_id, data, signature, verify_catalyst=verify_catalyst)
 
 
-
-def verify_signature_with_alg_id(public_key, alg_id: rfc9480.AlgorithmIdentifier,
-                                 data: bytes, signature: bytes, verify_catalyst: bool = False):
+def verify_signature_with_alg_id(
+    public_key, alg_id: rfc9480.AlgorithmIdentifier, data: bytes, signature: bytes, verify_catalyst: bool = False
+):
     """Verify the provided data and signature using the given algorithm identifier.
 
     Supports traditional-, pq- and composite signature algorithm.
@@ -132,8 +129,9 @@ def verify_signature_with_alg_id(public_key, alg_id: rfc9480.AlgorithmIdentifier
 if __name__ == "__main__":
     pem_files = []
 
-    parser = argparse.ArgumentParser(description="Verify the signatures of the certificates"
-                                     " in the pqc-certificates repository.")
+    parser = argparse.ArgumentParser(
+        description="Verify the signatures of the certificates in the pqc-certificates repository."
+    )
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing files.")
     args = parser.parse_args()
 
@@ -145,41 +143,39 @@ if __name__ == "__main__":
     elif not os.path.isdir("./data/pqc-certificates"):
         main()
     else:
-       # for file in glob.iglob(f"{dir_path}/**/*.crl", recursive=True):
-       for file in glob.iglob("./data/pqc-certificates/providers/**", recursive=True):
-           if file.endswith(".der"):
-               pem_files.append(file)
+        # for file in glob.iglob(f"{dir_path}/**/*.crl", recursive=True):
+        for file in glob.iglob("./data/pqc-certificates/providers/**", recursive=True):
+            if file.endswith(".der"):
+                pem_files.append(file)
 
-       f = open("validation_pem_files.txt", "w", encoding='utf-8')
-       f.write("Validation of PQC Certificates\n")
-       f.write("# SPDX-FileCopyrightText: Copyright 2024 Siemens AG\n# # SPDX-License-Identifier: Apache-2.0\n")
-       f.write(f"Last Time Verified: {datetime.now()}\n")
-       f.write(f"Collected {len(pem_files)}.pem files:\n\n")
-       for pem in pem_files:
+        f = open("validation_pem_files.txt", "w", encoding="utf-8")
+        f.write("Validation of PQC Certificates\n")
+        f.write("# SPDX-FileCopyrightText: Copyright 2024 Siemens AG\n# # SPDX-License-Identifier: Apache-2.0\n")
+        f.write(f"Last Time Verified: {datetime.now()}\n")
+        f.write(f"Collected {len(pem_files)}.pem files:\n\n")
+        for pem in pem_files:
+            if "_pub" in pem:
+                f.write(f"SKIPPING PUBLIC KEY FILE:\t{pem}\n")
+                continue
 
-           if "_pub" in pem:
-               f.write(f"SKIPPING PUBLIC KEY FILE:\t{pem}\n")
-               continue
+            if "_priv" in pem:
+                f.write(f"SKIPPING PRIVATE KEY FILE:\t{pem}\n")
+                continue
 
-           if "_priv" in pem:
-               f.write(f"SKIPPING PRIVATE KEY FILE:\t{pem}\n")
-               continue
-
-           try:
-               data = open(pem, "rb").read()
-               cert = parse_certificate(data)
-               name = verify_cert_sig(cert, verify_catalyst=True if "catalyst" in pem else False)
-               if name in PQ_KEM_OID_2_NAME.values():
-                   f.write(f"VALID KEY LOAD CERT\t{name}\t{pem}\n")
-               f.write(f"VALID SIGNATURE\t{name}\t{pem}\n")
-           except InvalidSignature:
-              f.write(f"INVALID SIGNATURE\t{pem}\n")
-           except ValueError as e:
-               f.write(f"ValueError\t{pem}\t{e}\n")
-           except pyasn1.error.PyAsn1Error as e:
+            try:
+                data = open(pem, "rb").read()
+                cert = parse_certificate(data)
+                name = verify_cert_sig(cert, verify_catalyst=True if "catalyst" in pem else False)
+                if name in PQ_KEM_OID_2_NAME.values():
+                    f.write(f"VALID KEY LOAD CERT\t{name}\t{pem}\n")
+                f.write(f"VALID SIGNATURE\t{name}\t{pem}\n")
+            except InvalidSignature:
+                f.write(f"INVALID SIGNATURE\t{pem}\n")
+            except ValueError as e:
+                f.write(f"ValueError\t{pem}\t{e}\n")
+            except pyasn1.error.PyAsn1Error as e:
                 f.write(f"PARSING ERROR\t{pem}\t{e}\n")
-           except cryptography.exceptions.UnsupportedAlgorithm as e:
-               f.write(f"UNSUPPORTED ALGORITHM\t{pem}\tUnable to decode.{e}\n")
+            except cryptography.exceptions.UnsupportedAlgorithm as e:
+                f.write(f"UNSUPPORTED ALGORITHM\t{pem}\tUnable to decode.{e}\n")
 
-
-       f.close()
+        f.close()

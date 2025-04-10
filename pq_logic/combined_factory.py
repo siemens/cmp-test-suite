@@ -16,18 +16,6 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5958, rfc6664
-from resources.asn1utils import try_decode_pyasn1
-from resources.convertutils import ensure_is_kem_pub_key
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData
-from resources.oid_mapping import get_curve_instance
-from resources.oidutils import (
-    CMS_COMPOSITE_OID_2_NAME,
-    PQ_NAME_2_OID,
-    PQ_OID_2_NAME,
-    TRAD_STR_OID_TO_KEY_NAME,
-    XWING_OID_STR,
-)
-from resources.typingutils import PrivateKey
 
 from pq_logic.hybrid_structures import (
     CompositeSignaturePrivateKeyAsn1,
@@ -67,6 +55,18 @@ from pq_logic.tmp_oids import (
     COMPOSITE_SIG04_OID_2_NAME,
     id_rsa_kem_spki,
 )
+from resources.asn1utils import try_decode_pyasn1
+from resources.convertutils import ensure_is_kem_pub_key
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData
+from resources.oid_mapping import get_curve_instance
+from resources.oidutils import (
+    CMS_COMPOSITE_OID_2_NAME,
+    PQ_NAME_2_OID,
+    PQ_OID_2_NAME,
+    TRAD_STR_OID_TO_KEY_NAME,
+    XWING_OID_STR,
+)
+from resources.typingutils import PrivateKey
 
 
 def _any_string_in_string(string: str, options: List[str]) -> str:
@@ -188,8 +188,7 @@ class CombinedKeyFactory:
         if kwargs.get("by_name", False):
             return CombinedKeyFactory.generate_key_from_name(algorithm)
 
-        if algorithm in ["rsa", "ecdsa", "ed25519", "ed448", "bad_rsa_key"
-                         ]:
+        if algorithm in ["rsa", "ecdsa", "ed25519", "ed448", "bad_rsa_key"]:
             return generate_trad_key(algorithm, **kwargs)
 
         if algorithm == "rsa-kem":

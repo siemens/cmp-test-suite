@@ -29,6 +29,11 @@ from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from pyasn1.codec.der import decoder
+from pyasn1.type import univ
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc6664, rfc9480
+from robot.api.deco import keyword, not_keyword
+
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
@@ -39,11 +44,6 @@ from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME
-from pyasn1.codec.der import decoder
-from pyasn1.type import univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc6664, rfc9480
-from robot.api.deco import keyword, not_keyword
-
 from resources import oid_mapping, utils
 from resources.convertutils import str_to_bytes
 from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, UnknownOID
@@ -135,7 +135,7 @@ def _generate_ec_key(algorithm: str, curve: str):
 
 
 def _generate_dh_private_key(
-        p: Optional[int] = None, g: int = 2, secret_scalar: Optional[int] = None, length: int = 2048
+    p: Optional[int] = None, g: int = 2, secret_scalar: Optional[int] = None, length: int = 2048
 ) -> dh.DHPrivateKey:
     """Generate a Diffie-Hellman (DH) private key using the provided parameters.
 
@@ -266,7 +266,7 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
 
     if algorithm == "bad_rsa_key":
         from cryptography.hazmat.bindings._rust import (  # pylint: disable=import-outside-toplevel
-            openssl as rust_openssl, #type: ignore
+            openssl as rust_openssl,  # type: ignore
         )
 
         private_key = rust_openssl.rsa.generate_private_key(65537, 512)  # type: ignore
@@ -324,14 +324,14 @@ def _extract_and_format_key(pem_file_path: str) -> bytes:
         wrapped_key_content = "\n".join(textwrap.wrap(key_content, width=64))
 
         pem_data = (
-                b"-----BEGIN "
-                + key_name
-                + b" PRIVATE KEY-----\n"
-                + metadata.encode("utf-8")
-                + wrapped_key_content.encode("utf-8")
-                + b"\n-----END "
-                + key_name
-                + b" PRIVATE KEY-----\n"
+            b"-----BEGIN "
+            + key_name
+            + b" PRIVATE KEY-----\n"
+            + metadata.encode("utf-8")
+            + wrapped_key_content.encode("utf-8")
+            + b"\n-----END "
+            + key_name
+            + b" PRIVATE KEY-----\n"
         )
         return pem_data
 
@@ -372,8 +372,8 @@ def _extract_pem_private_key_block(data: bytes) -> bytes:
 
 
 def load_private_key_from_file(  # noqa: D417 for RF docs
-        filepath: str,
-        password: Optional[str] = "11111",
+    filepath: str,
+    password: Optional[str] = "11111",
 ) -> PrivateKey:
     """Load a private key from a file.
 
@@ -575,7 +575,7 @@ def generate_key_based_on_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> Private
 
 @keyword(name="Get PublicKey From CertTemplate")
 def load_public_key_from_cert_template(  # noqa: D417 undocumented param
-        cert_template: rfc4211.CertTemplate, must_be_present: bool = True
+    cert_template: rfc4211.CertTemplate, must_be_present: bool = True
 ) -> Optional[PublicKey]:
     """Extract and load the public key inside a `CertTemplate`structure.
 
@@ -720,13 +720,13 @@ def private_key_to_private_numbers(private_key: PrivateKey) -> bytes:
         data = private_nums.private_value.to_bytes((private_nums.private_value.bit_length() + 7) // 8, "big")
 
     elif isinstance(
-            private_key,
-            (
-                    x25519.X25519PrivateKey,
-                    ed25519.Ed25519PrivateKey,
-                    x448.X448PrivateKey,
-                    ed448.Ed448PrivateKey,
-            ),
+        private_key,
+        (
+            x25519.X25519PrivateKey,
+            ed25519.Ed25519PrivateKey,
+            x448.X448PrivateKey,
+            ed448.Ed448PrivateKey,
+        ),
     ):
         data = private_key.private_bytes_raw()
 

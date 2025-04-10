@@ -6,22 +6,15 @@
 
 from typing import List, Optional, Tuple
 
-import resources.certutils
-import resources.prepare_alg_ids
-import resources.protectionutils
 from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
-from resources import certbuildutils, certextractutils, compareutils, convertutils, cryptoutils, keyutils, utils
-from resources.convertutils import copy_asn1_certificate, subject_public_key_info_from_pubkey
-from resources.copyasn1utils import copy_csr, copy_name, copy_validity
-from resources.exceptions import BadAltPOP, BadAsn1Data, BadCertTemplate
-from resources.oid_mapping import get_hash_from_oid
-from resources.prepareutils import prepare_name
-from resources.typingutils import SignKey
 from robot.api.deco import keyword, not_keyword
 
+import resources.certutils
+import resources.prepare_alg_ids
+import resources.protectionutils
 from pq_logic.hybrid_structures import (
     DeltaCertificateDescriptor,
     DeltaCertificateRequestSignatureValue,
@@ -32,6 +25,13 @@ from pq_logic.tmp_oids import (
     id_at_deltaCertificateRequestSignature,
     id_ce_deltaCertificateDescriptor,
 )
+from resources import certbuildutils, certextractutils, compareutils, convertutils, cryptoutils, keyutils, utils
+from resources.convertutils import copy_asn1_certificate, subject_public_key_info_from_pubkey
+from resources.copyasn1utils import copy_csr, copy_name, copy_validity
+from resources.exceptions import BadAltPOP, BadAsn1Data, BadCertTemplate
+from resources.oid_mapping import get_hash_from_oid
+from resources.prepareutils import prepare_name
+from resources.typingutils import SignKey
 
 
 def _prepare_issuer_and_subject(

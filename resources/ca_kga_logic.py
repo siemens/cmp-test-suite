@@ -16,13 +16,6 @@ from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, x448, x2
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
-from pq_logic.combined_factory import CombinedKeyFactory
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey
-from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateKey
-from pq_logic.keys.trad_kem_keys import RSADecapKey
-from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, COMPOSITE_SIG_SIGNED_DATA_OID_HASH
-from pq_logic.trad_typing import ECDHPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
@@ -38,6 +31,13 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.combined_factory import CombinedKeyFactory
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey
+from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateKey
+from pq_logic.keys.trad_kem_keys import RSADecapKey
+from pq_logic.pq_utils import get_kem_oid_from_key
+from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, COMPOSITE_SIG_SIGNED_DATA_OID_HASH
+from pq_logic.trad_typing import ECDHPrivateKey
 from resources import (
     asn1utils,
     certextractutils,

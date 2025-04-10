@@ -7,19 +7,10 @@
 import logging
 from typing import List, Optional, Tuple, Type, Union
 
-import resources.oidutils
 from pyasn1.codec.der import decoder
 from pyasn1_alt_modules import rfc5280, rfc5958
-from resources.exceptions import BadAlg, InvalidKeyData
-from resources.oid_mapping import may_return_oid_to_name
-from resources.oidutils import (
-    FRODOKEM_NAME_2_OID,
-    MCELIECE_NAME_2_OID,
-    PQ_NAME_2_OID,
-    PQ_SIG_PRE_HASH_NAME_2_OID,
-    PQ_SIG_PRE_HASH_OID_2_NAME,
-)
 
+import resources.oidutils
 from pq_logic.keys.abstract_wrapper_keys import PQPrivateKey, PQPublicKey
 from pq_logic.keys.kem_keys import (
     FrodoKEMPrivateKey,
@@ -38,6 +29,15 @@ from pq_logic.keys.sig_keys import (
     MLDSAPublicKey,
     SLHDSAPrivateKey,
     SLHDSAPublicKey,
+)
+from resources.exceptions import BadAlg, InvalidKeyData
+from resources.oid_mapping import may_return_oid_to_name
+from resources.oidutils import (
+    FRODOKEM_NAME_2_OID,
+    MCELIECE_NAME_2_OID,
+    PQ_NAME_2_OID,
+    PQ_SIG_PRE_HASH_NAME_2_OID,
+    PQ_SIG_PRE_HASH_OID_2_NAME,
 )
 
 

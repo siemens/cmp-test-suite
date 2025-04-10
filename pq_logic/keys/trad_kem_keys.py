@@ -17,13 +17,13 @@ from cryptography.hazmat.primitives.serialization import (
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5958, rfc6664, rfc9481
-from resources.exceptions import InvalidKeyData
-from resources.oid_mapping import get_curve_instance
 
 from pq_logic.kem_mechanism import DHKEMRFC9180, ECDHKEM, RSAKem, RSAOaepKem
 from pq_logic.keys.abstract_wrapper_keys import TradKEMPrivateKey, TradKEMPublicKey
 from pq_logic.tmp_oids import id_rsa_kem_spki
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.exceptions import InvalidKeyData
+from resources.oid_mapping import get_curve_instance
 
 
 class RSAEncapKey(TradKEMPublicKey):
