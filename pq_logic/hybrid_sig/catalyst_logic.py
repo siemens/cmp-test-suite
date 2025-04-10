@@ -2,22 +2,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Handles Calalyst Certificates and related functionality."""
+"""Handles Catalyst Certificates and related functionality."""
 
 import logging
 from typing import Optional, Union
 
 import pyasn1.error
+import resources.prepare_alg_ids
 from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import tag, univ
+from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from pyasn1_alt_modules.rfc4210 import CMPCertificate
-
-from pq_logic.hybrid_structures import AltSignatureValueExt, SubjectAltPublicKeyInfoExt
-from pq_logic.keys.abstract_composite import AbstractCompositeSigPrivateKey
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from resources import certbuildutils, certextractutils, certutils, cryptoutils, keyutils, utils
-from resources.convertutils import subjectPublicKeyInfo_from_pubkey
+from resources import certbuildutils, certextractutils, certutils, convertutils, cryptoutils, keyutils, utils
+from resources.asn1_structures import CatalystPreTBSCertificate
+from resources.convertutils import subject_public_key_info_from_pubkey
 from resources.exceptions import BadAlg, BadAsn1Data
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import (
@@ -26,22 +24,48 @@ from resources.oidutils import (
     id_ce_altSignatureValue,
     id_ce_subjectAltPublicKeyInfo,
 )
-from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey, TradSigPrivKey
+from resources.typingutils import PrivateKey, PublicKey, SignKey, TradSignKey, VerifyKey
+from robot.api.deco import keyword, not_keyword
+
+from pq_logic.hybrid_structures import AltSignatureValueExt, SubjectAltPublicKeyInfoExt
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 
 
-def prepare_subject_alt_public_key_info_extn(
-    public_key: Union[PQSignaturePrivateKey, PQSignaturePublicKey], critical: bool
+@keyword(name="Prepare SubjectAltPublicKeyInfo Extension")
+def prepare_subject_alt_public_key_info_extn(  # noqa: D417 Missing a parameter in the Docstring
+    key: Optional[Union[PublicKey, PrivateKey]],
+    critical: bool = False,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc5280.Extension:
-    """Prepare the subjectAltPublicKeyInfo extension.
+    """Prepare the `SubjectAltPublicKeyInfo` extension.
 
-    :param public_key: The alternative public key.
-    :param critical: Whether the extension is critical.
-    :return: The prepared Extension object.
+    Arguments:
+    ---------
+        - `public_key`: The alternative public or private key.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `spki`: The `SubjectPublicKeyInfo` structure. Defaults to `None`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure.
+
+    Raises:
+    ------
+        - `ValueError`: If neither `key` nor `spki` is provided.
+
+    Examples:
+    --------
+    | ${extn}= | Prepare SubjectAltPublicKeyInfo Extension | ${public_key} | critical=True |
+
     """
-    if isinstance(public_key, PQSignaturePrivateKey):
-        public_key = public_key.public_key()
+    if spki is None and key is None:
+        raise ValueError("Either `key` or `spki` must be provided.")
 
-    spki = subjectPublicKeyInfo_from_pubkey(public_key)  # type: ignore
+    if spki is None:
+        if isinstance(key, PQSignaturePrivateKey):
+            key = key.public_key()
+
+        spki = subject_public_key_info_from_pubkey(key)  # type: ignore
 
     spki_ext = rfc5280.Extension()
     spki_ext["extnID"] = id_ce_subjectAltPublicKeyInfo
@@ -50,30 +74,45 @@ def prepare_subject_alt_public_key_info_extn(
     return spki_ext
 
 
-def prepare_alt_sig_alg_id_extn(
+@keyword(name="Prepare AltSignatureAlgorithm Extension")
+def prepare_alt_sig_alg_id_extn(  # noqa: D417 Missing a parameter in the Docstring
     alg_id: Optional[rfc5280.AlgorithmIdentifier] = None,
     critical: bool = False,
     hash_alg: str = "sha256",
     use_rsa_pss: bool = False,
     use_pre_hash: bool = False,
-    key: Optional[PrivateKeySig] = None,
+    key: Optional[SignKey] = None,
 ) -> rfc5280.Extension:
     """Prepare the altSignatureAlgorithm extension.
 
-    :param alg_id: The alternative AlgorithmIdentifier.
-    :param critical: Whether the extension is critical. Defaults to `False`.
-    :param hash_alg: The hash algorithm to use. Defaults to "sha256".
-    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
-    :param use_pre_hash: Whether to use the pre-hash key. Defaults to `False`.
-    :param key: Key to prepare the signature algorithm for. Defaults to `None`.
-    :return: The prepared Extension object.
-    :raises ValueError: If neither `alg_id` nor `key` is provided.
+    Arguments:
+    ---------
+        - `alg_id`: The alternative AlgorithmIdentifier.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `hash_alg`: The hash algorithm to use. Defaults to "sha256".
+        - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
+        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+        - `key`: The key to prepare the signature algorithm for. Defaults to `None`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure.
+
+    Raises:
+    ------
+        - `ValueError`: If neither `alg_id` nor `key` is provided.
+
+    Examples:
+    --------
+    | ${extn}= | Prepare AltSignatureAlgorithm Extension | ${alg_id} | critical=True |
+    | ${extn}= | Prepare AltSignatureAlgorithm Extension | key=${key} | use_rsa_pss=True |
+
     """
     if alg_id is None and key is None:
         raise ValueError("Either `alg_id` or `key` must be provided.")
 
     if key is not None:
-        alg_id = certbuildutils.prepare_sig_alg_id(
+        alg_id = resources.prepare_alg_ids.prepare_sig_alg_id(
             signing_key=key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
         )
 
@@ -85,12 +124,25 @@ def prepare_alt_sig_alg_id_extn(
     return alt_signature_algorithm_extension
 
 
-def prepare_alt_signature_value_extn(signature: bytes, critical: bool) -> rfc5280.Extension:
-    """Prepare the altSignatureValue extension.
+@keyword(name="Prepare AltSignatureValue Extension")
+def prepare_alt_signature_value_extn(  # noqa: D417 Missing a parameter in the Docstring
+    signature: bytes, critical: bool = False
+) -> rfc5280.Extension:
+    """Prepare the AltSignatureValue extension.
 
-    :param signature: The alternative signature bytes.
-    :param critical: Whether the extension is critical.
-    :return: The prepared Extension object.
+    Arguments:
+    ---------
+        - `signature`: The alternative signature bytes.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure.
+
+    Examples:
+    --------
+    | ${extn}= | Prepare AltSignatureValue Extension | ${signature} | critical=True |
+
     """
     alt_signature_value_extension = rfc5280.Extension()
     alt_signature_value_extension["extnID"] = id_ce_altSignatureValue
@@ -101,84 +153,84 @@ def prepare_alt_signature_value_extn(signature: bytes, critical: bool) -> rfc528
     return alt_signature_value_extension
 
 
-def prepare_alt_signature_data(
+def convert_tbs_to_pre_tbs(tbs_certificate: rfc5280.TBSCertificate) -> CatalystPreTBSCertificate:
+    """Convert a `TBSCertificate` to a PreTBSCertificate by removing the signature field.
+
+    :param tbs_certificate: An instance of `TBSCertificate`
+    :return: A new instance of PreTBSCertificate
+    """
+    pre_tbs_certificate = CatalystPreTBSCertificate()
+
+    pre_tbs_certificate["version"] = tbs_certificate["version"]
+    pre_tbs_certificate["serialNumber"] = tbs_certificate["serialNumber"]
+    pre_tbs_certificate["issuer"] = tbs_certificate["issuer"]
+    pre_tbs_certificate["validity"] = tbs_certificate["validity"]
+    pre_tbs_certificate["subject"] = tbs_certificate["subject"]
+    pre_tbs_certificate["subjectPublicKeyInfo"] = tbs_certificate["subjectPublicKeyInfo"]
+
+    if tbs_certificate["issuerUniqueID"].isValue:
+        pre_tbs_certificate["issuerUniqueID"] = tbs_certificate["issuerUniqueID"]
+
+    if tbs_certificate["subjectUniqueID"].isValue:
+        pre_tbs_certificate["subjectUniqueID"] = tbs_certificate["subjectUniqueID"]
+
+    if tbs_certificate["extensions"].isValue:
+        for x in tbs_certificate["extensions"]:
+            if x["extnID"] != id_ce_altSignatureValue:
+                pre_tbs_certificate["extensions"].append(x)
+
+    return pre_tbs_certificate
+
+
+@not_keyword
+def extract_alt_signature_data(
     cert: rfc9480.CMPCertificate,
-    exclude_alt_extensions: bool = False,
-    only_tbs_cert: bool = False,
-    exclude_signature_field: bool = False,
-    exclude_first_spki: bool = False,
 ) -> bytes:
     """Prepare the data to be signed for the `altSignatureValue` extension by excluding the altSignatureValue extension.
 
     :param cert: The certificate to prepare data from.
-    :param exclude_alt_extensions: Whether to exclude alternative extensions for the signature verification.
-    :param only_tbs_cert: Whether to only include the `tbsCertificate` part of the certificate and
-    exclude the `signatureAlgorithm` field.
     :return: DER-encoded bytes of the data to be signed.
     """
-    tbs_cert = cert["tbsCertificate"]
-
-    data = b""
-
-    for field in tbs_cert.keys():
-        if field == "extensions":
-            pass
-        elif field == "subjectPublicKeyInfo" and exclude_first_spki:
-            pass
-        elif field == "signature" and not exclude_signature_field:
-            data += encoder.encode(tbs_cert[field])
-        else:
-            if tbs_cert[field].isValue:
-                data += encoder.encode(tbs_cert[field])
-
-    new_extn = rfc5280.Extensions().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3))
-
-    exclude_extn = (
-        [id_ce_altSignatureValue]
-        if not exclude_alt_extensions
-        else [id_ce_altSignatureValue, id_ce_altSignatureAlgorithm, id_ce_subjectAltPublicKeyInfo]
-    )
-
-    for x in cert["tbsCertificate"]["extensions"]:
-        if x["extnID"] not in exclude_extn:
-            new_extn.append(x)
-
-    cert["tbsCertificate"]["extensions"] = new_extn
-    data = encoder.encode(tbs_cert)
-
-    if cert["signatureAlgorithm"].isValue and not only_tbs_cert:
-        data += encoder.encode(cert["signatureAlgorithm"])
-
+    pre_tbs = convert_tbs_to_pre_tbs(cert["tbsCertificate"])
+    data = encoder.encode(pre_tbs)
     return data
 
 
-def sign_cert_catalyst(
+def sign_cert_catalyst(  # noqa: D417 Missing a parameter in the Docstring
     cert: rfc9480.CMPCertificate,
     pq_key: PQSignaturePrivateKey,
-    trad_key: TradSigPrivKey,
-    exclude_catalyst_extensions: bool = False,
+    trad_key: TradSignKey,
     pq_hash_alg: Optional[str] = None,
     hash_alg: str = "sha256",
     use_rsa_pss: bool = False,
     critical: bool = False,
-):
+    bad_alt_sig: bool = False,
+) -> rfc9480.CMPCertificate:
     """Sign the certificate with both traditional and alternative algorithms and adding the catalyst extensions.
 
-    :param cert: The certificate to sign.
-    :param pq_key: The post-quantum private key for alternative signing.
-    :param trad_key: The traditional private key for native signing.
-    :param exclude_catalyst_extensions: If True, exclude catalyst extensions (Not implemented).
-    :param pq_hash_alg: Hash algorithm for the post-quantum signature.
-    :param hash_alg: Hash algorithm for the native signature.
-    :param use_rsa_pss: Whether to use RSA-PSS for native signing.
-    :param critical: Whether the catalyst extensions are critical.
-    :return: The signed certificate.
-    """
-    if exclude_catalyst_extensions:
-        raise NotImplementedError("Excluding catalyst extensions is not implemented.")
+    Arguments:
+    ---------
+        - `cert`: The certificate to sign.
+        - `pq_key`: The post-quantum private key for alternative signing.
+        - `trad_key`: The traditional private key for traditional signing.
+        - `pq_hash_alg`: Hash algorithm for the post-quantum signature. Defaults to `None`.
+        - `hash_alg`: Hash algorithm for the traditional signature. Defaults to "sha256".
+        - `use_rsa_pss`: Whether to use RSA-PSS for traditional signing. Defaults to `False`.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `bad_alt_sig`: Whether to manipulate the alternative signature to be invalid. Defaults to `False`.
 
-    alt_alg_id = certbuildutils.prepare_sig_alg_id(pq_key, hash_alg=pq_hash_alg, use_rsa_pss=use_rsa_pss)
-    trad_alg_id = certbuildutils.prepare_sig_alg_id(trad_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
+    Returns:
+    -------
+        - The signed certificate.
+
+    Examples:
+    --------
+    | ${cert}= | Sign Cert Catalyst | ${cert} | ${pq_key} | ${trad_key} |
+    | ${cert}= | Sign Cert Catalyst | ${cert} | ${pq_key} | ${trad_key} | pq_hash_alg=sha512 |
+
+    """
+    alt_alg_id = resources.prepare_alg_ids.prepare_sig_alg_id(pq_key, hash_alg=pq_hash_alg, use_rsa_pss=use_rsa_pss)
+    trad_alg_id = resources.prepare_alg_ids.prepare_sig_alg_id(trad_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
     cert["tbsCertificate"]["signature"] = trad_alg_id
     cert["signatureAlgorithm"] = trad_alg_id
@@ -186,12 +238,14 @@ def sign_cert_catalyst(
     cert["tbsCertificate"]["extensions"].append(prepare_alt_sig_alg_id_extn(alt_alg_id, critical=critical))
 
     cert["tbsCertificate"]["extensions"].append(
-        prepare_subject_alt_public_key_info_extn(public_key=pq_key.public_key(), critical=critical)
+        prepare_subject_alt_public_key_info_extn(key=pq_key.public_key(), critical=critical)
     )
 
-    alt_sig_data = prepare_alt_signature_data(cert)
+    alt_sig_data = extract_alt_signature_data(cert)
 
     alt_signature = cryptoutils.sign_data(data=alt_sig_data, key=pq_key, hash_alg=pq_hash_alg)
+    if bad_alt_sig:
+        alt_signature = utils.manipulate_bytes_based_on_key(alt_signature, pq_key)
 
     alt_extn = prepare_alt_signature_value_extn(signature=alt_signature, critical=critical)
     cert["tbsCertificate"]["extensions"].append(alt_extn)
@@ -199,23 +253,44 @@ def sign_cert_catalyst(
     return certbuildutils.sign_cert(signing_key=trad_key, cert=cert, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
 
-def validate_catalyst_extension(
+# TODO update to check for other algorithms.
+
+
+def validate_catalyst_extensions(  # noqa: D417 Missing a parameter in the Docstring
     cert: rfc9480.CMPCertificate, sig_alg_must_be: Optional[str] = None
 ) -> Union[None, dict]:
     """Check if the certificate contains all required catalyst extensions.
 
     Required Extensions:
+    --------------------
     - subjectAltPublicKeyInfo
     - altSignatureAlgorithm
     - altSignatureValue
 
-    :param cert: The certificate to check.
-    :param sig_alg_must_be: The signature algorithm that the alternative signature must match.
-    :return: A dictionary with extension values if all are present, else None.
-    (keys are: "signature", "spki", "alg_id")
-    :raises ValueError: If only some catalyst extensions are present or if extensions are malformed.
-    :raises BadAlg: If the signature algorithm does not match the expected value.
-    :raises KeyError: If the signature algorithm is not PQ-signature algorithm.
+    Arguments:
+    ---------
+       - `cert`: The certificate to check for the extensions.
+       - `sig_alg_must_be`: The signature algorithm name to be expected for the alternative signature.
+       (e.g., "ml-dsa-44", "ml-dsa-44-sha512" can only be a pq-algorithm).
+       Defaults to `None`.
+
+    Returns:
+    -------
+        - A dictionary with extension values if all are present, else `None`.
+        (keys are: "signature", "spki", "alg_id")
+
+    Raises:
+    ------
+        - `ValueError`: If only some catalyst extensions are present.
+        - `BadAlg`: If the signature algorithm does not match the expected value.
+        - `KeyError`: If the signature algorithm is not PQ-signature algorithm.
+        - `BadAsn1Data`: If extensions are malformed.
+
+    Examples:
+    --------
+    | ${catalyst_ext}= | Validate Catalyst Extensions | ${cert} |
+    | ${catalyst_ext}= | Validate Catalyst Extensions | ${cert} | sig_alg_must_be=ml-dsa-44 |
+
     """
     required_extensions = {id_ce_subjectAltPublicKeyInfo, id_ce_altSignatureAlgorithm, id_ce_altSignatureValue}
 
@@ -229,7 +304,7 @@ def validate_catalyst_extension(
 
     if len(extensions) == 0:
         return None
-    elif len(extensions) != 3:
+    if len(extensions) != 3:
         raise ValueError("Certificate must include either all or none of the catalyst extensions.")
 
     try:
@@ -244,7 +319,7 @@ def validate_catalyst_extension(
         alt_signature_value, rest = decoder.decode(extensions[id_ce_altSignatureValue], asn1Spec=AltSignatureValueExt())
 
         if rest:
-            raise ValueError("Invalid altSignatureValue extension content.")
+            raise BadAsn1Data("Invalid altSignatureValue extension content.")
 
         if sig_alg_must_be is not None:
             if "." in sig_alg_must_be:
@@ -261,44 +336,62 @@ def validate_catalyst_extension(
         }
 
     except pyasn1.error.PyAsn1Error as e:
-        raise ValueError(f"Invalid extension content or verification error: {e}")
+        raise BadAsn1Data(f"Invalid extension content or verification error: {e}")  # pylint: disable=raise-missing-from
 
 
-def verify_catalyst_signature_migrated(
+def verify_catalyst_signature(  # noqa: D417 Missing a parameter in the Docstring
     cert: rfc9480.CMPCertificate,
-    issuer_pub_key: Optional[PrivateKeySig] = None,
-    exclude_alt_extensions: bool = False,
-    only_tbs_cert: bool = False,
+    issuer_cert: Optional[rfc9480.CMPCertificate] = None,
+    issuer_pub_key: Optional[VerifyKey] = None,
+    sig_alg_must_be: Optional[str] = None,
 ) -> None:
     """Verify the alternative signature for migrated relying parties.
 
-    First verify native signature to ensure certificate authenticity and then
+    First verify traditional signature to ensure certificate authenticity and then
     verify the alternative signature by excluding the altSignatureValue extension.
 
-    :param cert: The certificate to verify.
-    :param issuer_pub_key: The issuer's public key for native signature verification.
-    :param exclude_alt_extensions: Whether to exclude alternative extensions for the signature verification.
-    :param only_tbs_cert: Whether to only include the `tbsCertificate` part of the certificate and
-    exclude the `signatureAlgorithm` field.
-    :raises ValueError: If catalyst extensions are missing or verification fails.
-    :raises InvalidSignature: If the traditional signature or the alternative signature verification fails.
+    Arguments:
+    ---------
+        - `cert`: The certificate to verify.
+        - `issuer_cert`: The issuer's certificate for traditional signature verification. Defaults to `None`.
+        - `issuer_pub_key`: The issuer's public key for traditional signature verification. Defaults to `None`.
+        - `sig_alg_must_be`: The signature algorithm name to be expected for the alternative signature.
+        (e.g., "ml-dsa-44", "ml-dsa-44-sha512" can only be a pq-algorithm).
+        Defaults to `None`.
+
+    Raises:
+    ------
+        - `ValueError`: If catalyst extensions are missing or verification fails.
+        - `InvalidSignature`: If the traditional signature or the alternative signature verification fails.
+
+    Examples:
+    --------
+    | Verify Catalyst Signature | ${cert} | ${issuer_cert} |
+    | Verify Catalyst Signature | ${cert} | ${issuer_pub_key} | sig_alg_must_be=ml-dsa-44 |
+
     """
-    catalyst_ext = validate_catalyst_extension(cert)
+    catalyst_ext = validate_catalyst_extensions(cert=cert, sig_alg_must_be=sig_alg_must_be)
     if catalyst_ext is None:
         raise ValueError("Catalyst extensions are not present, cannot perform migrated verification.")
 
-    # Step 1: Verify the native signature
-    issuer_pub_key = issuer_pub_key or keyutils.load_public_key_from_spki(
-        cert["tbsCertificate"]["subjectPublicKeyInfo"])
-    certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
+    if issuer_cert is not None:
+        issuer_pub_key = keyutils.load_public_key_from_spki(issuer_cert["tbsCertificate"]["subjectPublicKeyInfo"])  # type: ignore
+    else:
+        issuer_pub_key = issuer_pub_key or keyutils.load_public_key_from_spki(  # type: ignore
+            cert["tbsCertificate"]["subjectPublicKeyInfo"]
+        )
+
+    verify_key = convertutils.ensure_is_verify_key(issuer_pub_key)
+
+    # Step 1: Verify the traditional signature
+    certutils.verify_cert_signature(cert=cert, issuer_pub_key=verify_key)
 
     # Step 2: Verify the alternative signature
     pq_pub_key = keyutils.load_public_key_from_spki(catalyst_ext["spki"])
     hash_alg = get_hash_from_oid(catalyst_ext["alg_id"]["algorithm"], only_hash=True)
 
-    alt_sig_data = prepare_alt_signature_data(
-        cert, exclude_alt_extensions=exclude_alt_extensions, only_tbs_cert=only_tbs_cert
-    )
+    alt_sig_data = extract_alt_signature_data(cert)
+    pq_pub_key = convertutils.ensure_is_verify_key(pq_pub_key)
 
     cryptoutils.verify_signature(
         public_key=pq_pub_key, hash_alg=hash_alg, data=alt_sig_data, signature=catalyst_ext["signature"]
@@ -307,82 +400,84 @@ def verify_catalyst_signature_migrated(
     logging.info("Alternative signature verification succeeded.")
 
 
-def verify_catalyst_signature(
-    cert: rfc9480.CMPCertificate,
-    issuer_pub_key: Optional[PrivateKeySig] = None,
-    include_extensions: bool = True,
-    migrated: bool = False,
-):
-    """Verify the certificate's signature, handling both native and alternative signatures.
-
-    The verification is based on whether the relying party has migrated.
-
-    :param cert: The certificate to verify.
-    :param issuer_pub_key: The issuer's public key for native signature verification.
-    :param include_extensions: Whether to include catalyst extensions in native verification.
-    :param migrated: Whether the relying party has migrated to support alternative signatures.
-    :raises ValueError: If verification fails due to missing extensions or signature mismatches.
-    :raises NotImplementedError: If certain verification paths are not implemented.
-    """
-    catalyst_ext = validate_catalyst_extension(cert)
-    public_key2 = keyutils.load_public_key_from_spki(catalyst_ext["spki"])
-
-    if not migrated:
-        if catalyst_ext:
-            logging.info("Catalyst extensions detected. Verifying native signature.")
-            if include_extensions:
-                certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
-            else:
-                raise NotImplementedError("Excluding extensions is not supported for non-migrated parties.")
-        else:
-            raise ValueError("No catalyst extensions present.")
-
-    else:
-        if catalyst_ext:
-            logging.info("Migrated relying party: Verifying alternative signature.")
-            verify_catalyst_signature_migrated(cert, public_key2)
-        else:
-            logging.info("No catalyst extensions present. Verifying native signature.")
-            certutils.verify_cert_signature(cert=cert, issuer_pub_key=issuer_pub_key)
-
-
-def build_catalyst_cert(
-    trad_key: TradSigPrivKey,
+def build_catalyst_cert(  # noqa: D417 Missing a parameter in the Docstring
+    trad_key: TradSignKey,
     pq_key: PQSignaturePrivateKey,
     client_key: PrivateKey,
     common_name: str = "CN=Hans Mustermann",
-    use_pss: bool = False,
     extensions: Optional[rfc5280.Extensions] = None,
+    **kwargs,
 ) -> CMPCertificate:
     """Generate a catalyst certificate combining traditional and post-quantum keys.
 
-    :param trad_key: The traditional private key (e.g., RSA) used for signing the certificate.
-    :param pq_key: The post-quantum private key.
-    :param client_key: The client key to create the certificate for.
-    :param common_name: The subject's common name (CN) for the certificate. Defaults to "CN=Hans Mustermann".
-    :param use_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
-    :param extensions: Optional extensions to include in the certificate.
-    :return: The created `CMPCertificate`.
+    Arguments:
+    ---------
+        - `trad_key`: The traditional private key (e.g., RSA) used for signing the certificate.
+        - `pq_key`: The post-quantum private key.
+        - `client_key`: The client key to create the certificate for.
+        - `common_name`: The subject's common name (CN) for the certificate. Defaults to "CN=Hans Mustermann".
+
+        - `extensions`: Optional extensions to include in the certificate.
+
+    **kwargs:
+    ---------
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `hash_alg`: The hash algorithm to use. Defaults to "sha256".
+        - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
+        - `alt_hash_alg`: The hash algorithm to use for the post-quantum signature. Defaults to `None`.
+
+    Returns:
+    -------
+        - The created `CMPCertificate`.
+
+    Examples:
+    --------
+    | ${cert}= | Build Catalyst Cert | ${trad_key} | ${pq_key} | ${client_key} |
+
     """
     tbs_cert = certbuildutils.prepare_tbs_certificate(
         subject=common_name,
         signing_key=trad_key,
         public_key=client_key.public_key(),
-        use_rsa_pss=use_pss,
+        use_rsa_pss=kwargs.get("use_rsa_pss", False),
         extensions=extensions,
     )
-
     cert = rfc9480.CMPCertificate()
     cert["tbsCertificate"] = tbs_cert
-    return sign_cert_catalyst(cert, trad_key=trad_key, pq_key=pq_key, use_rsa_pss=use_pss)
+    return sign_cert_catalyst(
+        cert,
+        trad_key=trad_key,
+        pq_key=pq_key,
+        hash_alg=kwargs.get("hash_alg", "sha256"),
+        pq_hash_alg=kwargs.get("alt_hash_alg"),
+        critical=kwargs.get("critical", False),
+        use_rsa_pss=kwargs.get("use_rsa_pss", False),
+    )
 
 
-def load_catalyst_public_key(extensions: rfc9480.Extensions) -> PublicKey:
-    """Load a public key from the newly defined AltPublicKeyInfo extension.
+def load_catalyst_public_key(  # noqa: D417 Missing a parameter in the Docstring
+    extensions: rfc9480.Extensions,
+) -> PublicKey:
+    """Load a public key from the `AltPublicKeyInfo` extension.
 
-    :param extensions: The extensions to load the public key from.
-    :return: The loaded public key.
-    :raises ValueError: If the extension is not found.
+    Arguments:
+    ---------
+        - `extensions`: The extensions to load the public key from.
+
+    Returns:
+    -------
+        - The loaded public key.
+
+    Raises:
+    ------
+        - `ValueError`: If the extension is not found.
+        - `ValueError`: If the public key cannot be loaded.
+        - `BadAsn1Data`: If the extension contains remainder data.
+
+    Examples:
+    --------
+    | ${public_key}= | Load Catalyst Public Key | ${extensions} |
+
     """
     extn_alt_spki = certextractutils.get_extension(extensions, id_ce_subjectAltPublicKeyInfo)
     if extn_alt_spki is None:
@@ -395,10 +490,11 @@ def load_catalyst_public_key(extensions: rfc9480.Extensions) -> PublicKey:
     return alt_issuer_key
 
 
+@keyword(name="Sign CRL Catalyst")
 def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
     crl: rfc5280.CertificateList,
-    ca_private_key: PrivateKeySig,
-    alt_private_key: Optional[PrivateKeySig] = None,
+    ca_private_key: SignKey,
+    alt_private_key: Optional[SignKey] = None,
     include_alt_public_key: bool = False,
     hash_alg: str = "sha256",
     alt_hash_alg: Optional[str] = None,
@@ -422,9 +518,9 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
        - `hash_alg`: The hash algorithm to use. Defaults to "sha256".
        - `alt_hash_alg`: The hash algorithm to use for the alternative signature. Defaults to `None`.
        (if not provided, will use the same as `hash_alg`)
-        - `use_pre_hash`: Whether to use the pre-hash version for a CompositeKey. Defaults to `False`.
+        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
-        - `critical`: Whether the extensions are critical. Defaults to `False`.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
         - `bad_sig`: Whether to manipulate the signature to be invalid. Defaults to `False`.
         - `bad_alt_sig`: Whether to manipulate the alternative signature to be invalid. Defaults to `False`.
 
@@ -432,8 +528,13 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
     -------
          - The signed CRL.
 
+    Examples:
+    --------
+    | ${crl}= | Sign CRL Catalyst | ${crl} | ${ca_private_key} | ${alt_private_key} |
+    | ${crl}= | Sign CRL Catalyst | ${crl} | ${ca_private_key} | ${alt_private_key} | include_alt_public_key=True |
+
     """
-    crl["signatureAlgorithm"] = certbuildutils.prepare_sig_alg_id(
+    crl["signatureAlgorithm"] = resources.prepare_alg_ids.prepare_sig_alg_id(
         signing_key=ca_private_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg, use_pre_hash=use_pre_hash
     )
 
@@ -450,7 +551,7 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
         crl["tbsCertList"]["crlExtensions"].append(extn)
         if include_alt_public_key:
             extn = prepare_subject_alt_public_key_info_extn(
-                public_key=alt_private_key.public_key(),
+                key=alt_private_key.public_key(),  # type: ignore
                 critical=critical,
             )
             crl["tbsCertList"]["crlExtensions"].append(extn)
@@ -459,10 +560,7 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
         alt_sig_value = cryptoutils.sign_data(data=data, key=alt_private_key, hash_alg=alt_hash_alg or hash_alg)
 
         if bad_alt_sig:
-            if isinstance(alt_private_key, AbstractCompositeSigPrivateKey):
-                alt_sig_value = utils.manipulate_composite_sig(alt_sig_value)
-            else:
-                alt_sig_value = utils.manipulate_first_byte(alt_sig_value)
+            alt_sig_value = utils.manipulate_bytes_based_on_key(alt_sig_value, alt_private_key)
 
         alt_sig_ext = prepare_alt_signature_value_extn(signature=alt_sig_value, critical=critical)
         crl["tbsCertList"]["crlExtensions"].append(alt_sig_ext)
@@ -471,10 +569,7 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
     crl_signature = cryptoutils.sign_data(data=crl_tbs, key=ca_private_key, hash_alg=hash_alg)
 
     if bad_sig:
-        if isinstance(ca_private_key, AbstractCompositeSigPrivateKey):
-            crl_signature = utils.manipulate_composite_sig(crl_signature)
-        else:
-            crl_signature = utils.manipulate_first_byte(crl_signature)
+        crl_signature = utils.manipulate_bytes_based_on_key(crl_signature, ca_private_key)
 
     crl["signature"] = univ.BitString.fromOctetString(crl_signature)
 

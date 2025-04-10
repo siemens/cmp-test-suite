@@ -12,13 +12,12 @@ draft-ietf-lamps-cert-binding-for-multi-auth-06
 https://datatracker.ietf.org/doc/draft-ietf-lamps-cert-binding-for-multi-auth/
 """
 
+import email
 import logging
 import time
 from datetime import datetime
-from email import message_from_bytes
 from typing import List, Optional
 
-import requests
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
@@ -27,31 +26,37 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from pyasn1_alt_modules.rfc7906 import BinaryTime
-from robot.api.deco import keyword
+from resources import (
+    ca_kga_logic,
+    certextractutils,
+    certutils,
+    cmputils,
+    cryptoutils,
+    envdatautils,
+    utils,
+)
+from resources.asn1utils import get_set_bitstring_names
+from resources.convertutils import ensure_is_verify_key, pyasn1_time_obj_to_py_datetime
+from resources.exceptions import BadAsn1Data
+from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
+from resources.typingutils import SignKey, Strint
+from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import RelatedCertificate, RequesterCertificate
 from pq_logic.tmp_oids import id_aa_relatedCertRequest, id_relatedCert
-from resources import certextractutils, certutils, cmputils, cryptoutils, envdatautils, utils
-from resources.asn1utils import get_set_bitstring_names
-from resources.ca_kga_logic import validate_issuer_and_serial_number_field
-from resources.convertutils import pyasn1_time_obj_to_py_datetime
-from resources.exceptions import BadAsn1Data
-from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
-from resources.typingutils import PrivateKey
-from unit_tests.utils_for_test import convert_to_crypto_lib_cert
 
 
 @keyword(name="Prepare RequesterCertificate")
-def prepare_requester_certificate(
+def prepare_requester_certificate(  # noqa: D417 Missing argument descriptions in the docstring
     cert_a: rfc9480.CMPCertificate,
-    cert_a_key: PrivateKey,
+    cert_a_key: SignKey,
     uri: str,
     bad_pop: bool = False,
     hash_alg: Optional[str] = None,
     invalid_serial_number: bool = False,
     invalid_issuer: bool = False,
-    freshness: int = 0,
-    request_time: Optional[int] = None,
+    freshness: Strint = 0,
+    request_time: Optional[Strint] = None,
 ) -> RequesterCertificate:
     """Prepare the RequesterCertificate structure.
 
@@ -59,23 +64,40 @@ def prepare_requester_certificate(
     If the CA is a different one the URI SHOULD be a dataURI, containing inline degenerate PKCS#7 consisting
     of all the certificates and CRLs required to validate Cert A. If same CA SHOULD be a URL.
 
-    :param cert_a: Certificate A as CMPCertificate.
-    :param cert_a_key: The private key corresponding to the related certificate.
-    :param uri: URL location of Cert A or the complete chain of Cert A, all certificate contained must be DER-encoded.
-    :param bad_pop: Whether to manipulate the signature. Defaults to `False`.
-    :param hash_alg: The hash algorithm to use for the certificate, if the
-    private key is ecc. Defaults to `None`. if required takes the hash algorithm, from the signature algorithm.
-    :param invalid_serial_number: Whether to manipulate the serial number. Defaults to `False`.
-    :param invalid_issuer: Whether to manipulate the issuer. Defaults to `False`.
-    :param freshness: A value to modify The freshness of the BinaryTime. Defaults to `0`.
-    :param request_time: The time of the request. Defaults to `None`.
-    :return: Prepared RequesterCertificate.
+    Arguments:
+    ---------
+        - `cert_a`: The Certificate A (secondary certificate).
+        - `cert_a_key`: The private key corresponding to the related certificate.
+        - `uri`: URL location of Cert A or the complete chain of Cert A, all certificate contained must be DER-encoded.
+        - `bad_pop`: Whether to manipulate the signature. Defaults to `False`.
+        - `hash_alg`: The hash algorithm to use for the certificate, if the private key is ed25519 or a key without
+            a hash algorithm. Defaults to `None`.
+        - `invalid_serial_number`: Whether to manipulate the serial number. Defaults to `False`.
+        - `invalid_issuer`: Whether to manipulate the issuer. Defaults to `False`.
+        - `freshness`: A value to modify The freshness of the BinaryTime. Defaults to `0`.
+        - `request_time`: The time of the request in since the UNIX epoch. Defaults to `None`.
+
+    Returns:
+    -------
+        - The populated `RequesterCertificate` structure.
+
+    Raises:
+    ------
+        - ValueError: If the hash algorithm could not be determined.
+
+    Examples:
+    --------
+    | ${req_cert}= | Prepare RequesterCertificate | ${cert_a} | ${cert_a_key} | ${uri} |
+    | ${req_cert}= | Prepare RequesterCertificate | ${cert_a} | ${cert_a_key} | ${uri} | bad_pop=True |
+
     """
     # get current UNIX time
-    current_time = request_time or (int(time.time()) + freshness)
+    current_time = request_time or (int(time.time()) + int(freshness))
+    current_time = int(current_time)
+
     bin_time = BinaryTime(current_time)
     cert_id = envdatautils.prepare_issuer_and_serial_number(
-        cert=cert_a, invalid_serial_number=invalid_serial_number, invalid_issuer=invalid_issuer
+        cert=cert_a, modify_serial_number=invalid_serial_number, modify_issuer=invalid_issuer
     )
 
     req_cert = RequesterCertificate()
@@ -88,12 +110,12 @@ def prepare_requester_certificate(
     # DER encoded requestTime and IssuerAndSerialNumber.
     data = encoder.encode(bin_time) + encoder.encode(cert_id)
 
-    # As of section 3.q signed with the signature algorithm associated with the private key
+    # As of section 3.1 signed with the signature algorithm associated with the private key
     # of the certificate.
     if hash_alg is None:
         # could be None for ed25519, ed448, and ML-DSA, SLH-DSA and maybe more in the
         # future.
-        oid = cert_a["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]
+        oid = cert_a["tbsCertificate"]["signature"]["algorithm"]
         hash_alg = get_hash_from_oid(oid, only_hash=True)
 
     if isinstance(cert_a_key, (rsa.RSAPrivateKey, ec.EllipticCurvePrivateKey)) and hash_alg is None:
@@ -103,7 +125,7 @@ def prepare_requester_certificate(
 
     signature = cryptoutils.sign_data(data=data, key=cert_a_key, hash_alg=hash_alg)
 
-    logging.info(f"Signature: {signature}")
+    logging.info("Signature: %s", signature)
     if bad_pop:
         signature = utils.manipulate_first_byte(signature)
 
@@ -112,12 +134,23 @@ def prepare_requester_certificate(
 
 
 @keyword(name="Add CSR relatedCertRequest Attribute")
-def add_csr_related_cert_request_attribute(csr: rfc6402.CertificationRequest, requester_cert: RequesterCertificate):
+def add_csr_related_cert_request_attribute(  # noqa: D417 Missing argument descriptions in the docstring
+    csr: rfc6402.CertificationRequest, requester_cert: RequesterCertificate
+) -> rfc6402.CertificationRequest:
     """Add the relatedCertRequest attribute to the CSR.
 
-    :param csr: The CSR to which the attribute will be added.
-    :param requester_cert: The RequesterCertificate to include.
-    :return: The updated CSR.
+    Arguments:
+    ---------
+        - `csr`: The CSR to which the attribute will be added.
+        - `requester_cert`: The RequesterCertificate to include.
+
+    Returns:
+    -------
+        - The updated CSR.
+
+    Examples:
+    --------
+    | ${csr}= | Add CSR relatedCertRequest Attribute | ${csr} | ${requester_cert} |
 
     """
     rel_cert_req_attr = rfc5652.Attribute()
@@ -151,22 +184,33 @@ def _get_related_cert_sig(cert: rfc9480.CMPCertificate) -> Optional[bytes]:
     return None
 
 
-def validate_related_cert_extension(
+def validate_related_cert_extension(  # noqa: D417 Missing argument descriptions in the docstring
     cert_a: rfc9480.CMPCertificate, related_cert: rfc9480.CMPCertificate, hash_alg: Optional[str] = None
-):
+) -> None:
     """Extract the `RelatedCertificate` extension from a given certificate.
 
     This function retrieves the RelatedCertificate extension from a certificate,
     if present, and extracts the hash of the related certificate and then validates
     the hash against the hash algorithm used by signing the certificate.
 
-    :param cert_a: The certificate from which to extract the RelatedCertificate extension.
-                 It should be a parsed ASN.1 object (e.g., `rfc5280.Certificate`).
-    :param related_cert: The related certificate which should contain the hash of the
-    related certificate.
-    :param hash_alg: Currently supports adding a hash for ML-DSA or Ed-keys as an example.
-    :return: The hash value of the related certificate (as bytes) if the extension is present,
-             otherwise `None`.
+    Arguments:
+    ---------
+        - `cert_a`: The certificate from which to extract the RelatedCertificate extension.
+        - `related_cert`: The related certificate which should contain the hash of the related certificate.
+        - `hash_alg`: Currently supports adding a hash for ML-DSA or Ed-keys as an example. Defaults to `None`.
+
+    Raises:
+    ------
+        - `ValueError`: If the certificate does not contain the RelatedCertificate extension.
+        - `ValueError`: If the certificate hash is different.
+        - `ValueError`: If the related certificate is not found.
+        - `ValueError`: If the EKU and KU bits are not set or missing.
+
+    Examples:
+    --------
+    | Validate Related Certificate Extension | ${cert_a} | ${related_cert} |
+    | Validate Related Certificate Extension | ${cert_a} | ${related_cert} | hash_alg="sha256" |
+
     """
     signature = _get_related_cert_sig(cert_a)
     if not signature:
@@ -180,15 +224,28 @@ def validate_related_cert_extension(
     validate_ku_and_eku_related_cert(cert_a=cert_a, related_cert=related_cert)
 
 
-def get_related_cert_from_list(
+def get_related_cert_from_list(  # noqa: D417 Missing argument descriptions in the docstring
     certs: List[rfc9480.CMPCertificate], cert_a: rfc9480.CMPCertificate
 ) -> rfc9480.CMPCertificate:
     """Get the related certificate from a list of certificates.
 
-    :param certs: The list of certificates to search.
-    :param cert_a: The certificate for which to find the related certificate.
-    :return: The related certificate if found, otherwise `None`.
-    :raises ValueError: If no related certificate is found.
+    Arguments:
+    ---------
+        - `certs`: The list of certificates to search.
+        - `cert_a`: The certificate whose related certificate must be found.
+
+    Returns:
+    -------
+        - The related certificate.
+
+    Raises:
+    ------
+        - ValueError: If the related certificate is not found.
+
+    Examples:
+    --------
+    | ${related_cert}= | Get Related Cert From List | ${certs} | ${cert_a} |
+
     """
     hash_alg = get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
     signature = _get_related_cert_sig(cert_a)
@@ -216,25 +273,41 @@ def _negative_testing():
 # other server side functions are currently not included.
 
 
-def validate_ku_and_eku_related_cert(cert_a: rfc9480.CMPCertificate, related_cert: rfc9480.CMPCertificate) -> None:
+@keyword(name="Validate KU and EKU Related Cert")
+def validate_ku_and_eku_related_cert(  # noqa: D417 Missing argument descriptions in the docstring
+    cert_a: rfc9480.CMPCertificate, related_cert: rfc9480.CMPCertificate
+) -> None:
     """Validate the key usage (KU) and extended key usage (EKU) of a related certificate.
 
     Ensure that the cert_a has at least the same KU and EKU bits set.
 
-    :param cert_a: The certificate being issued (Cert B), which defines the required KU and EKU.
-                   It should be a parsed x509 certificate object.
-    :param related_cert: The related certificate (Cert A) being validated.
-                         It should also be a parsed x509 certificate object.
+    Arguments:
+    ---------
+        - ´cert_a´: The certificate being issued (Cert B), which defines the required KU and EKU.
+        - ´related_cert´: The related certificate being validated.
 
-    :raises ValueError: If EKU and KU bits are not set or missing.
+    Raises:
+    ------
+        - ValueError: If EKU and KU bits are not set or missing.
+
+    Examples:
+    --------
+    | Validate KU and EKU Related Cert | ${cert_a} | ${related_cert} |
+
     """
     # MUST ensure that the related certificate at least contains the KU bits and EKU
     # OIDs being asserted in the certificate being issued
 
-    eku_cert_a = certextractutils.get_field_from_certificate(cert_a, extension="eku")
-    eku_cert_b = certextractutils.get_field_from_certificate(cert_a, extension="eku")
+    eku_cert_a = certextractutils.get_field_from_certificate(cert_a, extension="eku")  # type: ignore
+    eku_cert_b = certextractutils.get_field_from_certificate(cert_a, extension="eku")  # type: ignore
+
+    eku_cert_a: Optional[rfc5280.ExtKeyUsageSyntax]
+    eku_cert_b: Optional[rfc5280.ExtKeyUsageSyntax]
 
     if eku_cert_a is not None:
+        if eku_cert_b is None:
+            raise ValueError("The related certificate does not contain the EKU extension.")
+
         for eku_oid in eku_cert_b:
             if eku_oid not in related_cert:
                 raise ValueError()
@@ -243,13 +316,14 @@ def validate_ku_and_eku_related_cert(cert_a: rfc9480.CMPCertificate, related_cer
     ku_cert_b = certextractutils.get_field_from_certificate(related_cert, extension="key_usage")
 
     if ku_cert_a is not None:
-        set_a = set(get_set_bitstring_names(ku_cert_a)) # type: ignore
-        set_b = set(get_set_bitstring_names(ku_cert_b)) # type: ignore
+        set_a = set(get_set_bitstring_names(ku_cert_a))  # type: ignore
+        set_b = set(get_set_bitstring_names(ku_cert_b))  # type: ignore
 
         if ku_cert_b is None or set_a - set_b:
             raise ValueError()
 
 
+@not_keyword
 def extract_related_cert_request_attribute(csr: rfc6402.CertificationRequest) -> RequesterCertificate:
     """Extract the relatedCertRequest attribute from a given CSR.
 
@@ -274,13 +348,14 @@ def extract_related_cert_request_attribute(csr: rfc6402.CertificationRequest) ->
     raise ValueError("The relatedCertRequest attribute was not found in the CSR.")
 
 
+@not_keyword
 def process_mime_message(mime_data: bytes):
     """Parse a MIME message and extracts application/pkcs7-mime content.
 
     :param mime_data: Raw MIME message as bytes.
     :return: Decoded CMS content (as bytes).
     """
-    message = message_from_bytes(mime_data)
+    message = email.message_from_bytes(mime_data)
 
     # Look for the application/pkcs7-mime part
     for part in message.walk():
@@ -291,103 +366,133 @@ def process_mime_message(mime_data: bytes):
     raise ValueError("No application/pkcs7-mime part found in the message.")
 
 
-def load_certificate_from_uri(uri: str, load_chain: bool) -> List[rfc9480.CMPCertificate]:
-    """Get the related certificate using the provided URI.
-
-    :param uri: The URI of the secondary certificate.
-    :param load_chain: Whether to load a chain or a single certificate.
-    :return: The parsed certificate.
-    :raise ValueError: If the fetching fails.
-    """
-    try:
-        logging.info(f"Fetching secondary certificate from {uri}")
-        response = requests.get(uri)
-        response.raise_for_status()
-
-    except requests.RequestException as e:
-        raise ValueError(f"Failed to fetch secondary certificate: {e}")
-
-    if not load_chain:
-        cert, rest = decoder.decode(response.content, rfc9480.CMPCertificate())
-        if rest:
-            raise ValueError("The decoding of the fetching certificate had a remainder.")
-
-        return [cert]
-
-    else:
-        certs = response.content.split(b"-----END CERTIFICATE-----\n")
-        certs = [cert for cert in certs if cert.strip()]
-        cert = [certutils.parse_certificate(utils.decode_pem_string(cert)) for cert in certs]
-        return cert
-
-
-def validate_multi_auth_binding_csr(
+@keyword(name="Validate Related Cert PoP")
+def validate_related_cert_pop(  # noqa: D417 Missing argument descriptions in the docstring
     csr: rfc6402.CertificationRequest,
+    max_freshness_seconds: Strint = 500,
     load_chain: bool = False,
-    max_freshness_seconds: int = 500,
-    trustanchors: str = "./data/trustanchors",
-    allow_os_store: bool = False,
-    crl_check: bool = False,
-) -> rfc9480.CMPCertificate:
-    """Process a CSR containing the `relatedCertRequest` attribute.
+) -> List[rfc9480.CMPCertificate]:
+    """Validate the Proof-of-Possession (PoP) of the related certificate.
 
-    Expected the CSR`s Proof-of-Possession (PoP) to be verified.
+    Arguments:
+    ---------
+        - `csr`: The CSR containing the `RequesterCertificate` attribute.
+        - `max_freshness_seconds`: How fresh the `BinaryTime` must be in seconds. Defaults to `500`.
+        - `load_chain`: Whether to load a chain or a single certificate. Defaults to `False`.
 
-    :param csr: The x509.CertificateSigningRequest to process.
-    :param max_freshness_seconds: How fresh the `BinaryTime` must be Defaults to `500`.
-    :param load_chain: Whether to load a chain or a single certificate.
-    :param trustanchors: The directory containing the trust anchors. Defaults to `./data/trustanchors`.
-    :param crl_check: Whether to check the CRL. Defaults to `False`.
-    :param allow_os_store: Whether to allow the OS trust store. Defaults to `False`.
-    :return: The related certificate.
-    :raises ValueError: If the `BinaryTime` is not fresh or the certificate chain is invalid.
-    :raises InvalidSignature: If the PoP of the related certificate is invalid.
-    :raises ValueError: If the last certificate in the chain is not a trust anchor.
-    :raises ValueError: If the certificate chain is not valid.
+    Returns:
+    -------
+        - The certificate chain.
+
+    Raises:
+    ------
+        - `ValueError`: If the `BinaryTime` is not fresh.
+
+    Examples:
+    --------
+    | ${cert_chain}= | Validate Related Cert PoP | ${csr} |
+    | ${cert_chain}= | Validate Related Cert PoP | ${csr} | load_chain=True | max_freshness_seconds=1000 |
+
     """
     attributes = extract_related_cert_request_attribute(csr)
 
     request_time = int(attributes["requestTime"])
     current_time = int(time.time())
-    if abs(current_time - request_time) > max_freshness_seconds:
+    if abs(current_time - request_time) > int(max_freshness_seconds):
         raise ValueError("BinaryTime is not sufficiently fresh.")
 
     location_info = attributes["locationInfo"]
     signature = attributes["signature"].asOctets()
 
-    cert_chain = load_certificate_from_uri(location_info, load_chain=load_chain)
+    cert_chain = utils.load_certificate_from_uri(location_info, load_chain=load_chain)
     cert_a = cert_chain[0]
-
-    extensions = certextractutils.extract_extension_from_csr(csr)
-    # For certificate chains, this extension MUST only be included in the end-entity certificate.
-    if extensions is not None:
-        ca_extn = certextractutils.get_extension(extensions, rfc5280.id_ce_basicConstraints)
-        if ca_extn["cA"]:
-            raise ValueError("The `Cert B` MUST be an end entity certificate.")
 
     # validate binding
     public_key = certutils.load_public_key_from_cert(cert_a)
     hash_alg = get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
 
     sig_name = may_return_oid_to_name(cert_a["tbsCertificate"]["signature"]["algorithm"])
-    logging.info(f"Signature algorithm: {sig_name}")
+    logging.info("Signature algorithm: %s", sig_name)
 
     if hash_alg is None:
         raise ValueError(f"The hash algorithm could not be determined. Signature algorithm was: {sig_name}")
 
-    validate_issuer_and_serial_number_field(attributes["certID"], cert_a)
+    ca_kga_logic.validate_issuer_and_serial_number_field(attributes["certID"], cert_a)
     # extra the bound value to verify the signature
     data = encoder.encode(attributes["requestTime"]) + encoder.encode(attributes["certID"])
 
-    cryptoutils.verify_signature(data=data, hash_alg=hash_alg, public_key=public_key, signature=signature)
+    verify_key = ensure_is_verify_key(public_key)
 
+    cryptoutils.verify_signature(
+        data=data,
+        signature=signature,
+        hash_alg=hash_alg,
+        public_key=verify_key,
+    )
+
+    return cert_chain
+
+
+def validate_multi_auth_binding_csr(  # noqa: D417 Missing argument descriptions in the docstring
+    csr: rfc6402.CertificationRequest,
+    load_chain: bool = False,
+    max_freshness_seconds: Strint = 500,
+    trustanchors: str = "./data/trustanchors",
+    allow_os_store: bool = False,
+    crl_check: bool = False,
+    do_openssl_check: bool = True,
+) -> rfc9480.CMPCertificate:
+    """Process a CSR containing the `relatedCertRequest` attribute.
+
+    Expected the CSR`s Proof-of-Possession (PoP) to be verified.
+
+    Arguments:
+    ---------
+        - `csr`: The CertificationRequest to process.
+        - `max_freshness_seconds`: How fresh the `BinaryTime` must be. Defaults to `500`.
+        - `load_chain`: Whether to load a chain or a single certificate. Defaults to `False`.
+        - `trustanchors`: The directory containing the trust anchors. Defaults to `./data/trustanchors`.
+        - `allow_os_store`: Whether to allow the OS trust store. Defaults to `False`.
+        - `crl_check`: Whether to check the CRL. Defaults to `False`.
+        - `do_openssl_check`: Whether to do the OpenSSL certificate chain validation. Defaults to `True`.
+
+    Returns:
+    -------
+        - The related certificate.
+
+    Raises:
+    ------
+        - `ValueError`: If the `BinaryTime` is not fresh or the certificate chain is invalid.
+        - `InvalidSignature`: If the PoP of the related certificate is invalid.
+        - `ValueError`: If the last certificate in the chain is not a trust anchor.
+        - `ValueError`: If the certificate chain is not valid.
+
+    Examples:
+    --------
+    | ${related_cert}= | Validate Multi Auth Binding CSR | ${csr} |
+
+    """
+    extensions = certextractutils.extract_extensions_from_csr(csr)
+    # For certificate chains, this extension MUST only be included in the end-entity certificate.
+    if extensions is not None:
+        ca_extn = certextractutils.get_extension(extensions, rfc5280.id_ce_basicConstraints)  # type: ignore
+        ca_extn: rfc5280.BasicConstraints
+        if ca_extn["cA"]:
+            raise ValueError("The `Cert B` MUST be an end entity certificate.")
+
+    cert_chain = validate_related_cert_pop(csr, max_freshness_seconds=max_freshness_seconds, load_chain=load_chain)
+    cert_a = cert_chain[0]
     certutils.certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, allow_os_store=allow_os_store)
-    certutils.verify_cert_chain_openssl(cert_chain=cert_chain, crl_check=crl_check)
+    if do_openssl_check:
+        certutils.verify_cert_chain_openssl(cert_chain=cert_chain, crl_check=crl_check)
     return cert_a
 
 
 # Technically should be changed to CertTemplate and/or CSR.
 # MUST include chain check.
+
+
+@not_keyword
 def server_side_validate_cert_binding_for_multi_auth(ee_cert, related_cert) -> None:
     """Validate the certificate binding for multiple authentications on the server side.
 
@@ -432,6 +537,7 @@ def _convert_to_crypto_lib_cert(cert: rfc9480.CMPCertificate) -> x509.Certificat
     return x509.load_der_x509_certificate(encoder.encode(cert))
 
 
+@not_keyword
 def generate_certs_only_message(cert_path: str, cert_dir: str) -> bytes:
     """Generate a CMS 'certs-only' message containing Cert A and its intermediate certificates.
 
@@ -444,21 +550,38 @@ def generate_certs_only_message(cert_path: str, cert_dir: str) -> bytes:
 
     cms_message = pkcs7.PKCS7SignatureBuilder().set_data(b"")
     for cert in cert_chain:
-        cms_message = cms_message.add_certificate(convert_to_crypto_lib_cert(cert))
+        cms_message = cms_message.add_certificate(_convert_to_crypto_lib_cert(cert))
 
     cms_der = cms_message.sign(serialization.Encoding.DER, [])
     return cms_der
 
 
-def prepare_related_cert_extension(
+@keyword(name="Prepare RelatedCertificate Extension")
+def prepare_related_cert_extension(  # noqa: D417 Missing argument descriptions in the docstring
     cert_a: rfc9480.CMPCertificate, hash_alg: Optional[str] = None, critical: bool = False
 ) -> rfc5280.Extension:
     """Prepare the RelatedCertificate extension for a x509 certificate.
 
-    :param cert_a: The certificate for which to prepare the extension.
-    :param hash_alg: The hash algorithm to use for the certificate. Defaults to `None`.
-    :param critical: Whether the extension should be marked as critical. Defaults to `False`.
-    :return: The prepared extension.
+    Arguments:
+    ---------
+        - `cert_a`: The certificate for which to prepare the extension for.
+        - `hash_alg`: The hash algorithm to use for the certificate. Defaults to `None`.
+        (must be provided for ed25519 and ML-DSA.)
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+
+    Returns:
+    -------
+        - The prepared extension.
+
+    Raises:
+    ------
+        - ValueError: If the hash algorithm could not be determined.
+
+    Examples:
+    --------
+    | ${extn}= | Prepare RelatedCertificate Extension | ${cert_a} |
+    | ${extn}= | Prepare RelatedCertificate Extension | ${cert_a} | critical=True |
+
     """
     # Notes:
     # For certificate chains, this extension MUST only be included in the end-entity certificate.
@@ -468,6 +591,9 @@ def prepare_related_cert_extension(
 
     # for negative testing or ed-keys and so on.
     hash_alg = hash_alg or get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
+
+    if hash_alg is None:
+        raise ValueError("The hash algorithm could not be determined.")
 
     cert_hash = cmputils.calculate_cert_hash(cert=cert_a, hash_alg=hash_alg)
     extension = rfc5280.Extension()
