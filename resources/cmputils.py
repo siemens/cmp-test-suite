@@ -48,7 +48,7 @@ from resources import (
     protectionutils,
     utils,
 )
-from resources.asn1_structures import KemCiphertextInfoAsn1
+from resources.asn1_structures import KemCiphertextInfoAsn1, PKIMessageTMP, PKIMessagesTMP
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data
 from resources.typingutils import CertObjOrPath, PrivateKey, PrivateKeySig, PublicKey, Strint, TradSigPrivKey
