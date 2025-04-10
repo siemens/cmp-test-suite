@@ -14,15 +14,22 @@ from collections import Counter
 from itertools import combinations
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
+import pyasn1
+import requests
+from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
+from pq_logic.keys.composite_kem05 import CompositeKEMPrivateKey, CompositeKEMPublicKey
+from pq_logic.keys.composite_kem06 import CompositeKEM06PrivateKey, CompositeKEM06PublicKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
+from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import base, univ
+from pyasn1.type import base, char, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
 from resources import certutils, keyutils
+from resources.exceptions import BadAsn1Data
 from resources.oidutils import PYASN1_CM_NAME_2_OIDS
-from resources.typingutils import PrivateKey, Strint
+from resources.typingutils import PrivateKey, PublicKey, Strint
 
 
 def nonces_must_be_diverse(nonces: List[bytes], minimal_hamming_distance: Strint = 10):
@@ -149,7 +156,7 @@ def decode_pem_string(data: Union[bytes, str]) -> bytes:
 
 
 @keyword("Load And Decode PEM File")
-def load_and_decode_pem_file(path: str):
+def load_and_decode_pem_file(path: str) -> bytes:
     """Load a base64-encoded PEM file, with or without a header, ignore comments, and return the decoded data.
 
     This is an augmented version of the PEM format, which allows one to add comments to the file, by starting the
@@ -230,9 +237,7 @@ def pem_to_der(pem_data: Union[str, bytes]) -> bytes:
 
 
 @not_keyword
-def filter_options(  # type: ignore
-    options: List[str], include: Optional[str] = None, exclude: Optional[str] = None
-) -> List[str]:
+def filter_options(options: List[str], include: Optional[str] = None, exclude: Optional[str] = None) -> List[str]:
     """Return the option to exclude with the provided string representations.
 
     :param options: All possible options to parse.
@@ -247,12 +252,12 @@ def filter_options(  # type: ignore
         return exclude.strip(" ").split(",")  # type: ignore
 
     include_fields = include.strip(" ").split(",")
-    exclude: List[str] = []  # type: ignore
+    exclude_fields = []
     for option in options:
         if option not in include_fields:
-            exclude.append(option)
+            exclude_fields.append(option)
 
-    return exclude
+    return exclude_fields
 
 
 def log_certificates(  # noqa D417 undocumented-param
@@ -286,7 +291,7 @@ def log_certificates(  # noqa D417 undocumented-param
 
 
 def write_certs_to_dir(  # noqa D417 undocumented-param
-    cert_chain: List[rfc9480.CMPCertificate], name_prefix: Optional[str] = None, directory="data/cert_logs"
+    cert_chain: Iterable[rfc9480.CMPCertificate], name_prefix: Optional[str] = None, directory="data/cert_logs"
 ) -> None:
     """Write a list of certificates (cert chain) to a specified directory as PEM files.
 
@@ -401,7 +406,7 @@ def get_openssl_name_notation(
     name: rfc9480.Name,
     oids: Optional[Iterable[univ.ObjectIdentifier]] = None,
     return_dict=False,
-) -> Union[str, None, dict]:
+) -> str:
     """Extract a common name from a `pyasn1` Name object using specific OIDs.
 
     :param name: The `pyasn1` Name object. Expect an object, which was sent over the wire (decoded!).
@@ -436,7 +441,10 @@ def get_openssl_name_notation(
                     )
 
     if return_dict:
-        return dict_data
+        return dict_data  # type: ignore
+
+    if out_name is None:
+        return "NULL-DN"
 
     return out_name
 
@@ -453,11 +461,76 @@ def load_crl_from_file(path: str) -> rfc5280.CertificateList:
     return crl
 
 
+def is_certificate_set(cert: Optional[rfc9480.CMPCertificate]) -> bool:  # noqa D417 undocumented-param
+    """Check if a certificate is set.
+
+    Arguments:
+    ---------
+        - `cert`: The certificate to check.
+
+    Returns:
+    -------
+        - `True` if the certificate is set, `False` otherwise.
+
+    Examples:
+    --------
+    | ${is_set}= | Is Certificate Set | cert=${certificate} |
+
+    """
+    if cert is None:
+        return False
+    if isinstance(cert, str):
+        return os.path.exists(cert)
+    return True
+
+
+def may_load_cert(  # noqa D417 undocumented-param
+    cert_path: Optional[Union[str, rfc9480.CMPCertificate]] = None,
+) -> Optional[rfc9480.CMPCertificate]:
+    """Load a certificate from a specified file path.
+
+    Attempts to load a certificate from the provided file path.
+
+    Arguments:
+    ---------
+        - `cert_path`: Optional string specifying the path to the certificate file.
+
+    Returns:
+    -------
+        - The loaded certificate or None if no path is provided.
+
+    Raises:
+    ------
+        - `ValueError`: If the provided path is invalid or if the certificate cannot be loaded.
+
+    Examples:
+    --------
+    | ${cert}= | May Load Cert | cert_path=/path/to/cert.pem |
+    | ${cert}= | May Load Cert | cert_path=${None} |
+    | ${cert}= | May Load Cert | cert_path=${cert} |
+
+    """
+    if cert_path is None:
+        return None
+
+    if isinstance(cert_path, str):
+        if not os.path.exists(cert_path):
+            raise ValueError(f"File {cert_path} does not exist!")
+
+        der_cert = load_and_decode_pem_file(cert_path)
+        try:
+            cert, _ = decoder.decode(der_cert, asn1Spec=rfc9480.CMPCertificate())
+            return cert
+        except pyasn1.error.PyAsn1Error as e:  # type: ignore
+            raise ValueError(f"Failed to decode certificate: {e}")  # pylint: disable=raise-missing-from
+
+    return cert_path
+
+
 def may_load_cert_and_key(  # noqa D417 undocumented-param
-    cert_path: Optional[str] = None,
-    key_path: Optional[str] = None,
+    cert_path: Optional[Union[str, rfc9480.CMPCertificate]] = None,
+    key_path: Optional[Union[str, PrivateKey]] = None,
     key_password: Union[None, str] = "11111",
-    key_type: Optional[str] = None,
 ) -> Union[Tuple[None, None], Tuple[rfc9480.CMPCertificate, PrivateKey]]:
     """Load a certificate and private key from specified file paths.
 
@@ -496,10 +569,16 @@ def may_load_cert_and_key(  # noqa D417 undocumented-param
     if not cert_path or not key_path:
         raise ValueError("Both paths needs to be provided!")
 
-    der_cert = load_and_decode_pem_file(cert_path)
-    cert = certutils.parse_certificate(der_cert)
+    if isinstance(cert_path, str):
+        der_cert = load_and_decode_pem_file(cert_path)
+        cert = certutils.parse_certificate(der_cert)
+    else:
+        cert = cert_path
 
-    key = keyutils.load_private_key_from_file(filepath=key_path, password=key_password, key_type=key_type)
+    if isinstance(key_path, str):
+        key = keyutils.load_private_key_from_file(filepath=key_path, password=key_password)
+    else:
+        key = key_path
 
     cert_pub_key = certutils.load_public_key_from_cert(cert)  # type: ignore
     if key.public_key() != cert_pub_key:
@@ -509,7 +588,7 @@ def may_load_cert_and_key(  # noqa D417 undocumented-param
 
 
 def is_certificate_and_key_set(  # noqa D417 undocumented-param
-    cert: Optional[rfc9480.CMPCertificate] = None, key: Optional[PrivateKey] = None
+    cert: Optional[Union[str, rfc9480.CMPCertificate]] = None, key: Optional[Union[PrivateKey, str]] = None
 ) -> bool:
     """Check if a certificate and its corresponding private key are valid and set.
 
@@ -517,7 +596,7 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
 
     Arguments:
     ---------
-        - `cert`: The certificate to validate. Default is `None`.
+        - `cert`: The certificate or path of the certificate to validate. Default is `None`.
         - `key`: The private key to validate against the certificate. Default is `None`.
 
     Returns:
@@ -527,6 +606,7 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
     Raises:
     ------
         - `ValueError`: If the provided private key does not match the public key in the certificate.
+        - `ValueError`: If only one of `cert` or `key` is provided.
 
     Examples:
     --------
@@ -536,6 +616,16 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
     """
     if cert is None and key is None:
         return False
+
+    if cert is None or key is None:
+        raise ValueError("Both certificate and key must be provided or both must be None!")
+
+    if isinstance(key, str):
+        key = keyutils.load_private_key_from_file(key)
+
+    if isinstance(cert, str):
+        der_cert = load_and_decode_pem_file(cert)
+        cert = certutils.parse_certificate(der_cert)
 
     cert_pub_key = certutils.load_public_key_from_cert(cert)  # type: ignore
     if key.public_key() != cert_pub_key:
@@ -619,25 +709,62 @@ def ensure_list(data: Optional[Union[List[Any], Any]]) -> list:
     return [data]
 
 
-def manipulate_composite_sig(  # noqa: D417 Missing argument description in the docstring
+def manipulate_bytes_based_on_key(  # noqa D417 Missing argument description in the docstring
+    data: bytes,
+    key: Union[PrivateKey, PublicKey],
+) -> bytes:
+    """Manipulate the data based on the provided key.
+
+    Decodes the structure and manipulates the first byte of the data, of the
+    first entry, inside a Composite signature or ciphertext structure.
+
+    Arguments:
+    ---------
+       - `data`: The data to manipulate.
+       - `key`: The key to use for the manipulation.
+
+    Returns:
+    -------
+       - The manipulated data.
+
+    Raises:
+    ------
+         - `BadAsn1Data`: If the data manipulation fails, because the structure is not valid.
+
+    Examples:
+    --------
+    | ${manipulated_data}= | Manipulate Bytes Based On Key | data=${data} |
+    | ${manipulated_data}= | Manipulate Bytes Based On Key | data=${data} | key=${key} |
+
+    """
+    if key is None:
+        return manipulate_first_byte(data)
+
+    if isinstance(
+        key, (CompositeSig04PublicKey, CompositeSig04PrivateKey, CompositeKEM06PublicKey, CompositeKEM06PrivateKey)
+    ):
+        # contains the length of the signature, afterwards starts the pq signature or kem ct.
+        return data[:4] + manipulate_first_byte(data[4:])
+    if isinstance(key, (CompositeKEMPublicKey, CompositeKEMPrivateKey)):
+        return manipulate_composite_kem_ct(data)
+    if isinstance(key, (CompositeSig03PublicKey, CompositeSig03PrivateKey)):
+        return manipulate_composite_sig03(data)
+    return manipulate_first_byte(data)
+
+
+@not_keyword
+def manipulate_composite_sig03(
     sig: bytes,
 ) -> bytes:
     """Manipulate the first signature of a CompositeSignature.
 
-    Arguments:
-    ---------
-       - `sig`: The DER-encoded signature.
-
-    Returns:
-    -------
-         - The modified signature.
-
-    Raises:
-    ------
-            - `pyasn1.error.PyAsn1Error`: if the provided `sig` is not a valid `CompositeSignatureValue`.
-
+    :param sig: The DER-encoded `CompositeSignatureValue`.
+    :return: The modified `CompositeSignatureValue` as DER-encoded bytes.
     """
-    obj, _ = decoder.decode(sig, CompositeSignatureValue())
+    try:
+        obj, _ = decoder.decode(sig, CompositeSignatureValue())
+    except pyasn1.error.PyAsn1Error as e:  # type: ignore
+        raise BadAsn1Data(f"Failed to manipulate the data: {e}")  # pylint: disable=raise-missing-from
 
     sig1 = obj[0].asOctets()
     sig2 = obj[1].asOctets()
@@ -654,7 +781,8 @@ def manipulate_composite_sig(  # noqa: D417 Missing argument description in the 
     return encoder.encode(out)
 
 
-def manipulate_composite_kemct(  # noqa: D417 Missing argument description in the docstring
+@keyword(name="Manipulate Composite KEM CT")
+def manipulate_composite_kem_ct(  # noqa: D417 Missing argument description in the docstring
     kem_ct: bytes,
 ) -> bytes:
     """Manipulate the first ct of the `CompositeCiphertextValue`.
@@ -669,10 +797,17 @@ def manipulate_composite_kemct(  # noqa: D417 Missing argument description in th
 
     Raises:
     ------
-       - `pyasn1.error.PyAsn1Error`: if the provided `kem_ct` is not a valid `CompositeCiphertextValue`.
+       - `BadAsn1Data`: if the provided `kem_ct` is not a valid `CompositeCiphertextValue`.
+
+    Examples:
+    --------
+    | ${manipulated_kem_ct}= | Manipulate Composite KEM CT | kem_ct=${kem ct} |
 
     """
-    obj, _ = decoder.decode(kem_ct, CompositeCiphertextValue())
+    try:
+        obj, _ = decoder.decode(kem_ct, CompositeCiphertextValue())
+    except pyasn1.error.PyAsn1Error as e:  # type: ignore
+        raise BadAsn1Data(f"Failed to manipulate the data: {e}")  # pylint: disable=raise-missing-from
 
     kem_ct1 = obj[0].asOctets()
     kem_ct2 = obj[1].asOctets()
@@ -687,3 +822,111 @@ def manipulate_composite_kemct(  # noqa: D417 Missing argument description in th
     out.append(kem_ct1)
     out.append(kem_ct2)
     return encoder.encode(out)
+
+
+@not_keyword
+def fetch_value_from_location(location: str, timeout: Optional[Union[str, int]] = 20) -> Optional[bytes]:
+    """Fetch some value from a given url.
+
+    :param location: The location to fetch the value from.
+    :param timeout: The timeout for the request. Default is `20` seconds.
+    :return: The fetched value as bytes.
+    :raise: ValueError, if the data cannot be fetched.
+    """
+    if not location:
+        return None
+    try:
+        response = requests.get(location, timeout=int(timeout))  # type: ignore
+        response.raise_for_status()
+        return response.content
+    except Exception as e:
+        raise IOError(f"Failed to fetch value from {location}: {e}") from e
+
+
+def load_certificate_from_uri(  # noqa: D417 Missing argument description in the docstring
+    uri: Union[str, char.IA5String], load_chain: bool = False, timeout: Union[str, int] = 20
+) -> List[rfc9480.CMPCertificate]:
+    """Get the related certificate using the provided URI.
+
+    Arguments:
+    ---------
+       - `uri`: The URI to load the certificate from.
+       - `load_chain`: Whether to load a chain or a single certificate. Defaults to `False`.
+       - `timeout`: The timeout for the request. Defaults to `20` seconds.
+
+    Returns:
+    -------
+       - The loaded certificate(s) as a list.
+
+    Raises:
+    ------
+       - `ValueError`: If the fetching fails.
+       - `ValueError`: If the decoding of the fetching certificate had a remainder.
+
+    Examples:
+    --------
+    | ${certs}= | Load Certificate From URI | uri=${uri} | load_chain=False |
+    | ${certs}= | Load Certificate From URI | uri=${uri} | load_chain=True | timeout=20 |
+
+    """
+    content = fetch_value_from_location(str(uri), timeout)
+
+    if not load_chain:
+        cert, rest = decoder.decode(content, rfc9480.CMPCertificate())
+        if rest:
+            raise ValueError("The decoding of the fetching certificate had a remainder.")
+
+        return [cert]
+
+    if not content:
+        raise ValueError("No content was fetched from the provided URI.")
+
+    certs = content.split(b"-----END CERTIFICATE-----\n")
+    certs = [cert for cert in certs if cert.strip()]
+    cert = [certutils.parse_certificate(decode_pem_string(cert)) for cert in certs]
+    return cert
+
+
+def may_patch_params(  # noqa D417
+    params: dict, **default_values
+) -> dict:
+    """May overwrite the values of a dictionary with the values of another dictionary.
+
+    Only overwrites the values of the keys that are not present in the original dictionary.
+
+    Arguments:
+    ---------
+        - `params`: The dictionary to be patched.
+        - `default_values`: The default values to be used.
+
+    Returns:
+    -------
+        - The patched dictionary.
+
+    Examples:
+    --------
+    | ${params} = | May Patch Params | ${params} | key1=value1 key2=value2 |
+    | ${params} = | May Patch Params | ${params} | &{params} |
+
+    """
+    for key, value in default_values.items():
+        if key not in params:
+            params[key] = value
+    return params
+
+
+@not_keyword
+def get_cert_chain_names(certs: List[rfc9480.CMPCertificate]) -> str:
+    """Get the names of the certificates in the chain.
+
+    :param certs: The certificate chain.
+    :return: The names of the certificates in the chain.
+    """
+    names = []
+    for cert in certs:
+        sub = get_openssl_name_notation(cert["tbsCertificate"]["subject"])
+        iss = get_openssl_name_notation(cert["tbsCertificate"]["issuer"])
+        entry = f"subject={sub}, issuer={iss}"
+        names.append(entry)
+
+    return "\n".join(names)
