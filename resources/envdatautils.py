@@ -90,6 +90,7 @@ def prepare_encrypted_content_info(
     :param data_to_protect: The signed data to encrypt.
     :param for_signed_data: If True, the content type is set to `id_signedData`. Defaults to True.
     :param iv: Optional initialization vector for AES-CBC encryption. Defaults to `None`.
+    :param enc_oid: Optional Object Identifier for the encrypted content type. Defaults to `None`.
     :return: An `EncryptedContentInfo` containing the encrypted content.
     """
     if len(cek) == 32:
