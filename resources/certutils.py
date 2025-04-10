@@ -8,17 +8,27 @@ import logging
 import os
 import shutil
 import subprocess
+from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import certifi
+import requests
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.x509 import ExtensionNotFound, ReasonFlags, ocsp
+from cryptography.x509.oid import AuthorityInformationAccessOID
 from pkilint import loader, report
 from pkilint.pkix import certificate, extension, name
 from pkilint.validation import ValidationFindingSeverity
+from pq_logic.keys.abstract_pq import PQSignaturePublicKey
+from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PublicKey
+from pq_logic.pq_utils import is_kem_public_key
 from pyasn1.codec.der import decoder, encoder
-from pyasn1_alt_modules import rfc5280, rfc9480
+from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from resources import (
@@ -30,22 +40,49 @@ from resources import (
     cryptoutils,
     keyutils,
     oid_mapping,
+    protectionutils,
     typingutils,
     utils,
 )
-from resources.oid_mapping import get_hash_from_oid
-from resources.oidutils import CMP_EKU_OID_2_NAME
+from resources.asn1_structures import PKIMessageTMP
+from resources.convertutils import ensure_is_kem_pub_key, ensure_is_verify_key
+from resources.exceptions import BadAsn1Data, BadPOP, CertRevoked, SignerNotTrusted, UnknownOID
+from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
+from resources.oidutils import (
+    CMP_EKU_OID_2_NAME,
+    CMS_COMPOSITE_OID_2_NAME,
+    HYBRID_NAME_2_OID,
+    HYBRID_OID_2_NAME,
+    PQ_NAME_2_OID,
+    PQ_OID_2_NAME,
+    RSASSA_PSS_OID_2_NAME,
+)
 from resources.suiteenums import KeyUsageStrictness
+from resources.typingutils import SignKey, Strint, VerifyKey
 
 # for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False
 
 
-def parse_certificate(data: bytes) -> rfc9480.CMPCertificate:
+def parse_certificate(data: bytes) -> rfc9480.CMPCertificate:  # noqa D417 undocumented-param
     """Parse a DER-encoded X509 certificate into a pyasn1 object.
 
-    :param data: DER-encoded X509 certificate.
-    :returns: The decoded certificate object.
+    Arguments:
+    ---------
+        - `data`: DER-encoded certificate.
+
+    Returns:
+    -------
+        - The decoded certificate object.
+
+    Raises:
+    ------
+        - `pyasn1.error.PyAsn1Error`: If the parsing fails.
+
+    Examples:
+    --------
+    | ${cert}= | Parse Certificate | ${der_cert} |
+
     """
     cert, _ = decoder.decode(data, asn1Spec=rfc9480.CMPCertificate())
     return cert
@@ -74,11 +111,11 @@ def validate_certificate_openssl(data: Union[rfc9480.CMPCertificate, bytes]) -> 
 
     """
     if isinstance(data, rfc9480.CMPCertificate):
-        data = convertutils.copy_asn1_certificate(data)
-        data = encoder.encode(data)
+        tmp_cert = convertutils.copy_asn1_certificate(data)
+        data = asn1utils.encode_to_der(tmp_cert)
 
     try:
-        _certificate = x509.load_der_x509_certificate(data)
+        _ = x509.load_der_x509_certificate(data)
     except Exception as e:
         message = f"Certificate validation with OpenSSL failed: {e}"
         logging.error(message)
@@ -126,7 +163,7 @@ def validate_certificate_pkilint(data: Union[rfc9480.CMPCertificate, bytes]) -> 
 
 
 @not_keyword
-def verify_cert_signature(cert: rfc9480.CMPCertificate, issuer_pub_key: Optional[typingutils.PublicKeySig] = None):
+def verify_cert_signature(cert: rfc9480.CMPCertificate, issuer_pub_key: Optional[typingutils.VerifyKey] = None):
     """Verify the signature of an X.509 certificate.
 
     Uses the issuer's public key, or the certificate's own public key if it is self-signed.
@@ -135,15 +172,14 @@ def verify_cert_signature(cert: rfc9480.CMPCertificate, issuer_pub_key: Optional
     :param issuer_pub_key: Optional PublicKeySig used for verification.
     :raises InvalidSignature: If the certificate's signature is not valid.
     """
-    cert_hash_alg = oid_mapping.get_hash_from_oid(cert["signatureAlgorithm"]["algorithm"], only_hash=True)
     tbs_der = encoder.encode(cert["tbsCertificate"])
     pub_key = issuer_pub_key or load_public_key_from_cert(cert)
-
-    cryptoutils.verify_signature(
+    pub_key = ensure_is_verify_key(pub_key)
+    protectionutils.verify_signature_with_alg_id(
         public_key=pub_key,
-        signature=cert["signature"].asOctets(),
         data=tbs_der,
-        hash_alg=cert_hash_alg,
+        signature=cert["signature"].asOctets(),
+        alg_id=cert["tbsCertificate"]["signature"],
     )
 
 
@@ -172,13 +208,18 @@ def load_truststore(  # noqa D417 undocumented-param
 
     Arguments:
     ---------
-         - `path`: path or directory to load the certificates from. Default is "./data/trustanchors".
+         - `path`: path or directory to load the certificates from. Defaults to "./data/trustanchors".
          - `allow_os_store`: whether to allow the truststore of the Operating System or not.
-            Default is False.
+            Defaults to False.
 
     Returns:
     -------
         - A list of `pyasn1` certificates, which are trustanchors.
+
+    Examples:
+    --------
+    | ${certs}= | Load Truststore |
+    | ${certs}= | Load Truststore | path=./data/trustanchors | allow_os_store=True |
 
     """
     certificates = []
@@ -206,6 +247,10 @@ def build_chain_from_list(
     """
     chain = [ee_cert]
     current_cert = ee_cert
+
+    if check_is_cert_signer(current_cert, current_cert):
+        logging.info("The end-entity certificate is self-signed.")
+        return chain
 
     for _ in range(len(certs) + 1):
         for issuer_cert in certs:
@@ -246,20 +291,55 @@ def load_public_key_from_der(spki_der: bytes) -> typingutils.PublicKey:
     return keyutils.load_public_key_from_spki(spki)
 
 
-# TODO maybe change to RF
-
-
-@not_keyword
-def load_public_key_from_cert(asn1cert: rfc9480.CMPCertificate) -> typingutils.PublicKey:
+def load_public_key_from_cert(  # noqa D417 undocumented-param
+    cert: rfc9480.CMPCertificate,
+) -> typingutils.PublicKey:
     """Load a public key from a `CMPCertificate`.
 
     Supposed to be used to load either a pq Key or `cryptography` key.
 
-    :param asn1cert: The certificate to load the public key from.
-    :return: The public key object.
+    Arguments:
+    ---------
+        - `cert`: The certificate to load the public key from.
+
+    Returns:
+    -------
+        - The loaded public key.
+
+    Raises:
+    ------
+        - `ValueError`: If the public key cannot be loaded.
+        - `badAlg`: If the algorithm is not supported.
+
+    Examples:
+    --------
+    | ${public_key}= | Load Public Key From Cert | ${cert} |
+
     """
-    public_key = keyutils.load_public_key_from_spki(asn1cert["tbsCertificate"]["subjectPublicKeyInfo"])
+    public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
     return public_key
+
+
+@not_keyword
+def load_kem_key_from_cert(cert: rfc9480.CMPCertificate) -> KEMPublicKey:
+    """Load a KEM public key from a `CMPCertificate`.
+
+    :param cert: The certificate to load the KEM public key from.
+    :return: The KEM public key object.
+    """
+    public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+    return ensure_is_kem_pub_key(public_key)
+
+
+@not_keyword
+def load_verify_key_from_cert(cert: rfc9480.CMPCertificate) -> VerifyKey:
+    """Load a Signature public key from a `CMPCertificate`.
+
+    :param cert: The certificate to load the PQ Signature public key from.
+    :return: The PQ Signature public key object.
+    """
+    public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+    return ensure_is_verify_key(public_key)
 
 
 @not_keyword
@@ -280,10 +360,25 @@ def check_is_cert_signer(cert: rfc9480.CMPCertificate, poss_issuer: rfc9480.CMPC
     hash_alg = oid_mapping.get_hash_from_oid(cert["signatureAlgorithm"]["algorithm"], only_hash=True)
 
     try:
-        tbs_der = encoder.encode(cert["tbsCertificate"])
-        cryptoutils.verify_signature(
-            public_key=public_key, data=tbs_der, signature=cert["signature"].asOctets(), hash_alg=hash_alg
-        )
+        if cert["signatureAlgorithm"]["algorithm"] in RSASSA_PSS_OID_2_NAME:
+            if not isinstance(public_key, RSAPublicKey):
+                raise ValueError("The public key is not an RSA public key.")
+
+            protectionutils.verify_rsassa_pss_from_alg_id(
+                public_key=public_key,
+                data=encoder.encode(cert["tbsCertificate"]),
+                signature=cert["signature"].asOctets(),
+                alg_id=cert["signatureAlgorithm"],
+            )
+        else:
+            public_key = ensure_is_verify_key(public_key)
+            cryptoutils.verify_signature(
+                public_key=public_key,
+                data=encoder.encode(cert["tbsCertificate"]),
+                signature=cert["signature"].asOctets(),
+                hash_alg=hash_alg,
+            )
+
         return True
     except (ValueError, InvalidSignature) as err:
         logging.info("%s", err)
@@ -292,7 +387,7 @@ def check_is_cert_signer(cert: rfc9480.CMPCertificate, poss_issuer: rfc9480.CMPC
 
 @keyword(name="Build CMP Chain From PKIMessage")
 def build_cmp_chain_from_pkimessage(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     ee_cert: Optional[rfc9480.CMPCertificate] = None,
     for_issued_cert: bool = False,
     last_cert_is_self_signed: bool = False,
@@ -353,7 +448,10 @@ def build_cmp_chain_from_pkimessage(  # noqa D417 undocumented-param
     if ee_cert is None:
         ee_cert = pki_message["extraCerts"][0]
 
-    return build_chain_from_list(ee_cert, cert_list, must_be_self_signed=last_cert_is_self_signed)
+    if not isinstance(ee_cert, rfc9480.CMPCertificate):
+        raise ValueError("The `ee_cert` is not a valid CMPCertificate object.")
+
+    return build_chain_from_list(ee_cert=ee_cert, certs=cert_list, must_be_self_signed=last_cert_is_self_signed)
 
 
 def build_cert_chain_from_dir(  # noqa D417 undocumented-param
@@ -437,7 +535,11 @@ def validate_cmp_extended_key_usage(  # noqa D417 undocumented-param
         logging.info("ExtendedKeyUsage Check is disabled!")
         return
 
-    cert_eku_obj = certextractutils.get_field_from_certificate(cert=cert, extension="eku")  # ignore: type
+    cert_eku_obj = certextractutils.get_field_from_certificate(
+        cert=cert,  # type: ignore
+        extension="eku",
+    )
+    cert_eku_obj: Optional[rfc5280.ExtKeyUsageSyntax]
     if cert_eku_obj is None:
         if val_strict in [KeyUsageStrictness.ABS_STRICT, KeyUsageStrictness.STRICT]:
             raise ValueError(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
@@ -486,8 +588,8 @@ def _validate_key_usage(expected_usage: str, given_usage: rfc5280.KeyUsage, same
     names = asn1utils.get_set_bitstring_names(given_usage)
     if same_vals:
         # to ensure same names are used.
-        expected_usage = rfc5280.KeyUsage(expected_usage)
-        expected_names = asn1utils.get_set_bitstring_names(expected_usage)
+        expected_usages = rfc5280.KeyUsage(expected_usage)
+        expected_names = asn1utils.get_set_bitstring_names(expected_usages)
         return names == expected_names
 
     vals = [val.strip() for val in expected_usage.split(",")]
@@ -636,7 +738,7 @@ def _verify_more_certs_than_three(cert_chain: List[rfc9480.CMPCertificate], dir_
     return command
 
 
-def _verify_certificate_chain(command: list[str], cert_chain: List[rfc9480.CMPCertificate], timeout: int = 60) -> None:
+def _verify_certificate_chain(command: List[str], cert_chain: List[rfc9480.CMPCertificate], timeout: int = 60) -> None:
     """Verify a certificate chain using OpenSSL commands.
 
     :param command: List of OpenSSL command line arguments to append for verification.
@@ -644,10 +746,8 @@ def _verify_certificate_chain(command: list[str], cert_chain: List[rfc9480.CMPCe
                        The chain order should start with the end-entity certificate and end with the root certificate.
     :param timeout: Maximum time in seconds for the OpenSSL verification command to run. Defaults to 60 seconds.
 
-    :raises ValueError: If `cert_chain` is empty, or OpenSSL returns a non-zero exit code,
-    indicating a validation failure.
-    :raises subprocess.TimeoutExpired: If the verification process exceeds the specified timeout.
-
+    :raises SignerNotTrusted: If `cert_chain` is empty, or OpenSSL returns a non-zero exit code,
+    indicating a validation failure or if the verification process exceeds the specified timeout.
     """
     dir_fpath = "data/tmp_cert_checks"
     os.makedirs(dir_fpath, exist_ok=True)
@@ -662,18 +762,22 @@ def _verify_certificate_chain(command: list[str], cert_chain: List[rfc9480.CMPCe
     command += cmds
 
     try:
-        result = subprocess.run(command, capture_output=True, check=True, text=True, timeout=timeout)
-        if result.returncode != 0:
-            raise ValueError(f"Validation of the certificate failed! stdout:{result.stdout}\nerror: {result.stderr}")
-        return
-    except subprocess.TimeoutExpired:
-        logging.warning("Reached time out of for certificate validation. Seconds: %d", timeout)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=True)
+        logging.debug("OpenSSL verify output: %s", result.stdout)
+    except subprocess.CalledProcessError as e:
+        # Log full error details from OpenSSL.
+        logging.error("OpenSSL verify failed. stdout: %s\nstderr: %s", e.stdout, e.stderr)
+        raise SignerNotTrusted(
+            f"Validation of the certificate failed!\nstdout: {e.stdout}\nstderr: {e.stderr}", error_details=str(e)
+        ) from e
+    except subprocess.TimeoutExpired as e:
+        logging.error("Reached timeout of %d seconds during certificate validation.", timeout)
+        raise SignerNotTrusted("Validation of the certificate failed! Timeout!") from e
     except Exception as err:
-        logging.warning(err)
+        logging.error("An unexpected error occurred during certificate validation: %s", err)
+        raise SignerNotTrusted(f"Validation of the certificate failed! Error: {err}") from err
     finally:
         shutil.rmtree(dir_fpath)
-
-    raise ValueError("Validation of the certificate failed!")
 
 
 @keyword(name="Verify Cert Chain OpenSSL")
@@ -698,8 +802,8 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the certificate validation fails, according to the OpenSSL `verify` command.
-        - `TimeoutExpired`: If the verification took to long.
+        - `SignerNotTrusted`: If the certificate validation fails, according to the OpenSSL `verify` command.
+        - `SignerNotTrusted`: If the verification took to long.
 
     Examples:
     --------
@@ -716,7 +820,7 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
         os.mkdir(temp_dir)
 
     if not crl_check:
-        logging.warning("Note, CRL check is deactivated!")
+        logging.warning("Please Note the CRL check is deactivate!")
 
     command = ["openssl", "verify"]
     if crl_check:
@@ -759,16 +863,24 @@ def certificates_are_trustanchors(  # noqa D417 undocumented-param
     ---------
         - `certs`: A single or a list of pyasn1 `CMPCertificate` objects to check.
         - `trustanchors`: A directory path to load additional trustanchors. Defaults to "./data/trustanchors".
-        - `allow_os_store`: Whether to allow the default OS store to be added to the trustanchors. Default is `True`.
-        - `verbose`: Whether to log all non-trustanchor certificates. Default is `True`.
-        - `allow_os_store`: Whether to allow the default OS store to be added to the trustanchors. Default is `True`.
+        - `allow_os_store`: Whether to allow the default OS store to be added to the trustanchors. Defaults to `True`.
+        - `verbose`: Whether to log all non-trustanchor certificates. Defaults to `True`.
+        - `allow_os_store`: Whether to allow the default OS store to be added to the trustanchors. Defaults to `True`.
 
     Raises:
     ------
         - `ValueError`: If the certificates are not allowed/known trustanchors.
 
+    Examples:
+    --------
+    | Certificates Are Trustanchors | certs=${certs} |
+    | Certificates Are Trustanchors | certs=${certs} | trustanchors=./path/to/anchors | allow_os_store=False |
+
     """
     anchors = load_truststore(path=trustanchors, allow_os_store=allow_os_store)
+
+    if len(anchors) == 0:
+        raise ValueError("No trust anchors were found!")
 
     if isinstance(certs, rfc9480.CMPCertificate):
         certs = [certs]
@@ -812,7 +924,7 @@ def certificates_must_be_trusted(  # noqa D417 undocumented-param
         - `trustanchors`: A directory path to load additional PKI trustanchors. By setting to \
         ${None} can be disabled. Defaults to `./data/trustanchors`.
         - `allow_os_store` Whether to allow the default OS store to be added to the trust anchors.
-        Default is `True`.
+        Defaults to `True`.
         - `key_usage`: Human-readable representation of the KeyUsage attributes the entity certificate has to \
         have (e.g., "digitalSignature" to check if the EE certificate is allowed to sign data).
         Defaults to `digitalSignature`.
@@ -845,7 +957,7 @@ def certificates_must_be_trusted(  # noqa D417 undocumented-param
     if trustanchors is not None:
         anchors = load_truststore(path=trustanchors, allow_os_store=allow_os_store)
 
-    trusted = cert_chain[-1] in anchors
+    trusted = cert_in_list(cert_chain[-1], anchors)
 
     if not trusted:
         subject_name = utils.get_openssl_name_notation(cert_chain[-1]["tbsCertificate"]["subject"])
@@ -901,6 +1013,7 @@ def verify_signature_with_cert(
     :raises InvalidSignature: If the signature is invalid.
     """
     pub_key = load_public_key_from_cert(asn1cert)
+    pub_key = ensure_is_verify_key(pub_key)
     cryptoutils.verify_signature(
         public_key=pub_key,
         signature=signature,
@@ -909,19 +1022,19 @@ def verify_signature_with_cert(
     )
 
 
-def load_crl_from_der(der_data: bytes):
-    """
-    Load and parse a CRL from DER-encoded data using pyasn1-alt-modules.
+@not_keyword
+def parse_crl(der_data: bytes):
+    """Parse a CRL from DER-encoded data.
 
     :param der_data: DER-encoded CRL data.
     :return: Decoded CRL object.
-    :raises ValueError: If the CRL cannot be decoded.
+    :raises BadAsn1Data: If the CRL cannot be decoded.
     """
     try:
         crl, _ = decoder.decode(der_data, asn1Spec=rfc5280.CertificateList())
         return crl
-    except Exception as e:
-        raise ValueError(f"Failed to load CRL from DER data: {e}") from e
+    except Exception:
+        raise BadAsn1Data("Failed to load CRL from DER data.")  # pylint: disable=raise-missing-from
 
 
 def _write_crl_to_pem(crl: rfc5280.CertificateList, path: str):
@@ -929,6 +1042,7 @@ def _write_crl_to_pem(crl: rfc5280.CertificateList, path: str):
         crl_file.write(encoder.encode(crl))
 
 
+# TODO update
 @not_keyword
 def verify_openssl_crl(crl_chain: List, timeout: int = 60):
     """Verify a CRL against a trusted CA certificate using OpenSSL.
@@ -976,19 +1090,33 @@ def verify_openssl_crl(crl_chain: List, timeout: int = 60):
     raise ValueError("Validation of the CRL failed!")
 
 
-def find_crl_signer_cert(
+def find_crl_signer_cert(  # noqa D417 undocumented-param
     crl: rfc5280.CertificateList,
     ca_cert_dir: str = "data/cert_logs",
     certs: Optional[List[rfc9480.CMPCertificate]] = None,
 ) -> rfc9480.CMPCertificate:
     """Find the certificate that signed the CRL.
 
-    :param crl: The CRL to verify.
-    :param ca_cert_dir: The directory containing the CA certificates. Defaults to "data/cert_logs".
-    :param certs: A list of CA certificates to search through. If provided, will use this list
-    instead of loading from the directory.
-    :return: The certificate that signed the CRL.
-    :raises ValueError: If no matching certificate is found.
+    Arguments:
+    ---------
+        - `crl`: The CRL to verify.
+        - `ca_cert_dir`: The directory containing the CA certificates. Defaults to "data/cert_logs".
+        - `certs`: A list of CA certificates to search through. If provided, will use this list
+        instead of loading from the directory.
+
+    Returns:
+    -------
+        - The certificate that signed the CRL.
+
+    Raises:
+    ------
+        - `ValueError`: If no matching certificate is found.
+
+    Examples:
+    --------
+    | ${crl_signer}= | Find CRL Signer Cert | ${crl} | ca_cert_dir=./path/to/certs |
+    | ${crl_signer}= | Find CRL Signer Cert | ${crl} | ca_cert_dir=./path/to/certs | certs=${certs} |
+
     """
     certs = certs or load_certificates_from_dir(ca_cert_dir)
 
@@ -1011,15 +1139,809 @@ def find_crl_signer_cert(
     raise ValueError("No matching certificate found to verify the CRL.")
 
 
-def build_crl_chain_from_list(crl: rfc5280.CertificateList, certs: List[rfc9480.CMPCertificate]) -> List:
+@keyword(name="Build CRL Chain From List")
+def build_crl_chain_from_list(  # noqa D417 undocumented-param
+    crl: rfc5280.CertificateList,
+    certs: Optional[List[rfc9480.CMPCertificate]] = None,
+    cert_dir: str = "./data/trustanchors",
+    allow_os_store: bool = True,
+) -> List:
     """Build a CRL chain from a list of certificates and verify the CRL's signature.
 
-    :param crl: Parsed CRL object in pyasn1 format.
-    :param certs: List of parsed certificates in pyasn1 format.
-    :return: The chain starting with the CRL and ending with the root certificate.
-    :raises ValueError: If the CRL was not issued by one of the provided certificates.
+    Arguments:
+    ---------
+       - `crl`: The CRL to verify.
+       - `certs`: A list of certificates to search through. Defaults to `None`.
+       - `cert_dir`: The directory containing the CA certificates. Defaults to "./data/trustanchors".
+       - `allow_os_store`: Whether to allow the default OS store to be added to the trustanchors. Defaults to `True`.
+
+    Returns:
+    -------
+       - The certificate chain starting with the CRL and ending with the root certificate.
+
+    Raises:
+    ------
+       - `ValueError`: If the CRL was not issued by one of the provided certificates.
+       - `ValueError`: If `certs` and `cert_dir` are both `None`.
+
+    Examples:
+    --------
+    | ${crl_chain}= | Build CRL Chain From List | ${crl} | ${certs} |
+
     """
+    if not certs and not cert_dir:
+        raise ValueError("Either `certs` or `cert_dir` must be provided.")
+
+    certs = certs or []
+    certs.extend(load_truststore(allow_os_store=allow_os_store, path=cert_dir))
+
     signer = find_crl_signer_cert(crl, certs=certs)
 
     chain = build_chain_from_list(signer, certs)
     return [crl] + chain
+
+
+def _convert_to_crypto_lib_cert(cert: Union[x509.Certificate, rfc9480.CMPCertificate]) -> x509.Certificate:
+    """Convert a pyasn1 certificate to a cryptography library certificate.
+
+    :param cert: The pyasn1 certificate to convert.
+    :return: The cryptography library certificate.
+    """
+    if not isinstance(cert, rfc9480.CMPCertificate):
+        return cert
+
+    der_data = encoder.encode(cert)
+    return x509.load_der_x509_certificate(der_data)
+
+
+def get_ocsp_url_from_cert_pyasn1(
+    cert: rfc9480.CMPCertificate,
+) -> List[str]:
+    """Extract the OCSP URL from a certificate's Authority Information Access extension.
+
+    :param cert: The certificate to extract the OCSP URL from.
+    :return: The OCSP URLs, if present.
+    """
+    aia = certextractutils.get_field_from_certificate(cert, extension="aia")  # type: ignore
+    aia: Optional[rfc5280.AuthorityInfoAccessSyntax]
+    if aia is None:
+        return []
+
+    entry: rfc5280.AccessDescription
+    ocsp_urls = []
+    for entry in aia:
+        if str(entry["accessMethod"]) == AuthorityInformationAccessOID.OCSP.dotted_string:
+            gen_name = entry["accessLocation"]
+            option = gen_name.getName()
+            if option == "uniformResourceIdentifier":
+                ocsp_urls.append(str(entry["accessLocation"][option]))
+            else:
+                raise NotImplementedError(
+                    f"Not implemented OCSP access method: {option}. Expected 'uniformResourceIdentifier'."
+                )
+
+    return ocsp_urls
+
+
+# TODO: add pyasn1 implementation.
+
+
+@not_keyword
+def create_ocsp_request(
+    cert: rfc9480.CMPCertificate,
+    ca_cert: rfc9480.CMPCertificate,
+    hash_alg: str = "sha256",
+    must_be_present: bool = True,
+) -> Tuple[ocsp.OCSPRequest, List[str]]:
+    """Create an OCSP request for a certificate.
+
+    :param cert: The certificate to check.
+    :param ca_cert: The issuer's certificate.
+    :param hash_alg: The hash algorithm to use for the OCSP request. Defaults to "sha256".
+    :param must_be_present: Whether the OCSP URLs must be present in the certificate's AIA
+    extension. Defaults to `True`.
+    :return: The OCSP request and the OCSP URL.
+    :raises ExtensionNotFound: If no OCSP URLs are found in the certificate's AIA extension.
+    :raises ValueError: If the OCSP request fails.
+    """
+    crypto_ca_cert = _convert_to_crypto_lib_cert(ca_cert)
+    crypto_cert = _convert_to_crypto_lib_cert(cert)
+
+    ocsp_url = get_ocsp_url_from_cert_pyasn1(cert)
+    if not ocsp_url and must_be_present:
+        raise ExtensionNotFound(
+            msg="No OCSP URLs found in the certificate's AIA extension.", oid=AuthorityInformationAccessOID.OCSP
+        )
+
+    builder = ocsp.OCSPRequestBuilder()
+    hash_instance = oid_mapping.hash_name_to_instance(hash_alg)
+    builder = builder.add_certificate(crypto_cert, crypto_ca_cert, hash_instance)
+    req = builder.build()
+    return req, ocsp_url
+
+
+def _log_cert_issue_and_subject_and_serial_number(cert: Union[x509.Certificate, rfc9480.CMPCertificate]) -> None:
+    """Log the certificate issuer, subject, and serial number.
+
+    :param cert: The certificate to log.
+    """
+    cert = _convert_to_crypto_lib_cert(cert)
+    issuer = cert.issuer.rfc4514_string()
+    subject = cert.subject.rfc4514_string()
+    serial_number = cert.serial_number
+    data = f"Subject: {subject}, Issuer: {issuer}, Serial Number: {serial_number}"
+    logging.debug(data)
+
+
+@not_keyword
+def check_ocsp_response(
+    ocsp_response: ocsp.OCSPResponse,
+    cert: rfc9480.CMPCertificate,
+    expected_status: str = "revoked",
+    allow_unknown_status: bool = False,
+) -> None:
+    """Check the OCSP response for the certificate.
+
+    :param ocsp_response: The OCSP response to check.
+    :param cert: The certificate to check.
+    :param expected_status: The expected status of the certificate. Defaults to "revoked".
+    :param allow_unknown_status: Whether to treat an unknown status as success. Defaults to `False`.
+    :raises ValueError: If the OCSP response is invalid or the request fails.
+    """
+    if ocsp_response.response_status != ocsp.OCSPResponseStatus.SUCCESSFUL:
+        raise ValueError(f"OCSP response was not successful. Status: {ocsp_response.response_status}")
+
+    status = ocsp_response.certificate_status
+
+    if status == ocsp.OCSPCertStatus.GOOD:
+        state = "good"
+    elif status == ocsp.OCSPCertStatus.REVOKED:
+        state = "revoked"
+    else:
+        state = "unknown"
+
+    if state == "unknown" and allow_unknown_status:
+        return
+
+    if state != expected_status:
+        _log_cert_issue_and_subject_and_serial_number(cert)
+        raise ValueError(f"OCSP response status was `{state}`, but expected `{expected_status}`")
+
+
+def _post_ocsp_request(
+    url: str,
+    ocsp_request_data: bytes,
+    timeout: int,
+    allow_request_failure: bool,
+) -> Optional[requests.Response]:
+    """Send an OCSP request to a specified OCSP responder.
+
+    :param url: The URL of the OCSP responder.
+    :param ocsp_request_data: The OCSP request data.
+    :param timeout: The timeout for the request.
+    :param allow_request_failure: Whether to allow the request to fail. Defaults to `False`.
+    :return: The OCSP response.
+    :raises ValueError: If the OCSP response is invalid or the request fails.
+    """
+    headers = {"Content-Type": "application/ocsp-request"}
+    try:
+        response = requests.post(url=url, data=ocsp_request_data, headers=headers, timeout=timeout)
+
+    except requests.exceptions.RequestException as err:
+        if allow_request_failure:
+            logging.warning("Failed to send OCSP request. Error: %s", err, exc_info=True)
+            return None
+        raise ValueError(f"Failed to send OCSP request. Error: {err}") from err
+
+    if response.status_code != 200 and not allow_request_failure:
+        logging.warning("Failed to send OCSP request. Status code: %s", response.status_code)
+        logging.debug("Response: %s", response.text)
+        raise ValueError("Failed to send OCSP request. Status code: %s", response.status_code)
+    if response.status_code != 200 and allow_request_failure:
+        logging.warning("Failed to send OCSP request. Status code: %s", response.status_code)
+        logging.debug("Response: %s", response.text)
+        return None
+
+    return response
+
+
+def _handel_single_ocsp_request(
+    url: str,
+    ocsp_request_data: bytes,
+    timeout: int,
+    expected_status: str,
+    cert: rfc9480.CMPCertificate,
+    allow_request_failure: bool = False,
+    allow_unknown_status: bool = False,
+) -> None:
+    """Handle a single OCSP request.
+
+    :param url: The URL of the OCSP responder.
+    :param ocsp_request_data: The OCSP request data.
+    :param timeout: The timeout for the request.
+    :param expected_status: The expected status of the certificate.
+    :param cert: The certificate to check.
+    :param allow_request_failure: Whether to allow the request to fail. Defaults to `False`.
+    :param allow_unknown_status: Whether to treat an unknown status as success. Defaults to `False`.
+    :raises ValueError: If the OCSP response is invalid or the request fails.
+    """
+    response = _post_ocsp_request(
+        url=url, ocsp_request_data=ocsp_request_data, allow_request_failure=allow_request_failure, timeout=timeout
+    )
+
+    if response is None:
+        return
+
+    ocsp_response = ocsp.load_der_ocsp_response(response.content)
+    check_ocsp_response(ocsp_response, cert, expected_status=expected_status, allow_unknown_status=allow_unknown_status)
+
+
+@keyword(name="Check OCSP Response For Cert")
+def check_ocsp_response_for_cert(  # noqa D417 undocumented-param
+    cert: rfc9480.CMPCertificate,
+    issuer: rfc9480.CMPCertificate,
+    ocsp_url: Optional[str] = None,
+    timeout: Strint = 60,
+    hash_alg: str = "sha256",
+    expected_status: str = "revoked",
+    allow_request_failure: bool = False,
+    must_be_present: Optional[bool] = None,
+    allow_unknown_status: bool = False,
+):
+    """Send an OCSP request to a specified OCSP responder.
+
+    Arguments:
+    ---------
+        - `cert`: The certificate to check.
+        - `issuer`: The issuer certificate.
+        - `ocsp_url`: The URL of the OCSP responder. Defaults to the URL in the certificate's AIA extension.
+        - `timeout`: The timeout in seconds for the request. Defaults to `60` seconds.
+        - `hash_alg`: The hash algorithm to use for the OCSP request. Defaults to "sha256".
+        - `expected_status`: The expected status of the certificate. Defaults to "revoked".
+        - `allow_request_failure`: Whether to allow the request to fail. Defaults to `False`.
+        - `must_be_present`: Whether the OCSP URLs must be present in the certificate's AIA extension.
+        Defaults to `None` (will be set to `True` if no `ocsp_url` is provided, otherwise `False`).
+        - `allow_unknown_status`: Whether to treat an unknown status as success. Defaults to `False`.
+        (e.g., If set to True, an "unknown" status is returned and expected was either
+        "revoked" or "good", the keyword will not raise an error).
+
+    Raises:
+    ------
+        - `ValueError`: If the OCSP response is invalid or the request fails.
+        - `ValueError`: If the expected status is invalid (must be one of "good", "revoked", or "unknown").
+        - `ExtensionNotFound`: If no OCSP URL(s) are found in the certificate's AIA extension.
+
+    Examples:
+    --------
+    | Check OCSP Response For Cert | cert=${cert} | issuer=${issuer} | ocsp_url=${ocsp_url} |
+    | Check OCSP Response For Cert | cert=${cert} | issuer=${issuer} | expected_status=good |
+    | Check OCSP Response For Cert | cert=${cert} | issuer=${issuer} | expected_status=unknown | timeout=30 |
+
+    """
+    if expected_status not in ["good", "revoked", "unknown"]:
+        raise ValueError("Invalid expected status. Must be one of 'good', 'revoked', or 'unknown'")
+
+    if must_be_present is None:
+        must_be_present = True if not ocsp_url else False
+
+    req, ocsp_url_found = create_ocsp_request(
+        cert=cert, ca_cert=issuer, hash_alg=hash_alg, must_be_present=must_be_present
+    )
+    ocsp_request_data = req.public_bytes(serialization.Encoding.DER)
+    ocsp_urls = ocsp_url or ocsp_url_found  # type: ignore
+
+    if isinstance(ocsp_url, str):
+        ocsp_urls = [ocsp_url]  # type: ignore
+
+    ocsp_urls: List[str]
+    for url in ocsp_urls:
+        _handel_single_ocsp_request(
+            url=url,
+            ocsp_request_data=ocsp_request_data,
+            timeout=int(timeout),
+            expected_status=expected_status,
+            cert=cert,
+            allow_request_failure=allow_request_failure,
+            allow_unknown_status=allow_unknown_status,
+        )
+
+
+def _get_cert_status(status: Optional[str]) -> ocsp.OCSPCertStatus:
+    """Get the OCSP certificate status."""
+    if status == "good":
+        return ocsp.OCSPCertStatus.GOOD
+    if status == "revoked":
+        return ocsp.OCSPCertStatus.REVOKED
+    if status == "unknown":
+        return ocsp.OCSPCertStatus.UNKNOWN
+    if status is None:
+        return ocsp.OCSPCertStatus.UNKNOWN
+    raise ValueError(f"Invalid status: {status}")
+
+
+def _get_reason_flags(reason: Optional[str]) -> Optional[ReasonFlags]:
+    """Get the OCSP revocation reason flags."""
+    if reason is None:
+        return None
+    return ReasonFlags(reason)
+
+
+# TODO add unsuccessful handling.
+
+
+@not_keyword
+def build_ocsp_response(
+    cert: rfc9480.CMPCertificate,
+    ca_cert: rfc9480.CMPCertificate,
+    responder_key: SignKey,
+    status: str,
+    hash_alg: Optional[str] = "sha256",
+    revocation_reason: Optional[str] = None,
+    responder_cert: Optional[rfc9480.CMPCertificate] = None,
+    responder_hash_alg: str = "sha256",
+    revocation_time: Optional[datetime] = None,
+    build_by_key: bool = True,
+    nonce: Optional[bytes] = None,
+) -> ocsp.OCSPResponse:
+    """Build an OCSP response for a list of certificates.
+
+    :param cert: The certificate to check.
+    :param ca_cert: The issuer's certificate.
+    :param responder_key: The responder private key.
+    :param status: The status of the certificate. **Must** be one of "good", "revoked", or "unknown".
+    :param hash_alg: The hash algorithm to use for the OCSP response. Defaults to "sha256".
+    :param revocation_reason: The revocation reason for the certificate. Defaults to `None`.
+    :param responder_cert: The responder certificate. Defaults to `ca_cert`.
+    :param responder_hash_alg: The hash algorithm to use for the responder. Defaults to "sha256".
+    :param revocation_time: The revocation time for the certificate. Defaults to `None`.
+    (must be present if the certificate is revoked, but will be set to the current time if not provided).
+    :param build_by_key: Whether to build the OCSP response by hash of the key or name. Defaults to `True`.
+    :param nonce: The nonce to include in the OCSP response. Defaults to 16 random bytes.
+    :return: The OCSP response.
+    :raises ValueError: If the status is invalid.
+    """
+    crypto_ca_cert = _convert_to_crypto_lib_cert(ca_cert)
+    builder = ocsp.OCSPResponseBuilder()
+    resp_hash_inst = oid_mapping.hash_name_to_instance(responder_hash_alg)
+
+    crypto_cert = _convert_to_crypto_lib_cert(cert)
+    cert_status = _get_cert_status(status)
+    reason = _get_reason_flags(revocation_reason)
+
+    if cert_status == ocsp.OCSPCertStatus.REVOKED and revocation_time is None:
+        # must be present if the certificate is revoked.
+        revocation_time = datetime.now()
+
+    builder = builder.add_response(
+        cert=crypto_cert,
+        issuer=crypto_ca_cert,
+        algorithm=resp_hash_inst,
+        cert_status=cert_status,
+        revocation_reason=reason,
+        this_update=datetime.now(),
+        next_update=None,
+        revocation_time=revocation_time,
+    )
+    crypto_responder_cert = None if responder_cert is None else _convert_to_crypto_lib_cert(responder_cert)
+    crypto_responder_cert = crypto_responder_cert or crypto_ca_cert
+
+    # Set the responder ID; it can be either byName (DER encoded `NAME`) or byKey (hash).
+    if build_by_key:
+        _encoding = ocsp.OCSPResponderEncoding.HASH
+    else:
+        _encoding = ocsp.OCSPResponderEncoding.NAME
+
+    builder = builder.responder_id(encoding=_encoding, responder_cert=crypto_responder_cert)
+
+    if nonce is None:
+        # allow range is 1-32 from the RFC 8954.
+        nonce = os.urandom(16)
+
+    builder = builder.add_extension(x509.OCSPNonce(nonce), critical=False)
+
+    if hash_alg is not None:
+        hash_inst = oid_mapping.hash_name_to_instance(hash_alg)
+    else:
+        hash_inst = None
+
+    return builder.sign(responder_key, hash_inst)  # type: ignore
+
+
+def _extract_crl_urls_from_cert_pyasn1(cert: rfc9480.CMPCertificate) -> List[str]:
+    """Extract CRL distribution point URLs from a certificate.
+
+    :param cert: A certificate object.
+    :return: List of CRL URLs found in the certificate's CRL Distribution Points extension.
+    """
+    crl_urls = []
+    extn = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], rfc5280.id_ce_cRLDistributionPoints)
+    if extn is None:
+        return []
+
+    crl_dist_points, _ = decoder.decode(extn["extnValue"], asn1Spec=rfc5280.CRLDistributionPoints())
+    crl_dist_points: rfc5280.CRLDistributionPoints
+
+    for dist_point in crl_dist_points:
+        if dist_point["distributionPoint"]["fullName"].isValue:
+            for full_name in dist_point["distributionPoint"]["fullName"]:
+                if full_name["uniformResourceIdentifier"].isValue:
+                    crl_urls.append(full_name["uniformResourceIdentifier"])
+
+    return crl_urls
+
+
+def _parse_crl_and_check_revocation(
+    crl_data: bytes,
+    serial_number: int,
+) -> bool:
+    """Parse the CRL data (PEM or DER) and check if the given serial number is in the CRL.
+
+    :param crl_data: The raw CRL bytes.
+    :param serial_number: The certificate's serial number to check against the CRL.
+    :return: True if the certificate's serial is found in the CRL, False otherwise.
+    :raises IOError: If the CRL data cannot be parsed.
+    """
+    try:
+        crl = x509.load_der_x509_crl(crl_data)
+    except Exception:
+        logging.debug("Failed to load CRL data as DER. Trying to load as PEM.", exc_info=True)
+        try:
+            crl = x509.load_pem_x509_crl(crl_data)
+        except Exception as err2:
+            raise IOError(f"Failed to load CRL data: {err2}") from err2
+
+    for revoked_cert in crl:
+        if revoked_cert.serial_number == serial_number:
+            logging.debug("Certificate with serial %s is in the CRL.", serial_number)
+            return True
+    return False
+
+
+@not_keyword
+def process_single_crl_check(
+    serial_number: int,
+    crl_url: Optional[str] = None,
+    crl_file_path: Optional[str] = None,
+    timeout: int = 10,
+) -> bool:
+    """Check if a certificate is revoked, by checking against a CRL.
+
+    :param serial_number: Serial number of the certificate to check.
+    :param crl_url: The URL of the CRL to check against.
+    :param crl_file_path: The file path of the CRL to check against.
+    :param timeout: The timeout in seconds for the request. Defaults to `10`.
+    :return: Whether the certificate is revoked.
+    """
+    if crl_url:
+        response = requests.get(crl_url, timeout=timeout)
+        crl_data = response.content
+    elif crl_file_path:
+        with open(crl_file_path, "rb") as crl_file:
+            crl_data = crl_file.read()
+    else:
+        raise ValueError("Either `crl_url` or `crl_file_path` must be provided.")
+
+    return _parse_crl_and_check_revocation(crl_data, serial_number)
+
+
+@keyword(name="Check If Cert Is Revoked CRL")
+def check_if_cert_is_revoked_crl(  # noqa D417 undocumented-param
+    cert: rfc9480.CMPCertificate,
+    crl_url: Optional[str] = None,
+    crl_file_path: Optional[str] = None,
+    timeout: Strint = 60,
+    allow_no_crl_urls: bool = False,
+) -> None:
+    """Check if a certificate is revoked, by checking against a CRL.
+
+    Arguments:
+    ---------
+        - `cert`: The certificate to check.
+        - `crl_url`: The URL of the CRL to check against.
+        - `crl_file_path`: The file path of the CRL to check against.
+        - `timeout`: The timeout in seconds for the request. Defaults to `60`.
+        - `allow_no_crl_urls`: Whether to allow no CRL URLs to be found in the certificate. Defaults to `False`.
+
+    Raises:
+    ------
+        - `ValueError`: If the certificate is revoked.
+        - `ValueError`: If no CRL URLs are found in the certificate.
+        - `IOError`: If the CRL data cannot be loaded.
+
+    Examples:
+    --------
+    | Check If Cert Is Revoked CRL | cert=${cert} |
+    | Check If Cert Is Revoked CRL | cert=${cert} | timeout=30 |
+    | Check If Cert Is Revoked CRL | cert=${cert} | crl_url=${crl_url} |
+    | Check If Cert Is Revoked CRL | cert=${cert} | crl_file_path=${crl_file_path} |
+
+    """
+    serial_number = int(cert["tbsCertificate"]["serialNumber"])
+    serial_number = int(serial_number)
+
+    if crl_url or crl_file_path:
+        result = process_single_crl_check(
+            serial_number=serial_number, crl_url=crl_url, crl_file_path=crl_file_path, timeout=int(timeout)
+        )
+
+    else:
+        result = None
+        crl_urls = _extract_crl_urls_from_cert_pyasn1(cert)
+        for url in crl_urls:
+            result = process_single_crl_check(serial_number=serial_number, crl_url=url, timeout=int(timeout))
+            if result:
+                break
+
+    if result:
+        raise CertRevoked("Certificate is revoked.")
+
+    if result is None and not allow_no_crl_urls:
+        raise ValueError("No CRL URLs found in the certificate.")
+
+
+@keyword(name="Validate If Certificate Is Revoked")
+def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
+    cert: rfc9480.CMPCertificate,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    ocsp_url: Optional[str] = None,
+    crl_url: Optional[str] = None,
+    crl_file_path: Optional[str] = None,
+    ocsp_timeout: Union[str, int] = 20,
+    crl_timeout: Union[str, int] = 20,
+    allow_request_failure: bool = False,
+    allow_ocsp_unknown: bool = False,
+    allow_no_crl_urls: bool = False,
+) -> None:
+    """Validate if a certificate is revoked via OCSP and CRL checks.
+
+    Steps:
+    ------
+      1. First checks if the certificate is revoked via OCSP.
+      2. Perform a CRL check (either with given 'crl_url', 'crl_file_path',
+         or from the cert's CRL Distribution Points). If revoked => raise.
+      3. If we finish both checks without raising, we conclude the certificate
+         is not revoked.
+
+    Arguments:
+    ---------
+       - `cert`: The certificate to check.
+       - `ca_cert`: The issuer certificate. Required for the OCSP check.
+       - `ocsp_url`: Explicit OCSP URL (overrides the AIA extension). Defaults to `None`.
+       - `crl_url`: Explicit CRL URL (overrides CRL distribution points). Defaults to `None`.
+       - `crl_file_path`: CRL file path. Defaults to `None`.
+       - `ocsp_timeout`: Timeout for the OCSP request. Defaults to `20` seconds.
+       - `crl_timeout`: Timeout for fetching CRL over HTTP(s). Defaults to `20` seconds.
+       - `allow_request_failure`: Passed to the OCSP request function to allow or
+              disallow request failures.
+       - `allow_ocsp_unknown`: Whether to allow OCSP 'unknown' status as non-revoked.
+       - `allow_no_crl_urls`: Whether to allow no CRL URLs to be found in the certificate.
+
+    Raises:
+    ------
+        - `CertRevoked`: If the certificate is revoked.
+        - `IOError`: If there's an issue loading or parsing the CRL or OCSP data.
+        - `ValueError`: If the OCSP request fails.
+        - `ValueError`: If the certificate does not contain any CRL URLs and non was provided.
+
+    Examples:
+    --------
+    | Validate If Certificate Is Revoked | cert=${cert} | issuer=${issuer} |
+    | Validate If Certificate Is Revoked | cert=${cert} | issuer=${issuer} | ocsp_url=${ocsp_url} |
+    | Validate If Certificate Is Revoked | cert=${cert} | crl_url=${crl_url} |
+
+    """
+    if ca_cert:
+        try:
+            check_ocsp_response_for_cert(
+                cert=cert,
+                issuer=ca_cert,
+                ocsp_url=ocsp_url,
+                timeout=ocsp_timeout,
+                expected_status="good",
+                allow_request_failure=allow_request_failure,
+                allow_unknown_status=allow_ocsp_unknown,
+            )
+        except ValueError as err:
+            if "`revoked`" in str(err) or "`unknown`" in str(err):
+                raise CertRevoked("Certificate is revoked (by OCSP check).") from err
+            raise
+
+    else:
+        logging.debug("No issuer provided; skipping OCSP check and going directly to CRL check.")
+
+    # 2. Check CRL
+    check_if_cert_is_revoked_crl(
+        cert=cert,
+        crl_url=crl_url,
+        crl_file_path=crl_file_path,
+        timeout=crl_timeout,
+        allow_no_crl_urls=allow_no_crl_urls,
+    )
+
+    # 3. If we reach this point, neither the OCSP check nor the CRL check
+    #    confirmed revocation => conclude "not revoked."
+    logging.debug("Certificate does not appear to be revoked by OCSP or CRL.")
+
+
+@keyword(name="Validate Migration Alg ID")
+def validate_migration_alg_id(  # noqa: D417 Missing argument descriptions in the docstring
+    alg_id: rfc9480.AlgorithmIdentifier,
+) -> None:
+    """Validate a post-quantum or hybrid algorithm identifier.
+
+    Arguments:
+    ---------
+        - `alg_id`: The `AlgorithmIdentifier` to validate.
+
+    Raises:
+    ------
+        - `ValueError`: If the `parameters` field is not absent.
+
+    Examples:
+    --------
+    | Validate Migration Alg ID | ${alg_id} |
+
+    """
+    if alg_id["algorithm"] not in PQ_OID_2_NAME:
+        if alg_id["parameters"].isValue:
+            alg_name = PQ_OID_2_NAME.get(alg_id["algorithm"])
+            alg_name = alg_name or PQ_OID_2_NAME.get(str(alg_id["algorithm"]))
+            raise ValueError(
+                f"The Post-Quantum algorithm identifier {alg_name} does not `allow` the parameters"
+                f" field to be set: {alg_id['parameters']}"
+            )
+
+    elif alg_id["algorithm"] in HYBRID_OID_2_NAME:
+        if alg_id["parameters"].isValue:
+            alg_name = HYBRID_OID_2_NAME.get(alg_id["algorithm"])
+            alg_name = alg_name or HYBRID_OID_2_NAME.get(str(alg_id["algorithm"]))
+            raise ValueError(
+                f"The Hybrid algorithm identifier {alg_name} does not `allow` the parameters"
+                f" field to be set: {alg_id['parameters']}"
+            )
+    else:
+        raise UnknownOID(oid=alg_id["algorithm"])
+
+
+@keyword(name="Validate Migration Certificate KeyUsage")
+def validate_migration_certificate_key_usage(  # noqa: D417 Missing argument descriptions in the docstring
+    cert: rfc9480.CMPCertificate,
+) -> None:
+    """Validate the key usage of a certificate with a PQ public key.
+
+    Arguments:
+    ---------
+        - `cert`: The certificate to validate.
+
+    Raises:
+    ------
+        - `ValueError`: If the key is a KEM or Hybrid-KEM -key and the key usage is not `keyEncipherment`.
+        - `ValueError`: If the key is a PQ signature key and the key usage is not `digitalSignature`.
+
+    Examples:
+    --------
+    | Validate Migration Certificate Key Usage | ${cert} |
+
+
+    """
+    public_key: PQPublicKey = load_public_key_from_cert(cert)  # type: ignore
+    key_usage = certextractutils.get_field_from_certificate(cert, extension="key_usage")
+
+    if key_usage is None:
+        logging.info("Key usage extension was not present in the parsed certificate.")
+        return
+
+    key_usage = asn1utils.get_set_bitstring_names(key_usage).split(", ")  # type: ignore
+
+    sig_usages = {"digitalSignature", "nonRepudiation", "keyCertSign", "cRLSign"}
+
+    if isinstance(public_key, (PQSignaturePublicKey, CompositeSig03PublicKey)):
+        ml_dsa_disallowed = {"keyEncipherment", "dataEncipherment", "keyAgreement", "encipherOnly", "decipherOnly"}
+
+        if not set(key_usage).issubset(sig_usages):
+            raise ValueError(f"The post-quantum {public_key.name} keyUsage must be one of: {sig_usages}")
+        if set(key_usage) & ml_dsa_disallowed:
+            raise ValueError(f"ML-DSA keyUsage must not include: {ml_dsa_disallowed}")
+
+    if is_kem_public_key(public_key):
+        ml_kem_allowed = {"keyEncipherment"}
+        if set(key_usage) != ml_kem_allowed:
+            raise ValueError(f"ML-KEM keyUsage must only contain: {ml_kem_allowed}.But got {key_usage}")
+
+    else:
+        raise ValueError(f"Unsupported public key type: {type(public_key)}")
+
+
+@keyword(name="Validate Migration OID In Certificate")
+def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descriptions in the docstring
+    cert: rfc9480.CMPCertificate, alg_name: str
+) -> None:
+    """Validate the OID of the public key in the certificate.
+
+    Arguments:
+    ---------
+        - `cert`: The certificate to validate.
+        - `name`: The name of the public key algorithm.
+
+    Raises:
+    ------
+        - `ValueError`: If the OID does not match the name.
+        - `UnknownOID`: If the OID is unknown.
+        - `ValueError`: If the name is not supported.
+
+    Examples:
+    --------
+    | Validate Migration OID In Certificate | ${cert} | ml-dsa-65 |
+
+    """
+    pub_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+
+    name_oid = PQ_NAME_2_OID.get(alg_name) or HYBRID_NAME_2_OID.get(alg_name)
+    if name_oid is None:
+        raise ValueError(
+            f"The name {alg_name} is not supported."
+            f" Supported names are: {list(PQ_NAME_2_OID.keys()) + list(HYBRID_NAME_2_OID.keys())}"
+        )
+
+    if PQ_NAME_2_OID.get(alg_name) is not None:
+        if str(pub_oid) != str(PQ_NAME_2_OID[alg_name]):
+            _add = may_return_oid_to_name(pub_oid)
+            if "." not in _add:
+                _add = f" ({_add})"
+            else:
+                _add = ""
+            raise ValueError(f"The OID {pub_oid}{_add} does not match the name {alg_name}.")
+
+    elif HYBRID_NAME_2_OID.get(alg_name) is not None:
+        if str(pub_oid) != str(HYBRID_NAME_2_OID[alg_name]):
+            _add = may_return_oid_to_name(pub_oid)
+            if "." not in _add:
+                _add = f" ({_add})"
+            else:
+                _add = ""
+            raise ValueError(f"The OID {pub_oid}{_add} does not match the name {alg_name}.")
+    else:
+        raise UnknownOID(pub_oid)
+
+
+@keyword(name="Verify CSR Signature")
+def verify_csr_signature(  # noqa: D417 Missing argument descriptions in the docstring
+    csr: rfc6402.CertificationRequest,
+) -> None:
+    """Verify a certification request (CSR) signature using the appropriate algorithm.
+
+    Arguments:
+    ---------
+        - `csr`: The certification request (`CertificationRequest`) to be verified.
+
+    Raises:
+    ------
+        - `ValueError`: If the algorithm OID in the CSR is unsupported or invalid.
+        - `BadPOP`: If the signature verification fails.
+        - `ValueError`: If the public key type is unsupported.
+
+    Examples:
+    --------
+    | Verify CSR Signature | ${csr} |
+
+    """
+    alg_id = csr["signatureAlgorithm"]
+    spki = csr["certificationRequestInfo"]["subjectPublicKeyInfo"]
+
+    if alg_id["algorithm"] in CMS_COMPOSITE_OID_2_NAME:
+        public_key = keyutils.load_public_key_from_spki(spki)
+        CompositeSig03PublicKey.validate_oid(alg_id["algorithm"], public_key)
+    else:
+        public_key = keyutils.load_public_key_from_spki(spki)
+
+    verify_key = ensure_is_verify_key(public_key)
+
+    signature = csr["signature"].asOctets()
+    alg_id = csr["signatureAlgorithm"]
+    data = encoder.encode(csr["certificationRequestInfo"])
+    try:
+        protectionutils.verify_signature_with_alg_id(
+            public_key=verify_key, alg_id=alg_id, signature=signature, data=data
+        )
+    except InvalidSignature as e:
+        raise BadPOP("The signature verification failed.") from e

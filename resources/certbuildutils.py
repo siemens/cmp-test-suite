@@ -6,39 +6,52 @@
 
 import logging
 import os
-from datetime import datetime, timedelta
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from datetime import datetime, timedelta, timezone
+from typing import Any, List, Optional, Sequence, Set, Tuple, Union
 
+import pyasn1.error
 from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
+from pq_logic.keys.trad_kem_keys import RSAEncapKey
+from pq_logic.pq_utils import is_kem_public_key
+from pq_logic.tmp_oids import COMPOSITE_SIG03_HASH_OID_2_NAME, COMPOSITE_SIG04_HASH_OID_2_NAME, id_rsa_kem_spki
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ, useful
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6402, rfc9480, rfc9481
+from pyasn1.type.base import Asn1Item, Asn1Type
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc8954, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.keys.abstract_composite import AbstractCompositeKEMPrivateKey, AbstractCompositeSigPrivateKey
-from pq_logic.keys.abstract_hybrid_raw_kem_key import AbstractHybridRawPrivateKey
-from pq_logic.keys.comp_sig_cms03 import CompositeSigCMSPrivateKey, get_oid_cms_composite_signature
-from pq_logic.tmp_oids import id_rsa_kem_spki
 from resources import (
+    asn1utils,
     certextractutils,
     certutils,
     cmputils,
+    compareutils,
     convertutils,
     copyasn1utils,
     cryptoutils,
     keyutils,
-    oid_mapping,
+    prepareutils,
     typingutils,
     utils,
 )
-from resources.certextractutils import extract_extension_from_csr
-from resources.convertutils import subjectPublicKeyInfo_from_pubkey
-from resources.exceptions import BadCertTemplate
-from resources.oidutils import CMP_EKU_OID_2_NAME, RSA_SHA_OID_2_NAME
-from resources.prepareutils import prepare_name
-from resources.typingutils import PrivateKey, PrivateKeySig, PublicKey
+from resources.asn1utils import get_set_bitstring_names
+from resources.compareutils import find_name_inside_general_names
+from resources.convertutils import subject_public_key_info_from_pubkey
+from resources.exceptions import BadAsn1Data, BadCertTemplate
+from resources.oid_mapping import may_return_oid_to_name
+from resources.oidutils import (
+    CMP_EKU_OID_2_NAME,
+    EXTENSION_OID_2_NAME,
+    PQ_SIG_PRE_HASH_OID_2_NAME,
+)
+from resources.prepare_alg_ids import prepare_sig_alg_id
+from resources.typingutils import ExtensionsType, PrivateKey, PublicKey, SignKey, Strint, VerifyKey
 
 
 # TODO verify if `utcTime` is allowed for CertTemplate, because is not allowed
@@ -95,57 +108,14 @@ def prepare_validity(  # noqa D417 undocumented-param
     return validity
 
 
-def prepare_sig_alg_id(
-    signing_key: PrivateKeySig,
-    hash_alg: str,
-    use_rsa_pss: bool,
-    use_pre_hash: bool = False,
-) -> rfc9480.AlgorithmIdentifier:
-    """Prepare the AlgorithmIdentifier for the signature algorithm based on the key and hash algorithm.
-
-    If `use_rsa_pss` is `True`, configures RSA-PSS; otherwise, it selects the signature OID
-    based on the signing key type and hash algorithm.
-
-    :param signing_key: The private key to use for signing the certificate.
-    :param hash_alg: The hash algorithm to use (e.g., "sha256").
-    :param use_rsa_pss: Boolean flag indicating whether to use RSA-PSS for signing.
-    :param use_pre_hash: Boolean flag indicating whether the data is pre-hashed before signing.
-    :return: An `rfc9480.AlgorithmIdentifier` for the specified signing configuration.
-    """
-    alg_id = rfc9480.AlgorithmIdentifier()
-
-    if isinstance(signing_key, CompositeSigCMSPrivateKey):
-        # TODO maybe make it better to get the oid from the key itself.
-        # Left like this, because unknown how the cryptography library will
-        # implement the CompositeSigPrivateKey (Probably for every key a new class).
-        domain_oid = get_oid_cms_composite_signature(
-            signing_key.pq_key.name, signing_key.trad_key, use_pss=use_rsa_pss, pre_hash=use_pre_hash
-        )
-        alg_id["algorithm"] = domain_oid
-
-    elif isinstance(signing_key, AbstractCompositeSigPrivateKey):
-        # means an expired key is used.
-        domain_oid = signing_key.get_oid(used_padding=use_rsa_pss, pre_hash=use_pre_hash)
-        alg_id["algorithm"] = domain_oid
-
-    else:
-        oid = oid_mapping.get_alg_oid_from_key_hash(key=signing_key, hash_alg=hash_alg, use_pss=use_rsa_pss)
-        alg_id["algorithm"] = oid
-        if oid in RSA_SHA_OID_2_NAME:
-            alg_id["parameters"] = univ.Null("")
-
-    return alg_id
-
-
 @keyword(name="Sign CSR")
 def sign_csr(  # noqa D417 undocumented-param
     csr: rfc6402.CertificationRequest,
-    signing_key: PrivateKeySig,
-    hash_alg: str = "sha256",
-    other_key: Optional[PrivateKeySig] = None,
-    use_rsa_pss: bool = False,
-    bad_sig: bool = False,
-    use_pre_hash: bool = False,
+    signing_key: SignKey,
+    hash_alg: Optional[str] = "sha256",
+    other_key: Optional[SignKey] = None,
+    bad_pop: bool = False,
+    **kwargs,
 ):
     """Sign a `pyasn1` `CertificationRequest` (CSR).
 
@@ -161,9 +131,15 @@ def sign_csr(  # noqa D417 undocumented-param
         - `hash_alg`: The hash algorithm used for signing the CSR. Defaults to `"sha256"`.
         - `other_key`: Optional private key to sign the CSR.
         Will be ignored if Ed25519 and Ed448 are used.
+
+        - `bad_pop`: Whether to manipulate the signature for negative testing. Defaults to `False`.
+
+    **kwargs:
+    --------
+        - `sig_alg_id`: The signature algorithm identifier to use. Defaults to `None`.
         - `use_rsa_pss`: Whether to use RSA-PSS for the signature algorithm. Defaults to `False`.
-        - `bad_sig`: Whether to manipulate the signature for negative testing.
-        - `use_pre_hash`: Whether to use the pre-hashed version for PQ-keys and CompositeSig-keys.
+        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+
 
     Returns:
     -------
@@ -181,21 +157,27 @@ def sign_csr(  # noqa D417 undocumented-param
 
     """
     der_data = encoder.encode(csr["certificationRequestInfo"])
-    signature = cryptoutils.sign_data(data=der_data, key=other_key or signing_key, hash_alg=hash_alg)
+    sig_alg_id = kwargs.get("sig_alg_id") or prepare_sig_alg_id(
+        signing_key=signing_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=kwargs.get("use_rsa_pss", False),
+        use_pre_hash=kwargs.get("use_pre_hash", False),
+    )
+
+    signature = cryptoutils.sign_data(
+        data=der_data,
+        key=other_key or signing_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=kwargs.get("use_rsa_pss", False),
+        use_pre_hash=kwargs.get("use_pre_hash", False),
+    )
     logging.info("CSR Signature: %s", signature)
-    if bad_sig:
-        if isinstance(signing_key, AbstractCompositeSigPrivateKey):
-            signature = utils.manipulate_composite_sig(signature)
-        else:
-            signature = utils.manipulate_first_byte(signature)
+    if bad_pop:
+        signature = utils.manipulate_bytes_based_on_key(signature, signing_key)
         logging.info("Modified CSR signature: %s", signature)
 
     csr["signature"] = univ.BitString.fromOctetString(signature)
-    csr["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key,
-                                                   hash_alg=hash_alg,
-                                                   use_rsa_pss=use_rsa_pss,
-                                                   use_pre_hash=use_pre_hash,
-                                                   )
+    csr["signatureAlgorithm"] = sig_alg_id
 
     # Needs to be en and decoded otherwise is the structure empty.
     der_data = encoder.encode(csr)
@@ -206,15 +188,15 @@ def sign_csr(  # noqa D417 undocumented-param
 
 @keyword(name="Build CSR")
 def build_csr(  # noqa D417 undocumented-param
-    signing_key: PrivateKeySig,
+    signing_key: SignKey,
     common_name: str = "CN=Hans Mustermann",
-    extensions: Optional[Sequence[rfc5280.Extension]] = None,
+    extensions: Optional[rfc9480.Extensions] = None,
     hash_alg: Union[None, str] = "sha256",
     use_rsa_pss: bool = False,
     subjectAltName: Optional[str] = None,
     exclude_signature: bool = False,
     for_kga: bool = False,
-    bad_sig: bool = False,
+    bad_pop: bool = False,
     use_pre_hash: bool = False,
     use_pre_hash_pub_key: Optional[bool] = None,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
@@ -235,13 +217,12 @@ def build_csr(  # noqa D417 undocumented-param
         `"example.com,www.example.com,pki.example.com"`. Defaults to `None`.
         - `exclude_signature`: A flag to indicate if the CSR should be signed or not. Defaults to `False`.
         - `for_kga`: If the CSR is created for non-local key generation. The `signature` and the
-        `subjectPublicKey` are set to a zero bit string. And the algorithm identifiers are set to key provided.
+        `subjectPublicKey` are set to a zero bit string. And the algorithm identifiers are set to the provided key.
         - `bad_sig`: Whether to manipulate the signature for negative testing.
-        - `use_pre_hash`: Whether to use the pre-hashed version for PQ-keys and CompositeSig-keys.
-        - `use_pre_hash_pub_key`: Whether to use the pre-hashed version for the public key.
+        - `use_pre_hash`:Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+        - `use_pre_hash_pub_key`: Whether to use the pre-hash version for a composite-sig public key.
         Defaults to `use_pre_hash`.
         - `spki`: Optional `SubjectPublicKeyInfo` object to populate the CSR with. Defaults to `None`.
-
 
     Returns:
     -------
@@ -258,10 +239,10 @@ def build_csr(  # noqa D417 undocumented-param
     csr = rfc6402.CertificationRequest()
 
     csr["certificationRequestInfo"]["version"] = univ.Integer(0)
-    csr["certificationRequestInfo"]["subject"] = prepare_name(common_name)
+    csr["certificationRequestInfo"]["subject"] = prepareutils.prepare_name(common_name)
 
     use_pre_hash_pub_key = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
-    spki = spki or convertutils.subjectPublicKeyInfo_from_pubkey(
+    spki = spki or convertutils.subject_public_key_info_from_pubkey(
         public_key=signing_key.public_key(), use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash_pub_key
     )
     if for_kga:
@@ -276,7 +257,7 @@ def build_csr(  # noqa D417 undocumented-param
         if extensions is None:
             extensions = rfc9480.Extensions()
 
-        extensions.append(_prepare_subject_alt_name_extensions(subjectAltName))
+        extensions.append(prepare_subject_alt_name_extension(subjectAltName))
 
     if extensions is not None:
         csr = csr_add_extensions(csr=csr, extensions=extensions)
@@ -287,7 +268,7 @@ def build_csr(  # noqa D417 undocumented-param
             signing_key=signing_key,
             hash_alg=hash_alg,
             use_rsa_pss=use_rsa_pss,
-            bad_sig=bad_sig,
+            bad_pop=bad_pop,
             use_pre_hash=use_pre_hash,
         )
 
@@ -306,10 +287,13 @@ def build_csr(  # noqa D417 undocumented-param
     return csr
 
 
-@keyword(name="Generate Signed CSR")
+# TODO remove
+
+
+@not_keyword
 def generate_signed_csr(  # noqa D417 undocumented-param
-    common_name: str, key: Union[PrivateKeySig, str, None] = None, return_as_pem: bool = True, **params
-) -> Tuple[Union[bytes, rfc6402.CertificationRequest], PrivateKeySig]:
+    common_name: str, key: Union[SignKey, str, None] = None, return_as_pem: bool = True, **params
+) -> Tuple[Union[bytes, rfc6402.CertificationRequest], SignKey]:
     """Generate signed CSR for a given common name (CN).
 
     If a key is not provided, a new RSA key is generated. If a string is provided, it is used as the key generation
@@ -342,9 +326,9 @@ def generate_signed_csr(  # noqa D417 undocumented-param
 
     """
     if key is None:
-        key = keyutils.generate_key(algorithm="rsa")
+        key = keyutils.generate_key(algorithm="rsa")  # type: ignore
     elif isinstance(key, str):
-        key = keyutils.generate_key(algorithm=key, **params)
+        key = keyutils.generate_key(algorithm=key, **params)  # type: ignore
     elif isinstance(key, typingutils.PrivateKey):
         pass
     else:
@@ -359,10 +343,11 @@ def generate_signed_csr(  # noqa D417 undocumented-param
     return csr, key  # type: ignore
 
 
-def _prepare_extended_key_usage(oids: List[univ.ObjectIdentifier]) -> rfc5280.Extension:
+def _prepare_extended_key_usage(oids: List[univ.ObjectIdentifier], critical: bool = True) -> rfc5280.Extension:
     """Generate pyasn1 `ExtendedKeyUsage` object with the provided list of OIDs.
 
     :param oids: A list of OIDs (strings) representing the allowed usages.
+    :param critical: Whether the extension should be marked as critical. Defaults to `True`.
     :return: Encoded ASN.1 ExtendedKeyUsage object.
     """
     extended_key_usage = rfc5280.ExtKeyUsageSyntax()
@@ -372,76 +357,330 @@ def _prepare_extended_key_usage(oids: List[univ.ObjectIdentifier]) -> rfc5280.Ex
 
     ext = rfc5280.Extension()
     ext["extnID"] = rfc5280.id_ce_extKeyUsage
+    ext["critical"] = critical
     ext["extnValue"] = univ.OctetString(encoder.encode(extended_key_usage))
 
     return ext
 
 
-def _prepare_ski_extension(key: Union[typingutils.PrivateKey, typingutils.PublicKey]) -> rfc5280.Extension:
+@keyword(name="Prepare SubjectKeyIdentifier Extension")
+def prepare_ski_extension(  # noqa D417 undocumented-param
+    key: Union[typingutils.PrivateKey, typingutils.PublicKey], critical: bool = True, invalid_ski: bool = False
+) -> rfc5280.Extension:
     """Prepare a SubjectKeyIdentifier (SKI) extension.
 
     Used to ask for this extension by the server, or for negative testing, by sending the ski of another key.
 
-    :param key: The public or private key to prepare the extension for.
-    :return: The populated `pyasn1` `Extension` structure.
+    Arguments:
+    ---------
+        - `key`: The public or private key to prepare the extension for.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `True`.
+        - `invalid_ski`: Whether to prepare an invalid SKI value. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure.
+
+    Examples:
+    --------
+    | ${extension}= | Prepare SubjectKeyIdentifier Extension | key=${private_key} |
+    | ${extension}= | Prepare SubjectKeyIdentifier Extension | key=${private_key} | invalid_ski=True |
+
     """
     if isinstance(key, typingutils.PrivateKey):
         key = key.public_key()
     ski: bytes = x509.SubjectKeyIdentifier.from_public_key(key).key_identifier  # type: ignore
+
+    if invalid_ski:
+        ski = utils.manipulate_first_byte(ski)
+
     subject_key_identifier = rfc5280.SubjectKeyIdentifier(ski)
+
     extension = rfc5280.Extension()
     extension["extnID"] = rfc5280.id_ce_subjectKeyIdentifier
+    extension["critical"] = critical
     extension["extnValue"] = univ.OctetString(encoder.encode(subject_key_identifier))
     return extension
 
 
-def _prepare_basic_constraints_extension(ca: bool = False, path_length: Optional[int] = None) -> rfc5280.Extension:
+@keyword(name="Prepare AuthorityKeyIdentifier Extension")
+def prepare_authority_key_identifier_extension(  # noqa D417 undocumented-param
+    ca_key: Union[VerifyKey, rfc9480.CMPCertificate],
+    critical: bool = True,
+    invalid_key_id: bool = False,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    include_issuer: bool = False,
+    include_serial_number: bool = False,
+    increase_serial: bool = False,
+    ca_name: Optional[str] = None,
+    general_names: Optional[List[rfc9480.GeneralName]] = None,
+) -> rfc5280.Extension:
+    """Prepare an `AuthorityKeyIdentifier` extension.
+
+    Used to ask for this extension by the server, or for negative testing, by sending the aki of another key.
+
+    Arguments:
+    ---------
+        - `ca_key`: The public key or certificate to prepare the extension for.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `True`.
+        - `invalid_key_id`: Whether to prepare an invalid AKI value. Defaults to `False`.
+        - `ca_cert`: The CA certificate to prepare the extension for. (does not include the issuer, \
+        if `general_names` is provided) Defaults to `None`.
+        - `include_issuer`: Whether to include the issuer in the extension. Defaults to `False`.
+        - `include_serial_number`: Whether to include the serial number in the extension. Defaults to `False`.
+        - `increase_serial`: Whether to increase the serial number by one. Defaults to `False`.
+        - `ca_name`: The name of the CA. Defaults to `None`.
+        - `general_names`: The general names to include in the extension. Defaults to `None`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure.
+
+    Raises:
+    ------
+        - `ValueError`: If the CA certificate is not provided when including the serial number.
+        - `ValueError`: If the CA certificate, name or `general_names` are not provided when including the issuer.
+
+    Examples:
+    --------
+    | ${extension}= | Prepare AuthorityKeyIdentifier Extension | ca_key=${private_key} |
+
+    """
+    if isinstance(ca_key, rfc9480.CMPCertificate):
+        ca_key = ca_key["certificationRequestInfo"]["subjectPublicKeyInfo"]
+        ca_key = keyutils.load_public_key_from_spki(ca_key)  # type: ignore
+
+    aki = rfc5280.AuthorityKeyIdentifier()
+    key_id = x509.SubjectKeyIdentifier.from_public_key(ca_key).key_identifier  # type: ignore
+    key_id: bytes
+    if invalid_key_id:
+        key_id = utils.manipulate_first_byte(key_id)
+    aki["keyIdentifier"] = key_id
+
+    if include_issuer and ca_cert is None and general_names is None and ca_name is None:
+        raise ValueError("The CA certificate, name or `general_names` must be provided to include the issuer.")
+
+    if include_serial_number and ca_cert is None:
+        raise ValueError("The CA certificate must be provided to include the serial number.")
+
+    if include_issuer or ca_name is not None:
+        if ca_name is not None:
+            issuer = prepareutils.prepare_name(ca_name)
+            aki["authorityCertIssuer"][0]["directoryName"]["rdnSequence"] = issuer["rdnSequence"]
+        elif ca_cert is not None and general_names is None:
+            issuer = ca_cert["tbsCertificate"]["subject"]["rdnSequence"]
+            aki["authorityCertIssuer"][0]["directoryName"]["rdnSequence"] = issuer
+
+        if general_names is not None:
+            aki["authorityCertIssuer"].extend(general_names)
+
+    if include_serial_number:
+        _num = int(ca_cert["tbsCertificate"]["serialNumber"])  # type: ignore
+        if increase_serial:
+            _num += 1
+        aki["authorityCertSerialNumber"] = _num
+
+    extension = rfc5280.Extension()
+    extension["extnID"] = rfc5280.id_ce_authorityKeyIdentifier
+    extension["critical"] = critical
+    extension["extnValue"] = univ.OctetString(encoder.encode(aki))
+    return extension
+
+
+@keyword(name="Prepare BasicConstraints Extension")
+def prepare_basic_constraints_extension(  # noqa D417 undocumented-param
+    ca: bool = False, path_length: Optional[Strint] = None, critical: bool = True
+) -> rfc5280.Extension:
     """Prepare BasicConstraints extension.
 
     :param ca: A boolean indicating if the certificate is a ca.
     :param path_length: The path length, which is allowed to be followed. Defaults to None.
+    :param critical: Whether the extension should be marked as critical. Defaults to `True`.
     :return: The populated `pyasn1` `Extension` structure.
     """
     basic_constraints = rfc5280.BasicConstraints()
     basic_constraints["cA"] = ca
 
     if path_length is not None:
-        basic_constraints["pathLenConstraint"] = path_length
+        basic_constraints["pathLenConstraint"] = int(path_length)
 
     extension = rfc5280.Extension()
     extension["extnID"] = rfc5280.id_ce_basicConstraints
-    extension["critical"] = True
+    extension["critical"] = critical
     extension["extnValue"] = encoder.encode(basic_constraints)
     return extension
 
 
-def _prepare_subject_alt_name_extensions(subject_alt_name: str) -> rfc5280.Extension:
+@keyword(name="Prepare SubjectAltName Extension")
+def prepare_subject_alt_name_extension(  # noqa D417 undocumented-param
+    dns_names: Optional[str] = None,
+    gen_names: Optional[Union[Sequence[rfc5280.GeneralName], rfc5280.GeneralName]] = None,
+    critical: bool = False,
+) -> rfc5280.Extension:
     """Prepare a `SubjectAltName` extension for a certificate.
 
     Parses a comma-separated string of DNS names and constructs a `SubjectAltName`.
 
-    :param subject_alt_name: A comma-separated string of DNS names to include in the extension.
-    (e.g., `"example.com,www.example.com,pki.example.com"`)
-    :return: An `rfc5280.Extension` object representing the Subject Alternative Name extension.
+    Arguments:
+    ---------
+        - `dns_names`: A comma-separated string of DNS names to include in the extension.
+        (e.g., `"example.com,www.example.com,pki.example.com"`).
+        - `gen_names`: A single or a list of `GeneralName` objects to include in the extension. Defaults to `None`.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure.
+
+    Raises:
+    ------
+        - `ValueError`: If no values are provided for the extension.
+
+    Examples:
+    --------
+    | ${extension}= | Prepare SubjectAltName Extension | subject_alt_name=example.com,www.example.com |
+    | ${extension}= | Prepare SubjectAltName Extension | gen_names=${gen_names} |
+
     """
-    items = subject_alt_name.strip().split(",")
-    dns_names = [x509.DNSName(item) for item in items]
-    der_data = x509.SubjectAlternativeName(dns_names).public_bytes()
+    if dns_names is None and gen_names is None:
+        raise ValueError("At least one of the parameters must be provided.")
+
+    san = rfc5280.SubjectAltName()
+
+    names = []
+    if dns_names is not None:
+        items = dns_names.strip().split(",")
+        names = [prepareutils.prepare_general_name(name_type="dNSName", name_str=item) for item in items]
+
+    if gen_names is not None:
+        if isinstance(gen_names, rfc5280.GeneralName):
+            names.append(gen_names)
+        else:
+            names.extend(gen_names)
+
+    san.extend(names)
+    der_data = encoder.encode(san)
 
     extension = rfc5280.Extension()
     extension["extnID"] = rfc5280.id_ce_subjectAltName
-    extension["critical"] = True
-    extension["extnValue"] = der_data
+    extension["critical"] = critical
+    extension["extnValue"] = univ.OctetString(der_data)
     return extension
+
+
+@keyword(name="Prepare IssuerAltName Extension")
+def prepare_issuer_alt_name_extension(  # noqa D417 undocumented-param
+    dns_name: Optional[str] = None,
+    gen_names: Optional[Union[Sequence[rfc5280.GeneralName], rfc5280.GeneralName]] = None,
+    critical: bool = False,
+) -> rfc5280.Extension:
+    """Prepare an `IssuerAltName` extension for a certificate.
+
+    Parses a comma-separated string of DNS names and constructs an `IssuerAltName`.
+
+    Arguments:
+    ---------
+        - `dns_name`: A comma-separated string of DNS names to include in the extension.
+        (e.g., `"example.com,www.example.com,pki.example.com"`). Defaults to `None`.
+        - `gen_names`: A single or a list of `GeneralName` objects to include in the extension. Defaults to `None`.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure.
+
+    Raises:
+    ------
+        - `ValueError`: If no values are provided for the extension.
+
+    Examples:
+    --------
+    | ${extension}= | Prepare IssuerAltName Extension | dns_name=example.com,www.example.com |
+    | ${extension}= | Prepare IssuerAltName Extension | gen_names=${gen_names} |
+
+    """
+    if dns_name is None and gen_names is None:
+        raise ValueError("At least one of the parameters must be provided.")
+
+    entries = rfc5280.IssuerAltName()
+    if dns_name is not None:
+        items = dns_name.strip().split(",")
+        for item in items:
+            out = prepareutils.prepare_general_name(name_type="dNSName", name_str=item)
+
+            entries.append(out)
+
+    if isinstance(gen_names, rfc5280.GeneralName):
+        entries.append(gen_names)
+    elif gen_names is not None:
+        entries.extend(gen_names)
+
+    extension = rfc5280.Extension()
+    extension["extnID"] = rfc5280.id_ce_issuerAltName
+    extension["critical"] = critical
+    extension["extnValue"] = encoder.encode(entries)
+    return extension
+
+
+def _prepare_policy_constraints_extension(
+    require_explicit_policy: Optional[int] = None,
+    inhibit_policy_mapping: Optional[int] = None,
+    critical: bool = True,
+) -> rfc5280.Extension:
+    """Prepare a `PolicyConstraints` extension for a certificate.
+
+    :param require_explicit_policy: The maximum number of additional certificates that may be issued.
+    :param inhibit_policy_mapping: The maximum number of additional certificates that may be issued.
+    :param critical: Whether the extension should be marked as critical. Defaults to `True`.
+    :return: The populated `pyasn1` `Extension` structure.
+    """
+    policy_constraints = rfc5280.PolicyConstraints()
+
+    if require_explicit_policy is not None:
+        policy_constraints["requireExplicitPolicy"] = require_explicit_policy
+
+    if inhibit_policy_mapping is not None:
+        policy_constraints["inhibitPolicyMapping"] = inhibit_policy_mapping
+
+    extension = rfc5280.Extension()
+    extension["extnID"] = rfc5280.id_ce_policyConstraints
+    extension["critical"] = critical
+    extension["extnValue"] = encoder.encode(policy_constraints)
+    return extension
+
+
+@keyword(name="Prepare KeyUsage Extension")
+def prepare_key_usage_extension(key_usage: str, critical: bool = True) -> rfc5280.Extension:
+    """Prepare a `KeyUsage` extension for a `CMPCertificate`, `CSR` or `CertTemplate`.
+
+    :param key_usage: The key usage value to include in the extension.
+    :param critical: Whether the extension should be marked as critical. Defaults to `True`.
+    :return: The populated `pyasn1` `Extension` structure.
+    """
+    try:
+        usage = rfc5280.KeyUsage(key_usage)
+    except pyasn1.error.PyAsn1Error as e:
+        raise ValueError(
+            f"Invalid key usage value: `{key_usage}`. Allowed are: {list(rfc5280.KeyUsage.namedValues.keys())}."
+        ) from e
+    der_key_usage = encoder.encode(usage)
+    key_usage_ext = rfc5280.Extension()
+    key_usage_ext["extnID"] = rfc5280.id_ce_keyUsage
+    key_usage_ext["critical"] = critical
+    key_usage_ext["extnValue"] = univ.OctetString(der_key_usage)
+    return key_usage_ext
 
 
 def prepare_extensions(  # noqa D417 undocumented-param
     key_usage: Optional[str] = None,
     eku: Optional[str] = None,
-    key: Optional[Union[typingutils.PrivateKey, typingutils.PublicKey]] = None,
+    key: Optional[Union[PrivateKey, PublicKey]] = None,
     is_ca: Optional[bool] = None,
-    path_length: Optional[typingutils.Strint] = None,
-    negative: bool = False,
+    path_length: Optional[Strint] = None,
+    invalid_extension: bool = False,
+    critical: bool = True,
+    ca_key: Optional[Union[VerifyKey, rfc9480.CMPCertificate]] = None,
+    SubjectAltName: Optional[str] = None,
 ) -> rfc9480.Extensions:
     """Prepare a `pyasn1` Extensions structure.
 
@@ -457,30 +696,34 @@ def prepare_extensions(  # noqa D417 undocumented-param
         - `is_ca`: A boolean indicating, if a certificate is issued for a CA. Defaults to `None`. (not included).
         - `path_length`: The length of the which is allowed to follow after the CA certificate.
         - `negative`: Adds `rsaEncryption` as a critical extension.
+        - `is_critical`: Whether the extension(s) should be marked as critical. Defaults to `True`.
+        - `ca_key`: The public key or the certificate of the CA.
+        Used to generate the authority key identifier extension. Defaults to `None`.
+        - `SubjectAltName`: A comma-separated string of DNS names to include in the extension.
+        (e.g., `"example.com,www.example.com,pki.example.com"`).
 
     Returns:
     -------
-        - A `pyasn1` Extensions structure populated with the provided key usage and extended key usage fields.
+        - A `Extensions` structure populated with the provided key usage and extended key usage fields.
 
     Raises:
     ------
         - `ValueError`: If no extension to prepare is specified.
+        - `ValueError`: If invalid values are provided for the key usage or extended key usage fields.
 
     Examples:
     --------
     | ${extensions}= | Prepare Extensions | key_usage=digitalSignature | cm_kga=True |
     | ${extensions}= | Prepare Extensions | eku=cmcCA, cmcRA, cmKGA |
     | ${extensions}= | Prepare Extensions | negative=True |
+    | ${extensions}= | Prepare Extensions | key_usage=keyCertSign | is_ca=True | path_length=1 |
+    | ${extensions}= | Prepare Extensions | key=${public_key} | key_usage=digitalSignature | is_critical=False |
 
     """
     extensions = rfc9480.Extensions()
 
     if key_usage is not None:
-        der_key_usage = encoder.encode(rfc5280.KeyUsage(key_usage))
-        key_usage_ext = rfc5280.Extension()
-        key_usage_ext["extnID"] = rfc5280.id_ce_keyUsage
-        key_usage_ext["critical"] = True
-        key_usage_ext["extnValue"] = univ.OctetString(der_key_usage)
+        key_usage_ext = prepare_key_usage_extension(key_usage=key_usage, critical=critical)
         extensions.append(key_usage_ext)
 
     if eku is not None:
@@ -492,17 +735,24 @@ def prepare_extensions(  # noqa D417 undocumented-param
         if not expected_eku or not_inside:
             raise ValueError("No CMP extended key usages where provided allowed are: 'cmcCA, cmcRA, cmKGA'")
 
-        ext = _prepare_extended_key_usage(oids=list(expected_eku.keys()))
+        ext = _prepare_extended_key_usage(oids=list(expected_eku.keys()), critical=critical)
         extensions.append(ext)
 
     if key is not None:
-        extensions.append(_prepare_ski_extension(key))
+        extensions.append(prepare_ski_extension(key, critical=critical))
 
     if is_ca is not None or path_length is not None:
-        extensions.append(_prepare_basic_constraints_extension(ca=is_ca, path_length=path_length))
+        is_ca = is_ca if is_ca is not None else False
+        extensions.append(prepare_basic_constraints_extension(ca=is_ca, path_length=path_length, critical=critical))
 
-    if negative:
+    if SubjectAltName is not None:
+        extensions.append(prepare_subject_alt_name_extension(SubjectAltName, critical=critical))
+
+    if invalid_extension:
         extensions.append(_prepare_invalid_extensions()[0])
+
+    if ca_key is not None:
+        extensions.append(prepare_authority_key_identifier_extension(ca_key, critical=critical))
 
     if len(extensions) == 0:
         raise ValueError("No value to set a extension, was provided!")
@@ -575,57 +825,78 @@ def _prepare_invalid_extensions(
     return extensions
 
 
-# TODO fix doc
-def sign_cert(
-    signing_key: typingutils.PrivSignCertKey,
+def sign_cert(  # noqa: D417 Missing argument descriptions in the docstring
+    signing_key: SignKey,
     cert: rfc9480.CMPCertificate,
-    hash_alg: str = "sha256",
+    hash_alg: Optional[str] = "sha256",
     use_rsa_pss: bool = False,
-    modify_signature: bool = False,
     bad_sig: bool = False,
+    use_pre_hash: bool = False,
 ) -> rfc9480.CMPCertificate:
     """Sign a `CMPCertificate` object with the provided private key.
 
-    :param signing_key: The private key used to sign the certificate.
-    :param cert: The certificate to sign.
-    :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
-    :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
-    :param modify_signature: The signature will be modified by changing the first byte.
-    :return: The signed `CMPCertificate` object.
+    Arguments:
+    ---------
+        - `signing_key`: The private key used to sign the certificate.
+        - `cert`: The certificate to sign.
+        - `hash_alg`: The hash algorithm used for signing. Defaults to "sha256".
+        - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
+        - `modify_signature`: The signature will be modified by changing the first byte.
+        - `bad_sig`: The signature will be manipulated to be invalid.
+        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+
+    Returns:
+    -------
+        - The signed `CMPCertificate` object with the attached `signature` and the `signatureAlgorithm`.
+
+    Examples:
+    --------
+    | ${signed_cert}= | Sign Cert | ${signing_key} | ${cert} |
+    | ${signed_cert}= | Sign Cert | ${signing_key} | ${cert} | use_rsa_pss=True |
+    | ${signed_cert}= | Sign Cert | ${signing_key} | ${cert} | bad_sig=True |
+
     """
+    cert["signatureAlgorithm"] = prepare_sig_alg_id(
+        signing_key=signing_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=use_pre_hash,
+    )
+    cert["tbsCertificate"]["signature"] = cert["signatureAlgorithm"]
     der_tbs_cert = encoder.encode(cert["tbsCertificate"])
-    signature = cryptoutils.sign_data(data=der_tbs_cert, key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
+
+    signature = cryptoutils.sign_data(
+        data=der_tbs_cert,
+        key=signing_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=use_pre_hash,
+    )
 
     logging.info("Certificate signature: %s", signature.hex())
 
-    if modify_signature:
-        signature = utils.manipulate_first_byte(signature)
+    if bad_sig:
+        signature = utils.manipulate_bytes_based_on_key(signature, signing_key)
         logging.info("Modified certificate signature: %s", signature.hex())
 
-    if bad_sig:
-        if isinstance(signing_key, AbstractCompositeSigPrivateKey):
-            signature = utils.manipulate_composite_sig(signature)
-        else:
-            signature = utils.manipulate_first_byte(signature)
-
     cert["signature"] = univ.BitString.fromOctetString(signature)
-    cert["signatureAlgorithm"] = prepare_sig_alg_id(signing_key=signing_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
 
     return cert
 
 
 @not_keyword
 def generate_certificate(
-    private_key: Union[str, typingutils.PrivateKey],
+    private_key: Union[str, PrivateKey],
     common_name: str = "CN=Hans Mustermann",
     hash_alg: Union[None, str] = "sha256",
     ski: Optional[bool] = False,
-    serial_number: Optional[typingutils.Strint] = None,
-    signing_key: Optional[typingutils.PrivSignCertKey] = None,
+    serial_number: Optional[Strint] = None,
+    signing_key: Optional[SignKey] = None,
     issuer_cert: Optional[rfc9480.CMPCertificate] = None,
-    extensions: Optional[Sequence[rfc5280.Extension]] = None,
+    extensions: Optional[rfc9480.Extensions] = None,
     days: int = 365,
     use_rsa_pss: bool = False,
+    bad_sig: bool = False,
 ) -> rfc9480.CMPCertificate:
     """Generate a complete `CMPCertificate` using specified parameters.
 
@@ -639,14 +910,18 @@ def generate_certificate(
     :param extensions: Optional `rfc9480.Extensions` to include in the certificate.
     :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
     :param days: The duration in days for which the certificate remains valid. Defaults to 365 days.
+    :param bad_sig: Whether to generate a bad signature. Defaults to `False`.
     :return: `rfc9480.CMPCertificate` object representing the created certificate.
     """
     cert = rfc9480.CMPCertificate()
 
+    if isinstance(private_key, str):
+        private_key = keyutils.generate_key(algorithm=private_key)
+
     if serial_number is None:
         serial_number = x509.random_serial_number()
 
-    signing_key = signing_key or private_key
+    signing_key = convertutils.ensure_is_sign_key(signing_key or private_key)
 
     if extensions is not None and ski:
         extensions = prepare_extensions(key=private_key)
@@ -663,18 +938,24 @@ def generate_certificate(
         days=int(days),
     )
     cert["tbsCertificate"] = tbs_cert
-    return sign_cert(signing_key=signing_key, cert=cert, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss)
+    return sign_cert(
+        signing_key=signing_key,
+        cert=cert,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
+        bad_sig=bad_sig,
+    )
 
 
 def build_certificate(  # noqa D417 undocumented-param
-    private_key: Optional[Union[str, typingutils.PrivateKey]] = None,
+    private_key: Optional[Union[str, PrivateKey]] = None,
     common_name: str = "CN=Hans",
     hash_alg: str = "sha256",
     ski: bool = False,
-    signing_key: Optional[PrivateKeySig] = None,
-    issuer_cert: Optional[rfc9480.CMPCertificate] = None,
+    ca_key: Optional[SignKey] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
     **params,
-) -> Tuple[rfc9480.CMPCertificate, typingutils.PrivateKey]:
+) -> Tuple[rfc9480.CMPCertificate, PrivateKey]:
     """Build an `pyasn1` `CMPCertificate` that can be customized based on provided parameters.
 
     Arguments:
@@ -697,6 +978,7 @@ def build_certificate(  # noqa D417 undocumented-param
         - `key_alg` (str): Algorithm for key generation (e.g., "ecdsa"). Defaults to `ec`.
         - `key_usage` (str): Specific key usage (e.g., "digitalSignature") to set on the certificate.
         - `eku` (str): Extended key usage to set for the certificate.
+        - `bad_sig` (bool): Whether to generate a bad signature. Defaults to `False`.
 
     Returns:
     -------
@@ -715,9 +997,16 @@ def build_certificate(  # noqa D417 undocumented-param
     | sign_key=${sign_key} | issuer_cert=${cert} |
 
     """
-    private_key = private_key or keyutils.generate_key(params.get("key_alg", "ec"))
+    if isinstance(private_key, str):
+        cert_key = keyutils.generate_key(algorithm=private_key, **params)
 
-    ski_key = private_key.public_key() if ski else None  # type: ignore
+    elif private_key is None:
+        cert_key = keyutils.generate_key(algorithm="ecc", **params)
+
+    else:
+        cert_key = private_key
+
+    ski_key = cert_key.public_key() if ski else None  # type: ignore
 
     ext = params.get("key_usage") or ski or params.get("eku") or params.get("is_ca") or params.get("path_length")
     extensions = params.get("extensions")
@@ -728,21 +1017,23 @@ def build_certificate(  # noqa D417 undocumented-param
             eku=params.get("eku"),
             is_ca=params.get("is_ca"),
             path_length=params.get("path_length"),
+            critical=params.get("critical", False),
         )
 
-    signing_key = convertutils.ensure_is_sign_key(signing_key or private_key)
+    ca_key = convertutils.ensure_is_sign_key(ca_key or cert_key)
     certificate = generate_certificate(
         common_name=common_name,
-        private_key=private_key,
+        private_key=cert_key,
         hash_alg=hash_alg,
         serial_number=params.get("serial_number"),
-        signing_key=signing_key,
-        issuer_cert=issuer_cert,
-        extensions=extensions,
+        signing_key=ca_key,
+        issuer_cert=ca_cert,
+        extensions=extensions,  # type: ignore
         use_rsa_pss=params.get("use_rsa_pss", False),
         days=int(params.get("days", 365)),
+        bad_sig=params.get("bad_sig", False),
     )
-    return certificate, private_key
+    return certificate, cert_key
 
 
 def modify_common_name_cert(  # noqa D417 undocumented-param
@@ -774,11 +1065,12 @@ def modify_common_name_cert(  # noqa D417 undocumented-param
     if not issuer:
         field = "subject"
 
-    issuer_name: dict = utils.get_openssl_name_notation(
+    issuer_name = utils.get_openssl_name_notation(  # type: ignore
         certextractutils.get_field_from_certificate(cert, field),  # type: ignore
         oids=None,
         return_dict=True,
     )
+    issuer_name: Optional[dict]
     if not issuer_name:
         utils.log_certificates([cert])
         raise ValueError("The certificate did not contain a value in the `issuer` field.")
@@ -792,7 +1084,8 @@ def modify_common_name_cert(  # noqa D417 undocumented-param
 
 
 def generate_different_public_key(  # noqa D417 undocumented-param
-    cert: rfc9480.CMPCertificate, algorithm: str
+    key_source: Union[rfc9480.CMPCertificate, rfc6402.CertificationRequest, PrivateKey, PublicKey],
+    algorithm: Optional[str] = None,
 ) -> typingutils.PublicKey:
     """Generate a new public key using the specified algorithm, ensuring it differs from the certificate's public key.
 
@@ -800,8 +1093,12 @@ def generate_different_public_key(  # noqa D417 undocumented-param
 
     Arguments:
     ---------
-        - `cert`: The certificate from which to extract the existing public key.
+        - `key_source`: The certificate from which to extract the existing public key or a key object.
         - `algorithm`: The algorithm to use for generating the new key pair (e.g., `"rsa"`, `"ec"`).
+
+    Raises:
+    ------
+        - `ValueError`: If the function fails to generate a different public key after 100 attempts.
 
     Returns:
     -------
@@ -813,12 +1110,42 @@ def generate_different_public_key(  # noqa D417 undocumented-param
     | ${new_public_key}= | Generate Different Public Key | cert=${certificate} | algorithm="ec" |
 
     """
-    public_key = certutils.load_public_key_from_cert(cert)
-    # just to reduce the extremely slim chance, they are acutely the same.
-    while 1:
-        pub_key = keyutils.generate_key(algorithm=algorithm).public_key()
+    if isinstance(key_source, rfc9480.CMPCertificate):
+        spki = key_source["tbsCertificate"]["subjectPublicKeyInfo"]
+        public_key = keyutils.load_public_key_from_spki(spki)
+
+    elif isinstance(key_source, rfc6402.CertificationRequest):
+        spki = key_source["certificationRequestInfo"]["subjectPublicKeyInfo"]
+        public_key = keyutils.load_public_key_from_spki(spki)
+
+    elif isinstance(key_source, PrivateKey):
+        public_key = key_source.public_key()
+    else:
+        public_key = key_source
+
+    length = None
+    curve_name = None
+    if isinstance(public_key, RSAEncapKey):
+        length = public_key._public_key.key_size
+    elif isinstance(public_key, RSAPublicKey):
+        length = public_key.key_size
+    elif isinstance(public_key, EllipticCurvePublicKey):
+        curve_name = public_key.curve.name
+
+    # just to reduce the extremely slim chance, they are actually the same.
+    pub_key = None
+    key_name = keyutils.get_key_name(public_key)
+    for _ in range(100):
+        if algorithm is not None:
+            pub_key = keyutils.generate_key(algorithm=algorithm, length=length, curve=curve_name).public_key()
+        else:
+            pub_key = keyutils.generate_key(algorithm=key_name, by_name=True).public_key()
         if pub_key != public_key:
             break
+        pub_key = None
+
+    if pub_key is None:
+        raise ValueError("Failed to generate a different public key.")
 
     return pub_key
 
@@ -845,12 +1172,12 @@ def _prepare_issuer_and_subject(
 
     if subject and "subject" not in exclude_list:
         subject_obj = rfc5280.Name().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 5))
-        subject_obj = prepare_name(common_name=subject, name=subject_obj)
+        subject_obj = prepareutils.prepare_name(common_name=subject, target=subject_obj)
         cert_template.setComponentByName("subject", subject_obj)
 
     if issuer and "issuer" not in exclude_list:
         issuer_obj = rfc5280.Name().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
-        issuer_obj = prepare_name(common_name=issuer, name=issuer_obj)
+        issuer_obj = prepareutils.prepare_name(common_name=issuer, target=issuer_obj)
         cert_template.setComponentByName("issuer", issuer_obj)
 
     return cert_template
@@ -860,7 +1187,7 @@ def _prepare_extensions_for_cert_template(
     cert_template: rfc9480.CertTemplate,
     exclude: bool,
     cert: Optional[rfc9480.CMPCertificate] = None,
-    extensions: Optional[rfc5280.Extensions] = None,
+    extensions: Optional[rfc9480.Extensions] = None,
     include_cert_extensions: bool = False,
 ) -> rfc9480.CertTemplate:
     """Add extensions to a certificate template if specified.
@@ -900,8 +1227,9 @@ def prepare_cert_template(  # noqa D417 undocumented-param
     serial_number: Optional[typingutils.Strint] = None,
     version: Optional[typingutils.Strint] = None,
     validity: Optional[rfc5280.Validity] = None,
-    extensions: Optional[Sequence[rfc5280.Extension]] = None,
+    extensions: Optional[ExtensionsType] = None,
     for_kga: bool = False,
+    sign_alg: Optional[rfc9480.AlgorithmIdentifier] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
     include_cert_extensions: bool = True,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
@@ -933,8 +1261,7 @@ def prepare_cert_template(  # noqa D417 undocumented-param
         - `include_cert_extensions`: Indicates if the extensions from the certificate should be added to the extensions,
         if provided. Defaults to `True`.
         - `spki`: The `SubjectPublicKeyInfo` object to include in the template. Defaults to `None`.
-        - `use_pre_hash`: Whether to prepare the public key as a pre-hash version, for a `
-        CompositeKey`. Defaults to `False`.
+        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
 
     Returns:
     -------
@@ -983,25 +1310,23 @@ def prepare_cert_template(  # noqa D417 undocumented-param
         cert_template=cert_template,
         exclude="extensions" in exclude_list,
         cert=cert,
-        extensions=extensions,
+        extensions=extensions,  # type: ignore
         include_cert_extensions=include_cert_extensions,
     )
 
     if "validity" not in exclude_list:
-        validity = _prepare_optional_validity(asn1cert=cert, validity=validity)
-        if validity is not None:
-            cert_template.setComponentByName("validity", validity)
+        opt_validity = _prepare_optional_validity(asn1cert=cert, validity=validity)
+        if opt_validity is not None:
+            cert_template["validity"] = opt_validity
 
-    if spki is not None and "publicKey" not in exclude_list:
-        public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
-        )
-        spki_temp = convertutils.copy_subject_public_key_info(target=public_key_obj, filled_sub_pubkey_info=spki)
-        cert_template["publicKey"] = spki_temp
     if "publicKey" not in exclude_list:
         cert_template["publicKey"] = _prepare_public_key_for_cert_template(
-            key=key, for_kga=for_kga, asn1cert=cert, use_pre_hash=use_pre_hash
+            key=key, for_kga=for_kga, cert=cert, use_pre_hash=use_pre_hash, spki=spki
         )
+
+    if sign_alg is not None and "signingAlg" not in exclude_list:
+        cert_template["signingAlg"]["algorithm"] = sign_alg["algorithm"]
+        cert_template["signingAlg"]["parameters"] = sign_alg["parameters"]
 
     logging.info("%s", cert_template.prettyPrint())
     return cert_template
@@ -1053,55 +1378,63 @@ def _prepare_optional_validity(
 
 
 def _prepare_public_key_for_cert_template(
-    key: Optional[Union[typingutils.PrivateKey, typingutils.PublicKey]] = None,
-    for_kga=False,
-    asn1cert: Optional[rfc9480.CMPCertificate] = None,
+    key: Optional[Union[PrivateKey, PublicKey]] = None,
+    for_kga: bool = False,
+    cert: Optional[rfc9480.CMPCertificate] = None,
     use_rsa_pss: bool = False,
     use_pre_hash: bool = False,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare the `pyasn1` `SubjectPublicKeyInfo` for the `CertTemplate` structure.
 
     :param key: A private or public key object. If a private key is provided, the public key will be extracted.
     :param for_kga: Boolean flag indicating whether to prepare the key for non-local-key generation.
-    :param asn1cert: Optional `rfc9480.CMPCertificate` object to extract the public key from if no `key` is provided.
+    :param cert: Optional `rfc9480.CMPCertificate` object to extract the public key from if no `key` is provided.
     :param use_rsa_pss: Whether to prepare the public key as RSA-PSS. Defaults to `False`.
-    :param use_pre_hash: Whether to prepare the public key as a pre-hash version, for a `CompositeKey`.
+    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :return: A `SubjectPublicKeyInfo` object ready to be used in a certificate template.
     """
-    if key is None and asn1cert is None:
-        raise ValueError("Either a key or a certificate have to be provided!")
+    public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
+        implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
+    )
 
-    if key is None and asn1cert is not None:
-        key = certutils.load_public_key_from_cert(asn1cert=asn1cert)
+    if spki is not None and not for_kga:
+        spki_temp = convertutils.copy_subject_public_key_info(target=public_key_obj, filled_sub_pubkey_info=spki)
+        return spki_temp
 
-    elif isinstance(
-        key,
-        (
-            typingutils.PrivateKey,
-            AbstractCompositeKEMPrivateKey,
-            AbstractHybridRawPrivateKey,
-            AbstractCompositeSigPrivateKey,
-        ),
-    ):
-        key = key.public_key()
+    if spki is not None and for_kga:
+        public_key_obj["algorithm"] = spki["algorithm"]
+        public_key_obj["subjectPublicKey"] = univ.BitString("")
+        return public_key_obj
+
+    if cert is not None and key is None:
+        key = certutils.load_public_key_from_cert(cert=cert)
+
+    elif isinstance(key, PrivateKey):
+        key = key.public_key()  # type: ignore
+
+    if key is None and cert is None:
+        return rfc5280.SubjectPublicKeyInfo().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6))
+
+    public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
+        implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
+    )
+
+    if key is None:
+        raise ValueError("The key cannot be None, if the `for_kga` is set to `False`!")
 
     if not for_kga:
-        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(
+        cert_public_key = convertutils.subject_public_key_info_from_pubkey(
             public_key=key, use_pre_hash=use_pre_hash, use_rsa_pss=use_rsa_pss
-        )
-        public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
         )
         public_key_obj = copyasn1utils.copy_subject_public_key_info(
             target=public_key_obj, filled_sub_pubkey_info=cert_public_key
         )
     else:
-        cert_public_key = convertutils.subjectPublicKeyInfo_from_pubkey(
+        cert_public_key = convertutils.subject_public_key_info_from_pubkey(
             public_key=key, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
         )
-        public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 6)
-        )
+
         public_key_obj["algorithm"] = cert_public_key["algorithm"]
         public_key_obj["subjectPublicKey"] = univ.BitString("")
 
@@ -1189,71 +1522,142 @@ def prepare_cert_template_from_csr(csr: rfc6402.CertificationRequest) -> rfc4211
     """
     der_data = encoder.encode(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
     public_key = certutils.load_public_key_from_der(der_data)
-    extensions = extract_extension_from_csr(csr)
-    subject = utils.get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])
+    extensions = certextractutils.extract_extensions_from_csr(csr)
+    subject = utils.get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])  # type: ignore
+    subject: str
     return prepare_cert_template(key=public_key, subject=subject, extensions=extensions)
 
 
 @keyword(name="Prepare SubjectPublicKeyInfo")
-def prepare_subject_public_key_info(
-    key: Union[PrivateKey, PublicKey] = None,
+def prepare_subject_public_key_info(  # noqa D417 undocumented-param
+    key: Optional[Union[PrivateKey, PublicKey]] = None,
     for_kga: bool = False,
     key_name: Optional[str] = None,
     use_rsa_pss: bool = False,
     use_pre_hash: bool = False,
     hash_alg: Optional[str] = None,
+    invalid_key_size: bool = False,
+    add_params_rand_bytes: bool = False,
+    add_null: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare a `SubjectPublicKeyInfo` structure for a `Certificate`, `CSR` or `CertTemplate`.
 
-    :param key: The public or private key to use for the `SubjectPublicKeyInfo`.
-    :param for_kga: A flag indicating whether the key is for key generation authentication (KGA).
-    :param key_name: The key algorithm name to use for the `SubjectPublicKeyInfo`.
-    (can be set to `rsa_kem`. RFC 5990bis-10). Defaults to `None`.
-    :param use_rsa_pss: Whether to use RSA-PSS padding. Defaults to `False`.
-    :param use_pre_hash: Whether to use the pre-hash version for a `CompositeKey` and pq signature keys.
-    Defaults to `False`.
-    :param hash_alg: The pre-hash algorithm to use for the pq signature key. Defaults to `None`.
-    :return: The populated `SubjectPublicKeyInfo` structure.
+    For invalid Composite keys must the private key be provided.
+
+    Note: If the key is a CompositeSig key, the `key_name` the private key must be provided,
+    if the RSA key has an invalid key size.
+
+    Arguments:
+    ---------
+        - `key`: The public or private key to use for the `SubjectPublicKeyInfo`.
+        - `for_kga`: A flag indicating whether the key is for a key generation authority (KGA).
+        - `key_name`: The key algorithm name to use for the `SubjectPublicKeyInfo`.
+        (can be set to `rsa_kem`. RFC9690). Defaults to `None`.
+        - `use_rsa_pss`: Whether to use RSA-PSS padding. Defaults to `False`.
+        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+        - `hash_alg`: The pre-hash algorithm to use for the pq signature key. Defaults to `None`.
+        - `invalid_key_size`: A flag indicating whether the key size is invalid. Defaults to `False`.
+        - `add_params_rand_bytes`: A flag indicating whether to add random bytes to the key parameters. \
+        Defaults to `False`.
+        - `add_null`: A flag indicating whether to add a null value to the key parameters. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `SubjectPublicKeyInfo` structure.
+
+    Raises:
+    ------
+        - `ValueError`: If no key is provided and the for_kga flag is not set.
+        - `ValueError`: If both `add_null` and `add_params_rand_bytes` are set.
+
+
+    Examples:
+    --------
+    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | use_rsa_pss=True |
+    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | key_name=rsa-kem |
+    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | for_kga=True |
+    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | add_null=True |
+
     """
     if key is None and not for_kga:
         raise ValueError("Either a key has to be provided or the for_kga flag have to be set.")
 
-    if key is not None:
-        if isinstance(key, PrivateKey):
-            key = key.public_key()
+    if add_null and add_params_rand_bytes:
+        raise ValueError("Either `add_null` or `add_params_rand_bytes` can be set, not both.")
+
+    if isinstance(key, AbstractCompositePrivateKey):
+        pub_key = key.public_key().public_bytes(encoding=Encoding.DER, format=PublicFormat.Raw)
+        spki = rfc5280.SubjectPublicKeyInfo()
+        pub_key = pub_key if not invalid_key_size else pub_key + b"\x00"
+        spki["subjectPublicKey"] = univ.BitString.fromOctetString(pub_key)
+        if isinstance(key, CompositeSig03PrivateKey):
+            oid = key.get_oid(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
+        else:
+            oid = key.get_oid()
+        spki["algorithm"]["algorithm"] = oid
+
+        if add_null:
+            spki["algorithm"]["parameters"] = univ.Null("")
+
+        if add_params_rand_bytes:
+            spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
+
+        return spki
+
+    if isinstance(key, PrivateKey):
+        key = key.public_key()
 
     if for_kga:
-        return _prepare_spki_for_kga(key=key, key_name=key_name, use_pss=use_rsa_pss, use_pre_hash=use_pre_hash)
+        return _prepare_spki_for_kga(
+            key=key,
+            key_name=key_name,
+            use_pss=use_rsa_pss,
+            use_pre_hash=use_pre_hash,
+            add_null=add_null,
+            add_params_rand_bytes=add_params_rand_bytes,
+        )
 
     if key_name in ["rsa-kem", "rsa_kem"]:
-        spki = rfc5280.SubjectPublicKeyInfo()
-        # As of RFC 5990bis-10, currently only Draft.
-        spki["algorithm"]["algorithm"] = id_rsa_kem_spki
-        der_data = key.public_key().public_bytes(encoding=Encoding.DER, format=PublicFormat.PKCS1)
-        spki["subjectPublicKey"] = univ.BitString.fromOctetString(der_data)
+        key = RSAEncapKey(key)  # type: ignore
 
-    else:
-        spki = subjectPublicKeyInfo_from_pubkey(
-            public_key=key, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash, hash_alg=hash_alg
-        )
+    spki = subject_public_key_info_from_pubkey(
+        public_key=key,  # type: ignore
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=use_pre_hash,
+        hash_alg=hash_alg,
+    )
+
+    if invalid_key_size:
+        tmp = spki["subjectPublicKey"].asOctets() + b"\x00\x00"
+        spki["subjectPublicKey"] = univ.BitString.fromOctetString(tmp)
+
+    if add_params_rand_bytes:
+        spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
 
     return spki
 
 
 def _prepare_spki_for_kga(
-    key: Union[PrivateKey, PublicKey] = None,
+    key: Optional[Union[PrivateKey, PublicKey]] = None,
     key_name: Optional[str] = None,
     use_pss: bool = False,
     use_pre_hash: bool = False,
+    add_null: bool = False,
+    add_params_rand_bytes: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare a SubjectPublicKeyInfo for KGA usage.
 
     :param key: A private or public key.
     :param key_name: An optional key algorithm name.
     :param use_pss: Whether to use PSS padding for RSA and a RSA-CompositeKey.
-    :param use_pre_hash: Whether to use the pre-hash version for a CompositeKey.
+    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+    :param add_null: Whether to add a null value to the key parameters. Defaults to `False`.
+    :param add_params_rand_bytes: Whether to add random bytes to the key parameters. Defaults to `False`.
     :return: The populated `SubjectPublicKeyInfo` structure.
     """
+    if add_null and add_params_rand_bytes:
+        raise ValueError("Either `add_null` or `add_params_rand_bytes` can be set, not both.")
+
     spki = rfc5280.SubjectPublicKeyInfo()
     spki["subjectPublicKey"] = univ.BitString("")
 
@@ -1269,24 +1673,34 @@ def _prepare_spki_for_kga(
             "rsa-kem": id_rsa_kem_spki,
         }
         spki["algorithm"]["algorithm"] = names_2_oid[key_name]
+        if key_name == "ecc":
+            spki["algorithm"]["parameters"] = rfc5480.ECParameters()
+            spki["algorithm"]["parameters"]["namedCurve"] = rfc5480.secp256r1
 
     if key_name is not None:
         from pq_logic.combined_factory import CombinedKeyFactory
 
         key = CombinedKeyFactory.generate_key(key_name).public_key()
-        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_rsa_pss=use_pss, use_pre_hash=use_pre_hash)
+        spki_tmp = subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_pss, use_pre_hash=use_pre_hash)
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     elif key is not None:
-        spki_tmp = subjectPublicKeyInfo_from_pubkey(public_key=key, use_rsa_pss=use_pss)
+        spki_tmp = subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_pss)
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
+
+    if add_null:
+        spki["algorithm"]["parameters"] = univ.Null("")
+
+    if add_params_rand_bytes:
+        spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
 
     return spki
 
 
-def _default_validity(
+@not_keyword
+def default_validity(
     days: int = 3650,
-    optional_validity: Optional[rfc5280.Validity] = None,
+    optional_validity: Optional[Union[rfc5280.Validity, rfc4211.OptionalValidity]] = None,
     max_days_before: Optional[Union[int, str]] = 10,
 ) -> rfc5280.Validity:
     """Prepare a default `Validity` structure for a certificate.
@@ -1297,7 +1711,7 @@ def _default_validity(
     the `notBefore` date and the current date. Defaults to `10` days.
     :return: The prepared `Validity` structure.
     """
-    not_before = datetime.now()
+    not_before = datetime.now(timezone.utc)
     if optional_validity is not None:
         # print(cert_template["validity"].isValue)
         # bug in pyasn1-alt-modules, validity is always a value.
@@ -1307,8 +1721,9 @@ def _default_validity(
             time_type = optional_validity["notBefore"].getName()
             tmp = optional_validity["notBefore"][time_type].asDateTime
 
-            if tmp < datetime.now() - timedelta(days=max_days_before):
-                raise BadCertTemplate("The `notBefore` date is too far in the past.")
+            if max_days_before is not None:
+                if tmp < datetime.now(timezone.utc) - timedelta(days=float(max_days_before)):
+                    raise BadCertTemplate("The `notBefore` date is too far in the past.")
 
             not_before = tmp
 
@@ -1319,53 +1734,83 @@ def _default_validity(
             not_after = not_before + timedelta(days=days)
         return prepare_validity(not_before, not_after)
 
-    not_before = datetime.now()
+    # otherwise will OpenSSL say: "certificate is not yet valid"
+    not_before = datetime.now() - timedelta(days=1)
     not_after = not_before + timedelta(days=days)
     return prepare_validity(not_before, not_after)
 
 
 @keyword(name="Build Cert From CertTemplate")
-def build_cert_from_cert_template(
+def build_cert_from_cert_template(  # noqa D417 undocumented-param
     cert_template: rfc9480.CertTemplate,
     ca_cert: rfc9480.CMPCertificate,
-    ca_key: PrivateKey,
-    use_rsa_pss: bool = True,
-    use_pre_hash: bool = False,
-    hash_alg: str = "sha256",
+    ca_key: SignKey,
+    hash_alg: Optional[str] = "sha256",
+    **kwargs,
 ) -> rfc9480.CMPCertificate:
     """Build a certificate from a CertTemplate.
 
-    :param cert_template: The CertTemplate to build the certificate from.
-    :param ca_cert: The CA certificate.
-    :param ca_key: The CA private key.
-    :param use_rsa_pss: Whether to use RSA-PSS or not. Defaults to `True`.
-    :param use_pre_hash: Whether to use pre-hash or not. Defaults to `False`.
-    :param hash_alg: The hash algorithm to use (e.g. "sha256").
+    Arguments:
+    ---------
+        - `cert_template`: The CertTemplate to build the certificate from.
+        - `ca_cert`: The CA certificate.
+        - `ca_key`: The CA private key.
+        - `hash_alg`: The hash algorithm to use (e.g. "sha256"). Defaults to `sha256`.
+
+    **kwargs:
+    ---------
+        - `use_rsa_pss`: Whether to use RSA-PSS or not. Defaults to `True`.
+        - `bad_sig`: Whether to create a certificate with an invalid signature. Defaults to `False`.
+        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+        - `alt_sign_key`: An alternative key to sign the certificate with. Defaults to `None`.
+        - `alt_hash_alg`: The hash algorithm to use with the alternative key. Defaults to `None`.
+        - `alt_use_rsa_pss`: Whether to use RSA-PSS with the alternative key. Defaults to `False`.
+        - `extensions`: Extensions to include in the certificate. Defaults to `None`.
+        (as an example for OCSP, CRL or etc.)
+
+    Returns:
+    -------
+        - The built certificate.
+
+    Raises:
+    ------
+        - `BadCertTemplate`: If the `notBefore` date is too far in the past.
+
+    Examples:
+    --------
+    | ${cert}= | Build Cert From CertTemplate | cert_template=${cert_template} | ca_cert=${ca_cert} | ca_key=${ca_key} |
+
     """
     tbs_certs = prepare_tbs_certificate_from_template(
         cert_template=cert_template,
         issuer=ca_cert["tbsCertificate"]["subject"],
         ca_key=ca_key,
-        hash_alg=hash_alg,
-        use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
+        hash_alg=hash_alg or "sha256",
+        use_rsa_pss=kwargs.get("use_rsa_pss", True),
+        use_pre_hash=kwargs.get("use_pre_hash", False),
+        include_extensions=False,
     )
+
+    pub_key = ca_key.public_key()
+    pub_key = convertutils.ensure_is_verify_key(pub_key)
+    extns = check_extensions(
+        cert_template=cert_template, ca_public_key=pub_key, other_extensions=kwargs.get("extensions")
+    )
+
+    if extns.isValue:
+        tbs_certs["extensions"].extend(extns)
+
     cert = rfc9480.CMPCertificate()
     cert["tbsCertificate"] = tbs_certs
-    return sign_cert(
-        cert=cert,
-        signing_key=ca_key,
-        hash_alg=hash_alg,
-        use_rsa_pss=use_rsa_pss,
-    )
+    return _sign_cert(cert=cert, ca_key=ca_key, **kwargs)
 
 
 def _prepare_shared_tbs_cert(
     subject: Union[str, rfc9480.Name],
     issuer: Union[rfc9480.CMPCertificate, rfc9480.Name],
-    serial_number: Optional[int] = None,
+    serial_number: Optional[Union[str, int]] = None,
     validity: Optional[Union[rfc4211.OptionalValidity, rfc5280.Validity]] = None,
-    days: int = 3650,
+    days: Union[str, int] = 3650,
     public_key: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc5280.TBSCertificate:
     """Prepare some attributes of `TBSCertificate` structure, for a certificate.
@@ -1382,7 +1827,7 @@ def _prepare_shared_tbs_cert(
     if isinstance(subject, rfc9480.Name):
         subject = subject["rdnSequence"]
     else:
-        subject = prepare_name(common_name=subject)["rdnSequence"]
+        subject = prepareutils.prepare_name(common_name=subject)["rdnSequence"]
 
     tbs_cert["subject"]["rdnSequence"] = subject
 
@@ -1392,19 +1837,20 @@ def _prepare_shared_tbs_cert(
     tbs_cert["issuer"] = issuer
     if serial_number is None:
         serial_number = x509.random_serial_number()
-    tbs_cert["serialNumber"] = serial_number
+    tbs_cert["serialNumber"] = int(serial_number)
     tbs_cert["version"] = rfc5280.Version("v3").subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
     )
 
-    tbs_cert["subjectPublicKeyInfo"] = copyasn1utils.copy_subject_public_key_info(
-        target=rfc5280.SubjectPublicKeyInfo(), filled_sub_pubkey_info=public_key
-    )
+    if public_key is not None:
+        tbs_cert["subjectPublicKeyInfo"] = copyasn1utils.copy_subject_public_key_info(
+            target=rfc5280.SubjectPublicKeyInfo(), filled_sub_pubkey_info=public_key
+        )
 
     if isinstance(validity, rfc5280.Validity):
         tbs_cert["validity"] = validity
     else:
-        tbs_cert["validity"] = _default_validity(days=days, optional_validity=validity)
+        tbs_cert["validity"] = default_validity(days=int(days), optional_validity=validity)
 
     return tbs_cert
 
@@ -1413,12 +1859,14 @@ def _prepare_shared_tbs_cert(
 def prepare_tbs_certificate_from_template(
     cert_template: rfc4211.CertTemplate,
     issuer: rfc9480.Name,
-    ca_key: PrivateKey,
+    ca_key: SignKey,
     serial_number: Optional[int] = None,
     hash_alg: str = "sha256",
     days: int = 3650,
-    use_rsa_pss: bool = True,
+    use_rsa_pss: bool = False,
     use_pre_hash: bool = False,
+    include_extensions: bool = False,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc5280.TBSCertificate:
     """Prepare a `TBSCertificate` structure from a `CertTemplate`.
 
@@ -1428,8 +1876,10 @@ def prepare_tbs_certificate_from_template(
     :param serial_number: The serial number for the certificate. Defaults to `None`.
     :param hash_alg: The hash algorithm to use. Defaults to `sha256`.
     :param days: The number of days for which the certificate remains valid. Defaults to `3650` days.
-    :param use_rsa_pss: Whether to use RSA-PSS or not. Defaults to `True`.
-    :param use_pre_hash: Whether to use pre-hash or not. Defaults to `False`.
+    :param use_rsa_pss: Whether to use RSA-PSS or not. Defaults to `False`.
+    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+    :param include_extensions: Whether to include the extensions from the `CertTemplate`. Defaults to `False`.
+    :param spki: The `SubjectPublicKeyInfo` object to include in the `TBSCertificate`. Defaults to `None`.
     :return: The prepared `TBSCertificate` structure.
     """
     if serial_number is None:
@@ -1442,52 +1892,124 @@ def prepare_tbs_certificate_from_template(
         serial_number=serial_number,
         validity=cert_template["validity"],
         days=days,
-        public_key=cert_template["publicKey"],
+        public_key=spki or cert_template["publicKey"],
     )
 
     tbs_cert["signature"] = prepare_sig_alg_id(
         signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
     )
-    public_key = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+
+    if spki is not None:
+        public_key = keyutils.load_public_key_from_spki(spki)
+    else:
+        public_key = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+
+    if include_extensions:
+        tbs_cert["extensions"].extend(cert_template["extensions"])
+
     tbs_cert["extensions"].extend(
         prepare_extensions(
             key=public_key,
+            critical=False,
         )
     )
 
     return tbs_cert
 
 
+def _sign_cert(
+    cert: rfc9480.CMPCertificate,
+    ca_key: SignKey,
+    **kwargs,
+) -> rfc9480.CMPCertificate:
+    """Sign a certificate.
+
+    :param cert: The certificate to sign.
+    :param ca_key: The CA private key to sign the certificate with.
+    :param kwargs: Additional keyword arguments.
+    :return: The signed certificate.
+    """
+    alt_sign_key = kwargs.get("alt_sign_key")
+
+    if alt_sign_key is not None:
+        # so that the catalyst logic can be in the matching file.
+        from pq_logic.hybrid_sig.catalyst_logic import sign_cert_catalyst
+
+        alt_sign_key = convertutils.ensure_is_pq_sign_key(alt_sign_key)
+        trad_key = convertutils.ensure_is_trad_sign_key(ca_key)
+
+        return sign_cert_catalyst(
+            cert=cert,
+            trad_key=trad_key,
+            pq_key=alt_sign_key,
+            hash_alg=kwargs.get("hash_alg", "sha256"),
+            critical=kwargs.get("critical", False),
+            pq_hash_alg=kwargs.get("alt_hash_alg"),
+            use_rsa_pss=kwargs.get("alt_use_rsa_pss", False),
+        )
+
+    return sign_cert(
+        cert=cert,
+        signing_key=ca_key,
+        hash_alg=kwargs.get("hash_alg", "sha256"),
+        use_rsa_pss=kwargs.get("use_rsa_pss", True),
+        use_pre_hash=kwargs.get("use_pre_hash", False),
+        bad_sig=kwargs.get("bad_sig", False),
+    )
+
+
 @keyword(name="Build Cert from CSR")
-def build_cert_from_csr(
+def build_cert_from_csr(  # noqa D417 undocumented-param
     csr: rfc6402.CertificationRequest,
-    ca_key: PrivateKey,
-    extensions: Optional[rfc5280.Extensions] = None,
-    serial_number: Optional[Union[str, int]] = None,
+    ca_key: SignKey,
+    extensions: Optional[Sequence[rfc5280.Extension]] = None,
     validity: Optional[rfc5280.Validity] = None,
     issuer: Optional[rfc9480.Name] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
-    hash_alg: str = "sha256",
-    include_extensions: bool = True,
-    alt_sign_key: Optional[PrivateKeySig] = None,
+    include_csr_extensions: bool = True,
     **kwargs,
 ) -> rfc9480.CMPCertificate:
     """Build a certificate from a CSR.
 
-    :param csr: The CSR to build the certificate from.
-    :param ca_cert: The CA certificate.
-    :param ca_key: The CA private key.
-    :param extensions: Optional extensions to include in the certificate. Defaults to `None`.
-    If set, will exclude the extensions from the CSR.
-    :param serial_number: Optional serial number for the certificate. Defaults to `None`.
-    :param validity: Optional validity period for the certificate. Defaults to `None`.
-    :param issuer: The issuer of the certificate. Defaults to `None`.
-    :param hash_alg: The hash algorithm to use for signing. Defaults to `sha256`.
-    :param include_extensions: Whether to include the extensions from the CSR. Defaults to `True`.
-    :param alt_sign_key: Optional alternative signing key to use. Defaults to `None`.
-    :return: The certificate as raw bytes.
-    :raises ValueError: If neither the issuer nor the CA certificate is provided.
+    Arguments:
+    ---------
+        - `csr`: The CSR to build the certificate from.
+        - `ca_key`: The CA private key.
+        - `extensions`: Optional extensions to include in the certificate. Defaults to `None`.
+        - `validity`: Optional validity period for the certificate. Defaults to `None`.
+        - `issuer`: The issuer of the certificate. Defaults to `None`.
+        - `ca_cert`: The CA certificate. Defaults to `None`.
+        - `include_extensions`: Whether to include the extensions from the CSR. Defaults to `True`.
+
+    **kwargs:
+    ---------
+        - `serial_number`: The serial number for the certificate. Defaults to `None`.
+        - `hash_alg`: The hash algorithm to use for signing. Defaults to `sha256`.
+        - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `True`.
+        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+        - `days`: The number of days for which the certificate remains valid. Defaults to `3650` days.
+        - `critical`: Whether the catalyst extensions are critical. Defaults to `False`.
+        - `hash_alg`: The hash algorithm to use for signing. Defaults to `sha256`.
+        - `alt_hash_alg`: The hash algorithm to use for the alternative signing key. Defaults to `sha256`.
+        - `alt_use_rsa_pss`: Whether to use RSA-PSS for the alternative signing key. Defaults to `False`.
+        - `alt_sign_key`: Optional alternative signing key to use. Defaults to `None`.
+
+    Returns:
+    -------
+        - The build certificate.
+
+    Raises:
+    ------
+        - `ValueError`: If neither the issuer nor the CA certificate is provided.
+
+    Examples:
+    --------
+    | ${cert}= | Build Cert from CSR | csr=${csr} | ca_key=${ca_key} | ca_cert=${ca_cert} |
+    | ${cert}= | Build Cert from CSR | csr=${csr} | ca_key=${ca_key} | ca_cert=${ca_cert} | days=3650 |
+
     """
+    hash_alg = kwargs.get("hash_alg", "sha256")
+
     if issuer is None and ca_cert is None:
         raise ValueError(
             "Either the issuer or the CA certificate have to be provided.to build a certificate, from a CSR."
@@ -1495,12 +2017,15 @@ def build_cert_from_csr(
     if ca_cert is not None:
         issuer = ca_cert["tbsCertificate"]["subject"]
 
+    if issuer is None:
+        raise ValueError("The issuer is not set and can not be derived from the CSR.")
+
     tbs_cert = _prepare_shared_tbs_cert(
         issuer=issuer,
         subject=csr["certificationRequestInfo"]["subject"],
-        serial_number=serial_number,
+        serial_number=kwargs.get("serial_number", None),
         validity=validity,
-        days=kwargs.get("days", 3650),
+        days=int(kwargs.get("days", 3650)),
         public_key=csr["certificationRequestInfo"]["subjectPublicKeyInfo"],
     )
 
@@ -1510,28 +2035,23 @@ def build_cert_from_csr(
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
         use_pre_hash=kwargs.get("use_pre_hash", False),
     )
-    if include_extensions:
-        extn = extract_extension_from_csr(csr=csr)
+    if include_csr_extensions:
+        extn = certextractutils.extract_extensions_from_csr(csr=csr)
         if extensions is not None and extn is not None:
-            tbs_cert["extensions"] = extn
-        elif extensions is not None:
-            tbs_cert["extensions"] = extensions
+            tbs_cert["extensions"].extend(extensions)
+
+    if extensions is not None:
+        tbs_cert["extensions"].extend(extensions)
+
     cert = rfc9480.CMPCertificate()
     cert["tbsCertificate"] = tbs_cert
-
-    if alt_sign_key is not None:
-        # so that the catalyst logic can be in the matching file.
-        from pq_logic.hybrid_sig.catalyst_logic import sign_cert_catalyst
-
-        return sign_cert_catalyst(cert=cert, trad_key=ca_key, pq_key=alt_sign_key, hash_alg=hash_alg, **kwargs)
-
-    return sign_cert(cert=cert, signing_key=ca_key, hash_alg=hash_alg, **kwargs)
+    return _sign_cert(cert=cert, ca_key=ca_key, **kwargs)
 
 
 @not_keyword
 def prepare_tbs_certificate(
     subject: str,
-    signing_key: PrivateKeySig,
+    signing_key: SignKey,
     public_key: typingutils.PublicKey,
     serial_number: Optional[int] = None,
     issuer_cert: Optional[rfc9480.CMPCertificate] = None,
@@ -1539,7 +2059,7 @@ def prepare_tbs_certificate(
     validity: Optional[rfc5280.Validity] = None,
     days: int = 3650,
     use_rsa_pss: bool = False,
-    hash_alg: str = "sha256",
+    hash_alg: Optional[str] = "sha256",
     use_pre_hash: bool = False,
     use_rsa_pss_pubkey: bool = False,
     use_pre_hash_pubkey: bool = False,
@@ -1556,24 +2076,23 @@ def prepare_tbs_certificate(
     :param days: Number of days the certificate is valid if `validity` is not provided. Defaults to 365 days.
     :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
     :param hash_alg: Hash algorithm used for signing (e.g., "sha256"). Defaults to "sha256".
-    :param use_pre_hash: Whether to use pre-hash for signing. Defaults to `False`.
+    :param use_pre_hash: Whether to use the pre-hash version for the composite-sig key signature. Defaults to `False`.
     :param use_rsa_pss_pubkey: Whether to use RSA-PSS for the CompositeSigKey public key. Defaults to `False`.
-    :param use_pre_hash_pubkey: Whether to use pre-hash for the CompositeSigKey public key. Defaults to `False`.
+    :param use_pre_hash_pubkey: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :return: `rfc5280.TBSCertificate` object configured with the provided parameters.
     """
-    subject = prepare_name(subject)  # type: ignore
-
+    subject_obj = prepareutils.prepare_name(subject)
     if issuer_cert is None:
-        issuer = subject
+        issuer = subject_obj
     else:
-        issuer = copyasn1utils.copy_name(rfc9480.Name(), issuer_cert["tbsCertificate"]["subject"])
+        issuer = copyasn1utils.copy_name(target=rfc9480.Name(), filled_name=issuer_cert["tbsCertificate"]["subject"])
 
-    pub_key = convertutils.subjectPublicKeyInfo_from_pubkey(
+    pub_key = convertutils.subject_public_key_info_from_pubkey(
         public_key=public_key, use_rsa_pss=use_rsa_pss_pubkey, use_pre_hash=use_pre_hash_pubkey
     )
     tbs_cert = _prepare_shared_tbs_cert(
         issuer=issuer,
-        subject=subject,
+        subject=subject_obj,
         serial_number=serial_number,
         validity=validity,
         days=days,
@@ -1592,3 +2111,604 @@ def prepare_tbs_certificate(
         use_pre_hash=use_pre_hash,
     )
     return tbs_cert
+
+
+@keyword(name="Prepare OCSPNoCheck Extension")
+def prepare_ocsp_nocheck_extension(  # noqa D417 undocumented-param
+    critical: bool = False,
+    add_rand_val: bool = False,
+) -> rfc5280.Extension:
+    """Prepare an OCSP No Check extension for a certificate.
+
+    Arguments:
+    ---------
+        - `critical`: Whether the extension is marked as critical or not. Defaults to `False`.
+        - `add_rand_val`: Whether to add a random value to the extension. Defaults to `False`.
+
+    Returns:
+    -------
+        - The prepared `OCSPNoCheck` extension.
+
+    Examples:
+    --------
+    | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | True |
+    | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | critical=True | add_rand_val=True |
+
+    """
+    return _prepare_extension(
+        oid=rfc8954.id_pkix_ocsp_nocheck,
+        critical=critical,
+        value=univ.Null(""),
+        add_rand_val=add_rand_val,
+    )
+
+
+def prepare_ocsp_extension(
+    ocsp_url: Optional[str],
+    critical: bool = False,
+) -> rfc5280.Extension:
+    """Prepare an OCSP extension for a certificate.
+
+    :param ocsp_url: The URL of the OCSP responder.
+    :param critical: Whether the extension is marked as critical or not. Defaults to `False`.
+    :return: The prepared `AuthorityInformationAccess` extension.
+    """
+    authority_info_access = rfc5280.AuthorityInfoAccessSyntax()
+    if ocsp_url is not None:
+        access_des = rfc5280.AccessDescription()
+        access_des["accessMethod"] = rfc5280.id_ad_ocsp
+        access_des["accessLocation"] = prepareutils.prepare_general_name(name_type="uri", name_str=ocsp_url)
+        authority_info_access.append(access_des)
+
+    extension = rfc5280.Extension()
+    extension["extnID"] = rfc5280.id_pe_authorityInfoAccess
+    extension["critical"] = critical
+    extension["extnValue"] = univ.OctetString(encoder.encode(authority_info_access))
+    return extension
+
+
+def _prepare_extension(
+    oid: univ.ObjectIdentifier,
+    critical: bool = False,
+    value: Optional[Union[bytes, Asn1Item]] = None,
+    add_rand_val: bool = False,
+) -> rfc5280.Extension:
+    """Prepare an extension with the given OID.
+
+    :param oid: The OID of the extension.
+    :param critical: Whether the extension is marked as critical or not. Defaults to `False`.
+    :param value: The value of the extension. Defaults to `None`.
+    :param add_rand_val: Whether to add a random value to the extension. Defaults to `False`.
+    """
+    if not add_rand_val and value is None:
+        raise ValueError("Either a value or the add_rand_val flag must be set.")
+
+    if value is None:
+        data = b""
+    elif isinstance(value, Asn1Item):
+        data = encoder.encode(value)
+    else:
+        data = value
+
+    if add_rand_val:
+        data += os.urandom(16)
+
+    extension = rfc5280.Extension()
+    extension["extnID"] = oid
+    extension["critical"] = critical
+    extension["extnValue"] = univ.OctetString(value)
+    return extension
+
+
+def prepare_crl_distribution_point_extension(
+    crl_url: str,
+    critical: bool = False,
+) -> rfc5280.Extension:
+    """Prepare a CRL distribution point extension.
+
+    :param crl_url: The URL of the CRL distribution point.
+    :param critical: Whether the extension is marked as critical or not. Defaults to `False`.
+    :return: The prepared `CRLDistributionPoints` extension.
+    """
+    crl_dp = x509.CRLDistributionPoints(
+        [
+            x509.DistributionPoint(
+                full_name=[x509.UniformResourceIdentifier(crl_url)],
+                relative_name=None,
+                reasons=None,
+                crl_issuer=None,
+            )
+        ]
+    )
+
+    extension = rfc5280.Extension()
+    extension["extnID"] = rfc5280.id_ce_cRLDistributionPoints
+    extension["critical"] = critical
+    extension["extnValue"] = univ.OctetString(crl_dp.public_bytes())
+    return extension
+
+
+def _try_decode_extension_val(
+    extensions: rfc9480.Extensions,
+    extn_name: str,
+    name: str,
+) -> Optional[Union[bytes, Asn1Type]]:
+    """Try to decode the extension value.
+
+    :param extensions: The extensions to extract the value from.
+    :param extn_name: The name of the extension which value to extract (e.g., "ski").
+    :param name: The name of the extension (e.g., "SubjectKeyIdentifier").
+    """
+    try:
+        tmp = rfc9480.CMPCertificate()
+        tmp["tbsCertificate"]["extensions"].extend(extensions)
+        return certextractutils.get_field_from_certificate(tmp, extension=extn_name)
+    except pyasn1.error.PyAsn1Error as e:
+        raise BadAsn1Data(f"The `{name}` extension could not be decoded.", overwrite=True, error_details=str(e)) from e
+
+
+def check_sig_key(key_usages: Set[str], name: str):
+    """Check the signature key."""
+    sig_usages = {"digitalSignature", "nonRepudiation", "keyCertSign", "cRLSign"}
+    sig_disallowed = {"keyEncipherment", "dataEncipherment", "keyAgreement", "encipherOnly", "decipherOnly"}
+
+    if not set(key_usages).issubset(sig_usages):
+        raise BadCertTemplate(f"The {name} `KeyUsage` must be one of: {sig_usages}")
+    if set(key_usages) & sig_disallowed:
+        raise BadCertTemplate(f"{name} `KeyUsage` must not include: {sig_disallowed}")
+
+
+def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
+    """Verify the key usage."""
+    key_usage = _try_decode_extension_val(  # type: ignore
+        extensions=cert_template["extensions"],
+        extn_name="key_usage",
+        name="KeyUsage",
+    )
+    key_usage: Optional[rfc5280.KeyUsage]
+
+    if key_usage is None:
+        logging.info("Key usage extension was not present in the parsed certificate.")
+        return None
+
+    key_usages = asn1utils.get_set_bitstring_names(key_usage).split(", ")  # type: ignore
+    public_key = keyutils.load_public_key_from_cert_template(cert_template)
+
+    if public_key is None:
+        raise ValueError(
+            "The public key could not be extracted from the certificate template."
+            "The `KeyUsage` extension cannot be verified."
+        )
+
+    if hasattr(public_key, "name"):
+        _name = public_key.name  # type: ignore
+        if is_kem_public_key(public_key):
+            if set(key_usages) != {"keyEncipherment"}:
+                raise BadCertTemplate(f"{_name} keyUsage must only contain: keyEncipherment")
+        elif isinstance(public_key, VerifyKey):
+            check_sig_key(set(key_usages), _name)
+    else:
+        name = keyutils.get_key_name(public_key)
+        if name in ["ed448", "ed25519", "dsa"]:
+            check_sig_key(set(key_usages), name)
+        elif name in ["rsa", "ecdsa"]:
+            pass
+        elif name in ["x25519", "x448"]:
+            if set(key_usages) != {"keyAgreement"}:
+                raise BadCertTemplate(f"{name} keyUsage must only contain: keyAgreement")
+
+        else:
+            raise ValueError(f"Unknown key type: {name}, for verifying the key usage.")
+
+    return prepare_key_usage_extension(
+        key_usage=",".join(key_usages),
+        critical=True,
+    )
+
+
+def _verify_subject_key_identifier(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
+    """Verify the subject key identifier."""
+    tmp = rfc9480.CMPCertificate()
+    tmp["tbsCertificate"]["extensions"].extend(cert_template["extensions"])
+
+    ski = _try_decode_extension_val(  # type: ignore
+        extensions=cert_template["extensions"],
+        extn_name="ski",
+        name="SubjectKeyIdentifier",
+    )
+    ski: bytes
+
+    public_key = keyutils.load_public_key_from_cert_template(cert_template, must_be_present=True)
+    if ski is None:
+        logging.info("Subject key identifier extension was not present in the parsed certificate.")
+        return None
+
+    computed_ski = x509.SubjectKeyIdentifier.from_public_key(public_key)  # type: ignore
+    computed_ski = computed_ski.key_identifier
+
+    if computed_ski != ski:
+        raise BadCertTemplate("The `SubjectKeyIdentifier` value did not match the computed value.")
+
+    if public_key is None:
+        raise ValueError(
+            "The public key could not be extracted from the certificate template."
+            "The `SubjectKeyIdentifier` extension cannot be computed."
+        )
+
+    return prepare_ski_extension(
+        key=public_key,
+        critical=False,
+    )
+
+
+def _verify_authority_key_identifier(
+    cert_template: rfc9480.CertTemplate, ca_public_key: VerifyKey, ca_cert: Optional[rfc9480.CMPCertificate] = None
+) -> Optional[rfc5280.Extension]:
+    """Verify the authority key identifier."""
+    aki = _try_decode_extension_val(  # type: ignore
+        extensions=cert_template["extensions"],
+        extn_name="aki",
+        name="AuthorityKeyIdentifier",
+    )
+    aki: Optional[rfc5280.AuthorityKeyIdentifier]
+
+    if aki is None:
+        logging.info("Authority key identifier extension was not present in the parsed certificate.")
+        return None
+
+    if aki["keyIdentifier"].isValue:
+        extracted_aki = aki["keyIdentifier"].asOctets()
+        computed_aki = x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_public_key)  # type: ignore
+        computed_aki = computed_aki.key_identifier
+
+        if computed_aki != extracted_aki:
+            raise BadCertTemplate("The `AuthorityKeyIdentifier` value did not match the computed value.")
+
+    if ca_cert is None and (aki["authorityCertIssuer"].isValue or aki["authorityCertSerialNumber"].isValue):
+        raise ValueError(
+            "The CA certificate must be provided to verify the `AuthorityKeyIdentifier` "
+            "when the `authorityCertIssuer` or the `authorityCertSerialNumber` choices are present."
+        )
+
+    if ca_cert is None:
+        return prepare_authority_key_identifier_extension(
+            ca_key=ca_public_key,
+            critical=False,
+        )
+
+    if aki["authorityCertIssuer"].isValue:
+        if not find_name_inside_general_names(
+            gen_names=aki["authorityCertIssuer"],
+            name=ca_cert["tbsCertificate"]["subject"],
+        ):
+            raise BadCertTemplate(
+                "The `AuthorityKeyIdentifier` `authorityCertIssuer` did not match the CA certificate's subject."
+            )
+
+    if aki["authorityCertSerialNumber"].isValue:
+        if int(aki["authorityCertSerialNumber"]) != int(ca_cert["tbsCertificate"]["serialNumber"]):
+            raise BadCertTemplate(
+                "The `AuthorityKeyIdentifier` `authorityCertSerialNumber` did not match the CA "
+                "certificate's serial number."
+            )
+
+    return prepare_authority_key_identifier_extension(
+        ca_key=ca_public_key,
+        critical=False,
+    )
+
+
+def _verify_extended_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
+    """Verify the extended key usage.
+
+    Checks if the extended key usage is present and if it is validly built.
+
+    :param cert_template: The certificate template.
+    :return: The `ExtendedKeyUsage` extension if present and valid.
+    :raises BadCertTemplate: If the `ExtendedKeyUsage` extension is not valid.
+    """
+    # TODO update to validate the `EKU` OIDs.
+    # verifies if the structure is valid.
+    _ = _try_decode_extension_val(  # type: ignore
+        extensions=cert_template["extensions"],
+        extn_name="eku",
+        name="ExtendedKeyUsage",
+    )
+
+    return certextractutils.get_extension(cert_template["extensions"], rfc5280.id_ce_extKeyUsage)
+
+
+def verify_ca_basic_constraints(  # noqa D417 undocumented-param
+    cert_template: Union[rfc9480.CertTemplate, rfc9480.Extensions], allow_non_crit: bool = True, set_crit: bool = False
+) -> Optional[rfc5280.Extension]:
+    """Verify the basic constraints for a CA certificate.
+
+    Checks if the basic constraints are present and if they are validly built.
+
+    Arguments:
+    ---------
+        - `cert_template`: The certificate template or extension to verify.
+        - `allow_non_crit`: Whether to allow non-critical extensions. Defaults to `True`.
+        - `set_crit`: Whether to set the extension as critical. Defaults to `False`.
+        - `allow_non_crit`: Whether to allow non-critical extensions. Defaults to `True`.
+        - `set_crit`: Whether to set the extension as critical. Defaults to `False`.
+
+    Returns:
+    -------
+        - The `BasicConstraints` extension if present and valid.
+
+    Raises:
+    ------
+        - `BadCertTemplate`: If the `BasicConstraints` extension cannot be decoded.
+        - `BadCertTemplate`: If the CA was set to False but pathLenConstraint was not 0 or absent.
+        - `BadCertTemplate`: If the CA was set to True but pathLenConstraint was 0 or less.
+        - `BadCertTemplate`: If the `BasicConstraints` extension must be marked as critical and was not.
+
+    Examples:
+    --------
+    | ${basic_con}= | Verify CA Basic Constraints | cert_template=${cert_template} |
+    | ${basic_con}= | Verify CA Basic Constraints | cert_template=${cert_template} | set_crit=True |
+    | ${basic_con}= | Verify CA Basic Constraints | cert_template=${extensions} | allow_non_crit=False |
+
+    """
+    basic_con = _try_decode_extension_val(  # type: ignore
+        extensions=cert_template["extensions"], extn_name="basic_constraints", name="BasicConstraints"
+    )
+    basic_con: Optional[rfc5280.BasicConstraints]
+
+    if basic_con is None:
+        logging.info("Basic constraints extension was not present in the parsed certificate.")
+        return None
+
+    path_len = 0 if not basic_con["pathLenConstraint"].isValue else int(basic_con["pathLenConstraint"])
+    if basic_con["cA"] is False and path_len != 0:
+        raise BadCertTemplate(
+            "The `BasicConstraints` extension is not valid. CA was set to False but `pathLenConstraint` "
+            "was not 0 or absent."
+        )
+
+    if basic_con["pathLenConstraint"].isValue:
+        path_len = int(basic_con["pathLenConstraint"])
+        is_ca = bool(basic_con["cA"])
+        if is_ca is True and path_len <= 0:
+            raise BadCertTemplate(
+                "The `BasicConstraints` extension is not valid. CA was set to True but `pathLenConstraint` "
+                "was less than 0."
+            )
+
+        if not is_ca and path_len > 0:
+            raise BadCertTemplate("A end entity certificate can not have a path length greater 0 set.")
+
+    if isinstance(cert_template, rfc9480.CertTemplate):
+        if cert_template["publicKey"].isValue:
+            is_ca = bool(basic_con["cA"])
+            oid = cert_template["publicKey"]["algorithm"]["algorithm"]
+            if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
+                if is_ca:
+                    _name = may_return_oid_to_name(oid)
+                    raise BadCertTemplate(
+                        f"A CA certificate can not have a PQ PreHash signature algorithm.OID: {_name}"
+                    )
+
+            if oid in COMPOSITE_SIG04_HASH_OID_2_NAME or oid in COMPOSITE_SIG03_HASH_OID_2_NAME:
+                if is_ca:
+                    _name = may_return_oid_to_name(oid)
+                    raise BadCertTemplate(
+                        f"A CA certificate can not have a Composite Signature PreHash algorithm.OID: {_name}"
+                    )
+    extn = certextractutils.get_extension(
+        cert_template["extensions"],  # type: ignore
+        rfc5280.id_ce_basicConstraints,
+    )
+    extn: rfc5280.Extension
+    if set_crit:
+        extn["critical"] = True
+
+    if not allow_non_crit and not extn["critical"]:
+        raise BadCertTemplate("The `BasicConstraints` extension must be marked as critical.")
+
+    return certextractutils.get_extension(cert_template["extensions"], rfc5280.id_ce_basicConstraints)
+
+
+def _verify_subject_alt_name(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
+    """
+    Verify the SubjectAltName extension inside a certificate template.
+
+    This function searches for the SubjectAltName extension (identified by the OID
+    rfc5280.id_ce_subjectAltName) within the certificate template's extensions.
+    If found, it decodes its DER-encoded value using Cryptography's x509.load_der_x509_extension,
+    verifies that the extension is a SubjectAlternativeName, and checks that it contains at least
+    one DNSName.
+
+    :param cert_template: The certificate template containing the extensions.
+    :return: The validated SubjectAltName extension if present and valid, otherwise None.
+    :raises BadCertTemplate: If the extension is present but cannot be decoded or
+                             does not contain valid DNSName entries.
+    """
+    result = compareutils.is_null_dn(
+        cert_template["subject"],
+    )
+
+    sub_alt_name = _try_decode_extension_val(  # type: ignore
+        extensions=cert_template["extensions"],
+        extn_name="san",
+        name="SubjectAltName",
+    )
+    sub_alt_name: Optional[rfc5280.SubjectAltName]
+
+    if sub_alt_name is None and result:
+        raise BadCertTemplate(
+            "The `SubjectAltName` extension is not present in the certificate template"
+            "and the subject is set to `Null-DN`."
+        )
+
+    if sub_alt_name is None:
+        logging.info("SubjectAltName extension not present in the certificate template.")
+        return None
+
+    # Issue a certificate which will parse linter checks.
+    if result:
+        return prepare_subject_alt_name_extension(
+            gen_names=sub_alt_name,  # type: ignore
+            critical=True,
+        )
+
+    return prepare_subject_alt_name_extension(
+        gen_names=sub_alt_name,  # type: ignore
+        critical=False,
+    )
+
+
+def _contains_unknown_extensions(extensions: rfc9480.Extensions) -> bool:
+    """Check if the extensions contain unknown extensions.
+
+    :param extensions: The extensions to check.
+    :return: `True` if the extensions contain unknown extensions, `False` otherwise.
+    """
+    if not extensions.isValue:
+        return False
+
+    unknown_exts = [str(extn["extnID"]) for extn in extensions if extn["extnID"] not in EXTENSION_OID_2_NAME]
+    if unknown_exts:
+        logging.warning("Unknown extensions found: %s", unknown_exts)
+        return True
+    return False
+
+
+@not_keyword
+def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional[bool] = None) -> None:
+    """Validate the extensions with some more logic related checks."""
+    key_usage = _try_decode_extension_val(  # type: ignore
+        extensions=cert_template["extensions"],
+        extn_name="key_usage",
+        name="KeyUsage",
+    )
+    key_usage: Optional[rfc5280.KeyUsage]
+
+    if key_usage is not None:
+        names = get_set_bitstring_names(key_usage)
+        if for_ee is not None and not for_ee:
+            if "keyCertSign" in names or "cRLSign" in names:
+                raise BadCertTemplate("")
+
+        basic_con = _try_decode_extension_val(  # type: ignore
+            extensions=cert_template["extensions"], extn_name="basic_constraints", name="BasicConstraints"
+        )
+        basic_con: Optional[rfc5280.BasicConstraints]
+
+        if basic_con is not None:
+            if not bool(basic_con["cA"]) and "keyCertSign" in names:
+                raise BadCertTemplate("")
+
+    elif for_ee:
+        basic_con = _try_decode_extension_val(  # type: ignore
+            extensions=cert_template["extensions"], extn_name="basic_constraints", name="BasicConstraints"
+        )
+        basic_con: Optional[rfc5280.BasicConstraints]
+
+        if basic_con is None:
+            return
+
+        if basic_con:
+            if bool(basic_con["cA"]):
+                raise BadCertTemplate("")
+
+        if basic_con["pathLenConstraint"].isValue and int(basic_con["pathLenConstraint"]) != 0:
+            raise BadCertTemplate("")
+
+
+# TODO maybe not allow to correct the criticality of the extensions?
+
+
+def check_extensions(  # noqa D417 undocumented params
+    cert_template: rfc4211.CertTemplate,
+    ca_public_key: VerifyKey,
+    other_extensions: Optional[Union[rfc9480.Extensions, List[rfc5280.Extension]]] = None,
+    allow_unknown_extns: bool = False,
+    allow_basic_con_non_crit: bool = True,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    for_end_entity: Optional[bool] = None,
+) -> rfc5280.Extensions:
+    """Validate the correctness of the extensions inside the certificate template.
+
+    Verify that the parsed extensions are valid and that they contain the required extensions.
+    The `other_extensions` are used to override the extensions in the certificate template.
+    The `other_extensions` are not validated.
+
+    Arguments:
+    ---------
+        - `cert_template`: The certificate template to check.
+        - `ca_public_key`: The public key of the CA.
+        - `other_extensions`: Other extensions provided by the user/CA. Defaults to `None`.
+        - `allow_unknown_extns`: Whether to allow unknown extensions. Defaults to `True`.
+        - `allow_basic_con_non_crit`: Whether to allow non-critical basic constraints. Defaults to `True`.
+        - `ca_cert`: The CA certificate to validate the `AuthorityKeyIdentifier` extension. Defaults to `None`.
+        - `for_end_entity`:
+
+    Returns:
+    -------
+        - The validated extensions.
+
+    Raises:
+    ------
+        - `BadCertTemplate`: If unknown extensions are found in the certificate template and not allowed.
+        - `BadA
+        - `BadCertTemplate`: If the extensions inside the `CertTemplate` are not valid.
+        - `BadCertTemplate`: If the `BasicConstraints` extension is not marked as critical.
+
+
+    Examples:
+    --------
+    | ${extns}= | Check Extensions | cert_template=${cert_template} | ca_public_key=${ca_public_key} |
+    | ${extns}= | Check Extensions | cert_template=${cert_template} | ca_public_key=${ca_public_key} | \
+    allow_unknown_extns=False |
+    | ${extns}= | Check Extensions | cert_template=${cert_template} | ca_public_key=${ca_public_key} | \
+    ${other_extensions} |
+
+    """
+    if _contains_unknown_extensions(cert_template["extensions"]) and not allow_unknown_extns:
+        raise BadCertTemplate("Unknown extensions found in the certificate template.")
+
+    check_logic_extensions(cert_template, for_ee=for_end_entity)
+
+    extns = rfc5280.Extensions()
+
+    key_usage = _verify_key_usage(cert_template)
+    ski_extn = _verify_subject_key_identifier(cert_template)
+    aia_extn = _verify_authority_key_identifier(cert_template, ca_public_key, ca_cert=ca_cert)
+    eku = _verify_extended_key_usage(cert_template)
+    basic_con = verify_ca_basic_constraints(cert_template, allow_non_crit=allow_basic_con_non_crit)
+    san = _verify_subject_alt_name(cert_template)
+    extensions_to_check = [
+        (rfc5280.id_ce_keyUsage, key_usage),
+        (rfc5280.id_ce_subjectKeyIdentifier, ski_extn),
+        (rfc5280.id_ce_authorityKeyIdentifier, aia_extn),
+        (rfc5280.id_ce_extKeyUsage, eku),
+        (rfc5280.id_ce_basicConstraints, basic_con),
+        (rfc5280.id_ce_subjectAltName, san),
+    ]
+
+    if isinstance(other_extensions, list):
+        tmp = rfc9480.Extensions()
+        tmp.extend(other_extensions)
+        other_extensions = tmp
+
+    if other_extensions is None or len(other_extensions) == 0:
+        validated_extensions = [ext for _, ext in extensions_to_check if ext is not None]
+    else:
+        validated_extensions = []
+        for ext_id, ext in extensions_to_check:
+            if ext is None and certextractutils.get_extension(other_extensions, ext_id) is None:
+                continue
+
+            if ext is None and certextractutils.get_extension(other_extensions, ext_id) is not None:
+                validated_extensions.append(certextractutils.get_extension(other_extensions, ext_id))
+
+            elif ext is not None and certextractutils.get_extension(other_extensions, ext_id) is None:
+                validated_extensions.append(ext)
+
+            else:
+                validated_extensions.append(ext)
+
+    extns.extend(validated_extensions)
+    return extns

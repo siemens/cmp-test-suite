@@ -8,31 +8,36 @@ Focuses on the `EnvelopedData` structure.
 """
 
 import logging
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import pyasn1
-from cryptography.hazmat.primitives import keywrap, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa, x448, x25519
+from cryptography.hazmat.primitives import keywrap
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, x448, x25519
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+from pq_logic.combined_factory import CombinedKeyFactory
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey
+from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateKey
+from pq_logic.keys.trad_kem_keys import RSADecapKey
+from pq_logic.pq_utils import get_kem_oid_from_key
+from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, COMPOSITE_SIG_SIGNED_DATA_OID_HASH
+from pq_logic.trad_typing import ECDHPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
     rfc4055,
-    rfc4211,
     rfc5280,
     rfc5652,
     rfc5753,
     rfc5958,
-    rfc6664,
     rfc8018,
     rfc9480,
     rfc9481,
     rfc9629,
 )
-from robot.api.deco import not_keyword
+from robot.api.deco import keyword, not_keyword
 
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey
-from pq_logic.migration_typing import KEMPrivateKey
-from pq_logic.tmp_oids import id_rsa_kem_spki
 from resources import (
     asn1utils,
     certextractutils,
@@ -41,12 +46,14 @@ from resources import (
     cmputils,
     compareutils,
     cryptoutils,
+    envdatautils,
     keyutils,
     protectionutils,
+    utils,
 )
+from resources.asn1_structures import PKIMessageTMP
+from resources.compareutils import check_if_alg_id_parameters_is_absent
 from resources.convertutils import str_to_bytes
-from resources.cryptoutils import compute_ansi_x9_63_kdf, compute_hkdf, perform_ecdh
-from resources.envdatautils import get_aes_length
 from resources.exceptions import BadAlg, BadAsn1Data
 from resources.oid_mapping import (
     compute_hash,
@@ -56,6 +63,7 @@ from resources.oid_mapping import (
 from resources.oidutils import (
     ECMQV,
     HKDF_NAME_2_OID,
+    KDF_OID_2_NAME,
     KEM_OID_2_NAME,
     KEY_WRAP_NAME_2_OID,
     KEY_WRAP_OID_2_NAME,
@@ -66,9 +74,8 @@ from resources.oidutils import (
     MSG_SIG_ALG,
     PROT_SYM_ALG,
 )
-from resources.protectionutils import compute_kdf_from_alg_id, get_rsa_oaep_padding
 from resources.suiteenums import KeyUsageStrictness
-from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint
+from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
 
 
 @not_keyword
@@ -96,8 +103,10 @@ def process_mqv(mqv_der: bytes, private_key: ec.EllipticCurvePrivateKey, hash_al
     public_key = keyutils.load_public_key_from_spki(mqv_ukm["ephemeralPublicKey"])
     if not isinstance(public_key, ec.EllipticCurvePublicKey):
         raise ValueError("The extracted public key is not an instance of `EllipticCurvePublicKey`.")
-    shared_secret = perform_ecdh(private_key=private_key, public_key=public_key)
-    k = compute_ansi_x9_63_kdf(shared_secret=shared_secret, hash_alg=hash_alg, key_length=length, other_info=mqv_der)
+    shared_secret = cryptoutils.perform_ecdh(private_key=private_key, public_key=public_key)
+    k = cryptoutils.compute_ansi_x9_63_kdf(
+        shared_secret=shared_secret, hash_alg=hash_alg, key_length=length, other_info=mqv_der
+    )
     return k
 
 
@@ -128,7 +137,7 @@ def _check_kari_aes_size(ecc_cms_info: rfc5753.ECC_CMS_SharedInfo) -> int:
 @not_keyword
 def process_kari(
     alg_id: rfc5280.AlgorithmIdentifier,
-    private_key: ECDHPrivateKey,
+    private_key: ECDHPrivKeyTypes,
     ukm: Optional[bytes] = None,
     cmp_prot_cert: Optional[rfc9480.CMPCertificate] = None,
 ) -> bytes:
@@ -153,6 +162,10 @@ def process_kari(
     length = _check_kari_aes_size(ecc_cms_info)
     if alg_id["algorithm"] in ECMQV:
         hash_alg = ECMQV[alg_id["algorithm"]].split("-")[1]
+
+        if not isinstance(private_key, ec.EllipticCurvePrivateKey):
+            raise ValueError("The private key must be an instance of `EllipticCurvePrivateKey`.For the `ECMQV` method.")
+
         k = process_mqv(
             mqv_der=ukm,  # type: ignore
             private_key=private_key,
@@ -168,21 +181,21 @@ def process_kari(
     if alg_id["algorithm"] in {rfc9481.id_X25519, rfc9481.id_X448, rfc9481.id_alg_ESDH}:
         name = KM_KA_ALG[alg_id["algorithm"]]
         public_key = certutils.load_public_key_from_cert(cmp_prot_cert)
-        shared_secret = perform_ecdh(
+        shared_secret = cryptoutils.perform_ecdh(
             private_key,  # type: ignore
             public_key,  # type: ignore
         )
         # TODO: Fix hash algorithm, it is server-specific.
-        k = compute_ansi_x9_63_kdf(shared_secret=shared_secret, key_length=length, other_info=other_info)
+        k = cryptoutils.compute_ansi_x9_63_kdf(shared_secret=shared_secret, key_length=length, other_info=other_info)
         logging.info("Derived `%s` wrapping key: %s", name, k.hex())
         return k
 
     if alg_id["algorithm"] in KM_KA_ALG:
         public_key = certutils.load_public_key_from_cert(cmp_prot_cert)
-        shared_secret = perform_ecdh(private_key, public_key)  # type: ignore
+        shared_secret = cryptoutils.perform_ecdh(private_key, public_key)  # type: ignore
         name = KM_KA_ALG[alg_id["algorithm"]]
         hash_alg = name.lower().split("-")[1]
-        k = compute_ansi_x9_63_kdf(shared_secret, length, other_info, hash_alg=hash_alg)  # type: ignore
+        k = cryptoutils.compute_ansi_x9_63_kdf(shared_secret, length, other_info, hash_alg=hash_alg)  # type: ignore
         logging.info("Derived `%s` wrapping key: %s", name, k.hex())
         return k
 
@@ -190,7 +203,7 @@ def process_kari(
 
 
 def validate_not_local_key_gen(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     password: Optional[str] = None,
     expected_type: Optional[str] = None,
     cert_index: Strint = 0,
@@ -253,9 +266,10 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
     # the worst case, there must be one certificate inside.
     cert = pki_message["extraCerts"][int(cert_index)]
 
-    cert_key_pair: rfc9480.CertifiedKeyPair = asn1utils.get_asn1_value(
+    cert_key_pair = asn1utils.get_asn1_value(  # type: ignore
         pki_message, query=f"body.{body_name}.response/{key_index}.certifiedKeyPair"
     )
+    cert_key_pair: rfc9480.CertifiedKeyPair
     if cert_key_pair["privateKey"].getName() != "envelopedData":
         raise ValueError("The private field MUST be an `envelopedData` structure")
 
@@ -294,7 +308,7 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
 def _check_correct_non_local_key_gen_use(
     cmp_cert: rfc9480.CMPCertificate,
     kga_type: str,
-    pki_message: Optional[rfc9480.PKIMessage] = None,
+    pki_message: Optional[PKIMessageTMP] = None,
     password: Optional[Union[bytes, str]] = None,
     strictness: int = 2,
 ):
@@ -330,6 +344,11 @@ def _check_correct_non_local_key_gen_use(
             raise ValueError(f"Failed to validate key usage for keyAgreement with strictness {name}.") from err
 
     elif kga_type == "pwri":
+        if password is None or pki_message is None:
+            raise ValueError(
+                "The `pwri` structure requires a password and PKIMessage to verify, if the same password was used."
+            )
+
         try:
             protectionutils.verify_pkimessage_protection(pki_message=pki_message, password=password)
         except ValueError as err:
@@ -339,7 +358,10 @@ def _check_correct_non_local_key_gen_use(
 
 
 def _extract_pwri_content_enc_key(
-    pki_message: rfc9480.PKIMessage, password: Union[str, bytes], recip_info: rfc5652.RecipientInfo
+    pki_message: Optional[PKIMessageTMP],
+    password: Union[str, bytes],
+    recip_info: rfc5652.RecipientInfo,
+    cmp_protection_salt: Optional[bytes] = None,
 ) -> bytes:
     """Extract and compute the content encryption key from the `pwri` structure, based on the shared password/secret.
 
@@ -348,6 +370,8 @@ def _extract_pwri_content_enc_key(
     :param password: The password used for key derivation, provided as a string or bytes. If the string
                      starts with "0x", it is interpreted as hex.
     :param recip_info: The `RecipientInfo` structure to check and then extract and unwrap the content encryption key.
+    :param cmp_protection_salt: The salt used for the password-based key derivation. If not provided,
+    it will be extracted from the `pki_message` header.
     :return: The content encryption key.
     :raises ValueError: If the recipient info is not of type 'pwri' or if the password is not provided.
     """
@@ -357,8 +381,19 @@ def _extract_pwri_content_enc_key(
     if password is None:
         raise ValueError("A password must be provided when the `RecipientInfo` is `pwri`.")
 
-    prot_alg = pki_message["header"]["protectionAlg"]
-    cmp_protection_salt = protectionutils.get_cmp_protection_salt(protection_alg=prot_alg)
+    if cmp_protection_salt is None and pki_message is None:
+        raise ValueError("Either the `pki_message` or `cmp_protection_salt` must be provided.")
+
+    if cmp_protection_salt is None:
+        # If the `cmp_protection_salt` is not provided, extract it from the PKIMessage header.
+        # The `protectionAlg` field contains the salt used for the password-based key derivation.
+        # MUST not be the same.
+        alg_id = pki_message["header"]["protectionAlg"]  # type: ignore
+        if not alg_id.isValue:
+            raise ValueError("The `protectionAlg` field must contain the a value.")
+
+        cmp_protection_salt = protectionutils.get_cmp_protection_salt(protection_alg=alg_id)
+
     params = validate_password_recipient_info(recip_info["pwri"], cmp_protection_salt)
     password_bytes = str_to_bytes(password)
     content_encryption_key = _compute_password_based_key_management_technique(password=password_bytes, **params)
@@ -368,9 +403,11 @@ def _extract_pwri_content_enc_key(
 
 def _extract_ktri_and_kari_content_enc_key(
     recip_info: rfc5652.RecipientInfo,
-    cmp_protection_cert: rfc9480.CMPCertificate,
+    cmp_protection_cert: Optional[rfc9480.CMPCertificate],
     ee_key: EnvDataPrivateKey,
     for_pop: bool = False,
+    allow_rsa_null: bool = False,
+    kari_cert: Optional[rfc9480.CMPCertificate] = None,
 ) -> bytes:
     """Extract and compute the content encryption key from the `kari` or `ktri` structure, based on the EE private key.
 
@@ -379,19 +416,44 @@ def _extract_ktri_and_kari_content_enc_key(
     :param ee_key: The private key of the end-entity used for the key agreement or encipherment.
     :param for_pop: Whether the extraction is for proof-of-possession (POP) purposes.
     (changes the validation for the `rid` field)
+    :param allow_rsa_null: Whether to allow RSA parameters to be `NUll`. Defaults to `False`.
+    :param kari_cert: The certificate used for key agreement or encryption, if X448 or X22519 is not used.
     :return: The content encryption key.
     :raises ValueError: If the RecipientInfo type is not 'ktri' or 'kari'.
     """
     recip_name = recip_info.getName()
     if recip_name == "ktri":
-        params = validate_key_trans_recipient_info(recip_info["ktri"], cmp_protection_cert)
-        content_encryption_key = compute_key_transport_mechanism(ee_private_key=ee_key, **params)
+        if (cmp_protection_cert is None or not cmp_protection_cert.isValue) and not for_pop:
+            raise ValueError("A CMP protection certificate must be provided for `ktri`.")
+
+        params = validate_key_trans_recipient_info(recip_info["ktri"], cmp_protection_cert, for_pop=for_pop)
+
+        if not isinstance(ee_key, RSAPrivateKey):
+            raise ValueError("The `ee_key` must be an instance of `RSAPrivateKey` for `ktri`.")
+
+        content_encryption_key = compute_key_transport_mechanism(
+            ee_private_key=ee_key, allow_rsa_null=allow_rsa_null, **params
+        )
         logging.info("Ktri content encryption key: %s", content_encryption_key.hex())
 
     elif recip_name == "kari":
-        params = validate_key_agree_recipient_info(recip_info["kari"], cmp_protection_cert)
+        params = validate_key_agree_recipient_info(
+            kari_structure=recip_info["kari"],
+            cmp_cert=cmp_protection_cert,
+            for_pop=for_pop,
+        )
+
+        if not isinstance(ee_key, ECDHPrivateKey):
+            raise ValueError("The `ee_key` must be an instance of `ECDHPrivateKey` for `kari`.")
+
+        kari_cert = kari_cert or cmp_protection_cert
+        if kari_cert is None:
+            raise ValueError("A certificate must be provided for `kari`.")
+
         content_encryption_key = compute_key_agreement_mechanism(
-            ee_private_key=ee_key, cmp_protection_cert=cmp_protection_cert, **params
+            ee_private_key=ee_key,  # type: ignore
+            cmp_protection_cert=kari_cert,
+            **params,
         )
         logging.info("Kari content encryption key: %s", content_encryption_key.hex())
     else:
@@ -406,7 +468,7 @@ def _extract_ktri_and_kari_content_enc_key(
 @not_keyword
 def process_other_recip_info(
     recip_private_key: KEMPrivateKey,
-    server_cert: rfc9480.CMPCertificate,
+    server_cert: Optional[rfc9480.CMPCertificate],
     other_info: rfc5652.OtherRecipientInfo,
     for_pop: bool = False,
 ) -> bytes:
@@ -433,19 +495,49 @@ def process_other_recip_info(
         return process_kem_recip_info(
             kem_recip_info=kem_recip_info, server_cert=server_cert, private_key=recip_private_key, for_pop=for_pop
         )
-
     raise ValueError(f"Got a unknown `oriType`: {other_info['oriType']}")
+
+
+def _get_kari_cert(pki_message: PKIMessageTMP) -> rfc9480.CMPCertificate:
+    """Get the KARI certificate from the PKIMessage.
+
+    Extracts the KARI certificate from the `extraCerts` field of the PKIMessage,
+    which contains the X-Key certificate at position 0 or 1.
+    """
+    if not pki_message["extraCerts"].isValue:
+        raise ValueError("The `extraCerts` field must contain the X-Key certificate.")
+
+    tmp = pki_message["extraCerts"][0]
+    pub_key = keyutils.load_public_key_from_spki(tmp["tbsCertificate"]["subjectPublicKeyInfo"])
+    if isinstance(pub_key, (X448PublicKey, X25519PublicKey)):
+        return tmp
+
+    tmp = pki_message["extraCerts"][1]
+
+    if not tmp.isValue:
+        raise ValueError("The certificate at position 1 must be the matching X-Key.")
+
+    pub_key = keyutils.load_public_key_from_spki(tmp["tbsCertificate"]["subjectPublicKeyInfo"])
+    if not isinstance(pub_key, (X448PublicKey, X25519PublicKey)):
+        raise ValueError(
+            "Either a kari cert must be provided or the certificate at position 1, must be the matching X-Key."
+        )
+    kari_cert = tmp
+    return kari_cert
 
 
 def extract_content_encryption_key(
     env_data: rfc9480.EnvelopedData,
-    pki_message: Optional[rfc9480.PKIMessage] = None,
-    password: Optional[str] = None,
+    pki_message: Optional[PKIMessageTMP] = None,
+    password: Optional[Union[str, bytes]] = None,
     ee_key: Optional[EnvDataPrivateKey] = None,
     cmp_protection_cert: Optional[rfc9480.CMPCertificate] = None,
     recip_index: int = 0,
     expected_size: int = 1,
     for_pop: bool = False,
+    allow_rsa_null: bool = False,
+    kari_cert: Optional[rfc9480.CMPCertificate] = None,
+    cmp_protection_salt: Optional[bytes] = None,
 ) -> bytes:
     """
     Extract the content-encryption-key from an EnvelopedData structure.
@@ -463,6 +555,9 @@ def extract_content_encryption_key(
     :param expected_size: The expected size of the entries inside the `RecipientInfos` structure.
     :param for_pop: Whether the extraction is for proof-of-possession (POP) purposes.
     (changes the validation for the `rid` field)
+    :param allow_rsa_null: Whether to allow for RSA `parameters` to be `NUll`. Defaults to `False`.
+    :param kari_cert: Optional certificate for `KARI`. Defaults to `None`.
+    :param cmp_protection_salt: Optional CMP protection salt for `pwri` recipient structure. Defaults to `None`.
     :return: The extracted content-encryption-key.
     :raises ValueError: If the extraction fails due to missing keys or unsupported RecipientInfo types.
     """
@@ -476,21 +571,49 @@ def extract_content_encryption_key(
 
     recip_info: rfc5652.RecipientInfo = recip_infos[recip_index]
 
+    # if recip_info.getName() != "pwri" and cmp_protection_cert is None:
+    #    cmp_protection_cert = pki_message["extraCerts"][0]
+
     if recip_info.getName() == "pwri":
-        if password is None:
-            raise ValueError("Password is required for `pwri` RecipientInfo.")
-        content_encryption_key = _extract_pwri_content_enc_key(pki_message, password, recip_info)
+        if password is None or (pki_message is None and cmp_protection_salt is None):
+            raise ValueError(
+                "The `pwri` structure requires a password and PKIMessage to verify, if a different salt was used."
+            )
+        content_encryption_key = _extract_pwri_content_enc_key(
+            pki_message, password, recip_info, cmp_protection_salt=cmp_protection_salt
+        )
 
     elif recip_info.getName() == "ori":
         return process_other_recip_info(
-            other_info=recip_info["ori"], server_cert=cmp_protection_cert, recip_private_key=ee_key, for_pop=for_pop
+            other_info=recip_info["ori"],
+            server_cert=cmp_protection_cert,
+            recip_private_key=ee_key,  # type: ignore
+            for_pop=for_pop,
         )
 
     elif recip_info.getName() in ["ktri", "kari"]:
-        if cmp_protection_cert is None or ee_key is None:
-            raise ValueError("CMP protection certificate and private key are required for `ktri` or `kari`.")
+        if cmp_protection_cert is None and not for_pop:
+            raise ValueError("CMP protection certificate is required for `ktri` or `kari`.")
+
+        if ee_key is None:
+            raise ValueError("A private key are required for `ktri` or `kari`.")
+
+        if kari_cert is None and isinstance(ee_key, (X448PrivateKey, X25519PrivateKey)):
+            if not pki_message:
+                raise ValueError(
+                    "A PKIMessage is required to extract the `KARI` certificate"
+                    " for X448 or X25519 private keys or the `KARI` certificate must be provided."
+                )
+
+            kari_cert = _get_kari_cert(pki_message)
+
         content_encryption_key = _extract_ktri_and_kari_content_enc_key(
-            recip_info, cmp_protection_cert, ee_key, for_pop=for_pop
+            recip_info=recip_info,
+            cmp_protection_cert=cmp_protection_cert,
+            ee_key=ee_key,
+            for_pop=for_pop,
+            allow_rsa_null=allow_rsa_null,
+            kari_cert=kari_cert,
         )
 
     else:
@@ -500,18 +623,299 @@ def extract_content_encryption_key(
     return content_encryption_key
 
 
+def _decode_kem_recip_info(
+    other_info: Union[univ.Any, bytes, rfc9629.KEMRecipientInfo, rfc5652.OtherRecipientInfo],
+) -> rfc9629.KEMRecipientInfo:
+    """Decode the `KEMRecipientInfo` structure from the provided bytes.
+
+    :param other_info: The bytes representing the `KEMRecipientInfo` structure.
+    :return: The decoded `KEMRecipientInfo` object.
+    :raises BadAsn1Data: If there is unexpected data after decoding the `KEMRecipientInfo`.
+    """
+    if isinstance(other_info, bytes):
+        pass
+    elif isinstance(other_info, univ.Any):
+        other_info = other_info.asOctets()
+    elif isinstance(other_info, rfc9629.KEMRecipientInfo):
+        return other_info
+    elif isinstance(other_info, rfc5652.OtherRecipientInfo):
+        if other_info["oriType"] != rfc9629.id_ori_kem:
+            raise ValueError("The `oriType` must be `id_ori_kem`.")
+        return _decode_kem_recip_info(other_info["oriValue"])
+
+    kem_recip_info, rest = decoder.decode(other_info, rfc9629.KEMRecipientInfo())
+    if rest != b"":
+        raise BadAsn1Data("KEMRecipientInfo", remainder=rest)
+    return kem_recip_info
+
+
+@not_keyword
+def validate_kemri_env_data_for_ca(
+    env_data: rfc9480.EnvelopedData,
+    kem_cert: rfc9480.CMPCertificate,
+    recip_info_index: int = 0,
+    expected_size: int = 1,
+    for_pop: bool = False,
+    expected_raw_data: bool = False,
+    kem_key: Optional[KEMPrivateKey] = None,
+    hybrid_key: Optional[HybridKEMPrivateKey] = None,
+    hybrid_kem_cert: Optional[rfc9480.CMPCertificate] = None,
+) -> bytes:
+    """Validate and decrypt the `EnvelopedData` structure from a KEMRecipientInfo."""
+    if kem_key is None and hybrid_key is None:
+        raise ValueError("A private key is required for `KEMRecipientInfo` decryption.")
+
+    recip_info = _validate_recip_info_size(
+        env_data=env_data,
+        expected_size=expected_size,
+        recip_info_index=recip_info_index,
+        expected_type="ori",
+    )
+
+    enc_content_info: rfc5652.EncryptedContentInfo = env_data["encryptedContentInfo"]
+
+    kemri = _decode_kem_recip_info(
+        other_info=recip_info["ori"],
+    )
+
+    oid = kemri["kem"]["algorithm"]
+
+    key_oid = None
+    key_oid2 = None
+    if kem_key is not None:
+        key_oid = get_kem_oid_from_key(kem_key)
+
+    if hybrid_key is not None:
+        key_oid2 = get_kem_oid_from_key(hybrid_key)
+
+    if key_oid == oid:
+        ee_key = kem_key
+        ee_cert = kem_cert
+    elif key_oid2 == oid:
+        ee_key = hybrid_key
+        ee_cert = hybrid_kem_cert
+    else:
+        _oid_name = may_return_oid_to_name(oid)
+
+        if kem_key is not None:
+            key_oid = kem_key.name
+
+        if hybrid_key is not None:
+            key_oid2 = hybrid_key.name
+
+        raise ValueError(
+            f"The `KEMRecipientInfo` algorithm OID: {_oid_name} does not match the "
+            f"private key OID: {key_oid} or {key_oid2}"
+        )
+
+    if not isinstance(ee_key, (KEMPrivateKey, HybridKEMPrivateKey)):
+        raise ValueError("The `ee_key` must be an instance of `KEMPrivateKey` or `HybridKEMPrivateKey`.")
+
+    encrypted_key = process_kem_recip_info(
+        kem_recip_info=kemri,
+        server_cert=ee_cert,
+        private_key=ee_key,
+        for_pop=for_pop,
+    )
+
+    return validate_encrypted_content_info(
+        enc_content_info=enc_content_info,
+        content_encryption_key=encrypted_key,
+        expected_raw_data=expected_raw_data,
+    )
+
+
+def _validate_recip_info_size(
+    env_data: rfc9480.EnvelopedData,
+    expected_size: Strint = 1,
+    recip_info_index: Strint = 0,
+    expected_type: Optional[str] = None,
+) -> rfc5652.RecipientInfo:
+    """Validate the size of the `recipientInfos` structure.
+
+    :param env_data: The `EnvelopedData` structure to validate.
+    :param expected_size: The expected size of the `recipientInfos` structure.
+    :param recip_info_index: The index of the `RecipientInfo` to validate.
+    :return: The `RecipientInfo` at the specified index.
+    """
+    recip_infos: rfc5652.RecipientInfos = env_data["recipientInfos"]
+    if len(recip_infos) != int(expected_size):
+        raise ValueError(f"Invalid `recipientInfos` size. Expected: {expected_size} had: {len(recip_infos)}")
+
+    if not recip_infos or int(recip_info_index) >= len(recip_infos):
+        raise ValueError("Invalid `recipientInfos`: empty or index out of range.")
+    recip_info = recip_infos[int(recip_info_index)]
+    if expected_type is not None and recip_info.getName() != expected_type:
+        raise ValueError(f"The `RecipientInfo` must be of type `{expected_type}`but got: {recip_info.getName()}.")
+    return recip_info
+
+
+@keyword("Validate KEMRI EnvelopedData")
+def validate_kemri_enveloped_data(  # noqa D417 undocumented-param
+    env_data: rfc9480.EnvelopedData,
+    ee_key: KEMPrivateKey,
+    ee_cert: Optional[rfc9480.CMPCertificate] = None,
+    expected_size: Strint = 1,
+    recip_info_index: Strint = 0,
+    for_pop: bool = False,
+    expected_raw_data: bool = False,
+    is_sun_hybrid: bool = False,
+) -> bytes:
+    """Validate and decrypt the content inside a `EnvelopedData` structure for a `KEMRecipientInfo`.
+
+    Arguments:
+    ---------
+        - `env_data`: The `EnvelopedData` structure to validate.
+        - `ee_key`: The private key of the end-entity used for KEMRI decryption.
+        - `ee_cert`: The EE certificate used for validating the `rid` field.
+        - `expected_size`: The expected size of the `recipientInfos` structure.
+        - `recip_info_index`: The index of the `RecipientInfo` to validate.
+        - `for_pop`: Whether the extraction is for proof-of-possession (POP) purposes (
+        skip rid validation).
+        - `expected_raw_data`: Whether to expect raw data in the `EncryptedContentInfo`.
+        - `is_sun_hybrid`: Whether the KEMRecipientInfo is from a Sun hybrid KEM request.
+
+    Returns:
+    -------
+        - The decrypted content.
+
+    Raises:
+    ------
+        - `ValueError`: If the `recipientInfos` size does not match the expected size.
+        - `ValueError`: If the `RecipientInfo` type is not `ori`.
+        - `ValueError`: If the `KEMRecipientInfo` algorithm OID does not match the private key OID.
+        - `ValueError`: If the `encryptedContentInfo` structure is invalid.
+        - `ValueError`: If the `KEMRecipientInfo` structure has a remainder.
+        - `ValueError`: If the `KEMRecipientInfo` does not contain the expected fields.
+        - `InvalidUnwrap`: If the decryption of the content encryption key fails.
+
+    Examples:
+    --------
+    | ${data}= | Validate KEMRI EnvelopedData | ${env_data} | ee_key=${ee_key} |
+    | ${data}= | Validate KEMRI EnvelopedData | ${env_data} | ee_key=${ee_key} | for_pop=True |
+
+    """
+    recip_info = _validate_recip_info_size(
+        env_data=env_data,
+        expected_size=expected_size,
+        recip_info_index=recip_info_index,
+        expected_type="ori",
+    )
+
+    kemri = _decode_kem_recip_info(
+        other_info=recip_info["ori"],
+    )
+
+    enc_content_info: rfc5652.EncryptedContentInfo = env_data["encryptedContentInfo"]
+
+    encrypted_key = process_kem_recip_info(
+        kem_recip_info=kemri,
+        server_cert=ee_cert,
+        private_key=ee_key,
+        for_pop=for_pop,
+        is_sun_hybrid=is_sun_hybrid,
+    )
+
+    return validate_encrypted_content_info(
+        enc_content_info=enc_content_info,
+        content_encryption_key=encrypted_key,
+        expected_raw_data=expected_raw_data,
+    )
+
+
+@keyword("Validate PWRI EnvelopedData")
+def validate_pwri_enveloped_data(  # noqa D417 undocumented-param
+    env_data: rfc9480.EnvelopedData,
+    password: Union[str, bytes],
+    pki_message: Optional[PKIMessageTMP] = None,
+    cmp_protection_salt: Optional[bytes] = None,
+    expected_size: Strint = 1,
+    recip_info_index: Strint = 0,
+    expected_raw_data: bool = False,
+    skip_verify: bool = False,
+) -> bytes:
+    """Validate the `EnvelopedData` structure and decrypt the content.
+
+    Arguments:
+    ---------
+        - `env_data`: The `EnvelopedData` structure to validate and decrypt.
+        - `password`: The password used for decryption.
+        - `pki_message`: The PKIMessage containing the `EnvelopedData` structure.
+        - `cmp_protection_salt`: The salt used for password-based key derivation. Defaults to `None`.
+        - `expected_size`: The expected size of the entries inside the `RecipientInfos` structure. Defaults to `1`.
+        - `recip_info_index`: The index of the private key to extract. Defaults to `0`.
+        - `expected_raw_data`: Return the raw DER-encoded bytes, which were decrypted. Defaults to `False`.
+        - `skip_verify`: Whether to skip the verification of the PKIMessage protection. Defaults to `False`.
+
+    Returns:
+    -------
+        - The decrypted raw DER-encoded bytes.
+
+    Raises:
+    ------
+        - `ValueError`: If validation fails due to incorrect `RecipientInfo`, version mismatch, or decryption issues.
+        - `ValueError`: If the `recipientInfos` size is not as expected.
+        - `ValueError`: If the `RecipientInfo` type is not 'pwri'.
+        - `ValueError`: If the `cmp_protection_salt` is not provided and the `pki_message` is not provided.
+        - `ValueError`: If the pki_message is not protected with the same password.
+
+    Examples:
+    --------
+    | ${decrypted_data}= | Validate PWRI Enveloped Data | ${env_data} | password=${password} \
+    | pki_message=${pki_message} |
+
+    """
+    if cmp_protection_salt is None and pki_message is None:
+        raise ValueError(
+            "Either the `pki_message` or `cmp_protection_salt` must be provided for `pwri` recipient decryption,"
+            "so that the `salt` can be compared."
+        )
+    recip_info = _validate_recip_info_size(
+        env_data=env_data,
+        expected_size=expected_size,
+        recip_info_index=recip_info_index,
+        expected_type="pwri",
+    )
+    enc_content_info: rfc5652.EncryptedContentInfo = env_data["encryptedContentInfo"]
+
+    content_encryption_key = _extract_pwri_content_enc_key(
+        pki_message=pki_message, password=password, recip_info=recip_info, cmp_protection_salt=cmp_protection_salt
+    )
+    decrypted_data = validate_encrypted_content_info(
+        enc_content_info=enc_content_info,
+        content_encryption_key=content_encryption_key,
+        expected_raw_data=expected_raw_data,
+    )
+
+    if skip_verify:
+        return decrypted_data
+
+    if pki_message is None:
+        raise ValueError("The `pki_message` must be provided to verify the protection of the message.")
+
+    # MUST use the same shared secret.
+    protectionutils.verify_pkimessage_protection(
+        pki_message=pki_message,
+        password=password,
+    )
+    return decrypted_data
+
+
 @not_keyword
 def validate_enveloped_data(
     env_data: rfc9480.EnvelopedData,
-    pki_message: Optional[rfc9480.PKIMessage] = None,
-    password: Optional[str] = None,
+    pki_message: Optional[PKIMessageTMP] = None,
+    password: Optional[Union[str, bytes]] = None,
     cmp_protection_cert: Optional[rfc9480.CMPCertificate] = None,
+    kari_cert: Optional[rfc9480.CMPCertificate] = None,
     expected_type: Optional[str] = None,
     recip_info_index: int = 0,
     expected_size: int = 1,
     ee_key: Optional[EnvDataPrivateKey] = None,
     expected_raw_data: bool = False,
-    for_enc_rand: bool = False,
+    for_pop: bool = False,
+    allow_rsa_null: bool = False,
+    cmp_protection_salt: Optional[bytes] = None,
 ) -> bytes:
     """Validate and decrypt the `EnvelopedData` structure from a PKIMessage and extract the private key.
 
@@ -523,28 +927,66 @@ def validate_enveloped_data(
     It is used to extract the protection salt in the case of `pwri`, or to validate the `senderKID` otherwise.
     :param password: Optional password for password-based recipient decryption.
     :param cmp_protection_cert: Optional CMP protection certificate for decryption of the content-encryption-key.
+    :param kari_cert: Optional certificate for `KARI` recipient decryption.
     :param expected_type: Expected `RecipientInfo` type (`ktri`, `kari`, or `pwri`).
     :param recip_info_index: The index of the private key to extract.
     :param expected_size: The expected size of the entries inside the `RecipientInfos` structure.
     :param ee_key: Optional private key of the end-entity used for `kari` or `ktri`.
     :param expected_raw_data: Return the raw DER-encoded bytes, which were decrypted.
-    :param for_enc_rand: Whether the decryption is for proof-of-possession (POP) purposes.
+    :param for_pop: Whether the decryption is for proof-of-possession (POP) purposes.
     (skip the validation for the `rid` field)
+    :param allow_rsa_null: Whether to allow RSA `NULL` as `parameters`. Defaults to `False`.
+    :param cmp_protection_salt: Optional protection salt for `pwri` recipient decryption.
     :return: The decrypted raw DER-encoded bytes.
     :raises ValueError: If validation fails due to incorrect `RecipientInfo`, version mismatch, or decryption issues.
     """
-    recip_infos: rfc5652.RecipientInfos = env_data["recipientInfos"]
-    recip_info: rfc5652.RecipientInfo = recip_infos[recip_info_index]
-    enc_content_info: rfc5652.EncryptedContentInfo = env_data["encryptedContentInfo"]
-
     if expected_type is not None:
-        if expected_type.strip() != recip_info.getName():
-            raise ValueError(
-                f"Expected to get the RecipientInfo type: '{expected_type.strip()}' but got: '{recip_info.getName()}'"
+        if expected_type == "pwri":
+            if password is None:
+                raise ValueError("A password must be provided for `pwri` recipient decryption.")
+
+            return validate_pwri_enveloped_data(
+                env_data=env_data,
+                password=password,
+                pki_message=pki_message,
+                cmp_protection_salt=cmp_protection_salt,
+                expected_size=expected_size,
+                recip_info_index=recip_info_index,
+                expected_raw_data=expected_raw_data,
+            )
+        if expected_type == "kemri":
+            if not isinstance(ee_key, KEMPrivateKey):
+                raise ValueError("For validation of the KEMRecipientInfo must a KEMPrivateKey be provided.")
+
+            return validate_kemri_enveloped_data(
+                env_data=env_data,
+                ee_key=ee_key,
+                ee_cert=cmp_protection_cert,
+                expected_size=expected_size,
+                recip_info_index=recip_info_index,
+                for_pop=for_pop,
+                expected_raw_data=expected_raw_data,
             )
 
+    enc_content_info: rfc5652.EncryptedContentInfo = env_data["encryptedContentInfo"]
+    _ = _validate_recip_info_size(
+        env_data=env_data,
+        expected_size=expected_size,
+        recip_info_index=recip_info_index,
+        expected_type=expected_type,
+    )
+
     content_encryption_key = extract_content_encryption_key(
-        env_data, pki_message, password, ee_key, cmp_protection_cert, expected_size=expected_size, for_pop=for_enc_rand
+        env_data,
+        pki_message,
+        password,
+        ee_key,
+        cmp_protection_cert,
+        expected_size=expected_size,
+        for_pop=for_pop,
+        allow_rsa_null=allow_rsa_null,
+        kari_cert=kari_cert,
+        cmp_protection_salt=cmp_protection_salt,
     )
 
     decrypted_data = validate_encrypted_content_info(
@@ -561,26 +1003,20 @@ def validate_encrypted_content_info(
     enc_content_info: rfc5652.EncryptedContentInfo,
     content_encryption_key: bytes,
     expected_raw_data: bool = False,
-    for_pop: bool = False,
 ) -> bytes:
     """Validate and decrypt the `EncryptedContentInfo` structure.
 
     :param enc_content_info: The `EncryptedContentInfo` structure to validate and decrypt.
     :param content_encryption_key: The key used for AES-CBC decryption.
     :param expected_raw_data: Whether the `SignedData` or raw bytes were expected.
-    :param for_pop: Whether the decryption is for proof-of-possession (POP) purposes.
     :return: The decrypted and validated private key from the `SignedData` structure.
     :raises ValueError: If validation fails due to incorrect content type, encryption algorithm, or key size mismatch.
     :raises BadAlgError: If the encryption algorithm is not AES-CBC.
     :raises BadAsn1Data: If the AES-CBC IV is not set in the `parameters` field.
     """
     if expected_raw_data:
-        # TODO verify OID (Is this the correct OID?)
-        if enc_content_info["contentType"] != rfc5652.id_encryptedData:
-            raise ValueError("The `contentType` MUST be id_encryptedData!")
-
-    elif for_pop and enc_content_info["contentType"] != rfc4211.id_ct_encKeyWithID:
-        raise ValueError("The `contentType` MUST be id_ct_encKeyWithID!")
+        if enc_content_info["contentType"] != rfc5652.id_data:
+            raise ValueError("The `contentType` MUST be id_data")
 
     elif enc_content_info["contentType"] != rfc5652.id_signedData:
         raise ValueError("The `contentType` MUST be id-signedData!")
@@ -595,7 +1031,7 @@ def validate_encrypted_content_info(
         iv, rest = decoder.decode(
             enc_content_info["contentEncryptionAlgorithm"]["parameters"].asOctets(), rfc8018.AES_IV()
         )
-    except pyasn1.error.PyAsn1Error as err:
+    except pyasn1.error.PyAsn1Error as err:  # type: ignore
         raise BadAsn1Data("The decoding of 'AES_IV' structure failed!", overwrite=True) from err
 
     if rest:
@@ -644,8 +1080,37 @@ def get_certificates_from_signed_data(certificates: rfc5652.CertificateSet) -> L
     cert_chain1 = certutils.build_chain_from_list(certs[0], certs[1:])
     cert_chain2 = certutils.build_chain_from_list(certs[-1], certs[:-1])
     if len(cert_chain1) > len(cert_chain2):
-        return cert_chain1
-    return cert_chain2
+        out_chain = cert_chain1
+    else:
+        out_chain = cert_chain2
+
+    if len(out_chain) != len(certs):
+        logging.info("The certificate chain names:\n %s", utils.get_cert_chain_names(out_chain))
+        logging.info("The KGA certificates names:\n %s", utils.get_cert_chain_names(certs))
+
+        raise ValueError(
+            "The KGA certificates contains additional certificates that are not in the chain! "
+            f"Chain length: {len(out_chain)}. Certificates length: {len(certs)}"
+        )
+
+    return out_chain
+
+
+def _get_digest_hash_alg_from_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> str:
+    """Get the hash algorithm from the `AlgorithmIdentifier` structure."""
+    oid = alg_id["algorithm"]
+    if oid == rfc9481.id_Ed25519:
+        return "sha512"
+    if oid == rfc9481.id_Ed448:
+        return "shake256"
+    if oid in COMPOSITE_SIG_SIGNED_DATA_OID_HASH:
+        return COMPOSITE_SIG_SIGNED_DATA_OID_HASH[oid]
+    if oid in COMPOSITE_SIG04_OID_2_NAME:
+        return "sha512"
+    hash_alg = get_hash_from_oid(oid, only_hash=True)
+    if hash_alg is None:
+        raise ValueError(f"Unsupported hash algorithm: {oid}, please check `_get_digest_hash_alg_from_alg_id`")
+    return hash_alg
 
 
 def _validate_signature_and_algorithm_in_signed_data(
@@ -662,7 +1127,8 @@ def _validate_signature_and_algorithm_in_signed_data(
     signature = data["signature"]
     digest_econtent = data["digest_eContent"]
 
-    hash_alg = get_hash_from_oid(data["signatureAlgorithm"]["algorithm"]).split("-")[1]
+    hash_alg = _get_digest_hash_alg_from_alg_id(data["signatureAlgorithm"])
+
     digest = compute_hash(hash_alg, asym_key_package_bytes)
     if digest_econtent != digest:
         logging.info("Digest inside the SignerInfo structure: %s", digest_econtent.hex())
@@ -679,8 +1145,8 @@ def _validate_signature_and_algorithm_in_signed_data(
 @not_keyword
 def validate_signed_data_structure(
     signed_data: rfc5652.SignedData,
-    expected_size: int = 1,
-    key_index: int = 0,
+    expected_size: Strint = 1,
+    key_index: Strint = 0,
     trustanchors: str = "data/trustanchors",
 ) -> PrivateKey:
     """Validate the structure and content of a `SignedData` object and extract the private key.
@@ -696,10 +1162,10 @@ def validate_signed_data_structure(
         raise ValueError("The version of the `SignedData` structure MUST be 3!")
 
     dig_alg_ids: rfc5652.DigestAlgorithmIdentifiers = signed_data["digestAlgorithms"]
-    if len(dig_alg_ids) != expected_size:
+    if len(dig_alg_ids) != int(expected_size):
         raise ValueError("The `digestAlgorithms` field of the `SignedData` structure MUST be a sequence of size 1!")
 
-    dig_alg_id: rfc5652.DigestAlgorithmIdentifier = dig_alg_ids[key_index]
+    dig_alg_id: rfc5652.DigestAlgorithmIdentifier = dig_alg_ids[int(key_index)]
     encap_content_info: rfc5652.EncapsulatedContentInfo = signed_data["encapContentInfo"]
 
     if encap_content_info["eContentType"] != rfc5958.id_ct_KP_aKeyPackage:
@@ -749,7 +1215,7 @@ def _validate_kga_certificate(
     certs: List[rfc9480.CMPCertificate],
     asym_key_package_bytes: bytes,
     signature: bytes,
-    hash_alg: str,
+    hash_alg: Optional[str],
     trustanchors: str,
 ):
     """Validate the Key Generation Authority (KGA) certificate chain.
@@ -757,10 +1223,11 @@ def _validate_kga_certificate(
     :param certs: A list of certificates from the `SignedData` structure.
     :param asym_key_package_bytes: The bytes of the `AsymmetricKeyPackage` used for signature validation.
     :param signature: The signature applied to the `SignedData` content.
-    :param hash_alg: The hash algorithm used to compute the signature.
+    :param hash_alg: The hash algorithm used to compute the signature, if necessary.
     :param trustanchors: The path to the directory where the trust anchors are saved.
     :raises ValueError: If the signing certificate is not found, not trusted, or not in the expected position.
     """
+    # TODO: ask Alex if self-signed certificates are acceptable for the Test-Suite.
     if len(certs) == 0:
         logging.info("Used a self-signed certificate to sign the `SignedData` content")
     else:
@@ -787,8 +1254,8 @@ def check_signer_infos(
     signer_infos: rfc5652.SignerInfos,
     dig_alg_id_enc_content: rfc5652.DigestAlgorithmIdentifier,
     kga_certificate: rfc9480.CMPCertificate,
-    expected_digests: int = 1,
-    key_index: int = 0,
+    expected_digests: Strint = 1,
+    key_index: Strint = 0,
 ) -> dict:
     """Validate the `SignerInfos` structure of the `SignedData` and extract the signature and message digest.
 
@@ -804,10 +1271,10 @@ def check_signer_infos(
     :raises ValueError: If validation fails due to incorrect signer information,
                         signature absence, or algorithm mismatch.
     """
-    if len(signer_infos) != expected_digests:
+    if len(signer_infos) != int(expected_digests):
         raise ValueError("The `SignerInfos` structure inside the `SignedData` must be a sequence of size 1!")
 
-    signer_info: rfc5652.SignerInfo = signer_infos[key_index]
+    signer_info: rfc5652.SignerInfo = signer_infos[int(key_index)]
     if int(signer_info["version"]) != 3:
         raise ValueError("The version of the `SignerInfo` structure must be 3!")
 
@@ -819,7 +1286,7 @@ def check_signer_infos(
         )
 
     sign_attr: rfc5652.SignedAttributes = signer_info["signedAttrs"]
-    message_digest_value = validate_signed_attributes(sign_attr, expected_digests=expected_digests)
+    message_digest_value = validate_signed_attributes(sign_attr, expected_digests=int(expected_digests))
 
     sig_alg_id = signer_info["signatureAlgorithm"]
     digest_oid = signer_info["digestAlgorithm"]
@@ -862,6 +1329,10 @@ def validate_signature_and_digest_alg(
     other = encoder.encode(dig_alg_id_enc_content)
     this = encoder.encode(digest_alg_id)
 
+    # as of RFC8419 section-3.1
+    # Ed25519, the digestAlgorithm MUST be id-sha512
+    # Ed448, the digestAlgorithm MUST be id-shake256 because CMP output length must be 64.
+
     if other != this:
         raise ValueError(
             "The `digestAlgorithm` inside the `SignerInfo` structure must be the same as in "
@@ -873,8 +1344,21 @@ def validate_signature_and_digest_alg(
 
     sig_hash_oid = sig_alg_id["algorithm"]
 
-    hash_name_sig = get_hash_from_oid(sig_hash_oid).split("-")[1]
+    # TODO add unit test for Composite-Sig
+    if sig_hash_oid in COMPOSITE_SIG_SIGNED_DATA_OID_HASH:
+        # The composite-sig-cms03 daft says should be eq to hash in section 8.
+        # But LwCMP is strict, so this follows the style to only allow the expected hash.
+        hash_name_sig = COMPOSITE_SIG_SIGNED_DATA_OID_HASH[sig_hash_oid]
+    else:
+        hash_name_sig = get_hash_from_oid(sig_hash_oid, only_hash=True)
+
     hash_name_dig = get_hash_from_oid(digest_alg_id["algorithm"])
+
+    _name = MSG_SIG_ALG[sig_hash_oid]
+    if _name == "ed25519":
+        hash_name_sig = "sha512"
+    elif _name == "ed448":
+        hash_name_sig = "shake256"
 
     if hash_name_sig != hash_name_dig:
         raise ValueError(
@@ -915,6 +1399,9 @@ def validate_signed_attributes(sign_attr: rfc5652.SignedAttributes, expected_dig
             val = attr["attrValues"][index]
             message_digest_value, _ = decoder.decode(val, rfc5652.MessageDigest())
 
+    if message_digest_value is None:
+        raise ValueError("The `id-messageDigest` attribute was not found in the `SignedAttributes` structure!")
+
     _check_required_attributes(found_id_content_type, message_digest_value, sign_attr)
 
     return message_digest_value
@@ -947,7 +1434,7 @@ def _check_required_attributes(
 
 @not_keyword
 def validate_asymmetric_key_package(
-    asym_key_package: rfc5958.AsymmetricKeyPackage, expected_size: int = 1, key_index: int = 0
+    asym_key_package: rfc5958.AsymmetricKeyPackage, expected_size: Strint = 1, key_index: Strint = 0
 ) -> PrivateKey:
     """Validate the structure of an `AsymmetricKeyPackage` and extract the private key.
 
@@ -959,98 +1446,18 @@ def validate_asymmetric_key_package(
     :raises ValueError: If the package contains more than one key, if the version is incorrect,
                         or if the private and public keys do not match.
     """
-    if len(asym_key_package) != expected_size:
+    if len(asym_key_package) != int(expected_size):
         raise ValueError(
             f"The `AsymmetricKeyPackage` structure must be a sequence of {expected_size}, "
             f"but got: {len(asym_key_package)}!"
         )
 
-    one_asym_key: rfc5958.OneAsymmetricKey = asym_key_package[key_index]
+    one_asym_key: rfc5958.OneAsymmetricKey = asym_key_package[int(key_index)]
     if int(one_asym_key["version"]) != 1:
         raise ValueError("The version of the `OneAsymmetricKey` structure must be 1 (indicating v2)!")
 
-    private_key_alg_id = one_asym_key["privateKeyAlgorithm"]
-    private_key = one_asym_key["privateKey"]
-    pub_key = one_asym_key["publicKey"]
-    private_key = check_keys_match_inside_one_asym_key(private_key_alg_id, private_key, pub_key, one_asym_key)
+    private_key = CombinedKeyFactory.load_key_from_one_asym_key(one_asym_key, must_be_version_2=True)
     return private_key
-
-
-@not_keyword
-def check_keys_match_inside_one_asym_key(
-    private_key_alg_id: rfc5958.PrivateKeyAlgorithmIdentifier,
-    private_key: rfc5958.PrivateKey,
-    public_key_extracted: rfc5958.PublicKey,
-    one_asym_key: rfc5958.OneAsymmetricKey,
-) -> PrivateKey:
-    """Validate that the provided public and private keys match.
-
-    Compares the given public and private keys extracted from
-    a single Asymmetric Key Package. It deserializes the keys and returns the private key
-    if the keys match.
-
-    :param private_key_alg_id: The identifier for the private key's algorithm.
-    :param private_key: The private key to be checked.
-    :param public_key_extracted: The public key to be checked.
-    :param one_asym_key: The `OneAsymmetricKey` structure containing the key.
-    :return: The deserialized private key if the keys match.
-    :raises ValueError: If the keys do not match or the deserialization fails.
-    """
-    # TODO fix for new-keys.
-
-    oid = private_key_alg_id["algorithm"]
-    private_key_bytes = private_key.asOctets()
-    public_key_bytes = public_key_extracted.asOctets()
-
-    private_len = len(private_key_bytes)
-    pub_len = len(public_key_bytes)
-
-    # the `cryptography` library does not support v2.
-    tmp = rfc4211.PrivateKeyInfo()
-    tmp["privateKeyAlgorithm"] = private_key_alg_id
-    tmp["privateKey"] = private_key
-    tmp["version"] = 0
-    private_info = encoder.encode(tmp)
-
-    logging.info("The Private Key size is: %d bytes", private_len)
-    logging.info("The Public Key size is: %d bytes", pub_len)
-    if oid == rfc9481.id_Ed25519:
-        # is saved as decoded OctetString, is done by the `cryprography` library.
-        # maybe verify if this is correct.
-        private_key = serialization.load_der_private_key(private_info, password=None)
-        # key_bytes = decoder.decode(private_key_bytes, univ.OctetString())[0].asOctets()
-        # private_key = ed25519.Ed25519PrivateKey.from_private_bytes(key_bytes)
-        public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
-
-    elif oid in [rfc9481.rsaEncryption, id_rsa_kem_spki]:
-        # As per section 2 in RFC 5958: "Earlier versions of this
-        # specification [RFC5208] did not specify a particular encoding rule
-        # set, but generators SHOULD use DER [X.690] and receivers MUST support
-        # BER [X.690], which also includes DER [X.690]".
-        private_key = serialization.load_der_private_key(private_info, password=None)
-        public_key = serialization.load_der_public_key(public_key_bytes)
-
-    elif oid == rfc6664.id_ecPublicKey:
-        private_key = serialization.load_der_private_key(private_info, password=None)
-        public_key = ec.EllipticCurvePublicKey.from_encoded_point(data=public_key_bytes, curve=private_key.curve)
-
-    else:
-        from pq_logic.combined_factory import CombinedKeyFactory
-
-        try:
-            private_key = CombinedKeyFactory.load_key_from_one_asym_key(one_asym_key)
-            public_key = private_key.public_key()
-
-        except ValueError as err:
-            raise ValueError(
-                f"The server sent an invalid or unsupported key OID: "
-                f"{may_return_oid_to_name(oid)} hex data: {private_key.asOctets().hex()}"
-            ) from err
-
-    if private_key.public_key() != public_key:
-        raise ValueError("The public key and the private key are not a pair!")
-
-    return private_key  # type: ignore
 
 
 @not_keyword
@@ -1153,15 +1560,32 @@ def _compute_password_based_key_management_technique(
     :raises ValueError: If key derivation or decryption fails.
     """
     derive_key = cryptoutils.compute_pbkdf2_from_parameter(parameters, key=password)
+    logging.info("Derived `PWRI` key: %s", derive_key.hex())
     return keywrap.aes_key_unwrap(wrapping_key=derive_key, wrapped_key=encrypted_key)
+
+
+def _ensure_can_validate_rid(for_pop: bool, cert: Optional[rfc9480.CMPCertificate]) -> rfc9480.CMPCertificate:
+    """Ensure that the certificate can be used for validating the recipient info.
+
+    :param for_pop: A boolean indicating whether the rid is validated for proof-of-possession.
+    :param cert: The CMP certificate to validate.
+    :return: The validated CMP certificate.
+    :raises ValueError: If the certificate cannot be used for validation.
+    """
+    if not for_pop and cert is None:
+        raise ValueError(
+            "The CMP protection certificate is required to validate the `KeyAgreeRecipientInfo` structure!"
+        )
+    return cert  # type: ignore
 
 
 @not_keyword
 def validate_key_agree_recipient_info(
     kari_structure: rfc5652.KeyAgreeRecipientInfo,
-    cmp_cert: rfc9480.CMPCertificate,
+    cmp_cert: Optional[rfc9480.CMPCertificate],
     expected_size: int = 1,
     key_index: int = 0,
+    for_pop: bool = False,
 ) -> dict:
     """Validate a `KeyAgreeRecipientInfo` structure and extract key agreement parameters.
 
@@ -1169,10 +1593,16 @@ def validate_key_agree_recipient_info(
     :param cmp_cert: The CMP protection certificate used for key agreement and validation.
     :param expected_size: The expected number of private keys to be present.
     :param key_index: The index of the private key to extract.
+    :param for_pop: A boolean indicating whether the structure is used for proof-of-possession. Defaults to `False`.
     :return: A dictionary containing the `encrypted_key`, key encryption algorithm, and `ukm` or None if not set.
     :raises ValueError: If any required field is missing, invalid, or if the structure does not comply
     with expected values.
     """
+    if not for_pop and cmp_cert is None:
+        raise ValueError(
+            "The CMP protection certificate is required, to validate the `KeyAgreeRecipientInfo` structure!"
+        )
+
     if kari_structure["version"].isValue:
         if int(kari_structure["version"]) != 3:
             raise ValueError("The `version` field of the `KeyAgreeRecipientInfo` structure must be 3!")
@@ -1182,7 +1612,9 @@ def validate_key_agree_recipient_info(
     if not kari_structure["originator"].isValue:
         raise ValueError("The `originator` field of the `KeyAgreeRecipientInfo` structure was absent!")
 
-    validate_originator_in_kari(kari_structure, cmp_cert)
+    if not for_pop:
+        cert = _ensure_can_validate_rid(for_pop, cmp_cert)
+        validate_originator_in_kari(kari_structure, cert)
 
     if not kari_structure["keyEncryptionAlgorithm"].isValue:
         raise ValueError("The `keyEncryptionAlgorithm` field of the `KeyAgreeRecipientInfo` structure was absent!")
@@ -1206,7 +1638,8 @@ def validate_key_agree_recipient_info(
         raise ValueError("The `recipientEncryptedKeys` field must contain exactly one `RecipientEncryptedKey`.")
 
     recip_enc_keys: rfc5652.RecipientEncryptedKeys = kari_structure["recipientEncryptedKeys"]
-    encrypted_key = check_recip_enc_key(recip_enc_keys[key_index], cmp_cert)
+
+    encrypted_key = check_recip_enc_key(recip_enc_keys[key_index], cmp_cert, for_pop=for_pop)
 
     return {"encrypted_key": encrypted_key, "key_enc_alg": key_enc_alg, "ukm": ukm}
 
@@ -1240,37 +1673,52 @@ def compute_key_agreement_mechanism(
 
 
 @not_keyword
-def check_recip_enc_key(recip_enc_key: rfc5652.RecipientEncryptedKey, cmp_cert: rfc9480.CMPCertificate) -> bytes:
+def check_recip_enc_key(
+    recip_enc_key: rfc5652.RecipientEncryptedKey,
+    cmp_cert: Optional[rfc9480.CMPCertificate],
+    for_pop: bool = False,
+) -> bytes:
     """Validate and extract the encrypted key from a `RecipientEncryptedKey` structure.
 
     :param recip_enc_key: The `RecipientEncryptedKey` structure to validate.
     :param cmp_cert: The CMP protection certificate to validate against.
+    :param for_pop: A boolean indicating whether the validation is for proof-of-possession. Defaults to `False`.
     :return: The extracted encrypted key as bytes.
     :raises ValueError: If the recipient identifier does not match the CMP certificate's subjectKeyIdentifier
                         or issuer and serial number.
     """
-    rid: rfc5652.KeyAgreeRecipientIdentifier = recip_enc_key["rid"]
-    ski = certextractutils.get_field_from_certificate(cmp_cert, extension="ski")
-    # If the CMP protection certificate has a subjectKeyIdentifier (ski) it must be used.
-    if ski is not None:
-        if rid.getName() != "subjectKeyIdentifier":
-            raise ValueError(
-                "The CMP protection certificate contains a subjectKeyIdentifier, "
-                f"so the recipient identifier must be of type `subjectKeyIdentifier`, but was: {rid.getName()}"
-            )
+    if not for_pop:
+        rid: rfc5652.KeyAgreeRecipientIdentifier = recip_enc_key["rid"]
+        ski = certextractutils.get_field_from_certificate(cmp_cert, extension="ski")  # type: ignore
+        ski: Optional[bytes]
+        # If the CMP protection certificate has a subjectKeyIdentifier (ski) it must be used.
+        if ski is not None:
+            if rid.getName() != "rKeyId":
+                raise ValueError(
+                    "The CMP protection certificate contains a subjectKeyIdentifier, "
+                    f"so the recipient identifier must be of type `subjectKeyIdentifier`, but was: {rid.getName()}"
+                )
 
-        if rid["subjectKeyIdentifier"].asOctets() != ski:
-            raise ValueError(
-                "The subjectKeyIdentifier in the CMP protection certificate does not match "
-                "the recipient identifier in the `RecipientEncryptedKey`."
-            )
-    else:
-        if rid.getName() != "issuerAndSerialNumber":
-            raise ValueError(
-                "If the CMP protection certificate does not contain a subjectKeyIdentifier, "
-                "the `issuerAndSerialNumber` choice must be used."
-            )
-        validate_issuer_and_serial_number_field(rid["issuerAndSerialNumber"], cmp_cert)
+            r_key_id = rid["rKeyId"]
+            if r_key_id["subjectKeyIdentifier"].asOctets() != ski:
+                raise ValueError(
+                    "The subjectKeyIdentifier in the CMP protection certificate does not match "
+                    "the recipient identifier in the `RecipientEncryptedKey`."
+                )
+        else:
+            if cmp_cert is None:
+                raise ValueError(
+                    "The CMP protection certificate must be provided, to validate "
+                    "the `KeyAgreeRecipientInfo` structure!"
+                )
+
+            if rid.getName() != "issuerAndSerialNumber":
+                raise ValueError(
+                    "If the CMP protection certificate does not contain a subjectKeyIdentifier, "
+                    "the `issuerAndSerialNumber` choice must be used."
+                )
+
+            validate_issuer_and_serial_number_field(rid["issuerAndSerialNumber"], cmp_cert)
 
     enc_key = recip_enc_key["encryptedKey"].asOctets()
     return enc_key
@@ -1290,7 +1738,8 @@ def validate_originator_in_kari(kari_structure: rfc5652.KeyAgreeRecipientInfo, c
     """
     originator = kari_structure["originator"]
 
-    cmp_cert_ski = certextractutils.get_field_from_certificate(cmp_cert, extension="ski")
+    cmp_cert_ski = certextractutils.get_field_from_certificate(cmp_cert, extension="ski")  # type: ignore
+    cmp_cert_ski: Optional[bytes]
 
     if cmp_cert_ski is not None:
         if originator.getName() != "subjectKeyIdentifier":
@@ -1299,6 +1748,9 @@ def validate_originator_in_kari(kari_structure: rfc5652.KeyAgreeRecipientInfo, c
                 f"so the `originator` must be of type `subjectKeyIdentifier`, but was: {originator.getName()}"
             )
         if cmp_cert_ski != originator["subjectKeyIdentifier"].asOctets():
+            logging.warning(
+                "Expected SKI: %s. Got: %s", cmp_cert_ski.hex(), originator["subjectKeyIdentifier"].asOctets().hex()
+            )
             raise ValueError(
                 "The `subjectKeyIdentifier` in the CMP protection certificate does not match "
                 "the `originator` field in the `KeyAgreeRecipientInfo` structure."
@@ -1321,15 +1773,18 @@ def validate_issuer_and_serial_number_field(structure: rfc5652.IssuerAndSerialNu
     :raises ValueError: If the `issuer` or `serialNumber` fields do not match the CMP certificate.
     """
     if not compareutils.compare_pyasn1_names(structure["issuer"], cert["tbsCertificate"]["issuer"], "without_tag"):
-        logging.info("IssuerAndSerialNumber: %s", structure.prettyPrint())
-        logging.info("CMP protection certificate: %s", cert.prettyPrint())
+        cert_name = utils.get_openssl_name_notation(cert["tbsCertificate"]["issuer"])
+        structure_name = utils.get_openssl_name_notation(structure["issuer"])
+        logging.info("IssuerAndSerialNumber: %s", structure_name)
+        logging.info("CMP protection certificate: %s", cert_name)
         raise ValueError(
             "The issuer inside the `IssuerAndSerialNumber` structure was different from the provided certificate!"
         )
 
     if int(structure["serialNumber"]) != int(cert["tbsCertificate"]["serialNumber"]):
-        logging.info("IssuerAndSerialNumber: %s", structure.prettyPrint())
-        logging.info("CMP protection certificate: %s", cert.prettyPrint())
+        logging.info("IssuerAndSerialNumber: %s", int(structure["serialNumber"]))
+        logging.info("CMP protection certificate: %s", int(cert["tbsCertificate"]["serialNumber"]))
+
         raise ValueError(
             "The serialNumber inside the `IssuerAndSerialNumber` structure was different from the provided certificate!"
         )
@@ -1338,7 +1793,7 @@ def validate_issuer_and_serial_number_field(structure: rfc5652.IssuerAndSerialNu
 @not_keyword
 def validate_key_trans_recipient_info(
     ktri: rfc5652.KeyTransRecipientInfo,
-    cmp_cert,
+    cmp_cert: Optional[rfc9480.CMPCertificate],
     for_pop: bool = False,
 ) -> dict:
     """Validate a `KeyTransRecipientInfo` structure.
@@ -1356,6 +1811,10 @@ def validate_key_trans_recipient_info(
         raise ValueError("The `version` field of the `KeyTransRecipientInfo` structure MUST be 2.")
 
     if not for_pop:
+        if cmp_cert is None:
+            raise ValueError(
+                "The CMP protection certificate must be provided, to validate the `KeyTransRecipientInfo` structure."
+            )
         _check_recipient_identifier(ktri["rid"], cmp_cert)
 
     if not ktri["keyEncryptionAlgorithm"].isValue:
@@ -1376,28 +1835,36 @@ def validate_key_trans_recipient_info(
 
 @not_keyword
 def compute_key_transport_mechanism(
-    ee_private_key: rsa.RSAPrivateKey, key_enc_alg_id: rfc5652.KeyEncryptionAlgorithmIdentifier, encrypted_key: bytes
+    ee_private_key: rsa.RSAPrivateKey,
+    key_enc_alg_id: rfc5652.KeyEncryptionAlgorithmIdentifier,
+    encrypted_key: bytes,
+    allow_rsa_null: bool = False,
 ) -> bytes:
     """Decrypt an encrypted key using a key transport mechanism.
 
     :param ee_private_key: The recipient's RSA private key used for decryption.
     :param key_enc_alg_id: The key encryption algorithm identifier.
     :param encrypted_key: The encrypted key to be decrypted.
+    :param allow_rsa_null: A boolean indicating whether the `rsaEncryption` algorithm with no parameters is allowed.
+    Defaults to `False`.
     :return: The decrypted key as bytes.
     :raises ValueError: If the key encryption algorithm is unsupported or has incorrect parameters.
     """
     if key_enc_alg_id["algorithm"] == rfc9481.rsaEncryption:
         # because inside a certificate univ.Null("") is used for rsaEncryption.
-        if not key_enc_alg_id["parameters"].isValue or key_enc_alg_id["parameters"] == univ.Null(""):
+        if check_if_alg_id_parameters_is_absent(key_enc_alg_id, allow_null=allow_rsa_null):
             padding_val = padding.PKCS1v15()
         else:
-            raise ValueError("The `parameters` field must be absent for `rsaEncryption` key transport.")
+            raise ValueError(
+                "The `parameters` field must be absent for `rsaEncryption` key transport."
+                f"Got: {key_enc_alg_id['parameters'].prettyPrint()}"
+            )
 
     elif key_enc_alg_id["algorithm"] == rfc9481.id_RSAES_OAEP:
         param, rest = decoder.decode(key_enc_alg_id["parameters"], rfc4055.RSAES_OAEP_params())
         if rest != b"":
             raise ValueError("Decoding of `RSAES_OAEP_params` resulted in unexpected extra data.")
-        padding_val = get_rsa_oaep_padding(param)
+        padding_val = protectionutils.get_rsa_oaep_padding(param)
 
     else:
         logging.info("%s", key_enc_alg_id.prettyPrint())
@@ -1420,7 +1887,8 @@ def _check_recipient_identifier(
     if not rid.isValue:
         raise ValueError("The `rid` field must be set.")
 
-    ski = certextractutils.get_field_from_certificate(cmp_cert, extension="ski")
+    ski = certextractutils.get_field_from_certificate(cmp_cert, extension="ski")  # type: ignore
+    ski: Optional[bytes]
     if ski is not None:
         if rid.getName() != "subjectKeyIdentifier":
             raise ValueError(
@@ -1429,6 +1897,7 @@ def _check_recipient_identifier(
             )
 
         if ski != rid["subjectKeyIdentifier"].asOctets():
+            logging.warning("Expected SKI: %s. Got: %s", ski.hex(), rid["subjectKeyIdentifier"].asOctets().hex())
             raise ValueError(
                 "The `subjectKeyIdentifier` in the CMP protection certificate does not match "
                 "the recipient identifier in the `KeyTransRecipientInfo` structure."
@@ -1462,11 +1931,86 @@ def validate_recip_identifier(server_cert: rfc9480.CMPCertificate, rid: rfc9629.
         validate_issuer_and_serial_number_field(rid["issuerAndSerialNumber"], server_cert)
 
 
+def _validate_kem_and_kemct(
+    kem_recip_info: rfc9629.KEMRecipientInfo,
+    private_key: Optional[KEMPrivateKey] = None,
+    is_sun_hybrid: bool = False,
+) -> bytes:
+    """Validate the KEM and KEMCT fields in a KEMRecipientInfo structure.
+
+    :param kem_recip_info: The KEMRecipientInfo structure to validate.
+    :param private_key: The private key to validate the OID against. Defaults to `None`.
+    :param is_sun_hybrid: A boolean indicating whether the KEM is a Sun hybrid KEM (skip the
+    cert KEM oid and KEMRI oid validation. Defaults to `False`.
+    :return: The encapsulated key as bytes.
+    :raises ValueError: If the KEM or KEMCT fields are missing or invalid.
+    """
+    if not kem_recip_info["kem"].isValue:
+        raise ValueError(
+            "The `kem` (Key Encapsulation Mechanism) field of the `KEMRecipientInfo` structure is missing!"
+        )
+
+    kem_oid = kem_recip_info["kem"]["algorithm"]
+
+    if kem_oid not in KEM_OID_2_NAME:
+        raise BadAlg(f"The `kem` OID must be a known KEM id! Found: {kem_oid}")
+
+    if not kem_recip_info["kemct"].isValue:
+        raise ValueError("The `kemct` (encapsulated ciphertext) field of the `KEMRecipientInfo` structure is missing!")
+
+    if private_key is not None and not is_sun_hybrid:
+        key_oid = get_kem_oid_from_key(private_key)
+        if key_oid != kem_oid:
+            raise ValueError(
+                f"The KEM OID {may_return_oid_to_name(kem_oid)} does not match the server's certificate OID "
+                f"{may_return_oid_to_name(key_oid)}!"
+            )
+
+    return kem_recip_info["kemct"].asOctets()
+
+
+def _validate_kemri_wrap_and_kek(
+    kem_recip_info: rfc9629.KEMRecipientInfo,
+) -> Tuple[rfc9629.KeyEncryptionAlgorithmIdentifier, int]:
+    """Validate the `wrap` and `kekLength` fields in a `KEMRecipientInfo` structure.
+
+    :param kem_recip_info: The `KEMRecipientInfo` structure to validate.
+    :return: The key wrap algorithm identifier and the key encryption key length.
+    :raises ValueError: If the `wrap` or `kekLength` fields are missing or invalid.
+    """
+    if not kem_recip_info["wrap"].isValue:
+        raise ValueError(
+            "The `wrap` (Key Wrap Algorithm Identifier) field of the `KEMRecipientInfo` structure is missing!"
+        )
+
+    if not kem_recip_info["kekLength"].isValue:
+        raise ValueError("The `kekLength` field of the `KEMRecipientInfo` structure is missing!")
+
+    wrap_algorithm = kem_recip_info["wrap"]["algorithm"]
+    if wrap_algorithm not in KEY_WRAP_NAME_2_OID.values():
+        raise ValueError(
+            "The `wrap` (Key Wrap Algorithm Identifier) field of the "
+            "`KEMRecipientInfo` structure must use a supported algorithm!"
+        )
+    kek_length = int(kem_recip_info["kekLength"])
+    wrap_name = KEY_WRAP_OID_2_NAME[wrap_algorithm]
+    expected_length = envdatautils.get_aes_keywrap_length(wrap_name)
+    if kek_length != expected_length:
+        raise ValueError(
+            f"The `kekLength` field of the `KEMRecipientInfo` structure does not match the expected length "
+            f"for the specified key wrap algorithm {wrap_name} ({expected_length} bytes)!"
+        )
+
+    return kem_recip_info["wrap"], kek_length
+
+
 @not_keyword
 def validate_kem_recip_info_structure(
     kem_recip_info: rfc9629.KEMRecipientInfo,
     server_cert: Optional[rfc9480.CMPCertificate] = None,
     for_pop: bool = False,
+    private_key: Optional[KEMPrivateKey] = None,
+    is_sun_hybrid: bool = False,
 ) -> dict:
     """Validate a `KEMRecipientInfo` structure and ensure all necessary items are correctly set.
 
@@ -1480,21 +2024,26 @@ def validate_kem_recip_info_structure(
     (needs to be present for validation of the `rid` field.)
     :param for_pop: A boolean indicating whether the validation is for proof-of-possession.
     (skip the validation).
+    :param private_key: The KEM private key to validate the OID against.
+    :param is_sun_hybrid: A boolean indicating whether the KEM is a Sun hybrid KEM (skip the
+    cert KEM oid and KEMRI oid validation. Defaults to `False`.
     :return: A dictionary containing the following:
         - `encrypted_key`: The encrypted content encryption key (CEK) as bytes.
         - `kemct`: The encapsulated ciphertext as bytes.
         - `kdf_algorithm`: The OID of the key derivation function (e.g., HKDF).
         - `ukm`: The User Keying Material (UKM) as bytes, or None if absent.
+        - `length`: The length of the key encryption key (KEK) in bytes.
+        - `wrap`: The algorithm identifier for key wrapping.
     :raises ValueError: If any of the following conditions are violated:
         - The `version` field is missing or not equal to `0`.
         - The `rid` (Recipient Identifier) field is missing or invalid.
-        - The `kem` (Key Encapsulation Mechanism) field is missing or incorrectly specified.
-        - The `kem` OID is not equal to `rfc9629.id_ori_kem`.
+        - The `kem` (Key Encapsulation Mechanism) field is missing.
         - The `kemct` (encapsulated ciphertext) field is missing.
         - The `kdf` (Key Derivation Function) field is missing or incorrectly specified.
         - The `wrap` (Key Wrap Algorithm Identifier) field is missing or incorrectly specified.
         - The `encryptedKey` field is missing.
         - The `kekLength` field is missing or does not match the expected value.
+    :raises BadAlg: If the `kem` OID is not a known KEM OID.
     """
     if not kem_recip_info["version"].isValue or int(kem_recip_info["version"]) != 0:
         raise ValueError("The `version` field of the `KEMRecipientInfo` structure must be present and equal to `0`!")
@@ -1503,75 +2052,75 @@ def validate_kem_recip_info_structure(
         raise ValueError("The `rid` (Recipient Identifier) field of the `KEMRecipientInfo` structure is missing!")
 
     if not for_pop:
-        validate_recip_identifier(server_cert, kem_recip_info["rid"])
-        if not kem_recip_info["kem"].isValue:
+        if server_cert is None:
             raise ValueError(
-                "The `kem` (Key Encapsulation Mechanism) field of the `KEMRecipientInfo` structure is missing!"
+                "The `server_cert` must be provided for recipient identifier validation."
+                "Inside the `KEMRecipientInfo` structure."
             )
 
-    kem_oid = kem_recip_info["kem"]["algorithm"]
-    if kem_oid not in KEM_OID_2_NAME and str(kem_oid) not in KEM_OID_2_NAME:
-        raise BadAlg(f"The `kem` OID must be a known KEM id! Found: {kem_oid}")
+        validate_recip_identifier(server_cert, kem_recip_info["rid"])
 
-    if not kem_recip_info["kemct"].isValue:
-        raise ValueError("The `kemct` (encapsulated ciphertext) field of the `KEMRecipientInfo` structure is missing!")
+    kem_ct = _validate_kem_and_kemct(kem_recip_info, private_key, is_sun_hybrid)
 
     if not kem_recip_info["kdf"].isValue:
         raise ValueError("The `kdf` (Key Derivation Function) field of the `KEMRecipientInfo` structure is missing!")
 
     kdf_algorithm = kem_recip_info["kdf"]["algorithm"]
-    if kdf_algorithm not in HKDF_NAME_2_OID.values():
+    if kdf_algorithm not in KDF_OID_2_NAME:
         raise ValueError(
             "The `kdf` (Key Derivation Function) field of the "
-            "`KEMRecipientInfo` structure must use a supported algorithm!"
+            "`KEMRecipientInfo` structure must use a supported algorithm! "
+            f"Got: {may_return_oid_to_name(kdf_algorithm)}"
         )
 
-    if not kem_recip_info["wrap"].isValue:
-        raise ValueError(
-            "The `wrap` (Key Wrap Algorithm Identifier) field of the `KEMRecipientInfo` structure is missing!"
-        )
-
-    wrap_algorithm = kem_recip_info["wrap"]["algorithm"]
-    if wrap_algorithm not in KEY_WRAP_NAME_2_OID.values():
-        raise ValueError(
-            "The `wrap` (Key Wrap Algorithm Identifier) field of the "
-            "`KEMRecipientInfo` structure must use a supported algorithm!"
-        )
+    wrap_alg_id, kek_length = _validate_kemri_wrap_and_kek(kem_recip_info)
 
     if not kem_recip_info["encryptedKey"].isValue:
         raise ValueError("The `encryptedKey` field of the `KEMRecipientInfo` structure is missing!")
 
-    if not kem_recip_info["kekLength"].isValue:
-        raise ValueError("The `kekLength` field of the `KEMRecipientInfo` structure is missing!")
-
-    kek_length = int(kem_recip_info["kekLength"])
-    wrap_name = KEY_WRAP_OID_2_NAME[wrap_algorithm]
-    expected_length = get_aes_length(wrap_name)
-    if kek_length != expected_length:
-        raise ValueError(
-            f"The `kekLength` field of the `KEMRecipientInfo` structure does not match the expected length "
-            f"for the specified key wrap algorithm {wrap_name} ({expected_length} bytes)!"
-        )
-
-    ukm = None
-    if kem_recip_info["ukm"].isValue:
-        ukm = kem_recip_info["ukm"].asOctets()
+    ukm = None if not kem_recip_info["ukm"].isValue else kem_recip_info["ukm"].asOctets()
 
     return {
         "encrypted_key": kem_recip_info["encryptedKey"].asOctets(),
-        "kemct": kem_recip_info["kemct"].asOctets(),
+        "kemct": kem_ct,
         "kdf_algorithm": kem_recip_info["kdf"],
         "ukm": ukm,
         "length": kek_length,
+        "wrap": wrap_alg_id,
     }
+
+
+@not_keyword
+def perform_rsa_kemri(
+    private_key: Union[RSAPrivateKey, RSADecapKey],
+    ct: bytes,
+    key_length: int,
+) -> bytes:
+    """Perform RSA-KEM decapsulation.
+
+    :param private_key: The RSA private key.
+    :param ct: The ciphertext.
+    :param key_length: The length of the derived key.
+    :return: The shared secret.
+    """
+    if isinstance(private_key, RSAPrivateKey):
+        private_key = RSADecapKey(private_key)
+
+    return private_key.decaps(
+        ct=ct,
+        hash_alg="sha256",
+        use_oaep=False,
+        ss_length=key_length,
+    )
 
 
 @not_keyword
 def process_kem_recip_info(
     kem_recip_info: rfc9629.KEMRecipientInfo,
     server_cert: Optional[rfc9480.CMPCertificate],
-    private_key: PQKEMPrivateKey,
+    private_key: KEMPrivateKey,
     for_pop: bool = False,
+    is_sun_hybrid: bool = False,
 ) -> bytes:
     """Process a `KEMRecipientInfo` structure to derive the content encryption key (CEK).
 
@@ -1584,6 +2133,8 @@ def process_kem_recip_info(
     :param private_key: The private key used for decapsulation.
     :param for_pop: A boolean indicating whether the validation is for proof-of-possession.
     (skipped `rid` validation).
+    :param is_sun_hybrid: A boolean indicating whether the KEM is a Sun hybrid KEM (skip the
+    cert KEM oid and KEMRI oid validation. Defaults to `False`.
     :return: The unwrapped content encryption key (CEK) as bytes.
     :raises ValueError: If validation or processing of the `KEMRecipientInfo` fails or the
     key cannot be unwrapped.
@@ -1592,18 +2143,38 @@ def process_kem_recip_info(
         raise ValueError("The `server_cert` must be provided for recipient identifier validation.")
 
     validated_info = validate_kem_recip_info_structure(
-        kem_recip_info=kem_recip_info, server_cert=server_cert, for_pop=for_pop
+        kem_recip_info=kem_recip_info,
+        server_cert=server_cert,
+        for_pop=for_pop,
+        private_key=private_key,
+        is_sun_hybrid=is_sun_hybrid,
     )
 
-    shared_secret = private_key.decaps(validated_info["kemct"])
+    if not isinstance(private_key, (RSAPrivateKey, RSADecapKey)):
+        shared_secret = private_key.decaps(validated_info["kemct"])
+    else:
+        shared_secret = perform_rsa_kemri(
+            private_key=private_key,
+            ct=validated_info["kemct"],
+            key_length=validated_info["length"],
+        )
+    logging.info("Shared secret: %s", shared_secret.hex())
+    if validated_info["ukm"] is None:
+        logging.info("UKM is not set.")
+        ukm_der = envdatautils.prepare_cmsori_for_kem_other_info(
+            wrap_algorithm=validated_info["wrap"],
+            kek_length=validated_info["length"],
+            ukm=validated_info["ukm"],
+        )
+    else:
+        ukm_der = envdatautils.is_cmsori_kem_other_info_decode_able(validated_info["ukm"])
 
-    key_enc_key = compute_kdf_from_alg_id(
+    key_enc_key = protectionutils.compute_kdf_from_alg_id(
         kdf_alg_id=validated_info["kdf_algorithm"],
         length=validated_info["length"],
         ss=shared_secret,
-        ukm=validated_info["ukm"],
+        ukm=ukm_der,
     )
-
     return keywrap.aes_key_unwrap(wrapping_key=key_enc_key, wrapped_key=validated_info["encrypted_key"])
 
 
@@ -1632,10 +2203,10 @@ def compute_decaps_from_asn1(private_key: PQKEMPrivateKey, kem_recip_info: rfc96
     if kem_recip_info["ukm"].isValue:
         ukm = kem_recip_info["ukm"].asOctets()
 
-    key_enc_key = compute_hkdf(key_material=shared_secret, ukm=ukm, hash_alg=hash_alg, length=kek_length)
+    key_enc_key = cryptoutils.compute_hkdf(key_material=shared_secret, info=ukm, hash_alg=hash_alg, length=kek_length)
 
     key_wrap_oid = kem_recip_info["wrap"]["algorithm"]
-    aes_length = get_aes_length(KEY_WRAP_OID_2_NAME[key_wrap_oid])
+    aes_length = envdatautils.get_aes_keywrap_length(KEY_WRAP_OID_2_NAME[key_wrap_oid])
     kek_length = len(key_enc_key)
     if kek_length != aes_length:
         raise ValueError(

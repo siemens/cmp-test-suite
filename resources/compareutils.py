@@ -4,22 +4,21 @@
 
 """Contains functionality to compare pyasn1 objects.
 
-Additionally contains logic to check if the wished certificate was issued, based on the `CertTemplate` structure.
-
+Which can be used to verify if the server returned the correct status, `grantedWithMods`, when issuing a certificate.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc6402, rfc9480
-from robot.api.deco import keyword
+from robot.api.deco import keyword, not_keyword
 
-from resources import certutils, cmputils, convertutils, copyasn1utils, suiteenums, utils
-from resources.certextractutils import extract_extension_from_csr
-from resources.oid_mapping import may_return_oid_to_name
+from resources import certextractutils, certutils, cmputils, convertutils, copyasn1utils, keyutils, suiteenums, utils
+from resources.oid_mapping import may_return_oid_by_name, may_return_oid_to_name
+from resources.typingutils import PrivateKey, PublicKey
 
 
 @keyword(name="Compare ASN1 Names")
@@ -272,9 +271,6 @@ def _compare_issuer_and_subject_template_and_cert(
     return True
 
 
-# TODO maybe change to only Py.
-
-
 @keyword(name="Compare CertTemplate And Cert")
 def compare_cert_template_and_cert(  # noqa D417 undocumented-param
     cert_template: rfc4211.CertTemplate,
@@ -350,16 +346,27 @@ def compare_cert_template_and_cert(  # noqa D417 undocumented-param
 
 
 @keyword(name="Compare CSR And Cert")
-def compare_csr_and_cert(
+def compare_csr_and_cert(  # noqa D417 undocumented-param
     csr: rfc6402.CertificationRequest, issued_cert: rfc9480.CMPCertificate, subject_strict: bool = False
 ) -> bool:
     """Compare a CSR and the newly issued certificate to check if the server returned the correct status.
 
-    :param csr: The Certificate Signing Request (CSR) to compare.
-    :param issued_cert: The issued certificate to compare against.
-    :param subject_strict: A boolean flag to indicate if the comparison should be strict,
-    for the `subject` field, which means it must be equal.
-    :return: Whether the CSR and the issued certificate match.
+    Arguments:
+    ---------
+       - `csr`: The Certificate Signing Request (CSR) to compare.
+       - `issued_cert`: The issued certificate to compare against.
+       - `subject_strict`: Whether the `subject` field should be equal or just contain the `subject`
+       value. Defaults to `False`.
+
+    Returns:
+    -------
+        - `True` if the CSR and the issued certificate match; `False` otherwise.
+
+    Examples:
+    --------
+    | ${result}= | Compare CSR And Cert | ${csr} | ${issued_cert} |
+    | ${result}= | Compare CSR And Cert | ${csr} | ${issued_cert} | subject_strict=True |
+
     """
     extracted_subject = csr["certificationRequestInfo"]["subject"]
     cert_subject = issued_cert["tbsCertificate"]["subject"]
@@ -382,7 +389,7 @@ def compare_csr_and_cert(
         if len(csr["certificationRequestInfo"]["attributes"]) > 1:
             raise NotImplementedError("Attributes are not yet supported.")
 
-        csr_extensions = extract_extension_from_csr(csr)
+        csr_extensions = certextractutils.extract_extensions_from_csr(csr)
 
         if csr_extensions is None:
             raise NotImplementedError("Attributes are not yet supported.")
@@ -396,12 +403,25 @@ def compare_csr_and_cert(
     return True
 
 
-def compare_alg_id_without_tag(first: rfc9480.AlgorithmIdentifier, second: rfc9480.AlgorithmIdentifier) -> bool:
+@keyword(name="Compare Alg ID Without Tag")
+def compare_alg_id_without_tag(  # noqa D417 undocumented-param
+    first: rfc9480.AlgorithmIdentifier, second: rfc9480.AlgorithmIdentifier
+) -> bool:
     """Compare `AlgorithmIdentifier` without considering the tag.
 
-    :param first: The first `AlgorithmIdentifier` to compare.
-    :param second: The second `AlgorithmIdentifier` to compare.
-    :return: `True` if both the OID and parameters match, `False` otherwise.
+    Arguments:
+    ---------
+        - `first`: The first `AlgorithmIdentifier` to compare.
+        - `second`: The second `AlgorithmIdentifier` to compare.
+
+    Returns:
+    -------
+        - `True` if both the OID and parameters match, `False` otherwise.
+
+    Examples:
+    --------
+    | ${result}= | Compare Alg ID Without Tag | ${first} | ${second} |
+
     """
     oid_first, params_first = first["algorithm"], first["parameters"]
     oid_second, params_second = second["algorithm"], second["parameters"]
@@ -409,6 +429,241 @@ def compare_alg_id_without_tag(first: rfc9480.AlgorithmIdentifier, second: rfc94
         return False
 
     if sum([params_first.isValue, params_second.isValue]) in [0, 2]:
+        # is allowed because if both values are schema objects, it is allowed to compare them.
+        # which means that if both are not set, they are equal.
         return params_first == params_second
 
     return False
+
+
+@keyword(name="Compare GeneralName And Name")
+def compare_general_name_and_name(  # noqa D417 # undocumented-param
+    general_name: rfc5280.GeneralName, name: rfc5280.Name
+) -> bool:
+    """Compare a `pyasn1` GeneralName with a `pyasn1` Name.
+
+    Compares a `GeneralName` object (which may be of type `directoryName` or `rfc822Name`) with a
+    `Name` object. It checks if they match based on the specified naming convention.
+
+    Note:
+    ----
+        - For `directoryName`, it performs a direct comparison.
+        - For `rfc822Name`, it converts the `Name` object into an OpenSSL-style string and then compares it.
+
+    Arguments:
+    ---------
+        - `general_name`: The `pyasn1` GeneralName object to compare.
+        - `name`: The `pyasn1` Name object to compare with the GeneralName.
+
+    Returns:
+    -------
+        - `True` if the `GeneralName` and `Name` match, `False` otherwise.
+
+    Raises:
+    ------
+        - `NotImplementedError`: If the `GeneralName` is of another type than `directoryName` or `rfc822Name`.
+
+    Examples:
+    --------
+    | ${result}= | Compare GeneralName and Name | ${general_name} | ${name} |
+
+    """
+    if general_name.getName() == "directoryName":
+        return compare_pyasn1_names(general_name["directoryName"], name, "without_tag")
+
+    if general_name.getName() == "rfc822Name":
+        str_name = utils.get_openssl_name_notation(name, oids=None)
+        if str_name is None:
+            return False
+        return str_name == str(general_name[general_name.getName()])
+
+    raise NotImplementedError(
+        f"GeneralName type '{general_name.getName()}' is not supported. Supported types are: "
+        "'directoryName' and 'rfc822Name'."
+    )
+
+
+@keyword(name="Find Name Inside GeneralNames")
+def find_name_inside_general_names(  # noqa D417 # undocumented-param
+    gen_names: rfc9480.GeneralNames, name: rfc5280.Name
+) -> bool:
+    """Find a `Name` object inside a `GeneralNames`.
+
+    Arguments:
+    ---------
+        - `gen_names`: The `GeneralNames` object to search.
+        - `name`: The `Name` object to search for.
+
+    Returns:
+    -------
+        - `True` if the `Name` object is found inside the `GeneralNames`, `False` otherwise.
+
+    Examples:
+    --------
+    | ${result}= | Find Name Inside General Names | ${gen_names} | ${name} |
+
+    """
+    for gen_name in gen_names:
+        if compare_general_name_and_name(gen_name, name):
+            return True
+    return False
+
+
+@keyword(name="Find RelativeDistinguishedName in Name")
+def find_rel_dis_name_in_name(  # noqa D417 # undocumented-param
+    rdn: rfc5280.RelativeDistinguishedName, name: rfc5280.Name
+) -> bool:
+    """Find a `RelativeDistinguishedName` inside a `Name`.
+
+    Arguments:
+    ---------
+        - `rdn`: The `RelativeDistinguishedName` to search for.
+        - `name`: The `Name` object to search in.
+
+    Returns:
+    -------
+        - `True` if the `RelativeDistinguishedName` is found inside the `Name`, `False` otherwise.
+
+    Examples:
+    --------
+    | ${result}= | Find RelativeDistinguishedName in Name | ${rdn} | ${name} |
+
+    """
+    der_name = encoder.encode(rdn)
+
+    for rdn_seq in name["rdnSequence"]:
+        if der_name == encoder.encode(rdn_seq):
+            return True
+    return False
+
+
+@keyword(name="Is NULL DN")
+def is_null_dn(name: rfc5280.Name) -> bool:  # noqa D417 # undocumented-param
+    """Check if the given Name is a NULL-DN, meaning it has no RDNs.
+
+    Allows also tagged names to be checked (e.g., `CertTemplate` `subject`).
+
+    Arguments:
+    ---------
+        - `name`: The `Name` object to check.
+
+    Returns:
+    -------
+        - `True` if the `Name` is a NULL-DN, `False` otherwise.
+
+    Raises:
+    ------
+        - `pyasn1.error.PyAsn1Error`: If the `Name` object cannot be properly compared.
+
+    Examples:
+    --------
+    | ${result}= | Is NULL DN | ${name} |
+
+    """
+    copy_name = rfc5280.Name()
+    copy_name["rdnSequence"] = name["rdnSequence"]
+    return encoder.encode(copy_name) == b"\x30\x00"
+
+
+@not_keyword
+def check_if_alg_id_parameters_is_absent(alg_id: rfc9480.AlgorithmIdentifier, allow_null: bool = False) -> bool:
+    """Check if the `parameters` field of the `AlgorithmIdentifier` is absent."""
+    params = alg_id["parameters"]
+
+    if not params.isValue:
+        return True
+
+    if allow_null and params == univ.Null(""):
+        return True
+
+    if isinstance(params, univ.Any):
+        if params.asOctets() == b"\x05\x00":
+            return True
+
+    return False
+
+
+def _verify_spki_alg_id(
+    cert: rfc9480.CMPCertificate,
+    public_key: PublicKey,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo],
+    key_name: Optional[str] = None,
+) -> None:
+    """Verify if the algorithm identifier in the issued certificate matches the expected algorithm identifier.
+
+    :param cert: The issued certificate to check.
+    :param public_key: The public key to compare against.
+    :param spki: The SubjectPublicKeyInfo to compare against.
+    :param key_name: The name of the key to validate against the public key in the certificate.
+    """
+    loaded_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+
+    if public_key != loaded_key:
+        raise ValueError(
+            "Public key mismatch between the expected and issued certificate."
+            f"Expected: {keyutils.get_key_name(public_key)}. Got: {keyutils.get_key_name(loaded_key)}"  # type: ignore
+        )
+
+    if type(public_key) is not type(loaded_key):
+        raise ValueError(
+            "Public key type mismatch between the expected and issued certificate."
+            f"Expected: {type(public_key)}. Got: {type(loaded_key)}"
+        )
+
+    cert_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+    if key_name is not None:
+        key_oid = may_return_oid_by_name(key_name)
+        if key_oid != cert_oid:
+            cert_name = may_return_oid_to_name(cert_oid)
+            raise ValueError(
+                f"Algorithm ID mismatch between the expected and issued certificate."
+                f"Expected: {key_name}. Got: {cert_name}"
+            )
+
+    if spki is not None:
+        spki_oid = spki["algorithm"]["algorithm"]
+        if cert_oid != spki_oid:
+            cert_name = may_return_oid_to_name(cert_oid)
+            spki_name = may_return_oid_to_name(spki_oid)
+            raise ValueError(
+                f"Algorithm ID mismatch between the expected and issued certificate."
+                f"Expected: {spki_name}. Got: {cert_name}"
+            )
+
+
+def validate_certificate_public_Key(  # noqa D417 # undocumented-param
+    cert: rfc9480.CMPCertificate,
+    key: Union[PrivateKey, PublicKey, rfc5280.SubjectPublicKeyInfo],
+    key_name: Optional[str] = None,
+) -> None:
+    """Check if the public key in the issued certificate matches the expected public key.
+
+    Arguments:
+    ---------
+        - `cert`: The issued certificate to check.
+        - `key`: The private key or public key to compare against.
+        - `key_name`: The name of the key to validate against the public key in the certificate.
+        (e.g., "rsa", "ml-dsa-44-sha512") Defaults to `None`.
+
+    Raises:
+    ------
+        - `ValueError`: If the public key in the issued certificate does not match the expected public key.
+
+    Examples:
+    --------
+    | Validate If Correct Public Key In Issued Cert | ${cert} | ${key} | ${spki} |
+    | Validate If Correct Public Key In Issued Cert | ${cert} | ${key} | key_name=${key_name} |
+    | Validate If Correct Public Key In Issued Cert | ${cert} | ${key} |
+
+    """
+    if isinstance(key, PrivateKey):
+        public_key = key.public_key()
+
+    elif isinstance(key, rfc5280.SubjectPublicKeyInfo):
+        public_key = keyutils.load_public_key_from_spki(key)
+    else:
+        public_key = key
+
+    spki = None if not isinstance(key, rfc5280.SubjectPublicKeyInfo) else key
+
+    _verify_spki_alg_id(public_key=public_key, cert=cert, spki=spki, key_name=key_name)
