@@ -194,3 +194,4 @@ doc/
 data/EJBCA/*.tar.gz
 /data/pqc-certificates/
 /data/cert_logs/
+/liboqs-python/
