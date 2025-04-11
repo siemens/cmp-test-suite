@@ -192,6 +192,7 @@ doc/
 
 # exclude binary file that contains an EJBCA docker image
 data/EJBCA/*.tar.gz
+# exclude additional directories that are not needed in the repository.
 /data/pqc-certificates/
 /data/cert_logs/
 /liboqs-python/
