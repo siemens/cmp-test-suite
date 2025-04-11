@@ -1,14 +1,35 @@
 """Dataclass objects needed for the issuing processes."""
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
-from pyasn1_alt_modules import rfc9480
+from pyasn1.type import univ
+from pyasn1_alt_modules import rfc9480, rfc9481
 
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.oidutils import (
+    AES_GMAC_OID_2_NAME,
+    ECDSA_SHA3_OID_2_NAME,
+    ECDSA_SHA_OID_2_NAME,
+    HMAC_OID_2_NAME,
+    HYBRID_SIG_OID_2_NAME,
+    KDF_OID_2_NAME,
+    KM_KA_ALG,
+    KM_KT_ALG,
+    KM_KW_ALG,
+    KMAC_OID_2_NAME,
+    PQ_SIG_OID_2_NAME,
+    PROT_SYM_ALG,
+    RSA_SHA3_OID_2_NAME,
+    RSA_SHA_OID_2_NAME,
+    RSASSA_PSS_OID_2_NAME,
+    SHA3_OID_2_NAME,
+    SHA_OID_2_NAME,
+    id_KemBasedMac,
+)
 
 
 @dataclass
@@ -86,3 +107,151 @@ class KARICertsAndKeys:
             ecc_cert=kwargs.get("ecc_cert"),
             ecc_key=kwargs.get("ecc_key"),
         )
+
+
+class AlgorithmProfile:
+    """A class to represent an algorithm profile used by the CMP protocol.
+
+    For LwCMP is the algorithm profile defined in RFC 9481.
+    """
+
+    # The allowed PKIMessage signature algorithms. Section 3 RFC 9481.
+    msg_sig_alg: Dict[univ.ObjectIdentifier, str]
+    # The allowed PKIMessage digest algorithms.
+    # Used for:
+    # - Digest algorithm identifiers are located in the:
+    # - hashAlg field of OOBCertHash and CertStatus,
+    # - owf field of Challenge, PBMParameter, and DHBMParameter,
+    # - digestAlgorithms field of SignedData,
+    # - digestAlgorithm field of SignerInfo.
+    #  Section 2 RFC 9481.
+    msg_digest_alg: Dict[univ.ObjectIdentifier, str]
+    #
+    # Key agreement algorithms. Section 4.1 RFC 9481.
+    km_ka_alg: Dict[univ.ObjectIdentifier, str]
+    # Key transport algorithms. Section 4.2 RFC 9481.
+    km_kt_alg: Dict[univ.ObjectIdentifier, str]
+    # Symmetric protection algorithms. Section 4.3 RFC 9481.
+    km_kw_alg: Dict[univ.ObjectIdentifier, str]
+    # Key derivation algorithms. Section 4.4 RFC 9481.
+    km_kd_alg: Dict[univ.ObjectIdentifier, str]
+    # Content-Encryption algorithms. Section 5 RFC 9481.
+    PROT_SYM_ALG: Dict[univ.ObjectIdentifier, str]
+    # Message authentication Code algorithms. Section 6 RFC 9481.
+    msg_mac_alg: Dict[univ.ObjectIdentifier, str]
+
+    @classmethod
+    def get_key_wrap_algs(cls) -> Dict[univ.ObjectIdentifier, str]:
+        """Get the key wrap algorithms.
+
+        :return: The key wrap algorithms.
+        """
+        return cls.km_kw_alg
+
+    @classmethod
+    def get_key_transport_algs(cls) -> Dict[univ.ObjectIdentifier, str]:
+        """Get the key transport algorithms.
+
+        :return: The key transport algorithms.
+        """
+        return cls.km_kt_alg
+
+    @classmethod
+    def get_key_agreement_algs(cls) -> Dict[univ.ObjectIdentifier, str]:
+        """Get the key agreement algorithms.
+
+        :return: The key agreement algorithms.
+        """
+        return cls.km_ka_alg
+
+    @classmethod
+    def get_key_derivation_algs(cls, usage: Optional[str] = None) -> Dict[univ.ObjectIdentifier, str]:
+        """Get the key derivation algorithms.
+
+        :return: The key derivation algorithms.
+        """
+        return cls.km_kd_alg
+
+    @classmethod
+    def get_signature_prot_algs(cls) -> Dict[univ.ObjectIdentifier, str]:
+        """Get the message signature algorithms.
+
+        :return: The message signature algorithms.
+        """
+        return cls.msg_sig_alg
+
+    @classmethod
+    def get_mac_protection_algs(cls) -> Dict[univ.ObjectIdentifier, str]:
+        """Get the MAC protection algorithms.
+
+        :return: The MAC protection algorithms.
+        """
+        return cls.km_kw_alg
+
+    @classmethod
+    def get_content_encryption_algs(cls) -> Dict[univ.ObjectIdentifier, str]:
+        """Get the content encryption algorithms.
+
+        :return: The content encryption algorithms.
+        """
+        return cls.PROT_SYM_ALG
+
+    @classmethod
+    def get_digest_algorithms(cls) -> Dict[univ.ObjectIdentifier, str]:
+        """Get the digest algorithms.
+
+        :return: The digest algorithms.
+        """
+        return cls.msg_digest_alg
+
+
+class AllAlgorithmProfile(AlgorithmProfile):
+    """A class to represent all algorithms used by the CMP protocol."""
+
+    # The allowed PKIMessage signature algorithms. Section 3 RFC 9481.
+    msg_sig_alg = {
+        **ECDSA_SHA3_OID_2_NAME,
+        **ECDSA_SHA_OID_2_NAME,
+        **RSA_SHA_OID_2_NAME,
+        **RSASSA_PSS_OID_2_NAME,
+        **RSA_SHA3_OID_2_NAME,
+        **PQ_SIG_OID_2_NAME,
+        **HYBRID_SIG_OID_2_NAME,
+        **{rfc9480.id_DHBasedMac: "dh_based_mac", id_KemBasedMac: "kem_based_mac"},
+    }
+    # The allowed PKIMessage digest algorithms.
+    msg_digest_alg = {
+        **SHA_OID_2_NAME,
+        **SHA3_OID_2_NAME,
+    }
+    # Key agreement algorithms. Section 4.1 RFC 9481.
+    km_ka_alg = {
+        **KM_KA_ALG,
+    }
+    # Key transport algorithms. Section 4.2 RFC 9481.
+    km_kt_alg = {
+        **KM_KT_ALG,
+    }
+    # Symmetric protection algorithms. Section 4.3 RFC 9481.
+    km_kw_alg = {
+        **KM_KW_ALG,
+    }
+    km_kd_alg = {**{rfc9481.id_PBKDF2: "pbkdf2"}, **KDF_OID_2_NAME}
+    prot_sym_alg = {**PROT_SYM_ALG}
+    # Message authentication Code algorithms. Section 6 RFC 9481.
+    msg_mac_alg = {
+        **{rfc9481.id_PBMAC1: "pbmac1", rfc9481.id_PasswordBasedMac: "password_based_mac"},
+        **HMAC_OID_2_NAME,
+        **AES_GMAC_OID_2_NAME,
+        **KMAC_OID_2_NAME,
+    }
+
+
+# TODO ADD LwCMP ALGORITHM PROFILES
+
+
+class LwCMPAlgProfile(AlgorithmProfile):
+    """A class to represent the LwCMP algorithms used by the CMP protocol.
+
+    The algorithms are defined in RFC 9481.
+    """
