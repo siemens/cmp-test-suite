@@ -60,7 +60,7 @@ from resources.convertutils import ensure_is_kem_pub_key
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData
 from resources.oid_mapping import get_curve_instance
 from resources.oidutils import (
-    CMS_COMPOSITE_OID_2_NAME,
+    CMS_COMPOSITE03_OID_2_NAME,
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
     TRAD_STR_OID_TO_KEY_NAME,
@@ -344,10 +344,8 @@ class CombinedKeyFactory:
         :param public_key: The public key bytes.
         :return: The loaded public key.
         """
-        if oid in COMPOSITE_SIG04_OID_2_NAME:
-            name = COMPOSITE_SIG04_OID_2_NAME[oid]
-        elif oid in CMS_COMPOSITE_OID_2_NAME:
-            name = CMS_COMPOSITE_OID_2_NAME[oid]
+        if oid in CMS_COMPOSITE03_OID_2_NAME:
+            name = CMS_COMPOSITE03_OID_2_NAME[oid]
         elif oid in COMPOSITE_KEM05_OID_2_NAME:
             name = COMPOSITE_KEM05_OID_2_NAME[oid]
         else:
@@ -374,12 +372,18 @@ class CombinedKeyFactory:
             data=pq_pub_bytes,
             allow_rest=False,
         )
-        pq_key = ensure_is_kem_pub_key(pq_key)
+
         trad_key = CombinedKeyFactory._comp_load_trad_key(public_key=trad_pub_bytes, trad_name=trad_name, curve=curve)
         if prefix == "dhkem":
+            pq_key = ensure_is_kem_pub_key(pq_key)
             return CompositeDHKEMRFC9180PublicKey(pq_key, trad_key)  # type: ignore
         if prefix == "kem":
+            pq_key = ensure_is_kem_pub_key(pq_key)
             return CompositeKEMPublicKey(pq_key, trad_key)  # type: ignore
+
+        if not isinstance(pq_key, MLDSAPublicKey):
+            raise InvalidKeyData("The composite pq-public-key is not a valid MLDSA key.")
+
         return CompositeSig03PublicKey(pq_key, trad_key)  # type: ignore
 
     @staticmethod
@@ -399,7 +403,7 @@ class CombinedKeyFactory:
         if oid in COMPOSITE_SIG04_OID_2_NAME:
             return CombinedKeyFactory._get_comp_sig04_key(oid, spki["subjectPublicKey"].asOctets())
 
-        if oid in CMS_COMPOSITE_OID_2_NAME:
+        if oid in CMS_COMPOSITE03_OID_2_NAME:
             return CombinedKeyFactory._get_composite_public_key(oid, spki["subjectPublicKey"].asOctets())
 
         if oid in COMPOSITE_KEM06_OID_2_NAME:
@@ -770,8 +774,8 @@ class CombinedKeyFactory:
             _name = COMPOSITE_KEM05_OID_2_NAME[oid]
             return CombinedKeyFactory._decode_keys_for_composite(_name, private_bytes, public_bytes)
 
-        if oid in CMS_COMPOSITE_OID_2_NAME:
-            name = CMS_COMPOSITE_OID_2_NAME[oid]
+        if oid in CMS_COMPOSITE03_OID_2_NAME:
+            name = CMS_COMPOSITE03_OID_2_NAME[oid]
             return CombinedKeyFactory._decode_keys_for_composite(name, private_bytes, public_bytes)
 
         if oid == id_rsa_kem_spki:

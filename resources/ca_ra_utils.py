@@ -1571,12 +1571,9 @@ def process_encrypted_key(
         if not isinstance(client_pub_key, ECDHPublicKey):
             raise ValueError("The recipient certificate must contain an ECDH key for KGA `KARI`.")
 
-        if kwargs.get("kari_cert_and_key") is None:
-            kari_certs = KARICertsAndKeys.from_kwargs(
-                **kwargs,
-            )
-        else:
-            kari_certs = kwargs.get("kari_cert_and_key")
+        kari_certs = kwargs.get("kari_cert_and_key") or KARICertsAndKeys.from_kwargs(
+            **kwargs,
+        )
 
         _, kari_key = kari_certs.get_cert_and_key(
             public_key=client_pub_key,
@@ -1676,8 +1673,8 @@ def respond_to_key_agreement(  # noqa: D417 Missing argument descriptions in the
             ca_cert=ca_cert,
             cmp_protection_cert=cmp_protection_cert,
             for_agreement=True,
-            x25519_key=x25519_key,
             x448_key=x448_key,
+            x25519_key=x25519_key,
             ecc_key=ecc_key,
             **kwargs,
         ), None

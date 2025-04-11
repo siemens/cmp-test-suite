@@ -54,7 +54,7 @@ from resources.convertutils import (
 )
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidAltSignature, InvalidKeyCombination, UnknownOID
 from resources.oidutils import (
-    CMS_COMPOSITE_OID_2_NAME,
+    CMS_COMPOSITE03_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
@@ -305,7 +305,7 @@ def build_cert_from_catalyst_request(  # noqa: D417 Missing argument description
 
     popo: rfc4211.ProofOfPossession = cert_req_msg["popo"]
 
-    if cert_req_msg["certReq"]["certTemplate"]["publicKey"]["algorithm"]["algorithm"] in CMS_COMPOSITE_OID_2_NAME:
+    if cert_req_msg["certReq"]["certTemplate"]["publicKey"]["algorithm"]["algorithm"] in CMS_COMPOSITE03_OID_2_NAME:
         raise ValueError("Composite keys are not supported for Catalyst certificates.")
 
     cert_template = cert_req_msg["certReq"]["certTemplate"]
@@ -491,7 +491,7 @@ def verify_composite_signature_with_keys(
     if not isinstance(second_key, (ECVerifyKey, RSAPublicKey)):
         raise InvalidKeyCombination("The Composite signature trad-key is not a EC or RSA key.")
 
-    if alg_id["algorithm"] in CMS_COMPOSITE_OID_2_NAME:
+    if alg_id["algorithm"] in CMS_COMPOSITE03_OID_2_NAME:
         public_key = CompositeSig03PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
 
     elif alg_id["algorithm"] in COMPOSITE_SIG04_OID_2_NAME:
@@ -559,7 +559,7 @@ def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descri
     sig_alg_oid = cert_req_msg["popo"]["signature"]["algorithmIdentifier"]
     oid = sig_alg_oid["algorithm"]
 
-    if oid in CMS_COMPOSITE_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
+    if oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
         if not isinstance(first_key, PQSignaturePublicKey):
             first_key, alt_pub_key = alt_pub_key, first_key
 

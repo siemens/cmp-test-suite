@@ -34,13 +34,13 @@ from resources.typingutils import PrivateKey, PrivSignCertKey, PublicKey, SignKe
 
 
 def _build_cert(
-        public_key,
-        issuer: x509.Name,
-        subject: Optional[x509.Name] = None,
-        serial_number: Optional[int] = None,
-        days: Strint = 365,
-        *,
-        not_valid_before: Optional[datetime.datetime] = None,
+    public_key,
+    issuer: x509.Name,
+    subject: Optional[x509.Name] = None,
+    serial_number: Optional[int] = None,
+    days: Strint = 365,
+    *,
+    not_valid_before: Optional[datetime.datetime] = None,
 ) -> x509.CertificateBuilder:
     """Create a `cryptography.x509.CertificateBuilder` using a public key, issuer, subject, and a validity period.
 
@@ -79,9 +79,9 @@ def _build_cert(
 
 
 def _sign_crl_builder(
-        crl_builder: x509.CertificateRevocationListBuilder,
-        sign_key: Optional[TradSignKey],
-        hash_alg: Optional[str] = "sha256",
+    crl_builder: x509.CertificateRevocationListBuilder,
+    sign_key: Optional[TradSignKey],
+    hash_alg: Optional[str] = "sha256",
 ):
     """Sign a `cryptography.x509.CertificateRevocationListBuilder` object.
 
@@ -104,7 +104,7 @@ def _sign_crl_builder(
 
 
 def _sign_cert_builder(
-        cert_builder: x509.CertificateBuilder, sign_key: Optional[TradSignKey], hash_alg: Optional[str] = None
+    cert_builder: x509.CertificateBuilder, sign_key: Optional[TradSignKey], hash_alg: Optional[str] = None
 ) -> x509.Certificate:
     """Sign a `cryptography.x509.CertificateBuilder` object with a provided key to sign and a hash algorithm.
 
@@ -135,12 +135,12 @@ def _sign_cert_builder(
 
 
 def _add_extension(
-        cert_builder: x509.CertificateBuilder,
-        basic_constraint: Optional[bool] = None,
-        key_usage: Optional[str] = None,
-        ski: Optional[PublicKey] = None,
-        ocsp_url: Optional[str] = None,
-        critical: bool = True,
+    cert_builder: x509.CertificateBuilder,
+    basic_constraint: Optional[bool] = None,
+    key_usage: Optional[str] = None,
+    ski: Optional[PublicKey] = None,
+    ocsp_url: Optional[str] = None,
+    critical: bool = True,
 ) -> x509.CertificateBuilder:
     """Add Certificate extension to a certificate builder object.
 
@@ -183,11 +183,11 @@ def _add_extension(
 
 
 def _build_certificate(  # noqa D417 undocumented-param
-        private_key: Optional[Union[str, PrivateKey]] = None,
-        common_name: str = "CN=Hans",
-        hash_alg: str = "sha256",
-        ski: Optional[bool] = False,
-        **params,
+    private_key: Optional[Union[str, PrivateKey]] = None,
+    common_name: str = "CN=Hans",
+    hash_alg: str = "sha256",
+    ski: Optional[bool] = False,
+    **params,
 ) -> Tuple[x509.Certificate, PrivateKey]:
     """Build an X.509 certificate that can be customized based on provided parameters.
 
@@ -359,8 +359,8 @@ class KeyUsageEnum(enum.Enum):
 
 @not_keyword
 def x509_to_pyasn1_extensions(
-        crypto_lib_obj: Union[x509.Certificate, x509.CertificateSigningRequest],
-        extn_obj: Optional[rfc5280.Extensions] = None,
+    crypto_lib_obj: Union[x509.Certificate, x509.CertificateSigningRequest],
+    extn_obj: Optional[rfc5280.Extensions] = None,
 ) -> rfc5280.Extensions:
     """Convert x509.Certificate extensions into a pyasn1 `rfc5280.Extensions` structure.
 
@@ -384,7 +384,7 @@ def x509_to_pyasn1_extensions(
 
 
 def generate_csr(  # noqa D417 undocumented-param
-        common_name: Optional[str] = None, subject_alt_name: Optional[str] = None
+    common_name: Optional[str] = None, subject_alt_name: Optional[str] = None
 ):
     """Generate a CSR based on the given common name and subjectAltName.
 
@@ -403,7 +403,7 @@ def generate_csr(  # noqa D417 undocumented-param
     csr = x509.CertificateSigningRequestBuilder()
 
     common_name = (
-            common_name or "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
+        common_name or "C=DE,ST=Bavaria,L= Munich,O=CMP Lab,CN=Joe Mustermann,emailAddress=joe.mustermann@example.com"
     )
 
     x509_name = resources.prepareutils.parse_common_name_from_str(common_name)
@@ -432,7 +432,7 @@ def generate_csr(  # noqa D417 undocumented-param
 
 
 def sign_csr(  # noqa D417 undocumented-param
-        csr: x509.CertificateSigningRequestBuilder, key: SignKey, hash_alg: str = "sha256"
+    csr: x509.CertificateSigningRequestBuilder, key: SignKey, hash_alg: str = "sha256"
 ):
     """Sign a CSR with a given key, using a specified hashing algorithm.
 
@@ -453,7 +453,7 @@ def sign_csr(  # noqa D417 undocumented-param
 
 @keyword(name="Generate Signed CSR")
 def generate_signed_csr2(  # noqa D417 undocumented-param
-        common_name: str, key: Union[SignKey, str, None] = None, **params
+    common_name: str, key: Union[SignKey, str, None] = None, **params
 ) -> Tuple[bytes, SignKey]:
     """Generate signed CSR for a given common name (CN).
 
@@ -500,9 +500,9 @@ def generate_signed_csr2(  # noqa D417 undocumented-param
 
 
 def _sign_csr_builder(
-        csr_builder: x509.CertificateSigningRequestBuilder,
-        sign_key: Optional[PrivSignCertKey],
-        hash_alg: Optional[str] = None,
+    csr_builder: x509.CertificateSigningRequestBuilder,
+    sign_key: Optional[PrivSignCertKey],
+    hash_alg: Optional[str] = None,
 ) -> x509.CertificateSigningRequest:
     """Sign a `cryptography.x509.CertificateBuilder` object with a provided key to sign and a hash algorithm.
 
@@ -546,7 +546,7 @@ AES_ALG_NAME_2_OID = {
 
 
 def prepare_encrypted_value(
-        data: bytes, kek: bytes, cek: bytes, iv: Optional[bytes] = None, aes_cbc_size: int = None, aes_wrap_size: int = None
+    data: bytes, kek: bytes, cek: bytes, iv: Optional[bytes] = None, aes_cbc_size: int = None, aes_wrap_size: int = None
 ):
     """Prepare an `EncryptedValue` structure using AES Key Wrap and AES-CBC.
 
@@ -603,7 +603,7 @@ def prepare_encrypted_value(
 def process_encrypted_value(kek: bytes, enc_val: rfc4211.EncryptedValue) -> bytes:
     """Decrypt the data encapsulated within an `EncryptedValue` structure.
 
-    Processe an `EncryptedValue` object, extracts the encrypted
+    Process an `EncryptedValue` object, extracts the encrypted
     symmetric key (CEK) and initialization vector (IV), and decrypts the encrypted
     content using AES-CBC.
 

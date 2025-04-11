@@ -50,7 +50,7 @@ from resources.exceptions import BadAsn1Data, BadPOP, CertRevoked, SignerNotTrus
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
-    CMS_COMPOSITE_OID_2_NAME,
+    CMS_COMPOSITE03_OID_2_NAME,
     HYBRID_NAME_2_OID,
     HYBRID_OID_2_NAME,
     PQ_NAME_2_OID,
@@ -1928,7 +1928,7 @@ def verify_csr_signature(  # noqa: D417 Missing argument descriptions in the doc
     alg_id = csr["signatureAlgorithm"]
     spki = csr["certificationRequestInfo"]["subjectPublicKeyInfo"]
 
-    if alg_id["algorithm"] in CMS_COMPOSITE_OID_2_NAME:
+    if alg_id["algorithm"] in CMS_COMPOSITE03_OID_2_NAME:
         public_key = keyutils.load_public_key_from_spki(spki)
         CompositeSig03PublicKey.validate_oid(alg_id["algorithm"], public_key)
     else:

@@ -74,7 +74,7 @@ from resources.oid_mapping import (
 from resources.oidutils import (
     AES_GMAC_OID_2_NAME,
     ALL_KNOWN_OIDS_2_NAME,
-    CMS_COMPOSITE_OID_2_NAME,
+    CMS_COMPOSITE03_OID_2_NAME,
     HKDF_OID_2_NAME,
     HMAC_OID_2_NAME,
     KMAC_OID_2_NAME,
@@ -1301,7 +1301,7 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     if alg_id in MSG_SIG_ALG:
         return "sig"
 
-    if alg_id in CMS_COMPOSITE_OID_2_NAME:
+    if alg_id in CMS_COMPOSITE03_OID_2_NAME:
         return "composite-sig"
 
     if alg_id in PQ_SIG_OID_2_NAME:
@@ -2233,7 +2233,7 @@ def sign_data_with_alg_id(  # noqa: D417 Missing argument descriptions in the do
         pre_hash = "hash-" in name
         return key.sign(data=data, use_pss=use_pss, pre_hash=pre_hash)
     if isinstance(key, CompositeSig03PrivateKey):
-        name: str = CMS_COMPOSITE_OID_2_NAME[oid]
+        name: str = CMS_COMPOSITE03_OID_2_NAME[oid]
         use_pss = name.endswith("-pss")
         pre_hash = "hash-" in name
         return key.sign(data=data, use_pss=use_pss, pre_hash=pre_hash)
@@ -2302,8 +2302,8 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
     """
     oid = alg_id["algorithm"]
 
-    if oid in CMS_COMPOSITE_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
-        name: str = CMS_COMPOSITE_OID_2_NAME.get(oid) or COMPOSITE_SIG04_OID_2_NAME[oid]
+    if oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
+        name: str = CMS_COMPOSITE03_OID_2_NAME.get(oid) or COMPOSITE_SIG04_OID_2_NAME[oid]
         if not isinstance(public_key, CompositeSig03PublicKey):
             raise ValueError(
                 f"The public key must be a CompositeSigPublicKey. Got: {keyutils.get_key_name(public_key)}"

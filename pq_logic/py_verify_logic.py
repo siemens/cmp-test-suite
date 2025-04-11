@@ -38,7 +38,7 @@ from resources.certextractutils import get_extension
 from resources.exceptions import BadAsn1Data, BadMessageCheck, InvalidAltSignature, UnknownOID
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import (
-    CMS_COMPOSITE_OID_2_NAME,
+    CMS_COMPOSITE03_OID_2_NAME,
     MSG_SIG_ALG,
     PQ_OID_2_NAME,
     TRAD_STR_OID_TO_KEY_NAME,
@@ -83,7 +83,7 @@ def verify_cert_hybrid_signature(  # noqa D417 undocumented-param
     oid = ee_cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
     alg_id = ee_cert["tbsCertificate"]["signature"]
     spki = other_cert["tbsCertificate"]["subjectPublicKeyInfo"]
-    if oid in CMS_COMPOSITE_OID_2_NAME:
+    if oid in CMS_COMPOSITE03_OID_2_NAME:
         if other_cert is None and catalyst_key is None:
             composite_key = PQKeyFactory.load_public_key_from_spki(spki)
             if not isinstance(composite_key, CompositeSig03PublicKey):
@@ -129,7 +129,7 @@ def _verify_signature_with_other_cert(
     """
     sig_alg_oid = sig_alg["algorithm"]
 
-    if sig_alg_oid not in CMS_COMPOSITE_OID_2_NAME and sig_alg_oid not in COMPOSITE_SIG04_OID_2_NAME:
+    if sig_alg_oid not in CMS_COMPOSITE03_OID_2_NAME and sig_alg_oid not in COMPOSITE_SIG04_OID_2_NAME:
         raise ValueError("The signature algorithm is not a composite signature one.")
 
     if other_certs is not None:
@@ -147,7 +147,7 @@ def _verify_signature_with_other_cert(
     if sig_alg_oid in COMPOSITE_SIG04_OID_2_NAME:
         public_key = CompositeSig04PublicKey(pq_key=pq_key, trad_key=trad_key)  # type: ignore
 
-    elif sig_alg_oid in CMS_COMPOSITE_OID_2_NAME:
+    elif sig_alg_oid in CMS_COMPOSITE03_OID_2_NAME:
         public_key = CompositeSig03PublicKey(pq_key=pq_key, trad_key=trad_key)  # type: ignore
         CompositeSig03PublicKey.validate_oid(sig_alg_oid, public_key)
 
@@ -194,7 +194,7 @@ def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
     """
     oid = sig_alg["algorithm"]
 
-    if oid not in CMS_COMPOSITE_OID_2_NAME and oid not in COMPOSITE_SIG04_OID_2_NAME:
+    if oid not in CMS_COMPOSITE03_OID_2_NAME and oid not in COMPOSITE_SIG04_OID_2_NAME:
         raise ValueError("The signature algorithm is not a composite signature.")
 
     cert_sig_alg = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
@@ -212,7 +212,7 @@ def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
             "having the certificate with traditional signature algorithm."
         )
 
-    if cert_sig_alg in CMS_COMPOSITE_OID_2_NAME or cert_sig_alg in COMPOSITE_SIG04_OID_2_NAME:
+    if cert_sig_alg in CMS_COMPOSITE03_OID_2_NAME or cert_sig_alg in COMPOSITE_SIG04_OID_2_NAME:
         logging.info("The certificate contains a composite signature algorithm.")
         public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
         public_key = convertutils.ensure_is_verify_key(public_key)
@@ -546,7 +546,7 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
     oid = prot_alg_id["algorithm"]
 
     if isinstance(public_key, CompositeSig03PublicKey) and (
-        oid in CMS_COMPOSITE_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME
+        oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME
     ):
         resources.protectionutils.verify_signature_with_alg_id(
             public_key=public_key,
@@ -555,7 +555,7 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
             signature=pki_message["protection"].asOctets(),
         )
 
-    elif oid in CMS_COMPOSITE_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
+    elif oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
         other_certs = None
         if len(pki_message) > 1:
             other_certs = pki_message["extraCerts"][1:]
@@ -792,7 +792,7 @@ def may_extract_alt_key_from_cert(  # noqa: D417 Missing argument descriptions i
         spki = chameleon_logic.get_chameleon_delta_public_key(cert)
         return keyutils.load_public_key_from_spki(spki)  # type: ignore
 
-    if oid in CMS_COMPOSITE_OID_2_NAME:
+    if oid in CMS_COMPOSITE03_OID_2_NAME:
         public_key = keyutils.load_public_key_from_spki(spki)
         CompositeSig03PublicKey.validate_oid(oid, public_key)
         return public_key.pq_key  # type: ignore

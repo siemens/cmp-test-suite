@@ -40,7 +40,7 @@ from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import sha_alg_name_to_oid
 from resources.oidutils import (
     CMS_COMPOSITE03_NAME_2_OID,
-    CMS_COMPOSITE_OID_2_NAME,
+    CMS_COMPOSITE03_OID_2_NAME,
 )
 
 
@@ -356,7 +356,7 @@ class CompositeSig03PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey)
         if isinstance(key, CompositeSig03PrivateKey):
             key = key.public_key()
 
-        name = CMS_COMPOSITE_OID_2_NAME[oid]
+        name = CMS_COMPOSITE03_OID_2_NAME[oid]
         use_pre_hash = "hash-" in name
         use_pss = "-pss" in name
         loaded_oid = key.get_oid(use_pss=use_pss, pre_hash=use_pre_hash)
