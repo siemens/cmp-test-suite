@@ -74,7 +74,6 @@ pq-docs:
 	python -m robot.libdoc --pythonpath=./ tests_untested/ doc/test-migration-suites.html
 
 
-
 autoformat:
 	ruff check --fix .
 
@@ -89,13 +88,9 @@ verifyformat:
 	ruff check .
 
 dryrun:
-	robot --dryrun --pythonpath=./ --variable environment:$(env) tests
-	robot --dryrun --pythonpath=./ --variable environment:$(env) tests_untested
+	robot --dryrun --pythonpath=./ --variable environment:$(env) tests tests_pq_and_hybrid
 
-stats:
-	python scripts/write_stats.py
-
-invalid-sigs:
+check-sigs:
 	python test_load_pqc.py
 	python vis_pqc_verify.py
 
