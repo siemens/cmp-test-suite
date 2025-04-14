@@ -4,8 +4,8 @@
 
 """Utility functions for preparing data which is not tied to a specific keyword.
 
-Those prepare functions are used in various other structures adn do not require
-addtional logic.
+These prepare functions are used in various other structures and do not require
+ additional logic.
 """
 
 # TODO refactor to shared prepare utils used by the CA and Client logic used.

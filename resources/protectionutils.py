@@ -2200,7 +2200,7 @@ def get_rsa_oaep_padding(param: rfc4055.RSAES_OAEP_params) -> padding.OAEP:
     return padding.OAEP(mgf=padding.MGF1(algorithm=mgf_hash_alg), algorithm=hash_fun, label=None)
 
 
-@keyword(name="Sign Data With Alg ID")
+@keyword(name="Sign Data With AlgID")
 def sign_data_with_alg_id(  # noqa: D417 Missing argument descriptions in the docstring
     key: SignKey, alg_id: rfc9480.AlgorithmIdentifier, data: bytes
 ) -> bytes:
@@ -2274,7 +2274,7 @@ def _verify_composite_sig(
     )
 
 
-@keyword(name="Verify Signature With Alg ID")
+@keyword(name="Verify Signature With AlgID")
 def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in the docstring
     public_key: VerifyKey, alg_id: rfc9480.AlgorithmIdentifier, data: bytes, signature: bytes
 ) -> None:
@@ -2316,7 +2316,7 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
     elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
         hash_alg = get_hash_from_oid(oid, only_hash=True)
 
-        keyutils.check_consistency_alg_id_and_key(alg_id, public_key)
+        keyutils.check_consistency_sig_alg_id_and_key(alg_id, public_key)
         cryptoutils.verify_signature(public_key=public_key, signature=signature, data=data, hash_alg=hash_alg)
     else:
         raise BadAlg(f"Unsupported public key type: {type(public_key).__name__}.")

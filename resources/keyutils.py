@@ -31,7 +31,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from pyasn1.codec.der import decoder
 from pyasn1.type import univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc6664, rfc9480
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc6402, rfc6664, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.combined_factory import CombinedKeyFactory
@@ -42,9 +42,10 @@ from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
+from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME
-from resources import oid_mapping, utils
+from resources import oid_mapping, typingutils, utils
 from resources.convertutils import str_to_bytes
 from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, UnknownOID
 from resources.oid_mapping import KEY_CLASS_MAPPING, get_curve_instance, get_hash_from_oid, may_return_oid_to_name
@@ -57,7 +58,7 @@ from resources.oidutils import (
     PQ_SIG_PRE_HASH_OID_2_NAME,
     TRAD_STR_OID_TO_KEY_NAME,
 )
-from resources.typingutils import PrivateKey, PublicKey, SignKey, VerifyKey
+from resources.typingutils import PrivateKey, PublicKey, SignKey, TradSignKey, TradVerifyKey, VerifyKey
 
 
 def save_key(key: PrivateKey, path: str, password: Union[None, str] = "11111"):  # noqa: D417 for RF docs
@@ -642,7 +643,7 @@ def get_key_name(key: Union[PrivateKey, PublicKey]) -> str:  # noqa: D417 undocu
     return KEY_CLASS_MAPPING[key.__class__.__name__]
 
 
-def _check_trad_alg_id(public_key, oid: str, hash_alg: Optional[str]) -> None:
+def _check_trad_sig_alg_id(public_key: TradVerifyKey, oid: str, hash_alg: Optional[str]) -> None:
     """Validate if the public key is of the same type as the algorithm identifier."""
     if isinstance(public_key, Ed448PublicKey):
         if str(MSG_SIG_ALG_NAME_2_OID["ed448"]) == oid:
@@ -668,7 +669,8 @@ def _check_trad_alg_id(public_key, oid: str, hash_alg: Optional[str]) -> None:
     )
 
 
-def check_consistency_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, key: Union[SignKey, VerifyKey]) -> None:
+@not_keyword
+def check_consistency_sig_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, key: Union[SignKey, VerifyKey]) -> None:
     """Check the consistency of the algorithm identifier and the key.
 
     :param alg_id: The algorithm identifier for the key.
@@ -677,6 +679,7 @@ def check_consistency_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, key: U
     """
     oid = alg_id["algorithm"]
 
+    # Because the v4 is a subclass of the v3, we need to check the v4 first.
     result1 = isinstance(key, (CompositeSig04PublicKey, CompositeSig04PrivateKey))
     result2 = isinstance(key, (CompositeSig03PublicKey, CompositeSig03PrivateKey))
 
@@ -701,8 +704,17 @@ def check_consistency_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, key: U
         _name = key.name + _alg
         if str(PQ_NAME_2_OID[_name]) != str(oid):
             raise BadAlg("The public key was not of the same type as the,algorithm identifier implied.")
+    elif isinstance(key, (TradSignKey, TradVerifyKey)):
+        if isinstance(key, TradSignKey):
+            key = key.public_key()
+        _check_trad_sig_alg_id(key, str(oid), hash_alg=hash_alg)  # type: ignore
+
     else:
-        _check_trad_alg_id(key, str(oid), hash_alg=hash_alg)
+        raise ValueError(
+            "Unknown key type to verify the alg id and the matching key."
+            f"Given OID: {may_return_oid_to_name(univ.ObjectIdentifier(oid))}. "
+            f"Key type: {type(key).__name__}"
+        )
 
 
 @not_keyword
@@ -737,3 +749,70 @@ def private_key_to_private_numbers(private_key: PrivateKey) -> bytes:
         raise ValueError(f"Unsupported private key type: {private_key}. Cannot extract key generation parameters.")
 
     return data
+
+
+def generate_different_public_key(  # noqa D417 undocumented-param
+    key_source: Union[rfc9480.CMPCertificate, rfc6402.CertificationRequest, PrivateKey, PublicKey],
+    algorithm: Optional[str] = None,
+) -> typingutils.PublicKey:
+    """Generate a new public key using the specified algorithm, ensuring it differs from the certificate's public key.
+
+    Used to ensure the revocation request sends a different public key but for the same type.
+
+    Arguments:
+    ---------
+        - `key_source`: The certificate from which to extract the existing public key or a key object.
+        - `algorithm`: The algorithm to use for generating the new key pair (e.g., `"rsa"`, `"ec"`).
+
+    Raises:
+    ------
+        - `ValueError`: If the function fails to generate a different public key after 100 attempts.
+
+    Returns:
+    -------
+        - The generated public key, guaranteed to be different from the public key in `cert`.
+
+    Examples:
+    --------
+    | ${new_public_key}= | Generate Different Public Key | cert=${certificate} | algorithm="rsa" |
+    | ${new_public_key}= | Generate Different Public Key | cert=${certificate} | algorithm="ec" |
+
+    """
+    if isinstance(key_source, rfc9480.CMPCertificate):
+        spki = key_source["tbsCertificate"]["subjectPublicKeyInfo"]
+        public_key = load_public_key_from_spki(spki)
+
+    elif isinstance(key_source, rfc6402.CertificationRequest):
+        spki = key_source["certificationRequestInfo"]["subjectPublicKeyInfo"]
+        public_key = load_public_key_from_spki(spki)
+
+    elif isinstance(key_source, PrivateKey):
+        public_key = key_source.public_key()
+    else:
+        public_key = key_source
+
+    length = None
+    curve_name = None
+    if isinstance(public_key, RSAEncapKey):
+        length = public_key._public_key.key_size  # type: ignore
+    elif isinstance(public_key, RSAPublicKey):
+        length = public_key.key_size
+    elif isinstance(public_key, EllipticCurvePublicKey):
+        curve_name = public_key.curve.name
+
+    # just to reduce the extremely slim chance, they are actually the same.
+    pub_key = None
+    key_name = get_key_name(public_key)
+    for _ in range(100):
+        if algorithm is not None:
+            pub_key = generate_key(algorithm=algorithm, length=length, curve=curve_name).public_key()
+        else:
+            pub_key = generate_key(algorithm=key_name, by_name=True).public_key()
+        if pub_key != public_key:
+            break
+        pub_key = None
+
+    if pub_key is None:
+        raise ValueError("Failed to generate a different public key.")
+
+    return pub_key

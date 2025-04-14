@@ -403,7 +403,7 @@ def compare_csr_and_cert(  # noqa D417 undocumented-param
     return True
 
 
-@keyword(name="Compare Alg ID Without Tag")
+@keyword(name="Compare AlgID Without Tag")
 def compare_alg_id_without_tag(  # noqa D417 undocumented-param
     first: rfc9480.AlgorithmIdentifier, second: rfc9480.AlgorithmIdentifier
 ) -> bool:

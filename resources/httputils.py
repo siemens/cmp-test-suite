@@ -22,6 +22,7 @@ from robot.api.deco import keyword, not_keyword
 from resources import cmputils
 
 
+@keyword(name="HTTP Response Contains PKIMessage")
 def http_response_contains_pki_message(data: requests.Response) -> bool:  # noqa: D417 for RF docs
     """Check if a server returned a `rfc9480.PKIMessage` on failure.
 
@@ -36,8 +37,12 @@ def http_response_contains_pki_message(data: requests.Response) -> bool:  # noqa
 
     Returns:
     -------
-    - True if the response contains a valid PKIMessage.
-    - False if the response is empty or parsing fails.
+        - True if the response contains a valid PKIMessage.
+        - False if the response is empty or parsing fails.
+
+    Examples:
+    --------
+    | ${response}= | HTTP Response Contains PKIMessage | ${response} |
 
     """
     if not data.content:
@@ -60,12 +65,18 @@ def add_url_suffix(  # noqa: D417 Missing argument descriptions in the docstring
     """Add a suffix to a URL if it is not empty.
 
     Arguments:
+    ---------
         - url: The URL to append the suffix to.
         - suffix: The suffix to append to the URL.
 
     Returns:
     -------
         - The URL with the suffix appended.
+
+    Examples:
+    --------
+    | ${url}= | Add URL Suffix | url=https://example.com | /path |
+    | ${url}= | Add URL Suffix | url=https://example.com | ${None} |
 
     """
     if not suffix:

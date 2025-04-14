@@ -24,12 +24,21 @@ from pyasn1.type import char, tag, univ, useful
 from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc5652, rfc6664, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
-import resources.prepareutils
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPrivateKey, KEMPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from pq_logic.trad_typing import ECDHPrivateKey
-from resources import ca_ra_utils, cert_linters_utils, certutils, cmputils, envdatautils, keyutils, utils
+from resources import (
+    ca_ra_utils,
+    cert_linters_utils,
+    certextractutils,
+    certutils,
+    cmputils,
+    envdatautils,
+    keyutils,
+    prepareutils,
+    utils,
+)
 from resources.asn1_structures import (
     AlgorithmIdentifiers,
     InfoTypeAndValue,
@@ -64,34 +73,6 @@ from unit_tests.utils_for_test import try_encode_pyasn1
 # And for messages that are mentioned uses sections from the RFC9483.
 
 
-def _get_crl_dpn(cert: rfc9480.CMPCertificate) -> Union[rfc5280.CRLDistributionPoints, None]:
-    """Get the `CRLDistributionPoints` extension, DER-encoded, from a `rfc9480.CMPCertificate` object.
-
-    :param cert: The object to get the extension from.
-    :return: `None` if the extension is not present, else the `rfc5280.CRLDistributionPoints` structure.
-    """
-    for ext in cert["tbsCertificate"]["extensions"]:
-        if ext["extnID"] == rfc5280.id_ce_cRLDistributionPoints:
-            crl_pyasn1, _ = decoder.decode(ext["extnValue"], asn1Spec=rfc5280.CRLDistributionPoints())
-            return crl_pyasn1
-
-    return None
-
-
-def _get_issuing_distribution_point(cert: rfc9480.CMPCertificate) -> Union[rfc5280.IssuingDistributionPoint, None]:
-    """Get and decode the Issuing Distribution Point extension from a pyasn1 certificate object.
-
-    :param cert: The certificate to extract the extension from.
-    :return: `None` if the extension is not present, else the `rfc5280.IssuingDistributionPoint` structure.
-    """
-    for ext in cert["tbsCertificate"]["extensions"]:
-        if ext["extnID"] == rfc5280.id_ce_issuingDistributionPoint:
-            idp_pyasn1, _ = decoder.decode(ext["extnValue"], asn1Spec=rfc5280.IssuingDistributionPoint())
-            return idp_pyasn1
-
-    return None
-
-
 def _prepare_get_ca_certs(fill_info_value: bool = False) -> rfc9480.InfoTypeAndValue:
     """Prepare the `InfoTypeAndValue` structure for the `genm` `Get CA Certificates`.
 
@@ -100,7 +81,7 @@ def _prepare_get_ca_certs(fill_info_value: bool = False) -> rfc9480.InfoTypeAndV
     :return: The filled `InfoTypeAndValue` structure
     """
     # as of Section 4.3.1 Get CA Certificates infoValue of the Request must be Absent.
-    return cmputils.prepare_info_value(
+    return cmputils.prepare_info_type_and_value(
         oid=rfc9480.id_it_caCerts,
         fill_random=fill_info_value,
     )
@@ -329,7 +310,7 @@ def _prepare_get_certificate_request_template(fill_info_val: bool = False) -> rf
     because it MUST be absent.Defaults to `False`.
     :return: The filled `InfoTypeAndValue` structure
     """
-    return cmputils.prepare_info_value(oid=rfc9480.id_it_certReqTemplate, fill_random=fill_info_val)
+    return cmputils.prepare_info_type_and_value(oid=rfc9480.id_it_certReqTemplate, fill_random=fill_info_val)
 
 
 def _get_type_inside_controls(controls, oid: univ.ObjectIdentifier) -> Union[None, univ.Any]:
@@ -534,7 +515,7 @@ def prepare_distribution_point_name(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0)
     )
     gen_names = rfc9480.GeneralNames().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
-    gen_name_obj = resources.prepareutils.prepare_general_name(gen_type, value)  # type: ignore
+    gen_name_obj = prepareutils.prepare_general_name(gen_type, value)  # type: ignore
     gen_names.append(gen_name_obj)
     dist_point_name["fullName"] = gen_names
     return dist_point_name
@@ -553,13 +534,13 @@ def prepare_dpn_from_cert(
     :return: None or the parsed `DistributionPointName`
     """
     new_dpn = None
-    extension = _get_crl_dpn(cert)
+    extension = certextractutils.get_crl_dpn(cert)
     if extension is not None:
         # inside here has tag 0 the same as inside CRLSource.
         dpn: rfc5280.DistributionPointName = extension[crl_dp_index]["distributionPoint"]
         new_dpn = dpn
     else:
-        issuing_dp = _get_issuing_distribution_point(cert)
+        issuing_dp = certextractutils.get_issuing_distribution_point(cert)
         if issuing_dp is not None:
             new_dpn = issuing_dp["distributionPoint"]
 
@@ -657,7 +638,7 @@ def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
 
     status_list_val = rfc9480.CRLStatusListValue()
     status_list_val.append(status)
-    return cmputils.prepare_info_value(rfc9480.id_it_crlStatusList, value=status_list_val)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_crlStatusList, value=status_list_val)
 
 
 def _validate_crls(
@@ -775,7 +756,7 @@ def prepare_current_crl(fill_value: bool = False) -> rfc9480.InfoTypeAndValue:
     # As of Section 4.3.4:
     # Note: If the EE does not want to request a specific CRL, it
     # instead use a general message with OID id-it-currentCrl as specified in Section 5.3.19.6 of [RFC4210]
-    return cmputils.prepare_info_value(oid=rfc9480.id_it_currentCRL, fill_random=fill_value)
+    return cmputils.prepare_info_type_and_value(oid=rfc9480.id_it_currentCRL, fill_random=fill_value)
 
 
 # TODO maybe Update check
@@ -852,7 +833,10 @@ def validate_general_response(  # noqa D417 undocumented-param
 
 
 # TODO maybe change to MUST prepare crl_update_retrieval by the user before hand.
-def build_general_message(  # noqa D417 undocumented-param
+
+
+@keyword(name="Build CMP General Message")
+def build_cmp_general_message(  # noqa D417 undocumented-param
     add_messages: Optional[str] = None,
     recipient: str = "test-cmp-srv@example.com",
     sender: str = "test-cmp-cli@example.com",
@@ -910,10 +894,10 @@ def build_general_message(  # noqa D417 undocumented-param
 
     Examples:
     --------
-    | ${genm} = | Build General Message | add_messages=get_ca_certs,current_crl \
+    | ${genm} = | Build CMP General Message | add_messages=get_ca_certs,current_crl \
     | ca_cert=${ca_cert} |
-    | ${genm} = | Build General Message | add_messages=get_cert_template,crl_update_ret | ca_name=TestCA |
-    | ${genm} = | Build General Message | add_messages=get_ca_certs | negative=True |
+    | ${genm} = | Build CMP General Message | add_messages=get_cert_template,crl_update_ret | ca_name=TestCA |
+    | ${genm} = | Build CMP General Message | add_messages=get_ca_certs | negative=True |
 
     """
     body_content = rfc4210.GenMsgContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 21))
@@ -985,7 +969,7 @@ def prepare_ca_protocol_enc_cert(  # noqa D417 undocumented-param
     | ${ca_prot_cert} = | Prepare CA Protocol Enc Cert | True |
 
     """
-    return cmputils.prepare_info_value(rfc9480.id_it_caProtEncCert, fill_random=fill_value)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_caProtEncCert, fill_random=fill_value)
 
 
 @keyword(name="Validate CA Protocol Encr Cert")
@@ -1074,7 +1058,7 @@ def prepare_signing_key_types(fill_value: bool = False) -> rfc9480.InfoTypeAndVa
     :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
     :return: The populated `InfoTypeAndValue` structure.
     """
-    return cmputils.prepare_info_value(rfc9480.id_it_signKeyPairTypes, fill_random=fill_value)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_signKeyPairTypes, fill_random=fill_value)
 
 
 def validate_signing_key_types(  # noqa D417 undocumented-param
@@ -1135,7 +1119,7 @@ def prepare_enc_key_agreement_types(fill_value: bool = False) -> rfc9480.InfoTyp
     :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
     :return: The populated `InfoTypeAndValue` structure.
     """
-    return cmputils.prepare_info_value(rfc9480.id_it_encKeyPairTypes, fill_random=fill_value)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_encKeyPairTypes, fill_random=fill_value)
 
 
 @not_keyword
@@ -1152,7 +1136,7 @@ def prepare_enc_key_pair_types_response(
         alg_id = rfc9480.AlgorithmIdentifier()
         alg_id["algorithm"] = may_return_oid_by_name(entry)
         alg_ids.append(alg_id)
-    return cmputils.prepare_info_value(rfc9480.id_it_encKeyPairTypes, value=alg_ids)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_encKeyPairTypes, value=alg_ids)
 
 
 @not_keyword
@@ -1164,7 +1148,7 @@ def prepare_unsupported_oids_response(oids: Sequence[univ.ObjectIdentifier]) -> 
         if entry not in ALL_KNOWN_OIDS_2_NAME:
             oids_out.append(entry)
 
-    return cmputils.prepare_info_value(rfc9480.id_it_unsupportedOIDs, value=oids_out)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_unsupportedOIDs, value=oids_out)
 
 
 def _check_ec_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> str:
@@ -1269,7 +1253,7 @@ def prepare_preferred_sym_alg(fill_value: bool = False) -> rfc9480.InfoTypeAndVa
     :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
     :return: The populated `InfoTypeAndValue` structure.
     """
-    return cmputils.prepare_info_value(rfc9480.id_it_preferredSymmAlg, fill_random=fill_value)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_preferredSymmAlg, fill_random=fill_value)
 
 
 @keyword(name="Validate Preferred Symmetric Algorithm")
@@ -1387,7 +1371,7 @@ def prepare_revocation_passphrase(  # noqa D417 undocumented-param
     )
     enc_key = rfc9480.EncryptedKey()
     enc_key["envelopedData"] = env_data
-    return cmputils.prepare_info_value(rfc9480.id_it_revPassphrase, value=enc_key)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_revPassphrase, value=enc_key)
 
 
 def validate_revocation_passphrase_response(  # noqa D417 undocumented-param
@@ -1601,6 +1585,7 @@ def _prepare_kem_ct_info(  # noqa D417 undocumented-param
     return ss, info_val  # type: ignore
 
 
+@keyword(name="Build Genp KEMCiphertextInfo From Genm")
 def build_genp_kem_ct_info_from_genm(  # noqa: D417 Missing argument description in the docstring
     genm: PKIMessageTMP, expected_size: int = 1, ca_key: Optional[ECDHPrivateKey] = None, **kwargs
 ) -> Tuple[bytes, PKIMessageTMP]:
@@ -1626,7 +1611,7 @@ def build_genp_kem_ct_info_from_genm(  # noqa: D417 Missing argument description
 
     Examples:
     --------
-    | ${ss} {genp}= | Build GenP KEM CT Info From GenM | ${genm} | ca_key=${ca_key} |
+    | ${ss} {genp}= | Build Genp KEMCiphertextInfo From Genm | ${genm} | ca_key=${ca_key} |
 
     """
     validate_genm_message_size(genm=genm, expected_size=expected_size)
@@ -1758,7 +1743,7 @@ def _append_messages(
         body_content.append(prepare_supported_language_tags(langs=supp_lang_tags))
 
     if "kem_ct_info" in messages:
-        body_content.append(cmputils.prepare_info_value(id_it_KemCiphertextInfo, fill_random=fill_value))
+        body_content.append(cmputils.prepare_info_type_and_value(id_it_KemCiphertextInfo, fill_random=fill_value))
 
     return body_content
 
@@ -1785,7 +1770,7 @@ def prepare_simple_info_types_and_value(  # noqa D417 undocumented-param
     - "current_crl" (CRL)
     - "implicit_confirm"
     - "cert_req_template"
-    - "kem_ct"
+    - "kem_ct" (initiator)
 
     **MAY** be absent:
     ------------------
@@ -1831,12 +1816,13 @@ def prepare_simple_info_types_and_value(  # noqa D417 undocumented-param
 
     for option in name.split(","):
         oid = GeneralInfoOID.get_oid(option)
-        info_val = cmputils.prepare_info_value(oid, value, fill_random=fill_random)
+        info_val = cmputils.prepare_info_type_and_value(oid, value, fill_random=fill_random)
         info_values.append(info_val)
 
     return info_values
 
 
+@keyword(name="Build CMP GeneralResponse")
 def build_cmp_general_response(  # noqa D417 undocumented-param
     genm: Optional[PKIMessageTMP] = None,
     exclude_fields: Optional[str] = None,

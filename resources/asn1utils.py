@@ -642,7 +642,7 @@ def try_decode_pyasn1(data: bytes, asn1_spec: Asn1Type, for_nested: bool = False
             return out, rest
         return decoder.decode(data, asn1_spec)
     except Exception:  # pylint: disable=broad-except
-        raise BadAsn1Data(
-            f"Error decoding data for {type(asn1_spec)}",  # pylint: disable=raise-missing-from
+        raise BadAsn1Data(  # pylint: disable=raise-missing-from
+            f"Error decoding data for {type(asn1_spec)}",
             overwrite=True,
         )

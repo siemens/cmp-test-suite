@@ -40,7 +40,7 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
 from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME
-from pq_logic.trad_typing import CA_CERT_RESPONSE, CA_CERT_RESPONSES, CA_RESPONSE, ECDHPrivateKey
+from pq_logic.trad_typing import ECDHPrivateKey
 from resources import ca_ra_utils, certbuildutils, cmputils, keyutils, utils
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import build_ca_message
@@ -60,6 +60,9 @@ from resources.oidutils import (
     id_ce_altSignatureValue,
 )
 from resources.typingutils import (
+    CACertResponse,
+    CACertResponses,
+    CAResponse,
     ECSignKey,
     ECVerifyKey,
     PublicKey,
@@ -873,7 +876,7 @@ def _process_single_catalyst_request(
     cert_req_id: Optional[Union[int, str]] = None,
     hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
     extensions: Optional[rfc9480.Extensions] = None,
-) -> CA_CERT_RESPONSE:
+) -> CACertResponse:
     """Process a single Catalyst request.
 
     :param cert_req_msg: The certificate request message.
@@ -950,7 +953,7 @@ def _process_catalyst_requests(
     use_rsa_pss: bool = True,
     hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
     extensions: Optional[rfc9480.Extensions] = None,
-) -> CA_CERT_RESPONSES:
+) -> CACertResponses:
     """Process multiple Catalyst requests.
 
     :param requests: The PKIMessage with the requests.
@@ -1004,7 +1007,7 @@ def build_catalyst_signed_cert_from_req(  # noqa: D417 Missing argument descript
     allow_chosen_sig_alg: bool = True,
     hybrid_kem_key: Optional[Union[HybridKEMPrivateKey, ECDHPrivateKey]] = None,
     **kwargs,  # pylint: disable=unused-argument
-) -> CA_RESPONSE:
+) -> CAResponse:
     """Build a certificate from a Catalyst request.
 
     Arguments:
@@ -1044,7 +1047,7 @@ def build_catalyst_signed_cert_from_req(  # noqa: D417 Missing argument descript
         certs = [cert]
         return responses, certs
 
-    elif request["body"].getName() in ["ir", "cr", "kur", "ccr"]:
+    if request["body"].getName() in ["ir", "cr", "kur", "ccr"]:
         if cert_index is not None:
             cert_req_msg = ca_ra_utils.get_cert_req_msg_from_pkimessage(
                 pki_message=request,

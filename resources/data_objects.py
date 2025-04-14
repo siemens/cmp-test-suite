@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Dataclass objects needed for the issuing processes."""
 
 from dataclasses import dataclass
@@ -81,16 +85,16 @@ class KARICertsAndKeys:
             if self.x25519_cert is None or self.x25519_key is None:
                 raise ValueError("X25519 certificate and key are not set.")
             return self.x25519_cert, self.x25519_key
-        elif isinstance(public_key, X448PublicKey):
+        if isinstance(public_key, X448PublicKey):
             if self.x448_cert is None or self.x448_key is None:
                 raise ValueError("X448 certificate and key are not set.")
             return self.x448_cert, self.x448_key
-        elif isinstance(public_key, EllipticCurvePublicKey):
+        if isinstance(public_key, EllipticCurvePublicKey):
             if self.ecc_cert is None or self.ecc_key is None:
                 raise ValueError("ECC certificate and key are not set.")
             return self.ecc_cert, self.ecc_key
-        else:
-            raise ValueError(f"Unsupported public key type: {type(public_key)}")
+
+        raise ValueError(f"Unsupported public key type: {type(public_key)}")
 
     @staticmethod
     def from_kwargs(**kwargs) -> "KARICertsAndKeys":
@@ -168,6 +172,7 @@ class AlgorithmProfile:
     def get_key_derivation_algs(cls, usage: Optional[str] = None) -> Dict[univ.ObjectIdentifier, str]:
         """Get the key derivation algorithms.
 
+        :param usage: The usage of the key derivation algorithm, to filter more specifically.
         :return: The key derivation algorithms.
         """
         return cls.km_kd_alg

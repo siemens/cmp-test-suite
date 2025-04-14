@@ -524,9 +524,9 @@ def server_side_validate_cert_binding_for_multi_auth(ee_cert, related_cert) -> N
     cert_b_not_valid_before = pyasn1_time_obj_to_py_datetime(cert_b["notBefore"])
     cert_b_not_valid_after = pyasn1_time_obj_to_py_datetime(cert_b["notAfter"])
 
-    if not (rel_cert_not_valid_after <= now <= rel_cert_not_valid_before):
+    if not rel_cert_not_valid_after <= now <= rel_cert_not_valid_before:
         raise ValueError("Cert A is not valid at the time of issuance.")
-    if not (cert_b_not_valid_before <= now <= cert_b_not_valid_after):
+    if not cert_b_not_valid_before <= now <= cert_b_not_valid_after:
         raise ValueError("Cert B is not valid at the time of issuance.")
     if rel_cert_not_valid_after < rel_cert_not_valid_before:
         logging.info("Cert A and Cert B do not have an overlapping validity period.")

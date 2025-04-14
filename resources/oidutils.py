@@ -425,13 +425,20 @@ KM_KW_ALG = {
     rfc9481.id_aes256_wrap: "aes256_wrap",
 }  # As per Section 4.3 in RFC 9481
 
+RFC9481_OID_2_NAME = {}
+RFC9481_OID_2_NAME.update(KM_KA_ALG)
+RFC9481_OID_2_NAME.update(KM_KD_ALG)
+RFC9481_OID_2_NAME.update(KM_KW_ALG)
+RFC9481_OID_2_NAME.update(AES_CBC_OID_2_NAME)
+RFC9481_OID_2_NAME.update(SUPPORTED_MAC_OID_2_NAME)
+RFC9481_OID_2_NAME.update(SYMMETRIC_PROT_ALGO)
+RFC9481_OID_2_NAME.update(KMAC_OID_2_NAME)
+RFC9481_OID_2_NAME.update(RSASSA_PSS_OID_2_NAME)
+
 
 ALL_KNOWN_OIDS_2_NAME = {}
 ALL_KNOWN_OIDS_2_NAME.update({rfc6664.id_ecPublicKey: "ecPublicKey"})
-ALL_KNOWN_OIDS_2_NAME.update(SUPPORTED_MAC_OID_2_NAME)
-ALL_KNOWN_OIDS_2_NAME.update(SYMMETRIC_PROT_ALGO)
-ALL_KNOWN_OIDS_2_NAME.update(KMAC_OID_2_NAME)
-ALL_KNOWN_OIDS_2_NAME.update(RSASSA_PSS_OID_2_NAME)
+ALL_KNOWN_OIDS_2_NAME.update(RFC9481_OID_2_NAME)
 
 
 ###########################
@@ -603,9 +610,9 @@ PQ_NAME_2_OID.update(PQ_KEM_NAME_2_OID)
 PQ_NAME_2_OID.update(FALCON_NAME_2_OID)
 
 KEY_WRAP_NAME_2_OID = {
-    "aes128-wrap": rfc3565.id_aes128_wrap,
-    "aes192-wrap": rfc3565.id_aes192_wrap,
-    "aes256-wrap": rfc3565.id_aes256_wrap,
+    "aes128_wrap": rfc3565.id_aes128_wrap,
+    "aes192_wrap": rfc3565.id_aes192_wrap,
+    "aes256_wrap": rfc3565.id_aes256_wrap,
     # currently unsupported, maybe available in the future.
     # is available inside the `cryptography` library,
     # but was not inside RFC9383.

@@ -13,12 +13,11 @@ import os
 from typing import List, Optional, Tuple, Union
 
 from cryptography import x509
-from cryptography.hazmat._oid import AuthorityInformationAccessOID
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, padding, rsa
 from cryptography.hazmat.primitives.keywrap import aes_key_unwrap, aes_key_wrap
 from cryptography.x509 import AuthorityInformationAccess, ExtensionNotFound, UniformResourceIdentifier, extensions
-from cryptography.x509.oid import ExtensionOID
+from cryptography.x509.oid import AuthorityInformationAccessOID, ExtensionOID
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
@@ -27,10 +26,10 @@ import resources.prepareutils
 from resources import keyutils
 from resources.asn1utils import get_set_bitstring_names, is_bit_set
 from resources.certutils import _convert_to_crypto_lib_cert
-from resources.convertutils import ensure_is_sign_key
+from resources.convertutils import ensure_is_sign_key, ensure_is_trad_sign_key
 from resources.cryptoutils import compute_aes_cbc
 from resources.oid_mapping import hash_name_to_instance
-from resources.typingutils import PrivateKey, PrivSignCertKey, PublicKey, SignKey, Strint, TradSignKey
+from resources.typingutils import PrivateKey, PublicKey, SignKey, Strint, TradSignKey
 
 
 def _build_cert(
@@ -136,7 +135,7 @@ def _sign_cert_builder(
 
 def _add_extension(
     cert_builder: x509.CertificateBuilder,
-    basic_constraint: Optional[bool] = None,
+    basic_constraint: Optional[Tuple[bool, Optional[int]]] = None,
     key_usage: Optional[str] = None,
     ski: Optional[PublicKey] = None,
     ocsp_url: Optional[str] = None,
@@ -154,7 +153,7 @@ def _add_extension(
     """
     if basic_constraint is not None:
         cert_builder = cert_builder.add_extension(
-            x509.BasicConstraints(ca=basic_constraint, path_length=None), critical=critical
+            x509.BasicConstraints(ca=basic_constraint[0], path_length=basic_constraint[1]), critical=critical
         )
 
     if key_usage is not None:
@@ -245,9 +244,13 @@ def _build_certificate(  # noqa D417 undocumented-param
         not_valid_before=params.get("not_valid_before"),
     )
 
-    basic_constraint = None
+    basic_constraint: Optional[Tuple[bool, Optional[int]]] = None
     if params.get("is_ca") is not None:
-        basic_constraint = [params.get("is_ca"), params.get("path_length")]
+        path_length = None
+        if params.get("path_length") is not None:
+            path_length = int(params.get("path_length"))  # type: ignore
+
+        basic_constraint = (params.get("is_ca", False), path_length)
 
     ski = private_key.public_key() if ski else None  # type: ignore
     cert_builder = _add_extension(
@@ -345,8 +348,8 @@ class KeyUsageEnum(enum.Enum):
         names = get_set_bitstring_names(given_usage)
         if same_vals:
             # to ensure same names are used.
-            expected_usage = rfc5280.KeyUsage(expected_usage)
-            expected_names = get_set_bitstring_names(expected_usage)  # type: ignore
+            usage_obj = rfc5280.KeyUsage(expected_usage)
+            expected_names = get_set_bitstring_names(usage_obj)  # type: ignore
             return names == expected_names
 
         vals = [val.strip() for val in expected_usage.split(",")]
@@ -432,7 +435,7 @@ def generate_csr(  # noqa D417 undocumented-param
 
 
 def sign_csr(  # noqa D417 undocumented-param
-    csr: x509.CertificateSigningRequestBuilder, key: SignKey, hash_alg: str = "sha256"
+    csr: x509.CertificateSigningRequestBuilder, key: TradSignKey, hash_alg: str = "sha256"
 ):
     """Sign a CSR with a given key, using a specified hashing algorithm.
 
@@ -453,7 +456,7 @@ def sign_csr(  # noqa D417 undocumented-param
 
 @keyword(name="Generate Signed CSR")
 def generate_signed_csr2(  # noqa D417 undocumented-param
-    common_name: str, key: Union[SignKey, str, None] = None, **params
+    common_name: str, key: Union[TradSignKey, str, None] = None, **params
 ) -> Tuple[bytes, SignKey]:
     """Generate signed CSR for a given common name (CN).
 
@@ -488,20 +491,21 @@ def generate_signed_csr2(  # noqa D417 undocumented-param
         key = keyutils.generate_key(algorithm="rsa")  # type: ignore
     elif isinstance(key, str):
         key = keyutils.generate_key(algorithm=key, **params)  # type: ignore
-    elif isinstance(key, PrivateKey):
+    elif isinstance(key, TradSignKey):
         pass
     else:
         raise ValueError("`key` must be either an algorithm name or a private key")
 
+    sign_key = ensure_is_trad_sign_key(key)
     csr = generate_csr(common_name=common_name)
-    csr_signed = sign_csr(csr=csr, key=key)
+    csr_signed = sign_csr(csr=csr, key=sign_key)
 
-    return csr_signed, key
+    return csr_signed, sign_key
 
 
 def _sign_csr_builder(
     csr_builder: x509.CertificateSigningRequestBuilder,
-    sign_key: Optional[PrivSignCertKey],
+    sign_key: Optional[TradSignKey],
     hash_alg: Optional[str] = None,
 ) -> x509.CertificateSigningRequest:
     """Sign a `cryptography.x509.CertificateBuilder` object with a provided key to sign and a hash algorithm.
@@ -546,7 +550,12 @@ AES_ALG_NAME_2_OID = {
 
 
 def prepare_encrypted_value(
-    data: bytes, kek: bytes, cek: bytes, iv: Optional[bytes] = None, aes_cbc_size: int = None, aes_wrap_size: int = None
+    data: bytes,
+    kek: bytes,
+    cek: bytes,
+    iv: Optional[bytes] = None,
+    aes_cbc_size: Optional[int] = None,
+    aes_wrap_size: Optional[int] = None,
 ):
     """Prepare an `EncryptedValue` structure using AES Key Wrap and AES-CBC.
 

@@ -86,7 +86,7 @@ class CompositeSig04PublicKey(CompositeSig03PublicKey):
 
     @property
     def pq_key(self) -> MLDSAPublicKey:
-        """Return teh PQ key."""
+        """Return the PQ key."""
         return self._pq_key
 
     @property

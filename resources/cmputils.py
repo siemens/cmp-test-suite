@@ -53,7 +53,7 @@ from resources.asn1_structures import KemCiphertextInfoAsn1, PKIMessagesTMP, PKI
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadDataFormat, BadRequest
-from resources.typingutils import CertObjOrPath, ControlsType, PrivateKey, PublicKey, SignKey, Strint
+from resources.typingutils import CertObjOrPath, ControlsType, ExtensionsType, PrivateKey, PublicKey, SignKey, Strint
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -428,6 +428,7 @@ def build_p10cr_from_csr(  # noqa D417 undocumented-param
     return pki_message
 
 
+@keyword(name="Prepare OldCertId Control")
 def prepare_old_cert_id_control(
     cert: Optional[rfc9480.CMPCertificate] = None,
     serial_number: Optional[int] = None,
@@ -583,6 +584,57 @@ def add_controls_to_pkimessage(  # noqa D417 undocumented-param
         for entry in pki_message["body"][body_name]:
             entry: rfc4211.CertReqMsg
             entry["certReq"]["controls"].extend(controls)
+
+    return pki_message
+
+
+@keyword(name="Add Extension To PKIMessage")
+def add_extensions_to_pkimessage(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP,
+    extension: ExtensionsType,
+    cert_req_index: Optional[Strint] = 0,
+) -> PKIMessageTMP:
+    """Add `Extension` objects to a PKIMessage for a specific certificate request.
+
+    Arguments:
+    ---------
+        - `pki_message`: The PKIMessage to which the extension will be added.
+        - `extension`: The extension to be added to a certificate template. \
+        Can be a single `Extension` object or a list of `Extension` objects.
+        - `cert_req_index`: The index of the certificate request, if set to `None`,
+        will be set for all requests. Defaults to `0`.
+
+    Returns:
+    -------
+        - The updated PKIMessage with the extension(s) added.
+
+    Raises:
+    ------
+        - `ValueError`: If the body type of the PKIMessage is not valid for adding extensions.
+
+    Examples:
+    --------
+    | ${pki_message}= | Add Extension To PKIMessage | ${pki_message} | extension=${extension} |
+
+    """
+    if isinstance(extension, rfc5280.Extension):
+        extension = [extension]
+
+    body_name = pki_message["body"].getName()
+    if body_name not in ["ir", "cr", "kur", "ccr"]:
+        raise ValueError(
+            f"Invalid body type for adding controls: {pki_message['body'].getName()}."
+            f"Expected 'ir', 'cr', 'kur', or 'ccr'."
+        )
+
+    if cert_req_index is not None:
+        cert_request = pki_message["body"][body_name][int(cert_req_index)]["certReq"]
+        cert_request: rfc4211.CertRequest
+        cert_request["certTemplate"]["extensions"].extend(extension)
+    else:
+        for entry in pki_message["body"][body_name]:
+            entry: rfc4211.CertReqMsg
+            entry["certReq"]["certTemplate"]["extensions"].extend(extension)
 
     return pki_message
 
@@ -1216,9 +1268,6 @@ def validate_pki_publication_information(  # noqa D417 undocumented-param
         logging.info("The certificate can be published in any location.")
 
 
-# TODO correct EncryptedKey logic to allow this for KeyAgreement or KEM as well.
-
-
 @keyword(name="Prepare Protocol Encryption Key Control")
 def prepare_protocol_encryption_key_control(  # noqa D417 undocumented-param
     public_key: Optional[Union[PublicKey, rfc9480.CMPCertificate, rfc5280.SubjectPublicKeyInfo]] = None,
@@ -1462,7 +1511,7 @@ def prepare_utf8_pairs_req_info(  # noqa D417 undocumented-param
     return attr
 
 
-def parse_utf8_pairs(s: str) -> List[Tuple[str, str]]:
+def _parse_utf8_pairs(s: str) -> List[Tuple[str, str]]:
     """Parse a string in the format: Name?Value%[Name?Value%]*.
 
     Where any literal '?' in a name must be encoded as '%3f'
@@ -1538,14 +1587,15 @@ def parse_utf8_pairs(s: str) -> List[Tuple[str, str]]:
     return pairs
 
 
+@keyword(name="Validate regInfo UTF8Pairs")
 def validate_reg_info_utf8_pairs(  # noqa D417 undocumented-param
     reg_infos: Sequence[rfc4211.AttributeTypeAndValue], must_be_present: bool = False
 ) -> Optional[List[Tuple[str, str]]]:
-    """Validate the UTF8Pairs structure, to be used inside the reqInfo structure.
+    """Validate the UTF8Pairs structure, to be used inside the regInfo structure.
 
     Arguments:
     ---------
-        - `reg_infos`: The registration information to validate.
+        - `reg_infos`: The request information to validate.
         - `must_be_present`: Whether the UTF8Pairs must be present. Defaults to `False`.
 
     Returns:
@@ -1560,7 +1610,7 @@ def validate_reg_info_utf8_pairs(  # noqa D417 undocumented-param
 
     Examples:
     --------
-    | ${utf8_pairs}= | Validate reqInfo UTF8 Pairs | ${reg_infos} |
+    | ${utf8_pairs}= | Validate regInfo UTF8 Pairs | ${reg_infos} |
 
     """
     der_data = None
@@ -1570,7 +1620,7 @@ def validate_reg_info_utf8_pairs(  # noqa D417 undocumented-param
             break
 
     if der_data is None and must_be_present:
-        raise ValueError("Missing UTF8Pairs inside the `reqInfo` field.")
+        raise ValueError("Missing UTF8Pairs inside the `regInfo` field.")
 
     if der_data is None:
         return None
@@ -1583,7 +1633,7 @@ def validate_reg_info_utf8_pairs(  # noqa D417 undocumented-param
 
     try:
         utf8_pairs_out = parse.unquote(str(utf8_pairs), encoding="utf-8", errors="strict")
-        return parse_utf8_pairs(utf8_pairs_out)
+        return _parse_utf8_pairs(utf8_pairs_out)
     except Exception as e:
         raise BadAsn1Data(f"Failed to decode/unquote UTF8Pairs: {e}") from e
 
@@ -3678,7 +3728,8 @@ def prepare_extra_certs_from_path(path: str, recursive: bool = False) -> univ.Se
     return extra_certs_wrapper
 
 
-def prepare_info_value(  # noqa: D417 undocumented-param
+@keyword(name="Prepare InfoTypeAndValue")
+def prepare_info_type_and_value(  # noqa: D417 undocumented-param
     oid: Union[univ.ObjectIdentifier, str], value: Union[None, bytes, str, Asn1Type] = None, fill_random: bool = False
 ) -> rfc9480.InfoTypeAndValue:
     """Prepare an `InfoTypeAndValue` structure with the given ObjectIdentifier and optional value.
@@ -3747,7 +3798,7 @@ def _prepare_generalinfo(
     )
 
     if implicit_confirm:
-        implicit_confirm_obj = prepare_info_value(
+        implicit_confirm_obj = prepare_info_type_and_value(
             oid=rfc9480.id_it_implicitConfirm, value=univ.Null(""), fill_random=negative_value
         )
         general_info_wrapper.append(implicit_confirm_obj)
@@ -3816,7 +3867,7 @@ def prepare_orig_pki_message(  # noqa D417 undocumented-param
 
     obj.extend(pki_messages)
     der_data = encoder.encode(obj)
-    return prepare_info_value(rfc9480.id_it_origPKIMessage, value=der_data)
+    return prepare_info_type_and_value(rfc9480.id_it_origPKIMessage, value=der_data)
 
 
 @not_keyword
@@ -5232,6 +5283,7 @@ def prepare_popo_challenge_for_non_signing_key(  # noqa D417 undocumented-param
     return popo_structure
 
 
+@keyword(name="Build KEMBasedMAC Protected Message")
 def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument description in the docstring
     request: PKIMessageTMP,
     shared_secret: Optional[bytes] = None,
@@ -5255,6 +5307,15 @@ def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument descri
     Returns:
     -------
         - The protected PKIMessage.
+
+    Raises:
+        - `ValueError`: If the shared secret is not provided or generated.
+        - `ValueError`: If the KEM algorithm does not match the client key.
+        - `ValueError`: If the CA certificate is not provided and no client key is given.
+
+    Examples:
+    --------
+    | ${shared_secret} ${protected_message}= | Build KEMBasedMAC Protected Message | request=${request} |
 
     """
     if kem_ct_info is not None and client_key is None:

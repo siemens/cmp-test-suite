@@ -37,7 +37,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
 )
 from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
-from pq_logic.trad_typing import CA_RESPONSE, ECDHPrivateKey, ECDHPublicKey
+from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources import (
     ca_kga_logic,
     certbuildutils,
@@ -85,7 +85,7 @@ from resources.exceptions import (
 from resources.oid_mapping import compute_hash, get_hash_from_oid, may_return_oid_to_name, sha_alg_name_to_oid
 from resources.oidutils import CURVE_OID_2_NAME, id_KemBasedMac
 from resources.protectionutils import compute_mac_from_alg_id, sign_data_with_alg_id
-from resources.typingutils import EnvDataPrivateKey, PrivateKey, PublicKey, SignKey, Strint
+from resources.typingutils import CAResponse, EnvDataPrivateKey, PrivateKey, PublicKey, SignKey, Strint
 
 
 def _prepare_rand(
@@ -1336,7 +1336,7 @@ def validate_cert_template_public_key(
             raise BadCertTemplate(
                 "The public key was not a valid verify key.", failinfo="badAlg,badCertTemplate"
             ) from e
-        keyutils.check_consistency_alg_id_and_key(sig_popo_alg_id, public_key)
+        keyutils.check_consistency_sig_alg_id_and_key(sig_popo_alg_id, public_key)
 
     if cert_template["publicKey"].isValue:
         if cert_template["publicKey"]["subjectPublicKey"].asOctets() != b"":
@@ -1711,7 +1711,6 @@ def respond_to_key_agreement(  # noqa: D417 Missing argument descriptions in the
         cmp_protection_cert=cmp_protection_cert,
         oid=None,
         cek=cek,
-        use_ephemeral=use_ephemeral,
     )
     new_ee_cert = certbuildutils.build_cert_from_cert_template(
         cert_template=cert_template,
@@ -2096,7 +2095,7 @@ def _process_one_cert_request(
                     f"Invalid public key type: {type(public_key)}. {e}", failinfo="badPOP,badCertTemplate"
                 ) from e
             try:
-                keyutils.check_consistency_alg_id_and_key(
+                keyutils.check_consistency_sig_alg_id_and_key(
                     cert_req_msg["popo"]["signature"]["algorithmIdentifier"], public_key
                 )
             except BadAlg as e:
@@ -2239,7 +2238,7 @@ def build_cp_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
     eku_strict: bool = True,
     set_header_fields: bool = True,
     **kwargs,
-) -> CA_RESPONSE:
+) -> CAResponse:
     """Build a CMP message for a certificate response.
 
     Arguments:
@@ -2380,7 +2379,7 @@ def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
     set_header_fields: bool = True,
     verify_ra_verified: bool = True,
     **kwargs,
-) -> CA_RESPONSE:
+) -> CAResponse:
     """Build a CMP message for an initialization response.
 
     Arguments:
@@ -3540,7 +3539,7 @@ def build_kup_from_kur(
     must_have_controls: bool = False,
     allow_same_key: bool = True,
     **kwargs,
-) -> CA_RESPONSE:
+) -> CAResponse:
     """Build a KUP message from a KUR message.
 
     :param request: The request message.
@@ -3996,7 +3995,7 @@ def build_ccp_from_ccr(  # noqa D417 undocumented-param
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
     **kwargs,
-) -> CA_RESPONSE:
+) -> CAResponse:
     """Build a CCP message from a CCR message.
 
     Build a CA certificate response message from a CA certificate request.
@@ -4084,7 +4083,7 @@ def build_kga_cmp_response(  # noqa D417 undocumented-param
     hash_alg: str = "sha256",
     set_header_fields: bool = True,
     **kwargs,
-) -> CA_RESPONSE:
+) -> CAResponse:
     """Build a CMP message that responds to a KGA request and returns the newly generated private key to the end entity.
 
     Arguments:

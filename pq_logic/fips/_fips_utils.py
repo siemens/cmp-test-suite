@@ -1,3 +1,4 @@
+"""Utility functions for FIPS compliance."""
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -46,7 +47,7 @@ def _compute_shake(algorithm: str, data: bytes, length: int) -> bytes:
     return hasher.finalize()
 
 class XOFHash:
-
+    """XOF hash object for SHAKE128 and SHAKE256."""
     _hasher: hashes.Hash
     def __init__(self, algorithm: str, digest_length: int = 1000000):
         """Initialize the XOF hash object."""
@@ -89,7 +90,8 @@ class XOFHash:
             # Use the same hasher again to get more bytes
             # Unfortunately, cryptography doesn't allow true incremental squeeze,
             # so we need to restart hash and squeeze up to desired length
-            raise RuntimeError("cryptography backend doesn't allow further incremental squeezing.")
+            raise RuntimeError("cryptography backend doesn't allow further incremental squeezing."
+                               f"Need to restart the hasher: {needed} bytes needed.")
 
     def squeeze(self, length: int) -> bytearray:
         """Squeeze the XOF hash and return the specified number of bytes.

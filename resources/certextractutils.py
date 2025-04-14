@@ -287,3 +287,41 @@ def extract_extensions_from_csr(csr: rfc6402.CertificationRequest) -> Optional[r
             return extn
 
     return None
+
+
+@not_keyword
+def get_crl_dpn(cert: rfc9480.CMPCertificate) -> Union[rfc5280.CRLDistributionPoints, None]:
+    """Get the `CRLDistributionPoints` extension, DER-encoded, from a `rfc9480.CMPCertificate` object.
+
+    :param cert: The object to get the extension from.
+    :return: `None` if the extension is not present, else the `rfc5280.CRLDistributionPoints` structure.
+    :raises: `BadAsn1Data` if the extension value cannot be decoded.
+    """
+    extn_val = get_extension(cert["tbsCertificate"]["extensions"], rfc5280.id_ce_cRLDistributionPoints)
+    if extn_val is None:
+        return None
+    crl_dp_pyasn1, _ = asn1utils.try_decode_pyasn1(
+        extn_val["extnValue"].asOctets(),  # type: ignore
+        rfc5280.CRLDistributionPoints(),
+    )
+    crl_dp_pyasn1: rfc5280.CRLDistributionPoints
+    return crl_dp_pyasn1
+
+
+@not_keyword
+def get_issuing_distribution_point(cert: rfc9480.CMPCertificate) -> Union[rfc5280.IssuingDistributionPoint, None]:
+    """Get and decode the Issuing Distribution Point extension from a pyasn1 certificate object.
+
+    :param cert: The certificate to extract the extension from.
+    :return: `None` if the extension is not present, else the `rfc5280.IssuingDistributionPoint` structure.
+    :raises: `BadAsn1Data` if the extension value cannot be decoded.
+    """
+    extn_val = get_extension(cert["tbsCertificate"]["extensions"], rfc5280.id_ce_issuingDistributionPoint)
+    if extn_val is None:
+        return None
+    idp_pyasn1, _ = asn1utils.try_decode_pyasn1(
+        extn_val["extnValue"].asOctets(),  # type: ignore
+        rfc5280.IssuingDistributionPoint(),
+    )
+    idp_pyasn1: rfc5280.IssuingDistributionPoint
+    return idp_pyasn1

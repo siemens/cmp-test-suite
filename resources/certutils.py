@@ -1090,6 +1090,7 @@ def verify_openssl_crl(crl_chain: List, timeout: int = 60):
     raise ValueError("Validation of the CRL failed!")
 
 
+@keyword(name="Find CRL Signer Cert")
 def find_crl_signer_cert(  # noqa D417 undocumented-param
     crl: rfc5280.CertificateList,
     ca_cert_dir: str = "data/cert_logs",
@@ -1194,7 +1195,8 @@ def _convert_to_crypto_lib_cert(cert: Union[x509.Certificate, rfc9480.CMPCertifi
     return x509.load_der_x509_certificate(der_data)
 
 
-def get_ocsp_url_from_cert_pyasn1(
+@not_keyword
+def get_ocsp_url_from_cert(
     cert: rfc9480.CMPCertificate,
 ) -> List[str]:
     """Extract the OCSP URL from a certificate's Authority Information Access extension.
@@ -1247,7 +1249,7 @@ def create_ocsp_request(
     crypto_ca_cert = _convert_to_crypto_lib_cert(ca_cert)
     crypto_cert = _convert_to_crypto_lib_cert(cert)
 
-    ocsp_url = get_ocsp_url_from_cert_pyasn1(cert)
+    ocsp_url = get_ocsp_url_from_cert(cert)
     if not ocsp_url and must_be_present:
         raise ExtensionNotFound(
             msg="No OCSP URLs found in the certificate's AIA extension.", oid=AuthorityInformationAccessOID.OCSP
@@ -1336,7 +1338,7 @@ def _post_ocsp_request(
     if response.status_code != 200 and not allow_request_failure:
         logging.warning("Failed to send OCSP request. Status code: %s", response.status_code)
         logging.debug("Response: %s", response.text)
-        raise ValueError("Failed to send OCSP request. Status code: %s", response.status_code)
+        raise ValueError(f"Failed to send OCSP request. Status code: {response.status_code}")
     if response.status_code != 200 and allow_request_failure:
         logging.warning("Failed to send OCSP request. Status code: %s", response.status_code)
         logging.debug("Response: %s", response.text)
@@ -1422,7 +1424,7 @@ def check_ocsp_response_for_cert(  # noqa D417 undocumented-param
         raise ValueError("Invalid expected status. Must be one of 'good', 'revoked', or 'unknown'")
 
     if must_be_present is None:
-        must_be_present = True if not ocsp_url else False
+        must_be_present = True if ocsp_url is not None else False
 
     req, ocsp_url_found = create_ocsp_request(
         cert=cert, ca_cert=issuer, hash_alg=hash_alg, must_be_present=must_be_present

@@ -287,7 +287,7 @@ class CombinedKeyFactory:
         name = orig_name.replace("composite-kem-", "", 1)
         name = name.replace("composite-kem06-", "", 1)
         name = name.replace("composite-dhkem-", "", 1)
-        pq_name, trad_name, curve, length = CombinedKeyFactory._get_pq_and_trad_names(name)
+        pq_name, trad_name, curve, _ = CombinedKeyFactory._get_pq_and_trad_names(name)
 
         _length = int.from_bytes(public_key[:4], "little", signed=False)
         data = public_key[4:]
@@ -580,7 +580,7 @@ class CombinedKeyFactory:
     ) -> CompositeKEM06PrivateKey:
         tmp_name = name.replace("composite-kem-06", "", 1)
         tmp_name = tmp_name.replace("composite-kem", "", 1)
-        pq_name, trad_name, curve, length = CombinedKeyFactory._get_pq_and_trad_names(tmp_name)
+        pq_name, trad_name, curve, _ = CombinedKeyFactory._get_pq_and_trad_names(tmp_name)
 
         _length = int.from_bytes(private_key_bytes[:4], "little", signed=False)
 

@@ -19,7 +19,7 @@ from typing import Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives import padding as aes_padding
-from cryptography.hazmat.primitives.asymmetric import dh, dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -239,6 +239,7 @@ def compute_kmac_from_alg_id(
     return digest
 
 
+@not_keyword
 def compute_kmac(hash_alg: str, key: bytes, data: bytes) -> bytes:
     """Compute KMAC for the given data using specified key and shake function.
 
@@ -363,76 +364,6 @@ def compute_password_based_mac(
     signature = compute_hmac(data=data, key=initial_input, hash_alg=hash_alg)
     logging.info("Signature: %s", signature.hex())
     return signature
-
-
-def _generate_private_dh_from_key(password: bytes, peer_key: Union[dh.DHPrivateKey, dh.DHPublicKey]) -> dh.DHPrivateKey:
-    """Generate a `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey` based on the password.
-
-    :param password: bytes password which one of the parties uses as secret DH-Key.
-    :param peer_key: `cryptography.hazmat.primitives.asymmetric.dh DHPrivateKey or DHPublicKey
-    :return: `cryptography.hazmat.primitives.asymmetric.dh.DHPrivateKey` object
-    """
-    parameters = peer_key.parameters().parameter_numbers()
-
-    private_key: dh.DHPrivateKey = keyutils.generate_key(
-        algorithm="dh",
-        p=parameters.p,
-        g=parameters.g,
-        secret_scalar=int.from_bytes(password, byteorder="big"),
-    )  # type: ignore
-    return private_key
-
-
-def do_dh_key_exchange_password_based(  # noqa: D417
-    password: Union[str, bytes], peer_key: Union[dh.DHPrivateKey, dh.DHPublicKey]
-) -> bytes:
-    """Perform a Diffie-Hellman key exchange to derive a shared secret key based on a password.
-
-    Arguments:
-    ---------
-    - `password`: A string or bytes used to derive the DH private key for the server or local party.
-    - `peer_key`: A `cryptography` `dh.DHPrivateKey` or `dh.DHPublicKey` object representing the other party's key.
-
-    Returns:
-    -------
-    - `bytes`: Shared secret key derived from the Diffie-Hellman key exchange.
-
-    Examples:
-    --------
-    | ${shared_secret} = | Do DH Key Exchange Password Based | password=my_password | peer_key=${public_key} |
-
-    """
-    secret = convertutils.str_to_bytes(password)
-    private_key = _generate_private_dh_from_key(secret, peer_key)
-
-    if isinstance(peer_key, dh.DHPublicKey):
-        shared_key = private_key.exchange(peer_key)
-    else:
-        other_public_key = private_key.public_key()
-        shared_key = private_key.exchange(other_public_key)
-    logging.info("DH shared secret: %s", shared_key.hex())
-    return shared_key
-
-
-@not_keyword
-def compute_dh_based_mac(
-    data: bytes, password: Union[str, dh.DHPublicKey], key: dh.DHPrivateKey, hash_alg: str = "sha1"
-) -> bytes:
-    """Compute a Message Authentication Code (MAC) using a Diffie-Hellman (DH) based shared secret.
-
-    :param data: The input data to be authenticated, given as a byte sequence.
-    :param password: A string used to generate the server's secret key or a provided public key.
-    :param key: A `cryptography.dh.DHPrivateKey` object, which represents the client's secret.
-    :param hash_alg: Name of the hash algorithm for key derivation and HMAC computation. Defaults to "sha1".
-    :return: The computed HMAC of the input data using the derived key.
-    """
-    if isinstance(password, str):
-        shared_key = do_dh_key_exchange_password_based(password=password, peer_key=key)
-    else:
-        shared_key = key.exchange(password)
-
-    derived_key = compute_hash(data=shared_key, alg_name=hash_alg)
-    return compute_hmac(data=data, key=derived_key, hash_alg=hash_alg)
 
 
 @not_keyword

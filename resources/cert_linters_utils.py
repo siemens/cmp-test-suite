@@ -16,10 +16,12 @@ from pkilint.pkix.crl import crl_validator
 from pkilint.validation import ValidationFindingSeverity
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc5280, rfc6960, rfc8954
+from robot.api.deco import keyword
 
 # TODO include other linters.
 
 
+@keyword(name="Validate CRL Pkilint")
 def validate_crl_pkilint(  # noqa D417 undocumented-param
     data: Union[bytes, rfc5280.CertificateList],
 ) -> None:
@@ -101,6 +103,7 @@ def _validate_ocsp_resp_nonce(der_data: bytes) -> None:
         )
 
 
+@keyword(name="Validate OCSP Pkilint")
 def validate_ocsp_pkilint(  # noqa D417 undocumented-param
     data: Union[bytes, rfc8954.BasicOCSPResponse, OCSPResponse],
 ) -> None:

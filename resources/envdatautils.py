@@ -34,6 +34,8 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey, HybridKEMPublicKey, KEMPublicKey
+from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
+from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from pq_logic.tmp_oids import CMS_COMPOSITE03_OID_2_HASH
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
@@ -1971,11 +1973,11 @@ def _prepare_aes_warp_alg_id(
     """
     if wrap_name is None:
         if cek_length == 16:
-            wrap_name = "aes128-wrap"
+            wrap_name = "aes128_wrap"
         elif cek_length == 32:
-            wrap_name = "aes256-wrap"
+            wrap_name = "aes256_wrap"
         elif cek_length == 24:
-            wrap_name = "aes192-wrap"
+            wrap_name = "aes192_wrap"
         else:
             raise ValueError(
                 f"Unsupported AES key wrap length: {cek_length}. Expected 16, 24, or 32 bytes."
@@ -2192,9 +2194,6 @@ def get_digest_from_key_hash(
 
     if isinstance(key, (ed448.Ed448PrivateKey, ed448.Ed448PublicKey)):
         return "shake256"
-
-    from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-    from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 
     if isinstance(key, (CompositeSig04PrivateKey, CompositeSig04PublicKey)):
         return "sha512"

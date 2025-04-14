@@ -618,7 +618,7 @@ class HybridSigPublicKey(HybridPublicKey, ABC):
         return self._pq_key  # type: ignore
 
     @abstractmethod
-    def verify(self, signature: bytes, data: bytes, hash_alg: Optional[str] = None) -> bool:
+    def verify(self, data: bytes, signature: bytes, hash_alg: Optional[str] = None) -> bool:
         """Verify the signature."""
 
     def _get_trad_key_name(self) -> str:

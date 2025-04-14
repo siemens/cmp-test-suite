@@ -590,7 +590,7 @@ COMPOSITE_KEM05_MLKEM_NAME_2_OID = {
     "composite-kem-05-ml-kem-1024-ecdh-brainpoolP384r1": id_mlkem1024_ecdh_brainpool_p384r1,
     "composite-kem-05-ml-kem-1024-x448": id_mlkem1024_x448,
 }
-# Allways added to the last version of the draft.
+# Always added to the last version of the draft.
 COMPOSITE_FRODOKEM_NAME_2_OID = {
     "composite-kem-frodokem-976-aes-rsa2048": id_frodokem_976_aes_rsa2048,
     "composite-kem-frodokem-976-aes-rsa3072": id_frodokem_976_aes_rsa3072,

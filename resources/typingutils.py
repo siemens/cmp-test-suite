@@ -9,7 +9,7 @@ Type aliases are used to create descriptive names for commonly used types, makin
 easier to understand and work with.
 """
 
-from typing import Optional, Sequence, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 from cryptography.hazmat.primitives.asymmetric.dh import DHPrivateKey, DHPublicKey
 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPrivateKey, DSAPublicKey
@@ -34,6 +34,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
     WrapperPublicKey,
 )
 from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
+from resources.asn1_structures import CertResponseTMP, PKIMessageTMP
 
 ECSignKey = Union[
     Ed25519PrivateKey,
@@ -152,3 +153,6 @@ ExtensionsType = Union[
     Sequence[rfc5280.Extension],
     rfc5280.Extension,
 ]
+CAResponse = Tuple[PKIMessageTMP, List[rfc9480.CMPCertificate]]
+CACertResponse = Tuple[CertResponseTMP, rfc9480.CMPCertificate]
+CACertResponses = Tuple[List[CertResponseTMP], List[rfc9480.CMPCertificate]]
