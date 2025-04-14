@@ -767,12 +767,17 @@ def perform_static_dh(
 ) -> bytes:
     """Perform static Diffie-Hellman key agreement using the provided private and public keys.
 
+    This function derives a key using the ANSI X9.63 KDF and the specified hashing algorithm
+    (uses version 2 of the KDF2: K(i) = Hash (Z || Counter || otherInfo).
+
     :param private_key: The private key used for the key agreement.
     :param public_key: The public key used for the key agreement.
     :param hash_alg: The name of the hashing algorithm (e.g., "sha256", "sha512") to be used for the KDF.
     :param key_wrap_oid: The OID of the key wrap algorithm used for the key agreement.
     :param ukm: Optional bytes representing the UserKeyingMaterial (UKM) used in the key agreement.
     :return: The derived key as bytes after performing the static DH key agreement and KDF.
+    :raises ValueError: If the key types are incompatible or if the key length is invalid.
+    :raises KeyError: If the key wrap OID is not found in the mapping.
     """
     length = int(KM_KW_ALG[key_wrap_oid].replace("aes", "").replace("_wrap", "")) // 8
     ecc_cms_info = envdatautils.prepare_ecc_cms_shared_info(
