@@ -9,5 +9,5 @@ robotframework==7.2.2
 pkilint==0.12.8
 robotframework-requests==0.9.7
 pycryptodome==3.21.0
-# releveant for the Mock-CA.
+# relevant for the Mock-CA.
 Flask==3.1.0
