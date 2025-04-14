@@ -58,11 +58,16 @@ docs:
 	python -m robot.libdoc --pythonpath=./ resources/cryptoutils.py doc/cryptoutils.html
 	python -m robot.libdoc --pythonpath=./ resources/cmputils.py doc/cmputils.html
 	python -m robot.libdoc --pythonpath=./ resources/asn1utils.py doc/asn1utils.html
-	python -m robot.libdoc --pythonpath=./ resources/certutils.py doc/certutils.html
 	python -m robot.libdoc --pythonpath=./ resources/httputils.py doc/httputils.html
 	python -m robot.libdoc --pythonpath=./ resources/keyutils.py doc/keyutils.html
 	python -m robot.libdoc --pythonpath=./ resources/protectionutils.py doc/protectionutils.html
-	python -m robot.testdoc --pythonpath=./ tests/ doc/test-suites.html
+	python -m robot.libdoc --pythonpath=./ resources/compareutils.py doc/compareutils.html
+	python -m robot.libdoc --pythonpath=./ resources/general_msg_utils.py doc/general_msg_utils.html
+	python -m robot.libdoc --pythonpath=./ resources/cert_related_utils.py doc/cert_related_utils.html
+	python -m robot.libdoc --pythonpath=./ resources/ca_kga_logic.py doc/ca_kga_logic.html
+	python -m robot.libdoc --pythonpath=./ resources/envdatautils.py doc/envdatautils.html
+	python -m robot.libdoc --pythonpath=./ resources/extra_issuing_logic.py doc/extra_issuing_logic.html
+	python -m robot.testdoc tests/ doc/test-suites.html
 
 pq-docs:
 	python -m robot.libdoc --pythonpath=./ pq_logic/pq_compute_utils.py doc/pq_validation_utils.html
