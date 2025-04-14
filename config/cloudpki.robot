@@ -13,6 +13,10 @@ Documentation     An example resource file with configuration options that are m
 ${CA_CMP_URL}    https://broker.sdo-qa.siemens.cloud/.well-known/cmp
 #${CA_CMP_URL}    https://broker.sdo-dev.siemens.cloud/.well-known/cmp
 
+# The initial issued certificate and key for running the tests.
+${ISSUED_KEY}    ${None}
+${ISSUED_CERT}   ${None}
+
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CN=CloudCA-Integration-Test-User
 ${RECIPIENT}           CN=CloudPKI-Integration-Test

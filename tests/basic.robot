@@ -5,6 +5,7 @@
 *** Settings ***
 Documentation       General tests for CMP logic, not necessarily specific to the lightweight profile
 
+Resource            ../config/${environment}.robot
 Resource            ../resources/keywords.resource
 Library             Collections
 Library             OperatingSystem
