@@ -30,8 +30,9 @@ from resources import (
     compareutils,
     envdatautils,
     keyutils,
+    prepareutils,
     protectionutils,
-    utils, prepareutils,
+    utils,
 )
 from resources.asn1_structures import ChallengeASN1, PKIMessageTMP
 from resources.convertutils import str_to_bytes
