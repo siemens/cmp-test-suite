@@ -9,7 +9,7 @@ from pyasn1.type import tag
 from pyasn1_alt_modules import rfc5280, rfc9480
 
 from resources.asn1_structures import PKIMessageTMP, PKIBodyTMP
-from resources.cmputils import prepare_info_value
+from resources.cmputils import prepare_info_type_and_value
 from resources.convertutils import copy_asn1_certificate
 
 from unit_tests.utils_for_test import prepare_pki_header
@@ -91,8 +91,8 @@ def build_pkimessage_root_ca_key_update_content(
     :return: A `PKIMessage` with the `RootCaKeyUpdateContent` set.
     """
     root_ca_update = build_root_ca_key_update_content(new_with_new_cert, new_with_old_cert, old_with_new_cert)
-    info_type_value = prepare_info_value(oid=rfc9480.id_it_rootCaKeyUpdate,
-                                         value=root_ca_update)
+    info_type_value = prepare_info_type_and_value(oid=rfc9480.id_it_rootCaKeyUpdate,
+                                                  value=root_ca_update)
     pki_message = build_genp_pkimessage([info_type_value])
 
     return pki_message
@@ -149,7 +149,7 @@ def build_genp_cert_req_template_content(
     :param cert_req_template_content: Optional `CertReqTemplateValue` to include in the message.
     :return: The populated `PKIMessage`.
     """
-    info_type_value = prepare_info_value(rfc9480.id_it_certReqTemplate, cert_req_template_content)
+    info_type_value = prepare_info_type_and_value(rfc9480.id_it_certReqTemplate, cert_req_template_content)
     return build_genp_pkimessage([info_type_value])
 
 
@@ -170,7 +170,7 @@ def build_genp_get_ca_certs(ca_certs: List[rfc9480.CMPCertificate]) -> PKIMessag
     :param ca_certs: A list of `CMPCertificate` objects representing the CA certificates.
     :return: The populated `PKIMessage`.
     """
-    info_type_value = prepare_info_value(rfc9480.id_it_caCerts, _prepare_ca_cert_value(ca_certs))
+    info_type_value = prepare_info_type_and_value(rfc9480.id_it_caCerts, _prepare_ca_cert_value(ca_certs))
     return build_genp_pkimessage([info_type_value])
 
 

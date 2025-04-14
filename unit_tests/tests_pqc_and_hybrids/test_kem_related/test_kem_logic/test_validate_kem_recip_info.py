@@ -31,7 +31,7 @@ class TestValidateKEMInfo(unittest.TestCase):
             hash_alg="sha256",
             kek_length=16,
             ukm=b"mock_ukm",
-            wrap_name="aes128-wrap",
+            wrap_name="aes128_wrap",
             encrypted_key=b"encrypted_key_mock"
         )
 

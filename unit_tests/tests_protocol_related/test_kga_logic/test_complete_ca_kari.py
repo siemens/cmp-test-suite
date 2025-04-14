@@ -73,13 +73,15 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
         ecc_cms_info = encoder.encode(
             prepare_ecc_cms_shared_info(
                 key_wrap_oid=rfc9481.id_aes256_wrap,
-                entity_u_info=None,
+                ukm=None,
                 supp_pub_info=32
             )
         )
 
         shared_secret = perform_ecdh(server_private_key, ee_pub_key)
-        k = compute_ansi_x9_63_kdf(shared_secret, 32, ecc_cms_info)
+        k = compute_ansi_x9_63_kdf(shared_secret, 32,
+                                   other_info=ecc_cms_info,
+                                   use_version_2=True)
         encrypted_key = aes_key_wrap(
             key_to_wrap=self.content_encryption_key,
             wrapping_key=k
@@ -91,7 +93,7 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
             cmp_cert=exchange_cert,
             encrypted_key=encrypted_key,
             key_agreement_oid=key_agreement_oid,
-            ecc_cms_info=ecc_cms_info,
+            key_wrap_oid=rfc9481.id_aes256_wrap,
         )
 
         recip_info = rfc5652.RecipientInfo()
@@ -215,7 +217,7 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
             mqv_der=mqv_ukm,
             private_key=ee_key,
             hash_alg="sha256",
-            length=32,
+            key_wrap_oid=rfc9481.id_aes256_wrap,
         )
         encrypted_key = aes_key_wrap(
             wrapping_key=k,

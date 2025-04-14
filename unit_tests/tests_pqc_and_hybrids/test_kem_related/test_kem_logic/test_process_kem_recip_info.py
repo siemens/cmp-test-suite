@@ -37,7 +37,7 @@ class TestProcessKEMInfo(unittest.TestCase):
             recip_cert=self.server_cert,
             cek=self.content_encryption_key,
             ukm=self.user_keying_material,
-            wrap_name="aes256-wrap",
+            wrap_name="aes256_wrap",
             kdf_name="hkdf",
             hash_alg="sha256",
         )
@@ -56,7 +56,7 @@ class TestProcessKEMInfo(unittest.TestCase):
             recip_cert=self.server_cert,
             cek=self.content_encryption_key,
             ukm=self.user_keying_material,
-            wrap_name="aes256-wrap",
+            wrap_name="aes256_wrap",
             kdf_name="hkdf",
             hash_alg="sha256",
         )
@@ -78,10 +78,10 @@ class TestProcessKEMInfo(unittest.TestCase):
             recip_cert=self.server_cert,
             cek=self.content_encryption_key,
             ukm=self.user_keying_material,
-            wrap_name="aes256-wrap",
+            wrap_name="aes256_wrap",
             kdf_name="hkdf",
             hash_alg="sha256",
-            encrypted_key=univ.OctetString(b"invalid_encrypted_key")
+            encrypted_key=b"invalid_encrypted_key"
         )
         with self.assertRaises(InvalidUnwrap):
             process_kem_recip_info(kem_recip_info, self.server_cert, self.server_key)
@@ -99,7 +99,7 @@ class TestProcessKEMInfo(unittest.TestCase):
             recip_cert=server_cert,
             cek=self.content_encryption_key,
             ukm=None,
-            wrap_name="aes256-wrap",
+            wrap_name="aes256_wrap",
             kdf_name="hkdf",
             hash_alg="sha256",
             hybrid_key_recip=client_key,

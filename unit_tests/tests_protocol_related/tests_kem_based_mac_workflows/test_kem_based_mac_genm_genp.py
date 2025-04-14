@@ -7,7 +7,7 @@ import unittest
 from resources.asn1_structures import PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.certutils import parse_certificate
-from resources.general_msg_utils import build_general_message, validate_genp_kem_ct_info, \
+from resources.general_msg_utils import build_cmp_general_message, validate_genp_kem_ct_info, \
     build_genp_kem_ct_info_from_genm
 from resources.keyutils import load_private_key_from_file
 from resources.protectionutils import prepare_kem_ciphertextinfo
@@ -32,7 +32,7 @@ class TestKEMBasedMacGenmGenp(unittest.TestCase):
         info_val = prepare_kem_ciphertextinfo(
             key=self.xwing,
         )
-        genm = build_general_message(
+        genm = build_cmp_general_message(
             add_messages=None,
             info_values=info_val,
         )
@@ -51,7 +51,7 @@ class TestKEMBasedMacGenmGenp(unittest.TestCase):
         info_val = prepare_kem_ciphertextinfo(
             key=self.xwing,
         )
-        genm = build_general_message(
+        genm = build_cmp_general_message(
             add_messages=None,
             info_values=info_val,
         )
@@ -79,7 +79,7 @@ class TestKEMBasedMacGenmGenp(unittest.TestCase):
         info_val = prepare_kem_ciphertextinfo(
             key=self.xwing,
         )
-        genm = build_general_message(
+        genm = build_cmp_general_message(
             add_messages=None,
             info_values=info_val,
         )
