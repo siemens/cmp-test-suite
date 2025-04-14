@@ -57,7 +57,9 @@ from resources.oidutils import (
     ECMQV_NAME_2_OID,
     HKDF_NAME_2_OID,
     KEY_WRAP_NAME_2_OID,
+    KM_KA_ALG,
     KM_KA_ALG_NAME_2_OID,
+    KM_KW_ALG,
     PQ_SIG_PRE_HASH_NAME_2_OID,
 )
 from resources.typingutils import PrivateKey, PublicKey, RecipInfo, SignKey, Strint, VerifyKey
@@ -973,45 +975,91 @@ def _get_kari_oid(
     return oid
 
 
-def prepare_kari(
+# TODO fix for complete support of KARI.
+
+
+@keyword(name="Prepare KeyAgreeRecipientInfo")
+def prepare_kari(  # noqa D417 undocumented-param
     public_key: ECDHPublicKey,
     recip_private_key: ECDHPrivateKey,
-    cek: Optional[bytes] = None,
+    cek: Optional[Union[str, bytes]] = None,
     cmp_protection_cert: Optional[rfc9480.CMPCertificate] = None,
     issuer_and_ser: Optional[rfc5652.IssuerAndSerialNumber] = None,
     hash_alg: str = "sha256",
     oid: Optional[univ.ObjectIdentifier] = rfc9481.dhSinglePass_stdDH_sha256kdf_scheme,
-    use_ephemeral: bool = True,
     originator: Optional[rfc5652.OriginatorIdentifierOrKey] = None,
     rid: Optional[rfc5652.RecipientIdentifier] = None,
+    ukm: Optional[Union[str, bytes]] = None,
 ) -> rfc5652.KeyAgreeRecipientInfo:
-    """Prepare a KeyAgreeRecipientInfo object for testing.
+    """Prepare a KeyAgreeRecipientInfo object to securely exchange data with ECC key agreement.
+
+    Arguments:
+    ---------
+        - `public_key`: The public key of the recipient.
+        - `recip_private_key`: The private key of the sender.
+        - `cek`: The content encryption key to be encrypted. Defaults to 32 random bytes.
+        - `cmp_protection_cert`: The certificate of the recipient.
+        - `issuer_and_ser`: The IssuerAndSerialNumber structure to use. Defaults to `None`.
+        - `hash_alg`: The hash algorithm to use for key derivation.
+        - `oid`: The Object Identifier for the key agreement algorithm.
+        Defaults to dhSinglePass-stdDH-sha256kdf-scheme.
+        - `originator`: The OriginatorIdentifierOrKey structure to use. Defaults to `None`.
+        - `rid`: The RecipientIdentifier structure to use. Defaults to `None`.
+        (NOT used is allowed to make argument parsing easier.)
+        - `ukm`: The UserKeyMaterial to use (does not expect the ECMVQ byte string). Defaults to 32 random bytes.
+
+    Returns:
+    -------
+        - The populated `KeyAgreeRecipientInfo` structure (correctly tagged).
+
+    Raises:
+    ------
+        - ValueError: If the public key is not of the expected type.
+        - KeyError: If the hash algorithm is not supported for the specified key type.
+        - KeyError: If the key agreement algorithm is not supported.
+
+    Examples:
+    --------
+    | ${kari}= | Prepare KeyAgreeRecipientInfo | ${public_key} | ${recip_private_key} | cek=${cek} |
+    | ${kari}= | Prepare KeyAgreeRecipientInfo | ${public_key} | ${recip_private_key} | rid=${rid} |
+
 
     :param public_key: The public key of the recipient.
     :param recip_private_key: The private key of the sender.
-    :param cek: The content encryption key to be encrypted.
+    :param cek: The content encryption key to be encrypted. Defaults to 32 random bytes.
     :param cmp_protection_cert: The certificate of the recipient.
     :param issuer_and_ser: The IssuerAndSerialNumber structure to use. Defaults to `None`.
     :param hash_alg: The hash algorithm to use for key derivation.
     :param oid: The Object Identifier for the key agreement algorithm.
     Defaults to dhSinglePass-stdDH-sha256kdf-scheme.
-    :param use_ephemeral: Whether to use an ephemeral key agreement. Defaults to `True`.
     :param originator: The OriginatorIdentifierOrKey structure to use. Defaults to `None`.
     :param rid: The RecipientIdentifier structure to use. Defaults to `None`.
+    :param ukm: The UserKeyMaterial to use (does not expect the ECMVQ byte string). Defaults to 32 random bytes.
     :return: The populated `KeyAgreeRecipientInfo` structure.
-    """
-    ecc_cms_info = encoder.encode(
-        prepare_ecc_cms_shared_info(key_wrap_oid=rfc9481.id_aes256_wrap, entity_u_info=None, supp_pub_info=32)
-    )
 
-    if cek is None:
-        cek = os.urandom(32)
+    """
+    ukm = str_to_bytes(ukm or os.urandom(32))
+
+    cek = cek or os.urandom(32)
+    cek = str_to_bytes(cek)
 
     if oid is None:
-        oid = _get_kari_oid(public_key=public_key, use_ephemeral=use_ephemeral, hash_alg=hash_alg)
+        oid = _get_kari_oid(public_key=public_key, use_ephemeral=False, hash_alg=hash_alg)
 
-    shared_secret = cryptoutils.perform_ecdh(recip_private_key, public_key)
-    k = cryptoutils.compute_ansi_x9_63_kdf(shared_secret, 32, ecc_cms_info, hash_alg=hash_alg, use_version_2=True)
+    name = KM_KA_ALG[oid]
+    if isinstance(public_key, (X448PublicKey, X25519PublicKey)):
+        hash_alg = "sha256"
+    else:
+        hash_alg = name.lower().split("-")[1]
+
+    k = cryptoutils.perform_static_dh(
+        public_key=public_key,
+        private_key=recip_private_key,
+        hash_alg=hash_alg,
+        key_wrap_oid=rfc9481.id_aes256_wrap,
+        ukm=ukm,
+    )
+    logging.info("Prepare KARI KEK: %s for %s", k.hex(), name)
     encrypted_key = keywrap.aes_key_wrap(key_to_wrap=cek, wrapping_key=k)
 
     # Version MUST be 3 for KARI.
@@ -1020,10 +1068,11 @@ def prepare_kari(
         cmp_cert=cmp_protection_cert,
         encrypted_key=encrypted_key,
         key_agreement_oid=oid,
-        ecc_cms_info=ecc_cms_info,
+        key_wrap_oid=rfc9481.id_aes256_wrap,
         issuer_and_ser=issuer_and_ser,
         originator=originator,
         rid=rid,
+        ukm=ukm,
     )
 
     return kari
@@ -1433,7 +1482,7 @@ def prepare_kem_recip_info(  # noqa D417 undocumented-param
     ukm: Optional[bytes] = None,
     cek: Optional[Union[bytes, str]] = None,
     hash_alg: str = "sha256",
-    wrap_name: str = "aes256-wrap",
+    wrap_name: str = "aes256_wrap",
     encrypted_key: Optional[bytes] = None,
     kek_length: Optional[int] = None,
     kemct: Optional[bytes] = None,
@@ -1589,38 +1638,10 @@ def prepare_mqv_user_keying_material(
 
 
 @not_keyword
-def prepare_key_agreement_algorithm_identifier(
-    oid: univ.ObjectIdentifier,
-    key_wrap_oid: univ.ObjectIdentifier = rfc9481.id_aes256_wrap,
-    length: int = 32,
-    entity_u_info: Optional[bytes] = None,
-) -> rfc5280.AlgorithmIdentifier:
-    """Create an `AlgorithmIdentifier` for key agreement with ECC_CMS_SharedInfo.
-
-    Prepares the key encryption algorithm identifier used in key agreement
-    recipient info (`KeyAgreeRecipientInfo`). It includes the necessary parameters
-    for deriving the key, such as the key wrap algorithm and shared information.
-
-    :param oid: OID for the key agreement algorithm.
-    :param key_wrap_oid: OID for the key wrap algorithm. Defaults to AES-256 wrap.
-    :param length: Length of the key to derive in bytes. Defaults to 32.
-    :param entity_u_info: Optional entity user information. Defaults to None.
-    :return: An `AlgorithmIdentifier` structure ready to be included in `KeyAgreeRecipientInfo`.
-    """
-    key_enc_alg_id = rfc5280.AlgorithmIdentifier()
-    key_enc_alg_id["algorithm"] = oid
-    ecc_cms_info = prepare_ecc_cms_shared_info(
-        key_wrap_oid=key_wrap_oid, supp_pub_info=length, entity_u_info=entity_u_info
-    )
-    key_enc_alg_id["parameters"] = encoder.encode(ecc_cms_info)
-    return key_enc_alg_id
-
-
-@not_keyword
 def prepare_ecc_cms_shared_info(
     key_wrap_oid: univ.ObjectIdentifier,
-    supp_pub_info: int = 32,
-    entity_u_info: Optional[bytes] = None,
+    supp_pub_info: Optional[int] = 32,
+    ukm: Optional[bytes] = None,
 ) -> rfc5753.ECC_CMS_SharedInfo:
     """Create an `ECC_CMS_SharedInfo` structure.
 
@@ -1630,23 +1651,25 @@ def prepare_ecc_cms_shared_info(
 
     :param key_wrap_oid: OID for the key wrap algorithm.
     :param supp_pub_info: Length of the key to derive in bytes.
-    :param entity_u_info: Optional entity user information. Used to ensure a
+    :param ukm: Optional entity user information. Used to ensure a
     unique key.
     :return: An `ECC_CMS_SharedInfo` structure containing the shared info.
     """
     ecc_cms_info = rfc5753.ECC_CMS_SharedInfo()
     ecc_cms_info["keyInfo"]["algorithm"] = key_wrap_oid
 
-    if entity_u_info is not None:
-        ecc_cms_info["entityUInfo"] = univ.OctetString(entity_u_info).subtype(
+    if supp_pub_info is None:
+        supp_pub_info = int(KM_KW_ALG[key_wrap_oid].replace("aes", "").replace("_wrap", "")) // 8
+
+    if ukm is not None:
+        ecc_cms_info["entityUInfo"] = univ.OctetString(ukm).subtype(
             explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
         )
 
-    if supp_pub_info is not None:
-        supp_pub_info_bytes = supp_pub_info.to_bytes(4, byteorder="big")
-        ecc_cms_info["suppPubInfo"] = univ.OctetString(supp_pub_info_bytes).subtype(
-            explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 2)
-        )
+    supp_pub_info_bytes = supp_pub_info.to_bytes(4, byteorder="big")
+    ecc_cms_info["suppPubInfo"] = univ.OctetString(supp_pub_info_bytes).subtype(
+        explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 2)
+    )
 
     return ecc_cms_info
 
@@ -1829,19 +1852,46 @@ def prepare_recipient_encrypted_keys(
     return recipient_encrypted_keys
 
 
+@not_keyword
+def prepare_key_agreement_alg_id(
+    key_agree_oid: univ.ObjectIdentifier,
+    key_wrap_alg: Union[str, univ.ObjectIdentifier] = "aes256_wrap",
+) -> rfc5280.AlgorithmIdentifier:
+    """Create an `AlgorithmIdentifier` for key agreement with ECC_CMS_SharedInfo.
+
+    Prepares the key encryption algorithm identifier used in key agreement
+    recipient info (`KeyAgreeRecipientInfo`). It includes the necessary parameters
+    for deriving the key, such as the key wrap algorithm and shared information.
+
+    :param key_agree_oid: OID for the key agreement algorithm.
+    :param key_wrap_alg: The name of the key wrap algorithm. Defaults to "aes256_wrap".
+    :raises KeyError: If the key wrap algorithm name is not supported.
+    :return: An `AlgorithmIdentifier` structure ready to be included in `KeyAgreeRecipientInfo`.
+    """
+    if isinstance(key_wrap_alg, str):
+        key_wrap_name = key_wrap_alg
+        wrap_oid = KEY_WRAP_NAME_2_OID[key_wrap_name]
+    else:
+        wrap_oid = key_wrap_alg
+
+    key_enc_alg_id = rfc5280.AlgorithmIdentifier()
+    key_enc_alg_id["algorithm"] = key_agree_oid
+    key_alg_id = rfc5753.KeyWrapAlgorithm()
+    key_alg_id["algorithm"] = wrap_oid
+    key_enc_alg_id["parameters"] = encoder.encode(key_alg_id)
+    return key_enc_alg_id
+
+
 # TODO fix for complete Support!!!
 @not_keyword
 def prepare_key_agreement_recipient_info(
+    key_agreement_oid: univ.ObjectIdentifier,
     cmp_cert: Optional[rfc9480.CMPCertificate] = None,
-    key_agreement_oid: Optional[univ.ObjectIdentifier] = None,
     encrypted_key: Optional[bytes] = None,
     key_wrap_oid: univ.ObjectIdentifier = rfc9481.id_aes256_wrap,
     version: int = 3,
     ukm: Optional[bytes] = None,
     add_another: bool = False,
-    length: int = 32,
-    entity_u_info: Optional[bytes] = None,
-    ecc_cms_info: Optional[bytes] = None,
     issuer_and_ser_orig: Optional[rfc5652.IssuerAndSerialNumber] = None,
     issuer_and_ser: Optional[rfc5652.IssuerAndSerialNumber] = None,
     originator: Optional[rfc5652.OriginatorIdentifierOrKey] = None,
@@ -1860,9 +1910,6 @@ def prepare_key_agreement_recipient_info(
     :param version: Version of the CMS structure. Defaults to 3.
     :param ukm: Optional user keying material.
     :param add_another: If True, adds duplicate entries for negative testing.
-    :param length: Length of the shared ECC information in bytes.
-    :param entity_u_info: Optional entity user information.
-    :param ecc_cms_info: Optional pre-encoded ECC CMS shared information.
     :param issuer_and_ser_orig: Optional `IssuerAndSerialNumber` structure to set inside the `originator`
     field. Defaults to `None`. Filled with the cmp-protection-cert.
     :param issuer_and_ser: Optional `IssuerAndSerialNumber` structure to set inside the `rid`.
@@ -1902,14 +1949,11 @@ def prepare_key_agreement_recipient_info(
         recip_keys.append(recipient_encrypted_key)
 
     key_agree_info["recipientEncryptedKeys"] = recip_keys
-    key_enc_alg_id = rfc5280.AlgorithmIdentifier()
-    key_enc_alg_id["algorithm"] = key_agreement_oid
 
-    key_enc_alg_id["parameters"] = ecc_cms_info or encoder.encode(
-        prepare_ecc_cms_shared_info(key_wrap_oid=key_wrap_oid, entity_u_info=entity_u_info, supp_pub_info=length)
+    key_agree_info["keyEncryptionAlgorithm"] = prepare_key_agreement_alg_id(
+        key_agree_oid=key_agreement_oid,
+        key_wrap_alg=key_wrap_oid,
     )
-
-    key_agree_info.setComponentByName("keyEncryptionAlgorithm", key_enc_alg_id)
 
     return key_agree_info
 

@@ -25,7 +25,8 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from pyasn1.codec.der import decoder
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import univ
 from pyasn1_alt_modules import rfc3565, rfc8018, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc5084 import GCMParameters
 from robot.api.deco import not_keyword
@@ -36,11 +37,11 @@ from pq_logic.keys.composite_kem05 import CompositeKEMPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey, RSAEncapKey
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
-from resources import convertutils, keyutils, oid_mapping
+from resources import convertutils, envdatautils, keyutils, oid_mapping
 from resources.asn1_structures import KemCiphertextInfoAsn1
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import compute_hash, get_hash_from_oid, hash_name_to_instance
-from resources.oidutils import AES_CBC_OID_2_NAME, AES_GCM_OID_2_NAME
+from resources.oidutils import AES_CBC_OID_2_NAME, AES_GCM_OID_2_NAME, KM_KW_ALG
 from resources.typingutils import ECDHPrivKeyTypes, SignKey, VerifyKey
 
 
@@ -823,3 +824,33 @@ def compute_decapsulation(  # noqa: D417 Missing argument descriptions in the do
             ss_length=key_length,
         )
     return key.decaps(ct)
+
+
+@not_keyword
+def perform_static_dh(
+    private_key: ECDHPrivateKey,
+    public_key: Union[ECDHPublicKey, rfc9480.CMPCertificate],
+    hash_alg: str,
+    key_wrap_oid: univ.ObjectIdentifier,
+    ukm: Optional[bytes] = None,
+) -> bytes:
+    """Perform static Diffie-Hellman key agreement using the provided private and public keys.
+
+    :param private_key: The private key used for the key agreement.
+    :param public_key: The public key used for the key agreement.
+    :param hash_alg: The name of the hashing algorithm (e.g., "sha256", "sha512") to be used for the KDF.
+    :param key_wrap_oid: The OID of the key wrap algorithm used for the key agreement.
+    :param ukm: Optional bytes representing the UserKeyingMaterial (UKM) used in the key agreement.
+    :return: The derived key as bytes after performing the static DH key agreement and KDF.
+    """
+    length = int(KM_KW_ALG[key_wrap_oid].replace("aes", "").replace("_wrap", "")) // 8
+    ecc_cms_info = envdatautils.prepare_ecc_cms_shared_info(
+        key_wrap_oid=key_wrap_oid,
+        supp_pub_info=length,
+        ukm=ukm,
+    )
+    other_info = encoder.encode(ecc_cms_info)
+
+    shared_secret = perform_ecdh(private_key, public_key)
+    k = compute_ansi_x9_63_kdf(shared_secret, length, other_info=other_info, hash_alg=hash_alg, use_version_2=True)
+    return k

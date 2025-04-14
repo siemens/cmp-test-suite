@@ -52,7 +52,7 @@ from resources import (
     utils,
 )
 from resources.asn1_structures import PKIMessageTMP
-from resources.compareutils import check_if_alg_id_parameters_is_absent
+from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes
 from resources.exceptions import BadAlg, BadAsn1Data
 from resources.oid_mapping import (
@@ -78,19 +78,28 @@ from resources.suiteenums import KeyUsageStrictness
 from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
 
 
+# TODO fix this implementation to use 1e,2s and not 1e,1s.
 @not_keyword
-def process_mqv(mqv_der: bytes, private_key: ec.EllipticCurvePrivateKey, hash_alg: str, length: int):
+def process_mqv(
+    mqv_der: Optional[bytes],
+    private_key: ec.EllipticCurvePrivateKey,
+    hash_alg: str,
+    key_wrap_oid: univ.ObjectIdentifier,
+):
     """Process Elliptic Curve Menezes–Qu–Vanstone (ECMQV) key agreement based on the provided input.
 
     :param mqv_der: MQV User Keying Material (UKM) encoded as DER bytes. It includes the ephemeral public key
                     and additional keying material used in the MQV key agreement.
     :param private_key: The private key used in the MQV process to derive the shared secret (e.g., an EC private key).
     :param hash_alg: The name of the hashing algorithm (e.g., "sha256", "sha512") to be used for the KDF.
-    :param length: The desired length of the derived key in bytes.
+    :param key_wrap_oid: The OID of the key wrap algorithm used for the key agreement.
     :return: The derived key as bytes after processing the MQV key agreement and KDF.
     :raises ValueError: If there is unexpected data after decoding the MQV User Keying Material (UKM),
         or if the ephemeral public key is not `ecPublicKey`.
     """
+    if mqv_der is None:
+        raise BadAsn1Data("`MQVuserKeyingMaterial` was not found inside the KeyAgreementRecipientInfo.", overwrite=True)
+
     mqv_ukm, rest = decoder.decode(mqv_der, asn1Spec=rfc5753.MQVuserKeyingMaterial())
 
     if rest != b"":
@@ -103,35 +112,12 @@ def process_mqv(mqv_der: bytes, private_key: ec.EllipticCurvePrivateKey, hash_al
     public_key = keyutils.load_public_key_from_spki(mqv_ukm["ephemeralPublicKey"])
     if not isinstance(public_key, ec.EllipticCurvePublicKey):
         raise ValueError("The extracted public key is not an instance of `EllipticCurvePublicKey`.")
-    shared_secret = cryptoutils.perform_ecdh(private_key=private_key, public_key=public_key)
-    k = cryptoutils.compute_ansi_x9_63_kdf(
-        shared_secret=shared_secret, hash_alg=hash_alg, key_length=length, other_info=mqv_der
+
+    ukm = None if not mqv_ukm["addedukm"].isValue else mqv_ukm["addedukm"].asOctets()
+
+    return cryptoutils.perform_static_dh(
+        private_key=private_key, public_key=public_key, hash_alg=hash_alg, key_wrap_oid=key_wrap_oid, ukm=ukm
     )
-    return k
-
-
-def _check_kari_aes_size(ecc_cms_info: rfc5753.ECC_CMS_SharedInfo) -> int:
-    """Verify the consistency of the AES key size in the `ECC_CMS_SharedInfo` structure.
-
-    :param ecc_cms_info: The `ECC_CMS_SharedInfo` structure containing the `suppPubInfo` information.
-    :return: The length of the key to derive.
-    :raises ValueError: If there is a mismatch between the size provided in the `suppPubInfo` field and the
-                        expected size derived from the key wrap algorithm.
-    """
-    key_wrap_alg = ecc_cms_info["keyInfo"]["algorithm"]
-    length = int(KM_KW_ALG[key_wrap_alg].replace("aes", "").replace("_wrap", "")) // 8
-
-    if ecc_cms_info["suppPubInfo"].isValue:
-        byte_size = ecc_cms_info["suppPubInfo"].asOctets()
-        byte_size = int.from_bytes(byte_size, byteorder="big")
-        if byte_size != length:
-            raise ValueError(
-                f"Mismatch between the byte size from suppPubInfo ({byte_size}) "
-                f"and the expected length derived from the key wrap algorithm ({length}). "
-                f"Key Wrap alg: {KM_KW_ALG.get(key_wrap_alg)}"
-            )
-
-    return length
 
 
 @not_keyword
@@ -152,14 +138,16 @@ def process_kari(
     :return: The derived key.
     :raises ValueError: If the algorithm identifier specifies an unsupported or unrecognized algorithm.
     """
-    ecc_cms_info, rest = decoder.decode(alg_id["parameters"], rfc5753.ECC_CMS_SharedInfo())
-    if rest != b"":
-        raise ValueError("Decoding `ECC_CMS_SharedInfo` structure resulted in unexpected extra data.")
+    if not isinstance(alg_id["algorithm"], rfc5753.KeyWrapAlgorithm):
+        key_wrap, rest = try_decode_pyasn1(alg_id["parameters"], rfc5753.KeyWrapAlgorithm())  # type: ignore
+        key_wrap: rfc5753.KeyWrapAlgorithm
+        if rest != b"":
+            raise BadAsn1Data("`KeyWrapAlgorithm`")
+    else:
+        key_wrap = alg_id["parameters"]
 
-    other_info = alg_id["parameters"].asOctets()
+    key_wrap_oid = key_wrap["algorithm"]
 
-    # Currently does not return the algorithm, because only one is allowed.
-    length = _check_kari_aes_size(ecc_cms_info)
     if alg_id["algorithm"] in ECMQV:
         hash_alg = ECMQV[alg_id["algorithm"]].split("-")[1]
 
@@ -167,10 +155,10 @@ def process_kari(
             raise ValueError("The private key must be an instance of `EllipticCurvePrivateKey`.For the `ECMQV` method.")
 
         k = process_mqv(
-            mqv_der=ukm,  # type: ignore
+            mqv_der=ukm,
             private_key=private_key,
             hash_alg=hash_alg,
-            length=length,
+            key_wrap_oid=key_wrap_oid,
         )
         logging.info("Derived `ECMQV` wrapping key: %s", k.hex())
         return k
@@ -180,22 +168,28 @@ def process_kari(
 
     if alg_id["algorithm"] in {rfc9481.id_X25519, rfc9481.id_X448, rfc9481.id_alg_ESDH}:
         name = KM_KA_ALG[alg_id["algorithm"]]
-        public_key = certutils.load_public_key_from_cert(cmp_prot_cert)
-        shared_secret = cryptoutils.perform_ecdh(
-            private_key,  # type: ignore
-            public_key,  # type: ignore
-        )
+
         # TODO: Fix hash algorithm, it is server-specific.
-        k = cryptoutils.compute_ansi_x9_63_kdf(shared_secret=shared_secret, key_length=length, other_info=other_info)
+        k = cryptoutils.perform_static_dh(
+            private_key=private_key,
+            public_key=cmp_prot_cert,
+            hash_alg="sha256",
+            key_wrap_oid=key_wrap_oid,
+            ukm=ukm,
+        )
         logging.info("Derived `%s` wrapping key: %s", name, k.hex())
         return k
 
     if alg_id["algorithm"] in KM_KA_ALG:
-        public_key = certutils.load_public_key_from_cert(cmp_prot_cert)
-        shared_secret = cryptoutils.perform_ecdh(private_key, public_key)  # type: ignore
         name = KM_KA_ALG[alg_id["algorithm"]]
         hash_alg = name.lower().split("-")[1]
-        k = cryptoutils.compute_ansi_x9_63_kdf(shared_secret, length, other_info, hash_alg=hash_alg)  # type: ignore
+        k = cryptoutils.perform_static_dh(
+            private_key=private_key,
+            public_key=cmp_prot_cert,
+            hash_alg=hash_alg,
+            key_wrap_oid=key_wrap_oid,
+            ukm=ukm,
+        )
         logging.info("Derived `%s` wrapping key: %s", name, k.hex())
         return k
 
@@ -1852,7 +1846,7 @@ def compute_key_transport_mechanism(
     """
     if key_enc_alg_id["algorithm"] == rfc9481.rsaEncryption:
         # because inside a certificate univ.Null("") is used for rsaEncryption.
-        if check_if_alg_id_parameters_is_absent(key_enc_alg_id, allow_null=allow_rsa_null):
+        if compareutils.check_if_alg_id_parameters_is_absent(key_enc_alg_id, allow_null=allow_rsa_null):
             padding_val = padding.PKCS1v15()
         else:
             raise ValueError(
