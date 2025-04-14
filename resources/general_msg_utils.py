@@ -47,7 +47,6 @@ from resources.asn1_structures import (
     PKIMessageTMP,
 )
 from resources.asn1utils import try_decode_pyasn1
-from resources.cmputils import get_value_from_seq_of_info_value_field, prepare_pki_message
 from resources.convertutils import (
     copy_asn1_certificate,
     ensure_is_kem_priv_key,
@@ -65,7 +64,6 @@ from resources.oidutils import (
 )
 from resources.suiteenums import GeneralInfoOID
 from resources.typingutils import EnvDataPublicKey, Strint
-from resources.utils import manipulate_bytes_based_on_key
 from unit_tests.utils_for_test import try_encode_pyasn1
 
 # TODO for the future, change references to new RFC.
@@ -1006,7 +1004,7 @@ def validate_ca_protocol_encr_cert(  # noqa D417 undocumented-param
     """
     validate_general_response(pki_message=genp, expected_size=expected_size)
 
-    value = get_value_from_seq_of_info_value_field(genp["body"]["genp"], rfc9480.id_it_caProtEncCert)
+    value = cmputils.get_value_from_seq_of_info_value_field(genp["body"]["genp"], rfc9480.id_it_caProtEncCert)
 
     if value is None:
         raise ValueError(
@@ -1090,7 +1088,7 @@ def validate_signing_key_types(  # noqa D417 undocumented-param
     """
     validate_general_response(pki_message=pki_message, expected_size=expected_size)
 
-    data = get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_signKeyPairTypes)
+    data = cmputils.get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_signKeyPairTypes)
     if data is None:
         raise ValueError("Unexpected infoType in response.")
 
@@ -1200,7 +1198,7 @@ def validate_encr_and_key_agreement_types(  # noqa D417 undocumented-param
     """
     validate_general_response(pki_message=pki_message, expected_size=expected_size)
 
-    data = get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_encKeyPairTypes)
+    data = cmputils.get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_encKeyPairTypes)
 
     if data is None:
         raise ValueError(
@@ -1283,7 +1281,7 @@ def validate_preferred_sym_alg(  # noqa D417 undocumented-param
 
     """
     validate_general_response(pki_message=pki_message, expected_size=expected_size)
-    data = get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_preferredSymmAlg)
+    data = cmputils.get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_preferredSymmAlg)
     if data is None:
         raise ValueError(
             "The general response did not contain the ask for preferred symmetric algorithm "
@@ -1476,7 +1474,7 @@ def validate_supported_language_tags(  # noqa D417 undocumented-param
     """
     validate_general_response(pki_message=pki_message, expected_size=expected_size)
 
-    data = get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_suppLangTags)
+    data = cmputils.get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_suppLangTags)
     if data is None:
         raise ValueError("Unexpected infoType in response.")
 
@@ -1578,7 +1576,7 @@ def _prepare_kem_ct_info(  # noqa D417 undocumented-param
     kem_ct_info["kem"]["algorithm"] = get_kem_oid_from_key(public_key)
 
     if bad_ct:
-        ct = manipulate_bytes_based_on_key(data=ct, key=public_key)
+        ct = utils.manipulate_bytes_based_on_key(data=ct, key=public_key)
 
     kem_ct_info["ct"] = univ.OctetString(ct)
     info_val["infoValue"] = encoder.encode(kem_ct_info)
@@ -1861,7 +1859,7 @@ def build_cmp_general_response(  # noqa D417 undocumented-param
     if genm is not None:
         kwargs = ca_ra_utils.set_ca_header_fields(genm, kwargs)
 
-    pki_message = prepare_pki_message(exclude_fields=exclude_fields, **kwargs)
+    pki_message = cmputils.prepare_pki_message(exclude_fields=exclude_fields, **kwargs)
     pki_message["body"] = pki_body
 
     der_data = try_encode_pyasn1(pki_message)

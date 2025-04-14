@@ -19,7 +19,6 @@ from pyasn1.type.base import Asn1Type
 from pyasn1_alt_modules import rfc4211, rfc5652, rfc9480, rfc9629
 from robot.api.deco import keyword, not_keyword
 
-import resources.prepareutils
 from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, KEMPublicKey
 from pq_logic.pq_utils import is_kem_private_key, is_kem_public_key
 from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
@@ -32,14 +31,12 @@ from resources import (
     envdatautils,
     keyutils,
     protectionutils,
-    utils,
+    utils, prepareutils,
 )
 from resources.asn1_structures import ChallengeASN1, PKIMessageTMP
-from resources.compareutils import is_null_dn
 from resources.convertutils import str_to_bytes
 from resources.cryptoutils import compute_aes_cbc, perform_ecdh
 from resources.exceptions import BadAsn1Data, BadRequest, InvalidKeyCombination
-from resources.prepareutils import prepare_name
 from resources.protectionutils import compute_and_prepare_mac
 from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
 from resources.utils import get_openssl_name_notation
@@ -143,7 +140,7 @@ def prepare_enc_key_with_id(  # noqa D417 undocumented-param
         if use_string:
             data["identifier"]["string"] = sender
         else:
-            data["identifier"]["generalName"] = resources.prepareutils.prepare_general_name("directoryName", sender)
+            data["identifier"]["generalName"] = prepareutils.prepare_general_name("directoryName", sender)
 
     logging.debug("Private key for PoP:  %s", data.prettyPrint())
     return data
@@ -386,7 +383,7 @@ def validate_rid_for_encrypted_rand(  # noqa D417 undocumented-param
     # as serialNumber. The client MAY ignore the rid field
 
     issuer = rid["issuer"]
-    if not is_null_dn(issuer):
+    if not compareutils.is_null_dn(issuer):
         raise ValueError("`rid` field is not correctly populated with `NULL-DN`")
 
     if int(rid["serialNumber"]) != int(cert_req_id):
@@ -552,7 +549,7 @@ def process_pkimessage_with_popdecc(  # noqa D417 undocumented-param
 
     num = rand["int"]
     if expected_sender is not None:
-        sender = prepare_name(expected_sender)
+        sender = prepareutils.prepare_name(expected_sender)
         if not compareutils.compare_general_name_and_name(rand["sender"], sender):
             rand_name = get_openssl_name_notation(rand["sender"]["directoryName"])
             raise ValueError(f"Expected sender name: {expected_sender}. Got: {rand_name}")
