@@ -20,6 +20,7 @@ Library             ../resources/ca_kga_logic.py
 
 Test Tags           kga
 
+
 *** Test Cases ***
 ## 4.1.6.1. Using the Key Transport Key Management Technique
 
@@ -39,20 +40,21 @@ CA MUST Support Key Transport Management Technique With IR
     ${cm}=    Get Next Common Name
     ${key}=    Generate Default Key
     ${ir}=    Build Ir From Key
-    ...    signing_key=${key}
-    ...    cert=${KGA_KTRI_CERT}
-    ...    for_kga=True
+    ...    ${key}
+    ...    for_kga=${True}
     ...    pvno=3
-    ...    subject=${cm}
+    ...    common_name=${cm}
     ...    recipient=${RECIPIENT}
+    ...    exclude_fields=sender,senderKID
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
     ...    private_key=${KGA_KTRI_KEY}
     ...    protection=signature
-    ...    cert=${KGA_KARI_CERT}
+    ...    cert=${KGA_KTRI_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
-    Validate Not Local Key Gen    ${response}    must_be=ktri
+    PKIStatus Must Be    ${response}    accepted
+    Validate Not Local Key Gen    ${response}    expected_type=ktri   ee_key=${KGA_KTRI_KEY}
 
 CA MUST Support Key Transport Management Technique With KUR
     [Documentation]    According to RFC 9483 Section 4.1.6.1, Key Transport ensures secure transport of private keys
@@ -71,8 +73,10 @@ CA MUST Support Key Transport Management Technique With KUR
     ...    signing_key=${key}
     ...    cert=${KGA_KTRI_CERT}
     ...    for_kga=True
-    ...    subject=${cm}
+    ...    common_name=${cm}
     ...    recipient=${RECIPIENT}
+    ...    pvno=3
+    ...    exclude_fields=sender,senderKID
     ${protected_kur}=    Protect PKIMessage
     ...    ${kur}
     ...    private_key=${KGA_KTRI_KEY}
@@ -80,7 +84,8 @@ CA MUST Support Key Transport Management Technique With KUR
     ...    cert=${KGA_KTRI_CERT}
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIMessage Body Type Must Be    ${response}    kup
-    Validate Not Local Key Gen    ${response}    must_be=ktri
+    PKIStatus Must Be    ${response}    accepted
+    Validate Not Local Key Gen    ${response}    expected_type=ktri    ee_key=${KGA_KTRI_KEY}
 
 CA MUST Reject KGA Request For KTRI Without keyEncipherment KeyUsage
     [Documentation]    According to RFC 9483 Section 4.1.6.1, Key Transport ensures secure transport of private keys
@@ -99,7 +104,7 @@ CA MUST Reject KGA Request For KTRI Without keyEncipherment KeyUsage
     ...    cert=${NEG_KTRI_CERT}
     ...    for_kga=True
     ...    pvno=3
-    ...    subject=${cm}
+    ...    common_name=${cm}
     ...    recipient=${RECIPIENT}
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
@@ -121,15 +126,16 @@ CA MUST Support KeyAgreement Key Management Technique With IR
     ...    key agreement. The CA MUST respond with a valid `EnvelopedData` structure. The extracted private
     ...    key MUST match the public key in the newly issued certificate.
     [Tags]    ir    kari    positive
-    ${is_set}=    Is Certificate And Key Set    ${KGA_KARI_CERT}    ${NEG_KTRI_KEY}
-    Skip If    not ${is_set}    Skipped because NEG_KTRI_CERT and NEG_KTRI_KEY are not set.
+    ${is_set}=    Is Certificate And Key Set    ${KGA_KARI_CERT}    ${KGA_KARI_KEY}
+    Skip If    not ${is_set}    Skipped because KGA_KARI_CERT and KGA_KARI_KEY are not set.
     ${cm}=    Get Next Common Name
     ${ir}=    Build Ir From Key
-    ...    signing_key=${None}
-    ...    cert=${KGA_KARI_CERT}
+    ...    ${None}
     ...    for_kga=True
     ...    common_name=${cm}
+    ...    pvno=3
     ...    recipient=${RECIPIENT}
+    ...    exclude_fields=sender,senderKID
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
     ...    private_key=${KGA_KARI_KEY}
@@ -137,7 +143,7 @@ CA MUST Support KeyAgreement Key Management Technique With IR
     ...    cert=${KGA_KARI_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
-    Validate Not Local Key Gen    ${response}    must_be=kari
+    Validate Not Local Key Gen    ${response}    expected_type=kari   ee_key=${KGA_KARI_KEY}
 
 CA MUST Support KeyAgreement Key Management Technique With KUR
     [Documentation]    According to RFC 9483 Section 4.1.6.2, Key Agreement ensures secure transport of private keys
@@ -148,23 +154,26 @@ CA MUST Support KeyAgreement Key Management Technique With KUR
     ...    agreement. The CA MUST respond with a valid `EnvelopedData` structure. The extracted private
     ...    key MUST match the public key in the newly issued certificate.
     [Tags]    kari    kur    positive
+    ${is_set}=    Is Certificate And Key Set    ${KGA_KARI_CERT}    ${KGA_KARI_KEY}
+    Skip If    not ${is_set}    Skipped because KGA_KARI_CERT and KGA_KARI_KEY are not set.
     ${cm}=    Get Next Common Name
     ${key}=    Generate Default Key
     ${kur}=    Build Key Update Request
-    ...    signing_key=${key}
+    ...    ${key}
     ...    cert=${KGA_KARI_CERT}
     ...    for_kga=True
     ...    common_name=${cm}
+    ...    pvno=3
     ...    recipient=${RECIPIENT}
+    ...    exclude_fields=sender,senderKID
     ${protected_kur}=    Protect PKIMessage
     ...    ${kur}
     ...    private_key=${KGA_KARI_KEY}
     ...    protection=signature
     ...    cert=${KGA_KARI_CERT}
-
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIMessage Body Type Must Be    ${response}    kup
-    Validate Not Local Key Gen    ${response}    must_be=kari
+    Validate Not Local Key Gen    ${response}    expected_type=kari   ee_key=${KGA_KARI_KEY}
 
 A MUST Reject KGA IR Request For KARI Without keyAgreement KeyUsage
     [Documentation]    According to RFC 9483 Section 4.1.6.2, Key Agreement ensures secure transport of private keys
@@ -189,7 +198,7 @@ A MUST Reject KGA IR Request For KARI Without keyAgreement KeyUsage
     ...    ${ir}
     ...    private_key=${NEG_KARI_KEY}
     ...    protection=signature
-    ...    cert=${NEG_KTRI_CERT}
+    ...    cert=${NEG_KARI_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=notAuthorized    exclusive=True
@@ -210,20 +219,17 @@ CA MUST Support Password-Based Key Management Technique With IR For ECC
     ${key}=    Generate Key    ecc
     ${cm}=    Get Next Common Name
     ${ir}=    Build Ir From Key
-    ...    signing_key=${key}
+    ...    ${key}
     ...    for_kga=True
     ...    common_name=${cm}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_ir}=    Protect PKIMessage
-    ...    ${ir}
-    ...    password=${PRESHARED_SECRET}
-    ...    protection=${DEFAULT_MAC_ALGORITHM}
-
+    ...    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
+    ${protected_ir}=    Default Protect With MAC    ${ir}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
-    Validate Not Local Key Gen    ${response}    must_be=pwri
+    Validate Not Local Key Gen    ${response}   ${PRESHARED_SECRET}   pwri
 
 # TODO maybe change to default MAC-based-body.
 
@@ -239,19 +245,17 @@ CA MUST Support Password-Based Key Management Technique For IR Without Algorithm
     Skip If    not ${ALLOW_IR_MAC_BASED}    Skipped this test because IR MAC protection is disabled.
     ${cm}=    Get Next Common Name
     ${ir}=    Build Ir From Key
-    ...    signing_key=${None}
+    ...    ${None}
     ...    for_kga=True
     ...    common_name=${cm}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_ir}=    Protect PKIMessage
-    ...    ${ir}
-    ...    password=${PRESHARED_SECRET}
-    ...    protection=${DEFAULT_MAC_ALGORITHM}
+    ...    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
+    ${protected_ir}=    Default Protect With MAC    ${ir}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
-    Validate Not Local Key Gen    ${response}    must_be=pwri
+    Validate Not Local Key Gen    ${response}   ${PRESHARED_SECRET}   pwri
 
 CA MUST Reject Kur KGA PWRI Message
     [Documentation]    According to RFC 9483 Section 4.1.6.2, Password-Based Key Management ensures secure transport
@@ -271,6 +275,39 @@ CA MUST Reject Kur KGA PWRI Message
     ...    common_name=${cm}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ${protected_kur}=    Protect PKIMessage    ${kur}    password=${PRESHARED_SECRET}    protection=password_based_mac
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
+    ${protected_kur}=    Default Protect With MAC    ${kur}
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest,wrongIntegrity    exclusive=True
+
+##################################
+# PQ
+##################################
+
+CA MUST Accept A Valid KGA Request For ML-DSA
+    [Documentation]   According to RFC9483 Section 4.1.6 and draft-ietf-lamps-dilithium-certificates-07 is a
+    ...               valid centralized key generation request for a ML-DSA private key send. The CA MUST process
+    ...               the request and issue a valid certificate and send a encrypted private key inside the
+    ...               `SignedData` structure.
+    [Tags]            ir    positive   kga  ml-dsa   pq  pq-sig
+    ${key}=   Generate Key    ${DEFAULT_ML_DSA_ALG}
+    ${cm}=    Get Next Common Name
+    ${ir}=    Build Ir From Key    ${key}
+    ...    ${cm}
+    ...    for_kga=True
+    ...    recipient=${RECIPIENT}
+    ...    exclude_fields=senderKID,sender
+    ${protected_ir}=    Protect PKIMessage
+    ...    pki_message=${ir}
+    ...    protection=signature
+    ...    private_key=${KGA_KTRI_KEY}
+    ...    cert=${KGA_KTRI_CERT}
+    ${response}=   Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}   ${ISSUING_SUFFIX}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be     ${response}    status=accepted
+    ${private_key}=   Validate Not Local Key Gen    ${response}   ${KGA_KTRI_KEY}   ktri
+    ${key_name}=   Get Key Name    ${key}
+    ${private_key_name}=   Get Key Name    ${private_key}
+    Should Be Equal As Strings    ${key_name}    ${private_key_name}
+

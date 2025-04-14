@@ -18,10 +18,21 @@ Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
 Library             ../resources/certextractutils.py
 
+Suite Setup    Set Up LWCMP
+
 *** Variables ***
 # normally this would be provided from the command line
 ${environment}      cloudpki
 
+
+*** Keywords ***
+
+Set Up LWCMP
+    [Documentation]    Set up the test environment for LwCMP tests
+    ${exp_csr}   ${exp_key}=    Generate CSR For Testing
+    VAR   ${EXP_CSR}   ${exp_csr}   scope=Global
+    VAR   ${EXP_KEY}   ${exp_key}   scope=Global
+    Set Up Test Suite
 
 *** Test Cases ***
 # BIG TODO fix all the calls to Build P10cr... to Generate Default MAC Protected PKIMessage.
@@ -34,41 +45,34 @@ CA Must Issue Certificate Via P10cr Without implicitConfirm
     ...    valid p10cr request, even if implicit confirmation is not set. This test verifies that the
     ...    server correctly waits for an explicit confirmation from the End Entity (EE) before finalizing
     ...    the issuance.
+    [Tags]    p10cr    positive
     ${parsed_csr}=    Load And Parse Example CSR
     ${p10cr}=    Build P10cr From CSR
     ...    csr=${parsed_csr}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ${protected_p10cr}=    Protect Pkimessage    ${p10cr}    protection=pbmac1    password=${PRESHARED_SECRET}
-    Log Asn1    ${protected_p10cr}
-    # send initial request
-    ${encoded}=    Encode To Der    ${protected_p10cr}
-    Log Base64    ${encoded}
-    ${response}=    Exchange Data With CA    ${encoded}
-    ${pki_message}=    Parse PKIMessage    ${response.content}
+    ...    for_mac=True
+    ${protected_p10cr}=    Default Protect With MAC    ${p10cr}
+    ${response}=   Exchange PKIMessage    ${protected_p10cr}
     # could also be ip, kup, cp; consider examining the tag; the overall structure is CertRepMessage
-    PKIMessage Body Type Must Be    ${pki_message}    cp
+    PKIMessage Body Type Must Be    ${response}    cp
     # prepare confirmation message by extracting the certificate and getting the needed data from it
-    ${cert}=    Get Cert From PKIMessage    ${pki_message}
-    ${conf_message}=    Build Cert Conf    ${cert}
-    ${protected_conf_message}=    Protect PKIMessage
-    ...    ${conf_message}
-    ...    protection=pbmac1
-    ...    password=${PRESHARED_SECRET}
-    ${encoded}=    Encode To Der    ${protected_conf_message}
-    Log Base64    ${encoded}
-    ${response}=    Exchange Data With CA    ${encoded}
-    ${pki_message}=    Parse PKIMessage    ${response.content}
-    ${response_type}=    Get Cmp Message Type    ${pki_message}
-    PKIMessage Body Type Must Be    ${pki_message}    cp
-    PKIStatus Must Be  ${pki_message}  status=accepted
+    ${cert}=    Get Cert From PKIMessage    ${response}
+    # cert _req_id must be provided for p10cr.
+    ${conf_message}=   Build Cert Conf From Resp    ${response}   for_mac=True   cert_req_id=0
+    ...    sender=${SENDER}
+    ...    recipient=${RECIPIENT}
+    ...    for_mac=True
+    ${protected_conf_message}=    Default Protect With MAC    ${conf_message}
+    ${pki_message}=   Exchange PKIMessage     ${protected_conf_message}
+    PKIMessage Body Type Must Be    ${pki_message}    pkiconf
 
 CA MUST Support IR With implicitConfirm And PBMAC1 Protection
     [Documentation]    According to RFC 9483, Sections 3.1 and 4, the CA must support handling Initialization Requests
     ...    that include the `implicitConfirm` extension and are protected using PBMAC1. We send a valid
     ...    Initialization Request that is PBMAC1-protected and includes the `implicitConfirm` extension.
     ...    The CA MUST process the request, respond with a valid PKI message, and issue a valid certificate.
-    [Tags]    ak    ir    rfc9483-header
+    [Tags]    ak    ir    rfc9483-header   mac
     Skip If
     ...    not ${ALLOW_IR_MAC_BASED}
     ...    This test is skipped, because MAC-based-protection is not allowed for ir messages.
@@ -80,6 +84,7 @@ CA MUST Support IR With implicitConfirm And PBMAC1 Protection
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${True}
+    ...    for_mac=True
     ${protected_pki_message}=    Protect PKIMessage
     ...    ${pki_message}
     ...    protection=pbmac1
@@ -97,7 +102,7 @@ CA MUST Support IR With implicitConfirm And PBMAC1 Protection
     ...    ${protected_pki_message}
     ...    ${pki_message}
     ...    strict=${STRICT_MAC_VALIDATION}
-    Verify PKIMessage Protection    ${pki_message}
+    Verify PKIMessage Protection    ${pki_message}   password=${PRESHARED_SECRET}
     PKIMessage Body Type Must Be    ${pki_message}    ip
 
 # TODO check test cases above!
@@ -111,29 +116,24 @@ Response PKIMessage Header Must Include All Required Fields
     ...    PKIMessage header when responding to a PKCS #10 certificate request (p10cr). This test
     ...    verifies that the server response contains header fields such as pvno, sender, recipient,
     ...    protectionAlg, transactionID, and senderNonce.
-    [Tags]    headers    p10cr    rfc9483-header
-    ${csr_signed}    ${key}=    Generate CSR For Testing
-    Log    ${csr_signed}
-    ${p10cr}=    Build P10cr From CSR
-    ...    ${csr_signed}
-    ...    sender=${SENDER}
-    ...    recipient=${RECIPIENT}
-    ...    implicit_confirm=${True}
+    [Tags]    header    p10cr    rfc9483-header   minimal
+    ${cert_template}    ${key}=    Generate CertTemplate For Testing
+    ${p10cr}=    Build Ir From Key    ${key}   cert_template=${cert_template}  for_mac=True  
+    ...          recipient=${RECIPIENT}    sender=${SENDER}   implicit_confirm=${True}
     ${protected_p10cr}=    Protect PKIMessage    ${p10cr}    protection=pbmac1    password=${PRESHARED_SECRET}
     ${pki_message}=    Exchange PKIMessage    ${protected_p10cr}
-    ${pki_header}=    Get Asn1 Value    ${pki_message}    header
-    Asn1 Must Contain Fields    ${pki_header}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
+    Asn1 Must Contain Fields    ${pki_message["header"]}    pvno,sender,recipient,protectionAlg,transactionID,senderNonce
     Sender And Recipient Nonces Must Match    ${protected_p10cr}    ${pki_message}
     SenderNonce Must Be At Least 128 Bits Long    ${pki_message}
     PKIMessage Must Contain ImplicitConfirm Extension    ${pki_message}
-    ${der_cert}=    Get Asn1 Value As DER    ${pki_message}    extraCerts/0
+    ${der_cert}=    Get Asn1 Value As DER   ${pki_message}    extraCerts/0
     Log Base64    ${der_cert}
     Certificate Must Be Valid    ${der_cert}
     ${cert}=    Get Cert From PKIMessage    ${pki_message}
     Response Time Must Be Fresh    ${protected_p10cr}    ${pki_message}
     MAC Protection Algorithms Must Match    ${protected_p10cr}    ${pki_message}
-    Verify PKIMessage Protection    ${pki_message}
-    PKIMessage Body Type Must Be    ${pki_message}    cp
+    Verify PKIMessage Protection    ${pki_message}   password=${PRESHARED_SECRET}
+    PKIMessage Body Type Must Be    ${pki_message}    ip
 
 # TODO extract cert if positive. or just use loop for all needed certificates.
 # TODO maybe only LwCMP.
@@ -142,7 +142,7 @@ CA MUST Reject PKIMessage With Version Other Than 2 Or 3
     [Documentation]    According to RFC 9483 Section 3.1, PKIMessages must specify a protocol version number (`pvno`)
     ...    of either 2 or 3 to be considered valid. We send an Initialization Request with `pvno` set to 1.
     ...    The CA MUST reject the request, and the response may include the failinfo `unsupportedVersion`.
-    [Tags]    negative    rfc9483-header    version
+    [Tags]    negative    rfc9483-header    version   minimal
     ${pki_message}=    Build Ir From CSR
     ...    ${EXP_CSR}
     ...    ${EXP_KEY}
@@ -168,7 +168,7 @@ CA MUST Reject PKIMessage Without `directoryName` In Sender Field For MAC Protec
     ...    `sender` field is not inside the `directoryName` choice, but is of type `rfc822Name`. The CA
     ...    MUST reject this request and may respond with the optional failinfo `badMessageCheck`, as
     ...    specified in Section 3.5.
-    [Tags]    negative    protection    rfc9483-header    sender
+    [Tags]    negative    protection    rfc9483-header    sender   minimal
     ${pki_message}=    Build P10cr From CSR    ${EXP_CSR}    sender=${SENDER}    recipient=${RECIPIENT}
     ${protected_p10cr}=    Protect PKIMessage
     ...    ${pki_message}
@@ -185,7 +185,7 @@ CA MUST Reject PKIMessage With Invalid Sender Field For Signature Based Protecti
     ...    `sender` field to an invalid value that does not match the subject name of the signing
     ...    certificate. The CA MUST reject the request, and the response may include the failinfo
     ...    `badMessageCheck`, as specified in Section 3.5.
-    [Tags]    negative    rfc9483-header    sender    signature
+    [Tags]    negative    rfc9483-header    sender    signature  minimal
     ${pki_message}=    Build Ir From CSR
     ...    ${EXP_CSR}
     ...    ${EXP_KEY}
@@ -193,12 +193,13 @@ CA MUST Reject PKIMessage With Invalid Sender Field For Signature Based Protecti
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ${pki_message}=    Patch Sender    msg_to_patch=${pki_message}    cert=${ISSUED_CERT}    subject=False
+    Log Asn1    ${pki_message["header"]["sender"]}
     ${protected_p10cr}=    Protect PKIMessage
-    ...    pki_message=${pki_message}
-    ...    protection=signature
+    ...    ${pki_message}
+    ...    signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    ...    do_patch=False
+    ...    do_patch=${False}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck    exclusive=True
@@ -241,8 +242,8 @@ CA MUST Reject PKIMessage With messageTime Outside Allowed Window
     ${date_object}=    Get Current Date    increment=${MAX_ALLOW_TIME_INTERVAL_RECEIVED}
     ${ir}=    Patch MessageTime    ${ir}    ${date_object}
     ${protected_ir}=    Protect PKIMessage
-    ...    pki_message=${ir}
-    ...    protection=signature
+    ...    ${ir}
+    ...    signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
@@ -263,11 +264,7 @@ CA MUST Reject PKIMessage With A Long Passed messageTime
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ${ir}=    Patch MessageTime    ${ir}    2024-01-01 15:30:00.000000
-    ${protected_ir}=    Protect PKIMessage
-    ...    pki_message=${ir}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badTime    exclusive=True
@@ -279,13 +276,13 @@ CA MUST Reject PKIMessage With Different MAC Protection Algorithm Than MSG_MAC_A
     ...    algorithms specified in `MSG_MAC_ALG` for requests protected by MAC. We send a PKIMessage protected
     ...    by a MAC algorithm not listed in `MSG_MAC_ALG`, such as `hmac`. The CA MUST reject the request, and
     ...    the response may include the failinfo `badMessageCheck`, as specified in Section 3.5.
-    [Tags]    mac    negative    protectionAlg    rfc9483-header
+    [Tags]    mac    negative    protectionAlg    rfc9483-header   minimal
     Skip If    not ${LWCMP}    This test is only for LwCMP.
-    ${p10cr}=    Build P10cr From CSR    ${EXP_CSR}    sender=${SENDER}    recipient=${RECIPIENT}
-    ${protected_p10cr}=    Protect PKIMessage    ${p10cr}    protection=hmac    password=${PRESHARED_SECRET}
+    ${p10cr}=    Build P10cr From CSR    ${EXP_CSR}    sender=${SENDER}    recipient=${RECIPIENT}   for_mac=True
+    ${protected_p10cr}=    Protect PKIMessage    ${p10cr}  hmac   password=${PRESHARED_SECRET}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badAlg,badMessageCheck    exclusive=True
 
 # TODO add case with valid cert and not ski!, even though it is bad practise and will not be accepted by pkilint.
 
@@ -295,7 +292,7 @@ CA MUST Reject Signature Protected PKIMessage Without SenderKID
     ...    certificate. We send a PKIMessage with signature-based protection but omit the `senderKID` field.
     ...    The CA MUST reject the request, and the response may include the failinfo `badMessageCheck`,
     ...    as specified in Section 3.5.
-    [Tags]    negative    rfc9483-header    senderKID    signature
+    [Tags]    negative    rfc9483-header    senderKID    signature   minimal
     ${ir}=    Build Ir From CSR
     ...    ${EXP_CSR}
     ...    ${EXP_KEY}
@@ -310,7 +307,7 @@ CA MUST Reject Signature Protected PKIMessage Without SenderKID
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    ...    do_patch=False
+    ...    do_patch=${False}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck    exclusive=True
@@ -321,19 +318,16 @@ CA MUST Reject Signature Protected PKIMessage With Invalid SenderKID
     ...    We send a PKIMessage with signature-based protection where the `senderKID` does not match
     ...    the `SubjectKeyIdentifier` of the signing certificate. The CA MUST reject the request, and
     ...    the response may include the failinfo `badMessageCheck`, as specified in Section 3.5.
-    [Tags]    negative    rfc9483-header    senderKID    signature
+    [Tags]    negative    rfc9483-header    senderKID    signature   minimal
     ${ir}=    Build Ir From CSR
     ...    ${EXP_CSR}
     ...    ${EXP_KEY}
     ...    exclude_fields=sender,senderKID
     ...    recipient=${RECIPIENT}
-    ${ski_bytes}=    Get Field From Certificate
-    ...    cert=${ISSUED_CERT}
-    ...    extension=ski
-    ${modified_ski_bytes}=    Manipulate First Byte    ${ski_bytes}
     ${ir}=    Patch SenderKID
     ...    ${ir}
-    ...    sender_kid=${modified_ski_bytes}
+    ...    sender_kid=${ISSUED_CERT}
+    ...    negative=True
     ${ir}=    Patch Sender
     ...    ${ir}
     ...    cert=${ISSUED_CERT}
@@ -342,7 +336,7 @@ CA MUST Reject Signature Protected PKIMessage With Invalid SenderKID
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    ...    do_patch=False
+    ...    do_patch=${False}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck    exclusive=True
@@ -354,7 +348,7 @@ CA MUST Reject MAC Based Protected PKIMessage Without SenderKID
     ...    `senderKID` that matches the sender's `common name` field. We send a PKIMessage with MAC-based
     ...    protection but omit the `senderKID` field. The CA MUST reject the request, and the response may
     ...    include the failinfo `badMessageCheck`, as specified in Section 3.5.
-    [Tags]    mac    negative    rfc9483-header    senderKID
+    [Tags]    mac    negative    rfc9483-header    senderKID    minimal
     ${p10cr}=    Build P10cr From CSR
     ...    ${EXP_CSR}
     ...    sender=${SENDER}
@@ -374,8 +368,8 @@ CA MUST Reject MAC Protected PKIMessage With Invalid SenderKID
     ...    MAC-based protection and modify the `senderKID` so that it does not match the sender�s common
     ...    name. The CA MUST reject the request, and the response may include the failinfo
     ...    `badMessageCheck`, as specified in Section 3.5.
-    [Tags]    mac    negative    rfc9483-header    senderKID
-    ${pki_message}=    Build P10cr From CSR    ${EXP_CSR}    exclude_fields=senderKID,sender recipient=${RECIPIENT}
+    [Tags]    mac    negative    rfc9483-header    senderKID   minimal
+    ${pki_message}=    Build P10cr From CSR    ${EXP_CSR}    exclude_fields=sender_kid,sender   recipient=${RECIPIENT}
     ${pki_message}=    Patch Sender    ${pki_message}    sender_name=${SENDER}
     ${pki_message}=    Patch SenderKID    ${pki_message}    for_mac=True    negative=True
     ${pki_message}=    Protect PKIMessage
@@ -390,16 +384,16 @@ FailInfo Bit Must Be badDataFormat For Missing transactionID
     [Documentation]    According to RFC 9483 Section 3.5, each PKIMessage must include a `transactionID` to uniquely
     ...    identify the transaction. We send a PKIMessage omitting the `transactionID`. The CA MUST reject
     ...    the request, and the response may include the failinfo `badDataFormat`.
-    [Tags]    negative    rfc9483-header    transactionId
+    [Tags]    negative    rfc9483-header    transactionId   minimal
     ${ir}=    Build Ir From CSR
     ...    ${EXP_CSR}
     ...    ${EXP_KEY}
-    ...    exclude_fields=transactionId,sender,senderKID
+    ...    exclude_fields=transactionID,sender,senderKID
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ${protected_ir}=    Protect PKIMessage
-    ...    pki_message=${ir}
-    ...    protection=signature
+    ...    ${ir}
+    ...    signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
@@ -412,16 +406,16 @@ CA MUST Reject PKIMessage If transactionId Is Already In Use
     ...    terminate the operation and reject the request. The response may include the failinfo
     ...    `transactionIdInUse`. We send two PKIMessages with the same `transactionID`, expecting the CA
     ...    to process the first request successfully and reject the second as a duplicate.
-    [Tags]    negative    rfc9483-header    transactionId
+    [Tags]    negative    rfc9483-header    transactionId  minimal
     ${csr}    ${key}=    Generate CSR For Testing
     ${ir}=    Build Ir From CSR
     ...    ${csr}
     ...    ${key}
-    ...    exclude_fields=transactionId,sender,senderKID
+    ...    exclude_fields=transactionID,sender,senderKID
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${ir}=    Patch TransactionID    ${ir}    0123456789012345678901234567891
+    ${ir}=    Patch TransactionID    ${ir}    0x01234567890123456789012345678910
     ${ir}=    Protect PKIMessage
     ...    pki_message=${ir}
     ...    protection=signature
@@ -431,10 +425,10 @@ CA MUST Reject PKIMessage If transactionId Is Already In Use
     ${ir2}=    Build Ir From CSR
     ...    ${csr2}
     ...    ${key2}
-    ...    exclude_fields=transactionId,sender,senderKID
+    ...    exclude_fields=transactionID,sender,senderKID
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ${patched_ir2}=    Patch TransactionID    ${ir2}    0123456789012345678901234567891
+    ${patched_ir2}=    Patch TransactionID    ${ir2}    0x01234567890123456789012345678910
     ${protected_ir2}=    Protect PKIMessage
     ...    pki_message=${patched_ir2}
     ...    protection=signature
@@ -453,7 +447,7 @@ CA MUST Reject PKIMessage Without senderNonce
     ...    128 bits of random data to ensure secure transaction tracking and prevent replay attacks.
     ...    We send a PKIMessage without the `senderNonce` field. The CA MUST reject the message,
     ...    and the response may include the failinfo `badSenderNonce`, as specified in Section 3.5.
-    [Tags]    negative    rfc9483-header    senderNonce
+    [Tags]    negative    rfc9483-header    senderNonce   minimal
     ${csr}    ${key}=    Generate CSR For Testing
     ${ir}=    Build Ir From CSR
     ...    ${csr}
@@ -476,7 +470,7 @@ CA MUST Reject PKIMessage With Too Short senderNonce
     ...    at least 128 bits of secure, random data to ensure proper validation and prevent replay attacks.
     ...    We send a PKIMessage    with a `senderNonce` that is only 32 bits long. The CA MUST reject this
     ...    request, and the response may include the failinfo `badSenderNonce`, as specified in Section 3.5.
-    [Tags]    negative    rfc9483-header    senderNonce
+    [Tags]    negative    rfc9483-header    senderNonce   minimal
     ${csr}    ${key}=    Generate CSR For Testing
     ${ir}=    Build Ir From CSR
     ...    ${csr}
@@ -503,7 +497,7 @@ CA MUST Reject First PKIMessage With recipNonce
     ...    requirements, as this field is reserved for the response message. We send a PKIMessage with a
     ...    included `recipNonce`. The CA MUST reject the message, and the response may include the failinfo
     ...    `badRecipientNonce` or `badRequest`, as specified in Section 3.5.
-    [Tags]    negative    recipNonce    rfc9483-header
+    [Tags]    negative    recipNonce    rfc9483-header  minimal
     ${csr}    ${key}=    Generate CSR For Testing
     ${ir}=    Build Ir From CSR
     ...    ${csr}
@@ -529,7 +523,7 @@ CA MUST Reject PKIMessage With Invalid ImplicitConfirmValue
     ...    this value set to `NULL` if present. We send a PKIMessage with an invalid `ImplicitConfirmValue`
     ...    , expecting the CA to reject the request due to the non-NULL value. The response may include the
     ...    failinfo `badRequest`.
-    [Tags]    negative    rfc9483-header    strict
+    [Tags]    negative    rfc9483-header    strict   minimal
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
     ${csr}    ${key}=    Generate CSR For Testing
     ${ir}=    Build Ir From CSR
@@ -539,7 +533,7 @@ CA MUST Reject PKIMessage With Invalid ImplicitConfirmValue
     ...    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID
     ${ir}=    Patch GeneralInfo
-    ...    pki_message=${ir}
+    ...    ${ir}
     ...    implicit_confirm=True
     ...    neg_info_value=True
     ${protected_ir}=    Protect PKIMessage
@@ -557,6 +551,7 @@ CA MUST Reject PKIMessage With UTCTime inside ConfirmWaitTimeValue
     ...    `confirmWaitTime` violates the protocol requirements. We send a PKIMessage with a `confirmWaitTime`
     ...    value in `UTCTime` format, expecting the CA to reject the message. The CA MUST reject this request,
     ...    and the response may include the failinfo `badRequest` or `badDataFormat`.
+    [Tags]    negative    strict    generalInfo    minimal
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
     ${csr}    ${key}=    Generate CSR For Testing
     ${ir}=    Build Ir From CSR
@@ -566,7 +561,7 @@ CA MUST Reject PKIMessage With UTCTime inside ConfirmWaitTimeValue
     ...    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID
     ${ir}=    Patch GeneralInfo
-    ...    pki_message=${ir}
+    ...    ${ir}
     ...    confirm_wait_time=500
     ...    neg_info_value=True
     ${protected_ir}=    Protect PKIMessage
@@ -576,7 +571,7 @@ CA MUST Reject PKIMessage With UTCTime inside ConfirmWaitTimeValue
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest,badDataFormat
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badDataFormat
 
 CA MUST Reject PKIMessage With ImplicitConfirm And ConfirmWaitTime
     [Documentation]    According to RFC 9483 Section 3.1, if `ImplicitConfirm` is set in a PKIMessage, the
@@ -584,7 +579,7 @@ CA MUST Reject PKIMessage With ImplicitConfirm And ConfirmWaitTime
     ...    We send a PKIMessage with both `ImplicitConfirm` and `ConfirmWaitTime` set, expecting
     ...    the CA to reject the message due to the conflicting fields. The CA MUST reject this request,
     ...    and the response may include the failinfo `badRequest`.
-    [Tags]    negative    rfc9483-header    strict
+    [Tags]    negative    generalInfo    strict   minimal
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
     ${csr}    ${key}=    Generate CSR For Testing
     ${ir}=    Build Ir From CSR
@@ -595,13 +590,13 @@ CA MUST Reject PKIMessage With ImplicitConfirm And ConfirmWaitTime
     ...    exclude_fields=sender,senderKID
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
     ${ir}=    Patch GeneralInfo
-    ...    pki_message=${ir}
+    ...    ${ir}
     ...    implicit_confirm=True
     ...    confirm_wait_time=400
     ...    neg_info_value=True
     ${protected_ir}=    Protect PKIMessage
-    ...    pki_message=${ir}
-    ...    protection=signature
+    ...    ${ir}
+    ...    signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
@@ -620,7 +615,7 @@ CA MUST Reject PKIMessage With Invalid Signature Protection Value
     ...    include a valid protection value that corresponds to the `protectionAlg` field. We send a `p10cr` PKIMessage
     ...    with a signature-based `protectionAlg` set, but we modify the protection value to an invalid one. The CA MUST
     ...    reject this request and may respond with the optional `badMessageCheck`, as specified in Section 3.5.
-    [Tags]    signature    negative    protection
+    [Tags]    signature    negative    protection   minimal
     ${protected_ir}=    Generate Default IR Sig Protected
     ${patched_protected_ir}=    Modify PKIMessage Protection    ${protected_ir}
     ${response}=    Exchange PKIMessage    ${patched_protected_ir}
@@ -632,7 +627,7 @@ CA MUST Reject PKIMessage With Invalid MAC Protection Value
     ...    valid protection value that corresponds to the `protectionAlg` field. We send a `p10cr` PKIMessage with a
     ...    MAC-based `protectionAlg` set, but we modify the protection value to an invalid one. The CA MUST
     ...    reject this request and may respond with the optional `badMessageCheck`, as specified in Section 3.5.
-    [Tags]    mac    negative    protection
+    [Tags]    mac    negative    protection   minimal
     Skip If    not ${ALLOW_MAC_PROTECTION}    Skipped this test because MAC-based protection is disabled.
     ${pki_message}=    Generate Default MAC Protected PKIMessage
     ${patched_message}=    Modify PKIMessage Protection    ${pki_message}
@@ -678,7 +673,7 @@ CA MUST Reject PKIMessage With Signature Based protectionAlg But No Protection V
     ...    contain a corresponding protection value. We send a PKIMessage with a signature-based
     ...    `protectionAlg` set, but the protection value is omitted. The CA MUST reject this request,
     ...    and the response may include the failinfo `badMessageCheck`, as specified in Section 3.5.
-    [Tags]    negative    protection    signature
+    [Tags]    negative    protection    signature   minimal
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${ir}=    Build IR From Key
@@ -701,7 +696,7 @@ CA MUST Reject PKIMessage With Incorrect Protection Certificate Position
     ...    certificate positioned at the second index in the `extraCerts` field. The CA MUST reject this
     ...    request, and the response may include the failinfo `badMessageCheck`, as specified in
     ...    Section 3.5.
-    [Tags]    extraCert    negative    rfc9483-validation    robot:skip-on-failure
+    [Tags]    extraCert    negative    rfc9483-validation    robot:skip-on-failure   minimal
     # can fail based on the issuer certificate.
     ${cert_chain}=    Build Cert Chain From Dir    ${ISSUED_CERT}    data/cert_logs
     ${csr}    ${key}=    Generate CSR For Testing
@@ -729,7 +724,7 @@ CA MUST Reject Requests With Signature Protection But Without extraCerts
     ...    PKIMessage with signature-based protection but omit the `extraCerts` field. The CA MUST
     ...    reject this request, and the response may include the failinfo `badMessageCheck`, as specified
     ...    in Section 3.5.
-    [Tags]    ak    extraCert    negative    rfc9483-validation
+    [Tags]    ak    extraCert    negative    rfc9483-validation   minimal
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${ir}=    Build IR From Key
@@ -745,6 +740,7 @@ CA MUST Reject Requests With Signature Protection But Without extraCerts
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
+    ...    exclude_cert=True
     ${response}=    Exchange PKIMessage    ${protected_cr}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck,signerNotTrusted   exclusive=True
@@ -756,7 +752,7 @@ CA MUST Reject Signature Protected PKIMessage Without Complete Certificate Chain
     ...    send a PKIMessage with signature-based protection, containing only the end entity certificate
     ...    in the `extraCerts` field. The CA MUST reject this request, and the response may include the
     ...    failinfo `badMessageCheck`, as specified in Section 3.5.
-    [Tags]    ak    extraCert    negative    rfc9483-validation
+    [Tags]    ak    extraCert    negative    rfc9483-validation   minimal
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${ir}=    Build IR From Key
@@ -785,11 +781,12 @@ CA Must Validate The Received PKI Message
     ...    If the CA decides to terminate the operation because of a failed check, it must send a negative
     ...    response or error message.
     ...    Ref.: 3.5. Generic Validation of PKI Message
-    [Tags]    header    positive    rfc9483-validation
+    [Tags]    header    positive    rfc9483-validation   minimal
     ${ir}=    Generate Default IR Sig Protected
     ${response}=    Exchange PKIMessage    ${ir}
-    Validate PKIMessage Header    ${response}    ${ir}
-    MAC Protection Algorithms Must Match    ${ir}    ${response}    strict=${STRICT_MAC_VALIDATION}
+    # 200 is too short. So 95000 is the minimum.
+    # There are other test cases just for the message, so could be disable here.
+    Validate PKIMessage Header    ${response}    ${ir}     time_interval=95000
 
 ##### Section 4
 
@@ -802,7 +799,7 @@ CA MUST Reject IR With More Than One CertReqMsg Inside The IR
     ...    the request. The CA MUST reject this request and may respond with the optional failinfo
     ...    `badRequest` or `systemFailure`, as specified in Section 3.5.
     [Tags]    ir    lwcmp    negative
-    Skip If    ${LWCMP}    Skipped because this test ins only for LwCMP.
+    Skip If   not ${LWCMP}    Skipped because this test in only for LwCMP.
     ${key}=    Generate Default Key
     ${key2}=    Generate Default Key
     ${cm}=    Get Next Common Name
@@ -813,13 +810,12 @@ CA MUST Reject IR With More Than One CertReqMsg Inside The IR
     ${ir}=    Build IR From Key    signing_key=${None}    cert_req_msg=${msgs}
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
-    ...    exclude_certs=True
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    body_type=ip
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfos=badRequest,systemFailure
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badRequest,systemFailure
 
 #### Section 4.1 cr,ir,kur
 
@@ -881,51 +877,50 @@ CA MUST Reject Valid IR With Same Key
     ...    with the optional failinfo `badCertTemplate`. If accepted, the CA MUST issue a new certificate.
     [Tags]    certTemplate    config-dependent    ir    negative
     Skip If    ${ALLOW_IR_SAME_KEY}    The same key is allowed for multiple certificates.
-    ${cert_template}=    Prepare CertTemplate
+    ${cert_template}=    Prepare CertTemplate    ${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    ...    key=${ISSUED_KEY}
     ...    include_fields=publicKey,subject,extensions
-    ${pki_message}=    Build IR From Key
-    ...    signing_key=${ISSUED_KEY}
-    ...    ee_cert=${ISSUED_CERT}
+    ${ir}=    Build IR From Key
+    ...    ${ISSUED_KEY}
+    ...    cert=${ISSUED_CERT}
     ...    cert_template=${cert_template}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ${response}=    Exchange PKIMessage    ${pki_message}
-    PKIStatus Must Be    ${response}    ip
+    ...    exclude_fields=sender,senderKID
+    ${prot_ir}=   Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
+    PKIMessage Body Type Must Be   ${response}   ip
+    PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badCertTemplate
 
 ##### Section 4 General CertReqMsg Checks
 
 # checks are done with IR, because IR is the only mandatory body.
 
-CA MUST Reject IR With Missing Signature Inside POPO Structure
+CA MUST Reject IR With BadPOP For Signature POPO
     [Documentation]    According to RFC 9483 Section 4.1.3, when an Initialization Request (IR) is sent for a key capable
     ...    of signing data, the Proof-of-Possession (POPO) structure must include a valid signature of the
     ...    `CertRequest` to prove that the private key is owned by the End-Entity. We send an IR message
-    ...    with a key that can sign data, but omit the signature value in the `CertRequest`. The CA MUST
+    ...    with a key that can sign data, but invalidate the signature value in the `CertRequest`. The CA MUST
     ...    reject the request, and the response may include the optional failinfo `badPOP`.
-    [Tags]    ir    negative    popo
+    [Tags]    ir    negative    popo  sig-popo   minimal
     ${cm}=    Get Next Common Name
     ${key}=    Generate Default Key
-    ${popo}=    Prepare POPO
-    ...    signing_key=${key}
-    ...    hash_alg=sha256
-    ${pki_message}=    Build IR From Key
-    ...    popo=${popo}
-    ...    signing_key=${key}
-    ...    common_name=${cm}
+    ${cert_req_msg}=    Prepare CertReqMsg   ${key}   ${cm}  hash_alg=sha256  bad_pop=True
+    ${pki_message}=    Build IR From Key  ${key}
+    ...    cert_req_msg=${cert_req_msg}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
     ...    exclude_fields=sender,senderKID
     ${pki_message}=    Protect PKIMessage
     ...    ${pki_message}
-    ...    protection=signature
+    ...    signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
-    PKIStatus Must Be    ${response}    ip
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP
+    PKIMessage Body Type Must Be     ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP   exclusive=True
 
 CA MUST Reject IR With Missing POPO Structure For Key Allowed For Signing
     [Documentation]    According to RFC 9483, Section 4.1.3, when an initialization request (ir) is received for a key
@@ -933,12 +928,12 @@ CA MUST Reject IR With Missing POPO Structure For Key Allowed For Signing
     ...    a valid signature of the `CertRequest` structure, to proof, that the private key is owned by the
     ...    End-Entity. We send a ir message with a key capable of signing but without `POPO` structure. The
     ...    CA MUST reject the request. The CA and may respond with the optional failinfo "badPOP".
-    [Tags]    negative    popo
+    [Tags]    negative    popo   minimal
     ${cm}=    Get Next Common Name
     ${key}=    Generate Key    rsa
     ${cert_req_msg}=    Prepare CertReqMsg    ${key}    common_name=${cm}    exclude_popo=True
     ${pki_message}=    Build IR From Key
-    ...    signing_key=${key}
+    ...    ${key}
     ...    cert_req_msg=${cert_req_msg}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
@@ -949,7 +944,8 @@ CA MUST Reject IR With Missing POPO Structure For Key Allowed For Signing
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
-    PKIStatus Must Be    ${response}    ip
+    PKIMessage Body Type Must Be     ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP
 
 CA MUST Reject IR With Mismatched SignatureAlgorithm And PublicKey In CertTemplate
@@ -958,27 +954,22 @@ CA MUST Reject IR With Mismatched SignatureAlgorithm And PublicKey In CertTempla
     ...    We send an IR where the signature algorithm does not match the provided public key, and
     ...    expects the CA to reject the request. The CA should respond with failinfo codes `badPOP` and
     ...    `badCertTemplate` to indicate the detected inconsistency.
-    [Tags]    certTemplate    negative    popo
+    [Tags]    certTemplate    negative    popo   minimal
     ${cm}=    Get Next Common Name
     ${key1}=    Generate Key    rsa
-    ${key2}=    Generate Key    dsa
-    ${cert_req}=    Prepare CertRequest    key=${key2}    common_name=${cm}
-    ${der_cert_req}=    Encode To Der    ${cert_req}
-    ${signature}=    Sign Data    data=${der_cert_req}    key=${key1}    hash_alg=sha256
-    ${popo}=    Prepare POPO    signature=${signature}    signing_key=${key1}    hash_alg=sha256
-    ${pki_message}=    Build IR From Key
+    ${key2}=    Generate Key    ecc
+    ${cert_req}=    Prepare CertRequest    ${key2}    ${cm}
+    ${popo}=    Prepare Signature POPO    ${key1}  ${cert_req}   hash_alg=sha256
+    ${ir}=    Build IR From Key   ${key2}
     ...    popo=${popo}
-    ...    signing_key=${key2}
+    ...    cert_request=${cert_req}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
     ...    exclude_fields=sender,senderKID
-    ${pki_message}=    Protect PKIMessage
-    ...    ${pki_message}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${pki_message}
-    PKIStatus Must Be    ${response}    ip
+    ${prot_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP,badCertTemplate
 
 CA MUST Reject IR With Valid Proof-of-Possession And raVerified From EE
@@ -986,7 +977,7 @@ CA MUST Reject IR With Valid Proof-of-Possession And raVerified From EE
     ...    (POPO) in a certificate request but sets `raVerified` on its own, the CA must reject the request
     ...    as unauthorized. We send a Initialization request without POPO but with `raVerified` set by the
     ...    EE, expecting the CA to respond with a failinfo indicating `notAuthorized`.
-    [Tags]    negative    popo
+    [Tags]    negative    popo   minimal
     ${cm}=    Get Next Common Name
     ${new_key}=    Generate Default Key
     ${pki_message}=    Build IR From Key
@@ -1002,7 +993,8 @@ CA MUST Reject IR With Valid Proof-of-Possession And raVerified From EE
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
-    PKIStatus Must Be    ${response}    ip
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=notAuthorized
 
 # TODO verify FailInfo!
@@ -1012,7 +1004,7 @@ CA MUST Reject IR With Invalid CertReqId
     ...    must be set to 0 to indicate a valid request. We send an IR with an invalid `certReqId`
     ...    value of -1, expecting the CA to reject the request. The CA should respond with a failinfo code
     ...    of `badDataFormat` or `badRequest` to signal the invalid format or content of the `certReqId`.
-    [Tags]    certReqID    ir    negative
+    [Tags]    certReqID    ir    negative  minimal
     ${cm}=    Get Next Common Name
     ${new_key}=    Generate Default Key
     ${ir}=    Build IR From Key
@@ -1029,7 +1021,7 @@ CA MUST Reject IR With Invalid CertReqId
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badCertTemplate,badDataFormat    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
 
 #### CertTemplate structure
 
@@ -1038,7 +1030,7 @@ CA MUST Reject IR With Missing Subject In CertTemplate
     ...    a Initialization request. We send a IR with a CertTemplate that omits the `subject`
     ...    field, expecting the CA to reject the request. The CA should respond with a failinfo of
     ...    `badCertTemplate` to indicate the missing required field.
-    [Tags]    certTemplate    ir    negative
+    [Tags]    certTemplate    ir    negative   minimal
     ${cm}=    Get Next Common Name
     ${new_key}=    Generate Default Key
     ${cert_template}=    Prepare CertTemplate    include_fields=publicKey    key=${new_key}
@@ -1057,7 +1049,7 @@ CA MUST Reject IR With Missing Subject In CertTemplate
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
     PKIMessage Body Type Must Be        ${response}    ip
-    PKIStatus Must Be    ${response}    accepted
+    PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badCertTemplate
 
 ### Key Related
@@ -1068,7 +1060,7 @@ CA MUST Issue A ECC Certificate With A Valid IR
     ...    algorithm is allowed by CA policy. We send an IR with an ECC key. The CA issues a
     ...    certificate when the request meets all requirements. If ECC is unsupported, the CA should
     ...    respond with a failinfo of `badCertTemplate` or `badAlg`.
-    [Tags]    ir    key    positive   robot:skip-on-failure
+    [Tags]    ir    key    positive   robot:skip-on-failure  minimal
     ${result}=    Should Contain    ${ALLOWED_ALGORITHM}    ecc
     ${ecc_key}=    Generate Key    ecc    curve=${DEFAULT_ECC_CURVE}
     ${extensions}=    Prepare Extensions    key_usage=keyAgreement,digitalSignature
@@ -1080,8 +1072,8 @@ CA MUST Issue A ECC Certificate With A Valid IR
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
     ...    exclude_fields=sender,senderKID
     ${pki_message}=    Protect PKIMessage
-    ...    pki_message=${pki_message}
-    ...    protection=signature
+    ...    ${pki_message}
+    ...    signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
@@ -1101,17 +1093,17 @@ CA MUST Issue A ECC Certificate With A Valid IR
         ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
         PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     END
-    VAR    ${ECDSA_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${ECDSA_KEY}    ${ecc_key}    scope=GLOBAL
+    VAR    ${ECDSA_CERT}    ${cert}    scope=Global
+    VAR    ${ECDSA_KEY}    ${ecc_key}    scope=Global
 
 CA MAY Issue A Ed25519 Certificate With A Valid IR
     [Documentation]    According to RFC 9483, Section 4.1.3, the CA may issue a certificate for a valid initialization
     ...    request (ir) containing an Ed25519 key if its policy allows this algorithm. We send an ir
     ...    message with an Ed25519 key and expects the CA to issue a certificate if Ed25519 is supported.
     ...    If not, the CA should respond with the failinfo set to `badCertTemplate` or `badAlg`.
-    [Tags]    key    positive   robot:skip-on-failure
+    [Tags]    key    positive   robot:skip-on-failure  minimal
     ${result}=    Should Contain    ${ALLOWED_ALGORITHM}    ed25519
-    ${ecc_key}=    Load Private Key From File    ./data/keys/private-key-ed25519.pem    key_type=ed25519
+    ${ecc_key}=    Load Private Key From File    ./data/keys/private-key-ed25519.pem
     ${extensions}=    Prepare Extensions    key_usage=digitalSignature
     ${pki_message}=    Build Ir From Key
     ...    signing_key=${ecc_key}
@@ -1146,76 +1138,34 @@ CA MAY Issue A Ed25519 Certificate With A Valid IR
     VAR    ${Ed25519_CERT}    ${cert}    scope=GLOBAL
     VAR    ${Ed25519_KEY}    ${ecc_key}    scope=GLOBAL
 
-# TODO fix test case!,
-# done in next merge Request.
-
-CA Must Accept No POPO For Request With X25519 Key
-    [Tags]    ir    key    popo    positive    robot:skip-on-failure
-    Skip    Not implemented yet.
-    ${result}=    Should Contain    ${ALLOWED_ALGORITHM}    x25519
-    ${extensions}=    Prepare Extensions    key_usage=keyAgreement
-    ${csr_key}=    Load Private Key From File    ./data/keys/client-key-x25519.pem    key_type=x25519
-    ${pki_message}=    Build Ir From Key
-    ...    signing_key=${csr_key}
-    ...    common_name=${SENDER}
-    ...    extensions=${extensions}
-    ...    recipient=${RECIPIENT}
-    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ...    exclude_fields=sender,senderKID
-    ${pki_message}=    Protect PKIMessage
-    ...    pki_message=${pki_message}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${pki_message}
-    PKIMessage Body Type Must Be        ${response}    ip
-    PKIStatus Must Be    ${response}    accepted
-    ${cert}=    Get Cert From PKIMessage    ${response}
-    IF    not ${ALLOW_IMPLICIT_CONFIRM}
-        ${cert_conf}=    Build Cert Conf From Resp
-        ...    ${response}
-        ...    exclude_fields=sender,senderKID
-        ...    recipient=${RECIPIENT}
-        ${protected_cert_conf}=    Protect PKIMessage
-        ...    pki_message=${cert_conf}
-        ...    protection=signature
-        ...    private_key=${ISSUED_KEY}
-        ...    cert=${ISSUED_CERTIFICATE}
-        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-    END
-    VAR    ${X25519_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${X25519_KEY}    ${csr_key}    scope=GLOBAL
-
-# TODO verify body!
-
 CA MUST Reject IR With Invalid Algorithm
     [Documentation]    We Send a initialization request (ir) using Diffie-Hellman (DH) as the certificate algorithm and expect
     ...    the CA to reject the request. There is no such thing as a DH-certificate, and the CA should reject the
     ...    request with failinfo codes indicating `badCertTemplate`, `badRequest`, or `badPOP`.
-    [Tags]    certTemplate    ir    key    negative
+    [Tags]    certTemplate    ir    key    negative   minimal
     ${extensions}=    Prepare Extensions    key_usage=keyAgreement
-    ${csr_key}=    Generate Key    dh    length=${DEFAULT_KEY_LENGTH}
-    ${pki_message}=    Build Ir From Key
-    ...    signing_key=${csr_key}
+    ${key}=   Load Private Key From File    data/keys/private-dh-key.pem
+    ${key2}=   Generate Default Key
+    ${cm}=   Get Next Common Name
+    ${cert_request}=  Prepare CertRequest    ${key}   ${cm}
+    ${popo}=  Prepare Signature POPO    ${key2}   ${cert_request}
+    ${ir}=    Build Ir From Key
+    ...    ${key}
+    ...    popo=${popo}
     ...    extensions=${extensions}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${True}
     ...    exclude_fields=sender,senderKID
-    ${pki_message}=    Protect PKIMessage
-    ...    ${pki_message}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${pki_message}
+    ${protected_ir}=   Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be      ${response}    ip
-    PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=badCertTemplate,badRequest
+    PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=badCertTemplate,badAlg,badPOP
 
 CA MUST Reject IR With Too Short RSA Key In CertTemplate
     [Documentation]    We send a initialization request (ir) with a certTemplate containing an RSA key that is shorter than
     ...    the minimum allowed size and expect the CA to reject the request. The CA should reject any request
     ...    with an RSA key that does not meet security requirements, setting a badCertTemplate failinfo.
-    [Tags]    certTemplate    config dependent    ir    key    negative    robot:skip-on-failure
+    [Tags]    certTemplate    config-dependent    ir    key    negative    robot:skip-on-failure
     # generate a key with bit size of 512
     ${bad_key}=    Generate Key    bad_rsa_key
     ${pki_message}=    Build Ir From Key
@@ -1236,9 +1186,13 @@ CA MUST Reject IR With Too Large RSA Key In CertTemplate
     [Documentation]    We send a initialization request (ir) with a certTemplate containing an RSA key that exceeds the maximum
     ...    allowed size and expect the CA to reject the request. The CA should reject any request with an RSA key
     ...    that is too large, marking the request with a badCertTemplate failinfo.
-    [Tags]    certTemplate    config dependent    ir    key    negative
+    [Tags]    certTemplate    config-dependent    ir    key    negative
     Skip If    ${LARGE_KEY_SIZE} == False    The `LARGE_KEY_SIZE` variable is not set, so this test is skipped.
-    ${bad_key}=    Generate Key    length=${LARGE_KEY_SIZE}
+    IF   ${LARGE_KEY_SIZE} < 18000
+        ${bad_key}=    Load Private Key From File    ./data/keys/private-key-rsa-size-18000.pem
+    ELSE
+        ${bad_key}=    Generate Key  rsa  length=${LARGE_KEY_SIZE}
+    END
     ${pki_message}=    Build Ir From Key
     ...    ${bad_key}
     ...    recipient=${RECIPIENT}
@@ -1258,37 +1212,34 @@ CA MAY Issue A DSA Certificate
     ...    When the CA receives a valid initialization request (ir) containing a DSA public key, it should
     ...    process the request accordingly. If the CA's policy allows issuing certificates with DSA keys,
     ...    it should issue the requested certificate. Otherwise, the CA must reject the request to maintain PKI integrity.
-    [Tags]    ir    key    positive    robot:skip-on-failure    setup
+    [Tags]    ir    key    positive    robot:skip-on-failure    setup   minimal
     ${key}=    Generate Key    dsa    length=${DEFAULT_KEY_LENGTH}
-    ${pki_message}=    Build Ir From Key
+    ${ir}=    Build Ir From Key
     ...    ${key}
     ...    common_name=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${pki_message}=    Protect PKIMessage
-    ...    ${pki_message}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${pki_message}
+    ${prot_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
+    PKIMessage Body Type Must Be    ${response}   ip
+    PKIStatus Must Be    ${response}    accepted
     ${cert}=    Get Cert From PKIMessage    ${response}
-    PKIStatus Must Be    ${response}    status=accepted
     IF    not ${ALLOW_IMPLICIT_CONFIRM}
         ${cert_conf}=    Build Cert Conf From Resp
         ...    ${response}
         ...    exclude_fields=sender,senderKID
         ...    recipient=${RECIPIENT}
         ${protected_cert_conf}=    Protect PKIMessage
-        ...    pki_message=${cert_conf}
-        ...    protection=signature
+        ...    ${cert_conf}
+        ...    signature
         ...    private_key=${ISSUED_KEY}
         ...    cert=${ISSUED_CERTIFICATE}
         ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
         PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     END
-    VAR    ${DSA_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${DSA_KEY}    ${key}    scope=GLOBAL
+    VAR    ${DSA_CERT}    ${cert}    scope=Global
+    VAR    ${DSA_KEY}    ${key}    scope=Global
 
 CA MUST Reject PKIMessage With Different Protection Algorithm Than MSG_SIG_ALG
     [Documentation]    According to RFC 9483 Section 3.1, the CA must enforce the use of algorithms specified in `MSG_SIG_ALG`
@@ -1325,13 +1276,13 @@ CA MUST Either Reject Or Accept Valid KUR With Same Key
     [Tags]    certTemplate    kur    security
     Skip If    ${ALLOW_KUR_SAME_KEY}    Skipped because the same key is is allowed to be used.
     ${pki_message}=    Build Key Update Request
-    ...    signing_key=${ISSUED_KEY}
+    ...    ${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ${pki_message}=    Protect PKIMessage
     ...    ${pki_message}
-    ...    protection=signature
+    ...    signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
@@ -1358,7 +1309,7 @@ CA MUST Reject KUR With The Wrong Issuer Inside The Control Structure
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
     PKIMessage Body Type Must Be      ${response}    kup
-    PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=badRequest
+    PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=badCertId
 
 CA MUST Reject KUR With Invalid serialNumber In Controls Structure
     [Documentation]    According to RFC 9483, Section 4.1.3, the `controls` structure is recommended within a Key
@@ -1381,7 +1332,7 @@ CA MUST Reject KUR With Invalid serialNumber In Controls Structure
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
     PKIMessage Body Type Must Be      ${response}    kup
-    PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=badRequest
+    PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=badCertId
 
 # Section 4 Dependent Checks
 
@@ -1406,7 +1357,7 @@ CA Must Reject Valid IR With Already Updated Certificate
     ...    private_key=${UPDATED_KEY}
     ...    cert=${UPDATED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
-    PKIMessage Body Type Must Be      ${response}    ip
+    PKIStatus Must Be      ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=certRevoked   exclusive=True
 
 ##### Security checks #####
