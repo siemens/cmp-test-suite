@@ -10,6 +10,10 @@ SPDX-License-Identifier: Apache-2.0
   validate_senderkid_for_cmp_protection([checkutils.py](resources/checkutils.py).py))
 - Restructure code for better readability/identification.
 - Add alternative certificate linters.
+- FIX KARI ECMQV implementation.
+- Decide which is the best way to test EnvelopedData with the `Revocation Passphrase`?
+- Verify why the signature verification against pqc-certificates 
+for Composite-04 RSA4096-PSS ML-DSA-87 fails.
 
 
 ## About CMP:
