@@ -62,7 +62,7 @@ from resources.oidutils import (
     SYMMETRIC_ENCR_ALG_OID_2_NAME,
 )
 from resources.suiteenums import GeneralInfoOID
-from resources.typingutils import EnvDataPublicKey, Strint, ECDHPrivateKey
+from resources.typingutils import ECDHPrivateKey, EnvDataPublicKey, Strint
 from unit_tests.utils_for_test import try_encode_pyasn1
 
 # TODO for the future, change references to new RFC.

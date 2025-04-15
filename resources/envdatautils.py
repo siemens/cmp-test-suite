@@ -60,8 +60,16 @@ from resources.oidutils import (
     KM_KA_ALG_NAME_2_OID,
     PQ_SIG_PRE_HASH_NAME_2_OID,
 )
-from resources.typingutils import PrivateKey, PublicKey, RecipInfo, SignKey, Strint, VerifyKey, ECDHPrivateKey, \
-    ECDHPublicKey
+from resources.typingutils import (
+    ECDHPrivateKey,
+    ECDHPublicKey,
+    PrivateKey,
+    PublicKey,
+    RecipInfo,
+    SignKey,
+    Strint,
+    VerifyKey,
+)
 
 
 @not_keyword

@@ -41,7 +41,7 @@ from resources.asn1_structures import KemCiphertextInfoAsn1
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import compute_hash, get_hash_from_oid, hash_name_to_instance
 from resources.oidutils import AES_CBC_OID_2_NAME, AES_GCM_OID_2_NAME, KM_KW_ALG
-from resources.typingutils import ECDHPrivateKey, SignKey, VerifyKey, ECDHPrivateKey, ECDHPublicKey
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey, SignKey, VerifyKey
 
 
 def sign_data(  # noqa D417 undocumented-param

@@ -46,8 +46,8 @@ from pq_logic.keys.abstract_wrapper_keys import (
 )
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey, RSADecapKey, RSAEncapKey
 from pq_logic.tmp_oids import COMPOSITE_KEM05_NAME_2_OID
-from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 from resources.exceptions import BadAsn1Data, InvalidKeyCombination
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 
 
 def _get_composite_kem_hash_alg(pq_name: str, trad_key, alternative: bool = False) -> str:

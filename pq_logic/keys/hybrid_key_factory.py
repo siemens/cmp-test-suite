@@ -30,7 +30,7 @@ from resources.oidutils import (
     ALL_COMPOSITE_SIG_COMBINATIONS,
     XWING_OID_STR,
 )
-from resources.typingutils import ECSignKey, Strint, ECDHPrivateKey
+from resources.typingutils import ECDHPrivateKey, ECSignKey, Strint
 
 TradPartPrivateKey = Union[ECSignKey, ECDHPrivateKey, RSAPrivateKey, TradKEMPrivateKey]
 

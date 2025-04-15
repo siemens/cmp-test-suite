@@ -62,11 +62,12 @@ from resources.typingutils import (
     CACertResponse,
     CACertResponses,
     CAResponse,
+    ECDHPrivateKey,
     ECSignKey,
     SignKey,
     Strint,
     TradSignKey,
-    TradVerifyKey, ECDHPrivateKey,
+    TradVerifyKey,
 )
 
 

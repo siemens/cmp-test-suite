@@ -74,7 +74,7 @@ from resources.oidutils import (
     PROT_SYM_ALG,
 )
 from resources.suiteenums import KeyUsageStrictness
-from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint, ECDHPrivateKey
+from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint
 
 
 # TODO fix this implementation to use 1e,2s and not 1e,1s.

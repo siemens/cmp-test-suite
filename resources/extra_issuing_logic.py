@@ -39,7 +39,7 @@ from resources.convertutils import str_to_bytes
 from resources.cryptoutils import compute_aes_cbc, perform_ecdh
 from resources.exceptions import BadAsn1Data, BadRequest, InvalidKeyCombination
 from resources.protectionutils import compute_and_prepare_mac
-from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint, ECDHPrivateKey, ECDHPublicKey
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey, EnvDataPrivateKey, PrivateKey, Strint
 from resources.utils import get_openssl_name_notation
 
 

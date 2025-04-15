@@ -94,13 +94,15 @@ from resources.oidutils import (
 from resources.suiteenums import ProtectionAlgorithm
 from resources.typingutils import (
     CertObjOrPath,
+    ECDHPrivateKey,
+    ECDHPublicKey,
     ECVerifyKey,
     KEMPrivateKey,
     KEMPublicKey,
     PrivateKey,
     PublicKey,
     SignKey,
-    VerifyKey, ECDHPrivateKey, ECDHPublicKey,
+    VerifyKey,
 )
 
 

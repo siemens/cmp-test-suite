@@ -83,8 +83,16 @@ from resources.exceptions import (
 )
 from resources.oid_mapping import compute_hash, get_hash_from_oid, may_return_oid_to_name, sha_alg_name_to_oid
 from resources.oidutils import CURVE_OID_2_NAME, id_KemBasedMac
-from resources.typingutils import CAResponse, EnvDataPrivateKey, PrivateKey, PublicKey, SignKey, Strint, ECDHPrivateKey, \
-    ECDHPublicKey
+from resources.typingutils import (
+    CAResponse,
+    ECDHPrivateKey,
+    ECDHPublicKey,
+    EnvDataPrivateKey,
+    PrivateKey,
+    PublicKey,
+    SignKey,
+    Strint,
+)
 
 
 def _prepare_rand(
@@ -396,7 +404,7 @@ def validate_oob_cert_hash(  # noqa: D417 Missing argument descriptions in the d
 
 
 @keyword(name="Build CMP ckuann Message")
-def build_cmp_ckuann_message(
+def build_cmp_ckuann_message(  # noqa: D417 undocumented-params
     root_ca_key_update: Optional[rfc9480.RootCaKeyUpdateValue] = None,
     new_cert: Optional[rfc9480.CMPCertificate] = None,
     old_cert: Optional[rfc9480.CMPCertificate] = None,
@@ -1023,7 +1031,9 @@ def prepare_cert_and_private_key_for_kga(
 
 
 @keyword(name="Check If Request Is For KGA")
-def check_if_request_is_for_kga(pki_message: PKIMessageTMP, index: Strint = 0) -> bool:
+def check_if_request_is_for_kga(  # noqa: D417 undocumented-params
+    pki_message: PKIMessageTMP, index: Strint = 0
+) -> bool:
     """Check if the request is for key generation authority (KGA).
 
     Arguments:
@@ -1769,7 +1779,8 @@ def respond_to_key_agreement_request(  # noqa: D417 Missing argument description
     return new_ee_cert, env_data
 
 
-def respond_to_key_encipherment_request(
+@keyword(name="Respond To keyEncipherment Request")
+def respond_to_key_encipherment_request(  # noqa: D417 undocumented-params
     cert_req_msg: rfc4211.CertReqMsg,
     ca_key: SignKey,
     ca_cert: rfc9480.CMPCertificate,
@@ -3641,7 +3652,7 @@ def _validate_popo_kur(request: PKIMessageTMP, index: int = 0) -> None:
 # TODO update to check if the certificate is known.
 
 
-def build_kup_from_kur(
+def build_kup_from_kur(  # noqa: D417 undocumented-param
     request: PKIMessageTMP,
     ca_key: SignKey,
     ca_cert: rfc9480.CMPCertificate,

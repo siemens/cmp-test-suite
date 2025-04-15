@@ -155,4 +155,3 @@ ExtensionsType = Union[
 CAResponse = Tuple[PKIMessageTMP, List[rfc9480.CMPCertificate]]
 CACertResponse = Tuple[CertResponseTMP, rfc9480.CMPCertificate]
 CACertResponses = Tuple[List[CertResponseTMP], List[rfc9480.CMPCertificate]]
-
