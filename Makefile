@@ -67,12 +67,12 @@ docs:
 	python -m robot.libdoc --pythonpath=./ resources/ca_kga_logic.py doc/ca_kga_logic.html
 	python -m robot.libdoc --pythonpath=./ resources/envdatautils.py doc/envdatautils.html
 	python -m robot.libdoc --pythonpath=./ resources/extra_issuing_logic.py doc/extra_issuing_logic.html
+	python -m robot.libdoc --pythonpath=./ resources/ca_ra_utils.py doc/ca_ra_utils.html
+	python -m robot.libdoc --pythonpath=./ pq_logic/hybrid_prepare.py doc/hybrid_prepare.html
+	python -m robot.libdoc --pythonpath=./ pq_logic/py_verify_logic.py doc/py_verify_logic.html
+    # Test documentation
 	python -m robot.testdoc tests/ doc/test-suites.html
-
-pq-docs:
-	python -m robot.libdoc --pythonpath=./ pq_logic/pq_compute_utils.py doc/pq_validation_utils.html
-	python -m robot.libdoc --pythonpath=./ tests_untested/ doc/test-migration-suites.html
-
+	python -m robot.testdoc tests_pq_and_hybrid/ doc/test-pq-hybrid-suites.html
 
 autoformat:
 	ruff check --fix .
@@ -94,9 +94,11 @@ check-sigs:
 	python test_load_pqc.py
 	python vis_pqc_verify.py
 
-start-mock-ca:
-	python ./mock_ca/ca_handler.py
+test-pq-hybrid:
+    # Start the tests for PQ and Hybrid algorithms/mechanisms.
+	robot --pythonpath=./ --outputdir=reports --variable environment:$(env) tests_pq_and_hybrid
 
-test-mock-ca:
-	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests
+
+
+
 
