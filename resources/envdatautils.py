@@ -38,7 +38,6 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from pq_logic.tmp_oids import CMS_COMPOSITE03_OID_2_HASH
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources import (
     asn1utils,
     certbuildutils,
@@ -46,12 +45,10 @@ from resources import (
     cryptoutils,
     keyutils,
     prepare_alg_ids,
-    prepareutils,
     protectionutils,
     utils,
 )
 from resources.convertutils import copy_asn1_certificate, ensure_is_kem_pub_key, str_to_bytes
-from resources.copyasn1utils import copy_name
 from resources.exceptions import BadAsn1Data
 from resources.oid_mapping import compute_hash, get_alg_oid_from_key_hash, get_hash_from_oid, sha_alg_name_to_oid
 from resources.oidutils import (
@@ -61,10 +58,10 @@ from resources.oidutils import (
     KEY_WRAP_NAME_2_OID,
     KM_KA_ALG,
     KM_KA_ALG_NAME_2_OID,
-    KM_KW_ALG,
     PQ_SIG_PRE_HASH_NAME_2_OID,
 )
-from resources.typingutils import PrivateKey, PublicKey, RecipInfo, SignKey, Strint, VerifyKey
+from resources.typingutils import PrivateKey, PublicKey, RecipInfo, SignKey, Strint, VerifyKey, ECDHPrivateKey, \
+    ECDHPublicKey
 
 
 @not_keyword
@@ -343,70 +340,8 @@ def prepare_recipient_identifier(  # noqa D417 undocumented-param
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
         )
     else:
-        recip_id["issuerAndSerialNumber"] = prepare_issuer_and_serial_number(cert)
+        recip_id["issuerAndSerialNumber"] = certbuildutils.prepare_issuer_and_serial_number(cert)
     return recip_id
-
-
-@keyword(name="Prepare IssuerAndSerialNumber")
-def prepare_issuer_and_serial_number(  # noqa D417 undocumented-param
-    cert: Optional[rfc9480.CMPCertificate] = None,
-    modify_serial_number: bool = False,
-    modify_issuer: bool = False,
-    issuer: Optional[str] = None,
-    serial_number: Optional[Union[str, int]] = None,
-) -> rfc5652.IssuerAndSerialNumber:
-    """Extract issuer and serial number from a certificate.
-
-    Creates an `IssuerAndSerialNumber` structure, which uniquely identifies
-    a certificate by its issuer's distinguished name and its serial number. It's used when
-    the certificate lacks a SubjectKeyIdentifier extension.
-
-    Arguments:
-    ---------
-        - `cert`: Certificate from which to extract the issuer and serial number.
-        - `modify_serial_number`: If True, increment the serial number by 1. Defaults to `False`.
-        - `modify_issuer`: If True, modify the issuer common name. Defaults to `False`.
-        - `issuer`: The issuer's distinguished name to use. Defaults to `None`.
-        - `serial_number`: The serial number to use. Defaults to `None`.
-
-    Returns:
-    -------
-        - The populated `IssuerAndSerialNumber` structure.
-
-    Raises:
-    ------
-        - ValueError: If neither a certificate nor an issuer and serial number is provided.
-
-    Examples:
-    --------
-    | ${issuer_and_ser}= | Prepare IssuerAndSerialNumber | cert=${cert} | modify_serial_number=True |
-    | ${issuer_and_ser}= | Prepare IssuerAndSerialNumber | issuer=${issuer} | serial_number=${serial_number} |
-
-    """
-    if cert is None and (issuer is None or serial_number is None):
-        raise ValueError("Either a certificate or a issuer and serial number must be provided.")
-
-    iss_ser_num = rfc5652.IssuerAndSerialNumber()
-
-    if issuer:
-        iss_ser_num["issuer"] = prepareutils.prepare_name(issuer)
-    elif not modify_issuer:
-        iss_ser_num["issuer"] = copy_name(
-            target=rfc9480.Name(),
-            filled_name=cert["tbsCertificate"]["issuer"],  # type: ignore
-        )
-    else:
-        data = certbuildutils.modify_common_name_cert(cert, issuer=True)  # type: ignore
-        data: str
-        iss_ser_num["issuer"] = prepareutils.prepare_name(data)
-
-    if serial_number is None:
-        serial_number = int(cert["tbsCertificate"]["serialNumber"])  # type: ignore
-
-    if modify_serial_number:
-        serial_number = int(serial_number) + 1
-    iss_ser_num["serialNumber"] = rfc5280.CertificateSerialNumber(serial_number)
-    return iss_ser_num
 
 
 @not_keyword
@@ -429,11 +364,12 @@ def prepare_signer_identifier(cert: rfc9480.CMPCertificate) -> rfc5652.SignerIde
         )
         sid["subjectKeyIdentifier"] = val
     else:
-        sid["issuerAndSerialNumber"] = prepare_issuer_and_serial_number(cert)
+        sid["issuerAndSerialNumber"] = certbuildutils.prepare_issuer_and_serial_number(cert)
 
     return sid
 
 
+@not_keyword
 def prepare_signed_attributes(message_digest: bytes) -> rfc5652.SignedAttributes:
     """Create `SignedAttributes` with content type and message digest.
 
@@ -493,7 +429,8 @@ def prepare_encapsulated_content_info(content: bytes, override_oid: bool = False
     return encap_content_info
 
 
-def prepare_signer_info(
+@keyword(name="Prepare SignerInfo")
+def prepare_signer_info(  # noqa D417 undocumented-param
     signing_key: SignKey,
     cert: rfc9480.CMPCertificate,
     e_content: bytes,
@@ -509,15 +446,29 @@ def prepare_signer_info(
     digest algorithm, signature algorithm, and signed attributes. It also generates the
     signature over the encapsulated content.
 
-    :param signing_key: Private key used for signing.
-    :param cert: Certificate corresponding to the signing key (CMP protection certificate).
-    :param e_content: Content to sign (typically the DER-encoded `EncapsulatedContentInfo`).
-    :param sig_hash_name: Hash algorithm for signature (e.g., "sha256").
-    :param digest_hash_name: Hash algorithm for digest calculation. Defaults to `sig_hash_name`.
-    :param bad_sig: Whether to modify the signature of the signed_info. Defaults to `False`.
-    `EncapsulatedContentInfo` inside the `SignerInfo` structure.  Defaults to False.
-    :param version: The CMSVersion for the structure.
-    :return: A `SignerInfo` structure ready to be included in `SignedData`.
+    Arguments:
+    ---------
+        - `signing_key`: The private key used for signing.
+        - `cert`: The certificate corresponding to the signing key (CMP protection certificate).
+        - `e_content`: The content to sign (typically the DER-encoded `EncapsulatedContentInfo`).
+        - `sig_hash_name`: The hash algorithm for the signature (e.g., "sha256"). If not provided,
+        it is derived from the signing key.
+        - `digest_hash_name`: The hash algorithm for digest calculation. Defaults to `sig_hash_name`.
+        - `bad_sig`: If True, modifies the signature of the signed_info. Defaults to `False`.
+        - `version`: The CMSVersion for the structure. Defaults to 3.
+
+    Returns:
+    -------
+        - A `SignerInfo` structure ready to be included in `SignedData`.
+
+    Raises:
+    ------
+        - `ValueError`: If the `signing_key` is not a valid key type or if the `sig_hash_name` is not supported.
+
+    Examples:
+    --------
+    | ${signer_info}= | Prepare SignerInfo | ${signing_key} | ${cert} | e_content=${e_content} | "sha256" |
+
     """
     if sig_hash_name is None:
         sig_hash_name = get_digest_from_key_hash(signing_key)
@@ -597,6 +548,7 @@ def prepare_signer_infos(
     return signer_infos
 
 
+@not_keyword
 def prepare_certificate_set(certs: List[rfc9480.CMPCertificate]) -> rfc5652.CertificateSet:
     """Prepare a `CertificateSet` for a list of certificates.
 
@@ -723,6 +675,7 @@ def prepare_signed_data(  # noqa D417 undocumented-param
     return signed_data
 
 
+@not_keyword
 def prepare_asymmetric_key_package(
     private_keys: List[PrivateKey],
 ) -> rfc5958.AsymmetricKeyPackage:
@@ -1661,7 +1614,7 @@ def prepare_ecc_cms_shared_info(
     ecc_cms_info["keyInfo"]["algorithm"] = key_wrap_oid
 
     if supp_pub_info is None:
-        supp_pub_info = int(KM_KW_ALG[key_wrap_oid].replace("aes", "").replace("_wrap", "")) // 8
+        supp_pub_info = get_aes_keywrap_length(KEY_WRAP_NAME_2_OID[key_wrap_oid])
 
     if ukm is not None:
         ecc_cms_info["entityUInfo"] = univ.OctetString(ukm).subtype(
@@ -1728,7 +1681,7 @@ def prepare_originator_identifier_or_key(  # noqa D417 undocumented-param
         originator["subjectKeyIdentifier"] = val
 
     else:
-        originator["issuerAndSerialNumber"] = prepare_issuer_and_serial_number(cert)
+        originator["issuerAndSerialNumber"] = certbuildutils.prepare_issuer_and_serial_number(cert)
 
     return originator
 
@@ -1786,7 +1739,7 @@ def _prepare_key_agree_rid(
         return key_rid
 
     if cmp_cert is not None:
-        issuer_and_ser = prepare_issuer_and_serial_number(cmp_cert)
+        issuer_and_ser = certbuildutils.prepare_issuer_and_serial_number(cmp_cert)
         key_rid["issuerAndSerialNumber"] = issuer_and_ser
         return key_rid
 

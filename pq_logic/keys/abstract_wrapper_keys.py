@@ -59,11 +59,13 @@ from pyasn1_alt_modules import rfc5280, rfc5958
 
 from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1, CompositeSignaturePublicKeyAsn1
 from pq_logic.keys.serialize_utils import prepare_enc_key_pem
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources.oidutils import PQ_NAME_2_OID
 
 ECSignKey = Union[ec.EllipticCurvePrivateKey, Ed25519PrivateKey, Ed448PrivateKey]
 ECVerifyKey = Union[ec.EllipticCurvePublicKey, Ed25519PublicKey, Ed448PublicKey]
+
+ECDHPublicKey = Union[ec.EllipticCurvePublicKey, x25519.X25519PublicKey, x448.X448PublicKey]
+ECDHPrivateKey = Union[ec.EllipticCurvePrivateKey, x25519.X25519PrivateKey, x448.X448PrivateKey]
 
 HybridTradPubComp = Union["TradKEMPublicKey", ECDHPublicKey, rsa.RSAPublicKey, ECVerifyKey]
 HybridTradPrivComp = Union["TradKEMPrivateKey", ECDHPrivateKey, rsa.RSAPrivateKey, ECSignKey]

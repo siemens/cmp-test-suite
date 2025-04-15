@@ -36,13 +36,12 @@ from pq_logic.keys.abstract_wrapper_keys import AbstractHybridRawPublicKey, KEMP
 from pq_logic.keys.composite_kem05 import CompositeKEMPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey, RSAEncapKey
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources import convertutils, envdatautils, keyutils, oid_mapping
 from resources.asn1_structures import KemCiphertextInfoAsn1
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import compute_hash, get_hash_from_oid, hash_name_to_instance
 from resources.oidutils import AES_CBC_OID_2_NAME, AES_GCM_OID_2_NAME, KM_KW_ALG
-from resources.typingutils import ECDHPrivKeyTypes, SignKey, VerifyKey
+from resources.typingutils import ECDHPrivateKey, SignKey, VerifyKey, ECDHPrivateKey, ECDHPublicKey
 
 
 def sign_data(  # noqa D417 undocumented-param
@@ -401,7 +400,7 @@ def compute_aes_cbc(key: bytes, data: bytes, iv: bytes, decrypt: bool = True) ->
 
 # TODO Refactor compute_shared_secret(private_key, peer_part, password)
 @not_keyword
-def perform_ecdh(private_key: ECDHPrivKeyTypes, public_key: Union[ECDHPublicKey, rfc9480.CMPCertificate]) -> bytes:
+def perform_ecdh(private_key: ECDHPrivateKey, public_key: Union[ECDHPublicKey, rfc9480.CMPCertificate]) -> bytes:
     """Derive a shared secret using Elliptic Curve Diffie-Hellman (ECDH) key exchange.
 
     Supports `ec`, `x25519`, and `x448` curves.

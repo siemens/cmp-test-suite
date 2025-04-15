@@ -8,7 +8,8 @@ from pyasn1.codec.der import encoder, decoder
 from pyasn1.type import tag
 from pyasn1_alt_modules import rfc5652
 
-from resources.envdatautils import build_env_data_for_exchange, prepare_issuer_and_serial_number
+from resources.envdatautils import build_env_data_for_exchange
+from resources.certbuildutils import prepare_issuer_and_serial_number
 from resources.extra_issuing_logic import validate_rid_for_encrypted_rand
 from resources.keyutils import generate_key, load_private_key_from_file
 

@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa, x448, x2
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 from resources.oid_mapping import hash_name_to_instance
 
 # TODO refactor to add trad wrapper classes for better support and cleaner code.

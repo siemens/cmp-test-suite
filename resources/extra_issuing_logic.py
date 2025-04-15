@@ -21,10 +21,10 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, KEMPublicKey
 from pq_logic.pq_utils import is_kem_private_key, is_kem_public_key
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources import (
     asn1utils,
     ca_kga_logic,
+    certbuildutils,
     certutils,
     cmputils,
     compareutils,
@@ -39,7 +39,7 @@ from resources.convertutils import str_to_bytes
 from resources.cryptoutils import compute_aes_cbc, perform_ecdh
 from resources.exceptions import BadAsn1Data, BadRequest, InvalidKeyCombination
 from resources.protectionutils import compute_and_prepare_mac
-from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
+from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint, ECDHPrivateKey, ECDHPublicKey
 from resources.utils import get_openssl_name_notation
 
 
@@ -201,7 +201,7 @@ def prepare_kem_env_data_for_popo(  # noqa D417 undocumented-param
         )
         data = asn1utils.encode_to_der(data)
 
-    issuer_and_ser = envdatautils.prepare_issuer_and_serial_number(serial_number=int(cert_req_id), issuer=rid_sender)
+    issuer_and_ser = certbuildutils.prepare_issuer_and_serial_number(serial_number=int(cert_req_id), issuer=rid_sender)
 
     env_data = rfc5652.EnvelopedData().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 4))
 
@@ -267,9 +267,7 @@ def _extract_rid(recipient_info: rfc5652.RecipientInfo, kari_index: int = 0) -> 
     raise ValueError("Unsupported recipient information type.")
 
 
-# TODO del or use.
-
-
+@keyword(name="Validate KEMRI Rid For Encrypted Cert")
 def validate_kemri_rid_for_encrypted_cert(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP,
     key: Optional[Union[KEMPublicKey, KEMPrivateKey]] = None,
@@ -330,7 +328,7 @@ def validate_kemri_rid_for_encrypted_cert(  # noqa D417 undocumented-param
     if key is not None:
         expected_rid = envdatautils.prepare_recipient_identifier(key=key)
     elif issuer is not None and serial_number is not None or cert is not None:
-        issuer_and_ser = envdatautils.prepare_issuer_and_serial_number(
+        issuer_and_ser = certbuildutils.prepare_issuer_and_serial_number(
             serial_number=serial_number, issuer=issuer, cert=cert
         )
         expected_rid = envdatautils.prepare_recipient_identifier(key=key, issuer_and_ser=issuer_and_ser)
@@ -752,7 +750,7 @@ def _prepare_pkmac_val(
 def prepare_key_agreement_popo(  # noqa D417 undocumented-param
     use_encr_cert: bool = True,
     env_data: Optional[rfc9480.EnvelopedData] = None,
-    client_key: Optional[ECDHPrivKeyTypes] = None,
+    client_key: Optional[ECDHPrivateKey] = None,
     shared_secret: Optional[bytes] = None,
     cert_request: Optional[Union[bytes, rfc4211.CertRequest]] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,

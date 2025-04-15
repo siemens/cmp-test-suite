@@ -22,7 +22,7 @@ from pq_logic.keys.abstract_wrapper_keys import TradKEMPrivateKey, TradKEMPublic
 from pq_logic.keys.composite_kem05 import CompositeKEMPrivateKey, CompositeKEMPublicKey
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey
 from pq_logic.tmp_oids import COMPOSITE_KEM06_NAME_2_OID
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 from resources.exceptions import InvalidKeyCombination
 
 

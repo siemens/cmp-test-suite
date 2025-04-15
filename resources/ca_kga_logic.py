@@ -37,7 +37,6 @@ from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateK
 from pq_logic.keys.trad_kem_keys import RSADecapKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, COMPOSITE_SIG_SIGNED_DATA_OID_HASH
-from pq_logic.trad_typing import ECDHPrivateKey
 from resources import (
     asn1utils,
     certextractutils,
@@ -75,7 +74,7 @@ from resources.oidutils import (
     PROT_SYM_ALG,
 )
 from resources.suiteenums import KeyUsageStrictness
-from resources.typingutils import ECDHPrivKeyTypes, EnvDataPrivateKey, PrivateKey, Strint
+from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint, ECDHPrivateKey
 
 
 # TODO fix this implementation to use 1e,2s and not 1e,1s.
@@ -123,7 +122,7 @@ def process_mqv(
 @not_keyword
 def process_kari(
     alg_id: rfc5280.AlgorithmIdentifier,
-    private_key: ECDHPrivKeyTypes,
+    private_key: ECDHPrivateKey,
     ukm: Optional[bytes] = None,
     cmp_prot_cert: Optional[rfc9480.CMPCertificate] = None,
 ) -> bytes:

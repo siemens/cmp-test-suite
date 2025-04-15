@@ -18,7 +18,7 @@ mechanisms to issue a certificate.
 from typing import Any, Optional, Sequence, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc6402, rfc9480
@@ -37,11 +37,10 @@ from pq_logic.hybrid_structures import AltSignatureValueExt
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPublicKey, KEMPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
-from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
+from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
+from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME
-from pq_logic.trad_typing import ECDHPrivateKey
-from resources import ca_ra_utils, certbuildutils, cmputils, keyutils, utils
+from resources import ca_ra_utils, certbuildutils, cmputils, keyutils, protectionutils, utils
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import build_ca_message
 from resources.certbuildutils import build_cert_from_csr
@@ -64,12 +63,10 @@ from resources.typingutils import (
     CACertResponses,
     CAResponse,
     ECSignKey,
-    ECVerifyKey,
-    PublicKey,
     SignKey,
     Strint,
     TradSignKey,
-    TradVerifyKey,
+    TradVerifyKey, ECDHPrivateKey,
 )
 
 
@@ -465,52 +462,6 @@ def _verify_alt_sig_for_pop(
         raise InvalidAltSignature("Invalid signature for the alternative `POP`.") from e
 
 
-@not_keyword
-def verify_composite_signature_with_keys(
-    data: bytes,
-    signature: bytes,
-    alg_id: rfc5280.AlgorithmIdentifier,
-    first_key: Optional[PublicKey],
-    second_key: Optional[PublicKey],
-) -> None:
-    """Verify the composite signature.
-
-    :param data: The data to verify.
-    :param alg_id: The algorithm identifier.
-    :param signature: The signature to verify.
-    :param first_key: The first key to cast be used in the composite signature key.
-    :param second_key: The second key to be used in the composite signature key.
-    :raises InvalidSignature: If the signature is invalid.
-    """
-    if first_key is None or second_key is None:
-        raise ValueError("Both keys must be provided.")
-
-    if not isinstance(first_key, PQSignaturePublicKey):
-        first_key, second_key = second_key, first_key
-
-    if not isinstance(first_key, MLDSAPublicKey):
-        raise InvalidKeyCombination("The Composite signature pq-key is not a MLDSA key.")
-
-    if not isinstance(second_key, (ECVerifyKey, RSAPublicKey)):
-        raise InvalidKeyCombination("The Composite signature trad-key is not a EC or RSA key.")
-
-    if alg_id["algorithm"] in CMS_COMPOSITE03_OID_2_NAME:
-        public_key = CompositeSig03PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
-
-    elif alg_id["algorithm"] in COMPOSITE_SIG04_OID_2_NAME:
-        public_key = CompositeSig04PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
-
-    else:
-        raise BadAlg(f"Invalid algorithm for composite signature: {alg_id['algorithm']}")
-
-    resources.protectionutils.verify_signature_with_alg_id(
-        public_key=public_key,
-        alg_id=alg_id,
-        data=data,
-        signature=signature,
-    )
-
-
 @keyword(name="Verify Catalyst CertReqMsg")
 def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descriptions in the docstring
     cert_req_msg: rfc4211.CertReqMsg,
@@ -567,7 +518,7 @@ def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descri
             first_key, alt_pub_key = alt_pub_key, first_key
 
         signature = cert_req_msg["popo"]["signature"]["signature"].asOctets()
-        verify_composite_signature_with_keys(
+        protectionutils.verify_composite_signature_with_keys(
             data=encoder.encode(cert_req_msg["certReq"]),
             signature=signature,
             first_key=first_key,

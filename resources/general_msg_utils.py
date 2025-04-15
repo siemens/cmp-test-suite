@@ -27,7 +27,6 @@ from robot.api.deco import keyword, not_keyword
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPrivateKey, KEMPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
-from pq_logic.trad_typing import ECDHPrivateKey
 from resources import (
     ca_ra_utils,
     cert_linters_utils,
@@ -63,7 +62,7 @@ from resources.oidutils import (
     SYMMETRIC_ENCR_ALG_OID_2_NAME,
 )
 from resources.suiteenums import GeneralInfoOID
-from resources.typingutils import EnvDataPublicKey, Strint
+from resources.typingutils import EnvDataPublicKey, Strint, ECDHPrivateKey
 from unit_tests.utils_for_test import try_encode_pyasn1
 
 # TODO for the future, change references to new RFC.

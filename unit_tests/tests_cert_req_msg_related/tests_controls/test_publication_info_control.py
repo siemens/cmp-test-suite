@@ -46,7 +46,7 @@ class TestPublicationInfoControl(unittest.TestCase):
         and be a valid PKIMessage.
         """
         ir = build_ir_from_key(self.key, implicit_confirm=True)
-        entry = prepare_pki_publication_information_control("pleasePublish", pub_methode="x500",
+        entry = prepare_pki_publication_information_control("pleasePublish", pub_method="x500",
                                                             pub_location="https://example.com")
         ir = add_reg_info_to_pkimessage(ir, entry)
         cert_req_msg = get_cert_req_msg_from_pkimessage(ir)

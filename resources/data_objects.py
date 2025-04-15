@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9480, rfc9481
 
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 from resources.oidutils import (
     AES_GMAC_OID_2_NAME,
     ECDSA_SHA3_OID_2_NAME,

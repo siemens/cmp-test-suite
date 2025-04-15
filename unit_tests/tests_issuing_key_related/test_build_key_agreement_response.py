@@ -11,7 +11,7 @@ from pyasn1_alt_modules import rfc9480
 from resources.asn1_structures import PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.ca_kga_logic import validate_enveloped_data
-from resources.ca_ra_utils import build_ip_cmp_message, respond_to_key_agreement
+from resources.ca_ra_utils import build_ip_cmp_message, respond_to_key_agreement_request
 from resources.certbuildutils import build_certificate
 from resources.certutils import parse_certificate, load_public_key_from_cert
 from resources.cmputils import build_ir_from_key, prepare_cert_req_msg
@@ -53,7 +53,7 @@ class TestBuildKeyAgreementResponse(unittest.TestCase):
         common_name="CN=Hans the Tester",
         popo_structure=popo
         )
-        cert, enc_cert = respond_to_key_agreement(
+        cert, enc_cert = respond_to_key_agreement_request(
         cert_req_msg=cert_req_msg,
         ca_key=self.ca_key,
         ca_cert=self.root_cert,
@@ -123,7 +123,7 @@ class TestBuildKeyAgreementResponse(unittest.TestCase):
             private_key=self.x448,
             common_name="CN=Hans the Tester",
         )
-        cert, enc_cert = respond_to_key_agreement(
+        cert, enc_cert = respond_to_key_agreement_request(
             cert_req_msg=cert_req_msg,
             ca_key=self.ca_key,
             ca_cert=self.root_cert,
@@ -164,7 +164,7 @@ class TestBuildKeyAgreementResponse(unittest.TestCase):
             common_name="CN=Hans the Tester",
             popo_structure=popo,
         )
-        cert, enc_cert = respond_to_key_agreement(
+        cert, enc_cert = respond_to_key_agreement_request(
             cert_req_msg=cert_req_msg,
             ca_key=self.ca_key,
             ca_cert=self.root_cert,

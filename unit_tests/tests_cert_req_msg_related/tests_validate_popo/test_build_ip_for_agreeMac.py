@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PublicKey
 
-from pq_logic.trad_typing import ECDHPrivateKey
+from resources.typingutils import ECDHPrivateKey
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import build_ip_cmp_message
 from resources.certutils import load_public_key_from_cert

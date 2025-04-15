@@ -41,6 +41,7 @@ from resources import (
 )
 from resources.asn1utils import get_set_bitstring_names
 from resources.convertutils import subject_public_key_info_from_pubkey
+from resources.copyasn1utils import copy_name
 from resources.exceptions import BadAsn1Data, BadCertTemplate
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
@@ -48,6 +49,7 @@ from resources.oidutils import (
     EXTENSION_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
 )
+from resources.prepare_alg_ids import prepare_alg_id, prepare_sig_alg_id  # noqa: F401
 from resources.typingutils import ExtensionsType, PrivateKey, PublicKey, SignKey, Strint, VerifyKey
 
 
@@ -154,7 +156,7 @@ def sign_csr(  # noqa D417 undocumented-param
 
     """
     der_data = encoder.encode(csr["certificationRequestInfo"])
-    sig_alg_id = kwargs.get("sig_alg_id") or prepare_alg_ids.prepare_sig_alg_id(
+    sig_alg_id = kwargs.get("sig_alg_id") or prepare_sig_alg_id(
         signing_key=signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=kwargs.get("use_rsa_pss", False),
@@ -866,6 +868,7 @@ def sign_cert(  # noqa: D417 Missing argument descriptions in the docstring
     use_rsa_pss: bool = False,
     bad_sig: bool = False,
     use_pre_hash: bool = False,
+    patch_sig_fields: bool = True,
 ) -> rfc9480.CMPCertificate:
     """Sign a `CMPCertificate` object with the provided private key.
 
@@ -878,6 +881,8 @@ def sign_cert(  # noqa: D417 Missing argument descriptions in the docstring
         - `modify_signature`: The signature will be modified by changing the first byte.
         - `bad_sig`: The signature will be manipulated to be invalid.
         - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+        - `patch_sig_fields`: Whether to patch the signature and signatureAlgorithm fields in the certificate.
+        Defaults to `True`.
 
     Returns:
     -------
@@ -890,13 +895,21 @@ def sign_cert(  # noqa: D417 Missing argument descriptions in the docstring
     | ${signed_cert}= | Sign Cert | ${signing_key} | ${cert} | bad_sig=True |
 
     """
-    cert["signatureAlgorithm"] = prepare_alg_ids.prepare_sig_alg_id(
-        signing_key=signing_key,
-        hash_alg=hash_alg,
-        use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
-    )
-    cert["tbsCertificate"]["signature"] = cert["signatureAlgorithm"]
+    if not patch_sig_fields:
+        if not cert["tbsCertificate"]["signature"].isValue:
+            raise ValueError(
+                "The signatureAlgorithm and tbsCertificate signature field must be set to sign the certificate."
+            )
+
+    if patch_sig_fields:
+        cert["signatureAlgorithm"] = prepare_alg_ids.prepare_sig_alg_id(
+            signing_key=signing_key,
+            hash_alg=hash_alg,
+            use_rsa_pss=use_rsa_pss,
+            use_pre_hash=use_pre_hash,
+        )
+        cert["tbsCertificate"]["signature"] = cert["signatureAlgorithm"]
+
     der_tbs_cert = encoder.encode(cert["tbsCertificate"])
 
     signature = cryptoutils.sign_data(
@@ -1721,6 +1734,7 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
     ca_cert: rfc9480.CMPCertificate,
     ca_key: SignKey,
     hash_alg: Optional[str] = "sha256",
+    for_crr_request: bool = False,
     **kwargs,
 ) -> rfc9480.CMPCertificate:
     """Build a certificate from a CertTemplate.
@@ -1731,6 +1745,8 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
         - `ca_cert`: The CA certificate.
         - `ca_key`: The CA private key.
         - `hash_alg`: The hash algorithm to use (e.g. "sha256"). Defaults to `sha256`.
+        - `for_crr_request`: Whether to build the certificate for a cross-certification request.
+         Defaults to `False`.
 
     **kwargs:
     ---------
@@ -1764,6 +1780,7 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
         use_pre_hash=kwargs.get("use_pre_hash", False),
         include_extensions=False,
+        for_crr_request=for_crr_request,
     )
 
     pub_key = ca_key.public_key()
@@ -1842,6 +1859,7 @@ def prepare_tbs_certificate_from_template(
     use_pre_hash: bool = False,
     include_extensions: bool = False,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
+    for_crr_request: bool = False,
 ) -> rfc5280.TBSCertificate:
     """Prepare a `TBSCertificate` structure from a `CertTemplate`.
 
@@ -1855,6 +1873,7 @@ def prepare_tbs_certificate_from_template(
     :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :param include_extensions: Whether to include the extensions from the `CertTemplate`. Defaults to `False`.
     :param spki: The `SubjectPublicKeyInfo` object to include in the `TBSCertificate`. Defaults to `None`.
+    :param for_crr_request: : Whether to build the certificate for a cross-certification request. Defaults to `False`.
     :return: The prepared `TBSCertificate` structure.
     """
     if serial_number is None:
@@ -1870,9 +1889,13 @@ def prepare_tbs_certificate_from_template(
         public_key=spki or cert_template["publicKey"],
     )
 
-    tbs_cert["signature"] = prepare_alg_ids.prepare_sig_alg_id(
-        signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
-    )
+    if not for_crr_request:
+        tbs_cert["signature"] = prepare_alg_ids.prepare_sig_alg_id(
+            signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+        )
+    else:
+        tbs_cert["signature"]["algorithm"] = cert_template["signingAlg"]["algorithm"]
+        tbs_cert["signature"]["parameters"] = cert_template["signingAlg"]["parameters"]
 
     if spki is not None:
         public_key = keyutils.load_public_key_from_spki(spki)
@@ -2760,3 +2783,65 @@ def check_extensions(  # noqa D417 undocumented params
 
     extns.extend(validated_extensions)
     return extns
+
+
+@keyword(name="Prepare IssuerAndSerialNumber")
+def prepare_issuer_and_serial_number(  # noqa D417 undocumented-param
+    cert: Optional[rfc9480.CMPCertificate] = None,
+    modify_serial_number: bool = False,
+    modify_issuer: bool = False,
+    issuer: Optional[str] = None,
+    serial_number: Optional[Union[str, int]] = None,
+) -> rfc5652.IssuerAndSerialNumber:
+    """Extract issuer and serial number from a certificate.
+
+    Creates an `IssuerAndSerialNumber` structure, which uniquely identifies
+    a certificate by its issuer's distinguished name and its serial number. It's used when
+    the certificate lacks a SubjectKeyIdentifier extension.
+
+    Arguments:
+    ---------
+        - `cert`: Certificate from which to extract the issuer and serial number.
+        - `modify_serial_number`: If True, increment the serial number by 1. Defaults to `False`.
+        - `modify_issuer`: If True, modify the issuer common name. Defaults to `False`.
+        - `issuer`: The issuer's distinguished name to use. Defaults to `None`.
+        - `serial_number`: The serial number to use. Defaults to `None`.
+
+    Returns:
+    -------
+        - The populated `IssuerAndSerialNumber` structure.
+
+    Raises:
+    ------
+        - ValueError: If neither a certificate nor an issuer and serial number is provided.
+
+    Examples:
+    --------
+    | ${issuer_and_ser}= | Prepare IssuerAndSerialNumber | cert=${cert} | modify_serial_number=True |
+    | ${issuer_and_ser}= | Prepare IssuerAndSerialNumber | issuer=${issuer} | serial_number=${serial_number} |
+
+    """
+    if cert is None and (issuer is None or serial_number is None):
+        raise ValueError("Either a certificate or a issuer and serial number must be provided.")
+
+    iss_ser_num = rfc5652.IssuerAndSerialNumber()
+
+    if issuer:
+        iss_ser_num["issuer"] = prepareutils.prepare_name(issuer)
+    elif not modify_issuer:
+        iss_ser_num["issuer"] = copy_name(
+            target=rfc9480.Name(),
+            filled_name=cert["tbsCertificate"]["issuer"],  # type: ignore
+        )
+    else:
+        data = modify_common_name_cert(cert, issuer=True)  # type: ignore
+        data: str
+        iss_ser_num["issuer"] = prepareutils.prepare_name(data)
+
+    if serial_number is None:
+        serial_number = int(cert["tbsCertificate"]["serialNumber"])  # type: ignore
+
+    if modify_serial_number:
+        serial_number = int(serial_number) + 1
+    iss_ser_num["serialNumber"] = rfc5280.CertificateSerialNumber(serial_number)
+    return iss_ser_num

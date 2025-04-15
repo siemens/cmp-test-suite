@@ -23,7 +23,6 @@ from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.trad_key_factory import generate_trad_key
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import CHEMPAT_OID_2_NAME
-from pq_logic.trad_typing import ECDHPrivateKey
 from resources.exceptions import BadAlg, InvalidKeyCombination
 from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
 from resources.oidutils import (
@@ -31,7 +30,7 @@ from resources.oidutils import (
     ALL_COMPOSITE_SIG_COMBINATIONS,
     XWING_OID_STR,
 )
-from resources.typingutils import ECSignKey, Strint
+from resources.typingutils import ECSignKey, Strint, ECDHPrivateKey
 
 TradPartPrivateKey = Union[ECSignKey, ECDHPrivateKey, RSAPrivateKey, TradKEMPrivateKey]
 

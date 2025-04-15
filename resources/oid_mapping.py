@@ -154,6 +154,7 @@ def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
 
     :param alg: The name of hashing algorithm, e.g., 'sha256'
     :return: `cryptography.hazmat.primitives.hashes`
+    :raises ValueError: If the specified hash algorithm is not supported.
     """
     try:
         # to also get the hash function with rsa-sha1 and so on.
@@ -214,6 +215,7 @@ def compute_hash(alg_name: str, data: bytes) -> bytes:
     :param alg_name: The Name of algorithm, e.g., 'sha256', see HASH_NAME_OBJ_MAP.
     :param data: The buffer we want to hash.
     :return: The resulting hash.
+    :raises ValueError: If the specified hash algorithm is not supported.
     """
     hash_class = hash_name_to_instance(alg_name)
     digest = hashes.Hash(hash_class)

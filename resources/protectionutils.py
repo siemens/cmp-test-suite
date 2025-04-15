@@ -12,6 +12,7 @@ from typing import List, Optional, Tuple, Union
 import pyasn1.error
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dsa, padding, rsa, x448, x25519
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1.type.tag import Tag, tagClassContext, tagFormatSimple
@@ -30,12 +31,12 @@ from pyasn1_alt_modules import (
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic import py_verify_logic
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
+from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
+from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
+from pq_logic.keys.sig_keys import MLDSAPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, id_it_KemCiphertextInfo
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
 from resources import (
     certbuildutils,
     certextractutils,
@@ -64,7 +65,7 @@ from resources.convertutils import (
     str_to_bytes,
     subject_public_key_info_from_pubkey,
 )
-from resources.exceptions import BadAlg, BadMessageCheck, UnknownOID
+from resources.exceptions import BadAlg, BadMessageCheck, InvalidKeyCombination, UnknownOID
 from resources.oid_mapping import (
     get_alg_oid_from_key_hash,
     get_hash_from_oid,
@@ -90,18 +91,17 @@ from resources.oidutils import (
     id_ce_subjectAltPublicKeyInfo,
     id_KemBasedMac,
 )
-from resources.prepare_alg_ids import (
-    prepare_aes_gmac_prot_alg_id,
-    prepare_dh_based_mac_params,
-    prepare_hmac_alg_id,
-    prepare_kem_based_mac_alg_id,
-    prepare_kmac_alg_id,
-    prepare_password_based_mac_parameters,
-    prepare_pbmac1_parameters,
-    prepare_rsa_pss_alg_id,
-)
 from resources.suiteenums import ProtectionAlgorithm
-from resources.typingutils import CertObjOrPath, KEMPrivateKey, KEMPublicKey, PrivateKey, PublicKey, SignKey, VerifyKey
+from resources.typingutils import (
+    CertObjOrPath,
+    ECVerifyKey,
+    KEMPrivateKey,
+    KEMPublicKey,
+    PrivateKey,
+    PublicKey,
+    SignKey,
+    VerifyKey, ECDHPrivateKey, ECDHPublicKey,
+)
 
 
 def _compare_alg_id(
@@ -713,15 +713,15 @@ def _prepare_mac_alg_id(protection: str, **params) -> rfc9480.AlgorithmIdentifie
     protection_type = ProtectionAlgorithm.get(protection)
     prot_alg_id = rfc9480.AlgorithmIdentifier()
     if protection_type == ProtectionAlgorithm.HMAC:
-        prot_alg_id = prepare_hmac_alg_id(params.get("hash_alg", "sha256"))
+        prot_alg_id = prepare_alg_ids.prepare_hmac_alg_id(params.get("hash_alg", "sha256"))
 
     elif protection_type == ProtectionAlgorithm.KMAC:
-        prot_alg_id = prepare_kmac_alg_id(params.get("hash_alg", "shake128"))
+        prot_alg_id = prepare_alg_ids.prepare_kmac_alg_id(params.get("hash_alg", "shake128"))
 
     elif protection_type == ProtectionAlgorithm.PBMAC1:
         prot_alg_id["algorithm"] = rfc8018.id_PBMAC1
         salt = convertutils.str_to_bytes(params.get("salt") or os.urandom(16))
-        pbmac1_parameters = prepare_pbmac1_parameters(
+        pbmac1_parameters = prepare_alg_ids.prepare_pbmac1_parameters(
             salt=salt,
             iterations=int(params.get("iterations", 262144)),
             length=int(params.get("length", 32)),
@@ -733,14 +733,14 @@ def _prepare_mac_alg_id(protection: str, **params) -> rfc9480.AlgorithmIdentifie
         salt = convertutils.str_to_bytes(params.get("salt") or os.urandom(16))
 
         prot_alg_id["algorithm"] = rfc4210.id_PasswordBasedMac
-        pbm_parameters = prepare_password_based_mac_parameters(
+        pbm_parameters = prepare_alg_ids.prepare_password_based_mac_parameters(
             salt=salt, iterations=int(params.get("iterations", 1000)), hash_alg=params.get("hash_alg", "sha256")
         )
         prot_alg_id["parameters"] = pbm_parameters
 
     elif protection_type == ProtectionAlgorithm.AES_GMAC:
         salt = convertutils.str_to_bytes(params.get("salt", os.urandom(12)))
-        prot_alg_id = prepare_aes_gmac_prot_alg_id(
+        prot_alg_id = prepare_alg_ids.prepare_aes_gmac_prot_alg_id(
             protection_type=protection,
             nonce=salt,
         )
@@ -764,15 +764,15 @@ def _prepare_prot_alg_id(
     protection_type = ProtectionAlgorithm.get(protection)
 
     if protection_type == ProtectionAlgorithm.HMAC:
-        prot_alg_id = prepare_hmac_alg_id(params.get("hash_alg", "sha256"))
+        prot_alg_id = prepare_alg_ids.prepare_hmac_alg_id(params.get("hash_alg", "sha256"))
 
     elif protection_type == ProtectionAlgorithm.KMAC:
-        prot_alg_id = prepare_kmac_alg_id(params.get("hash_alg", "shake128"))
+        prot_alg_id = prepare_alg_ids.prepare_kmac_alg_id(params.get("hash_alg", "shake128"))
 
     elif protection_type == ProtectionAlgorithm.PBMAC1:
         prot_alg_id["algorithm"] = rfc8018.id_PBMAC1
         salt = convertutils.str_to_bytes(params.get("salt", os.urandom(16)))
-        pbmac1_parameters = prepare_pbmac1_parameters(
+        pbmac1_parameters = prepare_alg_ids.prepare_pbmac1_parameters(
             salt=salt,
             iterations=int(params.get("iterations", 262144)),
             length=int(params.get("length", 32)),
@@ -784,14 +784,14 @@ def _prepare_prot_alg_id(
         salt = convertutils.str_to_bytes(params.get("salt", os.urandom(16)))
 
         prot_alg_id["algorithm"] = rfc4210.id_PasswordBasedMac
-        pbm_parameters = prepare_password_based_mac_parameters(
+        pbm_parameters = prepare_alg_ids.prepare_password_based_mac_parameters(
             salt=salt, iterations=int(params.get("iterations", 1000)), hash_alg=params.get("hash_alg", "sha256")
         )
         prot_alg_id["parameters"] = pbm_parameters
 
     elif protection_type == ProtectionAlgorithm.AES_GMAC:
         salt = convertutils.str_to_bytes(params.get("salt", os.urandom(12)))
-        prot_alg_id = prepare_aes_gmac_prot_alg_id(
+        prot_alg_id = prepare_alg_ids.prepare_aes_gmac_prot_alg_id(
             protection_type=protection,
             nonce=salt,
         )
@@ -806,12 +806,12 @@ def _prepare_prot_alg_id(
         )
     elif protection_type == ProtectionAlgorithm.DH:
         prot_alg_id["algorithm"] = rfc9480.id_DHBasedMac
-        prot_alg_id["parameters"] = prepare_dh_based_mac_params(
+        prot_alg_id["parameters"] = prepare_alg_ids.prepare_dh_based_mac_params(
             hash_alg=params.get("hash_alg", "sha1"), mac_alg=params.get("mac_alg", "hmac"), nonce=params.get("salt")
         )
 
     elif protection_type == ProtectionAlgorithm.RSASSA_PSS:
-        prot_alg_id = prepare_rsa_pss_alg_id(params.get("hash_alg", "sha256"))
+        prot_alg_id = prepare_alg_ids.prepare_rsa_pss_alg_id(params.get("hash_alg", "sha256"))
 
     else:
         raise ValueError(f"Unknown or unsupported PKIMessage protection: {protection} {protection_type}")
@@ -2071,7 +2071,9 @@ def protect_pkimessage_kem_based_mac(  # noqa: D417 Missing argument description
             transaction_id=pki_message["header"]["transactionID"].asOctets(), context=context, static_string="CMP-KEM"
         )
 
-    prot_alg_id = prepare_kem_based_mac_alg_id(hash_alg=hash_alg, length=32, kem_context=kem_context, kdf=kdf)
+    prot_alg_id = prepare_alg_ids.prepare_kem_based_mac_alg_id(
+        hash_alg=hash_alg, length=32, kem_context=kem_context, kdf=kdf
+    )
     pki_message["header"]["protectionAlg"] = prot_alg_id.subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1), cloneValueFlag=True
     )
@@ -2402,7 +2404,7 @@ def _verbose_get_protected_part(pki_message: PKIMessageTMP) -> bytes:
     if not pki_message["body"].isValue:
         raise ValueError("The `body` field has no value, can not protect the `PKIMessage`.")
 
-    return py_verify_logic.prepare_protected_part(pki_message)
+    return prepare_protected_part(pki_message)
 
 
 def _patch_extra_certs(
@@ -2584,3 +2586,73 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
     pki_message["protection"] = prepare_pki_protection_field(signature)
 
     return pki_message
+
+
+def prepare_protected_part(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP,
+) -> bytes:
+    """Prepare the parts of the PKIMessage for verification.
+
+    Arguments:
+    ---------
+       - `pki_message`: The PKIMessage to prepare the protected part for.
+
+    Returns:
+    -------
+       - The data to verify.
+
+    Raises:
+    ------
+         - `BadAsn1Data`: If the protected part cannot be encoded.
+
+    """
+    prot_part = ProtectedPartTMP()
+    prot_part["header"] = pki_message["header"]
+    prot_part["body"] = pki_message["body"]
+    return encoder.encode(prot_part)
+
+
+@not_keyword
+def verify_composite_signature_with_keys(
+    data: bytes,
+    signature: bytes,
+    alg_id: rfc5280.AlgorithmIdentifier,
+    first_key: Optional[PublicKey],
+    second_key: Optional[PublicKey],
+) -> None:
+    """Verify the composite signature.
+
+    :param data: The data to verify.
+    :param alg_id: The algorithm identifier.
+    :param signature: The signature to verify.
+    :param first_key: The first key to cast be used in the composite signature key.
+    :param second_key: The second key to be used in the composite signature key.
+    :raises InvalidSignature: If the signature is invalid.
+    """
+    if first_key is None or second_key is None:
+        raise ValueError("Both keys must be provided.")
+
+    if not isinstance(first_key, PQSignaturePublicKey):
+        first_key, second_key = second_key, first_key
+
+    if not isinstance(first_key, MLDSAPublicKey):
+        raise InvalidKeyCombination("The Composite signature pq-key is not a MLDSA key.")
+
+    if not isinstance(second_key, (ECVerifyKey, RSAPublicKey)):
+        raise InvalidKeyCombination("The Composite signature trad-key is not a EC or RSA key.")
+
+    if alg_id["algorithm"] in CMS_COMPOSITE03_OID_2_NAME:
+        public_key = CompositeSig03PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
+
+    elif alg_id["algorithm"] in COMPOSITE_SIG04_OID_2_NAME:
+        public_key = CompositeSig04PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
+
+    else:
+        raise BadAlg(f"Invalid algorithm for composite signature: {alg_id['algorithm']}")
+
+    verify_signature_with_alg_id(
+        public_key=public_key,
+        alg_id=alg_id,
+        data=data,
+        signature=signature,
+    )

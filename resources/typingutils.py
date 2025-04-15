@@ -107,23 +107,22 @@ CertObjOrPath = Union[rfc9480.CMPCertificate, str]
 # private keys are used in ECDH-related operations.
 # Used in Key Generation Authority logic to make sure the key agreement
 # used the correct type.
-ECDHPrivKeyTypes = Union[EllipticCurvePrivateKey, X25519PrivateKey, X448PrivateKey]
+ECDHPrivateKey = Union[EllipticCurvePrivateKey, X25519PrivateKey, X448PrivateKey]
 
 # The `ECDHPubKeyTypes` includes all public key types supported
 # for ECDH operations. This type ensures that only compatible
 # public keys are used in ECDH-related operations.
 # Used in Key Generation Authority logic to make sure the key agreement
 # used the correct type.
-ECDHPubKeyTypes = Union[EllipticCurvePublicKey, X25519PublicKey, X448PublicKey]
-
+ECDHPublicKey = Union[EllipticCurvePublicKey, X25519PublicKey, X448PublicKey]
 
 # The `KGAKeyTypes` includes all private key types supported
 # for operations in the Key Generation Authority (KGA) logic.
 # This type ensures that only compatible private keys are used
 # for key exchange and key encipherment.
-EnvDataPrivateKey = Union[RSAPrivateKey, ECDHPrivKeyTypes, KEMPrivateKey]
+EnvDataPrivateKey = Union[RSAPrivateKey, ECDHPrivateKey, KEMPrivateKey]
 
-EnvDataPublicKey = Union[RSAPublicKey, ECDHPubKeyTypes, KEMPublicKey]
+EnvDataPublicKey = Union[RSAPublicKey, ECDHPublicKey, KEMPublicKey]
 CertOrCerts = Union[rfc9480.CMPCertificate, Sequence[rfc9480.CMPCertificate]]
 
 # Often can either an utf-8 string or a hey string or a bytes object be used,
@@ -156,3 +155,4 @@ ExtensionsType = Union[
 CAResponse = Tuple[PKIMessageTMP, List[rfc9480.CMPCertificate]]
 CACertResponse = Tuple[CertResponseTMP, rfc9480.CMPCertificate]
 CACertResponses = Tuple[List[CertResponseTMP], List[rfc9480.CMPCertificate]]
+

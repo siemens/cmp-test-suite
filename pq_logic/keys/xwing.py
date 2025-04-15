@@ -15,7 +15,7 @@ from pyasn1.type import univ
 
 from pq_logic.keys.abstract_wrapper_keys import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey, MLKEMPublicKey
-from pq_logic.trad_typing import ECDHPrivateKey
+from resources.typingutils import ECDHPrivateKey
 
 ##################################
 # XWing Keys

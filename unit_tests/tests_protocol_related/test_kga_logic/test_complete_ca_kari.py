@@ -23,7 +23,7 @@ from resources.envdatautils import (
     prepare_mqv_user_keying_material,
 )
 from resources.keyutils import generate_key, load_private_key_from_file
-from resources.typingutils import ECDHPrivKeyTypes, ECDHPubKeyTypes
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 from resources.utils import load_and_decode_pem_file
 
 from unit_tests.prepare_ca_response import build_complete_envelope_data_ca_msg
@@ -58,10 +58,10 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
             utils.load_and_decode_pem_file("data/unittest/cmp_prot_kari_x25519.pem")
         )
 
-    def _prepare_kari(self, ee_pub_key: ECDHPubKeyTypes,
+    def _prepare_kari(self, ee_pub_key: ECDHPublicKey,
                       key_agreement_oid: univ.ObjectIdentifier,
                       exchange_cert: rfc9480.CMPCertificate,
-                      server_private_key: ECDHPrivKeyTypes):
+                      server_private_key: ECDHPrivateKey):
         """Prepare a KeyAgreeRecipientInfo object for testing.
 
         :param ee_pub_key: The end-entity's public key.

@@ -7,9 +7,9 @@ import unittest
 from cryptography.hazmat.primitives.asymmetric import ec
 from pyasn1_alt_modules import rfc5652
 
-from resources.certbuildutils import generate_certificate
+from resources.certbuildutils import generate_certificate, prepare_issuer_and_serial_number
 from resources.certutils import parse_certificate, load_public_key_from_cert
-from resources.envdatautils import prepare_issuer_and_serial_number, prepare_recip_info
+from resources.envdatautils import prepare_recip_info
 from resources.keyutils import generate_key, load_private_key_from_file
 from resources.utils import load_and_decode_pem_file
 

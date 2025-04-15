@@ -643,7 +643,7 @@ CA Could Accept PKIPublicationInformation Control
     [Tags]    positive   publication  issuing  advanced  robot:skip-on-failure  controls
     ${key}=   Generate Default Key
     ${cm}=   Get Next Common Name
-    ${pub_info}=   Prepare PKIPublicationInformation Control   pleasePublish   pub_methode=x500   pub_location=http://example.com
+    ${pub_info}=   Prepare PKIPublicationInformation Control   pleasePublish   pub_method=x500   pub_location=http://example.com
     ${cert_request}=   Prepare CertRequest   ${key}  ${cm}  controls=${pub_info}
     ${ir}=   Build Ir From Key    ${key}    cert_request=${cert_request}
     ...               recipient=${RECIPIENT}   exclude_fields=sender,senderKID
@@ -663,7 +663,7 @@ CA MUST Reject Invalid PKIPublicationInformation pleasePublish And dontCare Meth
     [Tags]    negative   publication  issuing  advanced  robot:skip-on-failure  controls
     ${key}=   Generate Default Key
     ${cm}=   Get Next Common Name
-    ${pub_info}=   Prepare PKIPublicationInformation Control   pleasePublish   pub_methode=dontCare
+    ${pub_info}=   Prepare PKIPublicationInformation Control   pleasePublish   pub_method=dontCare
     ${cert_request}=   Prepare CertRequest   ${key}  ${cm}  controls=${pub_info}
     ${ir}=   Build Ir From Key    ${key}    cert_request=${cert_request}
     ...               recipient=${RECIPIENT}   exclude_fields=sender,senderKID
@@ -681,7 +681,7 @@ CA MUST Reject Invalid PKIPublicationInformation dontPublish And Method
     [Tags]    negative   publication  issuing  advanced  robot:skip-on-failure  controls
     ${key}=   Generate Default Key
     ${cm}=   Get Next Common Name
-    ${pub_info}=   Prepare PKIPublicationInformation Control   dontPublish   pub_methode=x500
+    ${pub_info}=   Prepare PKIPublicationInformation Control   dontPublish   pub_method=x500
     ${cert_request}=   Prepare CertRequest   ${key}  ${cm}  controls=${pub_info}
     ${ir}=   Build Ir From Key    ${key}    cert_request=${cert_request}
     ...               recipient=${RECIPIENT}   exclude_fields=sender,senderKID
@@ -709,7 +709,7 @@ CA MUST Reject Invalid PKIPublicationInformation Action
     PKIStatus Must Be    ${response}   rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badDataFormat,badRequest
 
-CA MUST Reject Invalid PKIPublicationInformation Methode
+CA MUST Reject Invalid PKIPublicationInformation method
     [Documentation]    According to RFC 4211 section-6.3 the Client can send a Publication Information Control
     ...                to the CA to not publish or to publish the certificate. We send a
     ...                PKIMessage with an invalid PKIPublicationInformation Method. The CA MUST reject the request
@@ -717,7 +717,7 @@ CA MUST Reject Invalid PKIPublicationInformation Methode
     [Tags]    negative   publication  issuing  advanced  robot:skip-on-failure  controls
     ${key}=   Generate Default Key
     ${cm}=   Get Next Common Name
-    ${pub_info}=   Prepare PKIPublicationInformation Control   pleasePublish   pub_methode=badMethod
+    ${pub_info}=   Prepare PKIPublicationInformation Control   pleasePublish   pub_method=badMethod
     ${cert_request}=   Prepare CertRequest   ${key}  ${cm}  controls=${pub_info}
     ${ir}=   Build Ir From Key    ${key}    cert_request=${cert_request}
     ...               recipient=${RECIPIENT}   exclude_fields=sender,senderKID

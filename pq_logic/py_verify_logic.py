@@ -19,12 +19,10 @@ from pyasn1.type import constraint, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from robot.api.deco import keyword
 
-import resources.protectionutils
 from pq_logic.hybrid_sig import cert_binding_for_multi_auth, certdiscovery, chameleon_logic, sun_lamps_hybrid_scheme_00
 from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PublicKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_oids import (
     COMPOSITE_SIG04_OID_2_NAME,
@@ -32,8 +30,8 @@ from pq_logic.tmp_oids import (
     id_ce_deltaCertificateDescriptor,
     id_relatedCert,
 )
-from resources import certutils, compareutils, convertutils, keyutils, utils
-from resources.asn1_structures import PKIMessageTMP, ProtectedPartTMP
+from resources import certutils, compareutils, convertutils, keyutils, protectionutils, utils
+from resources.asn1_structures import PKIMessageTMP
 from resources.certextractutils import get_extension
 from resources.exceptions import BadAsn1Data, BadMessageCheck, InvalidAltSignature, UnknownOID
 from resources.oid_mapping import get_hash_from_oid
@@ -100,9 +98,7 @@ def verify_cert_hybrid_signature(  # noqa D417 undocumented-param
         data = encoder.encode(ee_cert["tbsCertificate"])
         signature = ee_cert["signature"].asOctets()
         CompositeSig03PrivateKey.validate_oid(oid, composite_key)
-        resources.protectionutils.verify_signature_with_alg_id(
-            composite_key, alg_id=alg_id, signature=signature, data=data
-        )
+        protectionutils.verify_signature_with_alg_id(composite_key, alg_id=alg_id, signature=signature, data=data)
 
     else:
         raise UnknownOID(oid=oid)
@@ -110,7 +106,7 @@ def verify_cert_hybrid_signature(  # noqa D417 undocumented-param
 
 def _verify_signature_with_other_cert(
     cert: rfc9480.CMPCertificate,
-    sig_alg: rfc9480.AlgorithmIdentifier,
+    sig_alg_id: rfc9480.AlgorithmIdentifier,
     data: bytes,
     signature: bytes,
     other_certs: Optional[CertOrCerts] = None,
@@ -118,16 +114,16 @@ def _verify_signature_with_other_cert(
     """Verify a Composite Signature Certificate using two certificates.
 
     :param cert: The certificate to verify.
-    :param sig_alg: The signature algorithm identifier.
+    :param sig_alg_id: The signature algorithm identifier.
     :param data: The data to verify.
     :param signature: The signature to verify.
     :param other_certs: A single certificate or a sequence of certificates to extract
-    the related certificate.
+    the related certificate. Defaults to `None`.
     :raises ValueError: If the related certificate is not provided.
     :raises UnknownOID: If the signature algorithm OID is not supported.
     :raises InvalidSignature: If the signature verification fails.
     """
-    sig_alg_oid = sig_alg["algorithm"]
+    sig_alg_oid = sig_alg_id["algorithm"]
 
     if sig_alg_oid not in CMS_COMPOSITE03_OID_2_NAME and sig_alg_oid not in COMPOSITE_SIG04_OID_2_NAME:
         raise ValueError("The signature algorithm is not a composite signature one.")
@@ -141,20 +137,16 @@ def _verify_signature_with_other_cert(
 
     trad_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
-    if not isinstance(pq_key, PQSignaturePublicKey):
-        trad_key, pq_key = pq_key, trad_key
-
-    if sig_alg_oid in COMPOSITE_SIG04_OID_2_NAME:
-        public_key = CompositeSig04PublicKey(pq_key=pq_key, trad_key=trad_key)  # type: ignore
-
-    elif sig_alg_oid in CMS_COMPOSITE03_OID_2_NAME:
-        public_key = CompositeSig03PublicKey(pq_key=pq_key, trad_key=trad_key)  # type: ignore
-        CompositeSig03PublicKey.validate_oid(sig_alg_oid, public_key)
-
+    if sig_alg_oid in COMPOSITE_SIG04_OID_2_NAME or sig_alg_oid in CMS_COMPOSITE03_OID_2_NAME:
+        protectionutils.verify_composite_signature_with_keys(
+            data=data,
+            signature=signature,
+            alg_id=sig_alg_id,
+            first_key=pq_key,
+            second_key=trad_key,
+        )
     else:
         raise UnknownOID(sig_alg_oid, extra_info="Composite signature can not be verified, with 2-certs.")
-
-    resources.protectionutils.verify_signature_with_alg_id(public_key, sig_alg, data, signature)
 
 
 def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
@@ -216,7 +208,7 @@ def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
         logging.info("The certificate contains a composite signature algorithm.")
         public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
         public_key = convertutils.ensure_is_verify_key(public_key)
-        resources.protectionutils.verify_signature_with_alg_id(
+        protectionutils.verify_signature_with_alg_id(
             public_key=public_key, alg_id=sig_alg, data=data, signature=signature
         )
 
@@ -236,7 +228,26 @@ def find_sun_hybrid_issuer_cert(  # noqa D417 undocumented-param
     ee_cert: rfc9480.CMPCertificate,
     certs: Iterable[rfc9480.CMPCertificate],
 ) -> rfc9480.CMPCertificate:
-    """Find the SUN hybrid issuer certificate."""
+    """Find the SUN hybrid issuer certificate.
+
+    Arguments:
+    ---------
+        - `ee_cert`: The end-entity certificate.
+        - `certs`: A list of certificates to search for the issuer certificate.
+
+    Returns:
+    -------
+        - The issuer certificate if found.
+
+    Raises:
+    ------
+        - `ValueError`: If no issuer certificate is found.
+
+    Examples:
+    --------
+    | ${issuer_cert} = | Find Sun Hybrid Issuer Cert | ${ee_cert} | ${certs} |
+
+    """
     cert4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(ee_cert, "Form4")
 
     for x in certs:
@@ -297,7 +308,7 @@ def build_migration_cert_chain(  # noqa D417 undocumented-param
             continue
 
         try:
-            resources.protectionutils.verify_signature_with_alg_id(
+            protectionutils.verify_signature_with_alg_id(
                 public_key=certutils.load_public_key_from_cert(poss_issuer),  # type: ignore
                 data=encoder.encode(cert["tbsCertificate"]),
                 signature=cert["signature"].asOctets(),
@@ -372,9 +383,7 @@ def _verify_sun_hybrid_trad_sig(
     data = encoder.encode(cert4["tbsCertificate"])
     alg_id = cert4["tbsCertificate"]["signature"]
     signature = cert4["signature"].asOctets()
-    resources.protectionutils.verify_signature_with_alg_id(
-        public_key=public_key, data=data, signature=signature, alg_id=alg_id
-    )
+    protectionutils.verify_signature_with_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
 
 
 def verify_sun_hybrid_cert(  # noqa D417 undocumented-param
@@ -480,26 +489,6 @@ def _get_catalyst_info_vals(
     return prot_alg_id, public_key_info, alt_sig, other_fields
 
 
-def prepare_protected_part(  # noqa D417 undocumented-param
-    pki_message: PKIMessageTMP,
-) -> bytes:
-    """Prepare the parts of the PKIMessage for verification.
-
-    Arguments:
-    ---------
-       - `pki_message`: The PKIMessage to prepare the protected part for.
-
-    Returns:
-    -------
-       - The data to verify.
-
-    """
-    prot_part = ProtectedPartTMP()
-    prot_part["header"] = pki_message["header"]
-    prot_part["body"] = pki_message["body"]
-    return encoder.encode(prot_part)
-
-
 @keyword(name="Verify Hybrid PKIMessage Protection")
 def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP,
@@ -541,14 +530,14 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
             "The `PKIMessage` does not contain any certificates and no public key was provided for verification."
         )
 
-    data = prepare_protected_part(pki_message)
+    data = protectionutils.prepare_protected_part(pki_message)
 
     oid = prot_alg_id["algorithm"]
 
     if isinstance(public_key, CompositeSig03PublicKey) and (
         oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME
     ):
-        resources.protectionutils.verify_signature_with_alg_id(
+        protectionutils.verify_signature_with_alg_id(
             public_key=public_key,
             alg_id=prot_alg_id,
             data=data,
@@ -576,7 +565,7 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
         public_key = convertutils.ensure_is_verify_key(
             certutils.load_public_key_from_cert(pki_message["extraCerts"][0])
         )
-        resources.protectionutils.verify_signature_with_alg_id(
+        protectionutils.verify_signature_with_alg_id(
             public_key=public_key,
             alg_id=prot_alg_id,
             data=data,
@@ -600,9 +589,9 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
             other_key = may_extract_alt_key_from_cert(cert=cert, other_certs=other_certs)
 
         pki_message["header"]["generalInfo"] = other_fields
-        data = prepare_protected_part(pki_message)
+        data = protectionutils.prepare_protected_part(pki_message)
         other_key = convertutils.ensure_is_verify_key(other_key)
-        resources.protectionutils.verify_signature_with_alg_id(
+        protectionutils.verify_signature_with_alg_id(
             public_key=other_key,
             alg_id=sig_alg_id,
             data=data,
@@ -689,7 +678,7 @@ def verify_crl_signature(  # noqa D417 undocumented-param
         data = encoder.encode(crl["tbsCertList"]) + encoder.encode(crl["signatureAlgorithm"])
         alt_public_key = convertutils.ensure_is_verify_key(alt_public_key)
         try:
-            resources.protectionutils.verify_signature_with_alg_id(
+            protectionutils.verify_signature_with_alg_id(
                 public_key=alt_public_key,
                 alg_id=alt_sig_alg,
                 signature=alt_sig_value,

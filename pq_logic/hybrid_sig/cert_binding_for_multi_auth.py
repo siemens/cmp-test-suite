@@ -28,6 +28,7 @@ from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from pyasn1_alt_modules.rfc7906 import BinaryTime
 from robot.api.deco import keyword, not_keyword
 
+import resources.certbuildutils
 from pq_logic.hybrid_structures import RelatedCertificate, RequesterCertificate
 from pq_logic.tmp_oids import id_aa_relatedCertRequest, id_relatedCert
 from resources import (
@@ -36,7 +37,6 @@ from resources import (
     certutils,
     cmputils,
     cryptoutils,
-    envdatautils,
     utils,
 )
 from resources.asn1utils import get_set_bitstring_names
@@ -96,7 +96,7 @@ def prepare_requester_certificate(  # noqa: D417 Missing argument descriptions i
     current_time = int(current_time)
 
     bin_time = BinaryTime(current_time)
-    cert_id = envdatautils.prepare_issuer_and_serial_number(
+    cert_id = resources.certbuildutils.prepare_issuer_and_serial_number(
         cert=cert_a, modify_serial_number=invalid_serial_number, modify_issuer=invalid_issuer
     )
 

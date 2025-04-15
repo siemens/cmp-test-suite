@@ -37,7 +37,7 @@ from pq_logic.keys.kem_keys import (
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey
 from pq_logic.tmp_oids import CHEMPAT_NAME_2_OID
-from pq_logic.trad_typing import ECDHPrivateKey, ECDHPublicKey
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 from resources.exceptions import InvalidKeyCombination
 
 CURVE_NAME_2_CONTEXT_NAME = {

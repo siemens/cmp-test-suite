@@ -9,7 +9,7 @@ from pyasn1.type import tag
 from pyasn1_alt_modules import rfc9480
 
 from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, HybridKEMPrivateKey
-from pq_logic.trad_typing import ECDHPrivateKey
+from resources.typingutils import ECDHPrivateKey
 from resources.ca_kga_logic import validate_enveloped_data
 from resources.ca_ra_utils import prepare_encr_cert_from_request
 from resources.certbuildutils import build_cert_from_cert_template

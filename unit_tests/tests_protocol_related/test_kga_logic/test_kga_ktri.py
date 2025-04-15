@@ -9,7 +9,8 @@ from pyasn1_alt_modules import rfc9481
 from resources.ca_kga_logic import validate_key_trans_recipient_info
 from resources.certextractutils import get_field_from_certificate
 from resources.certutils import parse_certificate
-from resources.envdatautils import prepare_issuer_and_serial_number, prepare_key_transport_recipient_info
+from resources.envdatautils import prepare_key_transport_recipient_info
+from resources.certbuildutils import prepare_issuer_and_serial_number
 from resources.utils import load_and_decode_pem_file, manipulate_first_byte
 
 

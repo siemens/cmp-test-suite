@@ -1138,7 +1138,7 @@ def prepare_single_publication_info(  # noqa D417 undocumented-param
 @keyword(name="Prepare PKIPublicationInformation Control")
 def prepare_pki_publication_information_control(  # noqa D417 undocumented-param
     action: str = "pleasePublish",
-    pub_methode: Optional[str] = None,
+    pub_method: Optional[str] = None,
     pub_location: Optional[str] = None,
     entries: Optional[Union[Sequence[rfc4211.SinglePubInfo], rfc4211.SinglePubInfo]] = None,
 ) -> rfc4211.AttributeTypeAndValue:
@@ -1178,7 +1178,7 @@ def prepare_pki_publication_information_control(  # noqa D417 undocumented-param
     pki_pub_info = rfc4211.PKIPublicationInfo()
     pki_pub_info["action"] = univ.Integer(actions[action])
 
-    if entries is None and pub_methode is not None:
+    if entries is None and pub_method is not None:
         entries = prepare_single_publication_info(
             pub_method="x500",
             pub_location=pub_location,
