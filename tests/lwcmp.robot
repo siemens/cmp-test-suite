@@ -849,7 +849,6 @@ CA MUST Reject CR With Other PKI Management Entity Request
     ...    different PKI. The CA must reject the request and may respond with the optional failinfo
     ...    `notAuthorized` or `badRequest`, as specified in Section 3.5.
     [Tags]    cr    negative    robot:skip-on-failure
-    Skip If    not ${ALLOW_CR}    Skipped because the cr `PKIBody` is disabled.
     ${is_set}=    Is Certificate And Key Set    ${DEVICE_CERT}    ${DEVICE_KEY}
     Skip If    not ${is_set}    The `DEVICE_CERT` and/or `DEVICE_KEY` variable is not set, skipping test.
     ${cert_chain}=    Build Cert Chain From Dir    ${DEVICE_CERT}    cert_chain_dir=./certs

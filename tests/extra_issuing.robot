@@ -380,7 +380,7 @@ CA MUST Issue A Cert if the KeyAgree Encrypted Key was present
     ...    prove possession of the private key. We send a PKIMessage with an encryptedKey as POPO. The CA MUST accept
     ...    the request and issue a certificate.
     [Tags]    positive    encryptedKey   popo  issuing  advanced
-    ${ca_cert}=   May Load Cert   ${CA_ENCR_CERT}
+    ${ca_cert}=   May Load Cert   ${CA_RSA_ENCR_CERT}
     ${result}=   Is Certificate Set  ${ca_cert}
     SKIP IF    not ${result}    This test is skipped because the CA encrypted key certificate is not set.
     ${key}=   Generate Default KeyAgreement Key
@@ -399,7 +399,7 @@ CA MUST Reject Invalid KeyAgree Encrypted Key
     ...    encryptedKey as in the `CertRequest`. The CA MUST reject the request and may respond with the
     ...    failinfo `badCertTemplate` or `badPOP`.
     [Tags]    negative    encryptedKey   popo  issuing  advanced
-    ${ca_cert}=   May Load Cert   ${CA_ENCR_CERT}
+    ${ca_cert}=   May Load Cert   ${CA_RSA_ENCR_CERT}
     ${result}=   Is Certificate Set  ${ca_cert}
     SKIP IF    not ${result}    This test is skipped because the CA encrypted key certificate is not set.
     ${key}=   Generate Default KeyAgreement Key
@@ -532,7 +532,7 @@ CA MUST Accept Valid KeyEnc Encrypted Key with PWRI
 
 CA MUST Issue A Cert if the KeyEnc Encrypted Key was present
     [Tags]    positive    encryptedKey   popo  issuing  advanced  ktri  keyEnc  envData
-    ${ca_cert}=   May Load Cert   ${CA_ENCR_CERT}
+    ${ca_cert}=   May Load Cert   ${CA_RSA_ENCR_CERT}
     ${result}=   Is Certificate Set  ${ca_cert}
     SKIP IF    not ${result}    This test is skipped because the CA encrypted key certificate is not set.#
     ${key}=   Generate Default KeyEncipherment Key

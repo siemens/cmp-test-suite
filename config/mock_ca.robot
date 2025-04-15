@@ -18,6 +18,8 @@ ${CA_CMP_URL}    http://127.0.0.1:5000/issuing
 # The initial issued certificate and key for running the tests.
 ${ISSUED_KEY}    ${None}
 ${ISSUED_CERT}   ${None}
+${INIT_SUFFIX}   issuing
+
 
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CN=CloudCA-Integration-Test-User
@@ -30,12 +32,6 @@ ${DEFAULT_PROTECTION}   signature
 
 # Implicit confirmation allowed.
 ${ALLOW_IMPLICIT_CONFIRM}  ${True}
-${DISALLOW_CERT_CONF}   ${False}
-${ALLOW_P10CR}    ${True}
-${ALLOW_CR}    ${True}
-${ALLOW_REVIVE_REQUEST}    ${False}
-${ALLOW_REVOCATION_REQUEST}    ${False}
-${ALLOW_BATCH_MESSAGES}   ${True}
 
 # then send always the ${DEFAULT_X509NAME} inside the `CertTemplate` and csr
 ${ALLOW_ONLY_ONE_SENDER}   ${True}
@@ -83,7 +79,7 @@ ${LWCMP}   ${True}
 # to use NULL instead of absent AlgorithmIdentifier `parameters`
 ${ALLOW_NULL_INSTEAD_OF_ABSENT}   ${False}
 
-# Needs to be the same for cloudpki, so that the server does allow the request.
+##### About Algorithms
 ${DEFAULT_KEY_LENGTH}    2048
 ${DEFAULT_ALGORITHM}    rsa
 ${DEFAULT_ECC_CURVE}   secp256r1
@@ -93,6 +89,14 @@ ${DEFAULT_PQ_SIG_ALGORITHM}   ml-dsa-44
 ${DEFAULT_PQ_KEM_ALGORITHM}   ml-kem-512
 ${DEFAULT_KEY_AGREEMENT_ALG}   x25519
 ${DEFAULT_KEY_ENCIPHERMENT_ALG}   ml-kem-768
+
+##### Extra Issuing Logic
+${CA_RSA_ENCR_CERT}    data/unittest/ca_encr_cert_rsa.pem
+${CA_X25519_CERT}   data/unittest/ca_encr_cert_x25519.pem
+${CA_X448_CERT}     data/unittest/ca_encr_cert_x448.pem
+${CA_ECC_CERT}      data/unittest/ca_encr_cert_ecc.pem
+${CA_HYBRID_KEM_CERT}   data/unittest/ca_encr_cert_xwing.pem
+${CA_KEM_CERT}     data/unittest/ca_encr_cert_ml_kem_768.pem
 
 ##### About CertTemplate
 ${ALLOWED_ALGORITHM}   ed25519,rsa,ecc,ed448,x25519,x448,dsa
@@ -245,11 +249,3 @@ ${RELATED_KEY}   ${None}
 ${RELATED_CERT_SEC}   ${None}
 ${RELATED_KEY_SEC}   ${None}
 
-
-# Extra Issuing Logic
-${CA_ENCR_CERT}    data/unittest/ca_encr_cert_rsa.pem
-${CA_X25519_CERT}   data/unittest/ca_encr_cert_x25519.pem
-${CA_X448_CERT}     data/unittest/ca_encr_cert_x448.pem
-${CA_ECC_CERT}      data/unittest/ca_encr_cert_ecc.pem
-${CA_HYBRID_KEM_CERT}   data/unittest/ca_encr_cert_xwing.pem
-${CA_KEM_CERT}     data/unittest/ca_encr_cert_ml_kem_768.pem

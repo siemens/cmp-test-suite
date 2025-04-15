@@ -18,7 +18,6 @@ Library             ../resources/extra_issuing_logic.py
 Library             ../resources/envdatautils.py
 Library             ../resources/cryptoutils.py
 Library             ../resources/certbuildutils.py
-Library             ../resources/prepare_alg_ids.py
 
 Suite Setup    Set Up CRR Test Cases
 Test Tags           cmp   advanced   crr

@@ -761,6 +761,6 @@ Validate EncrCert For KEM
     # the certificate in the response.
     # So the user has to now, if he expected to either has the `rid` set to the SKI or IssuerAndSerialNumber.
     ${cert}=    Get EncCert From PKIMessage    ${response}    ee_private_key=${key}    exclude_rid_check=True
-    Validate Kemri Rid For Encrypted Cert    ${response}   key=${key}
+    Validate KEMRI Rid For Encrypted Cert    ${response}   key=${key}
     Validate Migration Certificate KeyUsage    ${cert}
     RETURN    ${cert}
