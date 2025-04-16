@@ -18,7 +18,7 @@ Library             ../resources/general_msg_utils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
 Library             ../resources/extra_issuing_logic.py
-Library             ../pq_logic/py_verify_logic.py
+Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags           kem   pqc
 

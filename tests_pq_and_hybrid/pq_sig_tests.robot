@@ -15,7 +15,7 @@ Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
-Library             ../pq_logic/py_verify_logic.py
+Library             ../pq_logic/pq_verify_logic.py
 
 
 

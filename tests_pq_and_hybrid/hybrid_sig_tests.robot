@@ -15,10 +15,9 @@ Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
-Library             ../pq_logic/pq_validation_utils.py
 
 
-#Suite Setup         Do PQ SIG Tests
+Suite Setup         Set Up Test Suite
 Test Tags           pqc  hybrid-sig
 
 *** Variables ***
@@ -51,7 +50,7 @@ CA MUST Issue A Valid Composite RSA-PSS Certificate From CSR
     [Tags]             composite-sig   positive   rsa-pss
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
-    ${csr}=            Build CSR    signing_key=${key}    common_name=${cm}   use_rsa_pss=True
+    ${csr}=            Build CSR    ${key}    common_name=${cm}   use_rsa_pss=True
     ${p10cr}=          Build P10cr From CSR   ${csr}  recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Protect PKIMessage
     ...                pki_message=${p10cr}
@@ -71,13 +70,10 @@ CA MUST Issue a Valid Composite-Sig RSA Certificate
     [Tags]             composite-sig   positive   rsa
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
-    ${ir}=   Build Ir From Key    ${key}   common_name=${cm}  recipient=${RECIPIENT}  omit_fields=senderKID,sender   implicit_confirm=${True}
+    ${ir}=   Build Ir From Key    ${key}   common_name=${cm}  recipient=${RECIPIENT}  omit_fields=senderKID,sender
+    ...      implicit_confirm=${True}
+    ${protected_p10cr}=  Default Protect PKIMessage   ${ir}
     ${response}=       Exchange PKIMessage    ${ir}
-    ${protected_p10cr}=  Protect PKIMessage
-    ...                pki_message=${ir}
-    ...                protection=signature
-    ...                private_key=${ISSUED_KEY}
-    ...                cert=${ISSUED_CERT}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
@@ -162,7 +158,7 @@ CA MUST Issue A Valid Composite RSA-Prehashed Certificate
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True  use_rsa_pss=False
-    ${ir}=          Build Ir From Key    ${key  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
+    ${ir}=          Build Ir From Key    ${key}  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_ir}=  Protect PKIMessage
     ...                pki_message=${ir}
     ...                protection=signature
@@ -180,7 +176,7 @@ CA MUST Issue A Valid Composite RSA-PSS-Prehashed Certificate
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True   use_rsa_pss=True
-    ${ir}=          Build Ir From Key    ${key  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
+    ${ir}=          Build Ir From Key    ${key}  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_ir}=  Protect PKIMessage
     ...                pki_message=${ir}
     ...                protection=signature
@@ -199,7 +195,7 @@ CA MUST Issue A Valid Composite EC-Prehashed Certificate
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa   curve=secp256r1   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
-    ${ir}=          Build Ir From Key    ${key  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${ir}=          Build Ir From Key    ${key}  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
     ${protected_ir}=  Protect PKIMessage
     ...                pki_message=${ir}
     ...                protection=signature
@@ -218,7 +214,7 @@ CA MUST Issue A Valid Composite EC-brainpool-Prehashed Certificate
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa   curve=brainpoolP256r1   pq_name=ml-dsa-65
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
-    ${ir}=          Build Ir From Key    ${key  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${ir}=          Build Ir From Key    ${key}  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
     ${protected_ir}=  Protect PKIMessage
     ...                pki_message=${ir}
     ...                protection=signature
@@ -236,7 +232,7 @@ CA MUST Issue A Valid Composite ED25519-Prehashed Certificate
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ed25519   pq_name=ml-dsa-65
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
-    ${ir}=          Build Ir From Key    ${key  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${ir}=          Build Ir From Key    ${key}  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
     ${protected_ir}=  Protect PKIMessage
     ...                pki_message=${ir}
     ...                protection=signature
@@ -254,7 +250,7 @@ CA MUST Issue A Valid Composite ED448-Prehashed Certificate
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ed448   pq_name=ml-dsa-87
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
-    ${ir}=          Build Ir From Key    ${key  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${ir}=          Build Ir From Key    ${key}  spki=${spki}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
     ${protected_ir}=  Protect PKIMessage
     ...                pki_message=${ir}
     ...                protection=signature
@@ -278,7 +274,9 @@ CA MUST Reject Composite RSA with invalid RSA key length
     ${pq_key}=     Generate Key       algorithm=ml-dsa-44
     ${key}=            Generate Key    algorithm=composite-sig   trad_key=${trad_key}   pq_key=${pq_key}
     ${cm}=             Get Next Common Name
-    ${ir}=    Build Ir From Key    ${key}   common_name=${cm}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${spki}=   Prepare SubjectPublicKeyInfo   ${trad_key}
+    ${ir}=    Build Ir From Key    ${key}  ${cm}  
+    ...         spki=${spki}  recipient=${RECIPIENT}  exclude_fields=sender,senderKID
     ${protected_ir}=  Protect PKIMessage
     ...                pki_message=${ir}
     ...                protection=signature
@@ -296,15 +294,15 @@ CA MUST Reject Composite Sig with Traditional Revoked key Due Compromise
     ...                The CSR is signed with a RSA key as traditional algorithm and a ML-DSA as pq algorithm.
     ...                The CA MUST reject the request and MAY respond with the optional failInfo `badCertTemplate`.
     [Tags]             composite-sig   negative  security   revocation
-    ${result}=     Is Certificate And Key Set    ${REVOKED_CERT}    ${REVOKED_KEY}
-    Skip if    not ${result}    The revocation certificate and key are not set.
-    ${key}=            Generate Key    algorithm=composite-sig  trad_key=${REVOKED_KEY}
+    ${revoked_cert}  ${revoked_key}=   Issue And Revoke A Fresh Cert    reason=keyCompromise
+    ${cm}=             Get Next Common Name        
+    ${key}=            Generate Key    algorithm=composite-sig  trad_key=${revoked_key}
     ${ir}=    Build Ir From Key    ${key}   ${cm}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
     ${protected_ir}=  Protect PKIMessage
     ...                pki_message=${ir}
     ...                protection=signature
-    ...                private_key=${REVOKED_KEY}
-    ...                cert=${REVOKED_CERT}
+    ...                private_key=${revoked_key}
+    ...                cert=${revoked_cert}
     ${response}=       Exchange PKIMessage    ${ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    rejection
@@ -318,12 +316,7 @@ CA SHOULD Reject Issuing Already in use Traditional Key
     ${key}=            Generate Key    algorithm=composite-sig  trad_key=${ISSUED_KEY}
     ${cm}=             Get Next Common Name
     ${ir}=    Build Ir From Key    ${key}   ${cm}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
-    ${protected_ir}=  Protect PKIMessage
-    ...                pki_message=${ir}
-    ...                protection=signature
-    ...                private_key=${ISSUED_KEY}
-    ...                cert=${ISSUED_CERT}
+    ${protected_ir}=  Default Protect PKIMessage    ${ir}
     ${response}=       Exchange PKIMessage    ${ir}
-    PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badRequest

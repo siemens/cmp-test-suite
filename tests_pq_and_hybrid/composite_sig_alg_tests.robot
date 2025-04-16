@@ -20,7 +20,7 @@ Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
 Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/hybrid_prepare.py
-Library             ../pq_logic/py_verify_logic.py
+Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags           hybrid   hybrid-sig  composite-sig
 Suite Setup    Set Up Test Suite

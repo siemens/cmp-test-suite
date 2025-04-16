@@ -2425,7 +2425,7 @@ def _patch_extra_certs(
     if cert and not exclude_certs:
         certs = certutils.load_certificates_from_dir(certs_path)
         if certs:
-            certs = py_verify_logic.build_migration_cert_chain(cert=cert, certs=certs, allow_self_signed=True)
+            certs = pq_verify_logic.build_migration_cert_chain(cert=cert, certs=certs, allow_self_signed=True)
             logging.info("Loaded %d certificates from the directory.", len(certs))
             pki_message["extraCerts"].extend(certs)
     return pki_message
