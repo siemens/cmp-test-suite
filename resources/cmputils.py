@@ -3262,6 +3262,8 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
 
     if params.get("cert") is not None:
         tmp_cert = params.get("cert")
+        if not isinstance(tmp_cert, rfc9480.CMPCertificate):
+            raise ValueError("The provided `cert` is not a valid `CMPCertificate` object.")
         cert_status, set_for_ed = _process_single_cert_conf_cert(
             tmp_cert=tmp_cert,
             hash_alg=hash_alg,
@@ -3282,21 +3284,14 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
 
             tmp_cert = get_cert_from_pkimessage(ca_message, cert_number=i)
 
-            set_for_ed, digest_alg = _may_set_hash_alg(
-                set_for_ed, params.get("allow_set_hash", True), tmp_cert, hash_alg
-            )
-
-            # to remove the tagging.
-            cert = copy_asn1_certificate(cert=tmp_cert)
-            cert_status = prepare_certstatus(
-                hash_alg=digest_alg,
-                cert=cert,
+            cert_status, set_for_ed = _process_single_cert_conf_cert(
+                tmp_cert=tmp_cert,
+                hash_alg=hash_alg,
                 cert_req_id=cert_req_id,
-                status="accepted",
                 status_info=params.get("status_info"),
                 cert_hash=params.get("cert_hash"),
+                allow_set_hash=params.get("allow_set_hash", True),
             )
-
             cert_status_list.append(cert_status)
     else:
         if isinstance(cert_status, rfc9480.CertStatus):
