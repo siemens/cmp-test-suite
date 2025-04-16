@@ -678,7 +678,7 @@ def must_not_contain_key_usage(  # noqa D417 undocumented-param
     | Must Not Contain KeyUsage | cert=${cert} | key_usages=digitalSignature, keyEncipherment |
 
     """
-    usage = certextractutils.get_field_from_certificate(cert=cert, extension="key_usage") #type: ignore
+    usage = certextractutils.get_field_from_certificate(cert=cert, extension="key_usage")  # type: ignore
     usage: Optional[rfc5280.KeyUsage]
     if usage is None:
         if must_be_present:
@@ -689,6 +689,7 @@ def must_not_contain_key_usage(  # noqa D417 undocumented-param
     if _validate_key_usage(expected_usage=key_usages, given_usage=usage, same_vals=False):
         names = asn1utils.get_set_bitstring_names(usage)
         raise ValueError(f"KeyUsage Extension was expected to not contain: {key_usages}, but is {names}")
+
 
 def _cert_chain_to_file(cert_chain: List[rfc9480.CMPCertificate], path: str):
     """Write a certificate chain to a single PEM file, overwriting the file if it already exists.

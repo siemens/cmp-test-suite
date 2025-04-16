@@ -35,7 +35,6 @@ from pq_logic.keys.abstract_wrapper_keys import (
     KEMPublicKey,
     PQPublicKey,
 )
-from pq_logic.keys.chempat_key import ChempatPublicKey
 from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from resources import (
@@ -1389,7 +1388,6 @@ def validate_cert_template_public_key(
 
     if cert_template["publicKey"].isValue:
         if cert_template["publicKey"]["subjectPublicKey"].asOctets() != b"":
-            subject_pub_key = cert_template["publicKey"]["subjectPublicKey"].asOctets()
             alg_id = cert_template["publicKey"]["algorithm"]
 
             if isinstance(public_key, PQHashStatefulSigPublicKey):
@@ -1398,7 +1396,6 @@ def validate_cert_template_public_key(
             elif isinstance(public_key, (PQPublicKey, HybridPublicKey)):
                 if alg_id["parameters"].isValue:
                     raise BadCertTemplate("The `parameters` field is not allowed for PQ public keys.")
-
 
 
 def _process_agree_mac_key_agreement(

@@ -56,9 +56,10 @@ from resources.oidutils import (
     ECMQV_NAME_2_OID,
     HKDF_NAME_2_OID,
     KEY_WRAP_NAME_2_OID,
+    KEY_WRAP_OID_2_NAME,
     KM_KA_ALG,
     KM_KA_ALG_NAME_2_OID,
-    PQ_SIG_PRE_HASH_NAME_2_OID, KEY_WRAP_OID_2_NAME,
+    PQ_SIG_PRE_HASH_NAME_2_OID,
 )
 from resources.typingutils import (
     ECDHPrivateKey,

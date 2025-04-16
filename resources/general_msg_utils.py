@@ -42,6 +42,7 @@ from resources.asn1_structures import (
     AlgorithmIdentifiers,
     InfoTypeAndValue,
     KemCiphertextInfoAsn1,
+    OIDs,
     PKIBodyTMP,
     PKIMessageTMP,
 )
@@ -1137,7 +1138,7 @@ def prepare_enc_key_pair_types_response(
 
 
 @not_keyword
-def prepare_unsupported_oids_response(oids: Sequence[univ.ObjectIdentifier]) -> rfc9480.InfoTypeAndValue:
+def prepare_unsupported_oids_response(oids: Union[Sequence[univ.ObjectIdentifier], OIDs]) -> rfc9480.InfoTypeAndValue:
     """Prepare the `InfoTypeAndValue` to respond with unsupported OIDs."""
     oids_out = univ.SequenceOf(componentType=univ.ObjectIdentifier())  # type: ignore
 

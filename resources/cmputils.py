@@ -3156,6 +3156,7 @@ def _may_set_hash_alg(
 
     return set_for_ed, hash_alg
 
+
 def _process_single_cert_conf_cert(
     tmp_cert: rfc9480.CMPCertificate,
     hash_alg: Optional[str] = None,
@@ -3177,19 +3178,18 @@ def _process_single_cert_conf_cert(
     """
     # To remove the tagging.
     cert = copy_asn1_certificate(cert=tmp_cert)
-    set_for_ed, digest_alg = _may_set_hash_alg(
-        set_for_ed, allow_set_hash, cert, hash_alg
-    )
+    set_for_ed, digest_alg = _may_set_hash_alg(set_for_ed, allow_set_hash, cert, hash_alg)
 
     cert_status = prepare_certstatus(
         hash_alg=digest_alg,
         cert=cert,
-        cert_req_id= 0 if cert_req_id is None else int(cert_req_id),
+        cert_req_id=0 if cert_req_id is None else int(cert_req_id),
         status="accepted",
         status_info=status_info,
         cert_hash=cert_hash,
     )
     return cert_status, set_for_ed
+
 
 @keyword(name="Build Cert Conf From Resp")
 def build_cert_conf_from_resp(  # noqa D417 undocumented-param
