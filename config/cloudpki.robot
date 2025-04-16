@@ -86,6 +86,8 @@ ${DEFAULT_PQ_SIG_ALGORITHM}   ml-dsa-44
 ${DEFAULT_PQ_KEM_ALGORITHM}   ml-kem-512
 ${DEFAULT_KEY_AGREEMENT_ALG}   x25519
 ${DEFAULT_KEY_ENCIPHERMENT_ALG}   ml-kem-768
+${DEFAULT_ML_DSA_ALG}    ml-dsa-87
+${DEFAULT_ML_KEM_ALG}    ml-kem-768
 
 ##### Extra Issuing Logic
 ${CA_RSA_ENCR_CERT}    ${None}
@@ -169,7 +171,7 @@ ${RR_CERT_FOR_TRUSTED}   ${None}
 ${TRUSTED_CA_CERT}      ${None}
 ${TRUSTED_CA_KEY}       ${None}
 ${TRUSTED_CA_KEY_PASSWORD}   ${None}
-
+${TRUSTED_CA_DIR}            ${None}
 
 # Hybrid Endpoints
 

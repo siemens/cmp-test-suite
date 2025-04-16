@@ -89,6 +89,8 @@ ${DEFAULT_PQ_SIG_ALGORITHM}   ml-dsa-44
 ${DEFAULT_PQ_KEM_ALGORITHM}   ml-kem-512
 ${DEFAULT_KEY_AGREEMENT_ALG}   x25519
 ${DEFAULT_KEY_ENCIPHERMENT_ALG}   ml-kem-768
+${DEFAULT_ML_DSA_ALG}    ml-dsa-87
+${DEFAULT_ML_KEM_ALG}    ml-kem-768
 
 ##### Extra Issuing Logic
 ${CA_RSA_ENCR_CERT}    data/unittest/ca_encr_cert_rsa.pem
@@ -172,31 +174,13 @@ ${OTHER_TRUSTED_PKI_CERT}    ./data/trusted_ras/ra_cms_cert_ecdsa.pem
 ${RR_CERT_FOR_TRUSTED}   ${None}
 
 # Relevant for CRR requests.
-${TRUSTED_CA_CERT}      ${None}
-${TRUSTED_CA_KEY}       ${None}
-${TRUSTED_CA_KEY_PASSWORD}   ${None}
-
-
-##### PQ-variables
-
-${ALLOW_PQ_SIG_TESTS}   ${True}
-${ALLOW_KEM_TESTS}   ${False}
-
-#### Keys
-
-${DEFAULT_ML_DSA_ALG}    ml-dsa-87
-${DEFAULT_ML_KEM_ALG}    ml-kem-768
-
-
-#### Compute
-
-${DEFAULT_KEM_KDF}    kdf3
-${DEFAULT_KDF_HASH_ALG}    sha256
-${DEFAULT_SLH_DSA_PRE_HASH_ALG}    sha256
+${TRUSTED_CA_CERT}      ./data/trusted_ras/ra_cms_cert_ecdsa.pem
+${TRUSTED_CA_KEY}       ./data/keys/private-key-ecdsa.pem
+${TRUSTED_CA_KEY_PASSWORD}   11111
+${TRUSTED_CA_DIR}            data/unittest
 
 #### Issuing
 
-${KEM_CERT_PATH}    ${None}
 # Allowed freshness for the BinaryTime in seconds.
 # Used to indicate the maximum time difference between the BinaryTime and the current time.
 ${ALLOWED_FRESHNESS}   500
