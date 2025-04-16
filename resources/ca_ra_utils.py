@@ -35,6 +35,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
     KEMPublicKey,
     PQPublicKey,
 )
+from pq_logic.keys.chempat_key import ChempatPublicKey
 from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from resources import (
@@ -1388,21 +1389,16 @@ def validate_cert_template_public_key(
 
     if cert_template["publicKey"].isValue:
         if cert_template["publicKey"]["subjectPublicKey"].asOctets() != b"":
-            spki = cert_template["publicKey"]["subjectPublicKey"].asOctets()
+            subject_pub_key = cert_template["publicKey"]["subjectPublicKey"].asOctets()
             alg_id = cert_template["publicKey"]["algorithm"]
 
             if isinstance(public_key, PQHashStatefulSigPublicKey):
                 raise NotImplementedError("PQHashStatefulSigPublicKey is not supported yet, to be validated.")
 
-            if isinstance(public_key, (PQPublicKey, HybridPublicKey)):
+            elif isinstance(public_key, (PQPublicKey, HybridPublicKey)):
                 if alg_id["parameters"].isValue:
                     raise BadCertTemplate("The `parameters` field is not allowed for PQ public keys.")
 
-                if public_key.key_size != len(spki):
-                    raise BadCertTemplate(
-                        "The public key was invalid inside the `CertTemplate`.",
-                        failinfo="badCertTemplate,badDataFormat",
-                    )
 
 
 def _process_agree_mac_key_agreement(
@@ -4187,6 +4183,8 @@ def build_ccp_from_ccr(  # noqa D417 undocumented-param
         raise BadRequest(f"Invalid number of entries in CCR message. Expected 1. Got: {len(request['body']['ccr'])}")
 
     if not cert:
+        if ca_cert is None or ca_key is None:
+            raise ValueError("Either a certificate or the `ca_key` and `ca_cert` must be provided!")
         # ONLY 1 is allowed, please refer to RFC4210bis-18!
         cert = _process_crr_single(request, ca_key, ca_cert)
 

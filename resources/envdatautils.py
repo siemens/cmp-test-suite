@@ -58,7 +58,7 @@ from resources.oidutils import (
     KEY_WRAP_NAME_2_OID,
     KM_KA_ALG,
     KM_KA_ALG_NAME_2_OID,
-    PQ_SIG_PRE_HASH_NAME_2_OID,
+    PQ_SIG_PRE_HASH_NAME_2_OID, KEY_WRAP_OID_2_NAME,
 )
 from resources.typingutils import (
     ECDHPrivateKey,
@@ -1622,7 +1622,7 @@ def prepare_ecc_cms_shared_info(
     ecc_cms_info["keyInfo"]["algorithm"] = key_wrap_oid
 
     if supp_pub_info is None:
-        supp_pub_info = get_aes_keywrap_length(KEY_WRAP_NAME_2_OID[key_wrap_oid])
+        supp_pub_info = get_aes_keywrap_length(KEY_WRAP_OID_2_NAME[key_wrap_oid])
 
     if ukm is not None:
         ecc_cms_info["entityUInfo"] = univ.OctetString(ukm).subtype(

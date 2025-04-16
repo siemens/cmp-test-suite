@@ -156,8 +156,8 @@ KEY_TYPE_TO_ID = {
     "brainpoolp256r1": 0x0010,  # not specified!
     "secp384r1": 0x0011,
     "brainpoolp384r1": 0x0011,  # not specified!
-    "secp521r1": 0x0012,  # # currently not considered in Chempat.
-    "brainpoolp521r1": 0x0012,  # # currently not considered in Chempat.
+    "secp521r1": 0x0012,
+    "brainpoolp512r1": 0x0012,  # not specified!
     "x25519": 0x0020,
     "x448": 0x0021,
 }

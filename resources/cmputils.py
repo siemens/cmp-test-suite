@@ -158,7 +158,7 @@ def prepare_pki_message(
     sender_kid: Optional[bytes] = None,
     message_time: Optional[useful.GeneralizedTime] = None,
     pki_free_text: Optional[Union[List[str], str]] = None,
-    pvno: Optional[int] = 2,
+    pvno: Optional[Strint] = 2,
     **kwargs,
 ) -> PKIMessageTMP:
     """Prepare the skeleton structure of a PKIMessage, with the body to be set later.
@@ -3156,6 +3156,40 @@ def _may_set_hash_alg(
 
     return set_for_ed, hash_alg
 
+def _process_single_cert_conf_cert(
+    tmp_cert: rfc9480.CMPCertificate,
+    hash_alg: Optional[str] = None,
+    cert_req_id: Optional[Strint] = None,
+    status_info: Optional[rfc9480.PKIStatusInfo] = None,
+    cert_hash: Optional[bytes] = None,
+    allow_set_hash: bool = True,
+    set_for_ed: bool = False,
+) -> Tuple[rfc9480.CertStatus, bool]:
+    """Process a single certificate for `certConf` PKIMessage.
+
+    :param tmp_cert: The certificate to process.
+    :param hash_alg: The hash algorithm to use for the certificate. Defaults to `None`.
+    :param cert_req_id: The certificate request ID. Defaults to `0`.
+    :param status_info: The status information to include in the `CertStatus`.
+    :param cert_hash: The hash of the certificate. Defaults to `None`.
+    :param allow_set_hash: Whether to allow setting the hash algorithm for EdDSA signatures or
+    other algorithms. Defaults to `True`.
+    """
+    # To remove the tagging.
+    cert = copy_asn1_certificate(cert=tmp_cert)
+    set_for_ed, digest_alg = _may_set_hash_alg(
+        set_for_ed, allow_set_hash, cert, hash_alg
+    )
+
+    cert_status = prepare_certstatus(
+        hash_alg=digest_alg,
+        cert=cert,
+        cert_req_id= 0 if cert_req_id is None else int(cert_req_id),
+        status="accepted",
+        status_info=status_info,
+        cert_hash=cert_hash,
+    )
+    return cert_status, set_for_ed
 
 @keyword(name="Build Cert Conf From Resp")
 def build_cert_conf_from_resp(  # noqa D417 undocumented-param
@@ -3225,7 +3259,20 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
 
     cert_status_list = []
     set_for_ed = False
-    if cert_status is None:
+
+    if params.get("cert") is not None:
+        tmp_cert = params.get("cert")
+        cert_status, set_for_ed = _process_single_cert_conf_cert(
+            tmp_cert=tmp_cert,
+            hash_alg=hash_alg,
+            cert_req_id=cert_req_id,
+            status_info=params.get("status_info"),
+            cert_hash=params.get("cert_hash"),
+            allow_set_hash=params.get("allow_set_hash", True),
+        )
+        cert_status_list.append(cert_status)
+
+    elif cert_status is None:
         cert_resp_msg: rfc9480.CertRepMessage = ca_message["body"][message_type]["response"]
         entry: rfc9480.CertResponse
         for i, entry in enumerate(cert_resp_msg):
@@ -3234,6 +3281,7 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
             cert_req_id = int(cert_req_id)
 
             tmp_cert = get_cert_from_pkimessage(ca_message, cert_number=i)
+
             set_for_ed, digest_alg = _may_set_hash_alg(
                 set_for_ed, params.get("allow_set_hash", True), tmp_cert, hash_alg
             )
@@ -3243,7 +3291,7 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
             cert_status = prepare_certstatus(
                 hash_alg=digest_alg,
                 cert=cert,
-                cert_req_id=params.get("cert_req_id", cert_req_id),
+                cert_req_id=cert_req_id,
                 status="accepted",
                 status_info=params.get("status_info"),
                 cert_hash=params.get("cert_hash"),
