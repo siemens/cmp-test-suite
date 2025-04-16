@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
-from pq_logic.py_verify_logic import build_migration_cert_chain
+from pq_logic.pq_verify_logic import build_migration_cert_chain
 from resources.ca_ra_utils import build_ip_cmp_message
 from resources.certbuildutils import build_certificate
 from resources.certutils import build_cmp_chain_from_pkimessage

@@ -5,7 +5,7 @@
 import unittest
 
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import get_sun_hybrid_alt_pub_key, sun_cert_template_to_cert
-from pq_logic.py_verify_logic import may_extract_alt_key_from_cert
+from pq_logic.pq_verify_logic import may_extract_alt_key_from_cert
 from resources.certbuildutils import build_certificate, prepare_cert_template
 from resources.keyutils import generate_key
 

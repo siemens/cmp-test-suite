@@ -11,7 +11,7 @@ from pq_logic.hybrid_sig.cert_binding_for_multi_auth import prepare_related_cert
 from pq_logic.hybrid_sig.certdiscovery import prepare_subject_info_access_syntax_extension
 from pq_logic.hybrid_sig.chameleon_logic import build_paired_csr, build_chameleon_cert_from_paired_csr
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import sun_csr_to_cert
-from pq_logic.py_verify_logic import may_extract_alt_key_from_cert
+from pq_logic.pq_verify_logic import may_extract_alt_key_from_cert
 from resources.certbuildutils import generate_certificate
 from resources.keyutils import load_private_key_from_file
 from unit_tests.utils_for_test import build_sun_hybrid_composite_csr

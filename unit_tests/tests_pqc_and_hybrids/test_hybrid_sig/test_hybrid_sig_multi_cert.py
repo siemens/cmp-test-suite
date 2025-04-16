@@ -4,7 +4,7 @@
 
 
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
-from pq_logic.py_verify_logic import verify_composite_signature_with_hybrid_cert
+from pq_logic.pq_verify_logic import verify_composite_signature_with_hybrid_cert
 from resources.certbuildutils import generate_certificate
 from resources.certutils import parse_certificate
 from resources.cryptoutils import sign_data

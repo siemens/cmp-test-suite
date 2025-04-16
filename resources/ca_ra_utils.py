@@ -24,7 +24,7 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6664, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic import py_verify_logic
+from pq_logic import pq_verify_logic
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.keys.abstract_wrapper_keys import (

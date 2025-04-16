@@ -30,7 +30,7 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic import py_verify_logic
+from pq_logic import pq_verify_logic
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
