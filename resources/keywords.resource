@@ -673,6 +673,33 @@ Issue New Cert For Testing
     ${cert}=   Confirm Certificate If Needed    ${response}
     RETURN   ${cert}    ${key}
 
+Issue And Revoke A Fresh Cert
+    [Documentation]    Issue a new certificate and then revoke it. This is useful for testing purposes.
+    ...                The function ensures that a valid certificate is available for testing.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `reason`: The reason for revocation. Defaults to `keyCompromise`.
+    ...        
+    ...                Returns:
+    ...                -------
+    ...                - `cert`: The revoked certificate.
+    ...                - `key`: The revoked key
+    [Arguments]    ${reason}=keyCompromise
+    [Tags]    setup  revocation
+    ${cert}    ${key}=   Issue New Cert For Testing
+    ${rr}=   Build CMP Revoke Request   ${cert}   recipient=${RECIPIENT}   reason=${reason}
+    ${protected_rr}=   Default Protect PKIMessage    ${rr}
+    ${protected_rr}=   Protect PKIMessage    ${protected_rr}    protection=signature
+    ...                                         private_key=${key}    cert=${cert}
+    ${response}=   Exchange PKIMessage    ${protected_rr}
+    PKIMessage Body Type Must Be   ${response}   rp
+    PKIStatus Must Be   ${response}   accepted
+    RETURN   ${cert}    ${key}
+
+
+
+
 PKIStatusInfo failinfo Bit Must Be
     [Documentation]       Validates that the given PKIMessage contains the expected `failinfo` bit(s) in the
     ...                   `PKIStatusInfo` field, to ensure that the CA/RA responds with the correct error.
