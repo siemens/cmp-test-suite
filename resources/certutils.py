@@ -655,6 +655,41 @@ def validate_key_usage(  # noqa D417 undocumented-param
             raise ValueError(f"KeyUsage Extension was expected to be: {key_usages}, but is {names}")
 
 
+@keyword(name="Must Not Contain KeyUsage")
+def must_not_contain_key_usage(  # noqa D417 undocumented-param
+    cert: rfc9480.CMPCertificate, key_usages: str, must_be_present: bool = False
+) -> None:
+    """Validate that the `KeyUsage` extension of a provided certificate object does not contain specific attributes.
+
+    Arguments:
+    ---------
+        - `cert`: The certificate to validate the `KeyUsage` extension.
+        - `key_usages`: Comma-separated string representation of the expected `KeyUsages` attributes for a certificate.\
+         (e.g., "`digitalSignature`")
+         - `must_be_present`: If `True`, the `KeyUsage` extension must be present in the certificate.
+
+    Raises:
+    ------
+        - `ValueError`: If the `KeyUsage` extension is present in the certificate and contains any of the \
+        specified attributes.
+
+    Examples:
+    --------
+    | Must Not Contain KeyUsage | cert=${cert} | key_usages=digitalSignature, keyEncipherment |
+
+    """
+    usage = certextractutils.get_field_from_certificate(cert=cert, extension="key_usage") #type: ignore
+    usage: Optional[rfc5280.KeyUsage]
+    if usage is None:
+        if must_be_present:
+            raise ValueError(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
+        logging.info("KeyUsage extension was not present")
+        return
+
+    if _validate_key_usage(expected_usage=key_usages, given_usage=usage, same_vals=False):
+        names = asn1utils.get_set_bitstring_names(usage)
+        raise ValueError(f"KeyUsage Extension was expected to not contain: {key_usages}, but is {names}")
+
 def _cert_chain_to_file(cert_chain: List[rfc9480.CMPCertificate], path: str):
     """Write a certificate chain to a single PEM file, overwriting the file if it already exists.
 
