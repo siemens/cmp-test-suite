@@ -114,8 +114,8 @@ class ChempatPublicKey(AbstractHybridRawPublicKey):
 
     @property
     def key_size(self) -> int:
-        """Return the key size."""
-        return self.pq_key.key_size + self.trad_key.key_size
+        """Return the key size if the key is exported."""
+        return len(self.public_bytes_raw())
 
     @staticmethod
     def _hash_sha3_256(data: bytes) -> bytes:
@@ -253,8 +253,12 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
         """Return the length of the ciphertext."""
         return self._pq_key.ct_length + self._trad_key.ct_length
 
-    def _check_ct_length(self, ct: bytes) -> None:
-        """Check the length of the ciphertext."""
+    def get_context(self) -> bytes:
+        """Generate the context string based on the traditional and post-quantum keys."""
+        return ChempatPublicKey.get_context(self._pq_key, self._trad_key)
+
+    def _check_ct_length(self, ct: bytes) -> bool:
+        """Check the length of the ciphertext works for ECC compressed and uncompressed points."""
         if len(ct) != self.ct_length:
             if self.trad_key.get_trad_name.startswith("ecdh"):
                 # the length of the ciphertext is not fixed for ECDH,
@@ -262,20 +266,21 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
                 # the -1 is removed because the length already includes the first byte
                 # which is used to determine the point format (compressed or uncompressed).
                 if len(ct) == self.ct_length + self.trad_key.ct_length - 1:
-                    return
+                    return False
             raise ValueError(f"Invalid ciphertext length. Expected: {self.ct_length}, got: {len(ct)}")
-
-    def get_context(self) -> bytes:
-        """Generate the context string based on the traditional and post-quantum keys."""
-        return ChempatPublicKey.get_context(self._pq_key, self._trad_key)
+        return True
 
     def decaps(self, ct: bytes) -> bytes:
         """Decapsulate the shared secret."""
         nenc = self._trad_key.ct_length
-        self._check_ct_length(ct)
-
-        trad_ct = ct[0:nenc]
-        pq_ct = ct[nenc:]
+        is_compressed = self._check_ct_length(ct)
+        if is_compressed:
+            trad_ct = ct[0:nenc]
+            pq_ct = ct[nenc:]
+        else:
+            nenc = nenc + self.trad_key.ct_length - 1
+            trad_ct = ct[0:nenc]
+            pq_ct = ct[nenc:]
 
         trad_ss = self._trad_key.decaps(trad_ct)
         logging.info("Traditional decapsulated shared secret: %s", trad_ss.hex())
