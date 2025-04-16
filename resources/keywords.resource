@@ -321,7 +321,7 @@ Generate Default PQ SIG Key
     ...
     ...                Examples:
     ...                --------
-    ...                | ${key}= | Generate Default PQ Key |
+    ...                | ${key}= | Generate Default PQ SIG Key |
     [Tags]    key   pq
     ${key}=   Generate Key    ${DEFAULT_PQ_SIG_ALGORITHM}
     RETURN    ${key}
@@ -332,7 +332,7 @@ Generate Default PQ KEM Key
     ...
     ...                Examples:
     ...                --------
-    ...                | ${key}= | Generate Default KEM Key |
+    ...                | ${key}= | Generate Default PQ KEM Key |
     [Tags]    key   pq  kem
     ${key}=   Generate Key    ${DEFAULT_PQ_KEM_ALGORITHM}
     RETURN    ${key}
