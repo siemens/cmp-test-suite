@@ -25,7 +25,7 @@ Suite Setup         Initialize Global Variables
 *** Test Cases ***
 CA Must Reject Malformed Request
     [Documentation]    When we send an invalid PKIMessage to the CA, it must respond with a 400 status code to indicate
-    ...    a client-side error in the supplied input data. Ref: "3.3. General Form", "All applicable
+    ...    a client-side error in the supplied input data. Ref: RFC 6712 "3.3. General Form", "All applicable
     ...    "Client Error 4xx" or "Server Error 5xx" status codes MAY be used to inform the client
     ...    about errors."
     [Tags]    negative    rfc6712    robot:skip-on-failure    status
