@@ -351,7 +351,7 @@ class CombinedKeyFactory:
         else:
             raise BadAlg(f"Unsupported composite key OID: {oid}")
 
-        prefix = _any_string_in_string(name, ["dhkem", "kem", "sig-hash", "sig"])
+        prefix = _any_string_in_string(name, ["kem-05", "sig-03-hash", "sig-03"])
         name = name.replace(f"composite-{prefix}-", "", 1)
         pq_name = PQKeyFactory.get_pq_alg_name(algorithm=name)
         rest = name.replace(f"{pq_name}-", "", 1)
@@ -374,10 +374,8 @@ class CombinedKeyFactory:
         )
 
         trad_key = CombinedKeyFactory._comp_load_trad_key(public_key=trad_pub_bytes, trad_name=trad_name, curve=curve)
-        if prefix == "dhkem":
-            pq_key = ensure_is_kem_pub_key(pq_key)
-            return CompositeDHKEMRFC9180PublicKey(pq_key, trad_key)  # type: ignore
-        if prefix == "kem":
+
+        if prefix == "kem-05":
             pq_key = ensure_is_kem_pub_key(pq_key)
             return CompositeKEMPublicKey(pq_key, trad_key)  # type: ignore
 
@@ -475,7 +473,7 @@ class CombinedKeyFactory:
             trad_pub = x448.X448PublicKey.from_public_bytes(trad_pub_bytes)
         elif trad_name == "ecdh":
             curve_name = _any_string_in_string(
-                alg_name.lower(), ["secp256r1", "secp384r1", "brainpoolp256r1", "brainpoolß384r1"]
+                alg_name.lower(), ["secp256r1", "secp384r1", "brainpoolp256r1", "brainpoolp384r1"]
             )
             curve = get_curve_instance(curve_name)
             trad_pub = ec.EllipticCurvePublicKey.from_encoded_point(curve, trad_pub_bytes)
