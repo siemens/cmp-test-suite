@@ -37,7 +37,7 @@ The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the 
 # Configuration
 Create a Python virtual environment<sup>1</sup> by installing the dependencies<sup>2</sup> from `requirements.txt`:
 
-1. Create a virtual environment: `python -m venv venv-cmp-tests`
+1. Create a virtual environment: `python3 -m venv venv-cmp-tests`
    - If you use WSL 2.0, run `apt install libpython3-dev python3-venv` if the command above fails.
 2. Activate the environment:
    - on Linux or cygwin: `source venv-cmp-tests/bin/activate`
