@@ -96,15 +96,14 @@ CA Must Accept EncrCert POPO For Request With X25519 Key
     PKIMessage Body Type Must Be        ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Get EncCert From PKIMessage    ${response}   ee_private_key=${new_key}
-    IF    not ${ALLOW_IMPLICIT_CONFIRM}
-        ${cert_conf}=    Build Cert Conf From Resp
-        ...    ${response}
-        ...    exclude_fields=sender,senderKID
-        ...    recipient=${RECIPIENT}
-        ${protected_cert_conf}=    Default Protect PKIMessage    ${cert_conf}
-        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-    END
+    ${cert_conf}=    Build Cert Conf From Resp
+    ...    ${response}
+    ...    cert=${cert}
+    ...    exclude_fields=sender,senderKID
+    ...    recipient=${RECIPIENT}
+    ${protected_cert_conf}=    Default Protect PKIMessage    ${cert_conf}
+    ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     VAR    ${CLIENT_X25519_CERT}    ${cert}    scope=GLOBAL
     VAR    ${CLIENT_X25519_KEY}    ${new_key}    scope=GLOBAL
 
@@ -130,17 +129,16 @@ CA Must Accept EncrCert POPO For Request With X448 Key
     PKIMessage Body Type Must Be        ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Get EncCert From PKIMessage    ${response}   ee_private_key=${new_key}
-    IF    not ${ALLOW_IMPLICIT_CONFIRM}
-        ${cert_conf}=    Build Cert Conf From Resp
-        ...    ${response}
-        ...    exclude_fields=sender,senderKID
-        ...    recipient=${RECIPIENT}
-        ${protected_cert_conf}=    Default Protect PKIMessage    ${cert_conf}
-        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-    END
+    ${cert_conf}=    Build Cert Conf From Resp
+    ...    ${response}
+    ...    cert=${cert}
+    ...    exclude_fields=sender,senderKID
+    ...    recipient=${RECIPIENT}
+    ${protected_cert_conf}=    Default Protect PKIMessage    ${cert_conf}
+    ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     VAR    ${CLIENT_X448_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${CLIENT_X448_CERT}    ${new_key}    scope=GLOBAL
+    VAR    ${CLIENT_X448_KEY}    ${new_key}    scope=GLOBAL
 
 CA Must Accept EncrCert POPO For Request With ECC Key
     [Documentation]    According to RFC 4210-bis18 5.2.8.4 the CA must accept a request with a ECC key with the
@@ -164,6 +162,16 @@ CA Must Accept EncrCert POPO For Request With ECC Key
     PKIMessage Body Type Must Be        ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Get EncCert From PKIMessage    ${response}   ee_private_key=${new_key}    server_cert=${CA_ECC_CERT}  exclude_rid_check=True
+    ${cert_conf}=    Build Cert Conf From Resp
+    ...    ${response}
+    ...    cert=${cert}
+    ...    exclude_fields=sender,senderKID
+    ...    recipient=${RECIPIENT}
+    ${protected_cert_conf}=    Default Protect PKIMessage    ${cert_conf}
+    ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    VAR    ${CLIENT_ECC_CERT}    ${cert}    scope=GLOBAL
+    VAR    ${CLIENT_ECC_KEY}    ${new_key}    scope=GLOBAL
 
 CA Must Accept ChallengeResp POPO For Request With X25519 Key
    [Documentation]    According to RFC 4210bis-18 Section 5.2.8.3.3. the Client can use the `challengeResp`
@@ -382,7 +390,7 @@ CA MUST Issue A Cert if the KeyAgree Encrypted Key was present
     [Tags]    positive    encryptedKey   popo  issuing  advanced
     ${ca_cert}=   May Load Cert   ${CA_RSA_ENCR_CERT}
     ${result}=   Is Certificate Set  ${ca_cert}
-    SKIP IF    not ${result}    This test is skipped because the CA encrypted key certificate is not set.
+    SKIP IF    not ${result}    This test is skipped because the CA RSA encryption certificate is not set.
     ${key}=   Generate Default KeyAgreement Key
     ${ir}=  Build Encrypted Key Request   ${key}   ${ca_cert}   ${ISSUED_CERT}
     ...     for_agreement=True
@@ -401,7 +409,7 @@ CA MUST Reject Invalid KeyAgree Encrypted Key
     [Tags]    negative    encryptedKey   popo  issuing  advanced
     ${ca_cert}=   May Load Cert   ${CA_RSA_ENCR_CERT}
     ${result}=   Is Certificate Set  ${ca_cert}
-    SKIP IF    not ${result}    This test is skipped because the CA encrypted key certificate is not set.
+    SKIP IF    not ${result}    This test is skipped because the CA RSA encryption certificate is not set.
     ${key}=   Generate Default KeyAgreement Key
     ${cm}=   Get Next Common Name
     ${pub_key}=  Generate Different Public Key   ${key}  x25519
@@ -565,6 +573,26 @@ CA Must Accept ChallengeResp POPO For KeyEnc
     PKIStatus Must Be    ${response}   accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
     Validate Certificate Public Key   ${cert}  ${new_key}
+
+############################
+### Encrypted Key POPO
+############################
+
+CA MUST Accept Encrypted Key For ML-KEM Private Key As POPO
+    [Documentation]   We send an Initialization Request (IR) containing an encrypted ML-KEM private key as
+    ...               Proof-of-Possession (POPO). The encrypted key is prepared using the CA's KEM certificate, the
+    ...               specified key derivation function (KDF). The CA MUST process the request, accept it, and issue a
+    ...               valid certificate for the ML-KEM private key.
+    [Tags]   ir  positive  popo  pq  kem
+    ${ca_cert}=   May Load Cert   ${CA_RSA_ENCR_CERT}
+    ${result}=   Is Certificate Set  ${ca_cert}
+    SKIP IF    not ${result}    This test is skipped because the CA RSA encryption certificate is not set.
+    ${key}=   Generate Key    ${DEFAULT_ML_KEM_ALG}
+    ${ir}=  Build Encrypted Key Request   ${key}   ${ca_cert}   ${ISSUED_CERT}  for_agreement=False
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}   status=accepted
 
 ##############################
 # Controls
@@ -820,3 +848,4 @@ CA MUST Reject different Public Key in Alt CertReq
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}   rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badRequest
+

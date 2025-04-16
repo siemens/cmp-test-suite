@@ -588,7 +588,7 @@ CA MUST Issue A Certificate With The KeyAgreement KeyUsage Extension
     ${new_key}=    Generate Key    algorithm=ecc    curve=${DEFAULT_ECC_CURVE}
     ${extensions}=    Prepare Extensions    key_usage=keyAgreement,digitalSignature
     ${ir}=    Build Ir From Key
-    ...    signing_key=${new_key}
+    ...    ${new_key}
     ...    common_name=${DEFAULT_X509NAME}
     ...    extensions=${extensions}
     ...    exclude_fields=sender,senderKID
@@ -618,6 +618,30 @@ CA MUST Issue A Certificate With The KeyAgreement KeyUsage Extension
     Validate KeyUsage   ${cert}    keyAgreement,digitalSignature    strictness=STRICT
     VAR    ${KGA_KARI_KEY}    ${new_key}    scope=Global
     VAR    ${KGA_KARI_CERT}    ${cert}    scope=Global
+
+CA MUST Issue ECDSA Cert With KeyUsage
+    [Documentation]    According to RFC 9483 Section 5, the CA responds to a certificate request based on its own
+    ...    policy. We send a valid Initialization Request containing the `keyAgreement` and
+    ...    `digitalSignature` KeyUsage extensions. The CA MUST issue a certificate containing both
+    ...    specified extensions.
+    ${extensions}=  Prepare Extensions    digitalSignature,keyAgreement
+    ${new_key}=    Generate Key    algorithm=ecc    curve=${DEFAULT_ECC_CURVE}
+    ${extensions}=    Prepare Extensions    key_usage=keyAgreement,digitalSignature
+    ${cm}=  Get Next Common Name
+    ${ir}=    Build Ir From Key
+    ...    ${new_key}
+    ...    common_name=${cm}
+    ...    extensions=${extensions}
+    ...    exclude_fields=sender,senderKID
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ${protected_ir}=  Default Protect PKIMessage    ${ir}
+    ${ca_response}=    Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be   ${ca_response}    status=accepted
+    ${cert}=  Confirm Certificate If Needed    ${ca_response}   request=${protected_ir}
+    Validate KeyUsage   ${cert}    keyAgreement,digitalSignature    strictness=STRICT
+    VAR    ${CLIENT_ECC_KEY}    ${new_key}    scope=Global
+    VAR    ${CLIENT_ECC_CERT}    ${cert}    scope=Global
 
 # Needed for 4.1.6.1. Using the Key Transport Key Management Technique
 

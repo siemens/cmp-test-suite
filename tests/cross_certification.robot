@@ -35,7 +35,7 @@ Default Protect PKIMessage With Trusted Cert
     [Documentation]    Protects the PKIMessage with the trusted CA certificate.
     [Arguments]    ${pki_message}
     ${response}=  Protect PKIMessage    ${pki_message}    signature
-    ...           private_key=${TRUSTED_CA_KEY}    cert=${TRUSTED_CA_CERT}
+    ...           private_key=${TRUSTED_CA_KEY}    cert=${TRUSTED_CA_CERT}   certs_dir=${TRUSTED_CA_DIR}
     RETURN    ${response}
 
 *** Test Cases ***
@@ -75,6 +75,8 @@ CA MUST Reject Cross Certification Request with private key
     ${enc_key_id}=   Prepare EncKeyWithID    ${key}   sender=${SENDER}   use_string=False
     ${rid}=   Prepare Recipient Identifier    ${TRUSTED_CA_CERT}   
     ${popo}=   Prepare EncryptedKey For POPO    ${enc_key_id}   ${rid}   ${TRUSTED_CA_CERT}   for_agreement=False
+    ...        private_key=${TRUSTED_CA_KEY}
+    # It is not relevant if the private key is correct, because this behaviour is not allowed.
     ${crr}=     Build CCR From Key
     ...    ${key}
     ...    cert_template=${cert_template}

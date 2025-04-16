@@ -460,12 +460,11 @@ CA MUST Reject Revive Request With Non-Revoked serialNumber
     ...    revoked. The CA MUST reject the request and may respond with the optional failInfo
     ...    `badCertId`.
     [Tags]    negative    revive
-    ${rev_cert}   ${rev_key}=   Revoke Certificate    ${REVOCATION_CERT}    ${REVOCATION_KEY}
     ${rr}=    Build CMP Revive Request
-    ...    cert=${rev_cert}
+    ...    cert=${REVOCATION_CERT}
     ...    recipient=${RECIPIENT}
-    ${rr}=    Protect PKIMessage    ${rr}   protection=signature   cert=${rev_cert}
-    ...    private_key=${rev_key}
+    ${rr}=    Protect PKIMessage    ${rr}   protection=signature   cert=${REVOCATION_CERT}
+    ...    private_key=${REVOCATION_KEY}
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badCertId    exclusive=True

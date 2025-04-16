@@ -58,8 +58,9 @@ Set Up Test Suite
     IF  '${ISSUED_KEY}' == '${None}'
         ${issued_key}=    Generate Default Key
         IF    ${ALLOW_MAC_PROTECTION}
+            ${extensions}=    Prepare Extensions    digitalSignature,keyEncipherment
             ${ir}=  Build Ir From Key    ${issued_key}    sender=${SENDER}    recipient=${RECIPIENT}
-            ...     for_mac=True   implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+            ...     for_mac=True   implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}   extensions=${extensions}
             ${protected_ir}=    Protect PKIMessage    ${ir}    password=${PRESHARED_SECRET}    protection=${DEFAULT_MAC_ALGORITHM}
         ELSE
             ${tmp_cert}    ${tmp_key}=    May Load Cert And Key
@@ -80,6 +81,10 @@ Set Up Test Suite
         VAR    ${ISSUED_KEY}    ${issued_key}    scope=Global
         VAR    ${ISSUED_CERT}    ${issued_cert}    scope=Global
         LOG    Initial certificate issued, with `MAC` protection.
+        ${cert_chain}=   Build CMP Chain From PKIMessage  ${response}   ee_cert=${issued_cert}
+        Write Certs To Dir    ${cert_chain}
+        ${root_cert}=   Get From List   ${cert_chain}  -1
+        Write Cmp Certificate To Pem    ${root_cert}  data/trustanchors/issued_cert_root.pem
         VAR    &{CERT_CONF_DEF_VALS}    sender=${SENDER}    recipient=${RECIPIENT}    private_key=${issued_key}    cert=${issued_cert}    password=${PRESHARED_SECRET}    protection=signature   scope=Global
         VAR    &{DEFAULT_PROTECTION_VALS}    protection=signature   private_key=${issued_key}    cert=${issued_cert}   password=${PRESHARED_SECRET}  scope=Global
     END
@@ -456,8 +461,12 @@ Confirm Certificate If Needed
         ...                                         exclude_fields=${exclude_fields}
         ${cert_conf}=   Default Protect PKIMessage    ${cert_conf}    &{params}
         ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
-        ${protection}=   Get From Dictionary    ${params}    protection
-        ${pki_conf}=   Exchange Migration PKIMessage    ${cert_conf}    ${CA_BASE_URL}    ${suffix}
+        ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
+        ${url}=    Get From Dictionary    ${params}    url    ${None}
+        IF    '${url}' == '${None}'
+            ${url}=    Get From Dictionary    ${params}    url    ${base_url}
+        END
+        ${pki_conf}=   Exchange Migration PKIMessage    ${cert_conf}    ${url}    ${suffix}
         PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
         RETURN    ${cert}
     END
@@ -764,3 +773,134 @@ Validate EncrCert For KEM
     Validate KEMRI Rid For Encrypted Cert    ${response}   key=${key}
     Validate Migration Certificate KeyUsage    ${cert}
     RETURN    ${cert}
+
+Issued NEG RSA KTRI CERT
+    [Documentation]    Issue a new RSA negative KTRI certificate for the EnvelopedData tests.
+    ...                This certificate is negative, because the keyEncipherment KeyUsage bit is missing.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...
+    ...                Note:
+    ...                -------
+    ...                - Set's the ${NEG_KTRI_CERT} and ${NEG_KTRI_KEY} variables.
+    [Arguments]    ${url}=${CA_CMP_URL}
+    [Tags]    envelopedData  KGA  negative  rsa  ktri
+    ${is_set}=    Is Certificate And Key Set    ${NEG_KTRI_CERT}    ${NEG_KTRI_KEY}
+    IF  ${is_set}
+        RETURN
+    END
+    ${key}=   Generate Key    rsa   length=${DEFAULT_KEY_LENGTH}
+    ${cm}=    Get Next Common Name
+    ${extensions}=  Prepare Extensions  digitalSignature
+    ${ir}=  Build Ir From Key    ${key}   ${cm}   extensions=${extensions}
+    ...    exclude_fields=sender,senderKID   recipient=${RECIPIENT}
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
+    VAR   ${NEG_KTRI_CERT}     ${cert}  scope=Global
+    VAR   ${NEG_KTRI_KEY}      ${key}   scope=Global
+
+ISSUE POS RSA KTRI Cert
+    [Documentation]    Issue a new RSA positive KTRI certificate for the EnvelopedData tests.
+    ...                This certificate is positive, because the keyEncipherment and digitalSignature
+    ...                KeyUsage bits are set.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...
+    ...                Note:
+    ...                -------
+    ...                - Set's the ${KGA_KTRI_CERT} and ${KGA_KTRI_KEY} variables.
+    [Arguments]    ${url}=${CA_CMP_URL}
+    [Tags]    envelopedData  KGA  positive  rsa  ktri
+    ${is_set}=    Is Certificate And Key Set    ${KGA_KTRI_CERT}    ${KGA_KTRI_KEY}
+    IF   ${is_set}
+        RETURN
+    END
+    ${key}=   Generate Key    rsa   length=${DEFAULT_KEY_LENGTH}
+    ${cm}=    Get Next Common Name
+    ${extensions}=  Prepare Extensions  keyEncipherment,digitalSignature
+    ${ir}=  Build Ir From Key    ${key}   ${cm}  extensions=${extensions}
+    ...    exclude_fields=sender,senderKID   recipient=${RECIPIENT}
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
+    VAR   ${KGA_KTRI_CERT}     ${cert}  scope=Global
+    VAR   ${KGA_KTRI_KEY}      ${key}   scope=Global
+
+Issue NEG ECC KARI Cert
+    [Documentation]    Issue a new ECC negative KARI certificate for the EnvelopedData tests.
+    ...                This certificate is negative, because the keyAgreement KeyUsage bit is missing.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...
+    ...                Note:
+    ...                -------
+    ...               - Set's the ${NEG_KARI_CERT} and ${NEG_KARI_KEY} variables.
+    [Arguments]    ${url}=${CA_CMP_URL}
+    [Tags]    envelopedData  KGA  negative  ecc  kari
+    ${is_set}=    Is Certificate And Key Set    ${NEG_KARI_CERT}    ${NEG_KARI_KEY}
+    IF  ${is_set}
+        RETURN
+    END
+    ${key}=   Generate Key    ecc   curve=${DEFAULT_ECC_CURVE}
+    ${cm}=    Get Next Common Name
+    ${extensions}=  Prepare Extensions  digitalSignature
+    ${ir}=  Build Ir From Key    ${key}   ${cm}   extensions=${extensions}
+    ...    exclude_fields=sender,senderKID   recipient=${RECIPIENT}
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
+    VAR   ${NEG_KARI_CERT}     ${cert}  scope=Global
+    VAR   ${NEG_KARI_KEY}      ${key}   scope=Global
+
+Issue POS ECC KARI Cert
+    [Documentation]    Issue a new ECC positive KARI certificate for the EnvelopedData tests.
+    ...                This certificate is positive, because the keyAgreement and digitalSignature
+    ...                KeyUsage bits are set.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...
+    ...                Note:
+    ...                -------
+    ...                - Set's the ${KGA_KARI_CERT} and ${KGA_KARI_KEY} variables.
+    [Arguments]    ${url}=${CA_CMP_URL}
+    [Tags]    envelopedData  KGA  positive  ecc  kari
+    ${is_set}=    Is Certificate And Key Set    ${KGA_KARI_CERT}    ${KGA_KARI_KEY}
+    IF   ${is_set}
+        RETURN
+    END
+    ${key}=   Generate Key    ecc   curve=${DEFAULT_ECC_CURVE}
+    ${cm}=    Get Next Common Name
+    ${extensions}=  Prepare Extensions  keyAgreement,digitalSignature
+    ${ir}=  Build Ir From Key    ${key}   ${cm}  extensions=${extensions}
+    ...    exclude_fields=sender,senderKID   recipient=${RECIPIENT}
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
+    VAR   ${KGA_KARI_CERT}     ${cert}  scope=Global
+    VAR   ${KGA_KARI_KEY}      ${key}   scope=Global
+
+Set up EnvelopedData Certs for Tests
+    [Documentation]    Set up the KGA certs for the tests. This is done by creating a new key and
+    ...               certificate for the KGA. Currently only RSA and ECC are supported.
+    [Tags]    setup   envelopedData   KGA
+    Issued NEG RSA KTRI CERT  
+    Issue POS RSA KTRI Cert
+    Issue NEG ECC KARI Cert
+    Issue POS ECC KARI Cert
