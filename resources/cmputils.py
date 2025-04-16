@@ -1582,7 +1582,7 @@ def _parse_utf8_pairs(s: str) -> List[Tuple[str, str]]:
             raise ValueError("Missing '%' terminator for value")
 
         value = "".join(value_chars)
-        pairs.append((name, value))
+        pairs.append((name, str(value)))
 
     return pairs
 
