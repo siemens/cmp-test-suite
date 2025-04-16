@@ -3136,7 +3136,7 @@ def _verify_pkimessage_protection_rp(
     :return: The failure information and text if the protection is invalid, `None`, `None` otherwise.
     """
     try:
-        py_verify_logic.verify_hybrid_pkimessage_protection(
+        pq_verify_logic.verify_hybrid_pkimessage_protection(
             request,
         )
     except (InvalidSignature, InvalidAltSignature):
