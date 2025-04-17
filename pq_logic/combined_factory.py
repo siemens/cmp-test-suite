@@ -377,12 +377,16 @@ class CombinedKeyFactory:
 
         if prefix == "kem-05":
             pq_key = ensure_is_kem_pub_key(pq_key)
-            return CompositeKEMPublicKey(pq_key, trad_key)  # type: ignore
+            public_key = CompositeKEMPublicKey(pq_key, trad_key)  # type: ignore
+            public_key.get_oid()
+            return public_key
 
         if not isinstance(pq_key, MLDSAPublicKey):
             raise InvalidKeyData("The composite pq-public-key is not a valid MLDSA key.")
 
-        return CompositeSig03PublicKey(pq_key, trad_key)  # type: ignore
+        public_key = CompositeSig03PublicKey(pq_key, trad_key)  # type: ignore
+        public_key.get_oid()
+        return public_key
 
     @staticmethod
     def load_public_key_from_spki(spki: Union[rfc5280.SubjectPublicKeyInfo, bytes]):  # type: ignore
