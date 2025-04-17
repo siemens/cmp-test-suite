@@ -75,15 +75,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Unit tests
-        run: PYTHONPATH=./resources python3 -m unittest discover -s unit_tests
+        run:  python3 -m unittest discover -s unit_tests
 
-  # type_check:
-  #   runs-on: ubuntu-22.04
-  #   container:
-  #     image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+    type_check:
+      runs-on: ubuntu-22.04
+      container:
+        image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
 
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #     - name: Pyright check
-  #       run: PYTHONPATH=./resources pyright ./resources
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        - name: Pyright check
+          run: pyright
