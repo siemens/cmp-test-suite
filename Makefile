@@ -69,7 +69,7 @@ docs:
 	python -m robot.libdoc --pythonpath=./ resources/extra_issuing_logic.py doc/extra_issuing_logic.html
 	python -m robot.libdoc --pythonpath=./ resources/ca_ra_utils.py doc/ca_ra_utils.html
 	python -m robot.libdoc --pythonpath=./ pq_logic/hybrid_prepare.py doc/hybrid_prepare.html
-	python -m robot.libdoc --pythonpath=./ pq_logic/py_verify_logic.py doc/py_verify_logic.html
+	python -m robot.libdoc --pythonpath=./ pq_logic/pq_verify_logic.py doc/pq_verify_logic.html
     # Test documentation
 	python -m robot.testdoc tests/ doc/test-suites.html
 	python -m robot.testdoc tests_pq_and_hybrid/ doc/test-pq-hybrid-suites.html
@@ -98,7 +98,8 @@ test-pq-hybrid:
     # Start the tests for PQ and Hybrid algorithms/mechanisms.
 	robot --pythonpath=./ --outputdir=reports --variable environment:$(env) tests_pq_and_hybrid
 
+start-mock-ca:
+	python ./mock_ca/ca_handler.py
 
-
-
-
+test-mock-ca:
+	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests_pq_and_hybrid/hybrid_sig_tests.robot
