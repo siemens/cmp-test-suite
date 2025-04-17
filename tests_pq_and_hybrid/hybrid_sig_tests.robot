@@ -285,7 +285,7 @@ CA MUST Reject Composite RSA with invalid RSA key length
     ${response}=       Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badRequest
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badDataFormat
 
 #### Security Related #####
 
@@ -314,8 +314,9 @@ CA SHOULD Reject Issuing Already in use Traditional Key
     ...                `badCertTemplate` or `badRequest`.
     [Tags]             composite-sig   negative  security
     ${key}=            Generate Key    algorithm=composite-sig  trad_key=${ISSUED_KEY}
-    ${cm}=             Get Next Common Name
-    ${ir}=    Build Ir From Key    ${key}   ${cm}   recipient=${RECIPIENT}   omit_fields=senderKID,sender
+    ${cert_template}=   Prepare CertTemplate    ${key}   cert=${ISSUED_CERT}   include_fields=publicKey,subject
+    ${ir}=    Build Ir From Key    ${key}   cert_template=${cert_template}
+    ...       recipient=${RECIPIENT}   omit_fields=senderKID,sender
     ${protected_ir}=  Default Protect PKIMessage    ${ir}
     ${response}=       Exchange PKIMessage    ${ir}
     PKIStatus Must Be    ${response}    rejection
