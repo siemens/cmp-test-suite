@@ -337,11 +337,11 @@ class CombinedKeyFactory:
         return public_key
 
     @staticmethod
-    def _get_composite_public_key(oid: univ.ObjectIdentifier, public_key: bytes) -> AbstractCompositePublicKey:
+    def _get_composite_public_key(oid: univ.ObjectIdentifier, public_key_bytes: bytes) -> AbstractCompositePublicKey:
         """Get a composite public key from the provided OID and public key bytes.
 
         :param oid: The OID of the key.
-        :param public_key: The public key bytes.
+        :param public_key_bytes: The public key bytes.
         :return: The loaded public key.
         """
         if oid in CMS_COMPOSITE03_OID_2_NAME:
@@ -361,7 +361,7 @@ class CombinedKeyFactory:
         if not rest.isdigit():
             curve = rest.replace("-", "", 1) if rest else None
 
-        obj, rest = decoder.decode(public_key, CompositeSignaturePublicKeyAsn1())
+        obj, rest = decoder.decode(public_key_bytes, CompositeSignaturePublicKeyAsn1())
         if rest != b"":
             raise BadAsn1Data("Extra data after decoding public key")
 
