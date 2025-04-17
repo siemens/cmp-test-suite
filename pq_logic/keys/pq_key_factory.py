@@ -324,7 +324,9 @@ class PQKeyFactory:
 
         :param spki: An `rfc5280.SubjectPublicKeyInfo` object containing the public key.
         :return: An instance of `MLKEMPublicKey` or `MLDSAPublicKey`.
-        :raises KeyError: If the algorithm identifier from the SPKI is not recognized.
+        :raises InvalidKeyData: If the SPKI Algorithm parameters are present for PQ algorithms
+        or the key data length is invalid.
+        :raises BadAlg: If the algorithm identifier from the SPKI is not recognized.
         """
         public_bytes = spki["subjectPublicKey"].asOctets()
         oid = spki["algorithm"]["algorithm"]
@@ -333,6 +335,11 @@ class PQKeyFactory:
 
         if name is None:
             raise BadAlg(f"Unrecognized PQ algorithm identifier: {oid}")
+
+        if spki["algorithm"]["parameters"].isValue:
+            raise InvalidKeyData(
+                f"The SPKI Algorithm parameters MUST be absent for PQ algorithms,but was present for {name}."
+            )
 
         if name.startswith("ml-dsa-"):
             hash_alg = PQ_SIG_PRE_HASH_OID_2_NAME.get(oid)
