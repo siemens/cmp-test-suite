@@ -1393,7 +1393,7 @@ def validate_cert_template_public_key(
             if isinstance(public_key, PQHashStatefulSigPublicKey):
                 raise NotImplementedError("PQHashStatefulSigPublicKey is not supported yet, to be validated.")
 
-            elif isinstance(public_key, (PQPublicKey, HybridPublicKey)):
+            if isinstance(public_key, (PQPublicKey, HybridPublicKey)):
                 if alg_id["parameters"].isValue:
                     raise BadCertTemplate("The `parameters` field is not allowed for PQ public keys.")
 

@@ -352,10 +352,10 @@ class RSAKem:
         shared_secret = rand or random.randint(2, n - 1)  # MUST always be random.
         ct = pow(shared_secret, e, n)
         ct = _i2osp(ct, n_len)
-        Z = _i2osp(shared_secret, n_len)
+        z_bytes = _i2osp(shared_secret, n_len)
         if self.length is None:
-            return Z, ct
-        ss = _compute_kdf3(Z, self.length)
+            return z_bytes, ct
+        ss = _compute_kdf3(z_bytes, self.length)
         return ss, ct
 
     def decaps(self, private_key: rsa.RSAPrivateKey, ct_or_public_data: bytes) -> bytes:
@@ -372,7 +372,7 @@ class RSAKem:
 
         ct = ct_or_public_data
         if len(ct) != n_len:
-            raise ValueError("Ciphertext length mismatch (expected %d, got %d)." % (n_len, len(ct)))
+            raise ValueError(f"Ciphertext length mismatch (expected {n_len}, got {len(ct)}).")
 
         c = int.from_bytes(ct, byteorder="big")
 
@@ -381,12 +381,12 @@ class RSAKem:
 
         z = pow(c, d, n)
 
-        Z = _i2osp(z, n_len)
+        z_bytes = _i2osp(z, n_len)
 
         if self.length is None:
-            return Z
+            return z_bytes
 
-        return _compute_kdf3(Z, self.length)
+        return _compute_kdf3(z_bytes, self.length)
 
 
 class RSAOaepKem:
