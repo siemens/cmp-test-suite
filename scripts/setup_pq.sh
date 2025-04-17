@@ -7,8 +7,10 @@ sudo apt update
 sudo apt install libssl-dev
 sudo apt install cmake
 git clone --depth=1 https://github.com/open-quantum-safe/liboqs-python
+# shellcheck disable=SC2164
 cd liboqs-python
 pip install .
+# shellcheck disable=SC2103
 cd ..
 
 

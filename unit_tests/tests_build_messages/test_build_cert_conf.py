@@ -22,6 +22,7 @@ from resources.cmputils import (
 from resources.utils import load_and_decode_pem_file
 
 from unit_tests.prepare_ca_response import build_ca_pki_message
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
 class TestBuildCertConf(unittest.TestCase):
@@ -38,9 +39,7 @@ class TestBuildCertConf(unittest.TestCase):
         THEN the PKIMessage should be able to be decoded.
         """
         pki_message = cmputils.build_cert_conf(self.cert, cert_req_id=245)
-        der_data = encode_to_der(pki_message)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"", "Decoded PKIMessage should have no remaining undecoded data.")
+        pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "certConf", "CMP message type should be 'certConf'.")
 
     def test_build_with_different_hash_alg(self):
@@ -52,9 +51,7 @@ class TestBuildCertConf(unittest.TestCase):
         with the specified hash algorithm and protocol version.
         """
         pki_message = cmputils.build_cert_conf(self.cert, cert_req_id=0, hash_alg="sha512", pvno=3)
-        der_data = encode_to_der(pki_message)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"", "Decoded PKIMessage should have no remaining undecoded data.")
+        pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "certConf", "CMP message type should be 'certConf'.")
         self.assertEqual(pki_msg["header"]["pvno"], 3, "Protocol version (pvno) should be set to 3.")
 
@@ -129,9 +126,8 @@ class TestBuildCertConf(unittest.TestCase):
         ca_message = patch_recipnonce(ca_message, recip_nonce=b"C" * 16)
         pki_message = build_cert_conf_from_resp(ca_message=ca_message,
                                                 sender=self.sender, recipient=self.recipient)
-        der_data = encode_to_der(pki_message)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+
+        pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "certConf")
         self.assertEqual(pki_message["header"]["senderNonce"].asOctets(), b"C" * 16)
         self.assertEqual(pki_message["header"]["transactionID"].asOctets(), b"B" * 16)

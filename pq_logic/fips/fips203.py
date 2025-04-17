@@ -13,7 +13,9 @@ from typing import Optional, Tuple
 #   === FIPS 203 implementation https://doi.org/10.6028/NIST.FIPS.203
 #   ML-KEM / Module-Lattice-Based Key-Encapsulation Mechanism Standard
 #   test_mlkem is only used by the unit test in the end
-from Crypto.Hash import SHA3_256, SHA3_512, SHAKE128, SHAKE256
+# from Crypto.Hash import SHA3_256, SHA3_512
+
+from pq_logic.fips._fips_utils import XOFHash, _compute_shake, _compute_hash
 
 #   Table 2. Approved parameter sets for ML-KEM
 #   (k, eta1, eta2, du, dv)
@@ -324,17 +326,21 @@ class ML_KEM:
     #   4.1 Cryptographic Functions
 
     def h(self, x):
-        return SHA3_256.new(x).digest()
+        return _compute_hash("sha3_256", x)
+        # return SHA3_256.new(x).digest()
 
     def g(self, x):
-        h = SHA3_512.new(x).digest()
-        return (h[0:32], h[32:64])
+        h = _compute_hash("sha3_512", x)
+        # h = SHA3_512.new(x).digest()
+        return h[0:32], h[32:64]
 
     def j(self, s):
-        return SHAKE256.new(s).read(32)
+        return _compute_shake("shake256", s, 32)
+        # return SHAKE256.new(s).read(32)
 
     def prf(self, eta, s, b):
-        return SHAKE256.new(s + bytes([b])).read(64 * eta)
+        return _compute_shake("shake256", s + bytes([b]), 64 * eta)
+        # return SHAKE256.new(s + bytes([b])).read(64 * eta)
 
     #   4.2.1 Conversion and Compression Algorithms
 
@@ -408,7 +414,10 @@ class ML_KEM:
     #   Algorithm 7, SampleNTT(B)
 
     def sample_ntt(self, b):
-        xof = SHAKE128.new(b)
+        # xof = SHAKE128.new(b)
+        xof = XOFHash("shake128")
+        xof.update(b)
+
         j = 0
         a = []
         while j < 256:

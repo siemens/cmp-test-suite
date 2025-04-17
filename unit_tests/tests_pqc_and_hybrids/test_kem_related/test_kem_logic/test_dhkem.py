@@ -15,8 +15,7 @@ from pq_logic.kem_mechanism import DHKEMRFC9180
 class TestDHKEMRFC9180(unittest.TestCase):
 
     def setUp(self):
-        self.dh_kem = DHKEMRFC9180(context="HPKE-v1")
-
+        self.dh_kem = DHKEMRFC9180()
 
     def test_rfc9180_vectors(self):
         """
@@ -48,8 +47,8 @@ class TestDHKEMRFC9180(unittest.TestCase):
             "c0d26aeab536609a572b07695d933b589dcf363ff9d93c93adea537aeabb8cb8"
         )
 
-        dhkem = DHKEMRFC9180(private_key=skEm, context="HPKE-v1")
-        dhkem2 = DHKEMRFC9180(private_key=skRm, context="HPKE-v1")
+        dhkem = DHKEMRFC9180(private_key=skEm)
+        dhkem2 = DHKEMRFC9180(private_key=skRm)
 
         shared_secret, generated_enc = dhkem.encaps(pkRm)
 

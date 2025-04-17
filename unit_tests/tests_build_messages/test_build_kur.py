@@ -13,6 +13,7 @@ from resources.cmputils import (
     get_cmp_message_type,
 )
 from resources.keyutils import generate_key
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
 class TestBuildKUR(unittest.TestCase):
@@ -34,9 +35,8 @@ class TestBuildKUR(unittest.TestCase):
             signing_key=key, cert=self.cert, sender=self.sender, recipient=self.recipient,
             exclude_fields=None
         )
-        der_data = encode_to_der(pki_message)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+
+        pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "kur")
 
     def test_build_kur_and_en_and_decode(self):
@@ -49,9 +49,8 @@ class TestBuildKUR(unittest.TestCase):
         pki_message = build_key_update_request(
             signing_key=key, exclude_fields=None,
             sender=self.sender, recipient=self.recipient)
-        der_data = encode_to_der(pki_message)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+
+        pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "kur")
 
     def test_build_kur_with_controls_and_en_and_decode(self):
@@ -70,7 +69,6 @@ class TestBuildKUR(unittest.TestCase):
             recipient=self.recipient,
             use_controls=True,
         )
-        der_data = encode_to_der(pki_message)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+
+        pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "kur")

@@ -8,8 +8,8 @@ import copy
 from typing import Optional
 
 from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import univ
-from pyasn1_alt_modules import rfc5280
+from pyasn1.type import namedtype, tag, univ
+from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402
 from robot.api.deco import not_keyword
 
 
@@ -63,6 +63,7 @@ def copy_name(target: rfc5280.Name, filled_name: rfc5280.Name) -> rfc5280.Name:
     return target
 
 
+@not_keyword
 def copy_validity(
     filled_validity: rfc5280.Validity,
     target: Optional[rfc5280.Validity] = None,
@@ -84,4 +85,53 @@ def copy_validity(
 
     target["notBefore"][not_before_type].fromDateTime(copy.copy(not_before))
     target["notAfter"][not_after_type].fromDateTime(copy.copy(not_after))
+    return target
+
+
+@not_keyword
+def copy_csr(
+    filled_csr: rfc6402.CertificationRequest, target: Optional[rfc6402.CertificationRequest] = None
+) -> rfc6402.CertificationRequest:
+    """Copy the contents of one `CertificationRequest` object into another.
+
+    :param target: The `CertificationRequest` structure to populate.
+    :param filled_csr: The existing `CertificationRequest` object to copy.
+    :return: The populated `CertificationRequest` structure.
+    """
+    der_data = encoder.encode(filled_csr["certificationRequestInfo"])
+
+    obj = univ.Sequence(
+        componentType=namedtype.NamedTypes(
+            namedtype.NamedType("version", univ.Integer()),
+            namedtype.NamedType("subject", rfc5280.Name()),
+            namedtype.NamedType(
+                "subjectPublicKeyInfo",
+                univ.Sequence(
+                    componentType=namedtype.NamedTypes(
+                        namedtype.NamedType("algorithm", rfc5280.AlgorithmIdentifier()),
+                        namedtype.NamedType("subjectPublicKey", univ.BitString()),
+                    )
+                ),
+            ),
+            namedtype.NamedType(
+                "attributes",
+                univ.SetOf(componentType=rfc5652.Attribute()).subtype(  # type: ignore
+                    implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+                ),
+            ),
+        )
+    )
+    csr_req_info = decoder.decode(der_data, asn1Spec=obj)[0]
+
+    signature = decoder.decode(encoder.encode(filled_csr["signature"]), asn1Spec=univ.BitString())[0]
+    der_data = encoder.encode(filled_csr["signatureAlgorithm"])
+    sig_alg_id = decoder.decode(der_data, asn1Spec=rfc5280.AlgorithmIdentifier())[0]
+
+    if target is None:
+        target = rfc6402.CertificationRequest()
+
+    target["certificationRequestInfo"] = csr_req_info
+    target["signature"] = signature
+    target["signatureAlgorithm"] = sig_alg_id
+
     return target

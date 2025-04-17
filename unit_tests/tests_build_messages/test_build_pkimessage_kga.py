@@ -15,6 +15,7 @@ from resources.cmputils import (
     get_cmp_message_type,
 )
 from resources.keyutils import generate_key
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
 class TestPKIMessageKGA(unittest.TestCase):
@@ -42,9 +43,7 @@ class TestPKIMessageKGA(unittest.TestCase):
             cert=self.certificate,
             exclude_fields=self.omit_fields,
         )
-        encoded_message = encoder.encode(pki_message)
-        decoded_message, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        decoded_message = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(decoded_message), "cr")
 
     def test_pkimessage_p10cr_en_and_decoding(self):
@@ -63,9 +62,7 @@ class TestPKIMessageKGA(unittest.TestCase):
             cert=self.certificate,
             exclude_fields=self.omit_fields,
         )
-        encoded_message = encoder.encode(pki_message)
-        decoded_message, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        decoded_message = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(decoded_message), "p10cr")
         self.assertTrue(decoded_message["body"]["p10cr"].isValue, "PKIBody 'p10cr' should not be empty.")
 
@@ -84,9 +81,7 @@ class TestPKIMessageKGA(unittest.TestCase):
             cert=self.certificate,
             exclude_fields=self.omit_fields,
         )
-        encoded_message = encoder.encode(pki_message)
-        decoded_message, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        decoded_message = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(decoded_message), "ir")
 
     def test_pkimessage_kur_en_and_decoding(self):
@@ -104,9 +99,7 @@ class TestPKIMessageKGA(unittest.TestCase):
             cert=self.certificate,
             exclude_fields=self.omit_fields,
         )
-        encoded_message = encoder.encode(pki_message)
-        decoded_message, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        decoded_message = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(decoded_message), "kur")
 
     def test_pkimessage_kur_en_and_decoding_without_alg(self):
@@ -124,9 +117,7 @@ class TestPKIMessageKGA(unittest.TestCase):
             cert=self.certificate,
             exclude_fields=self.omit_fields,
         )
-        encoded_message = encoder.encode(pki_message)
-        decoded_message, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        decoded_message = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(decoded_message), "kur")
 
 

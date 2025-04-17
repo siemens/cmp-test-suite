@@ -159,7 +159,7 @@ class TestPKIMessageProtection(unittest.TestCase):
         WHEN the PKIMessage is protected using an Ed25519 signature.
         THEN the Ed25519 signature verification should succeed without any exceptions.
         """
-        private_key = load_private_key_from_file("data/keys/private-key-ed25519.pem", key_type="ed25519")
+        private_key = load_private_key_from_file("data/keys/private-key-ed25519.pem")
 
         certificate = generate_certificate(private_key=private_key, common_name="CN=Hans", hash_alg=None)
 

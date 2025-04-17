@@ -9,7 +9,7 @@ from pq_logic.keys.xwing import XWingPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc4211
 from resources.certutils import parse_certificate
-from resources.extra_issuing_logic import prepare_kem_env_data_for_popo, prepare_private_key_for_pop
+from resources.extra_issuing_logic import prepare_kem_env_data_for_popo, prepare_enc_key_with_id
 from resources.keyutils import load_private_key_from_file
 from resources.utils import load_and_decode_pem_file
 
@@ -19,7 +19,7 @@ class TestPrepareKemEnvDataForPopo(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.kem_key: MLKEMPrivateKey = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
-        cls.x25519 = load_private_key_from_file("data/keys/private-key-x25519.pem", key_type="x25519")
+        cls.x25519 = load_private_key_from_file("data/keys/private-key-x25519.pem")
         cls.kem_cert = parse_certificate(
             load_and_decode_pem_file("data/unittest/pq_cert_ml_kem_768.pem"))
         cls.xwing_key = XWingPrivateKey(pq_key=cls.kem_key, trad_key=cls.x25519)
@@ -49,9 +49,9 @@ class TestPrepareKemEnvDataForPopo(unittest.TestCase):
         WHEN the data is prepared for a proof of possession,
         THEN should the data be correctly encoded and decoded.
         """
-        data = prepare_private_key_for_pop(private_key=self.xwing_key,
-                                           sender=self.enc_key_sender,
-                                           )
+        data = prepare_enc_key_with_id(private_key=self.xwing_key,
+                                       sender=self.enc_key_sender,
+                                       )
         popo_structure = prepare_kem_env_data_for_popo(
             ca_cert=self.kem_cert,
             client_key=self.xwing_key,

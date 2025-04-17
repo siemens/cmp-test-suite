@@ -6,7 +6,7 @@ import unittest
 
 from pq_logic.hybrid_sig.catalyst_logic import sign_crl_catalyst
 from resources.certutils import parse_certificate
-from pq_logic.py_verify_logic import verify_crl_signature
+from pq_logic.pq_verify_logic import verify_crl_signature
 from resources.exceptions import InvalidAltSignature
 from resources.keyutils import load_private_key_from_file
 from resources.utils import load_crl_from_file, load_and_decode_pem_file

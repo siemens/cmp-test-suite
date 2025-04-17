@@ -45,7 +45,7 @@ class TestCheckSignerInfos(unittest.TestCase):
             cert=self.kga_certificate,
             e_content=self.eContent,
             sig_hash_name="sha256",
-            negative_size=True,
+            add_another=True,
         )
 
         with self.assertRaises(ValueError):

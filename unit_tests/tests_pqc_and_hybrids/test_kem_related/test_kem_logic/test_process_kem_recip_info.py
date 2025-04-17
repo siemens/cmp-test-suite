@@ -5,7 +5,7 @@
 import unittest
 
 from cryptography.hazmat.primitives.keywrap import InvalidUnwrap
-from pq_logic.pq_key_factory import PQKeyFactory
+from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pyasn1.type import univ
 from resources.ca_kga_logic import process_kem_recip_info
 from resources.certbuildutils import build_certificate
@@ -22,7 +22,7 @@ class TestProcessKEMInfo(unittest.TestCase):
         cls.server_key = PQKeyFactory.generate_pq_key(algorithm="ml-kem-1024")
 
         cls.server_cert, _ = build_certificate(private_key=cls.server_key,
-                                               signing_key=PQKeyFactory.generate_pq_key("ml-dsa-87"))
+                                               ca_key=PQKeyFactory.generate_pq_key("ml-dsa-87"))
 
         cls.content_encryption_key = b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         cls.user_keying_material = b"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
@@ -34,10 +34,10 @@ class TestProcessKEMInfo(unittest.TestCase):
         THEN the derived content encryption key is equal to the original content encryption key.
         """
         kem_recip_info = prepare_kem_recip_info(
-            server_cert=self.server_cert,
+            recip_cert=self.server_cert,
             cek=self.content_encryption_key,
             ukm=self.user_keying_material,
-            wrap_name="aes256-wrap",
+            wrap_name="aes256_wrap",
             kdf_name="hkdf",
             hash_alg="sha256",
         )
@@ -53,16 +53,20 @@ class TestProcessKEMInfo(unittest.TestCase):
         THEN an InvalidUnwrap exception is raised.
         """
         kem_recip_info = prepare_kem_recip_info(
-            server_cert=self.server_cert,
+            recip_cert=self.server_cert,
             cek=self.content_encryption_key,
             ukm=self.user_keying_material,
-            wrap_name="aes256-wrap",
+            wrap_name="aes256_wrap",
             kdf_name="hkdf",
             hash_alg="sha256",
         )
         kem_recip_info["kemct"] = univ.OctetString(b"invalid_kem_ct")
-        with self.assertRaises(InvalidUnwrap):
+
+        with self.assertRaises(Exception) as context:
             process_kem_recip_info(kem_recip_info, self.server_cert, self.server_key)
+
+        # Note: The exception raised may vary depending on whether liboqs or Python is in use.
+        self.assertIsInstance(context.exception, (InvalidUnwrap, ValueError))
 
     def test_process_kem_info_invalid_encrypted_key(self):
         """
@@ -71,13 +75,13 @@ class TestProcessKEMInfo(unittest.TestCase):
         THEN an InvalidUnwrap exception is raised.
         """
         kem_recip_info = prepare_kem_recip_info(
-            server_cert=self.server_cert,
+            recip_cert=self.server_cert,
             cek=self.content_encryption_key,
             ukm=self.user_keying_material,
-            wrap_name="aes256-wrap",
+            wrap_name="aes256_wrap",
             kdf_name="hkdf",
             hash_alg="sha256",
-            encrypted_key=univ.OctetString(b"invalid_encrypted_key")
+            encrypted_key=b"invalid_encrypted_key"
         )
         with self.assertRaises(InvalidUnwrap):
             process_kem_recip_info(kem_recip_info, self.server_cert, self.server_key)
@@ -92,10 +96,10 @@ class TestProcessKEMInfo(unittest.TestCase):
         server_key = load_private_key_from_file("data/keys/private-key-xwing-other.pem")
         server_cert = parse_certificate(load_and_decode_pem_file("data/unittest/hybrid_cert_xwing_other.pem"))
         kem_recip_info = prepare_kem_recip_info(
-            server_cert=server_cert,
+            recip_cert=server_cert,
             cek=self.content_encryption_key,
             ukm=None,
-            wrap_name="aes256-wrap",
+            wrap_name="aes256_wrap",
             kdf_name="hkdf",
             hash_alg="sha256",
             hybrid_key_recip=client_key,

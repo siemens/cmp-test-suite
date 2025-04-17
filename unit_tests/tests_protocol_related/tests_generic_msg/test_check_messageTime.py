@@ -8,6 +8,7 @@ import unittest
 from resources.certbuildutils import generate_signed_csr
 from resources.checkutils import check_message_time_field
 from resources.cmputils import build_p10cr_from_csr, parse_csr, patch_messageTime
+from resources.exceptions import BadTime
 from resources.utils import decode_pem_string
 
 
@@ -49,5 +50,5 @@ class TestCheckMessageTimeField(unittest.TestCase):
         response_time = request_time + datetime.timedelta(seconds=120)
         response_pki_message = patch_messageTime(pki_message=self.pki_message, new_time=response_time)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadTime):
             check_message_time_field(response_pki_message, allowed_interval=60, request_time=request_time)

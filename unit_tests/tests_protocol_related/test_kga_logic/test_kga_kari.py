@@ -29,7 +29,6 @@ class TestValidationKARI(unittest.TestCase):
                                                     cmp_cert=self.cmp_cert,
                                                     encrypted_key=self.encrypted_key,
                                                     key_agreement_oid=self.key_agreement_oid,
-                                                    length=32
                                                     )
         validate_key_agree_recipient_info(kari, self.cmp_cert)
 
@@ -43,7 +42,6 @@ class TestValidationKARI(unittest.TestCase):
                                                     cmp_cert=self.bare_cmp_cert,
                                                     encrypted_key=self.encrypted_key,
                                                     key_agreement_oid=self.key_agreement_oid,
-                                                    length=32
                                                     )
         validate_key_agree_recipient_info(kari, self.bare_cmp_cert)
 

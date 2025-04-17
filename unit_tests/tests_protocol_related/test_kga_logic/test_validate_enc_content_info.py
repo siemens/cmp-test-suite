@@ -6,20 +6,27 @@ import unittest
 
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5652, rfc9481
+
+from resources.asn1utils import try_decode_pyasn1
 from resources.ca_kga_logic import (
     validate_encrypted_content_info,
 )
 from resources.envdatautils import prepare_encrypted_content_info
 from resources.exceptions import BadAsn1Data
+from unit_tests.utils_for_test import try_encode_pyasn1
 
 
 class TestValidateEncryptedContentInfo(unittest.TestCase):
     def setUp(self):
         self.content_encryption_key = b"\xaa" * 16
 
-        self.enc_content_info = prepare_encrypted_content_info(
+        enc_content_info = prepare_encrypted_content_info(
             data_to_protect=os.urandom(32), cek=self.content_encryption_key
         )
+
+        der_data = try_encode_pyasn1(enc_content_info)
+        self.enc_content_info: rfc5652.EncryptedContentInfo = try_decode_pyasn1(der_data,   # type: ignore
+                                                     rfc5652.EncryptedContentInfo())[0]
 
     def test_validate_encrypted_content_info_valid(self):
         """

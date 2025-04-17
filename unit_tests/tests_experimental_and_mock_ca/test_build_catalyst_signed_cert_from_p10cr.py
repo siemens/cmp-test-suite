@@ -5,8 +5,9 @@
 import unittest
 
 from pq_logic.hybrid_issuing import build_catalyst_signed_cert_from_p10cr, build_catalyst_signed_cert_from_req
-from pq_logic.hybrid_sig.catalyst_logic import validate_catalyst_extension, prepare_alt_sig_alg_id_extn
-from resources.certbuildutils import prepare_sig_alg_id, build_csr, prepare_cert_template
+from pq_logic.hybrid_sig.catalyst_logic import validate_catalyst_extensions, prepare_alt_sig_alg_id_extn
+from resources.certbuildutils import build_csr, prepare_cert_template
+from resources.prepare_alg_ids import prepare_sig_alg_id
 from resources.certutils import parse_certificate
 from resources.cmputils import parse_csr, build_p10cr_from_csr, prepare_cert_req_msg, build_ir_from_key, \
     get_cert_from_pkimessage
@@ -59,7 +60,7 @@ class TestBuildCatalystCertFromP10cr(unittest.TestCase):
             ca_key=self.ca_key,
         )
 
-        extensions = validate_catalyst_extension(
+        extensions = validate_catalyst_extensions(
             cert=cert,
         )
         self.assertEqual(len(extensions), 3)
@@ -86,7 +87,7 @@ class TestBuildCatalystCertFromP10cr(unittest.TestCase):
             ca_key=self.ca_key,
         )
 
-        extensions = validate_catalyst_extension(
+        extensions = validate_catalyst_extensions(
             cert=cert,
         )
         self.assertEqual(len(extensions), 3)
@@ -122,7 +123,7 @@ class TestBuildCatalystCertFromP10cr(unittest.TestCase):
             pki_message=response,
             cert_number=0,
         )
-        extensions = validate_catalyst_extension(
+        extensions = validate_catalyst_extensions(
             cert=cert
         )
 

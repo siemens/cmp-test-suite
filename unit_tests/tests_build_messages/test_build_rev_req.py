@@ -9,6 +9,7 @@ from pyasn1_alt_modules import rfc5280, rfc9480
 from resources import certbuildutils
 from resources.asn1utils import encode_to_der
 from resources.cmputils import build_cmp_revoke_request
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
 class TestBuildCmpRevRequest(unittest.TestCase):
@@ -33,9 +34,7 @@ class TestBuildCmpRevRequest(unittest.TestCase):
             recipient=self.example_recipient,
         )
 
-        der_data = encode_to_der(rr_msg)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        pki_msg = de_and_encode_pkimessage(rr_msg)
 
         # Check that the request header is correct, but cannot use built in method. Not all values are set.
         sender = rfc9480.GeneralName().setComponentByName("rfc822Name", self.example_sender)
@@ -68,9 +67,7 @@ class TestBuildCmpRevRequest(unittest.TestCase):
             recipient=self.example_recipient,
             exclude_cert_template=True,
         )
-        der_data = encode_to_der(rr_msg)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        pki_msg = de_and_encode_pkimessage(rr_msg)
 
         # Check that the request header is correct, but cannot use built in method. Not all values are set.
         sender = rfc9480.GeneralName().setComponentByName("rfc822Name", self.example_sender)
@@ -100,5 +97,4 @@ class TestBuildCmpRevRequest(unittest.TestCase):
         """
         cert, key = certbuildutils.build_certificate(serial_number=5000977898927223441, ski=True)
         pkiM = build_cmp_revoke_request(cert=cert, exclude_fields=None)
-        pki_msg, rest = decoder.decode(encode_to_der(pkiM), asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        _ = de_and_encode_pkimessage(pkiM)

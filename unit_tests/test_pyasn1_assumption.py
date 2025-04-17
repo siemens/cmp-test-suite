@@ -5,11 +5,13 @@
 import unittest
 
 import pyasn1
-from pyasn1.codec.der import encoder
+from pyasn1.codec.der import encoder, decoder
 from pyasn1.type import base, char, tag, univ, useful
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc9480, rfc9481
 from resources.asn1utils import encode_to_der
+from resources.certbuildutils import prepare_cert_template
 from resources.envdatautils import prepare_encrypted_content_info
+from resources.keyutils import generate_key
 
 
 class TestPyasn1Assumptions(unittest.TestCase):
@@ -142,7 +144,15 @@ class TestPyasn1Assumptions(unittest.TestCase):
         with self.assertRaises(pyasn1.error.PyAsn1Error):
             encoder.encode(enc_key)
 
-
-
-
-
+    def test_show_null_dn_cannot_be_set(self):
+        """
+        GIVEN a certificate template with a Null DN.
+        WHEN encoding the certificate template,
+        THEN the Null DN is not set.
+        """
+        key = generate_key("rsa")
+        cert_template = prepare_cert_template(key, subject="Null-DN")
+        self.assertEqual(cert_template["subject"].isValue, True)
+        der_data = encoder.encode(cert_template)
+        dec_cert_template, _ = decoder.decode(der_data, asn1Spec=rfc9480.CertTemplate())
+        self.assertEqual(dec_cert_template["subject"].isValue, False)

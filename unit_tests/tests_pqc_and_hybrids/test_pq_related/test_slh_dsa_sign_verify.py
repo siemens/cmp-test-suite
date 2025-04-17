@@ -5,8 +5,11 @@
 import os
 import unittest
 
-from pq_logic.pq_key_factory import PQKeyFactory
+from cryptography.exceptions import InvalidSignature
+
+from pq_logic.keys.pq_key_factory import PQKeyFactory
 from resources.cryptoutils import sign_data, verify_signature
+from resources.utils import manipulate_first_byte
 
 
 class TestSLHDSASignAndVerify(unittest.TestCase):
@@ -64,3 +67,28 @@ class TestSLHDSASignAndVerify(unittest.TestCase):
                          data=self.data,
                          public_key=self.slh_dsa_key.public_key(),
                          hash_alg="shake256")
+
+    def test_invalid_signature(self):
+        """
+        GIVEN a SLH-DSA key.
+        WHEN an invalid signature is provided.
+        THEN the signature verification should fail.
+        """
+        signature = sign_data(self.data, self.slh_dsa_key)
+        signature = manipulate_first_byte(signature)
+        with self.assertRaises(InvalidSignature):
+            verify_signature(signature=signature, data=self.data,
+                             public_key=self.slh_dsa_key.public_key())
+
+
+    def test_invalid_signature_with_shake256(self):
+        """
+        GIVEN a SLH-DSA key and data signed with SHAKE256.
+        WHEN an invalid signature is provided.
+        THEN the signature verification should fail.
+        """
+        signature = sign_data(self.data, self.slh_dsa_key, hash_alg="shake256")
+        signature = manipulate_first_byte(signature)
+        with self.assertRaises(InvalidSignature):
+            verify_signature(signature=signature, data=self.data,
+                             public_key=self.slh_dsa_key.public_key(), hash_alg="shake256")

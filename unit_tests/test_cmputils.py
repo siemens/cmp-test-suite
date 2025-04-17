@@ -139,11 +139,10 @@ class TestCmpUtils(unittest.TestCase):
         THEN the CR is correctly built.
         """
         csr = self.csr_object
-        with open("data/keys/private-key-rsa.pem", "rb") as key_file:
-            raw_key = key_file.read()
-
+        raw_key = open("data/keys/private-key-rsa.pem", "rb").read()
         private_key = load_pem_private_key(raw_key, password=None)
         pki_message = cmputils.build_cr_from_csr(csr, private_key, hash_alg="sha256", cert_req_id=1945)
+        # print(pki_message.prettyPrint())
 
         self.assertEqual("cr", pki_message["body"].getName())
         cert_req_id = get_asn1_value(pki_message, "body.cr/0.certReq.certReqId")

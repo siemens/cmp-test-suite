@@ -11,7 +11,13 @@ Documentation     An example resource file with configuration options that are m
 # the dev-environment always runs the latest version
 # qa - the stable version
 ${CA_CMP_URL}    https://broker.sdo-qa.siemens.cloud/.well-known/cmp
-#${CA_CMP_URL}    https://broker.sdo-dev.siemens.cloud/.well-known/cmp
+${CA_BASE_URL}   https://broker.sdo-qa.siemens.cloud/.well-known/cmp
+
+# The initial issued certificate and key for running the tests.
+${ISSUED_KEY}    ${None}
+${ISSUED_CERT}   ${None}
+${INIT_SUFFIX}   ${None}
+
 
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CN=CloudCA-Integration-Test-User
@@ -22,12 +28,6 @@ ${DEFAULT_X509NAME}    CN=CloudCA-Integration-Test-User
 
 # Implicit confirmation allowed.
 ${ALLOW_IMPLICIT_CONFIRM}  ${True}
-${DISALLOW_CERT_CONF}   ${False}
-${ALLOW_P10CR}    ${True}
-${ALLOW_CR}    ${True}
-${ALLOW_REVIVE_REQUEST}    ${False}
-${ALLOW_REVOCATION_REQUEST}    ${False}
-${ALLOW_BATCH_MESSAGES}   ${True}
 
 # then send always the ${DEFAULT_X509NAME} inside the `CertTemplate` and csr
 ${ALLOW_ONLY_ONE_SENDER}   ${True}
@@ -76,11 +76,26 @@ ${LWCMP}   ${True}
 ${ALLOW_NULL_INSTEAD_OF_ABSENT}   ${False}
 
 # Needs to be the same for cloudpki, so that the server does allow the request.
+##### About Algorithms
 ${DEFAULT_KEY_LENGTH}    2048
 ${DEFAULT_ALGORITHM}    rsa
 ${DEFAULT_ECC_CURVE}   secp256r1
 ${DEFAULT_MAC_ALGORITHM}   password_based_mac
 ${DEFAULT_KGA_ALGORITHM}   rsa
+${DEFAULT_PQ_SIG_ALGORITHM}   ml-dsa-44
+${DEFAULT_PQ_KEM_ALGORITHM}   ml-kem-512
+${DEFAULT_KEY_AGREEMENT_ALG}   x25519
+${DEFAULT_KEY_ENCIPHERMENT_ALG}   ml-kem-768
+${DEFAULT_ML_DSA_ALG}    ml-dsa-87
+${DEFAULT_ML_KEM_ALG}    ml-kem-768
+
+##### Extra Issuing Logic
+${CA_RSA_ENCR_CERT}    ${None}
+${CA_X25519_CERT}   ${None}
+${CA_X448_CERT}     ${None}
+${CA_ECC_CERT}      ${None}
+${CA_HYBRID_KEM_CERT}   ${None}
+${CA_KEM_CERT}     ${None}
 
 ##### About CertTemplate
 ${ALLOWED_ALGORITHM}   ed25519,rsa,ecc,ed448,x25519,x448,dsa
@@ -90,7 +105,7 @@ ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
 ##### Section 3
 #Indicating if the PKIFailInfo must be set correctly.
-${FAILINFO_MUST_BE_PRESENT}=    True
+${FAILINFO_MUST_BE_CORRECT}=    True
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 
@@ -123,11 +138,8 @@ ${ALLOW_SUPPORT_MESSAGES}   ${True}
 ${CRL_FILEPATH}    ${None}
 ${CRL_CERT_IDP}  ${False}
 
-
 ${OLD_ROOT_CERT}   ${None}
 ${CERT_PROFILE}    ${None}
-
-
 
 # Sets the allowed time interval between request and response to 300 seconds.
 ${ALLOWED_TIME_INTERVAL}   ${300}
@@ -155,26 +167,22 @@ ${OTHER_TRUSTED_PKI_CERT}    ${None}
 # that another trusted PKI Management Entity can revoke a certificate.
 ${RR_CERT_FOR_TRUSTED}   ${None}
 
+# Relevant for CRR requests.
+${TRUSTED_CA_CERT}      ${None}
+${TRUSTED_CA_KEY}       ${None}
+${TRUSTED_CA_KEY_PASSWORD}   ${None}
+${TRUSTED_CA_DIR}            ${None}
 
+# Hybrid Endpoints
 
-
-##### PQ-variables
-
-${ALLOW_PQ_SIG_TESTS}   ${True}
-${ALLOW_KEM_TESTS}   ${False}
-
-#### Keys
-
-${DEFAULT_ML_KEM_KEY}    ml-kem-1024
-${DEFAULT_ML_DSA_KEY}    ml-dsa-87
-
-#### Compute
-
-${DEFAULT_KEM_KDF}    kdf3
-${DEFAULT_KDF_HASH_ALG}    sha256
-${DEFAULT_SLH_DSA_PRE_HASH_ALG}    sha256
-
-#### Issuing
-
-${KEM_CERT_FILE_PATH}    ${None}
+${PQ_ISSUING_SUFFIX}    ${None}
+${URI_MULTIPLE_AUTH}   ${None}
+${ISSUING_SUFFIX}    ${None}
+${COMPOSITE_URL_PREFIX}    ${None}
+${CATALYST_SIGNATURE}    ${None}
+${SUN_HYBRID_SUFFIX}    ${None}
+${CHAMELEON_SUFFIX}    ${None}
+${RELATED_CERT_SUFFIX}    ${None}
+${MULTI_AUTH_SUFFIX}    ${None}
+${CERT_DISCOVERY_SUFFIX}    ${None}
 

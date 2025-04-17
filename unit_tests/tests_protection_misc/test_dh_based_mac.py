@@ -4,15 +4,15 @@
 
 import unittest
 
-from Crypto.Hash import KMAC256
 from resources.cmputils import build_ir_from_key
+from resources.cryptoutils import compute_kmac
 from resources.keyutils import load_private_key_from_file
 from resources.protectionutils import (
     compute_dh_based_mac_from_alg_id,
-    prepare_dh_based_mac_alg_id,
     protect_pkimessage,
     verify_pkimessage_protection,
 )
+from resources.prepare_alg_ids import prepare_dh_based_mac_alg_id
 
 
 class TestDHBasedMAC(unittest.TestCase):
@@ -43,7 +43,7 @@ class TestDHBasedMAC(unittest.TestCase):
         with self.assertRaises(ValueError):
             # to prove that the key needs to be extended.
             too_short_key = b"key"
-            KMAC256.new(key=too_short_key, data=self.data, mac_len=32, custom=b"")
+            compute_kmac(hash_alg="shake256", key=too_short_key, data=self.data)
 
         alg_id = prepare_dh_based_mac_alg_id(hash_alg="sha1", mac_alg="kmac")
         compute_dh_based_mac_from_alg_id(data=self.data, shared_secret=self.dhmac_ss, alg_id=alg_id)

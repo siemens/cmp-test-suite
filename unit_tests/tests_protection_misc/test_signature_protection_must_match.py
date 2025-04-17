@@ -41,7 +41,7 @@ class TestSignatureProtectionMustMatch(unittest.TestCase):
         cert2, key2 = build_certificate(key_alg="ec")
         pki_response_prot = protect_pkimessage(self.pki_response, cert=cert, private_key=key, protection="signature")
         pki_conf_prot = protect_pkimessage(
-            self.pki_conf, cert=cert2, private_key=key2, protection="signature", exclude_cert=True
+            self.pki_conf, cert=cert2, private_key=key2, protection="signature", exclude_certs=True
         )
         pki_polling_prot = protect_pkimessage(self.pki_polling, cert=cert, private_key=key, protection="signature")
         extra_certs = prepare_extra_certs([cert])
@@ -60,7 +60,7 @@ class TestSignatureProtectionMustMatch(unittest.TestCase):
         cert2, key2 = build_certificate(key_alg="ec")
         pki_response_prot = protect_pkimessage(self.pki_response, cert=cert, private_key=key, protection="signature")
         pki_conf_prot = protect_pkimessage(
-            self.pki_conf, cert=cert, private_key=key, protection="signature", exclude_cert=True
+            self.pki_conf, cert=cert, private_key=key, protection="signature", exclude_certs=True
         )
         pki_polling_prot = protect_pkimessage(self.pki_polling, cert=cert2, private_key=key2, protection="signature")
         extra_certs = prepare_extra_certs([cert])

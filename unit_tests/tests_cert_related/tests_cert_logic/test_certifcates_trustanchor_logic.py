@@ -90,6 +90,7 @@ class TestCertAndValidateLogic(unittest.TestCase):
             trustanchors=self.path_to_anchors,
             crl_check=False,
             verbose=False,
+            key_usages="keyCertSign, cRLSign",
         )
 
 

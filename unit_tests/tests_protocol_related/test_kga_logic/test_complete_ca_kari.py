@@ -23,7 +23,7 @@ from resources.envdatautils import (
     prepare_mqv_user_keying_material,
 )
 from resources.keyutils import generate_key, load_private_key_from_file
-from resources.typingutils import ECDHPrivKeyTypes, ECDHPubKeyTypes
+from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 from resources.utils import load_and_decode_pem_file
 
 from unit_tests.prepare_ca_response import build_complete_envelope_data_ca_msg
@@ -52,16 +52,16 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
 
         # Load server's X25519 key and certificate
         self.server_x25519_key = load_private_key_from_file(
-            "data/keys/server-key-x25519.pem", key_type="x25519"
+            "data/keys/private-key-x25519.pem"
         )
         self.server_x25519_cert = parse_certificate(
             utils.load_and_decode_pem_file("data/unittest/cmp_prot_kari_x25519.pem")
         )
 
-    def _prepare_kari(self, ee_pub_key: ECDHPubKeyTypes,
+    def _prepare_kari(self, ee_pub_key: ECDHPublicKey,
                       key_agreement_oid: univ.ObjectIdentifier,
                       exchange_cert: rfc9480.CMPCertificate,
-                      server_private_key: ECDHPrivKeyTypes):
+                      server_private_key: ECDHPrivateKey):
         """Prepare a KeyAgreeRecipientInfo object for testing.
 
         :param ee_pub_key: The end-entity's public key.
@@ -73,13 +73,15 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
         ecc_cms_info = encoder.encode(
             prepare_ecc_cms_shared_info(
                 key_wrap_oid=rfc9481.id_aes256_wrap,
-                entity_u_info=None,
+                ukm=None,
                 supp_pub_info=32
             )
         )
 
         shared_secret = perform_ecdh(server_private_key, ee_pub_key)
-        k = compute_ansi_x9_63_kdf(shared_secret, 32, ecc_cms_info)
+        k = compute_ansi_x9_63_kdf(shared_secret, 32,
+                                   other_info=ecc_cms_info,
+                                   use_version_2=True)
         encrypted_key = aes_key_wrap(
             key_to_wrap=self.content_encryption_key,
             wrapping_key=k
@@ -91,7 +93,7 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
             cmp_cert=exchange_cert,
             encrypted_key=encrypted_key,
             key_agreement_oid=key_agreement_oid,
-            ecc_cms_info=ecc_cms_info,
+            key_wrap_oid=rfc9481.id_aes256_wrap,
         )
 
         recip_info = rfc5652.RecipientInfo()
@@ -156,7 +158,7 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
         )
 
         # Client's X25519 private key requesting a new key
-        ee_key = load_private_key_from_file("data/keys/client-key-x25519.pem", key_type="x25519")
+        ee_key = load_private_key_from_file("data/keys/client-key-x25519.pem")
         ee_pub_key = ee_key.public_key()
 
         recip_info = self._prepare_kari(
@@ -215,7 +217,7 @@ class TestCAMessageWithEnvelopeDataKARI(unittest.TestCase):
             mqv_der=mqv_ukm,
             private_key=ee_key,
             hash_alg="sha256",
-            length=32,
+            key_wrap_oid=rfc9481.id_aes256_wrap,
         )
         encrypted_key = aes_key_wrap(
             wrapping_key=k,

@@ -10,37 +10,41 @@ Documentation     An example resource file with configuration options that are m
 *** Variables ***
 # the dev-environment always runs the latest version
 # qa - the stable version
+${CA_BASE_URL}   http://127.0.0.1:5000/
 ${CA_CMP_URL}    http://127.0.0.1:5000/issuing
+# the other URL is are down below.
 #${CA_CMP_URL}    https://broker.sdo-dev.siemens.cloud/.well-known/cmp
+
+# The initial issued certificate and key for running the tests.
+${ISSUED_KEY}    ${None}
+${ISSUED_CERT}   ${None}
+${INIT_SUFFIX}   issuing
+
 
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CN=CloudCA-Integration-Test-User
 ${RECIPIENT}           CN=CloudPKI-Integration-Test
 ${DEFAULT_X509NAME}    CN=CloudCA-Integration-Test-User
+# either signature or an MAC algorithm.
+${DEFAULT_PROTECTION}   signature
 
 ##### About Issuing:
 
 # Implicit confirmation allowed.
 ${ALLOW_IMPLICIT_CONFIRM}  ${True}
-${DISALLOW_CERT_CONF}   ${False}
-${ALLOW_P10CR}    ${True}
-${ALLOW_CR}    ${True}
-${ALLOW_REVIVE_REQUEST}    ${False}
-${ALLOW_REVOCATION_REQUEST}    ${False}
-${ALLOW_BATCH_MESSAGES}   ${True}
 
 # then send always the ${DEFAULT_X509NAME} inside the `CertTemplate` and csr
 ${ALLOW_ONLY_ONE_SENDER}   ${True}
 # for test cases are only the same keys can be used to save resources.
 # TODO implement have a list maybe called burned_keys and send each time a new one.
-${ALLOW_IR_SAME_KEY}       ${True}
+${ALLOW_IR_SAME_KEY}       ${False}
 # Could be used to always load the same PKIMessage structure and patch it during testing.
 # TODO implement a one dataclass for the PKIMessage to always patch the same message if allowed,
 # to have some lax test settings and save as much resources as possible.
 ${IRELEVANT_messageTime}    ${FALSE}
 # Currently does not support strict validation on it.
 # MUST be used but if not a strict setting could be ignored.
-${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}   ${False}
+${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}   ${True}
 
 ##### Security
 # If only enc keys are allowed:
@@ -66,7 +70,7 @@ ${EXTENDED_KEY_USAGE_STRICTNESS}   LAX
 # As defined by Rfc9383 Section 1.2
 ${KEY_USAGE_STRICTNESS}   LAX
 # Configuration for strict mode.
-${STRICT}   ${False}
+${STRICT}   ${True}
 # Test the LWCMP version.
 ${LWCMP}   ${True}
 
@@ -75,12 +79,26 @@ ${LWCMP}   ${True}
 # to use NULL instead of absent AlgorithmIdentifier `parameters`
 ${ALLOW_NULL_INSTEAD_OF_ABSENT}   ${False}
 
-# Needs to be the same for cloudpki, so that the server does allow the request.
+##### About Algorithms
 ${DEFAULT_KEY_LENGTH}    2048
 ${DEFAULT_ALGORITHM}    rsa
 ${DEFAULT_ECC_CURVE}   secp256r1
 ${DEFAULT_MAC_ALGORITHM}   password_based_mac
 ${DEFAULT_KGA_ALGORITHM}   rsa
+${DEFAULT_PQ_SIG_ALGORITHM}   ml-dsa-44
+${DEFAULT_PQ_KEM_ALGORITHM}   ml-kem-512
+${DEFAULT_KEY_AGREEMENT_ALG}   x25519
+${DEFAULT_KEY_ENCIPHERMENT_ALG}   ml-kem-768
+${DEFAULT_ML_DSA_ALG}    ml-dsa-87
+${DEFAULT_ML_KEM_ALG}    ml-kem-768
+
+##### Extra Issuing Logic
+${CA_RSA_ENCR_CERT}    data/unittest/ca_encr_cert_rsa.pem
+${CA_X25519_CERT}   data/unittest/ca_encr_cert_x25519.pem
+${CA_X448_CERT}     data/unittest/ca_encr_cert_x448.pem
+${CA_ECC_CERT}      data/unittest/ca_encr_cert_ecc.pem
+${CA_HYBRID_KEM_CERT}   data/unittest/ca_encr_cert_xwing.pem
+${CA_KEM_CERT}     data/unittest/ca_encr_cert_ml_kem_768.pem
 
 ##### About CertTemplate
 ${ALLOWED_ALGORITHM}   ed25519,rsa,ecc,ed448,x25519,x448,dsa
@@ -90,7 +108,7 @@ ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
 ##### Section 3
 #Indicating if the PKIFailInfo must be set correctly.
-${FAILINFO_MUST_BE_PRESENT}=    False
+${FAILINFO_MUST_BE_CORRECT}   ${True}
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 
@@ -99,11 +117,11 @@ ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 # using P10CR because Header checks are body-independent and are only done
 # with either CR or P10CR.
 ${ALLOW_P10CR_MAC_BASED}   ${True}
-${ALLOW_CR_MAC_BASED}   ${False}
-${ALLOW_IR_MAC_BASED}   ${False}
+${ALLOW_CR_MAC_BASED}   ${True}
+${ALLOW_IR_MAC_BASED}   ${True}
 ${ALLOW_KUR_SAME_KEY}    ${False}
 ${ALLOW_IR_SAME_KEY}   ${True}
-${LARGE_KEY_SIZE}    ${False}
+${LARGE_KEY_SIZE}    ${12800}
 ${ALLOW_CERT_CONF}    ${False}
 
 # Section 4.1.6
@@ -117,7 +135,7 @@ ${REVOCATION_STRICT_CHECK}    ${False}
 
 # Section 4.3
 # Whether a Support message can be used with a pre-shared-Secret.
-${ALLOW_MAC_PROTECTED_SUPPORT_MSG}   ${False}
+${ALLOW_MAC_PROTECTED_SUPPORT_MSG}   ${True}
 ${ALLOW_SUPPORT_MESSAGES}   ${True}
 # Can be used to check if the General Message CRL Update Retrieval works with the last CRL.
 ${CRL_FILEPATH}    ${None}
@@ -148,33 +166,70 @@ ${DEVICE_KEY}  ${None}
 
 # Section 5.2 and 5.3
 # Other trusted PKI and Key (None means not provided, so test are skipped).
-${OTHER_TRUSTED_PKI_KEY}    ${None}
-${OTHER_TRUSTED_PKI_CERT}    ${None}
+${OTHER_TRUSTED_PKI_KEY}    ./data/keys/private-key-ecdsa.pem
+${OTHER_TRUSTED_PKI_CERT}    ./data/trusted_ras/ra_cms_cert_ecdsa.pem
 
 # A certificate used to verify, if it is supported
 # that another trusted PKI Management Entity can revoke a certificate.
 ${RR_CERT_FOR_TRUSTED}   ${None}
 
-
-
-
-##### PQ-variables
-
-${ALLOW_PQ_SIG_TESTS}   ${True}
-${ALLOW_KEM_TESTS}   ${False}
-
-#### Keys
-
-${DEFAULT_ML_KEM_KEY}    ml-kem-1024
-${DEFAULT_ML_DSA_KEY}    ml-dsa-87
-
-#### Compute
-
-${DEFAULT_KEM_KDF}    kdf3
-${DEFAULT_KDF_HASH_ALG}    sha256
-${DEFAULT_SLH_DSA_PRE_HASH_ALG}    sha256
+# Relevant for CRR requests.
+${TRUSTED_CA_CERT}      ./data/trusted_ras/ra_cms_cert_ecdsa.pem
+${TRUSTED_CA_KEY}       ./data/keys/private-key-ecdsa.pem
+${TRUSTED_CA_KEY_PASSWORD}   11111
+${TRUSTED_CA_DIR}            data/unittest
 
 #### Issuing
 
-${KEM_CERT_FILE_PATH}    ${None}
+# Allowed freshness for the BinaryTime in seconds.
+# Used to indicate the maximum time difference between the BinaryTime and the current time.
+${ALLOWED_FRESHNESS}   500
+
+# Hybrid Variables
+${DEFAULT_TRAD_ALG}    rsa
+${DEFAULT_PQ_SIG_ALG}   ml-dsa-44
+
+# Hybrid Endpoints
+
+${INIT_SUFFIX}   issuing
+${PQ_ISSUING_SUFFIX}   issuing
+${URI_MULTIPLE_AUTH}   ${None}
+${ISSUING_SUFFIX}   issuing
+${COMPOSITE_URL_PREFIX}   issuing
+${CATALYST_ISSUING}  catalyst-issuing
+${CATALYST_SIGNATURE}   catalyst-sig
+${SUN_HYBRID_SUFFIX}   sun-hybrid
+${CHAMELEON_SUFFIX}   chameleon
+${RELATED_CERT_SUFFIX}   related-Cert
+${MULTI_AUTH_SUFFIX}   multi-auth
+${CERT_DISCOVERY_SUFFIX}   cert-discovery
+
+
+# CMP and LwCMP certificates and keys
+${UPDATED_CERT}    ${None}
+${UPDATED_KEY}     ${None}
+${DSA_KEY}         ${None}
+${DSA_CERT}        ${None}
+
+
+# Hybrid Certificates and Keys
+${ISSUED_KEY}   ${None}
+${ISSUED_CERT}   ${None}
+${COMPOSITE_KEM_KEY}   ${None}
+${COMPOSITE_KEM_CERT}   ${None}
+${REVOKED_COMP_KEM_KEY}   ${None}
+${REVOKED_COMP_KEM_CERT}   ${None}
+${COMPOSITE_KEY}   ${None}
+${COMPOSITE_CERT}   ${None}
+${REVOKED_COMP_KEY}   ${None}
+${REVOKED_COMP_CERT}   ${None}
+${UPDATED_COMP_KEY}   ${None}
+${UPDATED_COMP_CERT}   ${None}
+${CHAM_KEY1}   ${None}
+${CHAM_KEY2}   ${None}
+${CHAMELEON_CERT}   ${None}
+${RELATED_CERT}   ${None}
+${RELATED_KEY}   ${None}
+${RELATED_CERT_SEC}   ${None}
+${RELATED_KEY_SEC}   ${None}
 

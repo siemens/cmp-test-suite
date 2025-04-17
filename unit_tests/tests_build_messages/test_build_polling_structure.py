@@ -12,6 +12,7 @@ from resources.certbuildutils import generate_certificate, generate_signed_csr
 from resources.checkutils import validate_transaction_id
 from resources.cmputils import build_p10cr_from_csr, build_polling_request, build_polling_response, parse_csr
 from resources.utils import decode_pem_string
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
 def _patch_recip_nonce(msg: rfc9480.PKIMessage):
@@ -42,9 +43,7 @@ class TestBuildPollingStructures(unittest.TestCase):
         THEN the decoded message should match the original structure, with no remaining undecoded data.
         """
         pki_message = build_polling_response(sender=self.sender, recipient=self.recipient)
-        encoded_message = encoder.encode(pki_message)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        _ = de_and_encode_pkimessage(pki_message)
 
     def test_pollReq_encode_decode(self):
         """
@@ -53,9 +52,7 @@ class TestBuildPollingStructures(unittest.TestCase):
         THEN the decoded message should match the original structure, with no remaining undecoded data.
         """
         pki_message = build_polling_response(sender=self.sender, recipient=self.recipient)
-        encoded_message = encoder.encode(pki_message)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        _ = de_and_encode_pkimessage(pki_message)
 
     def test_pollRep_encode_decode_with_pki_message(self):
         """
@@ -69,9 +66,7 @@ class TestBuildPollingStructures(unittest.TestCase):
             req_pki_message=req_pki_message, sender=self.sender, recipient=self.recipient
         )
 
-        encoded_message = encoder.encode(pki_message)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(pki_message)
         validate_transaction_id(dec_pki_msg, req_pki_message)
 
     def test_pollReq_encode_decode_with_pki_message(self):
@@ -83,7 +78,5 @@ class TestBuildPollingStructures(unittest.TestCase):
         pki_message = build_polling_request(
             resp_pki_message=self.pki_message, sender=self.sender, recipient=self.recipient
         )
-        encoded_message = encoder.encode(pki_message)
-        dec_pki_msg, rest = decoder.decode(encoded_message, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        dec_pki_msg = de_and_encode_pkimessage(pki_message)
         validate_transaction_id(dec_pki_msg, self.pki_message)

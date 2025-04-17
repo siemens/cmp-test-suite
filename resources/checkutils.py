@@ -10,9 +10,10 @@ certificate with the correct chain. Additionally, it checks for the presence and
 such as `caPubs`, based on the response body requirements.
 """
 
+import copy
 import datetime
 import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import pyasn1.error
 from cryptography.exceptions import InvalidSignature
@@ -32,6 +33,18 @@ from resources import (
     protectionutils,
     utils,
 )
+from resources.asn1_structures import PKIMessageTMP
+from resources.exceptions import (
+    BadAlg,
+    BadAsn1Data,
+    BadDataFormat,
+    BadMessageCheck,
+    BadRecipientNonce,
+    BadRequest,
+    BadSenderNonce,
+    BadTime,
+    CMPTestSuiteError,
+)
 from resources.oid_mapping import (
     get_hash_from_oid,
 )
@@ -40,13 +53,80 @@ from resources.oidutils import (
     MSG_SIG_ALG,
     RSA_SHA_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
+    id_KemBasedMac,
 )
 from resources.typingutils import Strint
 
 
+def check_if_response_contains_private_key(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP,
+    key_index: Strint = 0,
+) -> bool:
+    """Check if the `privateKey` field in the PKIMessage is present.
+
+    Arguments:
+    ---------
+        - `pki_message`: The PKIMessage structure to check.
+        - `key_index`: Index of the response within the PKIMessage body, to check. Defaults to `0`.
+
+    Returns:
+    -------
+        - True if the `privateKey` field is present; False otherwise.
+
+    Examples:
+    --------
+    | ${is_present} | Check If Response Contains Private Key | ${pki_message} |
+
+    """
+    der_data = encoder.encode(pki_message)
+    der_data2 = copy.deepcopy(der_data)
+    comp_message = decoder.decode(der_data2, asn1Spec=PKIMessageTMP())[0]
+
+    cert_response = cmputils.get_cert_response_from_pkimessage(comp_message, response_index=key_index)
+
+    if not cert_response["certifiedKeyPair"].isValue:
+        return False
+
+    return cert_response["certifiedKeyPair"]["privateKey"].isValue
+
+
+def check_if_response_contains_encrypted_cert(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP,
+    cert_index: Strint = 0,
+) -> bool:
+    """Check if the `certOrEncCert` field in the PKIMessage is present and contains an encrypted certificate.
+
+    Arguments:
+    ---------
+        - `pki_message`: The PKIMessage structure to check.
+        - `cert_index`: Index of the response within the PKIMessage body, to check. Defaults to `0`.
+
+    Returns:
+    -------
+        - True if the `certOrEncCert` field is present and contains an encrypted certificate; False otherwise.
+
+    Examples:
+    --------
+    | ${is_present} | Check If Response Contains Encrypted Cert | ${pki_message} |
+
+    """
+    der_data = encoder.encode(pki_message)
+    der_data2 = copy.deepcopy(der_data)
+    comp_message = decoder.decode(der_data2, asn1Spec=PKIMessageTMP())[0]
+
+    cert_response = cmputils.get_cert_response_from_pkimessage(comp_message, response_index=cert_index)
+    if not cert_response["certifiedKeyPair"].isValue:
+        return False
+    if not cert_response["certifiedKeyPair"]["certOrEncCert"].isValue:
+        return False
+
+    # MUST be checked this way.
+    return cert_response["certifiedKeyPair"]["certOrEncCert"].getName() == "encryptedCert"
+
+
 @keyword(name="Validate certifiedKeyPair Structure")
 def validate_certified_key_pair_structure(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, local_key_gen: bool = True, response_index: Strint = 0
+    pki_message: PKIMessageTMP, local_key_gen: bool = True, response_index: Strint = 0
 ):
     """Check the version field in the PKIMessage when the `certifiedKeyPair` and `EnvelopedData` structures are used.
 
@@ -86,13 +166,14 @@ def validate_certified_key_pair_structure(  # noqa D417 undocumented-param
         raise ValueError("The `privateKey` MUST be present")
 
     if not local_key_gen:
-        if cert_key_pair["privateKey"].getName() == "envelopedData":
-            if version != 3:
-                raise ValueError(
-                    f"The `EnvelopedData` data structure is used, but version != 3. Got Version: {version}"
-                )
-        else:
-            logging.info("Supposed to use the `EnvelopedData` data structure, for `privateKey`")
+        if cert_key_pair["privateKey"].isValue:
+            if cert_key_pair["privateKey"].getName() == "envelopedData":
+                if version != 3:
+                    raise ValueError(
+                        f"The `EnvelopedData` data structure is used, but version != 3. Got Version: {version}"
+                    )
+            else:
+                logging.info("Supposed to use the `EnvelopedData` data structure, for `privateKey`")
 
     if cert_key_pair["certOrEncCert"]["encryptedCert"].isValue:
         if cert_key_pair["certOrEncCert"]["encryptedCert"].getName() == "envelopedData":
@@ -106,7 +187,7 @@ def validate_certified_key_pair_structure(  # noqa D417 undocumented-param
 
 @keyword(name="Validate CA Message caPubs Field")
 def validate_ca_msg_ca_pubs_field(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     trustanchors: str = "data/trustanchors",
     verbose: bool = True,
     response_index: Strint = 0,
@@ -175,9 +256,7 @@ def validate_ca_msg_ca_pubs_field(  # noqa D417 undocumented-param
         # certificate REQUIRED
         # -- MUST be present when certifiedKeyPair is present
         # -- MUST contain the newly enrolled X.509 certificate. NOTE: oob! for this Test-Suite
-        asn1cert = asn1utils.get_asn1_value(certified_key_pair, "certOrEncCert")
-
-        if not asn1cert.isValue:
+        if not certified_key_pair["certOrEncCert"].isValue:
             raise ValueError("`certOrEncCert` must be present, if `certifiedKeyPair` field is present.")
 
         asn1cert = cmputils.get_cert_from_pkimessage(pki_message)
@@ -197,7 +276,6 @@ def validate_ca_msg_ca_pubs_field(  # noqa D417 undocumented-param
             # -- MAY be used if the certifiedKeyPair field is present
             # -- If used, it MUST contain only a trust anchor, e.g., root
             # -- certificate, of the certificate contained in certOrEncCert.
-
             ca_pubs = list(pki_body["caPubs"])
             certutils.certificates_are_trustanchors(
                 certs=ca_pubs, trustanchors=trustanchors, verbose=verbose, allow_os_store=allow_os_store
@@ -225,7 +303,7 @@ def validate_ca_msg_ca_pubs_field(  # noqa D417 undocumented-param
 
 
 def check_is_protection_present(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     must_be_protected: bool = False,
     lwcmp: bool = False,
 ) -> bool:
@@ -248,8 +326,9 @@ def check_is_protection_present(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If protection is required but missing.
-        - `ValueError`: If only one of the fields (`protectionAlg` or `protection`) is set, causing an inconsistency.
+        - `BadMessageCheck`: If protection is required but missing.
+        - `BadMessageCheck`: If only one of the fields (`protectionAlg` or `protection`) is set,\
+         causing an inconsistency.
 
     Examples:
     --------
@@ -260,14 +339,14 @@ def check_is_protection_present(  # noqa D417 undocumented-param
     if not pki_message["protection"].isValue and not pki_message["header"]["protectionAlg"].isValue:
         # Protection is recommended but not required, according to RFC 9480 section 3.1.
         if must_be_protected:
-            raise ValueError("PKIMessage is not protected!")
+            raise BadMessageCheck("The `PKIMessage` is not protected!")
         return False
 
     if pki_message["protection"].isValue and not pki_message["header"]["protectionAlg"].isValue:
-        raise ValueError("The PKIMessage has a protection value but no OID for the protectionAlg field.")
+        raise BadMessageCheck("The PKIMessage has a protection value but no OID for the protectionAlg field.")
 
     if not pki_message["protection"].isValue and pki_message["header"]["protectionAlg"].isValue:
-        raise ValueError("The PKIMessage has an OID for the protectionAlg field but no protection value.")
+        raise BadMessageCheck("The PKIMessage has an OID for the protectionAlg field but no protection value.")
 
     if lwcmp:
         protectionutils.get_protection_type_from_pkimessage(pki_message, lwcmp)
@@ -277,7 +356,7 @@ def check_is_protection_present(  # noqa D417 undocumented-param
 
 @keyword(name="Check Sender CMP Protection")
 def check_sender_cmp_protection(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, must_be_protected=True, allow_failure=True
+    pki_message: PKIMessageTMP, must_be_protected=True, allow_failure=True
 ):
     """Check the validity of the sender field in the PKIMessage as specified in RFC 9483, Section 3.1.
 
@@ -297,23 +376,27 @@ def check_sender_cmp_protection(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the sender name does not match the CMP certificate subject DN in signature-based protection.
-        - `ValueError`: If the sender type is invalid for MAC-based protection.
-        - `ValueError`: If the `directoryName` choice does not contain a common name.
+        - `BadMessageCheck`: If the sender name does not match the CMP certificate subject DN \
+        in signature-based protection.
+        - `BadMessageCheck`: If the sender type is invalid for MAC-based protection.
+        - `BadMessageCheck`: If the `directoryName` choice does not contain a common name.
 
     Examples:
     --------
     | Check Sender CMP Protection | ${pki_message} | must_be_protected=True | allow_failure=False |
 
     """
-    sender_name: rfc9480.GeneralName = asn1utils.get_asn1_value(pki_message, query="header.sender")
-
+    sender_name = asn1utils.get_asn1_value(pki_message, query="header.sender")  # type: ignore
+    sender_name: rfc9480.GeneralName
     check_is_protection_present(pki_message=pki_message, must_be_protected=must_be_protected)
 
     if protectionutils.get_protection_type_from_pkimessage(pki_message) == "sig":
-        cert_name: rfc9480.Name = asn1utils.get_asn1_value(pki_message["extraCerts"][0], query="tbsCertificate.subject")
-
-        are_same_names = cmputils.compare_general_name_and_name(general_name=sender_name, name=cert_name)
+        cert_name = asn1utils.get_asn1_value(
+            pki_message["extraCerts"][0],  # type: ignore
+            query="tbsCertificate.subject",
+        )
+        cert_name: rfc9480.Name
+        are_same_names = compareutils.compare_general_name_and_name(general_name=sender_name, name=cert_name)
 
         if not are_same_names:
             if allow_failure:
@@ -327,7 +410,7 @@ def check_sender_cmp_protection(  # noqa D417 undocumented-param
             else:
                 n = sender_name.getName()
                 sender_name = f"{n}: {str(sender_name[n])}"  # type: ignore
-                raise ValueError(
+                raise BadMessageCheck(
                     f"The subjectDN should be the same as the sender Name. sender: {sender_name}, "
                     f"certificate: {cert_name.prettyPrint()}"
                 )
@@ -338,7 +421,7 @@ def check_sender_cmp_protection(  # noqa D417 undocumented-param
                 logging.info("For MAC protection the sender is supposed to be of type `directoryName`")
                 return
 
-            raise ValueError(
+            raise BadMessageCheck(
                 " For MAC-based protection, the CA "
                 "MUST use an identifier in the commonName field of the directoryName choice."
             )
@@ -347,7 +430,7 @@ def check_sender_cmp_protection(  # noqa D417 undocumented-param
 
         if not allow_failure:
             if cm_name is None:
-                raise ValueError(
+                raise BadMessageCheck(
                     " For MAC-based protection, the CA "
                     "MUST use an identifier in the commonName field of the directoryName choice."
                 )
@@ -355,13 +438,13 @@ def check_sender_cmp_protection(  # noqa D417 undocumented-param
         logging.info("sender for MAC-based protection is %s", cm_name)
 
 
-def _check_cmp_protection_for_extra_certs(pki_message: rfc9480.PKIMessage, allow_self_signed: bool) -> None:
+def _check_cmp_protection_for_extra_certs(pki_message: PKIMessageTMP, allow_self_signed: bool) -> None:
     """Verify the CMP protection in a `PKIMessage`, checking for the presence and ordering of extra certificates.
 
     Ensures that the `PKIMessage` has the required CMP protection certificate. As defined in Rfc9483
     self-signed certificates should be omitted, so, it is allowed to not include it.
 
-    :param pki_message: The `rfc9480.PKIMessage` containing the CMP protection data to verify.
+    :param pki_message: The `PKIMessageTMP` containing the CMP protection data to verify.
     :param allow_self_signed: If True, allows self-signed certificates in the absence of extra certificates.
     :raises ValueError: If the CMP protection certificate is missing and self-signed certificates are disallowed.
     """
@@ -394,7 +477,7 @@ def _check_cmp_protection_for_extra_certs(pki_message: rfc9480.PKIMessage, allow
 
 @keyword(name="Validate extraCerts")
 def validate_extra_certs(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     cert_number: Strint = 0,
     allow_self_signed: bool = False,
     eku_strictness: str = "LAX",
@@ -466,27 +549,29 @@ def validate_extra_certs(  # noqa D417 undocumented-param
         _check_cmp_protection_for_extra_certs(pki_message, allow_self_signed)
 
 
+# TODO ask alex to maybe always has to start with CN=
 
-def _verify_senderkid_for_mac(pki_message: rfc9480.PKIMessage, allow_mac_failure: bool = False) -> None:
+
+def _verify_senderkid_for_mac(pki_message: PKIMessageTMP, allow_mac_failure: bool = False) -> None:
     """Verify the `senderKID` and `sender` fields in a PKIMessage for MAC-based protection.
 
     :param pki_message: The PKIMessage object containing the `sender` and `senderKID` fields to verify.
     :param allow_mac_failure: Boolean flag to allow logging a warning instead of raising an error
                               when a mismatch or issue is detected. Defaults to `False`.
-    :raises ValueError: If the `sender` field is missing, not of type `directoryName`,
+    :raises BadMessageCheck: If the `sender` field is missing, not of type `directoryName`,
                         lacks a common name, or if the `senderKID` does not match the common name,
                         and `allow_mac_failure` is False.
 
     :return: None
     """
     if not pki_message["header"]["sender"].isValue:
-        raise ValueError("The sender field of PKIMessage must be present for MAC-based protection.")
+        raise BadMessageCheck("The sender field of PKIMessage must be present for MAC-based protection.")
 
     sender: rfc9480.GeneralName = pki_message["header"]["sender"]
 
     if sender.getName() != "directoryName":
         if not allow_mac_failure:
-            raise ValueError(
+            raise BadMessageCheck(
                 f"`Sender` field for MAC protection must be of type: `directoryName` but is `{sender.getName()}`"
             )
 
@@ -505,7 +590,7 @@ def _verify_senderkid_for_mac(pki_message: rfc9480.PKIMessage, allow_mac_failure
 
     if not cm_name:
         if not allow_mac_failure:
-            raise ValueError(f"PKIMessage `sender` did not contain a commonName: {sender_name.prettyPrint()}")
+            raise BadMessageCheck(f"PKIMessage `sender` did not contain a commonName: {sender_name.prettyPrint()}")
         logging.warning("PKIMessage `sender` did not contain a commonName: %s", sender_name.prettyPrint())
         return
 
@@ -513,7 +598,7 @@ def _verify_senderkid_for_mac(pki_message: rfc9480.PKIMessage, allow_mac_failure
     if sender_kid_name != cm_name:
         if not allow_mac_failure:
             sender_name_formatted = utils.get_openssl_name_notation(name=sender_name)
-            raise ValueError(
+            raise BadMessageCheck(
                 "PKIMessage Mismatch between the field `sender` and `senderKID` for MAC protection. "
                 f"Expected to be equal! senderKID is: {sender_kid} and sender is: {sender_name_formatted}"
             )
@@ -528,7 +613,7 @@ def _verify_senderkid_for_mac(pki_message: rfc9480.PKIMessage, allow_mac_failure
 
 @keyword(name="Validate senderKID For CMP Protection")
 def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     protection_cert: Optional[rfc9480.CMPCertificate] = None,
     must_be_protected: bool = False,
     allow_mac_failure: bool = False,
@@ -551,10 +636,10 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If protection is required but not present.
-        - `ValueError`: If the `senderKID` field is missing.
-        - `ValueError`: If the `senderKID` does not match the SubjectKeyIdentifier for signature-based protection.
-        - `ValueError`: If the `senderKID` does not match the `commonName` for MAC-based protection.
+        - `BadMessageCheck`: If protection is required but not present.
+        - `BadMessageCheck`: If the `senderKID` field is missing.
+        - `BadMessageCheck`: If the `senderKID` does not match the SubjectKeyIdentifier for signature-based protection.
+        - `BadMessageCheck`: If the `senderKID` does not match the `commonName` for MAC-based protection.
 
     Examples:
     --------
@@ -567,10 +652,10 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
         return
 
     if not is_protected and must_be_protected:
-        raise ValueError("PKIMessage protection is not present!")
+        raise BadMessageCheck("PKIMessage protection is not present!")
 
     if not pki_message["header"]["senderKID"].isValue:
-        raise ValueError("The senderKID field in the PKIHeader must be set if protection is applied!")
+        raise BadMessageCheck("The senderKID field in the PKIHeader must be set if protection is applied!")
 
     if protection_cert is None:
         protection_cert = pki_message["extraCerts"][0]
@@ -578,8 +663,8 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
     # Determine the type of protection
     protection_type = protectionutils.get_protection_type_from_pkimessage(pki_message)
     sender_kid = pki_message["header"]["senderKID"].asOctets()
-
-    if protection_type == "sig":
+    alg_name = protectionutils.get_protection_alg_name(pki_message)
+    if protection_type == "sig" or alg_name in ["dh_based_mac", "kem_based_mac"]:
         # For signature-based protection, the senderKID must match the certificate's SubjectKeyIdentifier
         subject_ski = certextractutils.get_subject_key_identifier(protection_cert)  # type: ignore
         if subject_ski is None:
@@ -588,14 +673,17 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
 
         if subject_ski != sender_kid:
             logging.info("senderKID: %s, CMP certificate ski: %s", sender_kid.hex(), subject_ski.hex())
-            raise ValueError("The SubjectKeyIdentifier of the CMP-protection certificate differs from the senderKID.")
+            raise BadMessageCheck(
+                "The SubjectKeyIdentifier of the CMP-protection certificate differs from the senderKID."
+            )
+
     else:
         _verify_senderkid_for_mac(pki_message=pki_message, allow_mac_failure=allow_mac_failure)
 
 
 @keyword(name="Validate PKIMessage Signature Protection")
 def check_pkimessage_signature_protection(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, allow_sender_failure: bool = True, check_sender_kid: bool = True
+    pki_message: PKIMessageTMP, allow_sender_failure: bool = True, check_sender_kid: bool = True
 ) -> None:
     """Validate the PKIMessage signature and ensure the sender and senderKID fields are correctly set.
 
@@ -615,10 +703,10 @@ def check_pkimessage_signature_protection(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: The signature is invalid.
-        - `ValueError`: The CMP-protection certificate is not correctly positioned as specified in RFC 9483.
-        - `ValueError`: The `extraCerts` field is missing or does not contain certificates.
-        - `ValueError`: The protection algorithm is not supported.
+        - `BadMessageCheck`: The signature is invalid.
+        - `BadMessageCheck`: The CMP-protection certificate is not correctly positioned as specified in RFC 9483.
+        - `BadMessageCheck`: The `extraCerts` field is missing or does not contain certificates.
+        - `BadAlg`: The protection algorithm is not supported.
 
     Examples:
     --------
@@ -635,10 +723,10 @@ def check_pkimessage_signature_protection(  # noqa D417 undocumented-param
     encoded: bytes = protectionutils.extract_protected_part(pki_message)
 
     if protection_type_oid not in MSG_SIG_ALG:
-        raise ValueError("PKIMessage is not signed by a known signature oid!")
+        raise BadAlg("PKIMessage is not signed by a known signature oid!")
 
     if not pki_message["extraCerts"].isValue:
-        raise ValueError("PKIMessage is does not contains certificates!")
+        raise BadMessageCheck("PKIMessage is does not contains certificates!")
 
     # check if values are correctly set.
     check_protection_alg_field(pki_message=pki_message, must_be_protected=True)
@@ -658,11 +746,11 @@ def check_pkimessage_signature_protection(  # noqa D417 undocumented-param
         return
     if index != -1:
         logging.warning("found the right Certificate at position: %s", str(index))
-        raise ValueError(
+        raise BadMessageCheck(
             "The first certificate must be the CMP-Protection certificate as specified in RFC 9483, Section 3.3."
         )
 
-    raise ValueError("CMP-Protection certificate was not present.")
+    raise BadMessageCheck("CMP-Protection certificate was not present.")
 
 
 def _prepare_indicies(extra_certs: List[rfc9480.CMPCertificate]) -> Dict[Tuple[str, int], int]:
@@ -697,7 +785,8 @@ def _get_cert_index(cert: rfc9480.CMPCertificate, cert_id_to_index: Dict[Tuple[s
     :raise KeyError: If the certificate is not found in the cert_id_to_index mapping.
     """
     subject = cert["tbsCertificate"]["subject"]
-    subject_name: str = utils.get_openssl_name_notation(subject)
+    subject_name = utils.get_openssl_name_notation(subject)  # type: ignore
+    subject_name: str
     serial_number = int(cert["tbsCertificate"]["serialNumber"])
     cert_id = (subject_name, serial_number)
     return cert_id_to_index[cert_id]
@@ -830,7 +919,7 @@ def check_protection_alg_conform_to_spki(
 
 @keyword(name="Validate protectionAlg Field")
 def check_protection_alg_field(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, expected_type: Optional[str] = None, must_be_protected: bool = True
+    pki_message: PKIMessageTMP, expected_type: Optional[str] = None, must_be_protected: bool = True
 ):
     """Check the `protectionAlg` field in the PKI message for consistency with rfc 9483 Section 3.2.
 
@@ -903,7 +992,7 @@ def check_protection_alg_field(  # noqa D417 undocumented-param
 
 
 @keyword(name="Check implicitconfirm In generalInfo")
-def check_implicitconfirm_in_generalinfo(pki_message: rfc9480.PKIMessage) -> None:  # noqa: D417 undocumented-param
+def check_implicitconfirm_in_generalinfo(pki_message: PKIMessageTMP) -> None:  # noqa: D417 undocumented-param
     """Check whether `implicitConfirm` is correctly set in the `generalInfo` field of the `pki_message`.
 
     `implicitConfirm` is only allowed for the message types: `ip`, `cp`, `kup`, `ir`, `cr`, `kur`, and `p10cr`.
@@ -941,15 +1030,18 @@ def check_implicitconfirm_in_generalinfo(pki_message: rfc9480.PKIMessage) -> Non
     if msg_type in {"ip", "cp", "kup"} or msg_type in {"ir", "cr", "kur", "p10cr"}:
         pass
     else:
-        raise ValueError(f"'implicitConfirm' is not allowed to be set for PKIBody type: {msg_type}")
+        raise BadRequest(f"'implicitConfirm' is not allowed to be set for PKIBody type: {msg_type}")
 
-    if implicit_confirm != encoder.encode(univ.Null("")):
+    # Both are NULL values, one sent over the wire; the other is set by the user.
+    # Either remove and say the user must always en- and decode the `PKIMessage` or `generalInfo`,
+    # or allow this behavior.
+    if implicit_confirm not in [univ.Null(""), b"\x05\x00"]:
         logging.warning("implicit_confirm value is: %s", implicit_confirm.prettyPrint())
-        raise ValueError("The 'implicitConfirm' value must be NULL!")
+        raise BadRequest("The 'implicitConfirm' value must be NULL!")
 
 
 @keyword(name="Check confirmWaitTime In generalInfo")
-def check_confirmwaittime_in_generalinfo(pki_message: rfc9480.PKIMessage) -> None:  # noqa D417 undocumented-param
+def check_confirmwaittime_in_generalinfo(pki_message: PKIMessageTMP) -> None:  # noqa D417 undocumented-param
     """Check if `confirmWaitTime` is correctly set, if set, in the GeneralInfo field of the `pki_message`.
 
     Verify that `confirmWaitTime` is properly set and validates its presence in relation
@@ -961,7 +1053,7 @@ def check_confirmwaittime_in_generalinfo(pki_message: rfc9480.PKIMessage) -> Non
 
     Raises:
     ------
-        - `ValueError`: If `confirmWaitTime` is present when `implicitConfirm` is also present,
+        - `BadRequest`: If `confirmWaitTime` is present when `implicitConfirm` is also present,
         - `ValueError`: If the `confirmWaitTime` value is invalid or absent when required.
 
 
@@ -984,10 +1076,13 @@ def check_confirmwaittime_in_generalinfo(pki_message: rfc9480.PKIMessage) -> Non
     )
 
     if confirm_wait_time is not None:
-        confirm_wait_time, rest = decoder.decode(confirm_wait_time, useful.GeneralizedTime())
+        try:
+            confirm_wait_time, rest = decoder.decode(confirm_wait_time, useful.GeneralizedTime())
+        except pyasn1.error.PyAsn1Error:
+            raise BadDataFormat("Can not correctly decode the confirmWaitTime.")  # pylint: disable=raise-missing-from
 
         if rest != b"":
-            raise ValueError("While decoding the confirmWaitTime was a remainder!")
+            raise BadAsn1Data("confirmWaitTime")
 
         time_obj = confirm_wait_time.asDateTime
         time_now = datetime.datetime.now(datetime.timezone.utc)
@@ -1002,14 +1097,14 @@ def check_confirmwaittime_in_generalinfo(pki_message: rfc9480.PKIMessage) -> Non
                 logging.info("The `confirmWaitTime` InfoTypeAndValue structure is recommended.")
 
         else:
-            raise ValueError(
+            raise BadRequest(
                 "The `confirmWaitTime` structure must not be present when `implicitConfirm` is present."
                 "See [RFC4210], Section 5.1.1.2."
             )
 
 
 @keyword(name="Check certProfile In generalInfo")
-def check_certprofile_in_generalinfo(pki_message: rfc9480.PKIMessage) -> None:  # noqa D417 undocumented-param
+def check_certprofile_in_generalinfo(pki_message: PKIMessageTMP) -> None:  # noqa D417 undocumented-param
     """Check if `certProfile` is correctly set in the generalInfo field of the `pki_message`.
 
     The `certProfile` field is optional and can only be present in messages of type `ir`, `cr`, `kur`, `p10cr`,
@@ -1036,13 +1131,13 @@ def check_certprofile_in_generalinfo(pki_message: rfc9480.PKIMessage) -> None:  
 
     if cert_req_template:
         if msg_type not in {"ir", "cr", "kur", "p10cr", "genm"}:
-            raise ValueError("`certProfile` should not be present!")
+            raise BadRequest("`certProfile` should not be present!")
 
     # other checks are not relevant.
 
 
 @keyword(name="Check generalInfo Field")
-def check_generalinfo_field(pki_message: rfc9480.PKIMessage) -> None:  # noqa D417 # undocumented-param
+def check_generalinfo_field(pki_message: PKIMessageTMP) -> None:  # noqa D417 # undocumented-param
     """Check the `implicitConfirm`, `confirmWaitTime` and `certProfile` in the GeneralInfo field of the `PKIMessage`.
 
     To ensure compliance with RFC 9483 3.1. General Description of the CMP Message Header.
@@ -1053,7 +1148,8 @@ def check_generalinfo_field(pki_message: rfc9480.PKIMessage) -> None:  # noqa D4
 
     Raises:
     ------
-    - `ValueError`: If `certProfile`, `confirmWaitTime`, `implicitConfirm` are incorrectly set.
+    - `BadRequest`: If `certProfile`, `confirmWaitTime`, `implicitConfirm` are incorrectly present.
+    - `ValueError`: If the values are incorrectly set.
 
     Examples:
     --------
@@ -1067,7 +1163,7 @@ def check_generalinfo_field(pki_message: rfc9480.PKIMessage) -> None:  # noqa D4
 
 @not_keyword
 def check_message_time_field(
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     allowed_interval: Optional[int] = None,
     request_time: Optional[datetime.datetime] = None,
 ):
@@ -1082,7 +1178,7 @@ def check_message_time_field(
                             and the `request_time` or current time. If `None`, the time difference check is skipped.
     :param request_time: The original request time to compare against the `messageTime`. If not provided, the current
                         UTC time is used. Defaults to `None`.
-    :raises ValueError: If the `messageTime` field is required but missing, or if the time difference exceeds
+    :raises BadTime: If the `messageTime` field is required but missing, or if the time difference exceeds
                        the allowed interval.
     """
     # PKI management entity: A non-EE PKI entity, i.e., an RA or a CA.
@@ -1093,27 +1189,28 @@ def check_message_time_field(
 
         if confirm_wait_time is not None:
             if not pki_message["header"]["messageTime"].isValue:
-                raise ValueError()
+                raise BadTime("The `messageTime` field must be present if `confirmWaitTime` is set!")
 
     if allowed_interval is not None:
-        msg_time: useful.GeneralizedTime = asn1utils.get_asn1_value(pki_message, query="header.messageTime")
+        msg_time = asn1utils.get_asn1_value(pki_message, query="header.messageTime")  # type: ignore
+        msg_time: useful.GeneralizedTime
         time_obj = msg_time.asDateTime
 
         if request_time is not None:
             time_diff = time_obj - request_time
             logging.info("time difference between request and response: %s", str(time_diff.seconds))
             if time_diff.seconds > allowed_interval:
-                raise ValueError(f"The request time difference is greater then: {allowed_interval} seconds.")
+                raise BadTime(f"The request time difference is greater then: {allowed_interval} seconds.")
         else:
             time_now = datetime.datetime.now(datetime.timezone.utc)
             time_dif = (time_now - time_obj).seconds
 
             if time_dif > allowed_interval:
-                raise ValueError(f"Response time difference is greater than: {allowed_interval} seconds.")
+                raise BadTime(f"Response time difference is greater than: {allowed_interval} seconds.")
 
 
 def validate_sender_and_recipient_nonce(  # noqa D417 undocumented-param
-    response: rfc9480.PKIMessage, request: rfc9480.PKIMessage, nonce_sec: Strint = 128
+    response: PKIMessageTMP, request: PKIMessageTMP, nonce_sec: Strint = 128
 ) -> None:
     """Check the sender and recipient nonce in the response and request messages.
 
@@ -1130,8 +1227,11 @@ def validate_sender_and_recipient_nonce(  # noqa D417 undocumented-param
 
     Raises:
     ------
-         - `ValueError`: If the `senderNonce` in the request does not match the `recipNonce` in the response.
-         - `ValueError`: if the `senderNonce` in the response does not meet the minimum security length.
+         - `BadRecipientNonce`: If the `recipNonce` is not set inside the response message.
+         - `BadSenderNonce`: If the `senderNonce` is not set inside the request message.
+         - `BadRecipientNonce`: If the `senderNonce` in the request does not match the `recipNonce` in the response.
+         - `BadSenderNonce`: if the `senderNonce` in the response does not meet the minimum security length.
+         - `BadRecipientNonce`: If the `recipNonce` in the response is shorter than the required security level.
 
     Examples:
     --------
@@ -1140,22 +1240,30 @@ def validate_sender_and_recipient_nonce(  # noqa D417 undocumented-param
 
     """
     if not response["header"]["recipNonce"].isValue:
-        raise ValueError("The `recipNonce` was not set inside the response message.")
+        raise BadRecipientNonce("The `recipNonce` was not set inside the response message.")
+
+    if not response["header"]["senderNonce"].isValue:
+        raise BadSenderNonce("The `senderNonce` was not set inside the request message.")
+
+    recip_nonce = response["header"]["recipNonce"].asOctets()
+    nonce_sec = max(128, convertutils.str_to_int(nonce_sec))
+    if len(bytearray(recip_nonce)) < (nonce_sec // 8):
+        raise BadRecipientNonce(f"The `recipNonce` in the response is shorter than the required {nonce_sec} bits.")
 
     sender_nonce = request["header"]["senderNonce"].asOctets()
     if sender_nonce != response["header"]["recipNonce"].asOctets():
-        raise ValueError("The senderNonce in the request does not match the recipNonce in the response.")
+        raise BadRecipientNonce("The `senderNonce` in the request does not match the `recipNonce` in the response.")
 
     recip_nonce = response["header"]["senderNonce"].asOctets()
 
     nonce_sec = max(128, convertutils.str_to_int(nonce_sec))
     if len(bytearray(recip_nonce)) < (nonce_sec // 8):
-        raise ValueError(f"The senderNonce in the response is shorter than the required {nonce_sec} bits.")
+        raise BadSenderNonce(f"The `senderNonce` in the response is shorter than the required {nonce_sec} bits.")
 
 
 @keyword(name="Validate transactionID")
 def validate_transaction_id(  # noqa D417 undocumented-param
-    response: rfc9480.PKIMessage, request: Optional[rfc9480.PKIMessage] = None
+    response: PKIMessageTMP, request: Optional[PKIMessageTMP] = None
 ):
     """Validate the `transactionID` in a PKIMessage according to Rfc 9483 Section 3.1.
 
@@ -1170,8 +1278,8 @@ def validate_transaction_id(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the `transactionID` in the first message is not 128 bits long.
-        - `ValueError`: If the `transactionID` does not match the one from the previous message.
+        - `BadRequest`: If the `transactionID` in the first message is not 128 bits long.
+        - `BadRequest`: If the `transactionID` does not match the one from the previous message.
 
     Examples:
     --------
@@ -1180,24 +1288,24 @@ def validate_transaction_id(  # noqa D417 undocumented-param
 
     """
     if not response["header"]["transactionID"].isValue:
-        raise ValueError("The `transactionID` was not set!")
+        raise BadDataFormat("The `transactionID` was not set!")
 
     transaction_id = response["header"]["transactionID"].asOctets()
 
     if len(transaction_id) != 16:
-        raise ValueError("The `transactionID` must be 128 bits long.")
+        raise BadRequest("The `transactionID` must be 128 bits long.")
 
     if request is not None:
         our_id = request["header"]["transactionID"].asOctets()
         if our_id != transaction_id:
-            raise ValueError(
+            raise BadRequest(
                 f"The response `transactionID` was: {transaction_id.hex()} != previous ID was: {our_id.hex()}"
             )
 
 
 def validate_sender_and_recipient(  # noqa D417 undocumented-param
-    response: rfc9480.PKIMessage,
-    request: rfc9480.PKIMessage,
+    response: PKIMessageTMP,
+    request: PKIMessageTMP,
     must_be_eq: bool = False,
 ):
     """Check if the sender and recipient related fields in the request and response messages match.
@@ -1242,8 +1350,8 @@ def validate_sender_and_recipient(  # noqa D417 undocumented-param
 
 @keyword(name="Validate PKIMessage Header")
 def validate_pkimessage_header(  # noqa D417 undocumented-param
-    pki_message_response: rfc9480.PKIMessage,
-    pki_message_request: Optional[rfc9480.PKIMessage] = None,
+    pki_message_response: PKIMessageTMP,
+    pki_message_request: Optional[PKIMessageTMP] = None,
     protection: bool = True,
     time_interval: Union[None, Strint] = 200,
     allow_failure_sender: bool = True,
@@ -1326,7 +1434,7 @@ def validate_pkimessage_header(  # noqa D417 undocumented-param
 
 @keyword(name="Check RP CMP Message Body")
 def check_rp_cmp_message_body(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, index: Strint = 0
+    pki_message: PKIMessageTMP, index: Strint = 0
 ) -> None:
     """Validate the content of an `rp` (Revocation Response) CMP message body according to Section 4.2 in RFC 9483.
 
@@ -1372,7 +1480,7 @@ def check_rp_cmp_message_body(  # noqa D417 undocumented-param
 
 @keyword(name="Validate certReqId")
 def validate_certReqId(  # noqa D417 undocumented-param pylint: disable=invalid-name
-    pki_message: rfc9480.PKIMessage, response_index: Strint = 0, used_p10cr: bool = False
+    pki_message: PKIMessageTMP, response_index: Strint = 0, used_p10cr: bool = False
 ):
     """Validate the `certReqId` field in a PKIMessage according to Rfc 9383 Section 4.
 
@@ -1410,7 +1518,7 @@ def validate_certReqId(  # noqa D417 undocumented-param pylint: disable=invalid-
 
 # TODO maybe support Polling or maybe auto generate Polling Request
 def validate_ca_message_body(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     local_key_gen: bool = True,
     trustanchors: str = "./data/trustanchors",
     used_p10cr: bool = False,
@@ -1461,8 +1569,8 @@ def validate_ca_message_body(  # noqa D417 undocumented-param
     """
     body_name = pki_message["body"].getName()
 
-    if body_name not in ["ip", "kup", "cp"]:
-        raise ValueError("Only supposed to be used on the `ip`, `kup` or `cp` PKIBody")
+    if body_name not in ["ip", "kup", "cp", "ccp"]:
+        raise ValueError("Only supposed to be used on the `ip`, `kup` `ccp` or `cp` PKIBody")
 
     response_size = len(pki_message["body"][body_name]["response"])
     if response_size != int(expected_size):
@@ -1513,9 +1621,9 @@ def validate_ca_message_body(  # noqa D417 undocumented-param
 
 @keyword(name="Validate PKI Confirmation Message")
 def validate_pki_confirmation_message(  # noqa D417 undocumented-param
-    pki_conf_msg: rfc9480.PKIMessage,
-    ca_message: rfc9480.PKIMessage,
-    request: Optional[rfc9480.PKIMessage] = None,
+    pki_conf_msg: PKIMessageTMP,
+    ca_message: PKIMessageTMP,
+    request: Optional[PKIMessageTMP] = None,
     allow_caching_certs: bool = True,
 ) -> None:
     """Validate the `pkiConf` body of a CMP PKIMessage.
@@ -1592,8 +1700,8 @@ def validate_pki_confirmation_message(  # noqa D417 undocumented-param
 
 @keyword(name="Check For grantedWithMods")
 def check_for_granted_with_mods(  # noqa D417 undocumented-param
-    pki_message_response: rfc9480.PKIMessage,
-    pki_message_request: rfc9480.PKIMessage,
+    pki_message_response: PKIMessageTMP,
+    pki_message_request: PKIMessageTMP,
     response_index: int = 0,
     include_fields: Optional[str] = None,
     exclude_fields: Optional[str] = None,
@@ -1664,7 +1772,7 @@ def check_for_granted_with_mods(  # noqa D417 undocumented-param
 
 
 def validate_ids_and_nonces_for_nested_response(  # noqa D417 undocumented-param
-    request: rfc9480.PKIMessage, response: rfc9480.PKIMessage
+    request: PKIMessageTMP, response: PKIMessageTMP
 ) -> None:
     """Validate transactionIDs and nonces for a nested PKIMessage response.
 
@@ -1726,11 +1834,17 @@ def validate_ids_and_nonces_for_nested_response(  # noqa D417 undocumented-param
             )
 
 
+def _is_unique(lst: List[bytes]) -> bool:
+    """Return True if all elements in lst are unique."""
+    return len(lst) == len(set(lst))
+
+
 def validate_nested_message_unique_nonces_and_ids(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     check_transaction_id: bool = True,
     check_sender_nonce: bool = True,
     check_recip_nonce: bool = True,
+    check_length: bool = False,
 ) -> None:
     """
     Validate that the nested message has unique nonces and IDs based on specified checks.
@@ -1754,44 +1868,289 @@ def validate_nested_message_unique_nonces_and_ids(  # noqa D417 undocumented-par
     asn1utils.asn1_must_have_values_set(pki_message, "header.senderNonce, header.transactionID")
     sender_nonce = pki_message["header"]["senderNonce"].asOctets()
     id_ = pki_message["header"]["transactionID"].asOctets()
+    nested_recip_nonces = []
     if not check_recip_nonce:
         if not pki_message["header"]["recipNonce"].isValue:
             logging.info("The `recipNonce` was not set for the nested `PKIMessage`.")
-            recip_nonce = None
         else:
             recip_nonce = pki_message["header"]["recipNonce"].asOctets()
+            nested_recip_nonces.append(recip_nonce)
     else:
         asn1utils.asn1_must_have_values_set(pki_message, "header.recipNonce")
         recip_nonce = pki_message["header"]["recipNonce"].asOctets()
+        nested_recip_nonces.append(recip_nonce)
 
-    ids = []
-    sender_nonces = []
-    recip_nonces = []
+    ids = [id_]
+    nested_sender_nonces = [sender_nonce]
 
     for i, msg in enumerate(pki_message["body"]["nested"]):
         if not msg["header"]["transactionID"].isValue:
-            raise ValueError(f"Nested message at index: {i} does not have a transactionID set.")
+            raise BadRequest(f"Nested message at index: {i} does not have a transactionID set.")
 
         if not msg["header"]["senderNonce"].isValue:
-            raise ValueError(f"Nested message at index: {i} does not have a senderNonce set.")
+            raise BadSenderNonce(f"Nested message at index: {i} does not have a senderNonce set.")
 
-        if not msg["header"]["recipNonce"].isValue:
-            raise ValueError(f"Nested message at index: {i} does not have a recipNonce set.")
+        if not msg["header"]["recipNonce"].isValue and check_recip_nonce:
+            raise BadRecipientNonce(f"Nested message at index: {i} does not have a recipNonce set.")
 
         ids.append(msg["header"]["transactionID"].asOctets())
-        sender_nonces.append(msg["header"]["senderNonce"].asOctets())
-        recip_nonces.append(msg["header"]["recipNonce"].asOctets())
+        nested_sender_nonces.append(msg["header"]["senderNonce"].asOctets())
+        if check_recip_nonce:
+            nested_recip_nonces.append(msg["header"]["recipNonce"].asOctets())
 
-    if check_transaction_id and id_ in ids:
-        raise ValueError("The `transactionID` is not unique.")
+    if check_transaction_id and not _is_unique(ids):
+        raise BadRequest("The transactionIDs among nested messages are not unique.")
+    if check_sender_nonce and not _is_unique(nested_sender_nonces):
+        raise BadSenderNonce("The senderNonces among nested messages are not unique.")
+    if check_recip_nonce and not _is_unique(nested_recip_nonces):
+        raise BadRecipientNonce("The recipNonces among nested messages are not unique.")
 
-    if check_sender_nonce and sender_nonce in sender_nonces:
-        raise ValueError("The `senderNonce` is not unique.")
+    def _ensure_length(value_list: List[bytes], field_name: str, exc: Type[CMPTestSuiteError]):
+        """Check if the length of the values in the list is 128 bits."""
+        for val in value_list:
+            if len(val) != 16:
+                raise exc(f"One of the {field_name} values is not 128 bits long.")
 
-    if check_recip_nonce and recip_nonce in recip_nonces:
-        raise ValueError("The `recipNonce` is not unique.")
+    if check_length:
+        _ensure_length(ids, "transactionID", BadRequest)
+        _ensure_length(nested_sender_nonces, "senderNonce", BadSenderNonce)
+        _ensure_length(nested_recip_nonces, "recipNonce", BadRecipientNonce)
 
 
-def validate_cross_certification_response(crp: rfc9480.PKIMessage, request: Optional[rfc9480.PKIMessage] = None):
-    """Validate a Cross certification response."""
-    raise NotImplementedError("Not implemented yet.")
+def validate_add_protection_tx_id_and_nonces(  # noqa D417 undocumented-param
+    request: PKIMessageTMP, check_length: bool = True
+) -> None:
+    """Validate if the transactionID and nonces are correctly set for the added protection request.
+
+    The inner `PKIMessage` must contain the same `transactionID` and `senderNonce` as the outer request.
+
+    Arguments:
+    ---------
+        - `request`: The `PKIMessage` to validate.
+        - `check_length`: Whether to check the length of the nonces and transactionID. Defaults to `True`.
+
+    Returns:
+    -------
+        - `PKIMessage`: The validated `PKIMessage`.
+
+    Raises:
+    ------
+        - `ValueError`: If the `nested` body is not set, or does not contain exactly one element.
+        - `BadSenderNonce`: If the `senderNonce` is not set or not 16 bytes long.
+        - `BadDataFormat`: If the `transactionID` is not set.
+        - `BadRequest`: If the `transactionID` is not 16 bytes long.
+        - `BadRequest`: If the inner `transactionID` does not match the outer request.
+        - `BadSenderNonce`: If the inner `senderNonce` does not match the outer request.
+        - `BadRecipientNonce`: If the `recipNonce` is set for the added protection request.
+        - `BadRecipientNonce`: If the `recipNonce` is not set for the `certConf` body.
+
+    Examples:
+    --------
+    | Validate Add Protection Tx ID and Nonces | ${request} |
+    | Validate Add Protection Tx ID and Nonces | ${request} | True |
+
+    """
+    nested = request["body"]["nested"]
+    if not nested.isValue:
+        raise ValueError("The `nested` body is not set.")
+    if len(nested) != 1:
+        raise ValueError("The `nested` body should contain exactly one element.")
+    inner_body = nested[0]
+
+    header = request["header"]
+    if not header["senderNonce"].isValue:
+        raise BadSenderNonce("The `senderNonce` is not set for the outer request.")
+
+    if not header["transactionID"].isValue:
+        raise BadDataFormat("The `transactionID` is not set for the outer request.")
+
+    outer_tx_id = header["transactionID"].asOctets()
+    inner_tx_id = inner_body["header"]["transactionID"].asOctets()
+    if inner_tx_id != outer_tx_id:
+        raise BadRequest("The `transactionID` does not match the inner request")
+
+    outer_sender_nonce = header["senderNonce"].asOctets()
+    inner_sender_nonce = inner_body["header"]["senderNonce"].asOctets()
+    if inner_sender_nonce != outer_sender_nonce:
+        raise BadSenderNonce("The `senderNonce` does not match the inner request")
+
+    inner_body_name = inner_body["body"].getName()
+    outer_recip_set = header["recipNonce"].isValue
+    inner_recip_set = inner_body["header"]["recipNonce"].isValue
+
+    if inner_body_name == "certConf":
+        if not outer_recip_set:
+            raise BadRecipientNonce("The `recipNonce` is not set for the outer `certConf` request.")
+        if not inner_recip_set:
+            raise BadRecipientNonce("The `recipNonce` is not set for the inner `certConf` body.")
+
+        outer_recip = header["recipNonce"].asOctets()
+        inner_recip = inner_body["header"]["recipNonce"].asOctets()
+        if inner_recip != outer_recip:
+            raise BadRecipientNonce("The `recipNonce` does not match the inner request")
+        recip_nonce = outer_recip
+    else:
+        recip_nonce = None
+        if inner_recip_set:
+            raise BadRecipientNonce(f"The `recipNonce` is set for the inner {inner_body_name} body")
+        if outer_recip_set:
+            raise BadRecipientNonce("The `recipNonce` is set for the outer body")
+
+    def _ensure_length(value: bytes, field_name: str, exc: Type[CMPTestSuiteError]):
+        """Check if the value is 128 bits long."""
+        if value is not None and len(value) != 16:
+            raise exc(f"The inner `{field_name}` value is not 128 bits long.")
+
+    if check_length:
+        _ensure_length(inner_tx_id, "transactionID", BadRequest)
+        _ensure_length(outer_sender_nonce, "senderNonce", BadSenderNonce)
+        if recip_nonce is not None:
+            _ensure_length(recip_nonce, "recipNonce", BadRecipientNonce)
+
+
+def validate_cross_certification_response(  # noqa D417 undocumented-param
+    ccp: PKIMessageTMP,
+    verbose: bool = False,
+    trustanchors: str = "./data/trustanchors",
+    allow_os_store: bool = True,
+):
+    """Validate a Cross certification response.
+
+    Arguments:
+    ---------
+        - `ccp`: The Cross Certification Response to validate.
+        - `verbose`: Enables verbose logging, including details about certificates in the `caPubs` field that
+            are not trust anchors. Defaults to `False`.
+        - `trustanchors`: Path to a file or directory containing trusted CA certificates for validation of
+        the caPubs field. Defaults to `"data/trustanchors"`.
+        - `allow_os_store`: If `True`, allows the use of the OS certificate store as additional trust anchors.
+
+    Raises:
+    ------
+        - `ValueError`: If the Cross Certification Response does not contain exactly one certificate.
+        - `ValueError`: If the Cross Certification Response is MAC protected.
+        - `BadMessageCheck`: If the Cross Certification Response does not contain `extraCerts`.
+        - `ValueError`: If the Cross Certification Response does not conform to the standard.
+
+    Examples:
+    --------
+    | Validate Cross Certification Response | ${ccp} | verbose=True |
+    | Validate Cross Certification Response | ${ccp} | verbose=True | trustanchors="/path/to/ca" | allow_os_store=True |
+
+    """
+    entries = len(ccp["body"]["ccp"]["response"])
+    if entries != 1:
+        raise ValueError(f"The `ccr` body should contain exactly One certificate.Got: {entries}")
+
+    _is_kem_based = ccp["header"]["protectionAlg"]["algorithm"] == id_KemBasedMac
+    if protectionutils.get_protection_type_from_pkimessage(ccp) == "mac" or _is_kem_based:
+        raise ValueError("The Cross Certification Response should be signed.Not MAC protected.")
+
+    if not ccp["extraCerts"].isValue:
+        raise BadMessageCheck("The Cross Certification Response should contain `extraCerts`.")
+    validate_ca_message_body(
+        ccp,
+        used_p10cr=False,
+        verbose=verbose,
+        allow_os_store=allow_os_store,
+        trustanchors=trustanchors,
+        expected_size=1,
+        response_index=0,
+    )
+
+
+def _validate_cert_conf_nonces_and_tx_id(
+    request: PKIMessageTMP, response: PKIMessageTMP, check_length: bool = True
+) -> None:
+    """Validate the `certConf` body of a CMP PKIMessage.
+
+    :param request: The PKIMessage containing the `certConf` body to validate.
+    :param response: The PKIMessage containing the `certConf` body to validate against.
+    :param check_length: Whether to check the length of the nonces and transactionID. Defaults to `True`.
+    :raises ValueError: If the `certConf` body is not set or does not contain the required fields.
+    :raises BadSenderNonce: If the `senderNonce` is not set or not 16 bytes long or not equal to the response.
+    :raises BadRecipientNonce: If the `recipNonce` is not set or not 16 bytes long or not equal to the response.
+    :raises BadDataFormat: If the `transactionID` is not equal or not 16 bytes long.
+    :raises BadRequest: If the `transactionID` is not 16 bytes long.
+    """
+    if request["body"].getName() != "certConf":
+        raise ValueError("The `PKIBody` was not a `certConf` message.")
+
+    if not request["header"]["senderNonce"].isValue:
+        raise BadSenderNonce("The `senderNonce` was not set inside the `certConf` body.")
+
+    if not request["header"]["transactionID"].isValue:
+        raise BadDataFormat("The `transactionID` was not set inside the `certConf` body.")
+
+    if not request["header"]["recipNonce"].isValue:
+        raise BadRecipientNonce("The `recipNonce` was not set inside the `certConf` body.")
+
+    sender_nonce = request["header"]["senderNonce"].asOctets()
+    tx_id = request["header"]["transactionID"].asOctets()
+    recip_nonce = request["header"]["recipNonce"].asOctets()
+
+    if check_length:
+        if len(tx_id) != 16:
+            raise BadRequest("The transaction ID was not 16 bytes long.")
+        if len(sender_nonce) != 16:
+            raise BadSenderNonce("The sender nonce was not 16 bytes long.")
+        if len(recip_nonce) != 16:
+            raise BadRecipientNonce("The recipient nonce was not 16 bytes long.")
+
+    if request["header"]["recipNonce"].asOctets() != response["header"]["senderNonce"].asOctets():
+        raise BadRecipientNonce("The `recipNonce` does not match the servers `senderNonce`")
+
+    if request["header"]["transactionID"].asOctets() != response["header"]["transactionID"].asOctets():
+        raise BadRequest("The `transactionID` does not match the servers `transactionID`")
+
+    if request["header"]["senderNonce"].asOctets() != response["header"]["recipNonce"].asOctets():
+        raise BadSenderNonce("The `senderNonce` does not match the servers `recipNonce`")
+
+
+def validate_request_message_nonces_and_tx_id(  # noqa D417 undocumented-param
+    request: PKIMessageTMP, response: Optional[PKIMessageTMP] = None
+) -> None:
+    """Validate the nonces and the `transactionID` of a `PKIMessage` send by a Client.
+
+    The `transactionID` and `senderNonce` must be set, and the `recipNonce` must not be set.
+    The `transactionID` and `senderNonce` must be 16 bytes long.
+
+    Arguments:
+    ---------
+        - `pki_message`: The PKIMessage to validate.
+        - `response`: Optional PKIMessage response to validate against.
+
+    Raises:
+    ------
+        - `BadSenderNonce`: If the `senderNonce` is not set or not 16 bytes long.
+        - `BadRecipientNonce`: If the `recipNonce` is set.
+        - `BadDataFormat`: If the `transactionID` is not set.
+        - `BadRequest`: If the `transactionID` is not 16 bytes long.
+
+    Examples:
+    --------
+    | Validate Request Message Nonces and Tx ID | ${pki_message} |
+
+    """
+    if request["body"].getName() == "nested":
+        raise NotImplementedError("The request message was not a nested message.")
+
+    if request["body"].getName() == "certConf":
+        if response is None:
+            raise ValueError("The `response` PKIMessage must be provided for certConf validation.")
+        _validate_cert_conf_nonces_and_tx_id(request=request, response=response)
+        return
+
+    if not request["header"]["senderNonce"].isValue:
+        raise BadSenderNonce("The sender nonce was not set.")
+    sender_nonce = request["header"]["senderNonce"].asOctets()
+    if not request["header"]["transactionID"].isValue:
+        raise BadDataFormat("The transaction ID was not set.")
+    tx_id = request["header"]["transactionID"].asOctets()
+    if request["header"]["recipNonce"].isValue:
+        raise BadRecipientNonce("The recipient nonce was set.")
+
+    if len(tx_id) != 16:
+        raise BadRequest("The transaction ID was not 16 bytes long.")
+    if len(sender_nonce) != 16:
+        raise BadSenderNonce("The sender nonce was not 16 bytes long.")

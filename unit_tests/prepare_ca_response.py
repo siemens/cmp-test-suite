@@ -86,12 +86,15 @@ from pyasn1.type import constraint, tag, univ
 from pyasn1_alt_modules import rfc5652, rfc9480
 from robot.api.deco import not_keyword
 
-from resources.ca_ra_utils import prepare_cert_response
+from resources.asn1_structures import CertResponseTMP, CertRepMessageTMP, PKIMessageTMP
+from resources.ca_ra_utils import prepare_cert_response, build_ip_cmp_message
 from resources.cmputils import patch_extra_certs
 from resources.envdatautils import prepare_enveloped_data, prepare_signed_data
 from resources.typingutils import PrivateKey
 
 from unit_tests.utils_for_test import prepare_pki_header
+from resources.asn1utils import try_decode_pyasn1
+
 
 # TODO refactor this to ca_ra_utils.py
 
@@ -103,7 +106,7 @@ def _prepare_resp_seq(cert: Optional[rfc9480.CMPCertificate], **params) -> univ.
     :param params: Additional parameters to pass to prepare_cert_response.
     :return: A sequence of CertResponse structures.
     """
-    response_seq = univ.SequenceOf(componentType=rfc9480.CertResponse())
+    response_seq = univ.SequenceOf(componentType=CertResponseTMP())
     response_seq.append(prepare_cert_response(cert=cert, **params))
     return response_seq
 
@@ -127,7 +130,7 @@ def prepare_cert_rep_msg(
     ca_pubs_list: Optional[List[rfc9480.CMPCertificate]] = None,
     exclude_resp: bool = False,
     cert: Optional[rfc9480.CMPCertificate] = None,
-    responses: Optional[List[rfc9480.CertResponse]] = None,
+    responses: Optional[List[CertResponseTMP]] = None,
     cert_req_id: int = 0,
     status: str = "accepted",
     text: Optional[str] = None,
@@ -135,8 +138,7 @@ def prepare_cert_rep_msg(
     private_key: Optional[rfc9480.EnvelopedData] = None,
     enc_cert: Optional[rfc9480.EnvelopedData] = None,
 ) -> rfc9480.CertRepMessage:
-    """
-    Prepare a CertRepMessage structure for PKI communication.
+    """Prepare a CertRepMessage structure for PKI communication.
 
     This function constructs a CertRepMessage of the specified body type, containing certificate
     responses and optional CA certificates. It allows for adding custom status, fail information,
@@ -147,11 +149,12 @@ def prepare_cert_rep_msg(
     :param exclude_resp: Exclude the response component if `True`.
     :param cert: Optional end-entity certificate to include in the response.
     :param responses: List of `CertResponse` objects to include in the message.
-    :param cert_req_id: Certificate request ID for the response, defaults to 0.
-    :param status: Status of the certificate request, defaults to "accepted".
+    :param cert_req_id: Certificate request ID for the response. Defaults to `0`.
+    :param status: Status of the certificate request. Defaults to "accepted".
     :param text: Optional additional text information about the status.
     :param failinfo: Optional failure information for the certificate request.
-    :param private_key: Optional private key in `EnvelopedData` format.
+    :param private_key: Optional private key in `EnvelopedData` format. Defaults to `None`.
+    :param enc_cert: Optional encrypted certificate in `EnvelopedData` format. Defaults to `None`.
     :raises ValueError: If `body_type` is unknown or unsupported.
     :return: A populated `CertRepMessage` structure.
     """
@@ -159,13 +162,13 @@ def prepare_cert_rep_msg(
     if body_type not in types_to_id:
         raise ValueError(f"Unsupported body_type: '{body_type}'. Expected one of {list(types_to_id.keys())}.")
 
-    cert_rep_msg = rfc9480.CertRepMessage().subtype(
+    cert_rep_msg = CertRepMessageTMP().subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, types_to_id[body_type])
     )
 
     if not exclude_resp:
         if responses:
-            response_seq = univ.SequenceOf(componentType=rfc9480.CertResponse())
+            response_seq = univ.SequenceOf(componentType=CertResponseTMP())
             response_seq.extend(responses)
         else:
             response_seq = _prepare_resp_seq(
@@ -200,7 +203,7 @@ def build_ca_pki_message(
     enc_cert: Optional[rfc9480.EnvelopedData] = None,
     sender_kid: Optional[bytes] = None,
     pvno: int = 2,
-) -> rfc9480.PKIMessage:
+) -> PKIMessageTMP:
     """Prepare a `PKIMessage` structure containing a `CertRepMessage`.
 
     This function creates a `PKIMessage` for certificate management, populating it with details such as
@@ -226,7 +229,7 @@ def build_ca_pki_message(
     :raises ValueError: If the provided `body_type` is not one of the supported values ("ip", "cp", "kup").
     :return: A populated `PKIMessage` structure with a CertRepMessage in the body.
     """
-    pki_message = rfc9480.PKIMessage()
+    pki_message = PKIMessageTMP()
     pki_message["header"] = prepare_pki_header(pvno=pvno, sender_kid=sender_kid)
     pki_message["body"][body_type] = prepare_cert_rep_msg(
         body_type=body_type,
@@ -255,7 +258,7 @@ def build_complete_envelope_data_ca_msg(
     recipient_infos: List[rfc5652.RecipientInfo],
     extra_certs: List[rfc9480.CMPCertificate],
     sender_kid: Optional[bytes] = None,
-) -> rfc9480.PKIMessage:
+) -> PKIMessageTMP:
     """Build a complete PKIMessage with `EnvelopedData` for CA response.
 
     Assembles a complete PKIMessage containing the `EnvelopedData` structure
@@ -282,6 +285,8 @@ def build_complete_envelope_data_ca_msg(
         cert_chain=kga_cert_chain,
     )
     signed_data_der = encoder.encode(signed_data)
+    try_decode_pyasn1(signed_data_der, rfc5652.SignedData())
+
 
     enveloped_data = prepare_enveloped_data(
         recipient_infos=recipient_infos,
@@ -290,6 +295,13 @@ def build_complete_envelope_data_ca_msg(
         version=version,
     )
 
-    ca_message = build_ca_pki_message(pvno=3, private_key=enveloped_data, cert=issued_cert, sender_kid=sender_kid)
-    ca_message = patch_extra_certs(ca_message, certs=extra_certs)
-    return ca_message
+    ca_message, _ = build_ip_cmp_message(
+        pvno=3,
+        private_key=enveloped_data,
+        cert=issued_cert,
+        sender_kid=sender_kid,
+    )
+
+    ca_message = patch_extra_certs(ca_message, extra_certs)
+
+    return ca_message # type: ignore

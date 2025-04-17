@@ -5,8 +5,9 @@
 import unittest
 
 from resources.checkutils import check_protection_alg_field
+from resources.exceptions import BadMessageCheck
 from resources.keyutils import generate_key, load_private_key_from_file
-from resources.protectionutils import patch_protectionalg, protect_pkimessage
+from resources.protectionutils import patch_protection_alg, protect_pkimessage
 
 from unit_tests.utils_for_test import build_pkimessage
 
@@ -15,7 +16,7 @@ class TestCheckProtectionAlgField(unittest.TestCase):
     @classmethod
     def setUp(cls):
         """Set up a valid PKI message for both signature-based and MAC-based protection."""
-        cls.private_key = load_private_key_from_file("data/keys/private-key-ed25519.pem", key_type="ed25519")
+        cls.private_key = load_private_key_from_file("data/keys/private-key-ed25519.pem")
 
         cls.sig_pki_message = build_pkimessage()
         cls.mac_pki_message = build_pkimessage()
@@ -84,10 +85,10 @@ class TestCheckProtectionAlgField(unittest.TestCase):
         WHEN check_protectionAlg_field is called with must_be_present=True
         THEN the check should raise an exceptions.
         """
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMessageCheck):
             check_protection_alg_field(pki_message=self.unprotected_pki_message, expected_type="sig")
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMessageCheck):
             check_protection_alg_field(pki_message=self.unprotected_pki_message, expected_type="mac")
 
     def test_inconsistent_protectionAlg_and_subjectPublicKeyInfo(self):
@@ -100,7 +101,7 @@ class TestCheckProtectionAlgField(unittest.TestCase):
             pki_message=self.unprotected_pki_message, private_key=self.private_key, protection="signature"
         )
 
-        protected_message = patch_protectionalg(
+        protected_message = patch_protection_alg(
             protected_message, protection="signature", private_key=generate_key("ecdsa")
         )
 

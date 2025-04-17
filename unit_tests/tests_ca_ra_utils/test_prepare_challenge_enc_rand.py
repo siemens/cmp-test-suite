@@ -4,10 +4,14 @@
 
 import unittest
 
-from pyasn1.codec.der import decoder, encoder
+from pyasn1.codec.der import encoder
 from resources.asn1_structures import ChallengeASN1
 from resources.ca_ra_utils import prepare_challenge_enc_rand
+from resources.certutils import parse_certificate
 from resources.keyutils import load_private_key_from_file
+from resources.utils import load_and_decode_pem_file
+from unit_tests.utils_for_test import try_encode_pyasn1
+from resources.asn1utils import try_decode_pyasn1
 
 
 class TestPrepareChallengeEncRand(unittest.TestCase):
@@ -25,10 +29,10 @@ class TestPrepareChallengeEncRand(unittest.TestCase):
         THEN the challenge is valid.
         """
         challenge = prepare_challenge_enc_rand(public_key=self.rsa_key.public_key(),
-        sender="CN=Hans the Tester")
+                                               rand_sender="CN=Hans the Tester")
 
-        der_data = encoder.encode(challenge)
-        decoded_obj, rest = decoder.decode(der_data, asn1Spec=ChallengeASN1())
+        der_data = try_encode_pyasn1(challenge)
+        decoded_obj, rest = try_decode_pyasn1(der_data, asn1_spec=ChallengeASN1())
         self.assertEqual(rest, b"")
 
     def test_prepare_with_kem(self):
@@ -37,10 +41,14 @@ class TestPrepareChallengeEncRand(unittest.TestCase):
         WHEN preparing a challenge with KEM `kari`.
         THEN the challenge is valid.
         """
+
+        ca_cert = parse_certificate(load_and_decode_pem_file("./data/unittest/ca1_cert_ecdsa.pem"))
         challenge = prepare_challenge_enc_rand(public_key=self.mlkem_key.public_key(),
-        sender="CN=Hans the Tester")
-        der_data = encoder.encode(challenge)
-        decoded_obj, rest = decoder.decode(der_data, asn1Spec=ChallengeASN1())
+                                               ca_cert=ca_cert,
+                                               )
+
+        der_data = try_encode_pyasn1(challenge)
+        decoded_obj, rest = try_decode_pyasn1(der_data, asn1_spec=ChallengeASN1())
         self.assertEqual(rest, b"")
 
 
@@ -53,7 +61,7 @@ class TestPrepareChallengeEncRand(unittest.TestCase):
         xwing_key = load_private_key_from_file("./data/keys/private-key-xwing.pem")
         xwing_key_other = load_private_key_from_file("./data/keys/private-key-xwing-other.pem")
         challenge = prepare_challenge_enc_rand(public_key=xwing_key.public_key(),
-        sender="CN=Hans the Tester", hybrid_kem_key=xwing_key_other)
+                                               rand_sender="CN=Hans the Tester", hybrid_kem_key=xwing_key_other)
         der_data = encoder.encode(challenge)
-        decoded_obj, rest = decoder.decode(der_data, asn1Spec=ChallengeASN1())
+        decoded_obj, rest = try_decode_pyasn1(der_data, asn1_spec=ChallengeASN1())
         self.assertEqual(rest, b"")

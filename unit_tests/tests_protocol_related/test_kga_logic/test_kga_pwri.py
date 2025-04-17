@@ -6,7 +6,7 @@ import unittest
 
 from pyasn1_alt_modules import rfc9481
 from resources.ca_kga_logic import validate_password_recipient_info
-from resources.envdatautils import prepare_pwri_structure
+from unit_tests.utils_for_test import prepare_pwri_structure
 
 
 class TestValidationPWRI(unittest.TestCase):
@@ -21,7 +21,7 @@ class TestValidationPWRI(unittest.TestCase):
         WHEN validate_PasswordRecipientInfo is called with the same salt.
         THEN it should raise a ValueError due to a same salt used for CMP protection.
         """
-        pwri = prepare_pwri_structure()
+        pwri = prepare_pwri_structure(salt=b"AAAAAAAAAAAAAAAA")
         with self.assertRaises(ValueError):
             validate_password_recipient_info(pwri, self.pbkdf2_salt)
 
@@ -52,7 +52,7 @@ class TestValidationPWRI(unittest.TestCase):
         WHEN validate_password_recipient_info is called.
         THEN it should raise a ValueError indicating that only the PBKDF2 algorithm is allowed.
         """
-        pwri = prepare_pwri_structure(key_der_alg_id=rfc9481.id_RSAES_OAEP)
+        pwri = prepare_pwri_structure(kdf_oid=rfc9481.id_RSAES_OAEP)
 
         with self.assertRaises(ValueError):
             validate_password_recipient_info(pwri, self.cmp_protection_salt)

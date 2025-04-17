@@ -4,9 +4,12 @@
 
 import unittest
 
-from pq_logic.hybrid_key_factory import HybridKeyFactory
+from pq_logic.keys.chempat_key import ChempatMLKEMPrivateKey, ChempatSntrup761PrivateKey, \
+    ChempatMcEliecePrivateKey
+from pq_logic.keys.hybrid_key_factory import HybridKeyFactory
+from pq_logic.keys.trad_kem_keys import RSADecapKey, DHKEMPrivateKey
 from resources.keyutils import generate_key
-from cryptography.hazmat.primitives.asymmetric import x25519,rsa
+from cryptography.hazmat.primitives.asymmetric import x25519
 
 class TestHybridKeyFactory(unittest.TestCase):
 
@@ -17,10 +20,11 @@ class TestHybridKeyFactory(unittest.TestCase):
         WHEN a hybrid key is generated with the pq_name sntrup761.
         THEN the pq_key should be sntrup761 and the trad_key should be x25519
         """
-        key = generate_key(algorithm="chempat", pq_name="sntrup761")
+        key = generate_key(algorithm="chempat", pq_name="sntrup761") # type: ignore
+        key: ChempatSntrup761PrivateKey
 
         self.assertEqual(key.pq_key.name, "sntrup761")
-        self.assertIsInstance(key.trad_key, x25519.X25519PrivateKey)
+        self.assertIsInstance(key.trad_key._private_key, x25519.X25519PrivateKey)
 
     def test_hybrid_key_factory_chempat_ml_kem_768(self):
         """
@@ -28,10 +32,13 @@ class TestHybridKeyFactory(unittest.TestCase):
         WHEN a hybrid key is generated with the pq_name ml-kem-768.
         THEN the pq_key should be ml-kem-768 and the trad_key should be x25519.
         """
-        key = HybridKeyFactory.generate_hybrid_key(algorithm="chempat",
+        key = HybridKeyFactory.generate_hybrid_key(algorithm="chempat", # type: ignore
                                                    pq_name="ml-kem-768")
+
+        key: ChempatMLKEMPrivateKey
+
         self.assertEqual(key.pq_key.name, "ml-kem-768")
-        self.assertIsInstance(key.trad_key, x25519.X25519PrivateKey)
+        self.assertIsInstance(key.trad_key._private_key, x25519.X25519PrivateKey)
 
     def test_hybrid_key_factory_chempat_mceliece(self):
         """
@@ -39,11 +46,13 @@ class TestHybridKeyFactory(unittest.TestCase):
         WHEN a hybrid key is generated with the pq_name mceliece-6688128.
         THEN the pq_key should be mceliece-6688128 and the trad_key should be x25519.
         """
-        key = HybridKeyFactory.generate_hybrid_key(algorithm="chempat",
+        key = HybridKeyFactory.generate_hybrid_key(algorithm="chempat", # type: ignore
                                                    pq_name="mceliece-6688128")
 
+        key: ChempatMcEliecePrivateKey
+
         self.assertEqual(key.pq_key.name, "mceliece-6688128")
-        self.assertIsInstance(key.trad_key, x25519.X25519PrivateKey)
+        self.assertIsInstance(key.trad_key._private_key, x25519.X25519PrivateKey)
 
     def test_hybrid_key_factory_comp_kem_mlkem(self):
         """
@@ -51,12 +60,12 @@ class TestHybridKeyFactory(unittest.TestCase):
         WHEN a hybrid key is generated with the pq_name ml-kem-768.
         THEN the pq_key should be ML-KEM and the trad_key should be rsa.
         """
-        key = HybridKeyFactory.generate_hybrid_key(algorithm="composite-kem",
+        key = HybridKeyFactory.generate_hybrid_key(algorithm="composite-kem", # type: ignore
                                                    pq_name="ml-kem-768",
                                                 )
 
         self.assertEqual(key.pq_key.name, "ml-kem-768")
-        self.assertIsInstance(key.trad_key, x25519.X25519PrivateKey)
+        self.assertIsInstance(key.trad_key, DHKEMPrivateKey)
 
     def test_hybrid_key_factory_comp_kem_rsa(self):
         """
@@ -69,7 +78,7 @@ class TestHybridKeyFactory(unittest.TestCase):
                                                 )
 
         self.assertEqual(key.pq_key.name, "ml-kem-768")
-        self.assertIsInstance(key.trad_key, rsa.RSAPrivateKey)
+        self.assertIsInstance(key.trad_key, RSADecapKey)
 
 
     def test_hybrid_key_factory_comp_kem_frodokem(self):
@@ -83,4 +92,4 @@ class TestHybridKeyFactory(unittest.TestCase):
                                                 )
 
         self.assertEqual(key.pq_key.name, "frodokem-976-aes")
-        self.assertIsInstance(key.trad_key, x25519.X25519PrivateKey)
+        self.assertIsInstance(key.trad_key, DHKEMPrivateKey)

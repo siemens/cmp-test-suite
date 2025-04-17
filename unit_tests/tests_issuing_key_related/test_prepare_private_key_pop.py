@@ -6,7 +6,7 @@ import unittest
 
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc4211, rfc9481
-from resources.extra_issuing_logic import prepare_private_key_for_pop
+from resources.extra_issuing_logic import prepare_enc_key_with_id
 from resources.keyutils import load_private_key_from_file
 
 
@@ -22,8 +22,8 @@ class TestPreparePrivateKeyForPop(unittest.TestCase):
         WHEN prepare_private_key_for_pop is called with the private key and sender name and use_string is True.
         THEN the data is returned and can be en- and decoded
         """
-        data = prepare_private_key_for_pop(private_key=self.key,
-                                           sender="CN=Hans the Tester", use_string=True)
+        data = prepare_enc_key_with_id(private_key=self.key,
+                                       sender="CN=Hans the Tester", use_string=True)
         der_data = encoder.encode(data)
         decoded_data, rest = decoder.decode(der_data)
         self.assertEqual(rest, b"")
@@ -35,9 +35,9 @@ class TestPreparePrivateKeyForPop(unittest.TestCase):
         WHEN prepare_private_key_for_pop is called with the private key and sender name and use_string is False.
         THEN the data is returned and can be en- and decoded.
         """
-        data = prepare_private_key_for_pop(private_key=self.key,
-                                           sender="CN=Hans the Tester",
-                                           use_string=False)
+        data = prepare_enc_key_with_id(private_key=self.key,
+                                       sender="CN=Hans the Tester",
+                                       use_string=False)
         der_data = encoder.encode(data)
         decoded_data, rest = decoder.decode(der_data, rfc4211.EncKeyWithID())
         self.assertEqual(rest, b"")
@@ -49,8 +49,8 @@ class TestPreparePrivateKeyForPop(unittest.TestCase):
         WHEN prepare_private_key_for_pop is called with the private key and sender name and use_string is False.
         THEN the data is returned and can be en- and decoded.
         """
-        data = prepare_private_key_for_pop(private_key=self.key, sender="CN=Hans the Tester",
-                                           use_string=False)
+        data = prepare_enc_key_with_id(private_key=self.key, sender="CN=Hans the Tester",
+                                       use_string=False)
         der_data = encoder.encode(data)
         decoded_data, _ = decoder.decode(der_data, rfc4211.EncKeyWithID())
 

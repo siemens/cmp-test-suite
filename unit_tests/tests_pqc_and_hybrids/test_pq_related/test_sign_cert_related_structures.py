@@ -4,7 +4,7 @@
 
 import unittest
 
-from pq_logic.pq_key_factory import PQKeyFactory
+from pq_logic.keys.pq_key_factory import PQKeyFactory
 from resources.certbuildutils import build_csr, generate_certificate
 from resources.certutils import load_public_key_from_cert, verify_cert_signature
 from resources.keyutils import load_public_key_from_spki
