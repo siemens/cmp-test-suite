@@ -43,7 +43,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: RobotFramework style check
-        run: robocop --report rules_by_error_type
+        run: robocop check
+    # We haven't settled on a style for RobotFramework yet, enforce check when consensus is reached
+    continue-on-error: true
 
   spelling_check:
     runs-on: ubuntu-22.04
