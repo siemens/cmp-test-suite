@@ -28,7 +28,7 @@ CA Must Reject Malformed Request
     ...    a client-side error in the supplied input data. Ref: "3.3. General Form", "All applicable
     ...    "Client Error 4xx" or "Server Error 5xx" status codes MAY be used to inform the client
     ...    about errors."
-    [Tags]    negative    rfc6712    robot:skip-on-failure    status
+    [Tags]    negative    rfc6712    robot:skip-on-failure    status    minimal
     ${response}=    Exchange Data With CA    this dummy input is not a valid PKIMessage
     Should Be Equal
     ...    ${response.status_code}
