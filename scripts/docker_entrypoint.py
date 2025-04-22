@@ -81,21 +81,21 @@ def prepare_parser():
         epilog="""Examples of usage, assume the docker image is called `image`:
 
 1. Default behavior (no additional arguments):
-   docker run image
+   docker run --rm -it ghcr.io/siemens/cmp-test
    Executes: robot --pythonpath=./ --outputdir=/report --include smoke scripts/smoke.robot tests/
    Does not require any configuration, runs the smoke test and any other test with the `smoke` tag.
 
 2. Passing a minimal URL:
-   docker run image --minimal http://example.com
+   docker run --rm -it ghcr.io/siemens/cmp-test --minimal http://example.com
    Executes: robot --pythonpath=./ --outputdir=/report --include minimal --variable SERVER_URL:http://example.com tests/
    Runs only tests tagged `minimal`, which only require the server's address and nothing else.
 
 3. Using a custom configuration:
-   docker run -v ./reports:/report -v ./config:/config image --customconfig
+   docker run --rm -it ghcr.io/siemens/cmp-test -v ./reports:/report -v ./config:/config image --customconfig
    Runs all tests with the custom configuration given in a directory mounted to config/, will save reports to /reports.
 
 4. Passing arbitrary arguments to robot (note the `--`):
-   docker run image --minimal http://example.com -- --dryrun
+   docker run --rm -it ghcr.io/siemens/cmp-test --minimal http://example.com -- --dryrun
    Runs: robot --pythonpath=./ --outputdir=/report --include minimal --variable SERVER_URL:http://example.com tests/ \
     --dryrun
 """,
