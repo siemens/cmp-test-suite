@@ -434,7 +434,7 @@ def handle_issuing() -> bytes:
         data = request.get_data()
         pki_message, _rest = decoder.decode(data, asn1Spec=rfc9480.PKIMessage())
         pki_message = handler.process_normal_request(pki_message)
-        logging.warning(f"Response: %s", pki_message.prettyPrint())
+        logging.warning("Response: %s", pki_message.prettyPrint())
         response_data = encoder.encode(pki_message)
         return Response(response_data, content_type="application/octet-stream")
     except Exception as e:
