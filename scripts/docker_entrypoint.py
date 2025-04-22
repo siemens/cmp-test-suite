@@ -36,31 +36,31 @@ def run_robot_command(command, verbose=False):
     if verbose:
         log.info("Run: %s", command)
     try:
-        process = subprocess.Popen(
+        with subprocess.Popen(
             command,
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True
-        )
+        ) as process:
 
-        # Stream output in real-time
-        while True:
-            stdout_line = process.stdout.readline()
-            stderr_line = process.stderr.readline()
+            # Stream output in real-time
+            while True:
+                stdout_line = process.stdout.readline()
+                stderr_line = process.stderr.readline()
 
-            if stdout_line:
-                log.info(stdout_line.strip())
-            if stderr_line:
-                log.error(stderr_line.strip())
+                if stdout_line:
+                    log.info(stdout_line.strip())
+                if stderr_line:
+                    log.error(stderr_line.strip())
 
-            if not stdout_line and not stderr_line and process.poll() is not None:
-                break
+                if not stdout_line and not stderr_line and process.poll() is not None:
+                    break
 
-        exit_code = process.poll()
-        log.info("Command completed with exit code: %s",exit_code)
-        return exit_code
-    except Exception as e:
+            exit_code = process.poll()
+            log.info("Command completed with exit code: %s",exit_code)
+            return exit_code
+    except OSError as e:
         log.error("Error executing command: %s", e)
         return 1
 
@@ -75,8 +75,8 @@ class CustomConfigAction(argparse.Action):
         setattr(namespace, self.dest, values if values else Path('config/'))
         setattr(namespace, f"{self.dest}_explicit", True)
 
-def main():
-    """Parse arguments and run the CMP test suite."""
+def prepare_parser():
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="CMP test suite tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -103,9 +103,10 @@ def main():
 """
     )
 
-    parser.add_argument("--smoke", action="store_true", help="Run smoke tests that don't require any configuration")
-    parser.add_argument("--minimal", help="Run tests that only need a CMP URL endpoint", type=valid_url, metavar="URL")
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--smoke", action="store_true", help="Run smoke tests that don't require any configuration")
+    group.add_argument("--minimal", help="Run tests that only need a CMP URL endpoint", type=valid_url, metavar="URL")
+    group.add_argument(
         "--customconfig",
         help="Use custom configuration directory and run all tests",
         type=Path,
@@ -128,16 +129,23 @@ def main():
     # when it was provided with a value, without a value, or not at all
     parser.set_defaults(customconfig_explicit=False)
 
-    args = parser.parse_args()
+    return parser
 
-    if args.verbose:
-        log.debug(args)
 
+def verify_report_directory(ephemeral, smoke, verbose):
+    """Check if the report directory exists and enforce some checks based on settings.
+
+    Args:
+        ephemeral (bool): If True, we don't care about potentially losing the detailed report.
+        smoke (bool): If True, we only run smoke tests.
+        verbose (bool): If True, additional information will be logged.
+
+    """
     if os.path.exists('/report'):
-        if args.verbose:
+        if verbose:
             log.info("Report will be saved to /report (inside your container)")
     else:
-        if args.ephemeral or args.smoke:
+        if ephemeral or smoke:
             log.info("Running in ephemeral mode, only brief results on screen, no file report. Consider running the " \
                      "container with `-v /path/on/host:/report` to ensure the report is saved.")
         else:
@@ -146,6 +154,16 @@ def main():
                         "results shown on stdout, or run the container with `-v /path/on/host:/report` to " \
                         "ensure the report is saved.")
             sys.exit(1)
+
+def main():
+    """Run the CMP test suite."""
+    parser = prepare_parser()
+    args = parser.parse_args()
+
+    if args.verbose:
+        log.debug(args)
+
+    verify_report_directory(args.ephemeral, args.smoke, args.verbose)
 
     if args.robot_args:
         # One can pass additional arguments to RobotFramework by adding -- <robot args> at the end
@@ -195,14 +213,6 @@ and follow this structure:
     else:
         log.debug("No actionable command line arguments given, nothing to do")
         sys.exit(0)
-
-
-    if args.customconfig_explicit:
-        if args.verbose:
-            log.info("--customconfig was explicitly provided.")
-    else:
-        if args.verbose:
-            log.info("--customconfig was not explicitly provided, using default.")
 
     # Prepare the final command, appending additional arguments, if any, and ensuring that test/ is in
     # the end.
