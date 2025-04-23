@@ -71,7 +71,7 @@ def build_cmp_cann_announcement(
 
     Examples:
     --------
-    | cann= | Build CMP Certificate Announcement | ${cert} |
+    | ${cann}= | Build CMP Certificate Announcement | ${cert} |
 
     """
     cert_ann_con = rfc9480.CertAnnContent().subtype(
@@ -84,7 +84,7 @@ def build_cmp_cann_announcement(
     )
 
     pki_message = cmputils.prepare_pki_message(**kwargs)
-    pki_message["body"]["cann"] = cert_ann_con
+    pki_message["body"]["cann"] = cert_ann_con # codespell:ignore
 
     return pki_message
 
@@ -126,7 +126,7 @@ def build_cmp_rann_announcement(
 
     Examples:
     --------
-    | rann= | Build CMP Revocation Announcement | ${cert} | status=accepted | will_be_revoked_at=2024-01-01T12:00:00Z |
+    | ${rann}= | Build CMP Revocation Announcement | ${cert} | status=accepted | will_be_revoked_at=2024-01-01T12:00:00Z |
 
     """
     cert_id = _prepare_cert_id(
@@ -171,7 +171,7 @@ def build_crlann_cmp_message(
 
     Examples:
     --------
-    | crlann= | Build CMP CRL Announcement | ${crl} |
+    | ${crlann}= | Build CMP CRL Announcement | ${crl} |
 
     """
     if isinstance(crls, rfc5280.CertificateList):
@@ -224,8 +224,8 @@ def build_cmp_ckuann_message(  # noqa: D417 undocumented-params
 
     Examples:
     --------
-    | ${pki_message}= | Build CMP ckuann | ${root_ca_key_update} |
-    | ${pki_message}= | Build CMP ckuann | old_cert=${new_cert} | new_key=${new_key} | old_key=${old_key} |
+    | ${ckuann}= | Build CMP ckuann | ${root_ca_key_update} |
+    | ${ckuann}= | Build CMP ckuann | old_cert=${new_cert} | new_key=${new_key} | old_key=${old_key} |
 
     """
     body = PKIBodyTMP()
