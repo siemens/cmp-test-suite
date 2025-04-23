@@ -97,9 +97,3 @@ check-sigs:
 test-pq-hybrid:
     # Start the tests for PQ and Hybrid algorithms/mechanisms.
 	robot --pythonpath=./ --outputdir=reports --variable environment:$(env) tests_pq_and_hybrid
-
-start-mock-ca:
-	python ./mock_ca/ca_handler.py
-
-test-mock-ca:
-	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests_pq_and_hybrid/hybrid_sig_tests.robot
