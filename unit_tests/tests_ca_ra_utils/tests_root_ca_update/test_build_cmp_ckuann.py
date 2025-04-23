@@ -7,7 +7,8 @@ import unittest
 from pyasn1.codec.der import decoder
 from pyasn1_alt_modules import rfc9480
 from resources.asn1_structures import PKIMessageTMP
-from resources.ca_ra_utils import build_cmp_ckuann_message, prepare_new_root_ca_certificate
+from resources.ca_ra_utils import prepare_new_root_ca_certificate
+from resources.announcement import build_cmp_ckuann_message
 from resources.certbuildutils import build_certificate
 from resources.keyutils import load_private_key_from_file
 from unit_tests.utils_for_test import try_encode_pyasn1
