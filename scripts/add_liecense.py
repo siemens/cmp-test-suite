@@ -7,12 +7,12 @@
 import glob
 import os.path
 
-base_header = """# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+base_header = """# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 """
 
-md_header = """<!-- SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+md_header = """<!-- SPDX-FileCopyrightText: Copyright 2025 Siemens AG
 SPDX-License-Identifier: Apache-2.0 -->
 """
 
