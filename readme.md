@@ -45,7 +45,7 @@ While the Docker-based approach makes it easy to get started, it essentially tre
 
 
 ## Configuration
-Create a Python virtual environment by installing the dependencies from `requirements.txt`:
+Create a Python virtual environment by installing the dependencies from `requirements.txt` as follows:
 
 1. Create a virtual environment: `python3 -m venv venv-cmp-tests`
    - If you use WSL 2.0, run `apt install libpython3-dev python3-venv` if the command above fails.
@@ -55,13 +55,17 @@ Create a Python virtual environment by installing the dependencies from `require
 3. Install the dependencies: `pip install -r cmp-test-suite/requirements.txt`
 
 
-
 ## Usage
 Note that if you haven´t yet activated the environment, do so now.
 
 1. Navigate into the test suite: `cd cmp-test-suite`
-2. Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment. 
-3. In your directory in the folder of cmp-test-suite you will find `report.html` 
+2. Adjust the settings in the config/local.robot file to match your environment.
+   - To run the Smoke test, this step is not necessary. 
+3. Run test:
+   - Run `robot --pythonpath=./ tests/smoke.robot` to run a test if everything works so far.
+   - Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment. 
+4. In your directory in the folder of cmp-test-suite you will find `report.html`.
+   - [Detailed explanation of the output](Output.md)
 
 ### Additional RobotFramework commands
 You can run specific tests on specific environments by adjusting command line options. Consider this example:
