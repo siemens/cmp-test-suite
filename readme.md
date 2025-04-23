@@ -25,8 +25,18 @@ the server and how the responses were processed.
 
 The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the project.
 
+# Quick start with Docker
+On a system where [Docker is available](https://docs.docker.com/engine/install/), the easiest way to run the test suite is `docker run --rm -it ghcr.io/siemens/cmp-test`. This will invoke a smoke test just to confirm that the basics are in place. Add `--help` to learn about what other commands are available.
 
-# Configuration
+To run a minimal test against an actual CA, try `docker run --rm -it ghcr.io/siemens/cmp-test --minimal http://example.com --ephemeral` (replace the URL with your CMP endpoint).
+
+A thorough evaluation that covers all the features of CMP requires a configuration file, where you specify preshared passwords, keys, algorithms to use, etc. (see `--customconfig` for details).
+
+
+# Advanced usage
+While the Docker-based approach makes it easy to get started, it essentially treats the test suite as a black box. However, if you want to customize, extend or debug it, it is necessary to dive deeper and understand how it works "under the hood".
+
+## Configuration
 Create a Python virtual environment by installing the dependencies from `requirements.txt`:
 
 1. Create a virtual environment: `python -m venv venv-cmp-tests`
@@ -38,12 +48,12 @@ Create a Python virtual environment by installing the dependencies from `require
 
 
 
-# Usage
+## Usage
 1. Adjust the settings in the `config/local.robot` file to match your environment.
 2. Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment.
 3. Explore `report.html` to see the results.
 
-## Advanced usage examples
+## Additional RobotFramework commands
 You can run specific tests on specific environments by adjusting command line options. Consider this example:
 `robot --outputdir=out --variable environment:cloudpki --include crypto tests`
 

@@ -5,7 +5,6 @@
 *** Settings ***
 Documentation       General tests for CMP logic, not necessarily specific to the lightweight profile
 
-Resource            ../config/${environment}.robot
 Resource            ../resources/keywords.resource
 Library             Collections
 Library             OperatingSystem
@@ -34,7 +33,7 @@ CA Must Reject Malformed Request
     ...    a client-side error in the supplied input data. Ref: "3.3. General Form", "All applicable
     ...    "Client Error 4xx" or "Server Error 5xx" status codes MAY be used to inform the client
     ...    about errors."
-    [Tags]    negative    rfc6712    robot:skip-on-failure    status   minimal
+    [Tags]    negative    rfc6712    robot:skip-on-failure    status    minimal
     ${response}=    Exchange Data With CA    this dummy input is not a valid PKIMessage
     Should Be Equal
     ...    ${response.status_code}
@@ -83,7 +82,7 @@ CA Must Reject Request When The CSR Signature Is Invalid
     [Documentation]    According to RFC 9483 Section 4.1.4, the signature inside the CSR serves as proof-of-possession
     ...    to demonstrate that the End-Entity owns the private key. We send a CSR with a invalid signature.
     ...    The CA MUST reject the request and may respond with the optional failInfo `badPOP`.
-    [Tags]    crypto    csr    negative  mac
+    [Tags]    crypto    csr    negative
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${csr}=    Build CSR    common_name=${cm}    signing_key=${key}    bad_pop=True

@@ -1,10 +1,12 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
 # This produces base image that contains the dependencies required for the test
 # suite, including the build environment for liboqs; and a dev image, which is
-# used to run code quality checks in the CI pipeline
+# used to run code quality checks in the CI pipeline. It also builds the
+# production image, which is meant to be invoked by end-users who want to test
+# their CAs.
 
 name: Build and push base docker images
 
@@ -20,17 +22,9 @@ on:
 jobs:
   build_and_push:
     runs-on: ubuntu-22.04
-    permissions:
-      contents: read
-      packages: write
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set Lowercase Repository Owner
-        id: set_repo_owner
-        # must be converted to lowercase for the image tags.
-        run: echo "REPO_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -42,25 +36,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Base Docker Image
+      - name: Build and push base Docker image
         run: |
           docker buildx build \
-            --tag ghcr.io/${{ env.REPO_OWNER_LC }}/cmp-test-base:latest \
+            --tag ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.base .
 
-      - name: Build and Push Dev Docker Image
+      - name: Build and push dev Docker image
         run: |
           docker buildx build \
-            --tag ghcr.io/${{ env.REPO_OWNER_LC }}/cmp-test-dev:latest \
-            --build-arg BASE_IMAGE=ghcr.io/${{ env.REPO_OWNER_LC }}/cmp-test-base:latest \
+            --tag ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest \
+            --build-arg BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.dev .
 
-      - name: Build and Push Production Test Suite Docker Image
+      - name: Build and push the production test suite Docker image
+      # This one is meant to be directly invoked by end-users who don't want to get into the details
+      # of how the test suite works, they just want to run it to test their CA. For their convenience,
+      # we give it a short name, to be invoked as `docker run --rm -it ghcr.io/siemens/cmp-test`
         run: |
           docker buildx build \
-            --tag ghcr.io/${{ env.REPO_OWNER_LC }}/cmp-test-prod:latest \
-            --build-arg BASE_IMAGE=ghcr.io/${{ env.REPO_OWNER_LC }}/cmp-test-base:latest \
+            --tag ghcr.io/${{ github.repository_owner }}/cmp-test:latest \
+            --build-arg BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.tests .
