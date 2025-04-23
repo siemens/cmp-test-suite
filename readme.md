@@ -33,9 +33,20 @@ For further reading footnotes and a bibliography are provided.
 
 The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the project.
 
+ Quick start with Docker
+On a system where [Docker is available](https://docs.docker.com/engine/install/), the easiest way to run the test suite is `docker run --rm -it ghcr.io/siemens/cmp-test`. This will invoke a smoke test just to confirm that the basics are in place. Add `--help` to learn about what other commands are available.
+
+To run a minimal test against an actual CA, try `docker run --rm -it ghcr.io/siemens/cmp-test --minimal http://example.com --ephemeral` (replace the URL with your CMP endpoint).
+
+A thorough evaluation that covers all the features of CMP requires a configuration file, where you specify preshared passwords, keys, algorithms to use, etc. (see `--customconfig` for details).
+
+
+# Advanced usage
+While the Docker-based approach makes it easy to get started, it essentially treats the test suite as a black box. However, if you want to customize, extend or debug it, it is necessary to dive deeper and understand how it works "under the hood".
+
 
 # Configuration
-Create a [Python virtual environment](https://docs.python.org/3/library/venv.html) by installing the dependencies from `requirements.txt`:
+Create a Python virtual environment by installing the dependencies from `requirements.txt`:
 
 1. Create a virtual environment: `python3 -m venv venv-cmp-tests`
    - If you use WSL 2.0, run `apt install libpython3-dev python3-venv` if the command above fails.
@@ -53,10 +64,7 @@ Note that if you haven´t yet activated the environment, do so now.
 2. Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment. 
 3. In your directory in the folder of cmp-test-suite you will find `report.html` 
 
-
-## Advanced usage examples
-Adjust the settings in the `config/local.robot` file to match your environment. 
-
+## Additional RobotFramework commands
 You can run specific tests on specific environments by adjusting command line options. Consider this example:
 `robot --outputdir=out --variable environment:cloudpki --include crypto tests`
 

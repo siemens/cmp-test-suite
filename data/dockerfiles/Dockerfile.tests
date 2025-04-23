@@ -14,6 +14,7 @@ WORKDIR /app
 
 COPY . /app
 
-# TODO: Devise a procedure to make it easy to add user-specific tests that will
-#       be executed along with the basic ones.
-CMD ["sh", "-c", "robot --pythonpath=./ --outputdir=reports/ scripts/smoke.robot"]
+# Run the entry point script, it takes care of command line argument parsing and
+# displaying documentation.
+ENTRYPOINT ["scripts/docker_entrypoint.py"]
+CMD ["--smoke"]
