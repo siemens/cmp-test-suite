@@ -30,7 +30,6 @@ from pyasn1_alt_modules import (
     rfc9480,
 )
 from robot.api.deco import keyword, not_keyword
-from robot.libraries import DateTime
 
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key
@@ -4090,16 +4089,7 @@ def patch_messageTime(  # noqa D417 undocumented-param pylint: disable=invalid-n
     if isinstance(pki_message, bytes):
         pki_message = parse_pkimessage(pki_message)
 
-    if new_time is not None:
-        if isinstance(new_time, str):
-            new_time = DateTime.convert_date(new_time)  # type: ignore
-        if isinstance(new_time, str):
-            new_time = datetime.fromisoformat(new_time)
-        if isinstance(new_time, float):
-            new_time = datetime.fromtimestamp(new_time)
-
-    new_time_obj = new_time or datetime.now(timezone.utc)
-    message_time = useful.GeneralizedTime().fromDateTime(new_time_obj)
+    message_time = prepareutils.prepare_generalized_time(new_time)
     message_time_subtyped = message_time.subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
     pki_message["header"]["messageTime"] = message_time_subtyped
     return pki_message
@@ -4354,13 +4344,10 @@ def patch_sender(  # noqa D417 undocumented-param
         )
         return msg_to_patch
 
-    field = "subject" if subject else "issuer"
-
-    general_name = rfc9480.GeneralName()
-    name_obj = rfc9480.Name().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 4))
-    name_obj.setComponentByName("rdnSequence", cert["tbsCertificate"][field]["rdnSequence"])  # type: ignore
-    sender = general_name.setComponentByName("directoryName", name_obj)
-    msg_to_patch["header"]["sender"] = sender
+    msg_to_patch["header"]["sender"] = prepareutils.prepare_general_name_from_name(
+        cert,  # type: ignore
+        extract_subject=subject,
+    )
     return msg_to_patch
 
 

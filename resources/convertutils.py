@@ -111,7 +111,6 @@ def subject_public_key_info_from_pubkey(
     use_rsa_pss: bool = False,
     use_pre_hash: bool = False,
     hash_alg: Optional[str] = None,
-    use_2_spkis: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Convert a `PublicKey` object to a `rfc5280.SubjectPublicKeyInfo` structure.
 
@@ -126,12 +125,11 @@ def subject_public_key_info_from_pubkey(
     :param use_pre_hash: Whether the CompositeKey uses a pre_hashing OID.
     :param hash_alg: The hash algorithm to use for pq-signature key, pre-hashing.
     (e,g. "sha512", "shake256").
-    :param use_2_spkis: Whether to return two SPKIs for the CompositeSigKey. Defaults to `False`.
     (some implementations may require two SPKIs for the public key).
     :return: An `rfc5280.SubjectPublicKeyInfo` structure containing the public key information.
     """
     if isinstance(public_key, CompositeSig03PublicKey):
-        return public_key.to_spki(use_pss=use_rsa_pss, pre_hash=use_pre_hash, use_2_spki=use_2_spkis)
+        return public_key.to_spki(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
 
     oid = None
     if hash_alg is not None and isinstance(public_key, PQSignaturePublicKey):

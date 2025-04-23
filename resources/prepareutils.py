@@ -8,15 +8,17 @@ These prepare functions are used in various other structures and do not require
  additional logic.
 """
 
-# TODO refactor to shared prepare utils used by the CA and Client logic used.
+from datetime import datetime, timezone
 
-from typing import Optional
+# TODO refactor to shared prepare utils used by the CA and Client logic used.
+from typing import Optional, Union
 
 from cryptography import x509
 from pyasn1.codec.der import decoder
-from pyasn1.type import tag
+from pyasn1.type import tag, useful
 from pyasn1_alt_modules import rfc5280, rfc9480
 from robot.api.deco import keyword, not_keyword
+from robot.libraries import DateTime
 
 
 @not_keyword
@@ -59,7 +61,7 @@ def parse_common_name_from_str(common_name: str) -> x509.Name:
     :param common_name: The common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,CN=Joe Mustermann"
     :returns: x509.Name object.
     """
-    if common_name == "Null-DN":
+    if common_name == "Null-DN" or common_name == "NULL-DN":
         return x509.Name([])
 
     if "=" not in common_name:
@@ -114,3 +116,79 @@ def prepare_general_name(  # noqa D417 undocumented-param
         return rfc5280.GeneralName().setComponentByName("dNSName", name_str)
 
     raise NotImplementedError(f"GeneralName name_type is Unsupported: {name_type}. {error_msg}")
+
+
+def _prepare_date_time_object(
+    date: Optional[Union[str, float, datetime]] = None,
+) -> datetime:
+    """Prepare a date time object.
+
+    :param date: The date to use. If None, the current date is used.
+    :return: The populated `datetime` object.
+    """
+    if date is None:
+        return datetime.now(timezone.utc)
+    if isinstance(date, str):
+        new_time_obj = DateTime.convert_date(date)  # type: ignore
+        if isinstance(date, str):
+            new_time_obj = datetime.fromisoformat(date)
+    elif isinstance(date, float):
+        new_time_obj = datetime.fromtimestamp(date)
+
+    elif isinstance(date, datetime):
+        new_time_obj = date
+
+    else:
+        raise ValueError(f"Invalid date format: Got {type(date)}")
+    return new_time_obj
+
+
+@not_keyword
+def prepare_generalized_time(
+    date: Optional[Union[str, float, datetime]] = None,
+) -> useful.GeneralizedTime:
+    """Prepare a GeneralizedTime object.
+
+    :param date: The date to use. If None, the current date is used.
+    :return: The populated `GeneralizedTime` object.
+    """
+    target = useful.GeneralizedTime()
+    new_time_obj = _prepare_date_time_object(date)
+    return target.fromDateTime(new_time_obj)
+
+
+@not_keyword
+def prepare_utc_time(
+    date: Optional[Union[str, float, datetime]] = None,
+) -> useful.UTCTime:
+    """Prepare a UTCTime object.
+
+    :param date: The date to use. If None, the current date is used.
+    :return: The populated `UTCTime` object.
+    """
+    target = useful.UTCTime()
+    new_time_obj = _prepare_date_time_object(date)
+    return target.fromDateTime(new_time_obj)
+
+
+@not_keyword
+def prepare_general_name_from_name(
+    name_obj: Union[rfc9480.Name, rfc9480.CMPCertificate],
+    extract_subject: bool = True,
+    target: Optional[rfc9480.GeneralName] = None,
+) -> rfc9480.GeneralName:
+    """Prepare a `GeneralName` from a Name or CMPCertificate.
+
+    :param name_obj: The Name or CMPCertificate object.
+    :param extract_subject: If True, extract the subject from the CMPCertificate.
+    :param target: An optional `GeneralName` object in which the data is parsed.
+    Else creates a new object.
+    :return: The populated GeneralName object.
+    """
+    if isinstance(name_obj, rfc9480.CMPCertificate):
+        filed_name = "subject" if extract_subject else "issuer"
+        name_obj = name_obj["tbsCertificate"][filed_name]
+
+    general_name = rfc9480.GeneralName() if target is None else target
+    general_name["directoryName"]["rdnSequence"] = name_obj["rdnSequence"]  # type: ignore
+    return general_name
