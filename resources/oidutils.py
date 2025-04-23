@@ -291,7 +291,7 @@ CURVE_NAMES_TO_INSTANCES: Dict[str, ec.EllipticCurve] = {
     "brainpoolP256r1": ec.BrainpoolP256R1(),  # Brainpool curve over a 256 bit prime field
     "brainpoolP384r1": ec.BrainpoolP384R1(),  # Brainpool curve over a 384 bit prime field
     "brainpoolP512r1": ec.BrainpoolP512R1(),  # Brainpool curve over a 512 bit prime field
-    "brainpoolp256r1": ec.BrainpoolP256R1(),  # Brainpool curve over a 256 bit prime field (alias)
+    "brainpoolp256r1": ec.BrainpoolP256R1(),  # Brainpool curve over a 256 bit prime field
     "brainpoolp384r1": ec.BrainpoolP384R1(),  # Brainpool curve over a 384 bit prime field
     "brainpoolp512r1": ec.BrainpoolP512R1(),  # Brainpool curve over a 512 bit prime field
 }
@@ -335,14 +335,14 @@ KM_KA_ALG = {
     # Section 4.1.1: Diffie-Hellman
     rfc9481.id_alg_ESDH: "esdh",
     # Section 4.1.2: ECDH
-    rfc9481.dhSinglePass_stdDH_sha224kdf_scheme: "stdDH-SHA224",
-    rfc9481.dhSinglePass_stdDH_sha256kdf_scheme: "stdDH-SHA256",
-    rfc9481.dhSinglePass_stdDH_sha384kdf_scheme: "stdDH-SHA384",
-    rfc9481.dhSinglePass_stdDH_sha512kdf_scheme: "stdDH-SHA512",
-    rfc9481.dhSinglePass_cofactorDH_sha224kdf_scheme: "cofactorDH-SHA224",
-    rfc9481.dhSinglePass_cofactorDH_sha256kdf_scheme: "cofactorDH-SHA256",
-    rfc5753.dhSinglePass_cofactorDH_sha384kdf_scheme: "cofactorDH-SHA384",
-    rfc5753.dhSinglePass_cofactorDH_sha512kdf_scheme: "cofactorDH-SHA512",
+    rfc9481.dhSinglePass_stdDH_sha224kdf_scheme: "stdDH-sha224",
+    rfc9481.dhSinglePass_stdDH_sha256kdf_scheme: "stdDH-sha256",
+    rfc9481.dhSinglePass_stdDH_sha384kdf_scheme: "stdDH-sha384",
+    rfc9481.dhSinglePass_stdDH_sha512kdf_scheme: "stdDH-sha512",
+    rfc9481.dhSinglePass_cofactorDH_sha224kdf_scheme: "cofactorDH-sha224",
+    rfc9481.dhSinglePass_cofactorDH_sha256kdf_scheme: "cofactorDH-sha256",
+    rfc5753.dhSinglePass_cofactorDH_sha384kdf_scheme: "cofactorDH-sha384",
+    rfc5753.dhSinglePass_cofactorDH_sha512kdf_scheme: "cofactorDH-sha512",
     # Section 4.1.3: Curve-Based Key Agreement
     rfc9481.id_X25519: "x25519",
     rfc9481.id_X448: "x448",
@@ -391,7 +391,7 @@ CURVE_2_COFACTORS = {
     "sect409r1": 2,
     "sect571k1": 4,
     "sect571r1": 2,
-    # Brainpool curves
+    # Brainpool curves RFC 5639
     "brainpoolP160r1": 1,
     "brainpoolP192r1": 1,
     "brainpoolP224r1": 1,
@@ -470,9 +470,9 @@ KDF_NAME_2_OID = {y: x for x, y in KDF_OID_2_NAME.items()}
 
 ALL_KNOWN_OIDS_2_NAME.update(KDF_OID_2_NAME)
 
-# ###################-----
+#########################
 # PQ OIDs
-# ###################-----
+#########################
 
 # as of https://csrc.nist.gov/projects/computer-security-objects-register/algorithm-registration.
 # Define the root OID for NIST Algorithms as per the draft
