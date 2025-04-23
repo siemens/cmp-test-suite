@@ -85,6 +85,7 @@ from resources.oid_mapping import compute_hash, get_hash_from_oid, may_return_oi
 from resources.oidutils import CURVE_OID_2_NAME, id_KemBasedMac
 from resources.typingutils import (
     CAResponse,
+    CertOrCerts,
     ECDHPrivateKey,
     ECDHPublicKey,
     EnvDataPrivateKey,
@@ -4421,3 +4422,71 @@ def get_cert_template_from_pkimessage(request: PKIMessageTMP, index: Strint = 0)
 
     body_name = request["body"].getName()
     return request["body"][body_name][index]["certReq"]["certTemplate"]
+
+
+@keyword(name="Build CMP Krp Message")
+def build_cmp_krp_message(  # noqa D417 undocumented-params
+    cert: Optional[rfc9480.CMPCertificate] = None,
+    status: str = "accepted",
+    ca_certs: Optional[CertOrCerts] = None,
+    key_cert_history: Optional[CertOrCerts] = None,
+    pki_status_info: Optional[rfc9480.PKIStatusInfo] = None,
+    **kwargs,
+) -> PKIMessageTMP:
+    """Build a CMP Key Recovery Response (KRP) message.
+
+    Arguments:
+    ---------
+        `cert`: The certificate to be recovered.
+        `status`: The status of the certificate. Defaults to `accepted`.
+        `ca_certs`: The CA certificates. Defaults to `None`.
+        `key_cert_history`: The key certificate history. Defaults to `None`.
+        `pki_status_info`: The PKI status information. Defaults to `None`.
+        `**kwargs`: Additional keyword arguments for the `PKIHeader`.
+
+    Returns:
+    -------
+        - The CMP Key Recovery Protocol (KRP) PKIMessage.
+
+    Examples:
+    --------
+    | krp= | Build CMP KRP Message | ${cert} | status=accepted | ca_certs=${ca_certs} |
+    | krp= | Build CMP KRP Message | ${cert} | pki_status_info=${pki_status_info} | \
+    key_cert_history=${key_cert_history} |
+
+    """
+    krp_con = rfc9480.KeyRecRepContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 18))
+
+    if cert is not None:
+        new_sig_cert = rfc9480.CMPCertificate().subtype(
+            explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0)
+        )
+        new_sig_cert = copy_asn1_certificate(
+            cert=cert,
+            target=new_sig_cert,
+        )
+        krp_con["newSigCert"] = new_sig_cert
+
+    if pki_status_info is None:
+        pki_status_info = cmputils.prepare_pkistatusinfo(
+            status=status,
+            texts="The certificate updated was accepted.",
+        )
+
+    krp_con["status"] = pki_status_info
+
+    if ca_certs is not None:
+        if isinstance(ca_certs, rfc9480.CMPCertificate):
+            ca_certs = [ca_certs]
+
+        krp_con["caCerts"].extend(ca_certs)
+
+    if key_cert_history is not None:
+        if isinstance(key_cert_history, rfc9480.CMPCertificate):
+            key_cert_history = [key_cert_history]
+
+        krp_con["keyPairHist"].extend(key_cert_history)
+
+    pki_message = cmputils.prepare_pki_message(**kwargs)
+    pki_message["body"]["krp"] = krp_con
+    return pki_message
