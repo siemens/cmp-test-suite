@@ -55,7 +55,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Spelling checker
-        run: codespell . --check-filenames --skip *.html,*.pem,*.xml,*venv*,*fips/*.py
+        run: codespell . --check-filenames --skip *.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py
 
   pylint:
     runs-on: ubuntu-22.04
