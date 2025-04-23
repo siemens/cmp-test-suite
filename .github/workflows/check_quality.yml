@@ -43,7 +43,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: RobotFramework style check
-        run: robocop check
+        run: robocop check --ignore VAR04
     # We haven't settled on a style for RobotFramework yet, enforce check when consensus is reached
     continue-on-error: true
 
