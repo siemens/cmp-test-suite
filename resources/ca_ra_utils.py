@@ -1442,9 +1442,6 @@ def validate_enc_key_with_id(
     return private_key
 
 
-# TODO fix docstring.
-
-
 @not_keyword
 def process_encrypted_key(
     cert_req_msg: rfc4211.CertReqMsg,
@@ -1458,12 +1455,13 @@ def process_encrypted_key(
     """Process the encrypted key in the certificate request message.
 
     :param cert_req_msg: The certificate request message to process.
+    :param for_agreement: Whether the key is used for agreement. Defaults to `False`.
+    :param request: The PKIMessage to process the encrypted key for.
     :param ca_key: The CA key to use for signing the certificate.
     :param ca_cert: The CA certificate to use for signing the certificate.
-    :param cmp_protection_cert: The CMP protection certificate to use for signing the certificate.
-    :param server_key: The server key to use for signing the certificate.
-    :param for_agreement: Whether the key is used for agreement. Defaults to `False`.
-    :return: The processed certificate.
+    :param password: The shared secret to use for decrypting the private key. Defaults to `None`.
+    :param kwargs: Additional certificates and keys to use for the decryption.
+    :return: The build certificate.
     """
     cert_template = cert_req_msg["certReq"]["certTemplate"]
     public_key = keyutils.load_public_key_from_cert_template(cert_template=cert_template, must_be_present=False)

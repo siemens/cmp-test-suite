@@ -997,15 +997,15 @@ def _compute_kari_sender(
             key_wrap_oid=key_wrap_oid,
             ukm=ukm,
         )
-    else:
-        k = cryptoutils.perform_static_dh(
-            public_key=public_key,
-            private_key=sender_key,
-            hash_alg=hash_alg,
-            key_wrap_oid=key_wrap_oid,
-            use_cofactor=use_cofactor,
-            ukm=ukm,
-        )
+
+    k = cryptoutils.perform_static_dh(
+        public_key=public_key,
+        private_key=sender_key,
+        hash_alg=hash_alg,
+        key_wrap_oid=key_wrap_oid,
+        use_cofactor=use_cofactor,
+        ukm=ukm,
+    )
 
     return k, ukm
 
@@ -2294,5 +2294,5 @@ def perform_sender_ecdh_one_pass_mqv(
     ukm_der = prepare_mqv_user_keying_material(ephemeral_key, added_ukm=ukm)
     encoded_ukm = encoder.encode(ukm_der)
     kek = cryptoutils.derive_shared_secret_ec(z, key_wrap_oid, hash_alg=hash_alg, ukm=ukm)
-    logging.info("ECMQV Sender computed KEK:", kek.hex())
+    logging.info("ECMQV Sender computed KEK: %s", kek.hex())
     return kek, encoded_ukm

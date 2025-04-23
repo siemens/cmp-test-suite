@@ -273,7 +273,6 @@ def build_csr(  # noqa D417 undocumented-param
 
     elif for_kga:
         csr["signature"] = univ.BitString("")
-        # TODO verify if as an example rsa is allowed to be rsaEncryption or must be something else
         # but must be set to something or define external function dataclass class to then encode the
         # data otherwise the structure will be empty and pyasn1 cannot be used!
         csr["signatureAlgorithm"] = spki["algorithm"]

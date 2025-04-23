@@ -61,7 +61,7 @@ def parse_common_name_from_str(common_name: str) -> x509.Name:
     :param common_name: The common name in OpenSSL notation, e.g., "C=DE,ST=Bavaria,L= Munich,CN=Joe Mustermann"
     :returns: x509.Name object.
     """
-    if common_name == "Null-DN" or common_name == "NULL-DN":
+    if common_name in ["Null-DN", "NULL-DN"]:
         return x509.Name([])
 
     if "=" not in common_name:

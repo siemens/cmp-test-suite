@@ -77,7 +77,6 @@ from resources.suiteenums import KeyUsageStrictness
 from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint
 
 
-# TODO fix this implementation to use 1e,2s and not 1e,1s.
 @not_keyword
 def process_mqv(
     mqv_der: Optional[bytes],
@@ -1380,11 +1379,11 @@ def validate_signature_and_digest_alg(
     sig_hash_oid = sig_alg_id["algorithm"]
 
     # TODO add unit test for Composite-Sig
-    if sig_hash_oid in COMPOSITE_SIG_SIGNED_DATA_OID_HASH:
-        # The composite-sig-cms03 daft says should be eq to hash in section 8.
-        # But LwCMP is strict, so this follows the style to only allow the expected hash.
-        hash_name_sig = COMPOSITE_SIG_SIGNED_DATA_OID_HASH[sig_hash_oid]
-    else:
+    # The composite-sig-cms03 daft says should be eq to hash in section 8.
+    # But LwCMP is strict, so this follows the style to only allow the expected hash.
+
+    hash_name_sig = COMPOSITE_SIG_SIGNED_DATA_OID_HASH.get(sig_hash_oid)
+    if hash_name_sig is None:
         hash_name_sig = get_hash_from_oid(sig_hash_oid, only_hash=True)
 
     hash_name_dig = get_hash_from_oid(digest_alg_id["algorithm"])
