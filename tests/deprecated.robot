@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -23,10 +23,10 @@ Library             ../resources/compareutils.py
 
 Test Tags    robot:skip-on-failure   deprecated
 
-*** Test Cases ***
 
+*** Test Cases ***
 CA Must Accept ChallengeResp POPO For Request With X25519 Key
-   [Documentation]    According to RFC 4210bis-18 Section 5.2.8.3.3. the Client can use the `challengeResp`
+    [Documentation]    According to RFC 4210bis-18 Section 5.2.8.3.3. the Client can use the `challengeResp`
     ...     POPO to prove possession of the private key. We send a PKIMessage with a X25519
     ...     SubsequentMessage POPO. The CA MUST accept the request and issue a certificate.
     [Tags]    positive    challenge   popo  issuing  advanced  x25519   challenge-response  encrValue
@@ -112,9 +112,3 @@ CA Must Accept ChallengeResp POPO For Request With RSA Key
     PKIStatus Must Be    ${response}   accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
     Validate Certificate Public Key   ${cert}  ${key}
-
-
-
-
-    
-    

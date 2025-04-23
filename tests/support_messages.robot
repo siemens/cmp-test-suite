@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -17,8 +17,8 @@ Library             ../resources/general_msg_utils.py
 
 Test Tags           general-message    support-messages
 
-*** Keywords ***
 
+*** Keywords ***
 Default Protect General Message
     [Documentation]    Protects a general message with the default protection method.
     ...                based on the values defined in the configuration file.
@@ -33,6 +33,7 @@ Default Protect General Message
         ${protected_genm}=    Default Protect PKIMessage    ${genm}
     END
     RETURN    ${protected_genm}
+
 
 *** Test Cases ***
 ##### Section 4.3
@@ -79,7 +80,7 @@ CA MUST Respond To MAC Protected Genm With Get Root CA Certificate Update
     ...    MAC-protected general message containing a valid `InfoTypeAndValue` for root CA certificate
     ...    updates. The CA MUST respond to the message and MAY include the updated root CA certificate
     ...    information in the response.
-    [Tags]    general-message    get_root_ca_cert_update    mac    positive
+    [Tags]    get_root_ca_cert_update    mac    positive
     Skip If    not ${ALLOW_MAC_PROTECTED_SUPPORT_MSG}    Skipped because MAC-protected support messages are disabled.
     Skip If    '${OLD_ROOT_CERT}' == None    Skipped because the OLD_ROOT_CERT filepath is not set.
     ${genm}=    Build CMP General Message
@@ -118,7 +119,8 @@ CA MUST Respond MAC Protected Genm With Get Certificate Request Template
     ...    the request and, if supported, respond with the OID, but the value must not be set.
     [Tags]    get_cert_template    mac    positive
     Skip If    not ${ALLOW_MAC_PROTECTED_SUPPORT_MSG}    Skipped because MAC-protected support messages are disabled.
-    ${genm}=    Build CMP General Message    add_messages=get_cert_template    recipient=${RECIPIENT}    sender=${SENDER}
+    ${genm}=    Build CMP General Message    add_messages=get_cert_template
+    ...         recipient=${RECIPIENT}    sender=${SENDER}
     ${protected_genm}=    Default Protect General Message    ${genm}
     ${genp}=    Exchange PKIMessage    ${protected_genm}
     Validate Get Certificate Request Template    ${genp}
@@ -132,7 +134,8 @@ CA MUST Accept MAC Protected Genm With Get Cert Template With CertProfile Set
     [Tags]    mac    positive    robot:skip-on-failure
     Skip If    not ${ALLOW_MAC_PROTECTED_SUPPORT_MSG}    Skipped because MAC-protected support messages are disabled.
     Skip If    '${CERT_PROFILE}' == 'None'    Skipped because the CERT_PROFILE variable is not set.
-    ${genm}=    Build CMP General Message    add_messages=get_cert_template    recipient=${RECIPIENT}    sender=${SENDER}
+    ${genm}=    Build CMP General Message    add_messages=get_cert_template
+    ...         recipient=${RECIPIENT}    sender=${SENDER}
     ${patched_genm}=    Patch GeneralInfo    ${genm}    cert_profile=${CERT_PROFILE}
     ${protected_genm}=    Protect PKIMessage
     ...    ${patched_genm}

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -76,7 +76,7 @@ Generate Protected Nested PKIMessage
     IF   ${id_length} < 4
         ${ids}=    Generate Unique Byte Values    length=4
     END
-    ${protected_irs}=    Create List
+    VAR   ${protected_irs}
     FOR    ${i}    IN RANGE    3
         ${protected_ir}=    Default Build Inner IR Message    transaction_id=${ids}[${i}]
         ...                 sender_nonce=${nonces}[${i}]
@@ -367,7 +367,7 @@ CA MUST Accept Nested IR From Trusted PKI With raVerified
     ${response}=    Exchange PKIMessage    ${prot_nested}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
-    
+
 CA MUST Check Orig Message Inside GeneralInfo
     [Documentation]     According to RFC 9483 Section 5.2.3 the PKI Entity May include the original PKIMessage
     ...    inside the GeneralInfo field, to let the RA or CA verify the original message. We send a valid

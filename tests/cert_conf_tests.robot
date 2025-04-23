@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -107,7 +107,6 @@ CA MUST Reject Invalid certReqId Inside The certConf
     ...    `badRequest`.
     [Tags]    field    negative
     ${response}=    Generate Default IR And Exchange For Cert Conf
-    ${cert}=   Get Cert From PKIMessage    ${response}
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    recipient=${RECIPIENT}
@@ -216,7 +215,7 @@ CA MUST Reject certConf Signed With The Newly Issued Certificate
     ...    certConf message signed with the newly issued certificate instead of the original
     ...    credentials. The CA MUST detect this integrity error and respond with an error,
     ...    optionally including the failInfo `badMessageCheck` or `badRequest`.
-    [Tags]    bad-behaviour    certConf    negative    protection   minimal
+    [Tags]    bad-behaviour    negative    protection   minimal
     ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
@@ -283,7 +282,6 @@ CA MUST Reject IR with Signature and Then certConf MAC Protection
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=wrongIntegrity    exclusive=True
-
 
 ### General Message
 

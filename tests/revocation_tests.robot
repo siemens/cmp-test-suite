@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -553,8 +553,6 @@ CA MUST Accept A Revocation Revive From Trusted PKI Management Entity
 
 
 *** Keywords ***
-
-
 Regenerate Cert For RR Tests
     [Documentation]    Generates a new certificate to test revocation, if revocation tests are allowed.
     ...

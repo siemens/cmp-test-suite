@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-
+# robotidy:skip-file
 *** Settings ***
 Documentation    General tests for CMP logic, not necessarily specific to the lightweight profile
 
@@ -79,10 +79,11 @@ Initialize Global Variables
 #    [Documentation]  poposkInput MUST NOT be used; it is not needed because subject and
 #    ...              publicKey are both present in the certTemplate.
 #    [Tags]    cr   negative  popo
-#    ${pki_message}=  Build Negative CMP Request  body=cr  bad=sigAlg  private_key=${ISSUDE_KEY}  ee_cert=${ISSUDE_CERT}  sender=${SENDER}    recipient=${RECIPIENT}
+#    ${pki_message}=  Build Negative CMP Request  body=cr  bad=sigAlg
+#                     private_key=${ISSUDE_KEY}  ee_cert=${ISSUDE_CERT}  sender=${SENDER}
+#                     recipient=${RECIPIENT}
 #    ${resp_pki_message}=  Send And Exchange PKIMessage   ${pki_message}
 #    Verify PKIStatusInfo and PKIFailInfo  ${resp_pki_message}  body=cp  failinfo_names=badPOP, notAuthorized
-
 
 # CA MUST check the validity of a CertTemplate in a CR
 # send a validity and check if the request was different and then grantedWithMods was returned.

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -21,11 +21,12 @@ Library             ../resources/certextractutils.py
 
 Suite Setup         Initialize Global Variables
 
-*** Variables ***
 
+*** Variables ***
 ${ALLOW_NOT_AUTHORIZED_SENDER}    ${None}
 ${NOT_AUTHORIZED_SENDER_CERT}    ${None}
 ${NOT_AUTHORIZED_SENDER_KEY}    ${None}
+
 
 *** Test Cases ***
 CA Must Reject Malformed Request
@@ -101,7 +102,7 @@ CA Must Reject Request When The CSR Is Sent Again
     ...    accept the request. If rejected, the CA may respond with the optional failInfo
     ...    `duplicateCertReq`.
     [Tags]    csr    negative    robot:skip-on-failure
-    ${csr}   ${key}=    Generate CSR For Testing
+    ${csr}   ${_}=    Generate CSR For Testing
     ${p10cr}=   Build P10cr From CSR    ${csr}    sender=${SENDER}    recipient=${RECIPIENT}
     ...         implicit_confirm=${True}    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     ${protected_p10cr}=    Protect PKIMessage
@@ -190,7 +191,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid MAC-Protected P10CR
     [Tags]    implicit_confirm    mac    p10cr    positive
     Skip If    not ${ALLOW_MAC_PROTECTION}    Skipped test because MAC based protection is disabled.
     Skip If    not ${ALLOW_P10CR_MAC_BASED}    Skipped test because P10cr MAC based protection is disabled.
-    ${csr}    ${key}=    Generate CSR For Testing
+    ${csr}    ${_}=    Generate CSR For Testing
     ${p10cr}=    Build P10cr From Csr
     ...    ${csr}
     ...    sender=${SENDER}
@@ -244,17 +245,13 @@ CA MUST Send A Valid CP After Receiving valid CR
     ...    contain the issued certificate if the request meets all requirements.
     [Tags]    cp    cr    PKIBody    positive   minimal
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
-    ${pki_message}=    Build Cr From Key
+    ${cr}=    Build Cr From Key
     ...    signing_key=${key}
     ...    exclude_fields=sender,senderKID
     ...    recipient=${RECIPIENT}
     ...    cert_template=${cert_template}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_cr}=    Protect PKIMessage
-    ...    pki_message=${pki_message}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ${protected_cr}=    Default Protect PKIMessage    ${cr}
     ${response}=    Exchange PKIMessage    ${protected_cr}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    cp
@@ -287,7 +284,7 @@ CA MUST Send A Valid CP After Receiving valid P10CR
     ...    the CA MUST process the request and respond with a valid Certification Response. The response
     ...    MUST contain the issued certificate if the request meets all requirements.
     [Tags]    cp    lwcmp    p10cr    PKIBody    positive  minimal
-    ${csr}    ${key}=    Generate CSR For Testing
+    ${csr}    ${_}=    Generate CSR For Testing
     ${p10cr}=   Build P10cr From Csr    ${csr}    sender=${SENDER}    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID
     ...    implicit_confirm=${True}
@@ -444,17 +441,13 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid P10cr SIG-Protected
     ...    extension. If implicit confirmation is disabled, a certificate confirmation message MUST
     ...    be sent to complete the exchange, and the CA MUST respond with a valid PKI confirmation message.
     [Tags]    p10cr    positive    signature   minimal
-    ${csr}    ${key}=    Generate CSR For Testing
+    ${csr}    ${_}=    Generate CSR For Testing
     ${p10cr}=    Build P10cr From Csr
     ...    ${csr}
     ...    exclude_fields=sender,senderKID
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${True}
-    ${protected_p10cr}=    Protect PKIMessage
-    ...    pki_message=${p10cr}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ${protected_p10cr}=    Default Protect PKIMessage    ${p10cr}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=  Confirm Certificate If Needed    ${response}
@@ -623,7 +616,6 @@ CA MUST Issue ECDSA Cert With KeyUsage
     ...    policy. We send a valid Initialization Request containing the `keyAgreement` and
     ...    `digitalSignature` KeyUsage extensions. The CA MUST issue a certificate containing both
     ...    specified extensions.
-    ${extensions}=  Prepare Extensions    digitalSignature,keyAgreement
     ${new_key}=    Generate Key    algorithm=ecc    curve=${DEFAULT_ECC_CURVE}
     ${extensions}=    Prepare Extensions    key_usage=keyAgreement,digitalSignature
     ${cm}=  Get Next Common Name
@@ -1053,7 +1045,7 @@ Initialize Global Variables
     # end so the issuer are different.
     # In some cases are only the sender==common_name is accepted, so for all other
     # cases this is used.
-    VAR    ${TestIndex}    ${1}    scope=GLOBAL
+    VAR    ${TEST_INDEX}    ${1}    scope=GLOBAL
     # Generate During Runtime
     # Successfully updated certificate and key.
     VAR    ${UPDATED_KEY}    ${None}    scope=GLOBAL
@@ -1092,18 +1084,18 @@ Initialize Global Variables
     VAR    ${KGA_KTRI_CERT}    ${None}    scope=GLOBAL
 
     # To Test KTRI, if the CA rejects a request for KGA without the keyEncipherment extension.
-    VAR    ${NEG_KTRI_KEY}    ${None}    scope=GLOBAL
-    VAR    ${NEG_KTRI_CERT}    ${None}    scope=GLOBAL
+    VAR    ${NEG_KTRI_KEY}    ${None}    scope=Global
+    VAR    ${NEG_KTRI_CERT}    ${None}    scope=Global
 
     # ecc key with extension. (keyAgreement)
-    VAR    ${KGA_KARI_KEY}    ${None}    scope=GLOBAL
-    VAR    ${KGA_KARI_CERT}    ${None}    scope=GLOBAL
+    VAR    ${KGA_KARI_KEY}    ${None}    scope=GLOBAL   # robocop: off=VAR04
+    VAR    ${KGA_KARI_CERT}    ${None}    scope=GLOBAL  # robocop: off=VAR04
 
     # To Test KARI, if the CA rejects a request for KGA without the keyAgreement extension.
-    VAR    ${NEG_KARI_KEY}    ${None}    scope=GLOBAL
-    VAR    ${NEG_KARI_CERT}    ${None}    scope=GLOBAL
+    VAR    ${NEG_KARI_KEY}    ${None}    scope=Global   # robocop: off=VAR04
+    VAR    ${NEG_KARI_CERT}    ${None}    scope=Global  # robocop: off=VAR04
 
-    VAR    ${RR_CERT_FOR_TRUSTED}    ${None}    scope=GLOBAL
+    VAR    ${RR_CERT_FOR_TRUSTED}    ${None}    scope=Global  # robocop: off=VAR04
 
-    VAR    @{GLOBAL_CERTS}    @{EMPTY}    scope=GLOBAL
-    VAR    @{GLOBAL_KEYS}    @{EMPTY}    scope=GLOBAL
+    VAR    @{GLOBAL_CERTS}    @{EMPTY}    scope=Global  # robocop: off=VAR04
+    VAR    @{GLOBAL_KEYS}    @{EMPTY}    scope=Global   # robocop: off=VAR04
