@@ -62,13 +62,14 @@ sys.set_int_max_str_digits(0)
 # debug.setLogger(debug.Debug('all'))
 
 
-def _prepare_pki_message_gen_name(sender: Union[str, rfc9480.GeneralName, rfc9480.Name, rfc9480.CMPCertificate]) -> rfc5280.GeneralName:
+def _prepare_pki_message_gen_name(
+    sender: Union[str, rfc9480.GeneralName, rfc9480.Name, rfc9480.CMPCertificate],
+) -> rfc5280.GeneralName:
     """Prepare a `GeneralName` object from a string.
 
     :param sender: The sender's name to be converted to a `GeneralName`.
     :return: A `GeneralName` object.
     """
-
     if isinstance(sender, rfc9480.GeneralName):
         return sender
     if isinstance(sender, str):
@@ -80,8 +81,8 @@ def _prepare_pki_message_gen_name(sender: Union[str, rfc9480.GeneralName, rfc948
             extract_subject=True,
         )
 
-    raise TypeError("Sender must be a string, Name or a GeneralName object."
-                    f"Got: {type(sender)}")
+    raise TypeError(f"Sender must be a string, Name or a GeneralName object.Got: {type(sender)}")
+
 
 def _prepare_pki_header(
     sender: Union[str, rfc5280.GeneralName],
@@ -123,7 +124,9 @@ def _prepare_octet_string_field(value: bytes, tag_number: int) -> univ.OctetStri
 
 
 def _prepare_sender_kid(
-    sender_kid: Optional[Union[str, bytes]], sender: Union[str, rfc9480.GeneralName], default: bytes = b"CN=CloudCA-Integration-Test-User"
+    sender_kid: Optional[Union[str, bytes]],
+    sender: Union[str, rfc9480.GeneralName],
+    default: bytes = b"CN=CloudCA-Integration-Test-User",
 ) -> univ.OctetString:
     """Prepare the sender KID based on the sender's name.
 
@@ -246,7 +249,6 @@ def prepare_pki_message(
 
     if kwargs.get("for_mac", False):
         try:
-
             if not isinstance(sender, str):
                 raise TypeError("Sender must be a string for MAC-based protection.")
 
