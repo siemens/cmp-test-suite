@@ -62,6 +62,27 @@ sys.set_int_max_str_digits(0)
 # debug.setLogger(debug.Debug('all'))
 
 
+def _prepare_pki_message_gen_name(sender: Union[str, rfc9480.GeneralName, rfc9480.Name, rfc9480.CMPCertificate]) -> rfc5280.GeneralName:
+    """Prepare a `GeneralName` object from a string.
+
+    :param sender: The sender's name to be converted to a `GeneralName`.
+    :return: A `GeneralName` object.
+    """
+
+    if isinstance(sender, rfc9480.GeneralName):
+        return sender
+    if isinstance(sender, str):
+        return rfc5280.GeneralName().setComponentByName("rfc822Name", sender)
+
+    if isinstance(sender, (rfc9480.Name, rfc9480.CMPCertificate)):
+        return prepareutils.prepare_general_name_from_name(
+            name_obj=sender,
+            extract_subject=True,
+        )
+
+    raise TypeError("Sender must be a string, Name or a GeneralName object."
+                    f"Got: {type(sender)}")
+
 def _prepare_pki_header(
     sender: Union[str, rfc5280.GeneralName],
     recipient: Union[str, rfc5280.GeneralName],
@@ -83,14 +104,10 @@ def _prepare_pki_header(
         pki_header["pvno"] = univ.Integer(pvno)  # type: ignore
 
     if "sender" not in exclude_fields:
-        if isinstance(sender, str):
-            sender = rfc5280.GeneralName().setComponentByName("rfc822Name", sender)
-        pki_header["sender"] = sender
+        pki_header["sender"] = _prepare_pki_message_gen_name(sender)
 
     if "recipient" not in exclude_fields:
-        if isinstance(recipient, str):
-            recipient = rfc5280.GeneralName().setComponentByName("rfc822Name", recipient)
-        pki_header["recipient"] = recipient
+        pki_header["recipient"] = _prepare_pki_message_gen_name(recipient)
 
     return pki_header
 
@@ -106,7 +123,7 @@ def _prepare_octet_string_field(value: bytes, tag_number: int) -> univ.OctetStri
 
 
 def _prepare_sender_kid(
-    sender_kid: Optional[Union[str, bytes]], sender: str, default: bytes = b"CN=CloudCA-Integration-Test-User"
+    sender_kid: Optional[Union[str, bytes]], sender: Union[str, rfc9480.GeneralName], default: bytes = b"CN=CloudCA-Integration-Test-User"
 ) -> univ.OctetString:
     """Prepare the sender KID based on the sender's name.
 
@@ -146,8 +163,8 @@ def _prepare_pvno(pvno: Optional[Strint], for_kga: bool, update_hash: bool, defa
 
 @not_keyword
 def prepare_pki_message(
-    sender: str = "tests@example.com",
-    recipient: str = "testr@example.com",
+    sender: Union[str, rfc5280.GeneralName] = "tests@example.com",
+    recipient: Union[str, rfc5280.GeneralName] = "testr@example.com",
     exclude_fields: Optional[str] = None,
     transaction_id: Optional[Union[str, bytes]] = None,
     sender_nonce: Optional[bytes] = None,
@@ -229,6 +246,10 @@ def prepare_pki_message(
 
     if kwargs.get("for_mac", False):
         try:
+
+            if not isinstance(sender, str):
+                raise TypeError("Sender must be a string for MAC-based protection.")
+
             if "sender" not in to_exclude:
                 pki_message = patch_sender(pki_message, sender_name=sender)
 
@@ -2084,7 +2105,7 @@ def _prepare_cert_req_msg_body(body_type: str) -> rfc9480.PKIBody:
     :raises ValueError: If the provided `body_type` is not one of the supported values ("cr", "ir", "kur").
     :return: A `PKIBody` object with the requested body type and appropriate tagging.
     """
-    type_2_id = {"ir": 0, "cr": 2, "kur": 7, "ccr": 13}
+    type_2_id = {"ir": 0, "cr": 2, "kur": 7, "ccr": 13, "krr": 9}
     if body_type not in type_2_id:
         raise ValueError(
             "The provided `body_type` is not one of the supported values "
@@ -2191,27 +2212,14 @@ def build_key_update_request(  # noqa D417 undocumented-param
         popo_structure=params.get("popo"),
     )
 
-    pki_body = _prepare_cert_req_msg_body("kur")
-    pki_body["kur"].extend(utils.ensure_list(cert_req_msg))
-
-    pvno = _parse_pvno(params.get("pvno"), params.get("for_kga", False))
-
-    pki_message = prepare_pki_message(
+    return _prepare_build_cert_req_msgs_pkimessage(
+        body_name="kur",
+        cert_req_msg=cert_req_msg,
         sender=sender,
         recipient=recipient,
         exclude_fields=exclude_fields,
-        transaction_id=params.get("transaction_id"),
-        sender_nonce=params.get("sender_nonce"),
-        recip_nonce=params.get("recip_nonce"),
-        recip_kid=params.get("recip_kid"),
-        implicit_confirm=params.get("implicit_confirm", False),
-        sender_kid=params.get("sender_kid"),
-        pvno=pvno,
-        for_mac=params.get("for_mac", False),
+        **params,
     )
-
-    pki_message["body"] = pki_body
-    return pki_message
 
 
 def _parse_pvno(pvno: Optional[Strint], for_kga: bool, default: int = 2) -> int:
@@ -2228,6 +2236,42 @@ def _parse_pvno(pvno: Optional[Strint], for_kga: bool, default: int = 2) -> int:
         pvno = int(pvno)
 
     return pvno
+
+
+def _prepare_build_cert_req_msgs_pkimessage(
+    body_name: str,
+    cert_req_msg: Union[List[rfc4211.CertReqMsg], rfc4211.CertReqMsg],
+    sender: Union[str, rfc9480.GeneralName],
+    recipient: Union[str, rfc9480.GeneralName],
+    **params,
+) -> PKIMessageTMP:
+    """Prepare a `PKIMessage` with the specified body name and `CertReqMsg`.
+
+    :param body_name: The name of the PKI body (e.g., "cr", "ir", "krr").
+    :param cert_req_msg: The `CertReqMsg` or list of `CertReqMsg` objects to include in the body.
+    :param params: Additional parameters for customization.
+    :return: The constructed `PKIMessage`.
+    """
+    pki_body = _prepare_cert_req_msg_body(body_name)
+    pki_body[body_name].extend(utils.ensure_list(cert_req_msg))
+
+    pvno = _parse_pvno(params.get("pvno"), params.get("for_kga", False))
+
+    pki_message = prepare_pki_message(
+        sender=sender,
+        recipient=recipient,
+        exclude_fields=params.get("exclude_fields"),
+        transaction_id=params.get("transaction_id"),
+        sender_nonce=params.get("sender_nonce"),
+        recip_nonce=params.get("recip_nonce"),
+        recip_kid=params.get("recip_kid"),
+        implicit_confirm=params.get("implicit_confirm", False),
+        sender_kid=params.get("sender_kid"),
+        pvno=pvno,
+        for_mac=params.get("for_mac", False),
+    )
+    pki_message["body"] = pki_body
+    return pki_message
 
 
 @keyword(name="Build Ir From Key")
@@ -2307,32 +2351,20 @@ def build_ir_from_key(  # noqa D417 undocumented-param
             spki=spki,
         )
 
-    pvno = _parse_pvno(params.get("pvno"), params.get("for_kga", False))
-
-    pki_body = _prepare_cert_req_msg_body("ir")
-    pki_body["ir"].extend(utils.ensure_list(cert_req_msg))
-
-    # To ensure that the prepared messageTime is newer.
-    pki_message = prepare_pki_message(
+    return _prepare_build_cert_req_msgs_pkimessage(
+        body_name="ir",
+        cert_req_msg=cert_req_msg,
         sender=sender,
         recipient=recipient,
         exclude_fields=exclude_fields,
-        transaction_id=params.get("transaction_id"),
-        sender_nonce=params.get("sender_nonce"),
-        recip_nonce=params.get("recip_nonce"),
-        recip_kid=params.get("recip_kid"),
-        implicit_confirm=params.get("implicit_confirm", False),
-        sender_kid=params.get("sender_kid"),
-        pvno=pvno,
         for_mac=for_mac,
+        **params,
     )
-    pki_message["body"] = pki_body
-    return pki_message
 
 
 @keyword(name="Build Cr From Key")
 def build_cr_from_key(  # noqa D417 undocumented-param
-    signing_key: SignKey,
+    signing_key: PrivateKey,
     common_name: str = "CN=Hans Mustermann",
     sender: str = "tests@example.com",
     recipient: str = "testr@example.com",
@@ -2397,12 +2429,18 @@ def build_cr_from_key(  # noqa D417 undocumented-param
             for_kga=params.get("for_kga", False),
             cert_template=params.get("cert_template"),
             popo_structure=params.get("popo"),
+            bad_pop=params.get("bad_pop", False),
         )
 
-    pki_body = _prepare_cert_req_msg_body("cr")
-    pki_body["cr"].extend(utils.ensure_list(cert_req_msg))
+    return _prepare_build_cert_req_msgs_pkimessage(
+        body_name="cr",
+        cert_req_msg=cert_req_msg,
+        sender=sender,
+        recipient=recipient,
+        exclude_fields=exclude_fields,
+        **params,
+    )
 
-    pvno = _parse_pvno(params.get("pvno"), params.get("for_kga", False), default=2)
 
 @keyword(name="Build Krr From Key")
 def build_krr_from_key(  # noqa D417 undocumented-param
@@ -2487,7 +2525,6 @@ def build_ccr_from_key(  # noqa D417 undocumented-param
     recipient: str = "testr@example.com",
     exclude_fields: Optional[str] = "sender,senderKID",
     cert_req_msg: Optional[Union[List[rfc4211.CertReqMsg], rfc4211.CertReqMsg]] = None,
-    bad_pop: bool = False,
     **params,
 ):
     """Create an `Crr` (Cross-Certification Request) PKIMessage using a signing key and specified parameters.
@@ -2505,7 +2542,6 @@ def build_ccr_from_key(  # noqa D417 undocumented-param
         - `recipient`: The recipient of the request. Defaults to "testr@example.com".
         - `exclude_fields`: Comma-separated list of fields to omit from the PKIHeader. Defaults to `None`.
         - `cert_req_msg`: A list of or single `CertReqMsg` object to be appended.
-        - `bad_pop`: If `True`, the Proof of Possession (POPO) will be manipulated to create an invalid signature.
 
     `**params`: Additional optional parameters for customization:
         - `cert_req_id` (int): ID for the certificate request. Defaults to `0`.
@@ -2519,6 +2555,7 @@ def build_ccr_from_key(  # noqa D417 undocumented-param
         - The `PKIHeader` fields can also be set.
         - `for_mac` (bool): Flag indicating if the message is for MAC. Defaults to `False`.
        ( set the sender inside the directoryName choice of the GeneralName structure)
+       - `bad_pop`: If `True`, the Proof of Possession (POPO) will be manipulated to create an invalid signature.
 
     Returns:
     -------
@@ -2535,41 +2572,29 @@ def build_ccr_from_key(  # noqa D417 undocumented-param
     | ${crr}= | Build Ir From Key | ${signing_key} | exclude_fields=transactionID,senderNonce |
 
     """
-    cert_request_msg = cert_req_msg or prepare_cert_req_msg(
-        private_key=signing_key,
-        common_name=common_name,
-        cert_req_id=params.get("cert_req_id", 0),
-        hash_alg=params.get("hash_alg", "sha256"),
-        extensions=params.get("extensions", None),
-        controls=params.get("controls"),
-        ra_verified=params.get("ra_verified", False),
-        for_kga=params.get("for_kga", False),
-        cert_template=params.get("cert_template"),
-        popo_structure=params.get("popo"),
-        bad_pop=bad_pop,
-    )
+    if cert_req_msg is None:
+        cert_req_msg = prepare_cert_req_msg(
+            private_key=signing_key,
+            common_name=common_name,
+            cert_req_id=params.get("cert_req_id", 0),
+            hash_alg=params.get("hash_alg", "sha256"),
+            extensions=params.get("extensions", None),
+            controls=params.get("controls"),
+            ra_verified=params.get("ra_verified", False),
+            for_kga=params.get("for_kga", False),
+            cert_template=params.get("cert_template"),
+            popo_structure=params.get("popo"),
+            bad_pop=params.get("bad_pop", False),
+        )
 
-    pvno = _parse_pvno(params.get("pvno"), params.get("for_kga", False))
-
-    pki_body = _prepare_cert_req_msg_body("ccr")
-    pki_body["ccr"].extend(utils.ensure_list(cert_request_msg))
-
-    # To ensure that the prepared messageTime is newer.
-    pki_message = prepare_pki_message(
+    return _prepare_build_cert_req_msgs_pkimessage(
+        body_name="ccr",
+        cert_req_msg=cert_req_msg,
         sender=sender,
         recipient=recipient,
         exclude_fields=exclude_fields,
-        transaction_id=params.get("transaction_id"),
-        sender_nonce=params.get("sender_nonce"),
-        recip_nonce=params.get("recip_nonce"),
-        recip_kid=params.get("recip_kid"),
-        implicit_confirm=params.get("implicit_confirm", False),
-        sender_kid=params.get("sender_kid"),
-        pvno=pvno,
-        for_mac=params.get("for_mac", False),
+        **params,
     )
-    pki_message["body"] = pki_body
-    return pki_message
 
 
 @keyword(name="Build Ir From CSR")
@@ -2626,7 +2651,7 @@ def build_ir_from_csr(  # noqa D417 undocumented-param
 
     """
     cert_template = certbuildutils.prepare_cert_template_from_csr(csr)
-    cert_request_msg = prepare_cert_req_msg(
+    message = prepare_cert_req_msg(
         private_key=signing_key,
         common_name=None,
         cert_req_id=params.get("cert_req_id", 0),
@@ -2637,29 +2662,19 @@ def build_ir_from_csr(  # noqa D417 undocumented-param
         for_kga=params.get("for_kga", False),
         cert_template=cert_template,
         popo_structure=params.get("popo"),
+        bad_pop=params.get("bad_pop", False),
     )
+    messages = utils.ensure_list(cert_req_msg)
+    messages.append(message)
 
-    pki_body = _prepare_cert_req_msg_body("ir")
-    pki_body["ir"].append(cert_request_msg)
-    pki_body["ir"].extend(utils.ensure_list(cert_req_msg))
-
-    # To ensure that the prepared messageTime is newer.
-    pki_message = prepare_pki_message(
+    return _prepare_build_cert_req_msgs_pkimessage(
+        body_name="ir",
+        cert_req_msg=messages,
         sender=sender,
         recipient=recipient,
         exclude_fields=exclude_fields,
-        transaction_id=params.get("transaction_id"),
-        sender_nonce=params.get("sender_nonce"),
-        recip_nonce=params.get("recip_nonce"),
-        recip_kid=params.get("recip_kid"),
-        implicit_confirm=params.get("implicit_confirm", False),
-        sender_kid=params.get("sender_kid"),
-        pvno=int(params.get("pvno", 2)),
-        for_mac=params.get("for_mac", False),
+        **params,
     )
-    pki_message["body"] = pki_body
-
-    return pki_message
 
 
 @keyword(name="Build Cr From CSR")
@@ -2716,7 +2731,8 @@ def build_cr_from_csr(  # noqa D417 undocumented-param
 
     """
     cert_template = certbuildutils.prepare_cert_template_from_csr(csr)
-    cert_request_msg = prepare_cert_req_msg(
+
+    message = prepare_cert_req_msg(
         private_key=signing_key,
         common_name=None,
         cert_req_id=params.get("cert_req_id", 0),
@@ -2729,27 +2745,17 @@ def build_cr_from_csr(  # noqa D417 undocumented-param
         popo_structure=params.get("popo"),
     )
 
-    pki_body = _prepare_cert_req_msg_body("cr")
-    pki_body["cr"].append(cert_request_msg)
-    pki_body["cr"].extend(utils.ensure_list(cert_req_msg))
+    messages = utils.ensure_list(cert_req_msg)
+    messages.append(message)
 
-    # To ensure that the prepared messageTime is newer.
-    pki_message = prepare_pki_message(
+    return _prepare_build_cert_req_msgs_pkimessage(
+        body_name="cr",
+        cert_req_msg=messages,
         sender=sender,
         recipient=recipient,
         exclude_fields=exclude_fields,
-        transaction_id=params.get("transaction_id"),
-        sender_nonce=params.get("sender_nonce"),
-        recip_nonce=params.get("recip_nonce"),
-        recip_kid=params.get("recip_kid"),
-        implicit_confirm=params.get("implicit_confirm", False),
-        sender_kid=params.get("sender_kid"),
-        pvno=int(params.get("pvno", 2)),
-        for_mac=params.get("for_mac", False),
+        **params,
     )
-    pki_message["body"] = pki_body
-
-    return pki_message
 
 
 @keyword(name="Build Crr From CSR")
@@ -2806,7 +2812,7 @@ def build_ccr_from_csr(  # noqa D417 undocumented-param
 
     """
     cert_template = certbuildutils.prepare_cert_template_from_csr(csr)
-    cert_request_msg = prepare_cert_req_msg(
+    message = prepare_cert_req_msg(
         private_key=signing_key,
         common_name=None,
         cert_req_id=params.get("cert_req_id", 0),
@@ -2817,29 +2823,18 @@ def build_ccr_from_csr(  # noqa D417 undocumented-param
         for_kga=params.get("for_kga", False),
         cert_template=cert_template,
         popo_structure=params.get("popo"),
+        bad_pop=params.get("bad_pop", False),
     )
-
-    pki_body = _prepare_cert_req_msg_body("ccr")
-    pki_body["ccr"].append(cert_request_msg)
-    pki_body["ccr"].extend(utils.ensure_list(cert_req_msg))
-
-    # To ensure that the prepared messageTime is newer.
-    pki_message = prepare_pki_message(
+    messages = utils.ensure_list(cert_req_msg)
+    messages.append(message)
+    return _prepare_build_cert_req_msgs_pkimessage(
+        body_name="ccr",
+        cert_req_msg=messages,
         sender=sender,
         recipient=recipient,
         exclude_fields=exclude_fields,
-        transaction_id=params.get("transaction_id"),
-        sender_nonce=params.get("sender_nonce"),
-        recip_nonce=params.get("recip_nonce"),
-        recip_kid=params.get("recip_kid"),
-        implicit_confirm=params.get("implicit_confirm", False),
-        sender_kid=params.get("sender_kid"),
-        pvno=int(params.get("pvno", 3)),
-        for_mac=params.get("for_mac", False),
+        **params,
     )
-    pki_message["body"] = pki_body
-
-    return pki_message
 
 
 def calculate_cert_hash(  # noqa D417 undocumented-param
