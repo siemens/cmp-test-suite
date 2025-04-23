@@ -1,7 +1,10 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
-
+# robocop: off=LEN08,LEN27,LEN28
+# LEN08:  Line length is longer than 120 characters.
+# LEN28:  File is too long.
+# LEN27:  Too-many-test cases.
 
 
 *** Settings ***
@@ -27,9 +30,8 @@ Suite Setup         Set Up Test Suite
 
 Test Template     Request With PQ KEM Key
 
+
 *** Test Cases ***     ALGORITHM    INVALID_KEY_SIZE
-
-
 Invalid ML-KEM-512 Key Size    ml-kem-512    True
      [Tags]    negative  ml-kem
 
@@ -476,8 +478,6 @@ Valid COMPOSITE-KEM-FRODOKEM-1344-SHAKE-X448 Request    composite-kem-frodokem-1
 
 
 *** Keywords ***
-
-
 Request With PQ KEM Key
     [Documentation]  Send a valid Initialization Request for a PQ KEM key.
     [Arguments]    ${alg_name}     ${invalid_key_size}   ${extensions}=${None}    ${add_params_rand}=${False}

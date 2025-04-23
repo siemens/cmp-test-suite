@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -17,14 +17,12 @@ Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
 Library             ../pq_logic/pq_verify_logic.py
 
-
-
 Test Tags           pq-sig   pqc
 
 Suite Setup         Set Up Test Suite
 
-*** Keywords ***
 
+*** Keywords ***
 Initialize Global Variables
     [Documentation]    Initialize global variables for the test suite.
     ${cert}   ${key}=   May Load Cert And Key    data/unittest/ca1_cert_ecdsa.pem   data/keys/private-key-ecdsa.pem
@@ -33,8 +31,10 @@ Initialize Global Variables
     ${cert}   ${key}=   May Load Cert And Key    data/unittest/ca1_cert_ecdsa.pem   data/keys/private-key-ecdsa.pem
     VAR    ${ISSUED_CERT}  ${cert}   scope=Global
     VAR    ${ISSUED_KEY}   ${key}    scope=Global
-    VAR    &{CERT_CONF_DEF_VALS}    sender=${SENDER}    recipient=${RECIPIENT}    private_key=${issued_key}    cert=${issued_cert}    password=${PRESHARED_SECRET}    protection=signature   scope=GLOBAL
-    VAR    &{DEFAULT_PROTECTION_VALS}    protection=${DEFAULT_PROTECTION}   private_key=${issued_key}    cert=${issued_cert}   password=${PRESHARED_SECRET}   scope=GLOBAL
+    VAR    &{CERT_CONF_DEF_VALS}    sender=${SENDER}    recipient=${RECIPIENT}    private_key=${ISSUED_KEY}
+    ...     cert=${ISSUED_CERT}    password=${PRESHARED_SECRET}    protection=signature   scope=GLOBAL
+    VAR    &{DEFAULT_PROTECTION_VALS}    protection=${DEFAULT_PROTECTION}   private_key=${ISSUED_KEY}
+    ...   cert=${ISSUED_CERT}   password=${PRESHARED_SECRET}   scope=GLOBAL
 
 Exchange PQ Signature PKIMessage
     [Documentation]    Exchange a PKIMessage for a PQ signature certificate.
@@ -107,13 +107,11 @@ Validate BadPOP
 
 
 *** Variables ***
-
 ${DEFAULT_ML_DSA_ALG}    ml-dsa-44
 ${DEFAULT_SLH_DSA_ALG}    slh-dsa-sha2-128s
 
 
 *** Test Cases ***
-
 ############################
 # ML-DSA Tests
 ############################
@@ -163,7 +161,7 @@ CA MUST Reject an Invalid ML-DSA-44 Public Key
     ${status_info}=    Get PKIStatusInfo    ${response}
     Is Bit Set        ${status_info['failInfo']}    badCertTemplate
 
-CA MUST Reject a ML-DSA-44 with SHA512 certificate for non-EE.
+CA MUST Reject a ML-DSA-44 with SHA512 certificate for non-EE
     [Documentation]   According to draft-ietf-lamps-dilithium-certificates-07 is the ML-DSA-44 with SHA512 OID used,
     ...               but inside a non end-entity certificate. The CA MUST reject the request and MAY respond with
     ...               optional failInfo `badCertTemplate`.
@@ -568,13 +566,13 @@ CA MUST Reject SLH-DSA-SHAKE-192F with Shake256 IR with Invalid POP
 CA MUST Accept Valid SLH-DSA-SHA2-256S IR
     [Documentation]   According to draft-ietf-lamps-cms-sphincs-plus-17 is the SLH-DSA-SHA2-256S used.
     ...               We send an valid IR. The CA MUST process the request and issue a valid certificate.
-    [Tags]       positive   slh-dsa 
+    [Tags]       positive   slh-dsa
     ${response}=   Exchange PQ Signature PKIMessage    slh-dsa-sha2-256s
     PKIMessage Body Type Must Be    ${response}    ip
     Validate Certificate Was Issued For Expected Alg    ${response}    slh-dsa-sha2-256s
     ${cert}=   Get Cert From PKIMessage    ${response}
     Certificate Must Be Valid    ${cert}
-    
+
 CA MUST Reject SLH-DSA-SHA2-256S IR with Invalid POP
     [Documentation]   According to draft-ietf-lamps-cms-sphincs-plus-17 is the SLH-DSA-SHA2-256S used.
     ...               We send an valid IR with an invalid POP. The CA MUST reject the request and MAY respond with
@@ -693,7 +691,7 @@ CA MUST Reject SLH-DSA-SHAKE-256F with Shake256 IR with Invalid POP
     ${response}=     Exchange PQ Signature PKIMessage    slh-dsa-shake-256f    shake256    True
     Validate BadPOP    ${response}
 
-CA MUST Reject SLH-DSA-SHA2-256S with Sha512 certificate for non-EE.
+CA MUST Reject SLH-DSA-SHA2-256S with Sha512 certificate for non-EE
     [Documentation]   According to draft-ietf-lamps-cms-sphincs-plus-17 is the SLH-DSA-SHA2-256S with Sha512 OID used,
     ...               but inside a non end-entity certificate. The CA MUST reject the request and MAY respond with
     ...               optional failInfo `badCertTemplate`.

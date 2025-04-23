@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -24,15 +24,14 @@ Test Tags           kem   pqc
 
 Suite Setup          Set Up Test Suite
 
-*** Keywords ***
 
+*** Keywords ***
 Request With PQ KEM Key
     [Documentation]  Send a valid Initialization Request for a PQ KEM key.
     [Arguments]    ${alg_name}     ${invalid_key_size}
     ${response}    ${key}=   Build And Exchange KEM Certificate Request    ${alg_name}    ${invalid_key_size}
     ${cert}=   Validate EncrCert For KEM    ${response}    ${key}
     Certificate Must Be Valid    ${cert}
-
 
 Build And Exchange KEM Certificate Request
     [Documentation]    Build a KEM certificate request and exchange it with the CA to get a certificate.
@@ -62,8 +61,6 @@ Build And Exchange KEM Certificate Request
 
 
 *** Test Cases ***
-
-
 CA MUST Accept A Valid IR FOR ML-KEM-768
     [Documentation]   According to draft-ietf-lamps-kyber-certificates-07 is ML-KEM-768 used. We send an valid
     ...               IR. The CA MUST process the request and issue a valid certificate. Which is encrypted with our
@@ -83,7 +80,7 @@ CA MUST Reject ML-KEM with Invalid KeyUsage
     ...               and respond with a `rejection´ and MAY return the optional failInfo `badCertTemplate`.
     [Tags]         negative    ml-kem   robot:skip-on-failure   key_usage
     ${extensions}=    Prepare Extensions     key_usage=digitalSignature
-    ${response}  ${key}=    Build And Exchange KEM Certificate Request    ml-kem-768
+    ${response}  ${_}=    Build And Exchange KEM Certificate Request    ml-kem-768
     ...    extensions=${extensions}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -117,7 +114,7 @@ CA MUST support KEMBasedMAC
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${key}=  Generate Default Key
-    ${ir}=    Build ir from key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
+    ${ir}=    Build Ir From Key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
     ${protected_ir}=  Protect PKIMessage KemBasedMac    ${ir}    shared_secret=${ss}
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}   accepted
@@ -139,7 +136,7 @@ CA Reject invalid KEMBasedMAC Protected Message
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${key}=  Generate Default Key
-    ${ir}=    Build ir from key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
+    ${ir}=    Build Ir From Key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
     ${protected_ir}=  Protect PKIMessage KemBasedMac    ${ir}    shared_secret=${ss}    bad_message_check=True
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}   rejection
@@ -162,12 +159,12 @@ CA MUST not reuse the same ss for KEMBASEDMAC
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${key}=  Generate Default Key
-    ${ir}=    Build ir from key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
+    ${ir}=    Build Ir From Key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
     ${protected_ir}=  Protect PKIMessage KemBasedMac    ${ir}    shared_secret=${ss}    bad_message_check=True
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}   accepted
     ${key}=  Generate Default Key
-    ${ir}=    Build ir from key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
+    ${ir}=    Build Ir From Key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
     ${protected_ir}=  Protect PKIMessage KemBasedMac    ${ir}    shared_secret=${ss}
     ...               bad_message_check=True
     ${response}=   Exchange PKIMessage    ${protected_ir}

@@ -1,10 +1,13 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
-
+# robocop: off=SPC11,LEN28,LEN27
+# To deactivate the rule the next line is used otherwise needs to deactivate
+# (line-too-long LEN08)
+# LEN28:  File is too long.
+# LEN27:  Too-many-test cases.
 
 *** Settings ***
-
 Documentation    Test cases for Composite Signature Algorithms in all flavors. Supports version 3 and 4.
 
 Resource            ../config/${environment}.robot
@@ -26,9 +29,8 @@ Test Tags           hybrid   hybrid-sig  composite-sig
 Suite Setup    Set Up Test Suite
 Test Template     Request With Composite Sig
 
+
 *** Test Cases ***     ALGORITHM       USE_RSA_PSS        USE_PRE_HASH        badPOP
-
-
 Invalid COMPOSITE-SIG-03-ML-DSA-44-RSA2048-PSS Request
      ...    composite-sig-03-ml-dsa-44-rsa2048-pss    True    False    True
      [Tags]    negative  rsa  rsa-pss
@@ -511,17 +513,27 @@ Valid COMPOSITE-SIG-04-ML-DSA-87-RSA4096-PSS Request
 
 
 *** Keywords ***
-
 Exchange Composite Sig Request
     [Documentation]    Exchange a composite signature request with the CA.
     [Arguments]    ${request}
     ${response}=    Exchange Migration PKIMessage    ${request}  ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
     RETURN    ${response}
 
+Validate BadPOP Or Cert
+    [Documentation]    Validate the response for a bad POP or certificate.
+    [Arguments]    ${response}   ${bad_pop}
+    IF   ${bad_pop}
+        PKIStatus Must Be    ${response}    rejection
+        PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP
+    ELSE
+        PKIStatus Must Be    ${response}    accepted
+        Validate Certificate Was Issued For Expected Alg  ${response}  ${alg_name}
+    END
+
 Request With Composite Sig
     [Documentation]   Request a certificate with a composite signature algorithm.
     [Arguments]    ${alg_name}   ${use_rsa_pss}    ${use_pre_hash}  ${bad_pop}
-    ${comp_key} =    Generate Key    ${alg_name}   by_name=True
+    ${comp_key}=    Generate Key    ${alg_name}   by_name=True
     ${cm}=   Get Next Common Name
     ${spki}=   Prepare SubjectPublicKeyInfo    ${comp_key}
     ...        use_pre_hash=${use_pre_hash}
@@ -532,10 +544,4 @@ Request With Composite Sig
     ${ir}=   Build Ir From Key    ${comp_key}   cert_request=${cert_request}  popo=${popo}
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
     ${response}=   Exchange Composite Sig Request  ${protected_ir}
-    IF   ${bad_pop}
-        PKIStatus Must Be    ${response}    rejection
-        PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP
-    ELSE
-        PKIStatus Must Be    ${response}    accepted
-        Validate Certificate Was Issued For Expected Alg  ${response}  ${alg_name}
-    END
+    Validate BadPOP Or Cert  ${response}   ${bad_pop}

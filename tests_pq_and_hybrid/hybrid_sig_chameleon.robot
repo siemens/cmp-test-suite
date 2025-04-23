@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG # robocop: off=0704
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -21,12 +21,11 @@ Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/hybrid_prepare.py
 Library             ../pq_logic/pq_verify_logic.py
 
-Suite Setup         Set up Test Suite
+Suite Setup         Set Up Test Suite
 Test Tags           pqc  hybrid-sig   chameleon  hybrid-cert
 
 
 *** Variables ***
-
 ${CHAMELEON_CERT}  ${None}
 ${CHAMELEON_KEY}  ${None}
 ${CHAMELEON_DELTA_CERT}  ${None}
@@ -41,7 +40,7 @@ ${CHAMELEON_DELTA_KEY}  ${None}
 CA MUST Issue a valid Chameleon Cert
     [Documentation]    According to chameleon-certs-05 section 5, is a valid paired CSR send.
     ...                The CA should issue a valid chameleon certificate.
-    [Tags]      hybrid-cert  positive
+    [Tags]      positive
     ${pq_key}=  Generate Default PQ SIG Key
     ${trad_key}=  Generate Key   rsa   length=2048
     ${csr}=    Build Paired CSR   ${trad_key}   ${pq_key}
@@ -68,7 +67,7 @@ CA MUST Detect Invalid Secondary POP in Paired CSR
     ...                paired CSR is valid and can not make the assumption that the secondary
     ...                signature is valid. We send a paired CSR, but the secondary signature is invalid.
     ...                The CA **MUST** detect this and MAY respond with the optional failInfo `badPOP`.
-    [Tags]   hybrid-cert  negative
+    [Tags]   negative
     ${pq_key}=  Generate Default PQ SIG Key
     ${trad_key}=  Generate Key   rsa   length=2048
     ${csr}=    Build Paired CSR    ${pq_key}    ${trad_key}   bad_alt_pop=True
@@ -88,7 +87,7 @@ CA SHALL NOT Include Extensions in the Base Certificate
     ...                which contains extensions in the base certificate, which are not included in the delta
     ...                certificate. The CA could reject the request and MAY respond with the optional failInfo
     ...                `badCertTemplate`.
-    [Tags]      hybrid-cert  negative   robot:skip-on-failure
+    [Tags]      negative   robot:skip-on-failure
     ${pq_key}=  Generate Default PQ SIG Key
     ${trad_key}=  Generate Default Key
     ${delta_extns}=   Prepare Extensions    key_usage=digitalSignature
@@ -108,7 +107,7 @@ CA MUST Detect Paired Certificate with Weak secondary Key
     ...                paired CSR is valid and should make sure that the secondary key is not weaker,
     ...                than the primary key. We send a paired CSR, which contains a weak secondary key.
     ...                The CA **MUST** detect this and MAY respond with the optional failInfo `badCertTemplate`.
-    [Tags]       hybrid-cert  negative
+    [Tags]       negative
     ${pq_key}=  Generate Default PQ SIG Key
     ${trad_key}=  Generate Key   rsa   length=1024
     ${csr}=    Build Paired CSR    ${pq_key}    ${trad_key}
@@ -127,7 +126,7 @@ CA MUST Reject Paired CSR with Same Key
     ...                paired CSR is valid and should make sure that the primary and secondary key are not the same.
     ...                We send a paired CSR, which contains the same key for the primary and secondary key.
     ...                The CA **MUST** detect this and MAY respond with the optional failInfo `badCertTemplate`.
-    [Tags]       hybrid-cert  negative
+    [Tags]       negative
     ${pq_key}=  Generate Default PQ SIG Key
     ${csr}=    Build Paired CSR    ${pq_key}    ${pq_key}
     ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}    exclude_fields=sender,senderKID
@@ -145,7 +144,7 @@ CA MUST Issue A Chameleon With The Extension Correctly Set
     ...                and issue a valid chameleon certificate. The DCD extension should be set to the
     ...                correct value. Which means that the extensions have the same criticality as the base
     ...                certificate. Additionally can the Delta Certificate be built from the paired certificate.
-    [Tags]       hybrid-cert  positive
+    [Tags]       positive
     ${pq_key}=  Generate Default PQ SIG Key
     ${trad_key}=  Generate Default Key
     ${delta_extns}=   Prepare Extensions    key_usage=digitalSignature
@@ -244,7 +243,7 @@ Client MUST Check that the Chameleon Certificate is Valid
     Skip If    not ${result}       Chameleon Certificate and Key are not set.
     ${key}=   Generate Default Key
     ${cm}=   Get Next Common Name
-    ${ir}=   Build Ir From Key    ${key}   exclude_fields=senderKID,sender   common_name=${cm}
+    ${ir}=   Build Ir From Key    ${key}   ${cm}  exclude_fields=senderKID,sender
     ${protected_ir}=    Protect Hybrid PKIMessage
     ...    ${ir}
     ...    protection=composite

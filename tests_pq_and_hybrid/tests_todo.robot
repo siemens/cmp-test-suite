@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-# robotidy:skip-file
+# robocop: off
 *** Settings ***
 Documentation    General tests for CMP logic, not necessarily specific to the lightweight profile
 
@@ -19,7 +19,6 @@ Library             ../resources/checkutils.py
 Suite Setup         Initialize Global Variables
 
 *** Keywords ***
-
 Initialize Global Variables
     ${cert}   ${key}=   May Load Cert And Key    data/unittest/ca1_cert_ecdsa.pem   data/keys/private-key-ecdsa.pem
     VAR   ${OTHER_TRUSTED_PKI_CERT}  ${cert}   scope=Global
@@ -29,8 +28,6 @@ Initialize Global Variables
     VAR   ${ISSUED_KEY}   ${key}    scope=Global
 
 *** Test Cases ***
-
-
 # TODO: add test cases without a SKI extension value.
 
 # TODO: there is not enough info for the server to formulate a proper PKIMessage, so we should send a malformed request

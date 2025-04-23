@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -28,8 +28,6 @@ Suite Setup         Set Up Test Suite
 Test Template     Request With PQ Sig Key
 
 *** Test Cases ***     ALGORITHM    HASH_ALG    badPOP
-
-
 Invalid PQ Sig ML-DSA-44 Request   ml-dsa-44    ${None}    True
      [Tags]    negative  ml-dsa
 
@@ -234,10 +232,16 @@ Invalid PQ Sig FALCON-PADDED-1024 Request    falcon-padded-1024    ${None}    Tr
 Valid PQ Sig FALCON-PADDED-1024 Request    falcon-padded-1024    ${None}    False
      [Tags]    positive  falcon
 
-*** Keywords ***
 
+*** Keywords ***
 Request With PQ Sig Key
-    [Documentation]
+    [Documentation]  Build a PKIMessage with a PQ signature key and send it to the CA.
+    ...
+    ...            Arguments:
+    ...            ---------
+    ...            - `alg_name`: The name of the algorithm to use for the key.
+    ...            - `hash_alg`: The hash algorithm to use for the key.
+    ...            - `bad_pop`: A boolean indicating whether to use an invalid proof of possession.
     [Arguments]    ${alg_name}   ${hash_alg}    ${bad_pop}
     ${pq_key}=    Generate Key    ${alg_name}   by_name=True
     ${cm}=   Get Next Common Name
