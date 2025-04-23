@@ -6,12 +6,12 @@
 
 import logging
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives import keywrap, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, padding, rsa
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PublicKey
 from pyasn1.codec.der import decoder, encoder
@@ -50,14 +50,18 @@ from resources import (
 )
 from resources.convertutils import copy_asn1_certificate, ensure_is_kem_pub_key, str_to_bytes
 from resources.exceptions import BadAsn1Data
-from resources.oid_mapping import compute_hash, get_alg_oid_from_key_hash, get_hash_from_oid, sha_alg_name_to_oid
+from resources.oid_mapping import (
+    compute_hash,
+    get_alg_oid_from_key_hash,
+    get_hash_from_oid,
+    may_return_oid_to_name,
+    sha_alg_name_to_oid,
+)
 from resources.oidutils import (
-    CURVE_2_COFACTORS,
     ECMQV_NAME_2_OID,
     HKDF_NAME_2_OID,
     KEY_WRAP_NAME_2_OID,
     KEY_WRAP_OID_2_NAME,
-    KM_KA_ALG,
     KM_KA_ALG_NAME_2_OID,
     PQ_SIG_PRE_HASH_NAME_2_OID,
 )
@@ -896,64 +900,145 @@ def _get_kari_ephemeral_oid(hash_alg: Optional[str]) -> univ.ObjectIdentifier:
     if hash_alg is None:
         hash_alg = "sha256"
     try:
-        return ECMQV_NAME_2_OID[f"mvq-{hash_alg}"]
+        return ECMQV_NAME_2_OID[f"mqv-{hash_alg}"]
     except KeyError as e:
         _hash_algs = ["sha224", "sha256", "sha384", "sha512"]
         raise KeyError(f"The ECMQV ECC supports only the hash algorithms: {hash_alg}") from e
 
 
-def _get_ecc_dh_oid(public_key: EllipticCurvePublicKey, hash_alg: str) -> univ.ObjectIdentifier:
-    """Get the ECC KARI oid"""
-    if public_key.curve.name.startswith("brainpoolP"):
-        name = f"cofactorDH-{hash_alg.upper()}"
+def _get_ecc_dh_oid(public_key: EllipticCurvePublicKey, hash_alg: str, use_cofactor: bool) -> univ.ObjectIdentifier:
+    """Get the ECDH KARI oid.
+
+    :param public_key: The public key to use for KARI.
+    :param hash_alg: Which hash algorithm to use.
+    :param use_cofactor: Whether to use cofactor DH.
+    """
+    if hash_alg is None:
+        raise ValueError("Hash algorithm must be provided for ECC KARI.")
+
+    if use_cofactor:
+        name = f"cofactorDH-{hash_alg}"
+
     else:
-        try:
-            order = CURVE_2_COFACTORS[public_key.curve.name.lower()]
-        except KeyError as e:
-            raise ValueError(f"Unsupported KARI ECC Public Key: `{public_key.curve.name}`") from e
+        name = f"stdDH-{hash_alg}"
 
-        if hash_alg is None:
-            raise ValueError("Hash algorithm must be provided for ECC KARI.")
-
-        if order == 1:
-            name = f"cofactorDH-{hash_alg.upper()}"
-
-        else:
-            name = f"stdDH-{hash_alg.upper()}"
-
-    return KM_KA_ALG_NAME_2_OID[name]
+    oid = KM_KA_ALG_NAME_2_OID.get(name)
+    if oid is None:
+        raise ValueError(f"Unsupported KARI ECC Public Key: `{public_key.curve.name}`")
+    return oid
 
 
 def _get_kari_oid(
-    public_key: ECDHPublicKey, use_ephemeral: bool = True, hash_alg: str = "sha256"
+    public_key: ECDHPublicKey,
+    oid: Optional[Union[str, univ.ObjectIdentifier]] = None,
+    use_mvq: bool = True,
+    use_cofactor: bool = False,
+    hash_alg: str = "sha256",
 ) -> univ.ObjectIdentifier:
+    """Get the KARI OID based on the public key type and parameters.
+
+    :param public_key: The public key to use for KARI.
+    :param use_mvq: Whether to use ephemeral MQV key agreement. Defaults to `True`.
+    :param use_cofactor: Whether to use cofactor DH. Defaults to `False`.
+    :param hash_alg: Which hash algorithm to use. Defaults to `sha256`.
+    :return: The key agreement OID.
+    """
+    if oid is not None:
+        return univ.ObjectIdentifier(str(oid))
+
     if isinstance(public_key, X448PublicKey):
         oid = rfc9481.id_X448
     elif isinstance(public_key, X25519PublicKey):
         oid = rfc9481.id_X25519
-    elif use_ephemeral:
+    elif use_mvq:
         oid = _get_kari_ephemeral_oid(hash_alg=hash_alg)
     else:
-        oid = _get_ecc_dh_oid(public_key, hash_alg)
+        oid = _get_ecc_dh_oid(public_key=public_key, hash_alg=hash_alg, use_cofactor=use_cofactor)
 
     return oid
 
 
-# TODO fix for complete support of KARI.
+def _compute_kari_sender(
+    public_key: ECDHPublicKey,
+    sender_key: ECDHPrivateKey,
+    hash_alg: str = "sha256",
+    use_cofactor: bool = False,
+    use_mvq: bool = True,
+    ukm: Optional[bytes] = None,
+    ephemeral_key: Optional[EllipticCurvePrivateKey] = None,
+    key_wrap_oid: univ.ObjectIdentifier = rfc9481.id_aes256_wrap,
+) -> Tuple[bytes, bytes]:
+    """Compute the KARI sender key.
+
+    :param public_key: The public key of the recipient.
+    :param sender_key: The private key of the sender.
+    :param hash_alg: The hash algorithm to use for key derivation. Defaults to "sha256".
+    :param use_cofactor: Whether to use cofactor DH. Defaults to `False`.
+    :param use_mvq: Whether to use ephemeral MQV key agreement. Defaults to `True`.
+    :param ukm: The UserKeyMaterial to use (does not expect the ECMVQ byte string). Defaults to 32 random bytes.
+    :param ephemeral_key: The ephemeral key to use for MQV. Defaults to `None`, which generates a new key.
+    :return: The computed KEK and ukm values.
+    """
+    if ukm is None:
+        ukm = os.urandom(32)
+
+    if use_mvq:
+        if not isinstance(public_key, EllipticCurvePublicKey):
+            raise TypeError("Public key must be an EllipticCurvePublicKey for MQV.")
+
+        if not isinstance(sender_key, EllipticCurvePrivateKey):
+            raise TypeError("Sender key must be an EllipticCurvePrivateKey for MQV.")
+
+        return perform_sender_ecdh_one_pass_mqv(
+            recipient_key=public_key,
+            sender_static_key=sender_key,
+            ephemeral_key=ephemeral_key,
+            hash_alg=hash_alg,
+            key_wrap_oid=key_wrap_oid,
+            ukm=ukm,
+        )
+    else:
+        k = cryptoutils.perform_static_dh(
+            public_key=public_key,
+            private_key=sender_key,
+            hash_alg=hash_alg,
+            key_wrap_oid=key_wrap_oid,
+            use_cofactor=use_cofactor,
+            ukm=ukm,
+        )
+
+    return k, ukm
+
+
+def _get_wrap_alg_oid(wrap_alg: Union[str, univ.ObjectIdentifier]) -> univ.ObjectIdentifier:
+    """Get the OID for the key wrapping algorithm.
+
+    :return: The Object Identifier for the wrapping algorithm.
+    """
+    if isinstance(wrap_alg, univ.ObjectIdentifier):
+        return wrap_alg
+    if isinstance(wrap_alg, str):
+        if "." in wrap_alg:
+            return univ.ObjectIdentifier(wrap_alg)
+
+        if wrap_alg in KEY_WRAP_NAME_2_OID:
+            return KEY_WRAP_NAME_2_OID[wrap_alg]
+
+    raise ValueError(f"Unsupported wrapping algorithm: {wrap_alg}")
 
 
 @keyword(name="Prepare KeyAgreeRecipientInfo")
 def prepare_kari(  # noqa D417 undocumented-param
     public_key: ECDHPublicKey,
-    recip_private_key: ECDHPrivateKey,
+    sender_private_key: ECDHPrivateKey,
     cek: Optional[Union[str, bytes]] = None,
     cmp_protection_cert: Optional[rfc9480.CMPCertificate] = None,
     issuer_and_ser: Optional[rfc5652.IssuerAndSerialNumber] = None,
     hash_alg: str = "sha256",
-    oid: Optional[univ.ObjectIdentifier] = rfc9481.dhSinglePass_stdDH_sha256kdf_scheme,
     originator: Optional[rfc5652.OriginatorIdentifierOrKey] = None,
     rid: Optional[rfc5652.RecipientIdentifier] = None,
     ukm: Optional[Union[str, bytes]] = None,
+    **kwargs,
 ) -> rfc5652.KeyAgreeRecipientInfo:
     """Prepare a KeyAgreeRecipientInfo object to securely exchange data with ECC key agreement.
 
@@ -965,12 +1050,19 @@ def prepare_kari(  # noqa D417 undocumented-param
         - `cmp_protection_cert`: The certificate of the recipient.
         - `issuer_and_ser`: The IssuerAndSerialNumber structure to use. Defaults to `None`.
         - `hash_alg`: The hash algorithm to use for key derivation.
-        - `oid`: The Object Identifier for the key agreement algorithm.
         Defaults to dhSinglePass-stdDH-sha256kdf-scheme.
         - `originator`: The OriginatorIdentifierOrKey structure to use. Defaults to `None`.
         - `rid`: The RecipientIdentifier structure to use. Defaults to `None`.
         (NOT used is allowed to make argument parsing easier.)
         - `ukm`: The UserKeyMaterial to use (does not expect the ECMVQ byte string). Defaults to 32 random bytes.
+
+    - `**kwargs`: Additional keyword arguments for future use.
+    -------------
+        - `use_cofactor` (bool): If True, use cofactor DH. Defaults to `False`.
+        - `use_mvq` (bool): If True, use ephemeral MQV key agreement. Defaults to `False`.
+        - `oid` (str, ObjectIdentifier): The Object Identifier for the key agreement algorithm. Defaults to `None`.
+        - `wrap_alg` (str, ObjectIdentifier): The Object Identifier for the key wrapping \
+        algorithm. Defaults to `aes256_wrap`.
 
     Returns:
     -------
@@ -987,44 +1079,35 @@ def prepare_kari(  # noqa D417 undocumented-param
     | ${kari}= | Prepare KeyAgreeRecipientInfo | ${public_key} | ${recip_private_key} | cek=${cek} |
     | ${kari}= | Prepare KeyAgreeRecipientInfo | ${public_key} | ${recip_private_key} | rid=${rid} |
 
-
-    :param public_key: The public key of the recipient.
-    :param recip_private_key: The private key of the sender.
-    :param cek: The content encryption key to be encrypted. Defaults to 32 random bytes.
-    :param cmp_protection_cert: The certificate of the recipient.
-    :param issuer_and_ser: The IssuerAndSerialNumber structure to use. Defaults to `None`.
-    :param hash_alg: The hash algorithm to use for key derivation.
-    :param oid: The Object Identifier for the key agreement algorithm.
-    Defaults to dhSinglePass-stdDH-sha256kdf-scheme.
-    :param originator: The OriginatorIdentifierOrKey structure to use. Defaults to `None`.
-    :param rid: The RecipientIdentifier structure to use. Defaults to `None`.
-    :param ukm: The UserKeyMaterial to use (does not expect the ECMVQ byte string). Defaults to 32 random bytes.
-    :return: The populated `KeyAgreeRecipientInfo` structure.
-
     """
     ukm = str_to_bytes(ukm or os.urandom(32))
 
     cek = cek or os.urandom(32)
     cek = str_to_bytes(cek)
 
-    if oid is None:
-        oid = _get_kari_oid(public_key=public_key, use_ephemeral=False, hash_alg=hash_alg)
+    key_wrap_oid = _get_wrap_alg_oid(kwargs.get("wrap_alg", "aes256_wrap"))
 
-    name = KM_KA_ALG[oid]
-    if isinstance(public_key, (X448PublicKey, X25519PublicKey)):
-        hash_alg = "sha256"
-    else:
-        hash_alg = name.lower().split("-")[1]
-
-    k = cryptoutils.perform_static_dh(
+    oid = _get_kari_oid(
+        oid=kwargs.get("oid"),
         public_key=public_key,
-        private_key=recip_private_key,
+        use_mvq=kwargs.get("use_mvq", False),
+        use_cofactor=kwargs.get("use_cofactor", False),
         hash_alg=hash_alg,
-        key_wrap_oid=rfc9481.id_aes256_wrap,
-        ukm=ukm,
     )
-    logging.info("Prepare KARI KEK: %s for %s", k.hex(), name)
-    encrypted_key = keywrap.aes_key_wrap(key_to_wrap=cek, wrapping_key=k)
+
+    kek, ukm = _compute_kari_sender(
+        public_key=public_key,
+        sender_key=sender_private_key,
+        hash_alg=hash_alg,
+        use_cofactor=kwargs.get("use_cofactor", False),
+        use_mvq=kwargs.get("use_mvq", False),
+        ukm=ukm,
+        ephemeral_key=kwargs.get("ephemeral_key"),
+        key_wrap_oid=key_wrap_oid,
+    )
+    name = may_return_oid_to_name(oid)
+    logging.info("Prepare KARI KEK: %s for %s", kek.hex(), name)
+    encrypted_key = keywrap.aes_key_wrap(key_to_wrap=cek, wrapping_key=kek)
 
     # Version MUST be 3 for KARI.
     kari = prepare_key_agreement_recipient_info(
@@ -1032,7 +1115,7 @@ def prepare_kari(  # noqa D417 undocumented-param
         cmp_cert=cmp_protection_cert,
         encrypted_key=encrypted_key,
         key_agreement_oid=oid,
-        key_wrap_oid=rfc9481.id_aes256_wrap,
+        key_wrap_oid=key_wrap_oid,
         issuer_and_ser=issuer_and_ser,
         originator=originator,
         rid=rid,
@@ -1146,7 +1229,7 @@ def prepare_recip_info(  # noqa D417 undocumented-param
             raise ValueError("An ECDH private key must be provided for EC key exchange.")
         kari = prepare_kari(
             public_key=public_key_recip,
-            recip_private_key=private_key,
+            sender_private_key=private_key,
             issuer_and_ser=issuer_and_ser,
             cek=cek,
             cmp_protection_cert=cert_recip,
@@ -1374,7 +1457,7 @@ def build_env_data_for_exchange(
 
         kari = prepare_kari(
             public_key=public_key_recip,
-            recip_private_key=private_key,
+            sender_private_key=private_key,
             issuer_and_ser=issuer_and_ser,
             cek=cek,
             cmp_protection_cert=cert_sender,
@@ -1604,7 +1687,7 @@ def prepare_mqv_user_keying_material(
 @not_keyword
 def prepare_ecc_cms_shared_info(
     key_wrap_oid: univ.ObjectIdentifier,
-    supp_pub_info: Optional[int] = 32,
+    supp_pub_info: Optional[int] = 256,
     ukm: Optional[bytes] = None,
 ) -> rfc5753.ECC_CMS_SharedInfo:
     """Create an `ECC_CMS_SharedInfo` structure.
@@ -1614,7 +1697,7 @@ def prepare_ecc_cms_shared_info(
     this structure with the specified key wrap algorithm and other parameters.
 
     :param key_wrap_oid: OID for the key wrap algorithm.
-    :param supp_pub_info: Length of the key to derive in bytes.
+    :param supp_pub_info: Length of the key to derive in bits. Defaults to `256` (for AES-256).
     :param ukm: Optional entity user information. Used to ensure a
     unique key.
     :return: An `ECC_CMS_SharedInfo` structure containing the shared info.
@@ -1846,7 +1929,6 @@ def prepare_key_agreement_alg_id(
     return key_enc_alg_id
 
 
-# TODO fix for complete Support!!!
 @not_keyword
 def prepare_key_agreement_recipient_info(
     key_agreement_oid: univ.ObjectIdentifier,
@@ -1872,7 +1954,8 @@ def prepare_key_agreement_recipient_info(
     :param encrypted_key: Optional encrypted key material.
     :param key_wrap_oid: OID for the key wrap algorithm.
     :param version: Version of the CMS structure. Defaults to 3.
-    :param ukm: Optional user keying material.
+    :param ukm: Optional user keying material, expected to be either a bytes for a
+    ECDH and for ECMQV must the `MQVuserKeyingMaterial` structure.
     :param add_another: If True, adds duplicate entries for negative testing.
     :param issuer_and_ser_orig: Optional `IssuerAndSerialNumber` structure to set inside the `originator`
     field. Defaults to `None`. Filled with the cmp-protection-cert.
@@ -2164,3 +2247,52 @@ def get_digest_from_key_hash(
         return CMS_COMPOSITE03_OID_2_HASH[key.get_oid(use_pss=False, pre_hash=False)]
 
     return "sha512"
+
+
+def perform_sender_ecdh_one_pass_mqv(
+    sender_static_key: EllipticCurvePrivateKey,
+    recipient_key: Union[EllipticCurvePublicKey, rfc9480.CMPCertificate],
+    ephemeral_key: Optional[EllipticCurvePrivateKey] = None,
+    key_wrap_oid: univ.ObjectIdentifier = rfc9481.id_aes256_wrap,
+    ukm: Optional[bytes] = None,
+    hash_alg: str = "sha256",
+) -> Tuple[bytes, bytes]:
+    """Perform the ECDH MQV key agreement and wrap the content encryption key (CEK).
+
+    :param sender_static_key: The sender's static private key.
+    :param recipient_key: The recipient's public key or certificate.
+    :param ephemeral_key: The sender's ephemeral private key, if not provided, a new one will be generated.
+    Defaults to `None`.
+    :param key_wrap_oid: The OID for the key wrapping algorithm. Defaults to `rfc9481.id_aes256_wrap`.
+    :param ukm: The user key material (UKM) for the key derivation. Defaults to `None`.
+    :param hash_alg: The name of the hash algorithm to use. Defaults to "sha256".
+    :return: The KEK (Key Encryption Key) and the encoded UKM.
+    :raises ValueError: If the recipient key is not a valid public key or certificate.
+    :raises TypeError: If the sender's static key is not an `EllipticCurvePrivateKey`.
+    :raises TypeError: If the ephemeral key is not an `EllipticCurvePrivateKey`.
+    :raises TypeError: If the recipient key is not an `EllipticCurvePublicKey` or `rfc9480.CMPCertificate`.
+    """
+    if ephemeral_key is None:
+        ephemeral_key = ec.generate_private_key(sender_static_key.curve)
+
+    if isinstance(recipient_key, rfc9480.CMPCertificate):
+        spki = recipient_key["tbsCertificate"]["subjectPublicKeyInfo"]
+        recipient_key = keyutils.load_public_key_from_spki(spki)  # type: ignore
+
+    if not isinstance(recipient_key, ec.EllipticCurvePublicKey):
+        raise TypeError("Recipient key must be an EllipticCurvePublicKey or a CMPCertificate.")
+
+    z = cryptoutils.compute_sender_ecdh_mqv_one_pass_exchange(
+        static_private_key=sender_static_key,
+        ephemeral_key=ephemeral_key,
+        recip_public_key=recipient_key,
+    )
+
+    if ukm is None:
+        ukm = os.urandom(16)
+
+    ukm_der = prepare_mqv_user_keying_material(ephemeral_key, added_ukm=ukm)
+    encoded_ukm = encoder.encode(ukm_der)
+    kek = cryptoutils.derive_shared_secret_ec(z, key_wrap_oid, hash_alg=hash_alg, ukm=ukm)
+    logging.info("ECMQV Sender computed KEK:", kek.hex())
+    return kek, encoded_ukm

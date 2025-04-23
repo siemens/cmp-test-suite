@@ -602,7 +602,7 @@ def _prepare_recip_info_for_kga(
 
             recip_info = envdatautils.prepare_kari(
                 public_key=public_key,
-                recip_private_key=ec_priv_key,
+                sender_private_key=ec_priv_key,
                 cek=cek,
                 cmp_protection_cert=cert,
                 hash_alg=hash_alg or "sha256",
@@ -1749,7 +1749,7 @@ def respond_to_key_agreement_request(  # noqa: D417 Missing argument description
     cek = os.urandom(32)
     kari = envdatautils.prepare_kari(
         public_key=public_key,
-        recip_private_key=server_key,  # type: ignore
+        sender_private_key=server_key,  # type: ignore
         cmp_protection_cert=cmp_protection_cert,
         oid=None,
         cek=cek,

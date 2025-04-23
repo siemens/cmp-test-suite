@@ -84,6 +84,7 @@ def process_mqv(
     private_key: ec.EllipticCurvePrivateKey,
     hash_alg: str,
     key_wrap_oid: univ.ObjectIdentifier,
+    cmp_prot_cert: rfc9480.CMPCertificate,
 ):
     """Process Elliptic Curve Menezes–Qu–Vanstone (ECMQV) key agreement based on the provided input.
 
@@ -92,6 +93,7 @@ def process_mqv(
     :param private_key: The private key used in the MQV process to derive the shared secret (e.g., an EC private key).
     :param hash_alg: The name of the hashing algorithm (e.g., "sha256", "sha512") to be used for the KDF.
     :param key_wrap_oid: The OID of the key wrap algorithm used for the key agreement.
+    :param cmp_prot_cert: The CMP protection certificate used for the key agreement.
     :return: The derived key as bytes after processing the MQV key agreement and KDF.
     :raises ValueError: If there is unexpected data after decoding the MQV User Keying Material (UKM),
         or if the ephemeral public key is not `ecPublicKey`.
@@ -112,10 +114,17 @@ def process_mqv(
     if not isinstance(public_key, ec.EllipticCurvePublicKey):
         raise ValueError("The extracted public key is not an instance of `EllipticCurvePublicKey`.")
 
-    ukm = None if not mqv_ukm["addedukm"].isValue else mqv_ukm["addedukm"].asOctets()
+    ukm = None
+    if mqv_ukm["addedukm"].isValue:
+        ukm = mqv_ukm["addedukm"].asOctets()
 
-    return cryptoutils.perform_static_dh(
-        private_key=private_key, public_key=public_key, hash_alg=hash_alg, key_wrap_oid=key_wrap_oid, ukm=ukm
+    return cryptoutils.perform_one_pass_mqv(
+        private_key=private_key,
+        peer_cert=cmp_prot_cert,
+        public_key_eph=public_key,
+        hash_alg=hash_alg,
+        key_wrap_oid=key_wrap_oid,
+        ukm=ukm,
     )
 
 
@@ -123,8 +132,8 @@ def process_mqv(
 def process_kari(
     alg_id: rfc5280.AlgorithmIdentifier,
     private_key: ECDHPrivateKey,
+    cmp_prot_cert: rfc9480.CMPCertificate,
     ukm: Optional[bytes] = None,
-    cmp_prot_cert: Optional[rfc9480.CMPCertificate] = None,
 ) -> bytes:
     """Process a KeyAgreementRecipientInfo (KARI) structure based on the provided algorithm identifier and private key.
 
@@ -158,6 +167,7 @@ def process_kari(
             private_key=private_key,
             hash_alg=hash_alg,
             key_wrap_oid=key_wrap_oid,
+            cmp_prot_cert=cmp_prot_cert,
         )
         logging.info("Derived `ECMQV` wrapping key: %s", k.hex())
         return k
@@ -182,12 +192,14 @@ def process_kari(
     if alg_id["algorithm"] in KM_KA_ALG:
         name = KM_KA_ALG[alg_id["algorithm"]]
         hash_alg = name.lower().split("-")[1]
+        use_cofactor = "cofactor" in name
         k = cryptoutils.perform_static_dh(
             private_key=private_key,
             public_key=cmp_prot_cert,
             hash_alg=hash_alg,
             key_wrap_oid=key_wrap_oid,
             ukm=ukm,
+            use_cofactor=use_cofactor,
         )
         logging.info("Derived `%s` wrapping key: %s", name, k.hex())
         return k
@@ -394,6 +406,44 @@ def _extract_pwri_content_enc_key(
     return content_encryption_key
 
 
+def _extract_kari_content_enc_key(
+    recip_info: rfc5652.RecipientInfo,
+    cmp_protection_cert: rfc9480.CMPCertificate,
+    ee_key: ECDHPrivateKey,
+    for_pop: bool = False,
+    kari_cert: Optional[rfc9480.CMPCertificate] = None,
+) -> bytes:
+    """Extract and compute the content encryption key from the `kari` structure, based on the end-entity private key.
+
+    :param recip_info: The `RecipientInfo` structure to check and then extract and unwrap the content encryption key.
+    :param cmp_protection_cert: The certificate used for key agreement or encryption.
+    :param ee_key: The private key of the end-entity used for the key agreement or encipherment.
+    :param for_pop: Whether the extraction is for proof-of-possession (POP) purposes.
+    (changes the validation for the `rid` field)
+    :param kari_cert: The certificate used for key agreement or encryption, if X448 or X22519 is not used.
+    :return: The content encryption key.
+    """
+    params = validate_key_agree_recipient_info(
+        kari_structure=recip_info["kari"],
+        cmp_cert=cmp_protection_cert,
+        for_pop=for_pop,
+    )
+
+    if not isinstance(ee_key, ECDHPrivateKey):
+        raise ValueError("The `ee_key` must be an instance of `ECDHPrivateKey` for `kari`.")
+
+    kari_cert = kari_cert or cmp_protection_cert
+    if kari_cert is None:
+        raise ValueError("A certificate must be provided for `kari`.")
+
+    content_encryption_key = compute_key_agreement_mechanism(
+        ee_private_key=ee_key,  # type: ignore
+        cmp_protection_cert=kari_cert,
+        **params,
+    )
+    return content_encryption_key
+
+
 def _extract_ktri_and_kari_content_enc_key(
     recip_info: rfc5652.RecipientInfo,
     cmp_protection_cert: Optional[rfc9480.CMPCertificate],
@@ -430,23 +480,15 @@ def _extract_ktri_and_kari_content_enc_key(
         logging.info("Ktri content encryption key: %s", content_encryption_key.hex())
 
     elif recip_name == "kari":
-        params = validate_key_agree_recipient_info(
-            kari_structure=recip_info["kari"],
-            cmp_cert=cmp_protection_cert,
-            for_pop=for_pop,
-        )
-
         if not isinstance(ee_key, ECDHPrivateKey):
             raise ValueError("The `ee_key` must be an instance of `ECDHPrivateKey` for `kari`.")
 
-        kari_cert = kari_cert or cmp_protection_cert
-        if kari_cert is None:
-            raise ValueError("A certificate must be provided for `kari`.")
-
-        content_encryption_key = compute_key_agreement_mechanism(
-            ee_private_key=ee_key,  # type: ignore
-            cmp_protection_cert=kari_cert,
-            **params,
+        content_encryption_key = _extract_kari_content_enc_key(
+            recip_info=recip_info,
+            cmp_protection_cert=cmp_protection_cert,  # type: ignore
+            ee_key=ee_key,
+            for_pop=for_pop,
+            kari_cert=kari_cert,
         )
         logging.info("Kari content encryption key: %s", content_encryption_key.hex())
     else:
@@ -1614,7 +1656,10 @@ def validate_key_agree_recipient_info(
 
     key_enc_alg: rfc5652.KeyEncryptionAlgorithmIdentifier = kari_structure["keyEncryptionAlgorithm"]
     if key_enc_alg["algorithm"] not in KM_KA_ALG:
-        raise ValueError("The key encryption algorithm in the `KeyAgreeRecipientInfo` structure is not supported.")
+        name = may_return_oid_to_name(key_enc_alg["algorithm"])
+        raise ValueError(
+            f"The key encryption algorithm in the `KeyAgreeRecipientInfo` structure is not supported. Got: {name}"
+        )
 
     ukm = None
     if not kari_structure["ukm"].isValue:
@@ -2209,3 +2254,68 @@ def compute_decaps_from_asn1(private_key: PQKEMPrivateKey, kem_recip_info: rfc96
     )
 
     return content_enc_key
+
+
+@keyword(name="Validate KARI EnvelopedData")
+def validate_kari_env_data(  # noqa: D417 undocumented-params
+    env_data: rfc9480.EnvelopedData,
+    recip_private_key: ECDHPrivateKey,
+    cmp_protection_cert: rfc9480.CMPCertificate,
+    expected_raw_data: bool = False,
+    for_pop: bool = False,
+) -> bytes:
+    """Validate the KeyAgreeRecipientInfo structure inside an `EnvelopedData` structure.
+
+    Supports ECDH, cofactor ECDH, and ECMQV key agreement mechanisms.
+    All use the KDF2 as the key derivation function.
+
+    Arguments:
+    ---------
+        - `env_data`: The `EnvelopedData` structure to validate.
+        - `recip_private_key`: The recipient's private key.
+        - `cmp_protection_cert`: The CMP protection certificate.
+        - `expected_raw_data`: If `True` the raw data is expected. Defaults to `False`.
+        - `for_pop`: If `True` the recipient info RID is not checked. Defaults to `False`.
+
+    Returns:
+    -------
+        - `bytes`: The decrypted data if validation is successful.
+
+    Raises:
+    ------
+        - `ValueError`: If the validation fails.
+
+    Examples:
+    --------
+    | ${der_data}= | Validate KARI EnvelopedData | ${env_data} | ${key} | ${cert} |
+    | ${der_data}= | Validate KARI EnvelopedData | ${env_data} | ${key} | ${cert} | True |
+
+    """
+    recip_info = _validate_recip_info_size(
+        env_data=env_data,
+        expected_size=1,
+        recip_info_index=0,
+        expected_type="kari",
+    )
+
+    enc_content_info = env_data["encryptedContentInfo"]
+    params = validate_key_agree_recipient_info(
+        kari_structure=recip_info["kari"],
+        cmp_cert=cmp_protection_cert,
+        for_pop=for_pop,
+    )
+
+    content_encryption_key = compute_key_agreement_mechanism(
+        cmp_protection_cert=cmp_protection_cert,
+        ee_private_key=recip_private_key,
+        key_enc_alg=params["key_enc_alg"],
+        encrypted_key=params["encrypted_key"],
+        ukm=params["ukm"],
+    )
+
+    decrypted_data = validate_encrypted_content_info(
+        enc_content_info=enc_content_info,
+        content_encryption_key=content_encryption_key,
+        expected_raw_data=expected_raw_data,
+    )
+    return decrypted_data

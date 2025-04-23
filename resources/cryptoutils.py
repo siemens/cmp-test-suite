@@ -14,13 +14,17 @@ and password-based key derivation (PBKDF2).
 """
 
 import logging
+import math
 import os
 from typing import Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives import padding as aes_padding
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
@@ -30,6 +34,8 @@ from pyasn1.type import univ
 from pyasn1_alt_modules import rfc3565, rfc8018, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc5084 import GCMParameters
 from robot.api.deco import not_keyword
+from tinyec import registry
+from tinyec.ec import Inf, Point
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractHybridRawPublicKey, KEMPrivateKey, KEMPublicKey
@@ -40,7 +46,7 @@ from resources import convertutils, envdatautils, keyutils, oid_mapping
 from resources.asn1_structures import KemCiphertextInfoAsn1
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import compute_hash, get_hash_from_oid, hash_name_to_instance
-from resources.oidutils import AES_CBC_OID_2_NAME, AES_GCM_OID_2_NAME, KM_KW_ALG
+from resources.oidutils import AES_CBC_OID_2_NAME, AES_GCM_OID_2_NAME, CURVE_2_COFACTORS, KM_KW_ALG
 from resources.typingutils import ECDHPrivateKey, ECDHPublicKey, SignKey, VerifyKey
 
 
@@ -398,15 +404,55 @@ def compute_aes_cbc(key: bytes, data: bytes, iv: bytes, decrypt: bool = True) ->
     return encryptor.update(padded_data) + encryptor.finalize()
 
 
-# TODO Refactor compute_shared_secret(private_key, peer_part, password)
+def _compute_ss_plus_cofactor(
+    private_key: ec.EllipticCurvePrivateKey, public_key: ec.EllipticCurvePublicKey, cofactor: int
+) -> bytes:
+    """Compute shared secret plus cofactor.
+
+    :param private_key: The private key to use for the computation.
+    :param public_key: The public key to use for the computation.
+    :param cofactor: The cofactor to multiply with
+    :return: The computed shared secret plus cofactor as bytes
+    :raises ValueError: If the private and public keys are not on the same curve.
+    """
+    if private_key.curve.name != public_key.curve.name:
+        raise ValueError(
+            "Private and public keys are not compatible. "
+            f"Given keys are not on the same curve. "
+            f"Got: {private_key.curve.name} and {public_key.curve.name}"
+        )
+
+    alice_private_key = private_key.private_numbers().private_value
+    bob_public_key = convert_public_key_to_tinyec(public_key)
+    tmp_point = alice_private_key * bob_public_key
+    if isinstance(tmp_point, Inf):
+        raise ValueError("Computed point is at infinity. Invalid key agreement.")
+
+    ss_with_cofactor = cofactor * tmp_point  # type: ignore
+    if isinstance(ss_with_cofactor, Inf):
+        raise ValueError("Computed point is at infinity. Invalid key agreement.")
+
+    ss_with_cofactor: Point
+
+    x = ss_with_cofactor.x
+    # Convert the shared secret to bytes
+    return x.to_bytes((x.bit_length() + 7) // 8, byteorder="big")
+
+
 @not_keyword
-def perform_ecdh(private_key: ECDHPrivateKey, public_key: Union[ECDHPublicKey, rfc9480.CMPCertificate]) -> bytes:
+def perform_ecdh(
+    private_key: ECDHPrivateKey,
+    public_key: Union[ECDHPublicKey, rfc9480.CMPCertificate],
+    use_cofactor: bool = False,
+) -> bytes:
     """Derive a shared secret using Elliptic Curve Diffie-Hellman (ECDH) key exchange.
 
     Supports `ec`, `x25519`, and `x448` curves.
 
     :param private_key: The private key for generating the shared secret.
     :param public_key: The public key to perform the exchange with.
+    :param use_cofactor: If True, the cofactor is used for the key exchange. The computation is done using the
+    cofactor of the curve Z = h * (alice's private key) * (bob's public key). Defaults to `False`.
     :return: The derived shared secret as bytes.
     :raises ValueError: If `public_key` or `private_key` are not compatible.
     """
@@ -418,7 +464,23 @@ def perform_ecdh(private_key: ECDHPrivateKey, public_key: Union[ECDHPublicKey, r
         if not isinstance(public_key, ECDHPublicKey):
             raise ValueError("Invalid public key type for ECDH key exchange")
 
+    if use_cofactor and isinstance(private_key, (X25519PrivateKey, X448PrivateKey)):
+        raise NotImplementedError("Cofactor multiplication is not supported for X25519 and X448 keys.")
+
     if isinstance(private_key, ec.EllipticCurvePrivateKey) and isinstance(public_key, ec.EllipticCurvePublicKey):
+        if use_cofactor:
+            # Use the cofactor for the key exchange
+            curve = private_key.curve
+            cofactor = CURVE_2_COFACTORS.get(curve.name)
+            if cofactor is None:
+                raise ValueError(f"Unsupported curve for cofactor: {curve.name}. Please check: `CURVE_2_COFACTORS`.")
+
+            if cofactor == 1:
+                logging.debug("Cofactor is 1, no cofactor multiplication will be applied.")
+                return private_key.exchange(ec.ECDH(), public_key)
+            if cofactor < 1:
+                raise ValueError(f"Invalid cofactor value: {cofactor}. It must be greater than 0.")
+            return _compute_ss_plus_cofactor(private_key, public_key, cofactor)
         return private_key.exchange(ec.ECDH(), public_key)
 
     if isinstance(private_key, x25519.X25519PrivateKey) and isinstance(public_key, x25519.X25519PublicKey):
@@ -756,6 +818,36 @@ def compute_decapsulation(  # noqa: D417 Missing argument descriptions in the do
     return key.decaps(ct)
 
 
+def derive_shared_secret_ec(
+    z: bytes,
+    key_wrap_oid: univ.ObjectIdentifier,
+    hash_alg: str,
+    ukm: Optional[bytes] = None,
+) -> bytes:
+    """Derive shared secret for EC keys using CMS formatting.
+
+    :param z: The shared secret value Z from key agreement.
+    :param key_wrap_oid: The OID of the key wrap algorithm.
+    :param ukm: Optional UserKeyingMaterial.
+    :param hash_alg: The name of the hashing algorithm (e.g., "sha256", "sha512") to be used for the KDF.
+    :return: The derived key.
+    """
+    length = int(KM_KW_ALG[key_wrap_oid].replace("aes", "").replace("_wrap", ""))
+    # As of RFC 5753 Section 7.2
+    # (For example, for AES-256 it would be 00 00 01 00.)
+    # Must be bit-length.
+    ecc_cms_info = envdatautils.prepare_ecc_cms_shared_info(
+        key_wrap_oid=key_wrap_oid,
+        supp_pub_info=length,
+        ukm=ukm,
+    )
+
+    key_length = length // 8
+    other_info = encoder.encode(ecc_cms_info)
+    k = compute_ansi_x9_63_kdf(z, key_length, other_info=other_info, hash_alg=hash_alg, use_version_2=True)
+    return k
+
+
 @not_keyword
 def perform_static_dh(
     private_key: ECDHPrivateKey,
@@ -763,6 +855,7 @@ def perform_static_dh(
     hash_alg: str,
     key_wrap_oid: univ.ObjectIdentifier,
     ukm: Optional[bytes] = None,
+    use_cofactor: bool = False,
 ) -> bytes:
     """Perform static Diffie-Hellman key agreement using the provided private and public keys.
 
@@ -774,18 +867,180 @@ def perform_static_dh(
     :param hash_alg: The name of the hashing algorithm (e.g., "sha256", "sha512") to be used for the KDF.
     :param key_wrap_oid: The OID of the key wrap algorithm used for the key agreement.
     :param ukm: Optional bytes representing the UserKeyingMaterial (UKM) used in the key agreement.
+    :param use_cofactor: If True, the cofactor is used in the key agreement (h * z). This is relevant for
+    cofactor-based key agreement schemes. Defaults to `False`.
     :return: The derived key as bytes after performing the static DH key agreement and KDF.
     :raises ValueError: If the key types are incompatible or if the key length is invalid.
     :raises KeyError: If the key wrap OID is not found in the mapping.
     """
-    length = int(KM_KW_ALG[key_wrap_oid].replace("aes", "").replace("_wrap", "")) // 8
+    length = int(KM_KW_ALG[key_wrap_oid].replace("aes", "").replace("_wrap", ""))
+    # As of RFC 5753 Section 7.2
+    # (For example, for AES-256 it would be 00 00 01 00.)
+    # must be bit-length.
     ecc_cms_info = envdatautils.prepare_ecc_cms_shared_info(
         key_wrap_oid=key_wrap_oid,
         supp_pub_info=length,
         ukm=ukm,
     )
-    other_info = encoder.encode(ecc_cms_info)
 
-    shared_secret = perform_ecdh(private_key, public_key)
-    k = compute_ansi_x9_63_kdf(shared_secret, length, other_info=other_info, hash_alg=hash_alg, use_version_2=True)
+    key_length = length // 8
+    other_info = encoder.encode(ecc_cms_info)
+    shared_secret = perform_ecdh(private_key, public_key, use_cofactor=use_cofactor)
+    logging.info("shared_secret for static-dh: %s", shared_secret.hex())
+
+    k = compute_ansi_x9_63_kdf(shared_secret, key_length, other_info=other_info, hash_alg=hash_alg, use_version_2=True)
     return k
+
+
+@not_keyword
+def avf(point: Point) -> int:
+    """Compute the affine value of a point P on the elliptic curve."""
+    n = point.curve.field.n
+    length = math.ceil((math.floor(math.log2(n)) + 1) / 2)
+    return (point.x % (2**length)) + (2**length)
+
+
+@not_keyword
+def compute_sender_ecdh_mqv_one_pass_exchange(
+    static_private_key: EllipticCurvePrivateKey,
+    ephemeral_key: EllipticCurvePrivateKey,
+    recip_public_key: EllipticCurvePublicKey,
+) -> bytes:
+    """Compute the responder endpoint's shared secret in a One-Pass-MQV (Menezes-Qu-Vanstone) ECDH exchange.
+
+    Computes the shared secret, the KDF **MUST** be applied afterwards!
+
+    :param static_private_key: The static private key of the sender.
+    :param ephemeral_key:The ephemeral private key of the sender.
+    :param recip_public_key: The public key of the recipient.
+    :return: Bytes representing the computed shared secret.
+    """
+    d_su_val, _ = convert_private_key_to_tinyec(static_private_key)
+    public_key = convert_public_key_to_tinyec(recip_public_key)
+
+    ephemeral_value, q_eu = convert_private_key_to_tinyec(ephemeral_key)
+    n = q_eu.curve.field.n
+    h = q_eu.curve.field.h
+
+    sig_u = (ephemeral_value + avf(q_eu) * d_su_val) % n  # type: ignore
+    point = (h * sig_u) * (public_key + avf(public_key) * public_key)
+    point: Point
+
+    if isinstance(point, Inf):
+        raise ValueError("Computed point is at infinity.")
+
+    z = point.x
+    return z.to_bytes((z.bit_length() + 7) // 8, byteorder="big")
+
+
+def convert_private_key_to_tinyec(private_key: EllipticCurvePrivateKey) -> Tuple[int, Point]:
+    """Convert a cryptography EC private key to a tinyec private key.
+
+    :param private_key: The private key to convert.
+    :return: The private value and the public point on the curve.
+    """
+    private_value = private_key.private_numbers().private_value
+    curve_name = private_key.curve.name.lower()
+    curve = registry.get_curve(curve_name)
+    public_point = private_value * curve.g
+    public_point: Point
+
+    if isinstance(public_point, Inf):
+        raise TypeError("Computed point is at infinity.")
+
+    return private_value, public_point
+
+
+def convert_public_key_to_tinyec(public_key: EllipticCurvePublicKey) -> Point:
+    """Convert a cryptography EC public key to a tinyec public key.
+
+    :param public_key: The public key to convert.
+    :return: The point on the curve.
+    """
+    public_numbers = public_key.public_numbers()
+    curve_name = public_key.curve.name.lower()
+    curve = registry.get_curve(curve_name)
+    return Point(curve, public_numbers.x, public_numbers.y)
+
+
+@not_keyword
+def perform_one_pass_mqv(
+    private_key: ec.EllipticCurvePrivateKey,
+    peer_cert: Union[rfc9480.CMPCertificate, ec.EllipticCurvePublicKey],
+    public_key_eph: ec.EllipticCurvePublicKey,
+    key_wrap_oid: univ.ObjectIdentifier,
+    hash_alg: str = "sha256",
+    ukm: Optional[bytes] = None,
+) -> bytes:
+    """Perform MQV key agreement using the provided private and public keys.
+
+    :param private_key: The private key used in the MQV process to derive the shared secret.
+    :param peer_cert: The certificate or public key of the peer used in the MQV process.
+    :param public_key_eph: The ephemeral public key used in the MQV process.
+    :param hash_alg: The name of the hashing algorithm (e.g., "sha256", "sha512") to be used for hashing.
+    :param key_wrap_oid: The OID of the key wrap algorithm used for the key agreement.
+    :param ukm: Optional UserKeyingMaterial (UKM) used in the key agreement.
+    :raises ValueError: If the key types are incompatible.
+    :return: The derived shared secret as bytes.
+    """
+    if isinstance(peer_cert, rfc9480.CMPCertificate):
+        spki = peer_cert["tbsCertificate"]["subjectPublicKeyInfo"]
+        peer_cert = keyutils.load_public_key_from_spki(spki)  # type: ignore
+
+    if not isinstance(peer_cert, ec.EllipticCurvePublicKey):
+        raise TypeError(
+            f"Invalid public key type for MQV key exchange.Got: {type(peer_cert)} Expected an EllipticCurvePublicKey."
+        )
+
+    z = compute_recipient_ecdh_mqv_one_pass_exchange(
+        recip_key=private_key,
+        ephemeral_pub_key=public_key_eph,
+        static_public_key=peer_cert,
+    )
+
+    logging.info("MQV shared secret: %s", z.hex())
+    # Derive the key using the ANSI X9.63 KDF
+    k = derive_shared_secret_ec(z, key_wrap_oid, hash_alg=hash_alg, ukm=ukm)
+    logging.info("Derived One-Pass-MQV key: %s", k.hex())
+    return k
+
+
+def compute_recipient_ecdh_mqv_one_pass_exchange(
+    recip_key: EllipticCurvePrivateKey,
+    static_public_key: EllipticCurvePublicKey,
+    ephemeral_pub_key: EllipticCurvePublicKey,
+) -> bytes:
+    """Compute the shared secret in a One-Pass-MQV (Menezes-Qu-Vanstone) ECDH exchange.
+
+    The KDF **MUST** be applied afterwards!
+
+    :param recip_key: The static private key of the recipient.
+    :param static_public_key: The public key of the sender.
+    :param ephemeral_pub_key: The ephemeral public key of the sender.
+    :return: The computed shared secret as bytes.
+    """
+    # receiver's static private and public keys.
+    q_uv = convert_public_key_to_tinyec(recip_key.public_key())
+    d_sv_val, _ = convert_private_key_to_tinyec(recip_key)
+
+    q_su_tiny = convert_public_key_to_tinyec(static_public_key)
+    q_eu_tiny = convert_public_key_to_tinyec(ephemeral_pub_key)
+
+    n = q_eu_tiny.curve.field.n
+    h = q_eu_tiny.curve.field.h
+
+    # Compute r using AVF
+    r = avf(q_uv)
+    # Compute d_sv_val + avf(Q_uv) * d_sv_val mod n
+    implicit_sig_v = (d_sv_val + r * d_sv_val) % n
+
+    r2 = avf(q_eu_tiny)
+    second_part = q_eu_tiny + r2 * q_su_tiny
+    point = (h * implicit_sig_v) * second_part
+    point: Point
+
+    if isinstance(point, Inf):
+        raise ValueError("Computed point is at infinity.")
+
+    z = point.x
+    return z.to_bytes((z.bit_length() + 7) // 8, byteorder="big")
