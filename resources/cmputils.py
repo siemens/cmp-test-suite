@@ -2404,22 +2404,79 @@ def build_cr_from_key(  # noqa D417 undocumented-param
 
     pvno = _parse_pvno(params.get("pvno"), params.get("for_kga", False), default=2)
 
-    # To ensure that the prepared messageTime is newer.
-    pki_message = prepare_pki_message(
+@keyword(name="Build Krr From Key")
+def build_krr_from_key(  # noqa D417 undocumented-param
+    signing_key: PrivateKey,
+    common_name: str = "CN=Hans Mustermann",
+    sender: str = "tests@example.com",
+    recipient: str = "testr@example.com",
+    exclude_fields: Optional[str] = None,
+    cert_req_msg: Optional[Union[List[rfc4211.CertReqMsg], rfc4211.CertReqMsg]] = None,
+    **params,
+) -> PKIMessageTMP:
+    """Create a Key-Recovery Request (KRR) PKIMessage using a signing key and specified parameters.
+
+    Arguments:
+    ---------
+        - `signing_key`: A private key object used to sign the `CertReqMsg`.
+        - `common_name`: The common name for the certificate subject. Defaults to "CN=Hans Mustermann".
+        - `sender`: The sender of the request. Defaults to "tests@example.com".
+        - `recipient`: The recipient of the request. Defaults to "testr@example.com".
+        - `exclude_fields`: Optional comma-separated list of PKIHeader fields to exclude.
+        - `cert_req_msg`: A list of or single `CertReqMsg` object to be appended.
+
+    `**params`:
+    ----------
+        - `cert_req_id` (int): ID for the certificate request. Defaults to `0`.
+        - `hash_alg` (str): The hash algorithm for Proof of Possession (POP). Defaults to `sha256`.
+        - `extensions` (rfc5280.Extensions): Extensions to include in the `CertReqMsg`.
+        - `controls` (rfc4211.Controls): Controls for the `CertReqMsg`.
+        - `ra_verified` (bool): Flag indicating if the RA has verified the Proof of Possession.
+        - `for_kga` (bool): Indicates if the request is for key generation authentication.
+        - `cert_template` (rfc4211.CertTemplate): Custom certificate template.
+        - `popo_structure` (rfc4211.ProofOfPossession): Custom Proof of Possession structure.
+        - The `PKIHeader` fields can also be set.
+        - `for_mac` (bool): Flag indicating if the message is for MAC. Defaults to `False`.
+       ( set the sender inside the directoryName choice of the GeneralName structure)
+
+    Returns:
+    -------
+        - The constructed `PKIMessage` with the `krr` body.
+
+    Raises:
+    ------
+        - `ValueError`: If required parameters are missing or invalid.
+
+    Examples:
+    --------
+    | ${krr}= | Build Krr From Key | ${signing_key} |
+    | ${krr}= | Build Krr From Key | ${signing_key} | sender=custom_sender@example.com |
+    | ${krr}= | Build Krr From Key | ${signing_key} | exclude_fields=transactionID,senderNonce |
+
+    """
+    if cert_req_msg is None:
+        cert_req_msg = prepare_cert_req_msg(
+            private_key=signing_key,
+            common_name=common_name,
+            cert_req_id=params.get("cert_req_id", 0),
+            hash_alg=params.get("hash_alg", "sha256"),
+            extensions=params.get("extensions", None),
+            controls=params.get("controls"),
+            ra_verified=params.get("ra_verified", False),
+            for_kga=params.get("for_kga", False),
+            cert_template=params.get("cert_template"),
+            popo_structure=params.get("popo"),
+            bad_pop=params.get("bad_pop", False),
+        )
+
+    return _prepare_build_cert_req_msgs_pkimessage(
+        body_name="krr",
+        cert_req_msg=cert_req_msg,
         sender=sender,
         recipient=recipient,
         exclude_fields=exclude_fields,
-        transaction_id=params.get("transaction_id"),
-        sender_nonce=params.get("sender_nonce"),
-        recip_nonce=params.get("recip_nonce"),
-        recip_kid=params.get("recip_kid"),
-        implicit_confirm=params.get("implicit_confirm", False),
-        sender_kid=params.get("sender_kid"),
-        pvno=pvno,
-        for_mac=params.get("for_mac", False),
+        **params,
     )
-    pki_message["body"] = pki_body
-    return pki_message
 
 
 @keyword(name="Build Ccr From Key")
