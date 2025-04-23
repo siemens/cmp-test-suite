@@ -33,19 +33,18 @@ For further reading footnotes and a bibliography are provided.
 
 The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the project.
 
- Quick start with Docker
+# Quick start with Docker
 On a system where [Docker is available](https://docs.docker.com/engine/install/), the easiest way to run the test suite is `docker run --rm -it ghcr.io/siemens/cmp-test`. This will invoke a smoke test just to confirm that the basics are in place. Add `--help` to learn about what other commands are available.
 
 To run a minimal test against an actual CA, try `docker run --rm -it ghcr.io/siemens/cmp-test --minimal http://example.com --ephemeral` (replace the URL with your CMP endpoint).
 
 A thorough evaluation that covers all the features of CMP requires a configuration file, where you specify preshared passwords, keys, algorithms to use, etc. (see `--customconfig` for details).
 
-
 # Advanced usage
 While the Docker-based approach makes it easy to get started, it essentially treats the test suite as a black box. However, if you want to customize, extend or debug it, it is necessary to dive deeper and understand how it works "under the hood".
 
 
-# Configuration
+## Configuration
 Create a Python virtual environment by installing the dependencies from `requirements.txt`:
 
 1. Create a virtual environment: `python3 -m venv venv-cmp-tests`
@@ -57,14 +56,14 @@ Create a Python virtual environment by installing the dependencies from `require
 
 
 
-# Usage
+## Usage
 Note that if you haven´t yet activated the environment, do so now.
 
 1. Navigate into the test suite: `cd cmp-test-suite`
 2. Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment. 
 3. In your directory in the folder of cmp-test-suite you will find `report.html` 
 
-## Additional RobotFramework commands
+### Additional RobotFramework commands
 You can run specific tests on specific environments by adjusting command line options. Consider this example:
 `robot --outputdir=out --variable environment:cloudpki --include crypto tests`
 
@@ -72,7 +71,7 @@ You can run specific tests on specific environments by adjusting command line op
 - `--variable environment:cloudpki` - use the settings given in the `config/cloudpki.robot` file (replace as needed)
 - `--include crypto` - run only the tests that have the `crypto` tag
 
-## Other useful commands
+### Other useful commands
 - `make test` - run all the tests, store the results in `out/`, use the `config/local.robot` settings.
 - `make testlog` - run all the tests, store the results in subdirectories like `out/2024-01-20_17-45_January-1`, so that
   you can keep track of the history of test runs, instead of overwriting them. This will use the default test environment.
@@ -83,11 +82,6 @@ You can run specific tests on specific environments by adjusting command line op
 
 The [detailed documentation](/cmp-test-suite/doc/index.html) covers test suites and available keywords. 
 If the referenced documentation is not available, run `make docs` to generate it.
-
-# Bibliographyy 
-<sup>1</sup> [Python virtual environment](https://docs.python.org/3/library/venv.html)
-
-<sup>2</sup> [Python dependencies](https://docs.python.org/3/installing/index.html)
 
 
 # Acknowledgments
