@@ -45,7 +45,7 @@ class TestValidateKEMInfo(unittest.TestCase):
         self.assertEqual(result["encrypted_key"], b"encrypted_key_mock")
         self.assertEqual(result["kemct"], b"kem_ct_mock")
         self.assertEqual(result["kdf_algorithm"]["algorithm"], rfc8619.id_alg_hkdf_with_sha256)
-        self.assertNotEqual(result["ukm"], b"mock_ukm")
+        self.assertEqual(result["ukm"], b"mock_ukm")
 
     def test_invalid_version_kemri(self):
         """

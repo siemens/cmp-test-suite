@@ -2152,15 +2152,12 @@ def process_kem_recip_info(
             key_length=validated_info["length"],
         )
     logging.info("Shared secret: %s", shared_secret.hex())
-    if validated_info["ukm"] is None:
-        logging.info("UKM is not set.")
-        ukm_der = envdatautils.prepare_cmsori_for_kem_other_info(
-            wrap_algorithm=validated_info["wrap"],
-            kek_length=validated_info["length"],
-            ukm=validated_info["ukm"],
-        )
-    else:
-        ukm_der = envdatautils.is_cmsori_kem_other_info_decode_able(validated_info["ukm"])
+
+    ukm_der = envdatautils.prepare_cmsori_for_kem_other_info(
+        wrap_algorithm=validated_info["wrap"],
+        kek_length=validated_info["length"],
+        ukm=validated_info["ukm"],
+    )
 
     key_enc_key = protectionutils.compute_kdf_from_alg_id(
         kdf_alg_id=validated_info["kdf_algorithm"],

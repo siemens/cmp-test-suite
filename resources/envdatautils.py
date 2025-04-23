@@ -1560,7 +1560,7 @@ def prepare_kem_recip_info(  # noqa D417 undocumented-param
         encrypted_key = keywrap.aes_key_wrap(wrapping_key=key_enc_key, key_to_wrap=cek)
 
     if ukm is not None:
-        kem_recip_info["ukm"] = rfc9629.UserKeyingMaterial(der_ukm).subtype(
+        kem_recip_info["ukm"] = rfc9629.UserKeyingMaterial(ukm).subtype(
             explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
         )
 
