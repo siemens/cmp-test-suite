@@ -84,7 +84,7 @@ def build_cmp_cann_announcement(
     )
 
     pki_message = cmputils.prepare_pki_message(**kwargs)
-    pki_message["body"]["cann"] = cert_ann_con # codespell:ignore
+    pki_message["body"]["cann"] = cert_ann_con  # codespell:ignore
 
     return pki_message
 
@@ -126,7 +126,7 @@ def build_cmp_rann_announcement(
 
     Examples:
     --------
-    | ${rann}= | Build CMP Revocation Announcement | ${cert} | status=accepted | will_be_revoked_at=2024-01-01T12:00:00Z |
+    | ${rann}= | Build CMP Revocation Announcement | ${cert} | accepted | will_be_revoked_at=2024-01-01T12:00:00Z |
 
     """
     cert_id = _prepare_cert_id(
