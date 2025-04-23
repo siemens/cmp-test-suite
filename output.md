@@ -1,3 +1,10 @@
+<!--
+SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
+
 # Documentation of the output
 If you want to share the report, consider to include the configuration file. The configuration file contains essential settings and parameters that were used during the test execution, which can help others replicate the test environment and understand the context of the results.
 
