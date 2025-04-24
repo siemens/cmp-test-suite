@@ -6,7 +6,7 @@ import unittest
 
 from pq_logic.tmp_oids import id_ad_certDiscovery, id_ad_relatedCertificateDescriptor
 from pq_logic.hybrid_sig.certdiscovery import (
-    extract_sia_extension_for_cert_discovery,
+    extract_related_cert_des_from_sis_extension,
     prepare_subject_info_access_syntax_extension,
 )
 from pq_logic.hybrid_structures import RelatedCertificateDescriptor
@@ -100,7 +100,7 @@ class TestCertDiscovery(unittest.TestCase):
             public_key_algorithm=self.pub_key_alg_id
         )
 
-        descriptor = extract_sia_extension_for_cert_discovery(extension, index=0)
+        descriptor = extract_related_cert_des_from_sis_extension(extension, index=0)
 
         self.assertEqual(str(descriptor['uniformResourceIdentifier']), self.url, "URL should match the input value.")
         self.assertEqual(descriptor['signatureAlgorithm']['algorithm'], self.sig_alg_id['algorithm'], "Signature algorithm should match.")

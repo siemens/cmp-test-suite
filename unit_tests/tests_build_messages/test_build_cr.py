@@ -11,6 +11,7 @@ from resources.certbuildutils import generate_signed_csr
 from resources.cmputils import build_cr_from_csr, build_cr_from_key, get_cmp_message_type, parse_csr
 from resources.keyutils import generate_key
 from resources.utils import decode_pem_string
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
 class TestBuildCr(unittest.TestCase):
@@ -28,9 +29,7 @@ class TestBuildCr(unittest.TestCase):
         """
         key = generate_key("ec")
         pki_message = build_cr_from_key(key, sender=self.sender, recipient=self.recipient)
-        der_data = encode_to_der(pki_message)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "cr")
 
     def test_build_cr_from_csr_en_and_decode(self):
@@ -42,7 +41,5 @@ class TestBuildCr(unittest.TestCase):
         csr, key = generate_signed_csr(common_name=self.common_name, key="rsa")
         csr = parse_csr(decode_pem_string(csr))
         pki_message = build_cr_from_csr(csr, key, sender=self.sender, recipient=self.recipient)
-        der_data = encode_to_der(pki_message)
-        pki_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "cr")

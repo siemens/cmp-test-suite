@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -22,6 +22,12 @@ Library             ../resources/certextractutils.py
 Suite Setup         Initialize Global Variables
 
 
+*** Variables ***
+${ALLOW_NOT_AUTHORIZED_SENDER}    ${None}
+${NOT_AUTHORIZED_SENDER_CERT}    ${None}
+${NOT_AUTHORIZED_SENDER_KEY}    ${None}
+
+
 *** Test Cases ***
 CA Must Reject Malformed Request
     [Documentation]    When we send an invalid PKIMessage to the CA, it must respond with a 400 status code to indicate
@@ -40,65 +46,52 @@ CA MUST Reject Requests That Feature Unknown Signature Algorithms
     ...    signature algorithm MUST be rejected by the CA. We send a valid p10cr PKIMessage with an unknown
     ...    signature algorithm. The CA MUST reject the request, potentially responding with the failInfo
     ...    `badAlg` for the unsupported algorithm or `systemFailure`.
-    [Tags]    crypto    negative    p10cr
+    [Tags]    crypto    negative    p10cr  minimal
     ${data}=    Get Binary File    data/req-p10cr-prot_none-pop_sig-dilithium.pkimessage
     Log Base64    ${data}
     ${updated_pki_message}=    Patch MessageTime    ${data}
-    ${encoded}=    Encode To Der    ${updated_pki_message}
-    ${response}=    Exchange Data With CA    ${encoded}
-    ${response_pki_msg}=    Parse PKIMessage    ${response.content}
-    # TODO talk about it to Alex
-    # Ask Alex if systemFailure is allowed!
-    PKIMessage Body Type Must Be  ${response_pki_msg}  error
-    PKIStatus Must Be   ${response_pki_msg}    rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response_pki_msg}  failinfo=badAlg,systemFailure   exclusive=True
-
+    ${prot_req}=   Default Protect PKIMessage    ${updated_pki_message}
+    ${response}=   Exchange PKIMessage    ${prot_req}
+    PKIMessage Body Type Must Be  ${response}  error
+    PKIStatus Must Be   ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}  failinfo=badAlg,systemFailure   exclusive=True
 
 CA Must Issue A Certificate When We Send A Valid P10cr Request
     [Documentation]    According to RFC 9483 Section 4.1.4, when a valid CSR is sent inside a p10cr PKIMessage, the CA
     ...    MUST respond with a valid certificate. We send a correctly formatted p10cr request and
     ...    verify that the CA issues a valid certificate in response.
-    [Tags]    csr    p10cr    positive
+    [Tags]    csr    p10cr    positive   minimal
     ${der_pkimessage}=    Load And Decode Pem File    data/example-rufus-01-p10cr.pem
     ${request_pki_message}=    Parse PKIMessage    ${der_pkimessage}
-    ${request_pki_message}=    Patch MessageTime    ${request_pki_message}
-    # NOTE that we are patching the transaction id so the message looks like a new one
-    ${request_pki_message}=    Patch TransactionID    ${request_pki_message}    prefix=11111111111111111111
+    ${p10cr}=    Build P10cr From CSR     ${request_pki_message["body"]["p10cr"]}
+    ...          sender=${SENDER}    recipient=${RECIPIENT}  for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     ${protected_p10cr}=    Protect PKIMessage
-    ...    pki_message=${request_pki_message}
-    ...    protection=password_based_mac
+    ...    ${p10cr}
+    ...    password_based_mac
     ...    password=${PRESHARED_SECRET}
     ...    iterations=1945
     ...    salt=111111111122222222223333333333
     ...    hash_alg=sha256
-    ${der_pkimessage}=    Encode To Der    ${protected_p10cr}
-    ${response}=    Exchange Data With CA    ${der_pkimessage}
-    ${response_pki_message}=    Parse PKIMessage    ${response.content}
-    Validate Sender And Recipient Nonce    ${response_pki_message}    ${request_pki_message}
-    PKIMessage Body Type Must Be    ${response_pki_message}    cp
-    PKIStatus Must Be    ${response_pki_message}    accepted
-    ${cert}=    Get Cert From PKIMessage    ${response_pki_message}
+    ${response}=  Exchange PKIMessage    ${protected_p10cr}
+    PKIMessage Body Type Must Be    ${response}    cp
+    PKIStatus Must Be    ${response}    accepted
+    Validate Sender And Recipient Nonce    ${response}    ${protected_p10cr}
+    ${cert}=    Get Cert From PKIMessage    ${response}
     Certificate Must Be Valid    ${cert}
 
 CA Must Reject Request When The CSR Signature Is Invalid
     [Documentation]    According to RFC 9483 Section 4.1.4, the signature inside the CSR serves as proof-of-possession
-    ...    to demonstrate that the End-Entity owns the private key. We send a CSR with a broken signature.
+    ...    to demonstrate that the End-Entity owns the private key. We send a CSR with a invalid signature.
     ...    The CA MUST reject the request and may respond with the optional failInfo `badPOP`.
     [Tags]    crypto    csr    negative
     ${key}=    Generate Default Key
-    ${key2}=    Generate Default Key
     ${cm}=    Get Next Common Name
-    ${csr}=    Build CSR    common_name=${cm}    signing_key=${key}    exclude_signature=True
-    ${invalid_sig_csr}=    Sign CSR    csr=${csr}    signing_key=${key}    other_key=${key2}
+    ${csr}=    Build CSR    common_name=${cm}    signing_key=${key}    bad_pop=True
     ${p10cr}=    Build P10cr From Csr
-    ...    ${invalid_sig_csr}
+    ...    ${csr}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ...    implicit_confirm=${True}
-    ${protected_p10cr}=    Protect PKIMessage
-    ...    ${p10cr}
-    ...    protection=${DEFAULT_MAC_ALGORITHM}
-    ...    password=${PRESHARED_SECRET}
+    ${protected_p10cr}=    Default Protect PKIMessage    ${p10cr}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP    exclusive=True
@@ -109,28 +102,27 @@ CA Must Reject Request When The CSR Is Sent Again
     ...    accept the request. If rejected, the CA may respond with the optional failInfo
     ...    `duplicateCertReq`.
     [Tags]    csr    negative    robot:skip-on-failure
-    ${der_pkimessage}=    Load And Decode Pem File    data/example-rufus-01-p10cr.pem
-    ${request}=    Parse PKIMessage    ${der_pkimessage}
-    ${request}=    Patch MessageTime    ${request}
-    # NOTE that we are patching the transaction id so the message looks like a new one
-    ${request}=    Patch TransactionID    ${request}    prefix=11111111111111111111
+    ${csr}   ${_}=    Generate CSR For Testing
+    ${p10cr}=   Build P10cr From CSR    ${csr}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         implicit_confirm=${True}    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     ${protected_p10cr}=    Protect PKIMessage
-    ...    pki_message=${request}
+    ...    pki_message=${p10cr}
     ...    protection=password_based_mac
     ...    password=${PRESHARED_SECRET}
     ...    iterations=1945
     ...    salt=111111111122222222223333333333
     ...    hash_alg=sha256
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
-    Sender And Recipient Nonces Must Match    ${request}    ${response}
-    SenderNonce Must Be At Least 128 Bits Long    ${response}
-    PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    cp
-    ${der_pkimessage}=    Encode To Der    ${protected_p10cr}
-    ${response}=    Exchange Data With CA    ${der_pkimessage}
-    ${resp2}=    Parse PKIMessage    ${response.content}
-    PKIStatus Must Be    ${resp2}    rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${resp2}    failinfo=duplicateCertReq    exclusive=True
+    PKIStatus Must Be    ${response}    accepted
+    Sender And Recipient Nonces Must Match    ${protected_p10cr}    ${response}
+    SenderNonce Must Be At Least 128 Bits Long    ${response}
+    ${p10cr_2}=   Build P10cr From CSR    ${csr}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         implicit_confirm=${True}    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
+    ${protected_p10cr}=   Default Protect With MAC    ${p10cr_2}
+    ${response2}=    Exchange PKIMessage    ${protected_p10cr}
+    PKIStatus Must Be    ${response2}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response2}    failinfo=duplicateCertReq    exclusive=True
 
 ##### Basic Certification Request
 
@@ -152,6 +144,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid MAC-Protected CR
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${True}
+    ...    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     ${protected_p10cr}=    Protect PKIMessage
     ...    ${p10cr}
     ...    protection=${DEFAULT_MAC_ALGORITHM}
@@ -173,28 +166,21 @@ CA MUST Reject An Valid MAC Protected Key Update Request
     ...    to process it. We send a valid Key Update Request that is MAC-protected. The CA MUST
     ...    reject the request to ensure integrity and compliance with the PKI policies, potentially
     ...    responding with the failInfo `wrongIntegrity`.
-    [Tags]    kur    mac    negative
-    ${is_set}=    Is Certificate And Key Set    ${ISSUED_CERT}    ${ISSUED_KEY}
-    IF    not ${is_set}
-        Skip    Skipped because the `UPDATED_CERT` variable was not set.
-    END
+    [Tags]    kur    mac    negative   minimal
+    ${cert}   ${_}=    Issue New Cert For Testing
     ${new_private_key}=    Generate Default Key
     ${kur}=    Build Key Update Request
     ...    ${new_private_key}
-    ...    cert=${ISSUED_CERT}
+    ...    cert=${cert}
     ...    sender=${SENDER}
     ...    exclude_fields=${None}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${False}
-    ${protected_kur}=    Protect PKIMessage
-    ...    ${kur}
-    ...    protection=${DEFAULT_MAC_ALGORITHM}
-    ...    password=${PRESHARED_SECRET}
+    ...    for_mac=True
+    ${protected_kur}=    Default Protect With MAC    ${kur}
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=wrongIntegrity
-
-
 
 CA MUST Issue A Valid Certificate Upon Receiving A Valid MAC-Protected P10CR
     [Documentation]    According to RFC 9483 Section 4.1.4, when a valid `Certification Request` is received with
@@ -205,16 +191,14 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid MAC-Protected P10CR
     [Tags]    implicit_confirm    mac    p10cr    positive
     Skip If    not ${ALLOW_MAC_PROTECTION}    Skipped test because MAC based protection is disabled.
     Skip If    not ${ALLOW_P10CR_MAC_BASED}    Skipped test because P10cr MAC based protection is disabled.
-    ${csr}    ${key}=    Generate CSR For Testing
+    ${csr}    ${_}=    Generate CSR For Testing
     ${p10cr}=    Build P10cr From Csr
     ...    ${csr}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${True}
-    ${protected_p10cr}=    Protect PKIMessage
-    ...    ${p10cr}
-    ...    protection=${DEFAULT_MAC_ALGORITHM}
-    ...    password=${PRESHARED_SECRET}
+    ...    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
+    ${protected_p10cr}=    Default Protect With MAC    ${p10cr}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    cp
@@ -237,7 +221,7 @@ CA MUST Send A Valid IP After Receiving valid IR
     [Documentation]    According to RFC 9483 Section 4.1.1, when a valid Initialization Request is received, the CA MUST
     ...    process the request and respond with a valid Initialization Response. The response MUST
     ...    contain the issued certificate if the request meets all requirements.
-    [Tags]    ip    ir    PKIBody    positive
+    [Tags]    ip    ir    PKIBody    positive  minimal
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
     ${pki_message}=    Build Ir From Key
     ...    signing_key=${key}
@@ -259,19 +243,15 @@ CA MUST Send A Valid CP After Receiving valid CR
     [Documentation]    According to RFC 9483 Section 4, when a valid Certification Request is received, the CA MUST
     ...    process the request and respond with a valid Certification Response. The response MUST
     ...    contain the issued certificate if the request meets all requirements.
-    [Tags]    cp    cr    PKIBody    positive
+    [Tags]    cp    cr    PKIBody    positive   minimal
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
-    ${pki_message}=    Build Cr From Key
+    ${cr}=    Build Cr From Key
     ...    signing_key=${key}
     ...    exclude_fields=sender,senderKID
     ...    recipient=${RECIPIENT}
     ...    cert_template=${cert_template}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_cr}=    Protect PKIMessage
-    ...    pki_message=${pki_message}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ${protected_cr}=    Default Protect PKIMessage    ${cr}
     ${response}=    Exchange PKIMessage    ${protected_cr}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    cp
@@ -281,60 +261,35 @@ CA MUST Send A Valid KUP After Receiving valid KUR
     [Documentation]    According to RFC 9483 Section 4.1.3, when a valid Key Update Request is received, the CA MUST
     ...    process the request and respond with a valid Key Update Response. The response MUST
     ...    include the updated certificate if the request meets all requirements.
-    [Tags]    kup    kur    PKIBody    positive    setup
+    [Tags]    kup    kur    PKIBody    positive    setup   minimal
+    ${cert}   ${kur_key}=   Issue New Cert For Testing
     ${key}=    Generate Default Key
-    ${pki_message}=    Build Key Update Request
-    ...    signing_key=${key}
+    ${kur}=    Build Key Update Request
+    ...    ${key}
     ...    exclude_fields=sender,senderKID
     ...    recipient=${RECIPIENT}
-    ...    cert=${ISSUED_CERT}
+    ...    cert=${cert}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_kur}=    Protect PKIMessage
-    ...    pki_message=${pki_message}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ${protected_kur}=    Protect PKIMessage    ${kur}   signature   private_key=${kur_key}   cert=${cert}
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    kup
-    ${result}=    Find OID In GeneralInfo    ${response}    1.3.6.1.5.5.7.4.13
-    IF   not ${result}
-        ${cert_conf}=    Build Cert Conf From Resp
-        ...    ${response}
-        ...    recipient=${RECIPIENT}
-        ...    exclude_fields=sender,senderKID
-        ${pki_conf}=    Exchange PKIMessage    ${protected_cr}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-    END
-    # to not lose the valid certificate.
-    ${cert}=    Get Cert From PKIMessage    ${response}
-    VAR    ${UPDATED_CERT}    ${ISSUED_CERT}    scope=GLOBAL
-    VAR    ${UPDATED_KEY}    ${ISSUED_KEY}    scope=GLOBAL
-    VAR    ${ISSUED_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${ISSUED_KEY}    ${key}    scope=GLOBAL
+    ${cert}=   Confirm Certificate If Needed   ${response}   protection=signature
     Validate Ca Message Body    ${response}
-
-# TODO maybe not only lwcmp?
+    VAR    ${UPDATED_CERT}    ${cert}    scope=Global
+    VAR    ${UPDATED_KEY}    ${kur_key}    scope=Global
 
 CA MUST Send A Valid CP After Receiving valid P10CR
     [Documentation]    According to RFC 9483 Section 4, when a valid PKCS#10 Certification Request (P10CR) is received,
     ...    the CA MUST process the request and respond with a valid Certification Response. The response
     ...    MUST contain the issued certificate if the request meets all requirements.
-    [Tags]    cp    lwcmp    p10cr    PKIBody    positive
-    Skip If    not ${LWCMP}    Skipped because this test is only for LwCMP.
-    ${cert_template}    ${key}=    Generate CertTemplate For Testing
-    ${pki_message}=    Build Cr From Key
-    ...    signing_key=${key}
+    [Tags]    cp    lwcmp    p10cr    PKIBody    positive  minimal
+    ${csr}    ${_}=    Generate CSR For Testing
+    ${p10cr}=   Build P10cr From Csr    ${csr}    sender=${SENDER}    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID
-    ...    recipient=${RECIPIENT}
-    ...    cert_template=${cert_template}
-    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_cr}=    Protect PKIMessage
-    ...    pki_message=${pki_message}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${protected_cr}
+    ...    implicit_confirm=${True}
+    ${protected_p10cr}=    Default Protect PKIMessage    ${p10cr}
+    ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    cp
     Validate Ca Message Body    ${response}    used_p10cr=True
@@ -348,7 +303,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid IR SIG-Protected
     ...    If implicit confirmation is enabled, the PKIMessage MUST include the `implicitConfirm`
     ...    extension. If implicit confirmation is disabled, a certificate confirmation message MUST
     ...    be sent to complete the exchange, and the CA MUST respond with a valid PKI confirmation message.
-    [Tags]    ir    positive    signature
+    [Tags]    ir    positive    signature   minimal
     ${key}=    Generate Default Key
     ${pki_message}=    Build Ir From Key
     ...    signing_key=${key}
@@ -365,25 +320,9 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid IR SIG-Protected
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    ip
+    ${cert}=    Get Cert From PKIMessage    ${response}
     Validate CA Message Body    ${response}    used_p10cr=False
-    IF    ${ALLOW_IMPLICIT_CONFIRM}
-        PKIMessage Must Contain ImplicitConfirm Extension    ${response}
-        ${cert}=    Get Cert From PKIMessage    ${response}
-        Certificate Must Be Valid    ${cert}
-    ELSE
-        ${cert_conf}=    Build Cert Conf From Resp
-        ...    ${response}
-        ...    exclude_fields=sender,senderKID
-        ...    recipient=${RECIPIENT}
-        ${protected_cert_conf}=    Protect PKIMessage
-        ...    pki_message=${cert_conf}
-        ...    protection=signature
-        ...    private_key=${ISSUED_KEY}
-        ...    cert=${ISSUED_CERT}
-        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-        Signature Protection Must Match    response=${response}    pki_conf=${pki_conf}
-    END
+    Certificate Must Be Valid    ${cert}
 
 CA MUST Issue A Valid Certificate Upon Receiving A Valid CR SIG-Protected
     [Documentation]    According to RFC 9483 Section 4.1.2, when a valid Certification Request is received with
@@ -391,7 +330,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid CR SIG-Protected
     ...    If implicit confirmation is enabled, the PKIMessage MUST include the `implicitConfirm`
     ...    extension. If implicit confirmation is disabled, a certificate confirmation message MUST
     ...    be sent to complete the exchange, and the CA MUST respond with a valid PKI confirmation message.
-    [Tags]    cr    positive    signature
+    [Tags]    cr    positive    signature  minimal
     ${key}=    Generate Default Key
     ${pki_message}=    Build Cr From Key
     ...    signing_key=${key}
@@ -433,19 +372,20 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid KUR
     ...    If implicit confirmation is enabled, the PKIMessage MUST include the `implicitConfirm`
     ...    extension. If implicit confirmation is disabled, a certificate confirmation message MUST
     ...    be sent to complete the exchange, and the CA MUST respond with a valid PKI confirmation message.
-    [Tags]    kur    positive
+    [Tags]    kur    positive   minimal
+    ${cert}  ${kur_key}=   Issue New Cert For Testing
     ${new_key}=    Generate Default Key
     ${pki_message}=    Build Key Update Request
     ...    ${new_key}
-    ...    cert=${ISSUED_CERT}
+    ...    cert=${cert}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${True}
     ${protected_kur}=    Protect PKIMessage
     ...    pki_message=${pki_message}
     ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ...    private_key=${kur_key}
+    ...    cert=${cert}
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    kup
@@ -459,17 +399,14 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid KUR
         ${protected_cert_conf}=    Protect PKIMessage
         ...    pki_message=${cert_conf}
         ...    protection=signature
-        ...    private_key=${ISSUED_KEY}
-        ...    cert=${ISSUED_CERT}
+        ...    private_key=${kur_key}
+        ...    cert=${cert}
         ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
         PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
         Signature Protection Must Match    response=${response}    pki_conf=${pki_conf}
     END
-    ${cert}=    Get Cert From PKIMessage    ${response}
-    VAR    ${UPDATED_CERT}    ${ISSUED_CERT}    scope=GLOBAL
-    VAR    ${UPDATED_KEY}    ${ISSUED_KEY}    scope=GLOBAL
-    VAR    ${ISSUED_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${ISSUED_KEY}    ${new_key}    scope=GLOBAL
+    VAR    ${UPDATED_CERT}    ${cert}    scope=GLOBAL
+    VAR    ${UPDATED_KEY}    ${kur_key}    scope=GLOBAL
     # positioned here so if the Response is incorrect, the certificate is still updated, so that it
     # can be used for other test cases.
     Validate CA Message Body    ${response}    used_p10cr=False
@@ -495,7 +432,7 @@ CA MUST Reject Valid Key Update Request With Already Updated Certificate
     ...    private_key=${UPDATED_KEY}
     ...    cert=${UPDATED_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfos=certRevoked    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    certRevoked    exclusive=True
 
 CA MUST Issue A Valid Certificate Upon Receiving A Valid P10cr SIG-Protected
     [Documentation]    According to RFC 9483 Section 4.1.4, when a valid Certificate Request is received with
@@ -503,43 +440,19 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid P10cr SIG-Protected
     ...    If implicit confirmation is enabled, the PKIMessage MUST include the `implicitConfirm`
     ...    extension. If implicit confirmation is disabled, a certificate confirmation message MUST
     ...    be sent to complete the exchange, and the CA MUST respond with a valid PKI confirmation message.
-    [Tags]    p10cr    positive    signature
-    ${csr}    ${key}=    Generate CSR For Testing
+    [Tags]    p10cr    positive    signature   minimal
+    ${csr}    ${_}=    Generate CSR For Testing
     ${p10cr}=    Build P10cr From Csr
     ...    ${csr}
     ...    exclude_fields=sender,senderKID
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${True}
-    ${protected_p10cr}=    Protect PKIMessage
-    ...    pki_message=${p10cr}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ${protected_p10cr}=    Default Protect PKIMessage    ${p10cr}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=  Confirm Certificate If Needed    ${response}
     Validate CA Message Body    ${response}    used_p10cr=True
-    IF    ${ALLOW_IMPLICIT_CONFIRM}
-        PKIMessage Must Contain ImplicitConfirm Extension    ${response}
-        ${cert}=    Get Cert From PKIMessage    ${response}
-        Certificate Must Be Valid    ${cert}
-    ELSE
-        ${cert_conf}=    Build Cert Conf From Resp
-        ...    ${response}
-        ...    exclude_fields=sender,senderKID
-        ...    recipient=${RECIPIENT}
-        ${protected_cert_conf}=    Protect PKIMessage
-        ...    pki_message=${cert_conf}
-        ...    protection=signature
-        ...    private_key=${ISSUED_KEY}
-        ...    cert=${ISSUED_CERT}
-        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-        Mac Protection Algorithms Must Match
-        ...    request=${protected_p10cr}
-        ...    response=${response}
-        ...    pkiconf=${pki_conf}
-        ...    strict=${STRICT_MAC_VALIDATION}
-    END
+    Certificate Must Be Valid    ${cert}
 
 #### Basic `CertTemplate` tests (extensions, validity)
 
@@ -553,7 +466,7 @@ CA MUST React To A Valid Cert Request With The BasicConstraints Extension
     ...    policy. We send a valid Initialization Request containing the BasicConstraints extension
     ...    with `ca` set to True. If issuing CA certificates is allowed, the CA SHOULD issue the requested
     ...    certificate. Otherwise, the CA MUST reject the request to maintain PKI integrity.
-    [Tags]    basic-constraints    config-dependent    extension
+    [Tags]    basic-constraints    config-dependent    extension  minimal
     ${new_key}=    Generate Default Key
     ${extensions}=    Prepare Extensions    key_usage=digitalSignature,keyCertSign    is_ca=True
     ${ir}=    Build Ir From Key
@@ -599,7 +512,7 @@ CA MUST React To A Valid Cert Request With Invalid Path-length In BasicConstrain
     ...    policy. We send a valid Initialization Request containing the BasicConstraints extension
     ...    with `ca` set to False and a specified `path_length` value. The CA MUST reject the request
     ...    to enforce certificate template constraints, as `path_length` is invalid when `ca` is False.
-    [Tags]    basic-constraints    extensions
+    [Tags]    basic-constraints    extension   minimal
     VAR    ${common_name}    CN=Hans Mustermann CA 2
     ${new_key}=    Generate Default Key
     ${extensions}=    Prepare Extensions    path_length=5    is_ca=False
@@ -625,7 +538,7 @@ CA MAY React To Cert Request With Invalid Is_ca In BasicConstraints False But Ke
     ...    with `ca` set to False and the KeyUsage `keyCertSign`. The CA SHOULD reject the request
     ...    to enforce certificate template constraints. If the policy allows, the CA MAY process
     ...    the request with modifications.
-    [Tags]    basic-constraints    extensions    strict
+    [Tags]    basic-constraints    extension    strict
     VAR    ${common_name}    CN=Hans Mustermann CA 3
     ${new_key}=    Generate Default Key
     ${extensions}=    Prepare Extensions    is_ca=False    key_usage=keyCertSign,digitalSignature
@@ -663,11 +576,11 @@ CA MUST Issue A Certificate With The KeyAgreement KeyUsage Extension
     ...    policy. We send a valid Initialization Request containing the `keyAgreement` and
     ...    `digitalSignature` KeyUsage extensions. The CA MUST issue a certificate containing both
     ...    specified extensions.
-    [Tags]    extensions    key-usage    kga    setup
+    [Tags]    extension    key-usage    kga    setup   minimal
     ${new_key}=    Generate Key    algorithm=ecc    curve=${DEFAULT_ECC_CURVE}
     ${extensions}=    Prepare Extensions    key_usage=keyAgreement,digitalSignature
     ${ir}=    Build Ir From Key
-    ...    signing_key=${new_key}
+    ...    ${new_key}
     ...    common_name=${DEFAULT_X509NAME}
     ...    extensions=${extensions}
     ...    exclude_fields=sender,senderKID
@@ -694,9 +607,32 @@ CA MUST Issue A Certificate With The KeyAgreement KeyUsage Extension
         ${pki_conf}=    Exchange PKIMessage    ${pki_message}
         PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     END
-    Validate KeyUsage   ${cert}    key_usage=keyAgreement,digitalSignature    strictness=STRICT
+    Validate KeyUsage   ${cert}    keyAgreement,digitalSignature    strictness=STRICT
     VAR    ${KGA_KARI_KEY}    ${new_key}    scope=Global
     VAR    ${KGA_KARI_CERT}    ${cert}    scope=Global
+
+CA MUST Issue ECDSA Cert With KeyUsage
+    [Documentation]    According to RFC 9483 Section 5, the CA responds to a certificate request based on its own
+    ...    policy. We send a valid Initialization Request containing the `keyAgreement` and
+    ...    `digitalSignature` KeyUsage extensions. The CA MUST issue a certificate containing both
+    ...    specified extensions.
+    ${new_key}=    Generate Key    algorithm=ecc    curve=${DEFAULT_ECC_CURVE}
+    ${extensions}=    Prepare Extensions    key_usage=keyAgreement,digitalSignature
+    ${cm}=  Get Next Common Name
+    ${ir}=    Build Ir From Key
+    ...    ${new_key}
+    ...    common_name=${cm}
+    ...    extensions=${extensions}
+    ...    exclude_fields=sender,senderKID
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ${protected_ir}=  Default Protect PKIMessage    ${ir}
+    ${ca_response}=    Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be   ${ca_response}    status=accepted
+    ${cert}=  Confirm Certificate If Needed    ${ca_response}   request=${protected_ir}
+    Validate KeyUsage   ${cert}    keyAgreement,digitalSignature    strictness=STRICT
+    VAR    ${CLIENT_ECC_KEY}    ${new_key}    scope=Global
+    VAR    ${CLIENT_ECC_CERT}    ${cert}    scope=Global
 
 # Needed for 4.1.6.1. Using the Key Transport Key Management Technique
 
@@ -705,10 +641,10 @@ CA MUST Issue A Certificate With The KeyEncipherment KeyUsage Extension
     ...    policy. We send a valid Initialization Request containing the `keyEncipherment` and
     ...    `digitalSignature` KeyUsage extensions. The CA MUST issue a certificate containing both
     ...    specified extensions.
-    [Tags]    extensions    key-usage    kga    setup
+    [Tags]    extension    key-usage    kga    setup  minimal
     ${cm}=    Get Next Common Name
     ${new_key}=    Generate Key    algorithm=rsa    length=${DEFAULT_KEY_LENGTH}
-    ${extensions}=    Prepare Extensions    key_usage=keyEncipherment,digitalSignature
+    ${extensions}=    Prepare Extensions    key_usage=keyEncipherment, digitalSignature
     ${ir}=    Build Ir From Key
     ...    signing_key=${new_key}
     ...    common_name=${cm}
@@ -737,7 +673,7 @@ CA MUST Issue A Certificate With The KeyEncipherment KeyUsage Extension
         ${pki_conf}=    Exchange PKIMessage    ${pki_message}
         PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     END
-    Validate KeyUsage    ${cert}    key_usage=keyEncipherment,digitalSignature    strictness=STRICT
+    Validate KeyUsage    ${cert}    keyEncipherment,digitalSignature    strictness=STRICT
     VAR    ${KGA_KTRI_KEY}    ${new_key}    scope=Global
     VAR    ${KGA_KTRI_CERT}    ${cert}    scope=Global
 
@@ -749,7 +685,7 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmcRA
     ...    extension. If the CA policy allows this extension, the CA MAY issue a certificate containing
     ...    the specified extension. Otherwise, the request is rejected, and the response may include the
     ...    optional failInfo `notAuthorized`.
-    [Tags]    extended-key-usage    extensions    policy-dependent    robot:skip-on-failure    setup
+    [Tags]    extended-key-usage    extension    policy-dependent    robot:skip-on-failure    setup   minimal
     ${new_key}=    Generate Key    algorithm=rsa    length=${DEFAULT_KEY_LENGTH}
     ${extensions}=    Prepare Extensions    eku=cmcRA
     ${ir}=    Build Ir From Key
@@ -783,7 +719,7 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmcRA
             ${pki_conf}=    Exchange PKIMessage    ${pki_message}
             PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
         END
-        Validate CMP ExtendedKeyUsage    ${cert}    eku=cmcRA    strictness=STRICT
+        Validate CMP ExtendedKeyUsage    ${cert}    cmcRA    STRICT
         VAR    ${CMC_RA_KEY}    ${new_key}    scope=Global
         VAR    ${CMC_RA_CERT}    ${cert}    scope=Global
     END
@@ -794,7 +730,7 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmcCA
     ...    extension. If the CA policy allows this extension, the CA MAY issue a certificate containing
     ...    the specified extension. Otherwise, the request is rejected, and the response may include the
     ...    optional failInfo `notAuthorized`.
-    [Tags]    extended-key-usage    extensions    policy-dependent    robot:skip-on-failure    setup
+    [Tags]    extended-key-usage    extension    policy-dependent    robot:skip-on-failure    setup   minimal
     ${new_key}=    Generate Key    algorithm=rsa    length=${DEFAULT_KEY_LENGTH}
     ${extensions}=    Prepare Extensions    eku=cmcCA
     ${ir}=    Build Ir From Key
@@ -828,7 +764,7 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmcCA
             ${pki_conf}=    Exchange PKIMessage    ${pki_message}
             PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
         END
-        Validate CMP ExtendedKeyUsage    ${cert}    eku=cmcCA    strictness=STRICT
+        Validate CMP ExtendedKeyUsage    ${cert}    cmcCA    STRICT
         VAR    ${CMC_CA_KEY}    ${new_key}    scope=Global
         VAR    ${CMC_CA_CERT}    ${cert}    scope=Global
     END
@@ -839,7 +775,7 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmKGA
     ...    extension. If the CA policy allows this extension, the CA MAY issue a certificate containing
     ...    the specified extension. Otherwise, the request is rejected, and the response may include the
     ...    optional failInfo `notAuthorized`.
-    [Tags]    extended-key-usage    extensions    policy-dependent    robot:skip-on-failure
+    [Tags]    extended-key-usage    extension    policy-dependent    robot:skip-on-failure
     ${new_key}=    Generate Key    algorithm=rsa    length=${DEFAULT_KEY_LENGTH}
     ${extensions}=    Prepare Extensions    eku=cmKGA
     ${ir}=    Build Ir From Key
@@ -876,7 +812,7 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmKGA
             PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
         END
         # must be present and contain the expected extension.
-        Validate CMP ExtendedKeyUsage    ${cert}    eku=cmKGA    strictness=STRICT
+        Validate CMP ExtendedKeyUsage    ${cert}    cmKGA    STRICT
         VAR    ${CMC_RA_KEY}    ${new_key}    scope=Global
         VAR    ${CMC_RA_CERT}    ${cert}    scope=Global
     END
@@ -888,8 +824,8 @@ CA MIGHT Reject initialization requests With An Invalid Extension
     ...    should reject the request and respond with the optional failInfo `badCertTemplate`. If the
     ...    policy allows relaxed validation, the CA may accept the request and respond with
     ...    `grantedWithMods`.
-    [Tags]    certTemplate    extensions    ir    policy-dependent
-    ${extensions}=    Prepare Extensions    negative=True
+    [Tags]    certTemplate    extension    ir    policy-dependent
+    ${extensions}=    Prepare Extensions    invalid_extension=True
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${pki_message}=    Build Ir From Key
@@ -932,7 +868,7 @@ CA MIGHT Allow A Validity Request with Valid IR
     ${cm}=    Get Next Common Name
     ${not_after}=    Add Time To Date    ${not_before}    1000 days
     ${validity}=    Prepare Validity    not_before=${not_before}    not_after=${not_after}
-    ${cert_template}=    Prepare CertTemplate    validity=${validity}    key=${key}
+    ${cert_template}=    Prepare CertTemplate    validity=${validity}    key=${key}   subject=${cm}
     Generate Default IR Sig Protected
     ${ir}=    Build Ir From Key    ${key}    common_name=${cm}    cert_template=${cert_template}
     ${protected_ir}=    Protect PKIMessage
@@ -941,6 +877,7 @@ CA MIGHT Allow A Validity Request with Valid IR
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be    ${response}    accepted
     Check For GrantedWithMods    ${response}    ${protected_ir}    include_fields=validity
 
 CA MIGHT Allow A Validity Request For 180 Days with Valid IR
@@ -955,15 +892,68 @@ CA MIGHT Allow A Validity Request For 180 Days with Valid IR
     ${cm}=    Get Next Common Name
     ${not_after}=    Add Time To Date    ${not_before}    180 days
     ${validity}=    Prepare Validity    not_before=${not_before}    not_after=${not_after}
-    ${cert_template}=    Prepare CertTemplate    validity=${validity}    key=${key}
+    ${cert_template}=    Prepare CertTemplate    validity=${validity}    key=${key}    subject=${cm}
     ${ir}=    Build Ir From Key    ${key}    common_name=${cm}    cert_template=${cert_template}
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
-    ...    protection=signature
+    ...    signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be    ${response}    accepted
     Check For GrantedWithMods    ${response}    ${protected_ir}    include_fields=validity
+
+CA or RA MUST Reject Not Authorized Sender
+    [Documentation]     According to RFC 9483 Section 3.5, the CA or RA must reject a PKIMessage if the sender is not
+    ...    authorized to send the message. We send a PKIMessage with a sender that is not authorized to
+    ...    send a message. The CA or RA MUST reject the request, and the response may include the failinfo
+    ...    `notAuthorized`.
+    [Tags]    negative    rfc9483-header    sender   notAuthorized
+    Skip If    not ${ALLOW_NOT_AUTHORIZED_SENDER}    This test is skipped because not authorized sender is not allowed.
+    ${cert_template}    ${key}=   Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key    ${key}    cert_template=${cert_template}   sender=${SENDER}    recipient=${RECIPIENT}
+    # Can only be done if the check is done after the subject field of the certificate is checked.
+    # Otherwise, the test will have to be done with a matching certificate or MAC protected.
+    IF   '${NOT_AUTHORIZED_SENDER_CERT}' == '${None}'
+        ${protected_ir}=   Default Protect PKIMessage  ${ir}  protection=mac
+    ELSE
+        ${protected_ir}=   Protect PKIMessage  ${ir}   protection=signature
+        ...                private_key=${NOT_AUTHORIZED_SENDER_KEY}
+        ...                cert=${NOT_AUTHORIZED_SENDER_CERT}
+    END
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    error
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    notAuthorized    True
+
+CA MUST Accept Cert with NULL-DN and SAN
+    [Documentation]     According to RFC 9483 Section 4.1.1, the CA must accept a certificate request with a NULL-DN as
+    ...    the subject and a SubjectAltName extension. We send a certificate request with a NULL-DN and a
+    ...    SubjectAltName extension. The CA MUST accept the request and issue a certificate.
+    [Tags]   positive    subject    null-dn    san
+    ${key}=   Generate Default Key
+    ${extn}=    Prepare Extensions    key=${key}    SubjectAltName=example.com
+    ${ir}=    Build Ir From Key    ${key}    common_name=Null-DN   recipient=${RECIPIENT}
+    ...       exclude_fields=sender,senderKID   extensions=${extn}
+    ${protected_ir}=   Default Protect PKIMessage  ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}   accepted
+
+CA MUST Reject Cert with NULL-DN and not SAN set
+    [Documentation]     According to RFC 9483 Section 4.1.1, the CA must reject a certificate request without
+    ...    a NULL-DN as the subject and a SubjectAltName extension which contains a directoryName choice inside
+    ...    a GeneralName. We send a certificate request with a subject that is not NULL-DN and a SubjectAltName
+    ...    extension that contains a directoryName choice inside a GeneralName. The CA MUST reject the request.
+    ...   The response may include the failinfo `badCertTemplate`.
+    [Tags]    negative    subject    null-dn
+    ${key}=   Generate Default Key
+    ${ir}=    Build Ir From Key    ${key}    common_name=Null-DN   recipient=${RECIPIENT}
+    ...       exclude_fields=sender,senderKID
+    ${protected_ir}=   Default Protect PKIMessage  ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}   rejection
+    PKIStatusInfo Failinfo Bit Must Be     ${response}    badCertTemplate    True
 
 
 *** Keywords ***
@@ -979,7 +969,6 @@ Initialize Cert Setup
         ...    key_path=${INITIAL_KEY_PATH}
         ...    key_password=${INITIAL_KEY_PASSWORD}
         ${result}=    Is Certificate And Key Set    ${tmp_cert}    ${tmp_key}
-
         IF    not ${result}
             Fail    if MAC-based protection is disabled. An initial certificate and matching private key needs
             ...    to be provided.
@@ -1016,7 +1005,7 @@ Initialize Cert Setup
     ${chain}=    Build CMP Chain From PKIMessage    ${response}    for_issued_cert=True
     Write Certs To Dir    ${chain}
     ${root}=    Get From List    ${chain}    -1
-    Write Cmp Certificate To Pem    ${root}    ./data/trustanchors/root.pem
+    Write Cmp Certificate To Pem    ${root}    data/trustanchors/root.pem
 
 Do Cert Conf If Needed Init
     [Documentation]    if a certificate confirmation is needed, one will be generated an ensures that the
@@ -1045,7 +1034,8 @@ Do Cert Conf If Needed Init
 
 Initialize Global Variables
     [Documentation]    Define global variables that will be used in the test suite and accessible within any test case.
-    Initialize Cert Setup
+    Set Up Test Suite
+    # Initialize Cert Setup
     ${result}=    Is Certificate And Key Set    ${ISSUED_CERT}    ${ISSUED_KEY}
     IF    not ${result}    Fatal Error    Unable to set up the Test-Suite
     ${csr}    ${tmp_key}=    Generate CSR For Testing
@@ -1055,7 +1045,7 @@ Initialize Global Variables
     # end so the issuer are different.
     # In some cases are only the sender==common_name is accepted, so for all other
     # cases this is used.
-    VAR    ${TestIndex}    ${1}    scope=GLOBAL
+    VAR    ${TEST_INDEX}    ${1}    scope=GLOBAL
     # Generate During Runtime
     # Successfully updated certificate and key.
     VAR    ${UPDATED_KEY}    ${None}    scope=GLOBAL
@@ -1094,18 +1084,18 @@ Initialize Global Variables
     VAR    ${KGA_KTRI_CERT}    ${None}    scope=GLOBAL
 
     # To Test KTRI, if the CA rejects a request for KGA without the keyEncipherment extension.
-    VAR    ${NEG_KTRI_KEY}    ${None}    scope=GLOBAL
-    VAR    ${NEG_KTRI_CERT}    ${None}    scope=GLOBAL
+    VAR    ${NEG_KTRI_KEY}    ${None}    scope=Global
+    VAR    ${NEG_KTRI_CERT}    ${None}    scope=Global
 
     # ecc key with extension. (keyAgreement)
-    VAR    ${KGA_KARI_KEY}    ${None}    scope=GLOBAL
-    VAR    ${KGA_KARI_CERT}    ${None}    scope=GLOBAL
+    VAR    ${KGA_KARI_KEY}    ${None}    scope=GLOBAL   # robocop: off=VAR04
+    VAR    ${KGA_KARI_CERT}    ${None}    scope=GLOBAL  # robocop: off=VAR04
 
     # To Test KARI, if the CA rejects a request for KGA without the keyAgreement extension.
-    VAR    ${NEG_KARI_KEY}    ${None}    scope=GLOBAL
-    VAR    ${NEG_KARI_CERT}    ${None}    scope=GLOBAL
+    VAR    ${NEG_KARI_KEY}    ${None}    scope=Global   # robocop: off=VAR04
+    VAR    ${NEG_KARI_CERT}    ${None}    scope=Global  # robocop: off=VAR04
 
-    VAR    ${RR_CERT_FOR_TRUSTED}    ${None}    scope=GLOBAL
+    VAR    ${RR_CERT_FOR_TRUSTED}    ${None}    scope=Global  # robocop: off=VAR04
 
-    VAR    @{GLOBAL_CERTS}    @{EMPTY}    scope=GLOBAL
-    VAR    @{GLOBAL_KEYS}    @{EMPTY}    scope=GLOBAL
+    VAR    @{GLOBAL_CERTS}    @{EMPTY}    scope=Global  # robocop: off=VAR04
+    VAR    @{GLOBAL_KEYS}    @{EMPTY}    scope=Global   # robocop: off=VAR04

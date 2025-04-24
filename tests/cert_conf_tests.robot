@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -19,6 +19,8 @@ Library             ../resources/protectionutils.py
 
 Test Tags           certConf
 
+Suite Setup    Set Up Test Suite
+
 
 *** Test Cases ***
 #### Accept and reject test.
@@ -30,19 +32,15 @@ CA MUST Accept Valid MAC Protected Issuing Process
     ...    protection and verify that the CA responds as required.
     [Tags]    mac    positive
     Skip If    not ${ALLOW_MAC_PROTECTION}    Skipped test because MAC protection is disabled.
-    ${protected_msg}=    Generate Default MAC Protected PKIMessage
+    ${protected_msg}=    Generate Default MAC Protected PKIMessage   ${DEFAULT_MAC_ALGORITHM}   ${False}
     ${response}=    Exchange PKIMessage    ${protected_msg}
     PKIStatus Must Be    ${response}    status=accepted
-    PKIMessage Must Contain ImplicitConfirm Extension    ${response}
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ${protected_cert_conf}=    Protect PKIMessage
-    ...    ${cert_conf}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ...    for_mac=True
+    ${protected_cert_conf}=    Default Protect With MAC    ${cert_conf}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    pkiconf
 
@@ -52,9 +50,8 @@ CA MUST Accept EE Rejection Of The Issued Certificate
     ...    `rejection` with a failInfo of `badCertTemplate` and optional explanatory text. The CA MUST
     ...    acknowledge this rejection by responding with a PKI confirmation message, completing the
     ...    transaction.
-    [Tags]    positive    rejection
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
+    [Tags]    positive    rejection   minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${status_info}=    Prepare PKIStatusInfo
     ...    status=rejection
     ...    failinfo=badCertTemplate
@@ -81,17 +78,17 @@ CA MUST Reject More Than One CertStatus Inside The certConf
     ...    Then we build a certificate confirmation message with two CertStatus entries. The CA
     ...    MUST detect the invalid message and may respond with the optional failInfo `badRequest`.
     [Tags]    invalid-size    negative
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert}=    Get Cert From PKIMessage    ${response}
-    ${cert_hash}=    Calculate Cert Hash    ${cert}
-    ${cert_status}=    Prepare CertStatus    ${cert_hash}    cert=${cert}
-    VAR    @{My List}    ${cert_status}    ${cert_status}
+    ${cert_hash}=    Calculate Cert Hash    ${cert}   hash_alg=sha256
+    ${cert_status}=    Prepare CertStatus    ${cert_hash}    cert=${cert}   hash_alg=sha256
+    VAR    @{My_List}    ${cert_status}    ${cert_status}
+    Append To List    ${My_List}    ${cert_status}
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
-    ...    recipient=${My List}
-    ...    cert_status=${cert_status}
+    ...    pvno=3
+    ...    recipient=${RECIPIENT}
+    ...    cert_status=${My_List}
     ...    exclude_fields=sender,senderKID
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
@@ -103,20 +100,17 @@ CA MUST Reject More Than One CertStatus Inside The certConf
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
 
-
 CA MUST Reject Invalid certReqId Inside The certConf
     [Documentation]    According to RFC 9483, the `certReqId` in the certConf message for the first issued
     ...    certificate must be set to 0. We send a certConf message with an invalid `certReqId`
     ...    value of -1. The CA MUST reject this message and may respond with the optional failInfo
     ...    `badRequest`.
     [Tags]    field    negative
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
-    ...    cert_req_id=${-1}
     ...    recipient=${RECIPIENT}
+    ...    cert_req_id=-1
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
     ...    protection=signature
@@ -132,10 +126,8 @@ CA MUST Reject failInfo With Status Accepted Inside The certConf
     ...    and failInfo. A `status` "accepted" indicates no error, making the inclusion of a failInfo
     ...    like `badRequest` invalid. We send a certConf message with this inconsistency, and the CA
     ...    MUST detect it and respond with an error, optionally including the failInfo `badRequest`.
-    [Tags]    inconsistency    negative    status
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    inconsistency    negative    status   minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${status_info}=    Prepare PKIStatusInfo    status=accepted    failinfo=badRequest
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
@@ -153,32 +145,6 @@ CA MUST Reject failInfo With Status Accepted Inside The certConf
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
 
 ### certificate hash
-
-CA MUST Reject certConf Without A Cert Hash Value
-    [Documentation]    According to RFC 9483 Section 4.1, when implicit confirmation is not allowed, the
-    ...    End-Entity must confirm receipt of all issued certificates by including a valid certificate hash
-    ...    in the CertStatus.We send a valid Initialization Request without implicit confirmation,
-    ...    receive a certificate, and respond with a certificate confirmation message omitting the
-    ...    certificate hash. The CA MUST reject this message and respond with an error, optionally including
-    ...    the failInfo `badPOP`.
-    [Tags]    negative    popo
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    ${cert_status}=    Prepare CertStatus    hash_alg=sha256
-    ${cert_conf}=    Build Cert Conf From Resp
-    ...    ${response}
-    ...    cert_status=${cert_status}
-    ...    recipient=${RECIPIENT}
-    ...    exclude_fields=sender,senderKID
-    ${protected_cert_conf}=    Protect PKIMessage
-    ...    ${cert_conf}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${protected_cert_conf}
-    PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP    exclusive=True
 
 CA MUST Accept certConf With A Different HashAlg And Version 3
     [Documentation]    According to RFC 9483 Section 4.1, if the `pvno` field in the PKIHeader is set to
@@ -202,11 +168,11 @@ CA MUST Accept certConf With A Different HashAlg And Version 3
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     ${cert}=    Get Cert From PKIMessage    ${response}
-    ${cert_hash}=    Calculate Cert Hash    ${cert}    different_hash=True
+    ${cert_status}=    Prepare CertStatus   cert=${cert}   different_hash=True
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    pvno=3
-    ...    cert_hash=${cert_hash}
+    ...    cert_status=${cert_status}
     ...    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID
     ${protected_cert_conf}=    Protect PKIMessage
@@ -221,11 +187,9 @@ CA MUST Reject certConf With A Different HashAlg But Version 2
     [Documentation]    According to RFC 9483 Section 4.1, the certificate hash in the CertStatus must use the same
     ...    hash algorithm as the one used by the CA to sign the certificate. If the hash algorithm
     ...    differs and the `pvno` in the PKIHeader is set to 2, the CA MUST detect the mismatch and
-    ...    respond with an error, optionally including the failInfo `badPOP` or `badRequest`.
+    ...    respond with an error, optionally including the failInfo `badCertId`.
     [Tags]    negative    popo
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert}=    Get Cert From PKIMessage    ${response}
     ${cert_hash}=    Calculate Cert Hash    ${cert}    different_hash=True
     ${cert_conf}=    Build Cert Conf From Resp
@@ -241,7 +205,7 @@ CA MUST Reject certConf With A Different HashAlg But Version 2
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP,badRequest    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badCertId    exclusive=True
 
 ### protection
 
@@ -251,16 +215,16 @@ CA MUST Reject certConf Signed With The Newly Issued Certificate
     ...    certConf message signed with the newly issued certificate instead of the original
     ...    credentials. The CA MUST detect this integrity error and respond with an error,
     ...    optionally including the failInfo `badMessageCheck` or `badRequest`.
-    [Tags]    bad-behaviour    certConf    negative    protection
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    bad-behaviour    negative    protection   minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
-    ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    exclude_fields=senderKID,sender
     ${cert}=    Get Cert From PKIMessage    ${response}
+    ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}   ee_cert=${cert}
+    Write Certs To Dir    ${cert_chain}
+    ${private_key}=  Get From List    ${burned_keys}    -1
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
     ...    protection=signature
@@ -268,7 +232,7 @@ CA MUST Reject certConf Signed With The Newly Issued Certificate
     ...    cert=${cert}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck,badRequest    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=wrongAuthority,badRequest
 
 CA MUST Reject certConf With First PKIMessage PBM Protected Then PBMAC1
     [Documentation]    According to RFC 9483, all PKI messages within a transaction must use consistent
@@ -279,8 +243,9 @@ CA MUST Reject certConf With First PKIMessage PBM Protected Then PBMAC1
     ...    confirmation message. The CA may optionally include the failInfo `badMessageCheck`.
     [Tags]    inconsistency    mac    negative    protection
     Skip If    not ${STRICT_MAC_VALIDATION}    Skipped because the `STRICT_MAC_VALIDATION` variable is set to False.
-    ${pki_message}=    Generate Default MAC Protected PKIMessage    password_based_mac
+    ${pki_message}=    Generate Default MAC Protected PKIMessage    password_based_mac    ${False}
     ${response}=    Exchange PKIMessage    ${pki_message}
+    PKIMessage Body Type Must Be    ${response}    ip
     ${cert_conf}=    Build Cert Conf From Resp    ${response}
     ${protected_cert_conf}=    Protect PKIMessage    ${cert_conf}    protection=pbmac1    password=${PRESHARED_SECRET}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
@@ -293,9 +258,8 @@ CA MUST Reject certConf without Protection
     ...    confirmation message without any protection. The CA MUST detect the missing protection
     ...    and reject the certConf message. The CA may optionally include the failInfo
     ...    `badMessageCheck`.
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    negative    protection   minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp    ${response}
     ${response}=    Exchange PKIMessage    ${cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
@@ -307,11 +271,10 @@ CA MUST Reject IR with Signature and Then certConf MAC Protection
     ...    an initialization request protected with a signature and then a certificate confirmation
     ...    message using MAC-based-protection. The CA MUST detect this inconsistency and reject the
     ...    certConf message. The CA may optionally include the failInfo `wrongIntegrity`.
-
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    ${cert_conf}=    Build Cert Conf From Resp    ${response}
+    [Tags]    inconsistency    mac    negative    protection
+    ${response}=    Generate Default IR And Exchange For Cert Conf
+    ${cert_conf}=    Build Cert Conf From Resp    ${response}   for_mac=True
+    ...              sender=${SENDER}   recipient=${RECIPIENT}
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
     ...    protection=${DEFAULT_MAC_ALGORITHM}
@@ -319,7 +282,6 @@ CA MUST Reject IR with Signature and Then certConf MAC Protection
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=wrongIntegrity    exclusive=True
-
 
 ### General Message
 
@@ -329,10 +291,8 @@ CA MUST Reject CertConf With No senderNonce
     ...    message must include the same `senderNonce` used throughout the transaction. We send a
     ...    certificate confirmation message without the `senderNonce` field. The CA MUST detect this
     ...    omission and reject the message, optionally including the failInfo `badSenderNonce`.
-    [Tags]    negative    rfc9483-header
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    negative    rfc9483-header   minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
@@ -353,18 +313,18 @@ CA MUST Reject CertConf With Different senderNonce
     ...    message must include the same `senderNonce` used throughout the transaction. We send a
     ...    `certConf` message with a modified `senderNonce`, expecting the CA to detect this mismatch.
     ...    The CA MUST reject the message and may respond with the optional failInfo `badSenderNonce`.
-    [Tags]    negative    rfc9483-header
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    negative    rfc9483-header   minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ...    exclude_fields=senderKID,sender,recipNonce
+    ...    exclude_fields=senderKID,sender,senderNonce,recipNonce
     ${sender_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
     ${sender_nonce}=    Manipulate First Byte    ${sender_nonce}
+    ${recip_nonce}=    Get Asn1 Value As Bytes    ${response}    header.senderNonce
     ${cert_conf}=    Patch SenderNonce    ${cert_conf}    sender_nonce=${sender_nonce}
+    ${cert_conf}=    Patch RecipNonce    ${cert_conf}    recip_nonce=${recip_nonce}
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
     ...    protection=signature
@@ -380,11 +340,8 @@ CA MUST Reject certConf With No recipNonce
     ...    This ensures message integrity and guards against replay attacks. We send a certConf message
     ...    without the `recipNonce` field. The CA MUST detect this omission and reject the message,
     ...    optionally including the failInfo `badRecipientNonce`.
-    [Tags]    negative    rfc9483-header
-
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    negative    rfc9483-header  minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
@@ -405,10 +362,8 @@ CA MUST Reject CertConf With Different recipNonce
     ...    integrity. We send a certificate confirmation message with a modified `recipNonce` value. The
     ...    CA MUST detect this nonce mismatch and reject the message, optionally including the failInfo
     ...    `badRecipientNonce`.
-    [Tags]    negative    rfc9483-header
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    negative    rfc9483-header   minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
@@ -431,10 +386,8 @@ CA MUST Reject CertConf with omitted transactionID
     ...    `transactionID` from the initial certificate issuance request. We send a certConf message
     ...    without the `transactionID` field. The CA MUST detect this omission and reject the message,
     ...    optionally including the failInfo `badRequest`.
-    [Tags]    negative    rfc9483-header
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    negative    rfc9483-header   minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
@@ -454,18 +407,16 @@ CA MUST Reject CertConf with Different transactionID
     ...    `transactionID` from the initial certificate issuance request. We send a certConf message with
     ...    a modified `transactionID`. The CA MUST detect the mismatch and reject the message, optionally
     ...    responding with the failInfo `transactionIdInUse` or `badRequest`.
-    [Tags]    negative    rfc9483-header
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    ${tid}=    Get Asn1 Value As Bytes    ${response}    header.transactionID
-    ${tid}=    Manipulate First Byte    ${tid}
+    [Tags]    negative    rfc9483-header  minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
+    ${tx_id}=    Get Asn1 Value As Bytes    ${response}    header.transactionID
+    ${tx_id}=    Manipulate First Byte    ${tx_id}
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID,transactionID
-    ${patched_cert_conf}=    Patch TransactionID    ${cert_conf}    new_id=${tid}
+    ${patched_cert_conf}=    Patch TransactionID    ${cert_conf}    ${tx_id}
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${patched_cert_conf}
     ...    protection=signature
@@ -482,10 +433,8 @@ CA MAY Reject CertConf With implicitConfirm
     ...    The CA MAY reject this message due to the presence of `implicitConfirm`, potentially returning
     ...    a failInfo of `badRequest`. This test evaluates policy-dependent behavior and may fail based
     ...    on the policy.
-    [Tags]    negative    policy    rfc9483-header    robot:skip-on-failure    strict
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    negative    policy-dependent    rfc9483-header    robot:skip-on-failure    strict
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
@@ -498,18 +447,16 @@ CA MAY Reject CertConf With implicitConfirm
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
-    PKIMessage Body Type Must Be    ${pki_conf2}    error
-    PKIStatusInfo Failinfo Bit Must Be   ${pki_conf2}    failinfo=badRequest   exclusive=True
+    PKIMessage Body Type Must Be    ${response}    error
+    PKIStatusInfo Failinfo Bit Must Be   ${response}    failinfo=badRequest   exclusive=True
 
 CA SHOULD Send certConfirmed When Valid certConf Is Sent Again
     [Documentation]    According to RFC 9483 Sections 3 and 4.1, if a valid `certConf` message is sent more than once,
     ...    the CA SHOULD return a `certConfirmed` response to acknowledge the repeated confirmation.
     ...    We send a valid `certConf` message followed by a duplicate `certConf` message. The CA should
     ...    return a failInfo of `certConfirmed` in response to the repeated `certConf` message.
-    [Tags]    negative    rfc9483-header    robot:skip-on-failure    strict
-    ${protected_ir}=    Generate Default IR Sig Protected
-    ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
+    [Tags]    negative    rfc9483-header    robot:skip-on-failure    strict   minimal
+    ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
@@ -520,7 +467,32 @@ CA SHOULD Send certConfirmed When Valid certConf Is Sent Again
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    Exchange PKIMessage    ${protected_cert_conf}
+    ${pki_conf}=   Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     ${pki_conf2}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${pki_conf2}    error
     PKIStatusInfo Failinfo Bit Must Be   ${pki_conf2}    failinfo=certConfirmed   exclusive=True
+
+
+*** Keywords ***
+Generate Default IR And Exchange For Cert Conf
+    [Documentation]    Generates a default initialization request for a certificate confirmation message.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - the response from the CA after sending the ir.
+    ${cert_template}    ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key
+    ...       ${key}
+    ...       cert_template=${cert_template}
+    ...       recipient=${RECIPIENT}
+    ...       exclude_fields=sender,senderKID
+    ${protected_ir}=    Protect PKIMessage
+    ...                 ${ir}
+    ...                 protection=signature
+    ...                 private_key=${ISSUED_KEY}
+    ...                 cert=${ISSUED_CERT}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be     ${response}      status=accepted
+    PKIMessage Body Type Must Be    ${response}    ip
+    RETURN    ${response}

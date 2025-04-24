@@ -69,8 +69,8 @@ class TestCheckSignatureAlgIsConsistent(unittest.TestCase):
         WHEN `check_signature_alg_is_consistent` is called.
         THEN a `ValueError` is raised, indicating the inconsistency of signature algorithms between the PKIMessages.
         """
-        cert, key = build_certificate(key_alg="rsa")
-        cert2, key2 = build_certificate(key_alg="ec")
+        cert, key = build_certificate(private_key="rsa")
+        cert2, key2 = build_certificate(private_key="ecc")
         pki_response_prot = protect_pkimessage(self.pki_response, cert=cert, private_key=key, protection="signature")
         pki_conf_prot = protect_pkimessage(self.pki_conf, cert=cert2, private_key=key2, protection="signature")
         pki_polling_prot = protect_pkimessage(self.pki_polling, cert=cert, private_key=key, protection="signature")
@@ -84,8 +84,8 @@ class TestCheckSignatureAlgIsConsistent(unittest.TestCase):
         WHEN `check_signature_alg_is_consistent` is called.
         THEN a `ValueError` is raised, indicating the inconsistency of signature algorithms between the PKIMessages.
         """
-        cert, key = build_certificate(key_alg="rsa", hash_alg="sha256")
-        cert2, key2 = build_certificate(key_alg="ec", hash_alg="sha256")
+        cert, key = build_certificate(private_key="rsa", hash_alg="sha256")
+        cert2, key2 = build_certificate(private_key="ecc", hash_alg="sha256")
         pki_response_prot = protect_pkimessage(self.pki_response, cert=cert, private_key=key, protection="signature")
         pki_conf_prot = protect_pkimessage(self.pki_conf, cert=cert, private_key=key, protection="signature")
         pki_polling_prot = protect_pkimessage(self.pki_polling, cert=cert2, private_key=key2, protection="signature")
@@ -99,8 +99,8 @@ class TestCheckSignatureAlgIsConsistent(unittest.TestCase):
         WHEN `check_signature_alg_is_consistent` is called.
         THEN a `ValueError` is raised, indicating the inconsistency of signature algorithms between the PKIMessages.
         """
-        cert, key = build_certificate(key_alg="rsa", hash_alg="sha256")
-        cert2, key2 = build_certificate(key_alg="rsa", hash_alg="sha256")
+        cert, key = build_certificate(private_key="rsa", hash_alg="sha256")
+        cert2, key2 = build_certificate(private_key="rsa", hash_alg="sha256")
         pki_response_prot = protect_pkimessage(self.pki_response, cert=cert, private_key=key, protection="signature")
         pki_conf_prot = protect_pkimessage(self.pki_conf, cert=cert, private_key=key, protection="signature")
         pki_polling_prot = protect_pkimessage(

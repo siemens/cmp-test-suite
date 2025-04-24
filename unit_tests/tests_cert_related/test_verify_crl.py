@@ -8,7 +8,7 @@ from resources.certutils import (
     build_crl_chain_from_list,
     find_crl_signer_cert,
     load_certificates_from_dir,
-    load_crl_from_der,
+    parse_crl,
     parse_certificate,
     verify_openssl_crl,
 )
@@ -22,7 +22,7 @@ class TestCRLSignatureVerification(unittest.TestCase):
     def setUp(self):
         self.crl_path = "data/unittest/test_verify_crl.crl"
         der_data = load_and_decode_pem_file(self.crl_path)
-        self.crl_obj = load_crl_from_der(der_data)
+        self.crl_obj = parse_crl(der_data)
         self.crl_signer = parse_certificate(
             load_and_decode_pem_file("data/unittest/crl_sign_cert_ecdsa.pem"))
 

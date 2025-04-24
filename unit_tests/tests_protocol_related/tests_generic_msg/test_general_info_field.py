@@ -8,8 +8,9 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc9480
 from resources import checkutils
 from resources.cmputils import patch_generalinfo
+from resources.exceptions import BadRequest
 
-from unit_tests.utils_for_test import build_pkimessage
+from unit_tests.utils_for_test import build_pkimessage, de_and_encode_pkimessage
 
 
 class TestGeneralInfoField(unittest.TestCase):
@@ -21,9 +22,10 @@ class TestGeneralInfoField(unittest.TestCase):
         """
         pki_message = build_pkimessage(implicit_confirm=False)
         pki_message = patch_generalinfo(pki_message, implicit_confirm=True)
-        der_data = encoder.encode(pki_message)
 
-        pki_message, rest = decoder.decode(der_data, rfc9480.PKIMessage())
+
+        pki_message = de_and_encode_pkimessage(pki_message)
+        pki_message = de_and_encode_pkimessage(pki_message)
         checkutils.check_generalinfo_field(pki_message)
 
     def test_implicit_confirm_absent(self):
@@ -34,8 +36,8 @@ class TestGeneralInfoField(unittest.TestCase):
         """
         pki_message = build_pkimessage(implicit_confirm=False)
         pki_message = patch_generalinfo(pki_message, implicit_confirm=True)
-        der_data = encoder.encode(pki_message)
-        pki_message, rest = decoder.decode(der_data, rfc9480.PKIMessage())
+
+        pki_message = de_and_encode_pkimessage(pki_message)
         checkutils.check_generalinfo_field(pki_message)
 
     def test_confirm_wait_time_valid(self):
@@ -46,8 +48,8 @@ class TestGeneralInfoField(unittest.TestCase):
         """
         pki_message = build_pkimessage()
         pki_message = patch_generalinfo(pki_message, confirm_wait_time=2000, implicit_confirm=False)
-        der_data = encoder.encode(pki_message)
-        pki_message, rest = decoder.decode(der_data, rfc9480.PKIMessage())
+
+        pki_message = de_and_encode_pkimessage(pki_message)
         checkutils.check_generalinfo_field(pki_message)
 
     def test_confirm_wait_time_and_implicit_confirm_invalid(self):
@@ -58,10 +60,10 @@ class TestGeneralInfoField(unittest.TestCase):
         """
         pki_message = build_pkimessage()
         pki_message = patch_generalinfo(pki_message, implicit_confirm=True, confirm_wait_time=2000)
-        der_data = encoder.encode(pki_message)
-        pki_message, rest = decoder.decode(der_data, rfc9480.PKIMessage())
 
-        with self.assertRaises(ValueError, msg="`confirmWaitTime` and `implicitConfirm` cannot coexist."):
+        pki_message = de_and_encode_pkimessage(pki_message)
+
+        with self.assertRaises(BadRequest, msg="`confirmWaitTime` and `implicitConfirm` cannot coexist."):
             checkutils.check_generalinfo_field(pki_message)
 
     def test_confirm_wait_time_absent(self):
@@ -72,8 +74,8 @@ class TestGeneralInfoField(unittest.TestCase):
         """
         pki_message = build_pkimessage()
         pki_message = patch_generalinfo(pki_message, confirm_wait_time=None, implicit_confirm=False)
-        der_data = encoder.encode(pki_message)
-        pki_message, rest = decoder.decode(der_data, rfc9480.PKIMessage())
+
+        pki_message = de_and_encode_pkimessage(pki_message)
         checkutils.check_confirmwaittime_in_generalinfo(pki_message)
 
     def test_invalid_confirm_wait_time(self):
@@ -84,8 +86,8 @@ class TestGeneralInfoField(unittest.TestCase):
         """
         pki_message = build_pkimessage()
         pki_message = patch_generalinfo(pki_message, confirm_wait_time=-2000, implicit_confirm=False)
-        der_data = encoder.encode(pki_message)
-        pki_message, rest = decoder.decode(der_data, rfc9480.PKIMessage())
+
+        pki_message = de_and_encode_pkimessage(pki_message)
 
         with self.assertRaises(ValueError):
             checkutils.check_confirmwaittime_in_generalinfo(pki_message)

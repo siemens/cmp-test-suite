@@ -8,64 +8,67 @@ Provides functionality for generating positive and negative structures for testi
 Also has the functionality for validating the Responses from the Server.
 
 Note the functions all validate the message size and sometimes the responses item size
-returned by the server/CA. This is to enforce LwCMP, per default, which was the
+returned by the server/CA. This is to enforce LwCMP, per default, which was
 the target goal of the Test-Suite.
 
 """
 
 import datetime
 import logging
-from typing import List, Optional, Set, Tuple, Union
+import os
+from typing import List, Optional, Sequence, Set, Tuple, Union
 
 import pyasn1.error
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ, useful
-from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc9480, rfc9481
+from pyasn1_alt_modules import rfc4210, rfc4211, rfc5280, rfc5480, rfc5652, rfc6664, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.migration_typing import HybridKEMPublicKey, KEMPrivateKey
-from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key, is_kem_public_key
+from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPrivateKey, KEMPublicKey
+from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
-from pq_logic.trad_typing import ECDHPrivateKey
-from resources import certutils, cmputils, keyutils, utils
-from resources.asn1_structures import InfoTypeAndValueAsn1, KemCiphertextInfoAsn1, PKIMessageTMP
-from resources.convertutils import copy_asn1_certificate, pyasn1_time_obj_to_py_datetime
-from resources.oid_mapping import may_return_oid_to_name
-from resources.oidutils import CURVE_OIDS_2_NAME
+from resources import (
+    ca_ra_utils,
+    cert_linters_utils,
+    certextractutils,
+    certutils,
+    cmputils,
+    envdatautils,
+    keyutils,
+    prepareutils,
+    utils,
+)
+from resources.asn1_structures import (
+    AlgorithmIdentifiers,
+    InfoTypeAndValue,
+    KemCiphertextInfoAsn1,
+    OIDs,
+    PKIBodyTMP,
+    PKIMessageTMP,
+)
+from resources.asn1utils import try_decode_pyasn1
+from resources.convertutils import (
+    copy_asn1_certificate,
+    ensure_is_kem_priv_key,
+    ensure_is_kem_pub_key,
+    pyasn1_time_obj_to_py_datetime,
+    str_to_bytes,
+)
+from resources.exceptions import BadAsn1Data
+from resources.oid_mapping import may_return_oid_by_name, may_return_oid_to_name
+from resources.oidutils import (
+    ALL_KNOWN_OIDS_2_NAME,
+    CURVE_OID_2_NAME,
+    ENC_KEY_AGREEMENT_TYPES_OID_2_NAME,
+    SYMMETRIC_ENCR_ALG_OID_2_NAME,
+)
 from resources.suiteenums import GeneralInfoOID
-from resources.typingutils import Strint
+from resources.typingutils import ECDHPrivateKey, EnvDataPublicKey, Strint
+from unit_tests.utils_for_test import try_encode_pyasn1
 
 # TODO for the future, change references to new RFC.
 # currently uses the Draft version for messages not mentioned in RFC9483.
 # And for messages that are mentioned uses sections from the RFC9483.
-
-
-def _get_crl_dpn(cert: rfc9480.CMPCertificate) -> Union[rfc5280.CRLDistributionPoints, None]:
-    """Get the `CRLDistributionPoints` extension, DER-encoded, from a `rfc9480.CMPCertificate` object.
-
-    :param cert: The object to get the extension from.
-    :return: `None` if the extension is not present, else the `rfc5280.CRLDistributionPoints` structure.
-    """
-    for ext in cert["tbsCertificate"]["extensions"]:
-        if ext["extnID"] == rfc5280.id_ce_cRLDistributionPoints:
-            crl_pyasn1, _ = decoder.decode(ext["extnValue"], asn1Spec=rfc5280.CRLDistributionPoints())
-            return crl_pyasn1
-
-    return None
-
-
-def _get_issuing_distribution_point(cert: rfc9480.CMPCertificate) -> Union[rfc5280.IssuingDistributionPoint, None]:
-    """Get and decode the Issuing Distribution Point extension from a pyasn1 certificate object.
-
-    :param cert: The certificate to extract the extension from.
-    :return: `None` if the extension is not present, else the `rfc5280.IssuingDistributionPoint` structure.
-    """
-    for ext in cert["tbsCertificate"]["extensions"]:
-        if ext["extnID"] == rfc5280.id_ce_issuingDistributionPoint:
-            idp_pyasn1, _ = decoder.decode(ext["extnValue"], asn1Spec=rfc5280.IssuingDistributionPoint())
-            return idp_pyasn1
-
-    return None
 
 
 def _prepare_get_ca_certs(fill_info_value: bool = False) -> rfc9480.InfoTypeAndValue:
@@ -76,18 +79,19 @@ def _prepare_get_ca_certs(fill_info_value: bool = False) -> rfc9480.InfoTypeAndV
     :return: The filled `InfoTypeAndValue` structure
     """
     # as of Section 4.3.1 Get CA Certificates infoValue of the Request must be Absent.
-    return cmputils.prepare_info_value(
+    return cmputils.prepare_info_type_and_value(
         oid=rfc9480.id_it_caCerts,
         fill_random=fill_info_value,
     )
 
 
 def validate_get_ca_certs(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     must_be_present: bool = False,
     ee_cert: Optional[rfc9480.CMPCertificate] = None,
     expected_size: Strint = 1,
     crl_check: bool = False,
+    *,
     verbose: bool = True,
 ) -> Union[List[rfc9480.CMPCertificate], None]:
     """Validate if the general response message contains the CA answer.
@@ -117,7 +121,7 @@ def validate_get_ca_certs(  # noqa D417 undocumented-param
 
     """
     validate_general_response(pki_message, expected_size=expected_size)
-    genp_content: rfc9480.GenRepContent() = pki_message["body"][pki_message["body"].getName()]
+    genp_content: rfc9480.GenRepContent = pki_message["body"][pki_message["body"].getName()]
     if len(genp_content) != expected_size:
         logging.info("General Response: \n%s", genp_content.prettyPrint())
 
@@ -179,7 +183,9 @@ def _prepare_get_root_ca_cert_update(root_cert: Optional[rfc9480.CMPCertificate]
 
 
 def validate_get_root_ca_cert_update(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, old_ca_cert: Optional[rfc9480.CMPCertificate] = None, expected_size: Strint = 1
+    pki_message: PKIMessageTMP,
+    old_ca_cert: Optional[Union[str, rfc9480.CMPCertificate]] = None,
+    expected_size: Strint = 1,
 ):
     """Validate if the PKIMessage contains the correct root CA certificate update.
 
@@ -212,6 +218,10 @@ def validate_get_root_ca_cert_update(  # noqa D417 undocumented-param
             "The General Message did not contain the `id_it_rootCaKeyUpdate` oid!"
             f"But was: {pki_message['body']['genp'][0]['infoType'].prettyPrint()}"
         )
+
+    if old_ca_cert is not None:
+        if isinstance(old_ca_cert, str):
+            old_ca_cert = certutils.parse_certificate(utils.load_and_decode_pem_file(old_ca_cert))
 
     if value.isValue:
         root_ca_update, rest = decoder.decode(value, rfc9480.RootCaKeyUpdateValue())
@@ -298,7 +308,7 @@ def _prepare_get_certificate_request_template(fill_info_val: bool = False) -> rf
     because it MUST be absent.Defaults to `False`.
     :return: The filled `InfoTypeAndValue` structure
     """
-    return cmputils.prepare_info_value(oid=rfc9480.id_it_certReqTemplate, fill_random=fill_info_val)
+    return cmputils.prepare_info_type_and_value(oid=rfc9480.id_it_certReqTemplate, fill_random=fill_info_val)
 
 
 def _get_type_inside_controls(controls, oid: univ.ObjectIdentifier) -> Union[None, univ.Any]:
@@ -383,10 +393,10 @@ def _validate_id_reg_ctrl_alg_id(value: bytes) -> None:
         if rest != b"":
             raise ValueError("The decoding of `ECParameters` structure had a remainder!")
 
-        if ec_param["namedCurve"] not in CURVE_OIDS_2_NAME:
+        if ec_param["namedCurve"] not in CURVE_OID_2_NAME:
             raise ValueError("ecPublicKey got a unknown `ECParameters` ec-curve.")
 
-        logging.info("ECC curve was: %s", CURVE_OIDS_2_NAME[ec_param["namedCurve"]])
+        logging.info("ECC curve was: %s", CURVE_OID_2_NAME[ec_param["namedCurve"]])
 
     else:
         raise ValueError(
@@ -421,7 +431,7 @@ def _check_cert_template_for_cert_temp_req(cert_req_temp: rfc9480.CertReqTemplat
 
 
 def validate_get_certificate_request_template(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     must_be_present: bool = False,
     control_presents: bool = False,
     expected_size: Strint = 1,
@@ -453,7 +463,7 @@ def validate_get_certificate_request_template(  # noqa D417 undocumented-param
     """
     validate_general_response(pki_message, expected_size=expected_size)
     body_name = pki_message["body"].getName()
-    genp_content: rfc9480.GenRepContent() = pki_message["body"][body_name]
+    genp_content: rfc9480.GenRepContent = pki_message["body"][body_name]
 
     value = cmputils.get_value_from_seq_of_info_value_field(genp_content, oid=rfc9480.id_it_certReqTemplate)
     if value is None:
@@ -503,8 +513,8 @@ def prepare_distribution_point_name(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0)
     )
     gen_names = rfc9480.GeneralNames().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
-    gen_name = cmputils.prepare_general_name(gen_type, value)
-    gen_names.append(gen_name)
+    gen_name_obj = prepareutils.prepare_general_name(gen_type, value)  # type: ignore
+    gen_names.append(gen_name_obj)
     dist_point_name["fullName"] = gen_names
     return dist_point_name
 
@@ -522,13 +532,13 @@ def prepare_dpn_from_cert(
     :return: None or the parsed `DistributionPointName`
     """
     new_dpn = None
-    extension = _get_crl_dpn(cert)
+    extension = certextractutils.get_crl_dpn(cert)
     if extension is not None:
         # inside here has tag 0 the same as inside CRLSource.
         dpn: rfc5280.DistributionPointName = extension[crl_dp_index]["distributionPoint"]
         new_dpn = dpn
     else:
-        issuing_dp = _get_issuing_distribution_point(cert)
+        issuing_dp = certextractutils.get_issuing_distribution_point(cert)
         if issuing_dp is not None:
             new_dpn = issuing_dp["distributionPoint"]
 
@@ -566,6 +576,7 @@ def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
     ca_crl_url: Optional[str] = None,
     crl_filepath: Optional[str] = None,
     crl_dp_index: int = 0,
+    *,
     negative: bool = False,
 ) -> rfc9480.InfoTypeAndValue:
     """Prepare CRL update retrieval information for a 'General Message'.
@@ -625,7 +636,7 @@ def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
 
     status_list_val = rfc9480.CRLStatusListValue()
     status_list_val.append(status)
-    return cmputils.prepare_info_value(rfc9480.id_it_crlStatusList, value=status_list_val)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_crlStatusList, value=status_list_val)
 
 
 def _validate_crls(
@@ -640,23 +651,24 @@ def _validate_crls(
     :param timeout: The timeout for the validation process. Defaults to 60 seconds.
     :return: None
     """
-    ca_certs = certutils.load_certificates_from_dir(path=ca_certs)
+    ca_certs_list = certutils.load_certificates_from_dir(path=ca_certs)
     trust_anchors = certutils.load_truststore(path=trustanchors, allow_os_store=allow_os_store)
 
-    certs = ca_certs + trust_anchors
+    certs = ca_certs_list + trust_anchors
     for i, crl in enumerate(crl_value):
         crl: rfc9480.CertificateList
         crl_chain = certutils.build_crl_chain_from_list(crl=crl, certs=certs)
         try:
             certutils.verify_openssl_crl(crl_chain, timeout=timeout)
-        except ValueError as exc:
+        except ValueError as err:
+            # TODO fix for better logging.
             logging.info("CRL at index: %d\n %s", i, crl.prettyPrint())
-            raise ValueError(f"The CRL at index: {i} was invalid") from exc
+            raise ValueError(f"The CRL at index: {i} was invalid") from err
 
 
 @keyword(name="Validate CRL Update Retrieval")
 def validate_crl_update_retrieval(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
+    pki_message: PKIMessageTMP,
     must_be_present: bool = False,
     expected_size: Strint = 1,
     expected_crl_size: int = 1,
@@ -696,7 +708,7 @@ def validate_crl_update_retrieval(  # noqa D417 undocumented-param
     """
     validate_general_response(pki_message, expected_size=expected_size)
     body_name = pki_message["body"].getName()
-    genp_content: rfc9480.GenRepContent() = pki_message["body"][body_name]
+    genp_content: rfc9480.GenRepContent = pki_message["body"][body_name]
 
     value = cmputils.get_value_from_seq_of_info_value_field(genp_content, oid=rfc9480.id_it_crls)
     if value is None:
@@ -742,12 +754,12 @@ def prepare_current_crl(fill_value: bool = False) -> rfc9480.InfoTypeAndValue:
     # As of Section 4.3.4:
     # Note: If the EE does not want to request a specific CRL, it
     # instead use a general message with OID id-it-currentCrl as specified in Section 5.3.19.6 of [RFC4210]
-    return cmputils.prepare_info_value(oid=rfc9480.id_it_currentCRL, fill_random=fill_value)
+    return cmputils.prepare_info_type_and_value(oid=rfc9480.id_it_currentCRL, fill_random=fill_value)
 
 
 # TODO maybe Update check
 @keyword(name="Validate Current CRL")
-def validate_current_crl(pki_message: rfc9480.PKIMessage, expected_size: Strint = 1):  # noqa D417 undocumented-param
+def validate_current_crl(pki_message: PKIMessageTMP, expected_size: Strint = 1):  # noqa D417 undocumented-param
     """Validate the presence and structure of the `id-it-currentCRL` in a `PKIMessage`.
 
     Checks if the provided PKIMessage contains the 'id-it-currentCRL' value, as specified in
@@ -774,20 +786,22 @@ def validate_current_crl(pki_message: rfc9480.PKIMessage, expected_size: Strint 
     """
     validate_general_response(pki_message, expected_size)
     body_name = pki_message["body"].getName()
-    genp_content: rfc9480.GenRepContent() = pki_message["body"][body_name]
+    genp_content: rfc9480.GenRepContent = pki_message["body"][body_name]
 
     val = cmputils.get_value_from_seq_of_info_value_field(genp_content, oid=rfc9480.id_it_currentCRL)
     if val is None:
         logging.info("General Response: \n%s", genp_content.prettyPrint())
         raise ValueError("The CA did not contain the oid for `id-it-currentCRL` as Section 4.3.1 specified!")
 
-    _, rest = decoder.decode(val, rfc9480.CurrentCRLValue())
+    crl_list, rest = decoder.decode(val, rfc9480.CurrentCRLValue())
     if rest != b"":
         raise ValueError("Did not contain a valid `CurrentCRLValue` structure!")
 
+    cert_linters_utils.validate_crl_pkilint(crl_list)
+
 
 def validate_general_response(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, expected_size: Strint = 1
+    pki_message: PKIMessageTMP, expected_size: Strint = 1
 ):
     """Validate that the provided PKIMessage contains a general response (`genp`) body and message size is correct.
 
@@ -811,13 +825,16 @@ def validate_general_response(  # noqa D417 undocumented-param
         logging.info("General Message got Response body: \n%s", pki_message["body"].prettyPrint())
         raise ValueError(f"Expected to get a general Response but got type: {pki_message['body'].getName()}")
 
-    genp_content: rfc9480.GenRepContent() = pki_message["body"][body_name]
-    if len(genp_content) != expected_size:
+    genp_content: rfc9480.GenRepContent = pki_message["body"][body_name]
+    if len(genp_content) != int(expected_size):
         logging.info("General Response: \n%s", genp_content.prettyPrint())
 
 
 # TODO maybe change to MUST prepare crl_update_retrieval by the user before hand.
-def build_general_message(  # noqa D417 undocumented-param
+
+
+@keyword(name="Build CMP General Message")
+def build_cmp_general_message(  # noqa D417 undocumented-param
     add_messages: Optional[str] = None,
     recipient: str = "test-cmp-srv@example.com",
     sender: str = "test-cmp-cli@example.com",
@@ -831,7 +848,7 @@ def build_general_message(  # noqa D417 undocumented-param
     crl_filepath: Optional[str] = None,
     crl_dp_index: int = 0,
     **params,
-) -> rfc9480.PKIMessage:
+) -> PKIMessageTMP:
     """Build a general PKIMessage (`genm`) with optional support messages.
 
     Constructs a `genm` PKIMessage with various optional message types controlled
@@ -875,10 +892,10 @@ def build_general_message(  # noqa D417 undocumented-param
 
     Examples:
     --------
-    | ${genm} = | Build General Message | add_messages=get_ca_certs,current_crl \
+    | ${genm} = | Build CMP General Message | add_messages=get_ca_certs,current_crl \
     | ca_cert=${ca_cert} |
-    | ${genm} = | Build General Message | add_messages=get_cert_template,crl_update_ret | ca_name=TestCA |
-    | ${genm} = | Build General Message | add_messages=get_ca_certs | negative=True |
+    | ${genm} = | Build CMP General Message | add_messages=get_cert_template,crl_update_ret | ca_name=TestCA |
+    | ${genm} = | Build CMP General Message | add_messages=get_ca_certs | negative=True |
 
     """
     body_content = rfc4210.GenMsgContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 21))
@@ -908,7 +925,7 @@ def build_general_message(  # noqa D417 undocumented-param
 
     body_content = _append_messages(messages=messages, body_content=body_content, fill_value=negative, ca_cert=ca_cert)
 
-    pki_message = cmputils._prepare_pki_message(
+    pki_message = cmputils.prepare_pki_message(
         sender=sender, recipient=recipient, exclude_fields=exclude_fields, **params
     )
     pki_body = rfc9480.PKIBody()
@@ -922,7 +939,10 @@ def build_general_message(  # noqa D417 undocumented-param
 # GenRep: {id-it 1}, Certificate | < absent >
 
 
-def prepare_ca_protocol_enc_cert(fill_value: bool = False):
+@not_keyword
+def prepare_ca_protocol_enc_cert(  # noqa D417 undocumented-param
+    fill_value: bool = False,
+):
     """Prepare the `InfoTypeAndValue` to ask for a certificate to be used.
 
     This MAY be used by the EE to get a certificate from the CA to use to protect sensitive
@@ -932,53 +952,93 @@ def prepare_ca_protocol_enc_cert(fill_value: bool = False):
     Could be used by including the certificate of the EE inside the `extraCerts` field.
     EEs MUST ensure that the correct certificate is used for this purpose.
 
-    :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
-    :return: The populated `InfoTypeAndValue` structure.
-
-    """
-    return cmputils.prepare_info_value(rfc9480.id_it_caProtEncCert, fill_random=fill_value)
-
-
-def validate_preferred_ca_prot_enc_cert(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage,
-    expected_size: Strint = 1,
-    index: int = 0,
-    trustanchors: str = "./data/trustanchors",
-    cert_chain_dir: str = "./data/cert_logs",
-) -> Optional[rfc9480.CAProtEncCertValue]:
-    """Validate the response for the CA Protocol Encryption Certificate message.
-
     Arguments:
     ---------
-        - `pki_message`: The PKIMessage containing the response.
-        - `expected_size`: Expected number of elements in the general response. Defaults to `1`.
-        - `index`: Index of the message to validate.
+        `fill_value`: A boolean indicating whether to fill the `infoValue` field. Defaults to `False`.
+        (The `infoValue` field MUST be absent.)
 
     Returns:
     -------
-        - The CA Protocol Encryption Certificate if present, otherwise `None`.
+        The populated `InfoTypeAndValue` structure.
+
+    Examples:
+    --------
+    | ${ca_prot_cert} = | Prepare CA Protocol Enc Cert |
+    | ${ca_prot_cert} = | Prepare CA Protocol Enc Cert | True |
 
     """
-    validate_general_response(pki_message=pki_message, expected_size=expected_size)
-    data = pki_message["body"]["genp"][index]
-    if data["infoType"] != rfc9480.id_it_caProtEncCert:
-        raise ValueError()
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_caProtEncCert, fill_random=fill_value)
 
-    if data["infoValue"].isValue:
-        # is a single cert, CMPCertificate
-        ca_prot_cert = decoder.decode(data["infoValue"], rfc9480.CAProtEncCertValue())
 
-        cert_chain = certutils.build_cert_chain_from_dir(
-            ee_cert=ca_prot_cert, cert_chain_dir=cert_chain_dir, root_dir=trustanchors
+@keyword(name="Validate CA Protocol Encr Cert")
+def validate_ca_protocol_encr_cert(  # noqa D417 undocumented-param
+    genp: PKIMessageTMP,
+    expected_size: Strint = 1,
+    trustanchors: str = "./data/trustanchors",
+    cert_chain_dir: str = "./data/cert_logs",
+) -> Optional[rfc9480.CMPCertificate]:
+    """Validate the response for the protocol encryption certificate message.
+
+    The EE may ask the CA for a certificate which can be used to protect sensitive information.
+    The CA may respond with a certificate or not, but must always respond with the `infoType`.
+
+    Arguments:
+    ---------
+        - `genp`: The PKIMessage containing the response.
+        - `expected_size`: Expected number of messages.
+
+    Returns:
+    -------
+        - The protocol encryption certificate or `None`, if not present.
+
+    Raises:
+    ------
+        - `ValueError`: If the response does not have the expected size.
+        - `ValueError`: If the response contains an unexpected `infoType`.
+        - `ValueError`: If the response contains an unexpected `infoValue`.
+
+    Examples:
+    --------
+    | ${cert} = | Validate Protocol Encr Cert | ${pki_message} |
+
+    """
+    validate_general_response(pki_message=genp, expected_size=expected_size)
+
+    value = cmputils.get_value_from_seq_of_info_value_field(genp["body"]["genp"], rfc9480.id_it_caProtEncCert)
+
+    if value is None:
+        raise ValueError(
+            "The general response did not contain the ask for encryption certificate`InfoTypeAndValue` structure."
         )
 
-        certutils.certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, verbose=True)
-        certutils.verify_cert_chain_openssl(cert_chain=cert_chain)
+    if not value.isValue:
+        logging.info("The general response did not contain the ask for encryption certificate.")
+        return None
 
-        return ca_prot_cert
+    ca_prot_cert, rest = try_decode_pyasn1(value.asOctets(), rfc9480.CAProtEncCertValue())  # type: ignore
 
-    logging.debug("The server did not respond with a certificate.")
-    return None
+    if rest:
+        raise BadAsn1Data("CAProtEncCertValue")
+
+    ca_prot_cert: rfc9480.CMPCertificate
+
+    cert_chain = certutils.build_cert_chain_from_dir(
+        ee_cert=ca_prot_cert, cert_chain_dir=cert_chain_dir, root_dir=trustanchors
+    )
+
+    certutils.certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, verbose=True)
+    certutils.verify_cert_chain_openssl(cert_chain=cert_chain)
+
+    public_key = certutils.load_public_key_from_cert(ca_prot_cert)
+
+    if not isinstance(public_key, EnvDataPublicKey):
+        raise ValueError(
+            "The public key in the certificate is not an a public key which can be used "
+            "within the `EnvelopedData` structure."
+            f"Got: {type(public_key).__name__}"
+        )
+
+    return ca_prot_cert
 
 
 # 5.3.19.2 Signing Key Pair Types
@@ -986,6 +1046,7 @@ def validate_preferred_ca_prot_enc_cert(  # noqa D417 undocumented-param
 # GenRep: {id-it 2}, SEQUENCE SIZE (1..MAX) OF AlgorithmIdentifier
 
 
+@not_keyword
 def prepare_signing_key_types(fill_value: bool = False) -> rfc9480.InfoTypeAndValue:
     """Prepare the `InfoTypeAndValue` to request supported signing algorithms.
 
@@ -995,16 +1056,18 @@ def prepare_signing_key_types(fill_value: bool = False) -> rfc9480.InfoTypeAndVa
     :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
     :return: The populated `InfoTypeAndValue` structure.
     """
-    return cmputils.prepare_info_value(rfc9480.id_it_signKeyPairTypes, fill_random=fill_value)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_signKeyPairTypes, fill_random=fill_value)
 
 
 def validate_signing_key_types(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, expected_size: int = 1, index: int = 0
+    pki_message: PKIMessageTMP,
+    expected_size: Strint = 1,
 ) -> None:
-    """
-    Validate the response for signing key pair types message.
+    """Validate the response for signing key pair types message.
 
-    Note: For the purposes of this exchange, rsaEncryption and sha256WithRSAEncryption,
+    Note:
+    ----
+       - For the purposes of this exchange, rsaEncryption and sha256WithRSAEncryption,
     for example, are considered to be equivalent;
     the question being asked is, "Is the CA willing to certify an RSA public key?
 
@@ -1012,21 +1075,27 @@ def validate_signing_key_types(  # noqa D417 undocumented-param
     ---------
         - `pki_message`: The PKIMessage containing the response.
         - `expected_size`: Expected number of elements in the general response. Defaults to `1`.
-        - `index`: Index of the message to validate.
 
     Raises:
     ------
         - `ValueError`: If the response did not have the expected size.
         - `ValueError`: If the response does not contain the expected `infoType`.
 
+    Examples:
+    --------
+    | Validate Signing Key Types | ${pki_message} |
+
     """
     validate_general_response(pki_message=pki_message, expected_size=expected_size)
 
-    data = pki_message["body"]["genp"][index]
-    if data["infoType"] != rfc9480.id_it_signKeyPairTypes:
+    data = cmputils.get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_signKeyPairTypes)
+    if data is None:
         raise ValueError("Unexpected infoType in response.")
 
-    alg_list = decoder.decode(data["infoValue"], asn1Spec=rfc9480.SignKeyPairTypesValue())
+    alg_list, rest = decoder.decode(data.asOctets(), asn1Spec=rfc9480.SignKeyPairTypesValue())
+
+    if rest:
+        raise BadAsn1Data("SignKeyPairTypesValue")
 
     for alg_id in alg_list:
         name = may_return_oid_to_name(alg_id["algorithm"])
@@ -1038,6 +1107,7 @@ def validate_signing_key_types(  # noqa D417 undocumented-param
 # GenRep: {id-it 3}, SEQUENCE SIZE (1..MAX) OF AlgorithmIdentifier
 
 
+@not_keyword
 def prepare_enc_key_agreement_types(fill_value: bool = False) -> rfc9480.InfoTypeAndValue:
     """Prepare the `InfoTypeAndValue` to request supported encryption/key agreement algorithms.
 
@@ -1047,20 +1117,70 @@ def prepare_enc_key_agreement_types(fill_value: bool = False) -> rfc9480.InfoTyp
     :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
     :return: The populated `InfoTypeAndValue` structure.
     """
-    return cmputils.prepare_info_value(rfc9480.id_it_keyPairParamReq, fill_random=fill_value)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_encKeyPairTypes, fill_random=fill_value)
 
 
-def validate_key_agreement_types(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, expected_size: int = 1, index: int = 0
-):
+@not_keyword
+def prepare_enc_key_pair_types_response(
+    key_pair_types: List[str],
+) -> rfc9480.InfoTypeAndValue:
+    """Prepare the `InfoTypeAndValue` to respond with supported encryption/key agreement algorithms.
+
+    :param key_pair_types: The supported algorithms.
+    :return: The populated `InfoTypeAndValue` structure.
     """
-    Validate the response for encryption/key agreement key pair types.
+    alg_ids = AlgorithmIdentifiers()
+    for entry in key_pair_types:
+        alg_id = rfc9480.AlgorithmIdentifier()
+        alg_id["algorithm"] = may_return_oid_by_name(entry)
+        alg_ids.append(alg_id)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_encKeyPairTypes, value=alg_ids)
+
+
+@not_keyword
+def prepare_unsupported_oids_response(oids: Union[Sequence[univ.ObjectIdentifier], OIDs]) -> rfc9480.InfoTypeAndValue:
+    """Prepare the `InfoTypeAndValue` to respond with unsupported OIDs."""
+    oids_out = univ.SequenceOf(componentType=univ.ObjectIdentifier())  # type: ignore
+
+    for entry in oids:  # type: ignore
+        if entry not in ALL_KNOWN_OIDS_2_NAME:
+            oids_out.append(entry)
+
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_unsupportedOIDs, value=oids_out)
+
+
+def _check_ec_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> str:
+    """Check the provided algorithm identifier for EC key agreement algorithms.
+
+    :param alg_id: The algorithm identifier to check.
+    :return: The name of the algorithm.
+    """
+    if not alg_id["parameters"].isValue:
+        raise ValueError("The `id_ecPublicKey` algorithm did not contain the required parameters.")
+
+    decoded_params, rest = decoder.decode(alg_id["parameters"].asOctets(), rfc6664.ECParameters())
+    if rest:
+        raise BadAsn1Data("ECParameters")
+
+    name = CURVE_OID_2_NAME.get(decoded_params["namedCurve"])
+    if name is None:
+        raise ValueError(
+            f"The `id_ecPublicKey` algorithm did not contain a supported curve.Got: {decoded_params['namedCurve']}"
+        )
+    return name
+
+
+@keyword(name="Validate Encryption And KeyAgreement Types")
+def validate_encr_and_key_agreement_types(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP,
+    expected_size: Strint = 1,
+) -> List[str]:
+    """Validate the response for encryption/key agreement key pair types.
 
     Arguments:
     ---------
         - `pki_message`: The PKIMessage containing the response.
-        - `expected_size`: Expected number of elements in the response (default is 1).
-        - `index`: Index of the `genRep` to validate.
+        - `expected_size`: Expected number of elements in the response. Defaults to `1`.
 
     Returns:
     -------
@@ -1071,20 +1191,46 @@ def validate_key_agreement_types(  # noqa D417 undocumented-param
         - `ValueError`: If the response did not have the expected size.
         - `ValueError`: If the response does not contain the expected `infoType`.
 
+    Examples:
+    --------
+    | ${key_agree_algs} = | Validate Key Agreement Types | ${pki_message} |
+
     """
     validate_general_response(pki_message=pki_message, expected_size=expected_size)
 
-    data = pki_message["body"]["genp"][index]
-    if data["infoType"] != rfc9480.id_it_keyPairParamReq:
-        raise ValueError("Unexpected infoType in response.")
+    data = cmputils.get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_encKeyPairTypes)
 
-    alg_list = decoder.decode(data["infoValue"], asn1Spec=rfc9480.AlgorithmIdentifier())
+    if data is None:
+        raise ValueError(
+            "The general response did not contain the ask for encryption/key agreement "
+            "types `InfoTypeAndValue` structure."
+        )
+
+    if not data.isValue:
+        raise ValueError("The general response did not contain the ask for encryption/key agreement types.")
+
+    alg_list, rest = decoder.decode(data.asOctets(), asn1Spec=AlgorithmIdentifiers())
+
+    if rest:
+        raise BadAsn1Data("AlgorithmIdentifiers")
+
+    if len(alg_list) == 0:
+        raise ValueError("The general response did not contain any supported algorithms.")
 
     supported_algorithms = []
     for alg_id in alg_list:
-        name = may_return_oid_to_name(alg_id["algorithm"])
-        logging.info("Supported encryption/key agreement algorithm: %s", name)
-        supported_algorithms.append(name)
+        if alg_id["algorithm"] == rfc6664.id_ecPublicKey:
+            name = _check_ec_alg_id(alg_id)
+            logging.info("Supported encryption/key agreement algorithm: %s", name)
+            supported_algorithms.append(name)
+
+        else:
+            name = ENC_KEY_AGREEMENT_TYPES_OID_2_NAME.get(alg_id["algorithm"])
+            if name is None:
+                raise ValueError(
+                    f"The general response did not contain any supported algorithms.Got: {alg_id['algorithm']}"
+                )
+            supported_algorithms.append(name)
 
     return supported_algorithms
 
@@ -1094,6 +1240,7 @@ def validate_key_agreement_types(  # noqa D417 undocumented-param
 # GenRep: {id-it 4}, AlgorithmIdentifier
 
 
+@not_keyword
 def prepare_preferred_sym_alg(fill_value: bool = False) -> rfc9480.InfoTypeAndValue:
     """Prepare the `InfoTypeAndValue` to ask for a preferred Symmetric Algorithm.
 
@@ -1104,20 +1251,20 @@ def prepare_preferred_sym_alg(fill_value: bool = False) -> rfc9480.InfoTypeAndVa
     :param fill_value: Whether to fill the `infoValue` field, which MUST be absent.
     :return: The populated `InfoTypeAndValue` structure.
     """
-    return cmputils.prepare_info_value(rfc9480.id_it_preferredSymmAlg, fill_random=fill_value)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_preferredSymmAlg, fill_random=fill_value)
 
 
+@keyword(name="Validate Preferred Symmetric Algorithm")
 def validate_preferred_sym_alg(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, expected_size: Strint = 1, index: int = 0
+    pki_message: PKIMessageTMP,
+    expected_size: Strint = 1,
 ) -> str:
-    """
-    Validate the response for the preferred symmetric algorithm request.
+    """Validate the response for the preferred symmetric algorithm request.
 
     Arguments:
     ---------
         - `pki_message`: The PKIMessage containing the response.
         - `expected_size`: The expected response messages to receive. Defaults to `1`.
-        - `index`: The index of the expected message. Defaults to `0`.
 
     Returns:
     -------
@@ -1126,19 +1273,39 @@ def validate_preferred_sym_alg(  # noqa D417 undocumented-param
     Raises:
     ------
         - `ValueError`: If the response does not have the expected size.
-        - `ValueError`: If the response does not contain the expected `infoType
+        - `ValueError`: If the response does not contain the expected `infoType.
+
+    Examples:
+    --------
+    | ${sym_alg} = | Validate Preferred Symmetric Algorithm | ${pki_message} |
 
     """
     validate_general_response(pki_message=pki_message, expected_size=expected_size)
-    data = pki_message["body"]["genp"][index]
-    if data["infoType"] != rfc9480.id_it_preferredSymmAlg:
-        raise ValueError()
+    data = cmputils.get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_preferredSymmAlg)
+    if data is None:
+        raise ValueError(
+            "The general response did not contain the ask for preferred symmetric algorithm "
+            "`InfoTypeAndValue` structure."
+        )
 
-    alg_id = decoder.decode(data["infoValue"], rfc9480.AlgorithmIdentifier())
+    if not data.isValue:
+        raise ValueError("The general response did not contain the ask for preferred symmetric algorithm.")
+
+    alg_id, rest = try_decode_pyasn1(data.asOctets(), rfc9480.AlgorithmIdentifier())  # type: ignore
+    alg_id: rfc9480.AlgorithmIdentifier
+    if rest:
+        raise BadAsn1Data("AlgorithmIdentifier")
+
     name = may_return_oid_to_name(alg_id["algorithm"])
     logging.info("The preferred symmetric AlgorithmIdentifier is: %s", name)
 
-    return name
+    if alg_id["algorithm"] in SYMMETRIC_ENCR_ALG_OID_2_NAME:
+        return name
+
+    raise ValueError(
+        f"The preferred symmetric algorithm is not a supported symmetric algorithm. Got: {name}"
+        f"E.g. {', '.join(SYMMETRIC_ENCR_ALG_OID_2_NAME.values())}"
+    )
 
 
 # MAY TODO As of rfc9480 2.13. Replace Section 5.3.19.9 - Revocation Passphrase
@@ -1147,22 +1314,66 @@ def validate_preferred_sym_alg(  # noqa D417 undocumented-param
 # GenRep:    {id-it 12}, < absent >
 
 
-def _prepare_revocation_passphrase(env_data: rfc9480.EnvelopedData) -> rfc9480.InfoTypeAndValue:
+def prepare_revocation_passphrase(  # noqa D417 undocumented-param
+    passphrase: str,
+    recipient_info: Optional[rfc5652.RecipientInfo] = None,
+    password: Optional[Union[str, bytes]] = None,
+    cek: Optional[Union[str, bytes]] = None,
+) -> rfc9480.InfoTypeAndValue:
     """Prepare the `InfoTypeAndValue` to send a revocation passphrase.
 
     This is used by the EE to send a passphrase to a CA/RA for authenticating a
     later revocation request in case the signing private key is no longer available.
 
-    :param env_data: The passphrase encrypted as per the specified mechanism.
-    :return: The populated `InfoTypeAndValue` structure.
+    Arguments:
+    ---------
+        - `passphrase`: The passphrase to send to the CA/RA.
+        - `recipient_info`: The recipient info structure. Defaults to `None`.
+        - `password`: The password to use for encryption, for `PasswordRecipientInfo`. Defaults to `None`.
+        - `cek`: The content encryption key.
+
+    Returns:
+    -------
+        - The populated `InfoTypeAndValue` structure.
+
+    Raises:
+    ------
+        - `ValueError`: If neither `recipient_info` nor `password` is provided.
+
+    Examples:
+    --------
+    | ${info_val}= | Prepare Revocation Passphrase | passphrase | recipient_info=${recipient_info} |
+    | ${info_val}= | Prepare Revocation Passphrase | passphrase | password=${password} |
+    | ${info_val}= | Prepare Revocation Passphrase | passphrase | password=PASSWORD | cek=${cek} |
+
     """
+    cek = cek or os.urandom(32)
+    cek = str_to_bytes(cek)
+
+    if recipient_info is not None:
+        pass
+
+    elif password is not None:
+        pwri = envdatautils.prepare_password_recipient_info(cek=cek, password=password)
+        recipient_info = envdatautils.parse_recip_info(pwri)
+    else:
+        raise ValueError("Either `recipient_info` or `password` must be provided.")
+
+    env_data = rfc9480.EnvelopedData().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+    env_data = envdatautils.prepare_enveloped_data(
+        data_to_protect=str_to_bytes(passphrase),
+        cek=cek,
+        enc_oid=rfc5652.id_data,
+        recipient_infos=[recipient_info],
+        target=env_data,
+    )
     enc_key = rfc9480.EncryptedKey()
     enc_key["envelopedData"] = env_data
-    return cmputils.prepare_info_value(rfc9480.id_it_revPassphrase, value=enc_key)
+    return cmputils.prepare_info_type_and_value(rfc9480.id_it_revPassphrase, value=enc_key)
 
 
 def validate_revocation_passphrase_response(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, expected_size: int = 1, index: int = 0
+    pki_message: PKIMessageTMP, expected_size: int = 1, index: int = 0
 ):
     """Validate the response for the revocation passphrase request.
 
@@ -1181,6 +1392,10 @@ def validate_revocation_passphrase_response(  # noqa D417 undocumented-param
         - `ValueError`: If the response contains an unexpected `infoType`.
         - `ValueError`: If the response contains an `infoValue`.
 
+    Examples:
+    --------
+    | Validate Revocation Passphrase Response | ${pki_message} |
+
     """
     validate_general_response(pki_message=pki_message, expected_size=expected_size)
 
@@ -1196,33 +1411,47 @@ def validate_revocation_passphrase_response(  # noqa D417 undocumented-param
 # 5.3.19.13. Supported Language Tags
 # GenMsg: {id-it 16}, SEQUENCE SIZE (1..MAX) OF UTF8String
 # GenRep: {id-it 16}, SEQUENCE SIZE (1) OF UTF8String
-def prepare_supported_language_tags(langs: Union[str, List[str]]) -> rfc9480.InfoTypeAndValue:
+@keyword(name="Prepare SupportedLanguageTags")
+def prepare_supported_language_tags(  # noqa D417 undocumented-param
+    langs: Optional[str],
+) -> rfc9480.InfoTypeAndValue:
     """Prepare the `InfoTypeAndValue` to request supported language tags.
 
     The sender specifies its list of supported languages in order of preference (most preferred to least).
 
-    As of Section RFC4210bis-15: 5.3.19.13 Supported Language Tags
+    As of Section RFC4210bis-15: 5.3.19.13 Supported Language Tags.
 
-    :param langs: A list or single supported language tag.
-    :return: The populated `InfoTypeAndValue` structure.
+    Arguments:
+    ---------
+        `langs`: A comma separated a list of supported languages (e.g. "en,de,fr").
+        (if set to `None`, the function returns the `InfoTypeAndValue` structure with an empty Sequence).
+
+    Returns:
+    -------
+        The populated `InfoTypeAndValue` structure.
+
+    Examples:
+    --------
+    | ${info_val}= | Prepare SupportedLanguageTags | en,de,fr |
+    | ${info_val}= | Prepare SupportedLanguageTags | en |
+    | ${info_val}= | Prepare SupportedLanguageTags | ${None} |
+
     """
-    if isinstance(langs, str):
-        langs = [langs]
-
     info_val = rfc9480.InfoTypeAndValue()
     info_val["infoType"] = rfc9480.id_it_suppLangTags
 
     lang_tags = rfc9480.SuppLangTagsValue()
-    for lang in langs:
-        lang_tags.append(char.UTF8String(lang))
+
+    if langs is not None:
+        for lang in langs.split(","):
+            lang_tags.append(char.UTF8String(lang.strip()))
 
     info_val["infoValue"] = encoder.encode(lang_tags)
-
     return info_val
 
 
 def validate_supported_language_tags(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, expected_size: int = 1, index: int = 0
+    pki_message: PKIMessageTMP, expected_size: Strint = 1
 ) -> None:
     """
     Validate the response for supported language tags.
@@ -1231,7 +1460,6 @@ def validate_supported_language_tags(  # noqa D417 undocumented-param
     ---------
         - `pki_message`: The PKIMessage containing the response.
         - `expected_size`: Expected number of messages.
-        - `index`: The index of the expected message.
 
     Raises:
     ------
@@ -1239,23 +1467,30 @@ def validate_supported_language_tags(  # noqa D417 undocumented-param
         - `ValueError`: If the response contains an unexpected `infoType`.
         - `ValueError`: If the response contains more than one language tags.
 
+    Examples:
+    --------
+    | Validate Supported Language Tags | ${pki_message} |
+
     """
     validate_general_response(pki_message=pki_message, expected_size=expected_size)
 
-    data = pki_message["body"]["genp"][index]
-    if data["infoType"] != rfc9480.id_it_suppLangTags:
+    data = cmputils.get_value_from_seq_of_info_value_field(pki_message["body"]["genp"], rfc9480.id_it_suppLangTags)
+    if data is None:
         raise ValueError("Unexpected infoType in response.")
 
-    lang_list = decoder.decode(data["infoValue"], asn1Spec=rfc9480.SuppLangTagsValue())
+    lang_list, rest = decoder.decode(data.asOctets(), asn1Spec=rfc9480.SuppLangTagsValue())
+
+    if rest:
+        raise BadAsn1Data("SuppLangTagsValue")
 
     if len(lang_list) != 1:
-        raise ValueError(f"Expected {expected_size} language tags, got {len(lang_list)}.")
+        raise ValueError(f"Expected {expected_size} language tags, got {len(lang_list)}.Got: {lang_list.prettyPrint()}")
 
     logging.info("Chosen language tag: %s", lang_list[0])
 
 
 def validate_genm_message_size(  # noqa: D417 Missing argument description in the docstring
-    genm: rfc9480.PKIMessage,
+    genm: PKIMessageTMP,
     expected_size: int = 1,
 ) -> None:
     """Validate the General Message PKIMessage.
@@ -1272,6 +1507,10 @@ def validate_genm_message_size(  # noqa: D417 Missing argument description in th
         - `ValueError`: If the PKIMessage does not contain a General Message body.
         - `ValueError`: If the response does not have the expected size.
 
+    Examples:
+    --------
+    | ${genm}= | Validate Genm Message Size | ${genm} | expected_size=1 |
+
     """
     if genm["body"].getName() != "genm":
         raise ValueError("The PKIMessage does not contain a General Message body.")
@@ -1280,6 +1519,71 @@ def validate_genm_message_size(  # noqa: D417 Missing argument description in th
         raise ValueError(f"Expected {expected_size} messages in the General Message body.")
 
 
+# TODO change or remove.
+
+
+def _prepare_kem_ct_info(  # noqa D417 undocumented-param
+    public_key: Optional[KEMPublicKey] = None,
+    ca_key: Optional[ECDHPrivateKey] = None,
+    ct: Optional[bytes] = None,
+    fill_value_rand: bool = False,
+    bad_ct: bool = False,
+) -> Tuple[Optional[bytes], rfc9480.InfoTypeAndValue]:
+    """Prepare the `KEMCiphertextInfo` structure for a General Message PKIMessage.
+
+    Arguments:
+    ---------
+        - `public_key`: The KEM key to use for encapsulation. If the key is `None`
+            the function returns the `InfoTypeAndValue` structure with the `infoValue` field absent
+            or field with a random value.
+        - `ca_key`: The CA's ECC private key to perform the encapsulation with. Defaults to `None`.
+        - `ct`: The ciphertext to include in the structure. If `None`, the function encapsulates the public key.
+        - `fill_value_rand`: Whether to fill the `infoValue` field with a random value.
+        - `bad_ct`: Whether to manipulate the ciphertext, if the ct is for a Composite Key, then
+        is the first ct (pq-ct) manipulated.
+
+    Returns:
+    -------
+        - The `InfoTypeAndValue` structure and the optional shared secret.
+
+    Examples:
+    --------
+    | ${ss} | ${info_val}= | Prepare KemCiphertextInfo | ${public_key} | ca_key=${ca_key} |
+    | ${_} | ${info_val}= | Prepare KemCiphertextInfo |
+    | ${ss} | ${info_val}= | Prepare KemCiphertextInfo | public_key=${public_key} | bad_ct=True |
+
+    """
+    info_val = InfoTypeAndValue()
+    info_val["infoType"] = id_it_KemCiphertextInfo
+    if public_key is None:
+        if fill_value_rand:
+            info_val["infoValue"] = encoder.encode(univ.OctetString(os.urandom(16)))
+        return info_val, None  # type: ignore
+
+    ss = None
+    if ct is None:
+        if isinstance(public_key, HybridKEMPublicKey):
+            ss, ct = public_key.encaps(ca_key)
+        else:
+            ss, ct = public_key.encaps()
+            if ca_key is not None:
+                logging.debug(
+                    "Encapsulating with CA key not possible for this key type.Ignoring the provided CA key. Got: %s",
+                    public_key.name,
+                )
+
+    kem_ct_info = KemCiphertextInfoAsn1()
+    kem_ct_info["kem"]["algorithm"] = get_kem_oid_from_key(public_key)
+
+    if bad_ct:
+        ct = utils.manipulate_bytes_based_on_key(data=ct, key=public_key)
+
+    kem_ct_info["ct"] = univ.OctetString(ct)
+    info_val["infoValue"] = encoder.encode(kem_ct_info)
+    return ss, info_val  # type: ignore
+
+
+@keyword(name="Build Genp KEMCiphertextInfo From Genm")
 def build_genp_kem_ct_info_from_genm(  # noqa: D417 Missing argument description in the docstring
     genm: PKIMessageTMP, expected_size: int = 1, ca_key: Optional[ECDHPrivateKey] = None, **kwargs
 ) -> Tuple[bytes, PKIMessageTMP]:
@@ -1289,7 +1593,7 @@ def build_genp_kem_ct_info_from_genm(  # noqa: D417 Missing argument description
     ---------
         - `pki_message`: The General Message PKIMessage.
         - `expected_size`: The expected number of messages in the response.
-        - `ca_key`: The CA's private key to perform the decapsulation with.
+        - `ca_key`: The CA's private key to perform the encapsulation with.
         - `**kwargs`: Additional parameters for the PKIHeader.
 
     Returns:
@@ -1302,6 +1606,10 @@ def build_genp_kem_ct_info_from_genm(  # noqa: D417 Missing argument description
         - `ValueError`: If the `KEMCiphertextInfo` value was not absent.
         - `ValueError`: If the response does not contain the `extraCerts` field.
         - `ValueError`: If the public key was not a KEM public key.
+
+    Examples:
+    --------
+    | ${ss} {genp}= | Build Genp KEMCiphertextInfo From Genm | ${genm} | ca_key=${ca_key} |
 
     """
     validate_genm_message_size(genm=genm, expected_size=expected_size)
@@ -1317,34 +1625,26 @@ def build_genp_kem_ct_info_from_genm(  # noqa: D417 Missing argument description
     cert: rfc9480.CMPCertificate = genm["extraCerts"][0]
     public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
-    if not is_kem_public_key(public_key):
-        raise ValueError("The public key was not a KEM public key.")
+    public_key = ensure_is_kem_pub_key(public_key)
 
-    if isinstance(public_key, HybridKEMPublicKey):
-        ss, ct = public_key.encaps(ca_key)
-    else:
-        ss, ct = public_key.encaps()
+    ss, info_val = _prepare_kem_ct_info(
+        public_key=public_key,
+        ca_key=ca_key,
+        fill_value_rand=False,
+        bad_ct=False,
+    )
+    if ss is None:
+        raise ValueError("The shared secret could not be generated.")
 
-    kem_oid = get_kem_oid_from_key(public_key)
-
-    genm = cmputils._prepare_pki_message(**kwargs)
-
-    kem_ct_info = KemCiphertextInfoAsn1()
-    kem_ct_info["ct"] = univ.OctetString(ct)
-    kem_ct_info["kem"]["algorithm"] = kem_oid
-
-    info_val = InfoTypeAndValueAsn1()
-    info_val["infoType"] = id_it_KemCiphertextInfo
-    info_val["infoValue"] = encoder.encode(kem_ct_info)
-
-    genm2 = PKIMessageTMP()
-    for field in genm["header"].keys():
-        genm2["header"][field] = genm["header"][field]
-
-    genm2["body"]["genp"].append(info_val)
-    return ss, genm2
+    genp = build_cmp_general_response(
+        genm=genm,
+        info_values=[info_val],
+        **kwargs,
+    )
+    return ss, genp
 
 
+@keyword(name="Validate Genp KEMCiphertextInfo")
 def validate_genp_kem_ct_info(  # noqa: D417 Missing argument description in the docstring
     genp: PKIMessageTMP,
     client_private_key: Optional[KEMPrivateKey],
@@ -1370,6 +1670,11 @@ def validate_genp_kem_ct_info(  # noqa: D417 Missing argument description in the
         - `ValueError`: If the response did not contain the `KEMCiphertextInfo` OID.
         - `ValueError`: If the `KEMCiphertextInfo` value was absent.
         - `ValueError`: If the private key was not a KEM private key.
+        - `BadAsn1Data`: If the decoding of the `KEMCiphertextInfo` had a remainder.
+
+    Examples:
+    --------
+    | ${ss} = | Validate Genp KEMCiphertextInfo | ${genp} | client_private_key=${client_private_key} |
 
     """
     validate_general_response(pki_message=genp, expected_size=expected_size)
@@ -1382,63 +1687,25 @@ def validate_genp_kem_ct_info(  # noqa: D417 Missing argument description in the
     if not value.isValue:
         raise ValueError("The KEMCiphertextInfo value was absent.")
 
-    kem_ct_info, _rest = decoder.decode(value.asOctets(), KemCiphertextInfoAsn1())
+    kem_ct_info, rest = try_decode_pyasn1(value.asOctets(), KemCiphertextInfoAsn1())  # type: ignore
+    kem_ct_info: KemCiphertextInfoAsn1
 
-    if not is_kem_private_key(client_private_key):
-        raise ValueError("The private key was not a KEM private key.")
+    if rest != b"":
+        raise BadAsn1Data("KEMCiphertextInfo")
+
+    client_private_key = ensure_is_kem_priv_key(client_private_key)
 
     ss = client_private_key.decaps(kem_ct_info["ct"].asOctets())
 
     return ss
 
 
-# TODO add params.
-def add_general_messages(  # noqa D417 undocumented-param
-    pki_message: rfc9480.PKIMessage, add_messages: str, rev_passphrase: Optional[rfc9480.EnvelopedData] = None
-) -> rfc9480.PKIMessage:
-    """
-    Add general messages to the PKIMessage `genm` body.
-
-    This function appends various types of general messages to the `genm` field in the PKIMessage body.
-
-    Arguments:
-    ---------
-        - `pki_message`: The `PKIMessage` to which the general messages will be added.
-        - `add_messages`: A comma-separated string of message types to include, such as "get_ca_certs"
-        - or "supp_lang_tags".
-        - `rev_passphrase`: An optional `EnvelopedData` object representing a revocation passphrase to include.
-
-    Returns:
-    -------
-        - The updated PKIMessage with the specified general messages appended to the `genm` field.
-
-    Supported Messages:
-    -------------------
-        - `"get_ca_certs"`: Request for CA certificates.
-        - `"current_crl"`: Request for the current CRL.
-        - `"preferred_sym_alg"`: Request for the preferred symmetric algorithm.
-        - `"enc_key_agree"`: Request for encryption/key agreement types.
-        - `"sign_key_types"`: Request for signing key pair types.
-        - `"supp_lang_tags"`: Request for supported language tags.
-
-    """
-    if add_messages is None:
-        messages = set()
-    else:
-        messages = set(add_messages.strip().split(","))
-
-    pki_message["body"]["genm"] = _append_messages(messages, pki_message["body"]["genm"], rev_passphrase=rev_passphrase)
-    return pki_message
-
-
-# TODO fix doc
 def _append_messages(
     messages: Set[str],
     body_content: rfc9480.GenMsgContent,
     fill_value: bool = False,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     supp_lang_tags: str = "DE",
-    rev_passphrase: Optional[rfc9480.EnvelopedData] = None,
 ):
     """Append specified support messages to the GenMsgContent structure.
 
@@ -1473,22 +1740,16 @@ def _append_messages(
     if "supp_lang_tags" in messages:
         body_content.append(prepare_supported_language_tags(langs=supp_lang_tags))
 
-    if "rev_passphrase" in messages:
-        if rev_passphrase is None:
-            raise ValueError("The `envelopedData` structure MUST be parsed for the `rev_passphrase` message.")
-        body_content.append(_prepare_revocation_passphrase(env_data=rev_passphrase))
-
     if "kem_ct_info" in messages:
-        body_content.append(cmputils.prepare_info_value(id_it_KemCiphertextInfo, fill_random=fill_value))
+        body_content.append(cmputils.prepare_info_type_and_value(id_it_KemCiphertextInfo, fill_random=fill_value))
 
     return body_content
 
 
-# TODO verify with Alex,
-# if I misunderstood the RFC, or the RFC is to LAX written.
-def prepare_simple_info_types(  # noqa D417 undocumented-param
+@keyword(name="Prepare Simple InfoTypeAndValue")
+def prepare_simple_info_types_and_value(  # noqa D417 undocumented-param
     name: str, value: Optional[bytes] = None, fill_random: bool = False
-) -> rfc9480.InfoTypeAndValue:
+) -> List[rfc9480.InfoTypeAndValue]:
     """Prepare a simple `InfoTypeAndValue` structure using a stringified name for the OID.
 
     This function should only be used for the following OIDs (but can be used for simple
@@ -1507,7 +1768,7 @@ def prepare_simple_info_types(  # noqa D417 undocumented-param
     - "current_crl" (CRL)
     - "implicit_confirm"
     - "cert_req_template"
-    - "kem_ct"
+    - "kem_ct" (initiator)
 
     **MAY** be absent:
     ------------------
@@ -1543,24 +1804,69 @@ def prepare_simple_info_types(  # noqa D417 undocumented-param
     ------
         - `ValueError`: If the name does not match a valid OID.
 
+    Examples:
+    --------
+    | ${info_val}= | Prepare Simple Info Types | name=ca_prot_enc_cert |
+    | ${info_val}= | Prepare Simple Info Types | name=sign_key_pair_types,ca_prot_enc_cert |
+
     """
-    oid = GeneralInfoOID.get_oid(name)
-    return cmputils.prepare_info_value(oid, value, fill_random=fill_random)
+    info_values = []
+
+    for option in name.split(","):
+        oid = GeneralInfoOID.get_oid(option)
+        info_val = cmputils.prepare_info_type_and_value(oid, value, fill_random=fill_random)
+        info_values.append(info_val)
+
+    return info_values
 
 
-# TODO fix implementation
-def prepare_ca_message(messages: str) -> List[rfc9480.InfoTypeAndValue]:
-    """Prepare a correctly sending from the CA inside a general message or response.
+@keyword(name="Build CMP GeneralResponse")
+def build_cmp_general_response(  # noqa D417 undocumented-param
+    genm: Optional[PKIMessageTMP] = None,
+    exclude_fields: Optional[str] = None,
+    info_values: Optional[Union[List[rfc9480.InfoTypeAndValue], rfc9480.InfoTypeAndValue]] = None,
+    **kwargs,
+) -> PKIMessageTMP:
+    """Prepare and return a `PKIMessage` containing a general response `PKIBody`.
 
-    :param messages: The messages to include in the general message. Which are comma-separated.
-    :return: The prepared list of info types and values.
+    Arguments:
+    ---------
+        - `genm`: The General Message PKIMessage.
+        - `exclude_fields`: A list of fields to exclude from the `PKIHeader`.
+        - `info_type_values`: A list of `InfoTypeAndValue` structures to include in the `GenRepContent`.
+        - `**kwargs`: Additional parameters for the PKIHeader.
+
+    Returns:
+    -------
+        - The General Response PKIMessage.
+
+    Examples:
+    --------
+    | ${genp} = | Build CMP General Response | ${genm} | exclude_fields=transactionID,recipNonce |
+
     """
-    if "update_ca" in messages:
-        # GenMsg:    {id-it 18}, RootCaKeyUpdateValue
-        raise NotImplementedError("Not implemented yet")
+    if isinstance(info_values, (rfc9480.InfoTypeAndValue, InfoTypeAndValue)):
+        info_values = [info_values]
 
-    if "unsupported_oid" in messages:
-        # GenRep:    {id-it 7}, SEQUENCE SIZE (1..MAX) OF OBJECT IDENTIFIER
-        raise NotImplementedError("Not implemented yet")
+    elif info_values is None:
+        logging.debug("No `InfoTypeAndValue` structures provided for the General Response.")
+        info_values = []
 
-    raise NotImplementedError("Not implemented yet")
+    pki_body = PKIBodyTMP()
+    for info_type_value in info_values:
+        pki_body["genp"].append(info_type_value)
+
+    if genm is not None:
+        kwargs = ca_ra_utils.set_ca_header_fields(genm, kwargs)
+
+    pki_message = cmputils.prepare_pki_message(exclude_fields=exclude_fields, **kwargs)
+    pki_message["body"] = pki_body
+
+    der_data = try_encode_pyasn1(pki_message)
+
+    decoded_pki_message, rest = decoder.decode(der_data, asn1Spec=PKIMessageTMP())
+
+    if rest != b"":
+        raise ValueError("The decoding of `genp` PKIMessage structure had a remainder!")
+
+    return decoded_pki_message

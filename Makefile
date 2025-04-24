@@ -58,17 +58,21 @@ docs:
 	python -m robot.libdoc --pythonpath=./ resources/cryptoutils.py doc/cryptoutils.html
 	python -m robot.libdoc --pythonpath=./ resources/cmputils.py doc/cmputils.html
 	python -m robot.libdoc --pythonpath=./ resources/asn1utils.py doc/asn1utils.html
-	python -m robot.libdoc --pythonpath=./ resources/certutils.py doc/certutils.html
 	python -m robot.libdoc --pythonpath=./ resources/httputils.py doc/httputils.html
 	python -m robot.libdoc --pythonpath=./ resources/keyutils.py doc/keyutils.html
 	python -m robot.libdoc --pythonpath=./ resources/protectionutils.py doc/protectionutils.html
-	python -m robot.testdoc --pythonpath=./ tests/ doc/test-suites.html
-
-pq-docs:
-	python -m robot.libdoc --pythonpath=./ pq_logic/pq_compute_utils.py doc/pq_validation_utils.html
-	python -m robot.libdoc --pythonpath=./ tests_untested/ doc/test-migration-suites.html
-
-
+	python -m robot.libdoc --pythonpath=./ resources/compareutils.py doc/compareutils.html
+	python -m robot.libdoc --pythonpath=./ resources/general_msg_utils.py doc/general_msg_utils.html
+	python -m robot.libdoc --pythonpath=./ resources/cert_related_utils.py doc/cert_related_utils.html
+	python -m robot.libdoc --pythonpath=./ resources/ca_kga_logic.py doc/ca_kga_logic.html
+	python -m robot.libdoc --pythonpath=./ resources/envdatautils.py doc/envdatautils.html
+	python -m robot.libdoc --pythonpath=./ resources/extra_issuing_logic.py doc/extra_issuing_logic.html
+	python -m robot.libdoc --pythonpath=./ resources/ca_ra_utils.py doc/ca_ra_utils.html
+	python -m robot.libdoc --pythonpath=./ pq_logic/hybrid_prepare.py doc/hybrid_prepare.html
+	python -m robot.libdoc --pythonpath=./ pq_logic/pq_verify_logic.py doc/pq_verify_logic.html
+    # Test documentation
+	python -m robot.testdoc tests/ doc/test-suites.html
+	python -m robot.testdoc tests_pq_and_hybrid/ doc/test-pq-hybrid-suites.html
 
 autoformat:
 	ruff check --fix .
@@ -84,19 +88,12 @@ verifyformat:
 	ruff check .
 
 dryrun:
-	robot --dryrun --pythonpath=./ --variable environment:$(env) tests
-	robot --dryrun --pythonpath=./ --variable environment:$(env) tests_untested
+	robot --dryrun --pythonpath=./ --variable environment:$(env) tests tests_pq_and_hybrid
 
-stats:
-	python scripts/write_stats.py
-
-invalid-sigs:
+check-sigs:
 	python test_load_pqc.py
 	python vis_pqc_verify.py
 
-start-mock-ca:
-	python ./mock_ca/ca_handler.py
-
-test-mock-ca:
-	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests
-
+test-pq-hybrid:
+    # Start the tests for PQ and Hybrid algorithms/mechanisms.
+	robot --pythonpath=./ --outputdir=reports --variable environment:$(env) tests_pq_and_hybrid

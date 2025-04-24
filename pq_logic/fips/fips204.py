@@ -19,7 +19,10 @@
 
 from typing import Optional, Tuple
 
-from Crypto.Hash import SHA256, SHA512, SHAKE128, SHAKE256
+# from Crypto.Hash import SHA256, SHA512, SHAKE128
+from cryptography.hazmat.primitives import hashes
+
+from pq_logic.fips._fips_utils import XOFHash, _compute_shake, _compute_hash
 
 ML_DSA_Q = 8380417
 ML_DSA_N = 256
@@ -315,7 +318,10 @@ class ML_DSA:
 
     #   3.7 Use of Symmetric Cryptography
     def h(self, s, length):
-        return SHAKE256.new(s).read(length)
+        xof = hashes.SHAKE256(length)
+        hasher = hashes.Hash(xof)
+        hasher.update(s)
+        return hasher.finalize()
 
     #   Algorithm 2, ML-DSA.Sign(sk, M, ctx)
     #   XXX: Not covered by test vectors.
@@ -382,13 +388,16 @@ class ML_DSA:
 
         if ph == "SHA-256":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01])
-            phm = SHA256.new(m).digest()
+            #phm = SHA256.new(m).digest()
+            phm = _compute_hash("sha256", m)
         elif ph == "SHA-512":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03])
-            phm = SHA512.new(m).digest()
+            # phm = SHA512.new(m).digest()
+            phm = _compute_hash("sha512", m)
         elif ph == "SHAKE128":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x0B])
-            phm = SHAKE128.new(m).read(256 // 8)
+            # phm = SHAKE128.new(m).read(256 // 8)
+            phm = _compute_shake("shake128", m, 256 // 8)
         else:
             return None
 
@@ -407,13 +416,16 @@ class ML_DSA:
 
         if ph == "SHA-256":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01])
-            phm = SHA256.new(m).digest()
+            # phm = SHA256.new(m).digest()
+            phm = _compute_hash("sha256", m)
         elif ph == "SHA-512":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03])
-            phm = SHA512.new(m).digest()
+            # phm = SHA512.new(m).digest()
+            phm = _compute_hash("sha512", m)
         elif ph == "SHAKE128":
             oid = bytes([0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x0B])
-            phm = SHAKE128.new(m).read(256 // 8)
+            # phm = SHAKE128.new(m).read(256 // 8)
+            phm = _compute_shake("shake128", m, 256 // 8)
         else:
             return False
 
@@ -889,7 +901,9 @@ class ML_DSA:
 
     def sample_in_ball(self, rho):
         c = [0] * 256
-        xof = SHAKE256.new(rho)
+        # xof = SHAKE256.new(rho)
+        xof = XOFHash("shake256")
+        xof.update(rho)
         s = xof.read(8)
         h = self.bytes_to_bits(s)
         for i in range(256 - self.tau, 256):
@@ -905,7 +919,11 @@ class ML_DSA:
     def rej_ntt_poly(self, rho):
         j = 0
         # print('self.rej_ntt_poly', len(rho), rho.hex())
-        g = SHAKE128.new(rho)
+        # g = SHAKE128.new(rho)
+        # The limit must not be lower than 298 rounds,
+        # if a limit must be set.
+        g = XOFHash("shake128")
+        g.update(rho)
         a = [None] * 256
         while j < 256:
             s = g.read(3)
@@ -918,7 +936,9 @@ class ML_DSA:
 
     def rej_bounded_poly(self, rho):
         j = 0
-        h = SHAKE256.new(rho)
+        # h = SHAKE256.new(rho)
+        h = XOFHash("shake256")
+        h.update(rho)
         a = [None] * 256
         while j < 256:
             z = h.read(1)[0]

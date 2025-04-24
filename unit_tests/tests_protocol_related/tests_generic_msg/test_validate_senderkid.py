@@ -15,8 +15,9 @@ from resources.cmputils import (
     build_p10cr_from_csr,
     parse_csr,
     patch_senderkid,
-    prepare_general_name,
 )
+from resources.prepareutils import prepare_general_name
+from resources.exceptions import BadMessageCheck
 from resources.protectionutils import protect_pkimessage
 from resources.utils import decode_pem_string
 
@@ -57,7 +58,7 @@ class TestValidateSenderKID(unittest.TestCase):
             private_key=key,
             protection="signature",
             password=None,
-            exclude_cert=False,
+            exclude_certs=False,
         )
         # simulates send over wire.
         der_data = encode_to_der(protected_msg)
@@ -80,13 +81,11 @@ class TestValidateSenderKID(unittest.TestCase):
             private_key=key,
             protection="signature",
             password=None,
-            exclude_cert=False,
+            exclude_certs=False,
             do_patch=False,
         )
 
-
-
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMessageCheck):
             validate_senderkid_for_cmp_protection(pki_message=protected_msg)
 
     def test_check_sig_senderKID_with_valid_ski(self):
@@ -107,7 +106,7 @@ class TestValidateSenderKID(unittest.TestCase):
             cert=asn1cert,
             private_key=key,
             protection="signature",
-            exclude_cert=False,
+            exclude_certs=False,
         )
         self.assertNotEqual(get_subject_key_identifier(asn1cert), None)
         self.assertTrue(protected_msg["header"]["senderKID"].isValue)
@@ -122,12 +121,12 @@ class TestValidateSenderKID(unittest.TestCase):
         THEN a ValueError should be raised due to the missing common name in the senderKID field.
         """
         protected_msg = protect_pkimessage(
-            pki_message=self.pki_message, protection="pbmac1", password="PASSWORD", exclude_cert=False
+            pki_message=self.pki_message, protection="pbmac1", password="PASSWORD", exclude_certs=False
         )
 
         protected_msg = de_and_encode_pkimessage(protected_msg)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMessageCheck):
             validate_senderkid_for_cmp_protection(pki_message=protected_msg, allow_mac_failure=False)
 
     def test_check_mac_protected_valid_senderKID_and_sender(self):
@@ -141,7 +140,7 @@ class TestValidateSenderKID(unittest.TestCase):
         sender = prepare_general_name("directoryName", name_str=common_name)
         pki_message = build_pkimessage(sender_kid=b"CN=Joe Mustermann", sender=sender)
         protected_msg = protect_pkimessage(
-            pki_message=pki_message, protection="password_based_mac", password="PASSWORD", exclude_cert=False
+            pki_message=pki_message, protection="password_based_mac", password="PASSWORD", exclude_certs=False
         )
         protected_msg = de_and_encode_pkimessage(protected_msg)
         validate_senderkid_for_cmp_protection(pki_message=protected_msg, allow_mac_failure=False)
@@ -157,10 +156,10 @@ class TestValidateSenderKID(unittest.TestCase):
         sender = prepare_general_name("directoryName", name_str=common_name)
         pki_message = build_pkimessage(sender_kid=b"CN=Hans1", sender=sender)
         protected_msg = protect_pkimessage(
-            pki_message=pki_message, protection="pbmac1", password="PASSWORD", exclude_cert=False
+            pki_message=pki_message, protection="pbmac1", password="PASSWORD", exclude_certs=False
         )
 
         protected_msg = de_and_encode_pkimessage(protected_msg)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMessageCheck):
             validate_senderkid_for_cmp_protection(pki_message=protected_msg, allow_mac_failure=False)

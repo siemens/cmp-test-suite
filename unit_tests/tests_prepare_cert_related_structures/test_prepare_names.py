@@ -13,12 +13,9 @@ import resources.prepareutils
 from resources import cmputils, keyutils
 from resources.asn1utils import encode_to_der
 from resources.certbuildutils import generate_certificate, generate_signed_csr
-from resources.prepareutils import prepare_name
+from resources.prepareutils import prepare_name, prepare_general_name
 from resources.certextractutils import get_field_from_certificate
-from resources.cmputils import (
-    compare_general_name_and_name,
-    prepare_general_name,
-)
+from resources.compareutils import compare_general_name_and_name
 from resources.utils import decode_pem_string
 
 from unit_tests.utils_for_test import convert_to_crypto_lib_cert
@@ -58,7 +55,7 @@ class TestPrepareCertTemplate(unittest.TestCase):
         tmp_cert = convert_to_crypto_lib_cert(cert)
         issuer_str = tmp_cert.issuer.rfc4514_string()
         issuer = rfc5280.Name()
-        issuer = resources.prepareutils.prepare_name(common_name=issuer_str, name=issuer)
+        issuer = resources.prepareutils.prepare_name(common_name=issuer_str, target=issuer)
         my_data = encoder.encode(issuer)
         self.assertEqual(my_data.hex(), cert_data.hex())
 

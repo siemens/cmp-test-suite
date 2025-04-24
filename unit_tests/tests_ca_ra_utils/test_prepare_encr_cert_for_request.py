@@ -5,27 +5,27 @@
 import unittest
 from typing import Union, Tuple
 
-from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag
 from pyasn1_alt_modules import rfc9480
 
-from pq_logic.migration_typing import HybridKEMPrivateKey, KEMPublicKey, KEMPrivateKey
-from pq_logic.trad_typing import ECDHPrivateKey
+from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, HybridKEMPrivateKey
+from resources.typingutils import ECDHPrivateKey
 from resources.ca_kga_logic import validate_enveloped_data
-from resources.ca_ra_utils import prepare_encr_cert_for_request
+from resources.ca_ra_utils import prepare_encr_cert_from_request
 from resources.certbuildutils import build_cert_from_cert_template
 from resources.certutils import parse_certificate
 from resources.cmputils import prepare_cert_req_msg
 from resources.keyutils import load_private_key_from_file, generate_key
 from resources.utils import load_and_decode_pem_file
-from unit_tests.utils_for_test import compare_pyasn1_objects
+from unit_tests.utils_for_test import compare_pyasn1_objects, try_encode_pyasn1
+from resources.asn1utils import try_decode_pyasn1
 
 
 class TestPrepareEncrCertForRequest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.hybrid_key = load_private_key_from_file("data/keys/private-key-x25519.pem", key_type="x25519")
+        cls.hybrid_key = load_private_key_from_file("data/keys/private-key-x25519.pem")
         cls.xwing_key = load_private_key_from_file("data/keys/private-key-xwing.pem")
         cls.xwing_key_other = load_private_key_from_file("data/keys/private-key-xwing-other.pem")
 
@@ -59,9 +59,9 @@ class TestPrepareEncrCertForRequest(unittest.TestCase):
             ca_cert=self.ca_cert,
         )
         # prepare the encrypted certificate.
-        enc_cert = prepare_encr_cert_for_request(
+        enc_cert = prepare_encr_cert_from_request(
             cert_req_msg=cert_req_msg,
-            signing_key=self.ca_key,
+            ca_key=self.ca_key,
             hash_alg="sha256",
             ca_cert=self.ca_cert,
             new_ee_cert=cert,
@@ -70,10 +70,11 @@ class TestPrepareEncrCertForRequest(unittest.TestCase):
         target = rfc9480.EnvelopedData().subtype(implicitTag=tag.Tag(tag.tagClassContext,
                                                                      tag.tagFormatSimple, 0))
 
-        enc_cert, rest = decoder.decode(encoder.encode(enc_cert), target)
+        der_data = try_encode_pyasn1(enc_cert)
+        enc_cert, rest = try_decode_pyasn1(der_data, target)
         if rest:
-            raise ValueError("The data is not correctly encoded.")
-        return cert, enc_cert
+            raise ValueError("The data could not be decoded correctly.")
+        return cert, enc_cert # type: ignore
 
     def test_prepare_enc_cert_with_ml_kem(self):
         """
@@ -88,9 +89,10 @@ class TestPrepareEncrCertForRequest(unittest.TestCase):
             ee_key=self.mlkem_key,
             cmp_protection_cert=self.ca_cert,
             expected_raw_data=True,
+            for_pop=True
 
         )
-        decrypted_cert, rest = decoder.decode(der_cert, rfc9480.CMPCertificate())
+        decrypted_cert, rest = try_decode_pyasn1(der_cert, rfc9480.CMPCertificate())
         self.assertEqual(rest, b"")
         result = compare_pyasn1_objects(cert, decrypted_cert)
         self.assertTrue(result, "The decrypted certificate does not match the original certificate.")
@@ -103,13 +105,17 @@ class TestPrepareEncrCertForRequest(unittest.TestCase):
         THEN the encrypted certificate should be correctly prepared.
         """
         cert, encr_cert = self.set_up_data(self.xwing_key, None)
+        # TODO Talk about bug in recipient cert for encrCert.
+        # if the other party does not have a certificate, the recipient ID should be None.
+        # or at least the SKI to that the client can validate that.
         der_cert = validate_enveloped_data(
             env_data=encr_cert,
             ee_key=self.xwing_key,
             cmp_protection_cert=self.ca_cert,
             expected_raw_data=True,
+            for_pop=True
         )
-        decrypted_cert, rest = decoder.decode(der_cert, rfc9480.CMPCertificate())
+        decrypted_cert, rest = try_decode_pyasn1(der_cert, rfc9480.CMPCertificate())
         self.assertEqual(rest, b"")
         result = compare_pyasn1_objects(cert, decrypted_cert)
         self.assertTrue(result, "The decrypted certificate does not match the original certificate.")
@@ -128,8 +134,9 @@ class TestPrepareEncrCertForRequest(unittest.TestCase):
             ee_key=comp_key,
             cmp_protection_cert=self.ca_cert,
             expected_raw_data=True,
+            for_pop=True
         )
-        decrypted_cert, rest = decoder.decode(der_cert, rfc9480.CMPCertificate())
+        decrypted_cert, rest = try_decode_pyasn1(der_cert, rfc9480.CMPCertificate())
         self.assertEqual(rest, b"")
         result = compare_pyasn1_objects(cert, decrypted_cert)
         self.assertTrue(result, "The decrypted certificate does not match the original certificate.")
@@ -147,8 +154,11 @@ class TestPrepareEncrCertForRequest(unittest.TestCase):
             ee_key=self.xwing_key,
             cmp_protection_cert=self.ca_cert,
             expected_raw_data=True,
+            for_pop=True
+            # currently needs to be validated extra.
+            # because encrCert, so the clients do not know the method, the CA-Will choose.
         )
-        decrypted_cert, rest = decoder.decode(der_cert, rfc9480.CMPCertificate())
+        decrypted_cert, rest = try_decode_pyasn1(der_cert, rfc9480.CMPCertificate())
         self.assertEqual(rest, b"")
         result = compare_pyasn1_objects(cert, decrypted_cert)
         self.assertTrue(result, "The decrypted certificate does not match the original certificate.")

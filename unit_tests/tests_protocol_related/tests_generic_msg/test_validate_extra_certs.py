@@ -36,7 +36,7 @@ class TestValidateExtraCerts(unittest.TestCase):
         """
         pki_message = build_pkimessage()
         protected_pki_message = protect_pkimessage(
-            pki_message, protection="signature", private_key=self.ee_key, exclude_cert=True
+            pki_message, protection="signature", private_key=self.ee_key, exclude_certs=True
         )
         validate_extra_certs(protected_pki_message, allow_self_signed=True)
 
@@ -48,7 +48,7 @@ class TestValidateExtraCerts(unittest.TestCase):
         """
         pki_message = build_pkimessage()
         protected_pki_message = protect_pkimessage(
-            pki_message, protection="signature", private_key=self.ee_key, exclude_cert=True
+            pki_message, protection="signature", private_key=self.ee_key, exclude_certs=True
         )
         with self.assertRaises(ValueError):
             validate_extra_certs(protected_pki_message, allow_self_signed=False)
@@ -61,7 +61,7 @@ class TestValidateExtraCerts(unittest.TestCase):
         """
         pki_message = build_pkimessage()
         protected_pki_message = protect_pkimessage(
-            pki_message, protection="signature", private_key=self.ee_key, exclude_cert=True
+            pki_message, protection="signature", private_key=self.ee_key, exclude_certs=True
         )
         extra_certs = prepare_extra_certs(self.chain)
         protected_pki_message["extraCerts"] = extra_certs

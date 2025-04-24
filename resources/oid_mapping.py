@@ -14,7 +14,7 @@ import logging
 from typing import Optional, Union
 
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, rsa
+from cryptography.hazmat.primitives.asymmetric import dsa, ec
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9481
 from pyasn1_alt_modules.rfc5480 import id_dsa_with_sha256
@@ -22,19 +22,11 @@ from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.tmp_oids import (
-    CMS_COMPOSITE_OID_2_HASH,
-    id_MLKEM768_ECDH_brainpoolP256r1,
-    id_MLKEM768_ECDH_P384,
-    id_MLKEM768_RSA2048,
-    id_MLKEM768_RSA3072,
-    id_MLKEM768_RSA4096,
-    id_MLKEM768_X25519,
-    id_MLKEM1024_ECDH_brainpoolP384r1,
-    id_MLKEM1024_ECDH_P384,
-    id_MLKEM1024_X448,
+    CMS_COMPOSITE03_OID_2_HASH,
 )
 from resources.oidutils import (
-    ALL_KNOWN_PROTECTION_OIDS,
+    ALL_KNOWN_NAMES_2_OID,
+    ALL_KNOWN_OIDS_2_NAME,
     ALLOWED_HASH_TYPES,
     CURVE_NAMES_TO_INSTANCES,
     OID_HASH_MAP,
@@ -138,8 +130,8 @@ def get_hash_from_oid(oid: univ.ObjectIdentifier, only_hash: bool = False) -> Un
     if oid in {rfc9481.id_Ed25519, rfc9481.id_Ed448}:
         return None
 
-    if oid in CMS_COMPOSITE_OID_2_HASH:
-        return CMS_COMPOSITE_OID_2_HASH[oid]
+    if oid in CMS_COMPOSITE03_OID_2_HASH:
+        return CMS_COMPOSITE03_OID_2_HASH[oid]
 
     try:
         if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
@@ -162,6 +154,7 @@ def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
 
     :param alg: The name of hashing algorithm, e.g., 'sha256'
     :return: `cryptography.hazmat.primitives.hashes`
+    :raises ValueError: If the specified hash algorithm is not supported.
     """
     try:
         # to also get the hash function with rsa-sha1 and so on.
@@ -173,113 +166,9 @@ def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
         raise ValueError(f"Unsupported hash algorithm: {alg}") from err
 
 
-def get_oid_composite(
-    ml_kem_name: str, trad_key: Union[ed448.Ed448PrivateKey, ec.EllipticCurvePrivateKey, rsa.RSAPrivateKey]
-):
-    """Get the OID for a composite key based on the ML-KEM name and the traditional key.
-
-    :param ml_kem_name:
-    :param trad_key:
-    :return:
-    """
-    oid_mapping = {
-        ("MLKEM768", rsa.RSAPrivateKey): {
-            2048: id_MLKEM768_RSA2048,
-            3072: id_MLKEM768_RSA3072,
-            4096: id_MLKEM768_RSA4096,
-        },
-        ("MLKEM768", ec.EllipticCurvePrivateKey): {
-            "secp384r1": id_MLKEM768_ECDH_P384,
-            "brainpoolP256r1": id_MLKEM768_ECDH_brainpoolP256r1,
-        },
-        ("MLKEM768", ed448.Ed448PrivateKey): id_MLKEM768_X25519,
-        ("MLKEM1024", ec.EllipticCurvePrivateKey): {
-            "secp384r1": id_MLKEM1024_ECDH_P384,
-            "brainpoolP384r1": id_MLKEM1024_ECDH_brainpoolP384r1,
-        },
-        ("MLKEM1024", ed448.Ed448PrivateKey): id_MLKEM1024_X448,
-    }
-
-    # Determine the traditional key type and retrieve the corresponding OID
-    if isinstance(trad_key, rsa.RSAPrivateKey):
-        key_size = trad_key.key_size
-        return oid_mapping.get((ml_kem_name, rsa.RSAPrivateKey), {}).get(key_size, None)
-    if isinstance(trad_key, ec.EllipticCurvePrivateKey):
-        curve_name = trad_key.curve.name
-        return oid_mapping.get((ml_kem_name, ec.EllipticCurvePrivateKey), {}).get(curve_name, None)
-    if isinstance(trad_key, ed448.Ed448PrivateKey):
-        return oid_mapping.get((ml_kem_name, ed448.Ed448PrivateKey), None)
-
-    raise ValueError("Unsupported traditional key type.")
-
-
-@not_keyword
-def get_rsa_pss_oid(hash_alg: str = "sha256") -> univ.ObjectIdentifier:
-    """Get the RSA-PSS key hash OID for the given hash algorithm.
-
-    :param hash_alg: The hash algorithm to map to the RSA-PSS signature OID.
-    Supported values: "shake128", "shake256". Default is "sha256".
-    (`id-RSASSA-PSS`)
-    :return: None or the matching ObjectIdentifier.
-    """
-    if hash_alg == "shake128":
-        alg_oid = rfc9481.id_RSASSA_PSS_SHAKE128
-    elif hash_alg == "shake256":
-        alg_oid = rfc9481.id_RSASSA_PSS_SHAKE256
-    else:
-        alg_oid = rfc9481.id_RSASSA_PSS
-
-    return alg_oid
-
-
-@not_keyword
-def get_rsa_key_hash_oid(hash_alg: str, use_pss: bool = False) -> Optional[univ.ObjectIdentifier]:
-    """Get the RSA key hash OID for the given hash algorithm.
-
-    :param hash_alg: str, the hash algorithm to map to the RSA signature OID.
-    Supported values: "sha256", "sha384", "sha512".
-    :return: None or the matching ObjectIdentifier.
-    """
-    if use_pss:
-        return get_rsa_pss_oid(hash_alg=hash_alg)
-
-    alg_oid = None
-    if hash_alg == "sha256":
-        alg_oid = rfc9481.sha256WithRSAEncryption
-    elif hash_alg == "sha384":
-        alg_oid = rfc9481.sha384WithRSAEncryption
-    elif hash_alg == "sha512":
-        alg_oid = rfc9481.sha512WithRSAEncryption
-
-    return alg_oid
-
-
-@not_keyword
-def get_ec_key_hash_oid(hash_alg: str):
-    """Get the ECDSA key hash OID for the given hash algorithm.
-
-    :param hash_alg: str, the hash algorithm to map to the ECDSA signature OID.
-    Supported values: "sha256", "sha384", "sha512".
-    :return: None or the matching ObjectIdentifier.
-    """
-    alg_oid = None
-    if hash_alg == "sha256":
-        alg_oid = rfc9481.ecdsa_with_SHA256
-    elif hash_alg == "sha384":
-        alg_oid = rfc9481.ecdsa_with_SHA384
-    elif hash_alg == "sha512":
-        alg_oid = rfc9481.ecdsa_with_SHA512
-    elif hash_alg == "shake128":
-        alg_oid = rfc9481.id_ecdsa_with_shake128
-    elif hash_alg == "shake256":
-        alg_oid = rfc9481.id_ecdsa_with_shake256
-
-    return alg_oid
-
-
 @not_keyword
 def get_alg_oid_from_key_hash(
-    key: PrivateKey, hash_alg: str, use_pss: bool = False, use_prehashed: bool = False
+    key: PrivateKey, hash_alg: Optional[str], use_rsa_pss: bool = False, use_pre_hash: bool = False
 ) -> univ.ObjectIdentifier:
     """Find the pyasn1 oid given the hazmat key instance and a name of a hashing algorithm.
 
@@ -287,8 +176,8 @@ def get_alg_oid_from_key_hash(
 
     :param key: The private key instance.
     :param hash_alg: Name of hashing algorithm, e.g., 'sha256'
-    :param use_pss: Flag to use RSA-PSS padding. Default is False.
-    :param use_prehashed: Flag to use prehashed key. Default is False.
+    :param use_rsa_pss: Flag to use RSA-PSS padding. Default is False.
+    :param use_pre_hash: Flag to use prehashed key. Default is False.
     :return: The OID of the signature algorithm.
     """
     if isinstance(key, dsa.DSAPrivateKey):
@@ -297,7 +186,7 @@ def get_alg_oid_from_key_hash(
             return id_dsa_with_sha256
         raise ValueError("DSA is only allowed with sha256!")
 
-    alg_oid = get_signing_oid(key, hash_alg, use_pss=use_pss)
+    alg_oid = get_signing_oid(key, hash_alg, use_pss=use_rsa_pss)
 
     if isinstance(key, PQSignaturePrivateKey) and alg_oid is None:
         hash_alg = key.check_hash_alg(hash_alg)
@@ -308,8 +197,10 @@ def get_alg_oid_from_key_hash(
 
         return PQ_NAME_2_OID[name]
 
-    # if isinstance(key, AbstractCompositeSigPrivateKey):
-    #    alg_oid = key.get_oid(used_padding=use_pss, prehash=use_prehashed)
+    from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
+
+    if isinstance(key, CompositeSig03PrivateKey):
+        alg_oid = key.get_oid(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
 
     if alg_oid is not None:
         return alg_oid
@@ -324,6 +215,7 @@ def compute_hash(alg_name: str, data: bytes) -> bytes:
     :param alg_name: The Name of algorithm, e.g., 'sha256', see HASH_NAME_OBJ_MAP.
     :param data: The buffer we want to hash.
     :return: The resulting hash.
+    :raises ValueError: If the specified hash algorithm is not supported.
     """
     hash_class = hash_name_to_instance(alg_name)
     digest = hashes.Hash(hash_class)
@@ -338,4 +230,20 @@ def may_return_oid_to_name(oid: univ.ObjectIdentifier) -> str:
     :param oid: The OID to perform the lookup for.
     :return: Either a human-readable name or the OID as dotted string.
     """
-    return ALL_KNOWN_PROTECTION_OIDS.get(oid, str(oid))
+    out = ALL_KNOWN_OIDS_2_NAME.get(oid)
+    if out is not None:
+        return out
+    return ALL_KNOWN_OIDS_2_NAME.get(str(oid), str(oid))
+
+
+@not_keyword
+def may_return_oid_by_name(name: str) -> univ.ObjectIdentifier:
+    """Check if the name is Known and then returns the OID, or the dotted string.
+
+    :param name: The name to perform the lookup for or a dotted string.
+    :return: The OID.
+    :raises KeyError: If the name is not found in the OID mapping.
+    """
+    if "." in name:
+        return univ.ObjectIdentifier(name)
+    return ALL_KNOWN_NAMES_2_OID[name]

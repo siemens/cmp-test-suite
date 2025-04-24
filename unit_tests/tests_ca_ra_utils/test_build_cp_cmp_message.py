@@ -4,15 +4,12 @@
 
 import unittest
 
-from pyasn1.codec.der import encoder, decoder
-from pyasn1_alt_modules import rfc9480
-
 from resources.ca_ra_utils import build_cp_cmp_message
 from resources.certutils import parse_certificate
-from resources.cmputils import parse_csr, build_cr_from_key, build_cr_from_csr, prepare_cert_request, \
-    prepare_cert_req_msg
+from resources.cmputils import build_cr_from_key, prepare_cert_req_msg
 from resources.keyutils import load_private_key_from_file
 from resources.utils import load_and_decode_pem_file
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
 class TestBuildCpCmpMessage(unittest.TestCase):
@@ -46,9 +43,7 @@ class TestBuildCpCmpMessage(unittest.TestCase):
 
         self.assertEqual(len(certs), 1)
 
-        der_data = encoder.encode(pki_message)
-        decoded_response, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        _ = de_and_encode_pkimessage(pki_message)
 
 
     def test_build_cp_cmp_message_2(self):
@@ -84,6 +79,4 @@ class TestBuildCpCmpMessage(unittest.TestCase):
 
         self.assertEqual(len(certs), 3)
 
-        der_data = encoder.encode(pki_message)
-        decoded_response, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        _ = de_and_encode_pkimessage(pki_message)
