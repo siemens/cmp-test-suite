@@ -234,11 +234,12 @@ and follow this structure:
     # the end.
     command = f"{command} {additional_args} tests/"
 
-    run_robot_command(command)
+    run_robot_command(command, args.verbose)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)5s - %(message)s")
 
+    version = get_version()
     log.info("Starting CMP test suite v%s", version)
     main()
