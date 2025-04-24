@@ -5,7 +5,7 @@
 import unittest
 from unittest.mock import patch
 
-import pq_logic.pq_compute_utils
+import resources.certutils
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import (
     add_csr_related_cert_request_attribute,
     get_related_cert_from_list,
@@ -88,7 +88,7 @@ class TestCertBindingMultiAuth(unittest.TestCase):
         with self.assertRaises(ValueError):
             get_related_cert_from_list(certs, cert_a)
 
-    @patch("pq_logic.hybrid_sig.cert_binding_for_multi_auth.load_certificate_from_uri")
+    @patch("resources.utils.load_certificate_from_uri")
     def test_cert_binding_multi_auth_build_csr(self, mock_load_cert):
         """
         GIVEN a certificate and a private key.
@@ -109,7 +109,7 @@ class TestCertBindingMultiAuth(unittest.TestCase):
 
         csr = add_csr_related_cert_request_attribute(csr, requester_cert=req_cert)
         csr = sign_csr(csr, self.csr_key, hash_alg="sha256")
-        pq_logic.pq_compute_utils.verify_csr_signature(csr)
+        resources.certutils.verify_csr_signature(csr)
 
 
         cert_a = validate_multi_auth_binding_csr(csr=csr, trustanchors="data/unittest",

@@ -6,6 +6,7 @@ import unittest
 
 from resources.checkutils import validate_sender_and_recipient_nonce
 from resources.cmputils import patch_recipnonce, patch_sendernonce
+from resources.exceptions import BadSenderNonce, BadRecipientNonce
 
 from unit_tests.utils_for_test import build_pkimessage
 
@@ -38,7 +39,7 @@ class TestValidateNonces(unittest.TestCase):
         sender_nonce = request_pki_message["header"]["senderNonce"].asOctets()
         response_pki_message = patch_recipnonce(response_pki_message, sender_nonce)
         response_pki_message = patch_sendernonce(response_pki_message, sender_nonce=b"" * 10)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadSenderNonce):
             validate_sender_and_recipient_nonce(response=response_pki_message, request=request_pki_message)
 
     def test_mismatched_sender_recipient_nonce(self):
@@ -53,7 +54,7 @@ class TestValidateNonces(unittest.TestCase):
         response_pki_message = build_pkimessage()
         modified = b"A" * 15 + b"B"
         response_pki_message = patch_recipnonce(response_pki_message, modified)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadRecipientNonce):
             validate_sender_and_recipient_nonce(response_pki_message, request_pki_message)
 
 

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-
+# pylint: disable=too-few-public-methods
 """ASN.1 structures for hybrid cryptographic schemes/mechanisms."""
 
 from pyasn1.type import char, constraint, namedtype, tag, univ
@@ -26,23 +26,10 @@ class CompositeKEMPublicKey(univ.SequenceOf):
     sizeSpec = univ.SequenceOf.sizeSpec + constraint.ValueSizeConstraint(2, 2)
 
 
-class XWingPublicKeyASN1(univ.OctetString):
-    """XWingPublicKeyASN1 is an OctetString."""
-
-    pass
-
-
 class CompositeCiphertextValue(univ.SequenceOf):
     """Define CompositeCiphertextValue as a SequenceOf OCTET STRING of size 2."""
 
     componentType = univ.OctetString()
-    subtypeSpec = constraint.ValueSizeConstraint(2, float("inf"))
-
-
-class CompositeKemParams(univ.SequenceOf):
-    """Define CompositeKemParams as a SequenceOf AlgorithmIdentifier of size 2."""
-
-    componentType = rfc5280.AlgorithmIdentifier()
     subtypeSpec = constraint.ValueSizeConstraint(2, float("inf"))
 
 
@@ -77,8 +64,6 @@ class UniformResourceIdentifier(char.IA5String):
 
     UniformResourceIdentifier ::= IA5String
     """
-
-    pass
 
 
 class AltSubPubKeyExt(univ.Sequence):
@@ -155,8 +140,6 @@ class OnRelatedCertificateDescriptor(rfc5280.AnotherName):
            value RelatedCertificateDescriptor
     """
 
-    pass
-
 
 # Used for the cert-binding-for-multiple-authentication method.
 
@@ -186,8 +169,6 @@ class RelatedCertificate(univ.OctetString):
     RelatedCertificate ::= OCTET STRING
     (hash of entire related certificate)
     """
-
-    pass
 
 
 # Used for the Chameleon Signature method.
@@ -271,8 +252,6 @@ class DeltaCertificateRequestSignatureValue(univ.BitString):
     DeltaCertificateRequestSignatureValue ::= BIT STRING
     """
 
-    pass
-
 
 # Catalyst X.509 Certificate Extension Classes.
 
@@ -280,16 +259,10 @@ class DeltaCertificateRequestSignatureValue(univ.BitString):
 class SubjectAltPublicKeyInfoExt(rfc5280.SubjectPublicKeyInfo):
     """Extension for alternative public key information."""
 
-    pass
-
 
 class AltSignatureAlgorithmExt(rfc5280.AlgorithmIdentifier):
     """Extension for alternative signature algorithm."""
 
-    pass
-
 
 class AltSignatureValueExt(univ.BitString):
     """Extension for alternative signature value."""
-
-    pass

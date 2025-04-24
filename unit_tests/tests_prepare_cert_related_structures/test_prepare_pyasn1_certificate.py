@@ -15,7 +15,7 @@ class TestPrepareCertTemplate(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.signing_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
-        cls.key2 = load_private_key_from_file("data/keys/private-key-ed25519.pem", key_type="ed25519")
+        cls.key2 = load_private_key_from_file("data/keys/private-key-ed25519.pem")
 
     def test_prepare_tbs_certificate(self):
         """

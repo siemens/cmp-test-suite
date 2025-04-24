@@ -13,6 +13,7 @@ from resources.certutils import load_public_key_from_cert, parse_certificate
 from resources.keyutils import generate_key, load_private_key_from_file
 from resources.cmputils import build_p10cr_from_csr, get_cert_from_pkimessage
 from resources.utils import load_and_decode_pem_file
+from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
 class TestBuildCpFromP10cr(unittest.TestCase):
@@ -44,9 +45,7 @@ class TestBuildCpFromP10cr(unittest.TestCase):
             ca_key=self.pq_mldsa,
             ca_cert=self.pq_cert,
         )
-        der_data = encoder.encode(response)
-        decoded_response, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
-        self.assertEqual(rest, b"")
+        decoded_response = de_and_encode_pkimessage(response)
         cert = get_cert_from_pkimessage(pki_message=decoded_response)
         public_key = load_public_key_from_cert(cert)
         self.assertEqual(

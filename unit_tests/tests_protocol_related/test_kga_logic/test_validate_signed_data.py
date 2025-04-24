@@ -22,7 +22,7 @@ class TestCheckSignedData(unittest.TestCase):
             utils.load_and_decode_pem_file("data/unittest/root_cert_ed25519.pem")
         )
         self.root_key = load_private_key_from_file(
-            "data/keys/private-key-ed25519.pem", key_type="ed25519"
+            "data/keys/private-key-ed25519.pem"
         )
 
         # Load KGA certificate and key
@@ -93,7 +93,7 @@ class TestCheckSignedData(unittest.TestCase):
             cert=self.kga_certificate,
             e_content=e_content_data,
             sig_hash_name="sha512",
-            negative_signature=True,
+            bad_sig=True,
         )
 
         with self.assertRaises(cryptography.exceptions.InvalidSignature):
@@ -113,7 +113,7 @@ class TestCheckSignedData(unittest.TestCase):
             e_content=e_content_data,
             digest_hash_name="sha384",
             sig_hash_name="sha512",
-            negative_signature=True,
+            bad_sig=True,
         )
 
         with self.assertRaises(ValueError):

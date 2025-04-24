@@ -45,7 +45,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: RobotFramework style check
-        run: robocop check
+        run: robocop check --ignore VAR04
     # We haven't settled on a style for RobotFramework yet, enforce check when consensus is reached
     continue-on-error: true
 
@@ -57,7 +57,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Spelling checker
-        run: codespell . --check-filenames --skip *.html,*.pem,*.xml,*venv*,*fips/*.py
+        run: codespell . --check-filenames --skip *.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py
 
   dependency_check:
     # See if newer versions of our Python dependencies are available. This does
@@ -105,7 +105,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Unit tests
-        run: PYTHONPATH=./resources python3 -m unittest discover -s unit_tests
+        run:  python3 -m unittest discover -s unit_tests
 
   type_check:
     runs-on: ubuntu-22.04
@@ -116,6 +116,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Pyright check
-        run: PYTHONPATH=./resources pyright ./resources
+        run: pyright
     # not enforced yet, but it is still executed to provide some info
     continue-on-error: true

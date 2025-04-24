@@ -10,9 +10,7 @@ from resources.ca_kga_logic import validate_not_local_key_gen
 from resources.certutils import parse_certificate
 from resources.cmputils import patch_extra_certs
 from resources.envdatautils import (
-    _prepare_pbkdf2,
-    prepare_pwri_structure,
-    wrap_key_password_based_key_management_technique,
+    wrap_key_password_based_key_management_technique, prepare_password_recipient_info,
 )
 from resources.keyutils import load_private_key_from_file
 from resources.protectionutils import protect_pkimessage
@@ -20,7 +18,7 @@ from resources.utils import load_and_decode_pem_file
 
 from unit_tests.prepare_ca_response import build_complete_envelope_data_ca_msg
 from unit_tests.utils_for_test import (
-    private_key_to_pkcs8,
+    private_key_to_pkcs8, _prepare_pbkdf2, de_and_encode_pkimessage, prepare_pwri_structure,
 )
 
 
@@ -37,17 +35,11 @@ class TestCAMessageWithEnvelopeDataPWRI(unittest.TestCase):
         # prepares a valid structure, because the password is the same the structure can
         # be prepared for all test cases.
         self.password = "TEST_PASSWORD"
-        encrypted_key = wrap_key_password_based_key_management_technique(
-            password=self.password,
-            key_to_wrap=self.content_encryption_key,
-            parameters=_prepare_pbkdf2()
-        )
-
-        pwri = prepare_pwri_structure(encrypted_key=encrypted_key)
+        pwri = prepare_password_recipient_info(password=self.password,
+                                        cek=self.content_encryption_key,
+                                        )
         recip_info = rfc5652.RecipientInfo()
         self.recip_info = recip_info.setComponentByName("pwri", pwri)
-
-
 
     def test_valid_envelope_data_with_pwri_for_ecc(self):
         """
@@ -75,6 +67,8 @@ class TestCAMessageWithEnvelopeDataPWRI(unittest.TestCase):
         ca_message = protect_pkimessage(ca_message, password=self.password, protection="password_based_mac")
         # extraCerts must contain the cert chain, of the newly issued cert chain.
         ca_message = patch_extra_certs(pki_message=ca_message, certs=[self.trusted_root])
+        ca_message = de_and_encode_pkimessage(ca_message)
+
         extracted_private_key = validate_not_local_key_gen(
             ca_message, trustanchors="data/unittest", password=self.password
         )
@@ -110,13 +104,12 @@ class TestCAMessageWithEnvelopeDataPWRI(unittest.TestCase):
 
         # MUST be protected by the same password.
         ca_message = protect_pkimessage(ca_message, password="TEST PASSWORD2", protection="password_based_mac")
+        ca_message = de_and_encode_pkimessage(ca_message)
 
         with self.assertRaises(ValueError):
              validate_not_local_key_gen(
                 ca_message, trustanchors="data/unittest", password=self.password
             )
-
-
 
 if __name__ == "__main__":
     unittest.main()

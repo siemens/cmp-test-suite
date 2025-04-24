@@ -96,7 +96,7 @@ class TestCAMessageWithEnvelopeDataKTRI(unittest.TestCase):
         ktri = prepare_key_transport_recipient_info(
             version=2,
             key_enc_alg_id=key_enc_alg_id,
-            cert=self.kga_certificate,
+            cmp_protection_cert=self.kga_certificate,
             encrypted_key=encrypted_key,
         )
 
