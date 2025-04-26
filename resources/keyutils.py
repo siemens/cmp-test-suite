@@ -58,10 +58,10 @@ from resources.oidutils import (
     PQ_SIG_PRE_HASH_OID_2_NAME,
     TRAD_STR_OID_TO_KEY_NAME,
 )
-from resources.typingutils import PrivateKey, PublicKey, SignKey, TradSignKey, TradVerifyKey, VerifyKey
+from resources.typingutils import PrivateKey, PublicKey, SignKey, TradPrivateKey, TradSignKey, TradVerifyKey, VerifyKey
 
 
-def save_key(key: PrivateKey, path: str, password: Union[None, str] = "11111"):  # noqa: D417 for RF docs
+def save_key(key: PrivateKey, path: str, password: Optional[str] = "11111", save_type: str = "seed"):  # noqa: D417 for RF docs
     """Save a private key to a file, optionally encrypting it with a passphrase.
 
     Arguments:
@@ -69,6 +69,7 @@ def save_key(key: PrivateKey, path: str, password: Union[None, str] = "11111"): 
         - `key`: The private key object to save.
         - `path`: The file path where the key will be saved.
         - `passphrase`: Optional passphrase to encrypt the key. If None, save without encryption. Defaults to "11111".
+        - `save_type`: How to save the pq-key. Can be "seed", "raw" or "seed_and_raw". Defaults to "seed".
 
     Notes:
     -----
@@ -92,11 +93,20 @@ def save_key(key: PrivateKey, path: str, password: Union[None, str] = "11111"): 
     if passphrase is not None:
         encrypt_algo = serialization.BestAvailableEncryption(passphrase)
 
-    data = key.private_bytes(
-        encoding=encoding_,
-        format=format_,
-        encryption_algorithm=encrypt_algo,  # type: ignore
-    )
+    if isinstance(key, TradPrivateKey):
+        data = key.private_bytes(
+            encoding=encoding_,
+            format=format_,
+            encryption_algorithm=encrypt_algo,  # type: ignore
+        )
+    else:
+        data = CombinedKeyFactory.save_private_key_one_asym_key(
+            private_key=key,
+            save_type=save_type,
+            password=password,
+            version=2,
+            encoding=encoding_,
+        )
 
     with open(path, "wb") as f:
         f.write(data)
@@ -415,7 +425,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
             else:
                 out = utils.decode_pem_string(out)
 
-            return CombinedKeyFactory.load_key_from_one_asym_key(data=out)
+            return CombinedKeyFactory.load_private_key_from_one_asym_key(data=out)
 
     pem_data = utils.load_and_decode_pem_file(filepath)
 
@@ -443,7 +453,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
         if password is not None:
             pem_data = load_enc_key(password=password, data=pem_data2)
 
-        return CombinedKeyFactory.load_key_from_one_asym_key(data=pem_data)
+        return CombinedKeyFactory.load_private_key_from_one_asym_key(data=pem_data)
 
     if password is not None:
         password = str_to_bytes(password)  # type: ignore

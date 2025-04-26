@@ -5,6 +5,7 @@
 
 """XWing key classes."""
 
+import copy
 import logging
 import os
 from typing import Optional, Tuple
@@ -173,14 +174,26 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
         :param data: The byte string to create the private key from.
         :return: The private key.
         """
+        if len(data) == 96:
+            pq_key = MLKEMPrivateKey.from_private_bytes(name="ml-kem-768", data=data[:64])
+            trad_key = x25519.X25519PrivateKey.from_private_bytes(data[64:])
+            return cls(pq_key, trad_key)
+
         if len(data) == 32:
             return cls.expand(data)
 
-        if len(data) != 2432:
-            raise ValueError("The private key must be 2400 bytes for ML-KEM and 32 bytes for X25519.")
-
-        trad_key = x25519.X25519PrivateKey.from_private_bytes(data[2400:])
-        pq_key = MLKEMPrivateKey.from_private_bytes(data[:2400], "ml-kem-768")
+        if len(data) != 2432 and len(data) != 2432 + 64:
+            raise ValueError(
+                f"The private key must be 2400 bytes for ML-KEM and 32 bytes for X25519.Got: {len(data)} bytes."
+            )
+        if len(data) == 2432 + 64:
+            trad_data = data[2464:]
+            pq_data = data[:2464]
+        else:
+            trad_data = data[2400:]
+            pq_data = data[:2400]
+        trad_key = x25519.X25519PrivateKey.from_private_bytes(trad_data)
+        pq_key = MLKEMPrivateKey.from_private_bytes(pq_data, "ml-kem-768")
         return cls(pq_key, trad_key)
 
     @staticmethod
@@ -243,7 +256,7 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
     @staticmethod
     def _from_seed(seed: bytes) -> Tuple[MLKEMPrivateKey, x25519.X25519PrivateKey, bytes]:
         """Create a new key from the given seed."""
-        seed_before = seed
+        seed_before = copy.copy(seed)
         if len(seed) == 32:
             shake = hashes.SHAKE256(digest_size=96)
             hasher = hashes.Hash(shake)

@@ -112,6 +112,12 @@ class CompositeKEM06PublicKey(CompositeKEMPublicKey):
         _length = len(mlkem_ct).to_bytes(4, byteorder="little", signed=False)
         return _length + mlkem_ct + trad_ct
 
+    def public_bytes_raw(self) -> bytes:
+        """Export the raw public key, starting with the length of the PQ key."""
+        _pq_export = self.pq_key.public_bytes_raw()
+        _length = len(_pq_export).to_bytes(4, byteorder="little", signed=False)
+        return _length + _pq_export + self.encode_trad_part()
+
 
 class CompositeKEM06PrivateKey(CompositeKEMPrivateKey):
     """A Composite KEM private key for the Composite KEM 06."""

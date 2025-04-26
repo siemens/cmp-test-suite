@@ -176,3 +176,32 @@ class GeneralInfoOID(enum.Enum):  #
             if item.value == oid:
                 return item.name
         raise ValueError(f"Unknown ObjectIdentifier: {oid}")
+
+
+class KeySaveType(enum.Enum):
+    """Defines the key save type to be either by seed or by key or first the seed and then the key."""
+
+    SEED = "seed"
+    RAW = "raw"
+    SEED_AND_RAW = "seed_and_raw"
+
+    @staticmethod
+    def get(value: Union[str, "KeySaveType"]) -> "KeySaveType":
+        """Return the KeySaveType enum member that matches the provided value (case-insensitive).
+
+        :param value: The name of the enum member to get.
+        :return: The corresponding enum member.
+        :raises ValueError: If the value does not match any enum member.
+        """
+        if isinstance(value, KeySaveType):
+            return value
+
+        value = value.replace("-", "_").lower()
+
+        try:
+            return KeySaveType(value)
+        except KeyError as err:
+            _options = [item.value for item in KeySaveType]
+            raise ValueError(
+                f"'{value}' is not a valid KeySaveType. Available values are: {', '.join(_options)}."
+            ) from err

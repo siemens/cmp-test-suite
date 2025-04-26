@@ -10,12 +10,14 @@ from typing import Optional, Union
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import dh, dsa, ec, ed448, ed25519, rsa, x448, x25519
 from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5958, rfc6664, rfc9481
 from robot.api.deco import not_keyword
 
+from pq_logic.keys.abstract_wrapper_keys import TradKEMPublicKey
 from resources.exceptions import BadAlg, BadAsn1Data
 from resources.oid_mapping import get_curve_instance, may_return_oid_to_name
-from resources.typingutils import PrivateKey
+from resources.typingutils import PrivateKey, PublicKey
 
 
 @not_keyword
@@ -169,6 +171,88 @@ def generate_trad_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417 fo
     return private_key
 
 
+def prepare_trad_private_key_one_asym_key(
+    private_key: PrivateKey,
+    public_key: Optional[PublicKey] = None,
+    version: int = 2,
+    include_public_key: Optional[bool] = None,
+) -> bytes:
+    """Prepare a OneAsymmetricKey object from a private key.
+
+    :param private_key: The private key to be converted.
+    :param public_key: The corresponding public key, if available.
+    :param version: The version of the OneAsymmetricKey. Default is 2.
+    :param include_public_key: If True, include the public key in the OneAsymmetricKey. Default is `None`.
+    :return: A OneAsymmetricKey object containing the private key.
+    """
+    private_key_bytes = private_key.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+    if int(rfc5958.Version(version)) == 0 and not include_public_key:
+        one_asym_key, _ = decoder.decode(private_key_bytes, asn1Spec=rfc4211.PrivateKeyInfo())
+        return private_key_bytes
+
+    one_asym_key, _ = decoder.decode(private_key_bytes, asn1Spec=rfc5958.OneAsymmetricKey())
+    one_asym_key["version"] = rfc5958.Version(version)
+
+    if not include_public_key:
+        return encoder.encode(one_asym_key)
+
+    public_key = public_key or private_key.public_key()
+
+    if isinstance(public_key, rsa.RSAPublicKey):
+        public_key_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.DER, format=serialization.PublicFormat.PKCS1
+        )
+    elif isinstance(public_key, ec.EllipticCurvePublicKey):
+        public_key_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.X962, format=serialization.PublicFormat.UncompressedPoint
+        )
+    elif isinstance(public_key, (ed25519.Ed25519PublicKey, ed448.Ed448PublicKey)):
+        public_key_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
+        )
+
+    elif isinstance(public_key, TradKEMPublicKey):
+        public_key_bytes = public_key.encode()
+
+    else:
+        raise TypeError(f"Unsupported public key type. Got: {type(public_key)}")
+
+    public_key_bit_str = (
+        rfc5958.PublicKey()
+        .fromOctetString(public_key_bytes)
+        .subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
+    )
+    one_asym_key["publicKey"] = public_key_bit_str
+    return encoder.encode(one_asym_key)
+
+
+def _load_raw_public_key(public_key_bytes: bytes, oid: univ.ObjectIdentifier) -> PublicKey:
+    """Load a raw public key from bytes.
+
+    :param public_key_bytes: The raw public key bytes.
+    :param oid: The OID of the public key algorithm.
+    :return: The loaded public key.
+    """
+    if oid == rfc9481.id_Ed25519:
+        return ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
+
+    if oid == rfc9481.id_Ed448:
+        return ed448.Ed448PublicKey.from_public_bytes(public_key_bytes)
+
+    if oid == rfc9481.id_X25519:
+        return x25519.X25519PublicKey.from_public_bytes(public_key_bytes)
+
+    if oid == rfc9481.id_X448:
+        return x448.X448PublicKey.from_public_bytes(public_key_bytes)
+
+    raise ValueError(f"Unsupported OID: {oid}")
+
+
 @not_keyword
 def parse_trad_key_from_one_asym_key(
     one_asym_key: Union[rfc5958.OneAsymmetricKey, bytes, rfc4211.PrivateKeyInfo],  # type: ignore
@@ -217,12 +301,11 @@ def parse_trad_key_from_one_asym_key(
     private_key = serialization.load_der_private_key(private_info, password=None)
 
     if oid == rfc9481.id_Ed25519:
-        # is saved as decoded OctetString, is done by the `cryprography` library.
-        # maybe verify if this is correct.
+        # Is saved as decoded OctetString, is done by the `cryprography` library.
         private_key = serialization.load_der_private_key(private_info, password=None)
         # key_bytes = decoder.decode(private_key_bytes, univ.OctetString())[0].asOctets()
         # private_key = ed25519.Ed25519PrivateKey.from_private_bytes(key_bytes)
-        public_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
+        public_key = _load_raw_public_key(public_key_bytes, oid)
 
     elif oid in [rfc9481.rsaEncryption]:
         # As per section 2 in RFC 5958: "Earlier versions of this
@@ -238,14 +321,14 @@ def parse_trad_key_from_one_asym_key(
             raise ValueError("The private key is not an Elliptic Curve private key.")
         public_key = ec.EllipticCurvePublicKey.from_encoded_point(data=public_key_bytes, curve=private_key.curve)
 
-    elif oid == rfc9481.id_X25519:
-        public_key = x25519.X25519PublicKey.from_public_bytes(public_key_bytes)
-
-    elif oid == rfc9481.id_X448:
-        public_key = x448.X448PublicKey.from_public_bytes(public_key_bytes)
-
-    elif oid == rfc9481.id_Ed448:
-        public_key = ed448.Ed448PublicKey.from_public_bytes(public_key_bytes)
+    elif oid in [
+        rfc9481.id_Ed25519,
+        rfc9481.id_Ed448,
+        rfc9481.id_X25519,
+        rfc9481.id_X448,
+    ]:
+        # The public key is saved as raw bytes, so we do not need to decode it.
+        public_key = _load_raw_public_key(public_key_bytes, oid)
 
     else:
         _name = may_return_oid_to_name(oid)
