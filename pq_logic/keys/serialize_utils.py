@@ -7,8 +7,8 @@
 import base64
 import textwrap
 
-from cryptography.hazmat.primitives._serialization import Encoding, PublicFormat
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5915, rfc8017

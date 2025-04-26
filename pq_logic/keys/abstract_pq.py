@@ -99,6 +99,7 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
             self._other_name,  # type: ignore
             secret_key=self._private_key_bytes,
         )
+
         self._public_key_bytes = self._public_key_bytes or self._sig_method.generate_keypair()  # type: ignore
         self._private_key_bytes = self._private_key_bytes or self._sig_method.export_secret_key()  # type: ignore
 

@@ -579,7 +579,7 @@ class HybridPrivateKey(WrapperPrivateKey, ABC):
         self._trad_key = trad_key
 
     @property
-    def pq_key(self) -> WrapperPrivateKey:
+    def pq_key(self) -> PQPrivateKey:
         """Get the private key of the post-quantum algorithm."""
         return self._pq_key
 
@@ -985,7 +985,9 @@ class AbstractHybridRawPrivateKey(HybridKEMPrivateKey, ABC):
 
     def _export_private_key(self) -> bytes:
         """Export the private key as bytes."""
-        return self.private_bytes_raw()
+        pq_data = self._pq_key.private_bytes_raw()
+        _length = len(pq_data)
+        return _length.to_bytes(4, "little") + pq_data + self._encode_trad_part()
 
     @classmethod
     @abstractmethod

@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 
 log = logging.getLogger("cmptest")
 
+
 def get_version():
     """Read the version from the VERSION file."""
     version_file = Path(__file__).parent.parent / "VERSION"
@@ -31,6 +32,7 @@ def get_version():
             return f.read().strip()
     except FileNotFoundError:
         return "unknown"
+
 
 def valid_url(arg):
     """Check whether the given URL is valid."""
