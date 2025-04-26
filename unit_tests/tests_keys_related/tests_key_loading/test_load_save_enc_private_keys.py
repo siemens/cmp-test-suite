@@ -67,7 +67,7 @@ class TestEncryptedKeys(unittest.TestCase):
                 pem_data = prepare_enc_key_pem(self.password, one_asym_key, key_name.encode("utf-8"))
                 decrypted_key = load_enc_key(password=self.password, data=pem_data)
                 self.assertEqual(decrypted_key, one_asym_key)
-                loaded_key = CombinedKeyFactory.load_key_from_one_asym_key(decrypted_key)
+                loaded_key = CombinedKeyFactory.load_private_key_from_one_asym_key(decrypted_key)
                 self.assertEqual(loaded_key.public_key(), private_key.public_key())
 
 
@@ -100,7 +100,7 @@ class TestEncryptedKeys(unittest.TestCase):
                 pem_data = prepare_enc_key_pem(self.password, one_asym_key, key_name.encode("utf-8"))
                 decrypted_key = load_enc_key(password=self.password, data=pem_data)
                 self.assertEqual(decrypted_key, one_asym_key)
-                loaded_key = CombinedKeyFactory.load_key_from_one_asym_key(decrypted_key)
+                loaded_key = CombinedKeyFactory.load_private_key_from_one_asym_key(decrypted_key)
                 self.assertEqual(loaded_key.public_key(), private_key.public_key())
 
 

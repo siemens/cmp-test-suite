@@ -1490,7 +1490,7 @@ def validate_asymmetric_key_package(
     if int(one_asym_key["version"]) != 1:
         raise ValueError("The version of the `OneAsymmetricKey` structure must be 1 (indicating v2)!")
 
-    private_key = CombinedKeyFactory.load_key_from_one_asym_key(one_asym_key, must_be_version_2=True)
+    private_key = CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key, must_be_version_2=True)
     return private_key
 
 
