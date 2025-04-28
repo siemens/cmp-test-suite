@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448P
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6664, rfc9480
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc5958, rfc6664, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
@@ -83,6 +83,7 @@ from resources.exceptions import (
 )
 from resources.oid_mapping import compute_hash, get_hash_from_oid, may_return_oid_to_name, sha_alg_name_to_oid
 from resources.oidutils import CURVE_OID_2_NAME, id_KemBasedMac
+from resources.suiteenums import InvalidOneAsymKeyType
 from resources.typingutils import (
     CAResponse,
     CertOrCerts,
@@ -568,15 +569,18 @@ def _generate_ec_key_from_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> ec.Elli
     return keyutils.generate_key("ecc", curve=curve_name)  # type: ignore
 
 
-def _get_kga_key_from_cert_template(cert_template: rfc4211.CertTemplate) -> PrivateKey:
+def _get_kga_key_from_cert_template(
+    cert_template: rfc4211.CertTemplate, default_key_type: Optional[str] = "rsa"
+) -> PrivateKey:
     """Get the key for the key generation action.
 
     :param cert_template: The certificate template to get the key from.
+    :param default_key_type: The default key type to generate. Defaults to "rsa".
     :return: The generated key.
     :raises BadCertTemplate: If the key OID is not recognized or if the public key value is set,
     but not the OID.
     """
-    alg_name = "rsa"
+    alg_name = default_key_type or "rsa"
 
     oid = cert_template["publicKey"]["algorithm"]["algorithm"]
 
@@ -600,6 +604,63 @@ def _get_kga_key_from_cert_template(cert_template: rfc4211.CertTemplate) -> Priv
 
 
 @not_keyword
+def prepare_invalid_kga_private_key(
+    invalid_operation: Optional[Union[str, InvalidOneAsymKeyType]],
+    new_private_key: PrivateKey,
+    key_export_version: Union[str, int] = "v2",
+    key_save_type: str = "raw",
+) -> rfc5958.OneAsymmetricKey:
+    """Prepare an invalid KGA private key."""
+    if isinstance(invalid_operation, str):
+        invalid_operation = InvalidOneAsymKeyType(invalid_operation)
+
+    version = key_export_version
+    invalid_pub_key = False
+    invalid_priv_key = False
+    missmatched_key = False
+    public_key = None
+
+    if invalid_operation is None:
+        return keyutils.prepare_one_asymmetric_key(
+            private_key=new_private_key,
+            version=version,
+            key_save_type=key_save_type,
+        )
+
+    if invalid_operation == InvalidOneAsymKeyType.INVALID_VERSION_V1:
+        version = "v1"
+        public_key = new_private_key.public_key()
+    elif invalid_operation == InvalidOneAsymKeyType.INVALID_VERSION:
+        version = "v1"
+
+    elif invalid_operation == InvalidOneAsymKeyType.INVALID_PUBLIC_KEY_SIZE:
+        invalid_pub_key = True
+
+    elif invalid_operation == InvalidOneAsymKeyType.INVALID_KEY_PAIR:
+        missmatched_key = True
+
+    elif invalid_operation == InvalidOneAsymKeyType.INVALID_KEY_PAIR_CERT:
+        pass
+
+    elif invalid_operation == InvalidOneAsymKeyType.INVALID_PRIVATE_KEY_SIZE:
+        invalid_priv_key = True
+
+    else:
+        raise ValueError(f"Invalid operation: {invalid_operation}")
+
+    return_value = keyutils.prepare_one_asymmetric_key(
+        private_key=new_private_key,
+        public_key=public_key,
+        version=version,
+        key_save_type=key_save_type,
+        invalid_pub_key=invalid_pub_key,
+        missmatched_key=missmatched_key,
+        invalid_priv_key=invalid_priv_key,
+    )
+    return return_value
+
+
+@not_keyword
 def prepare_private_key_for_kga(
     new_private_key: PrivateKey,
     request: PKIMessageTMP,
@@ -607,6 +668,8 @@ def prepare_private_key_for_kga(
     kga_cert_chain: List[rfc9480.CMPCertificate],
     password: Optional[Union[bytes, str]] = None,
     hash_alg: str = "sha256",
+    key_save_type: Optional[str] = "raw",
+    invalid_kga_operation: Optional[Union[str, InvalidOneAsymKeyType]] = None,
     **kwargs,
 ) -> rfc5652.EnvelopedData:
     """Prepare the private key for the key generation action.
@@ -617,6 +680,8 @@ def prepare_private_key_for_kga(
     :param kga_cert_chain: The KGA certificate chain to use. Defaults to `None`.
     :param hash_alg: The hash algorithm to use. Defaults to "sha256".
     :param kga_key: The key generation authority key to use. Defaults to `None`.
+    :param key_save_type: Whether to save the PQ-key as `seed`, `raw` or `seed_and_raw`. Defaults to `raw`.
+    :param invalid_kga_operation: The invalid operation to perform. Defaults to `None`.
     :raises BadCertTemplate: If the key OID is not recognized.
     """
     recip_type = _get_kga_recipient_type(pki_message=request)
@@ -635,11 +700,26 @@ def prepare_private_key_for_kga(
         **kwargs,
     )
 
+    version_num = kwargs.get("key_export_version", "v2")
+
+    if isinstance(version_num, str) and not version_num.isdigit():
+        if version_num not in ["v1", "v2"]:
+            raise ValueError("Invalid key export version. Must be `v1`, `v2`. Else please provide a integer.")
+    elif version_num.isdigit():
+        version_num = int(version_num)
+
+    private_keys = prepare_invalid_kga_private_key(
+        new_private_key=new_private_key,
+        invalid_operation=invalid_kga_operation,
+        key_save_type=key_save_type or "raw",
+        key_export_version=version_num,
+    )
+
     signed_data = envdatautils.prepare_signed_data(
         signing_key=kga_key,
         sig_hash_name=None,  # will automatically be set to the hash algorithm used for the KGA key.
         cert=kga_cert_chain[0],
-        private_keys=[new_private_key],
+        private_keys=private_keys,
         cert_chain=kga_cert_chain,
     )
     signed_data_der = encoder.encode(signed_data)
@@ -886,6 +966,33 @@ def _prepare_recip_info_for_kga_request(
 
     raise ValueError(f"Invalid recipient type for KGA: {recip_type}")
 
+def _get_kga_private_key_and_update_template(
+        cert_template: rfc4211.CertTemplate,
+        invalid_kga_operation: Optional[Union[str, InvalidOneAsymKeyType]] = None,
+        default_key_type: Optional[str] = "rsa",
+) -> Tuple[PrivateKey, rfc9480.CertTemplate]:
+    """Prepare the private key and subject public key info for KGA.
+
+    :param cert_template: The certificate template to get the key type from.
+    :param invalid_kga_operation: The invalid operation to perform. Defaults to `None`.
+    :param default_key_type: The default key type to generate. Defaults to "rsa".
+    :return: The generated private key and the updated certificate template.
+    """
+
+    private_key = _get_kga_key_from_cert_template(cert_template, default_key_type=default_key_type)
+    public_key = private_key.public_key()
+    if invalid_kga_operation is not None:
+        invalid_kga_operation = InvalidOneAsymKeyType.get(invalid_kga_operation)
+        if invalid_kga_operation == InvalidOneAsymKeyType.INVALID_KEY_PAIR_CERT:
+            public_key = keyutils.generate_different_public_key(private_key)
+
+    spki = subject_public_key_info_from_pubkey(public_key)
+    cert_template["publicKey"]["subjectPublicKey"] = spki["subjectPublicKey"]
+    if not cert_template["publicKey"]["algorithm"].isValue:
+        cert_template["publicKey"]["algorithm"] = spki["algorithm"]
+
+    return private_key, cert_template
+
 
 @not_keyword
 def prepare_cert_and_private_key_for_kga(
@@ -897,6 +1004,8 @@ def prepare_cert_and_private_key_for_kga(
     kga_key: Optional[SignKey],
     password: Optional[Union[bytes, str]] = None,
     cmp_protection_cert: Optional[rfc9480.CMPCertificate] = None,
+    key_save_type: Optional[str] = None,
+    invalid_kga_operation: Optional[Union[str, InvalidOneAsymKeyType]] = None,
     **kwargs,
 ) -> Tuple[rfc9480.CMPCertificate, rfc9480.EnvelopedData]:
     """Prepare a certified key pair for the key generation action.
@@ -909,7 +1018,9 @@ def prepare_cert_and_private_key_for_kga(
     :param kga_cert_chain: The KGA certificate chain to use. Defaults to `None`.
     :param kga_key: The key generation authority key to sign the signed data with. Defaults to `None`.
     :param cmp_protection_cert: The CMP protection certificate to use for `KARI`, `KTRI`
+    :param key_save_type: Whether to save the PQ-key as `seed`, `raw` or `seed_and_raw`. Defaults to `raw`.
     or the recipient cert for `KEMRI`. Defaults to `None`.
+    :param invalid_kga_operation: The invalid operation to perform. Defaults to `None`.
     :return: The populated `CertifiedKeyPair` structure.
     """
     prot_type = protectionutils.get_protection_type_from_pkimessage(request)
@@ -924,11 +1035,10 @@ def prepare_cert_and_private_key_for_kga(
     if kga_key is None:
         raise ValueError("`kga_key` must be provided.")
 
-    private_key = _get_kga_key_from_cert_template(cert_template)
-    spki = subject_public_key_info_from_pubkey(private_key.public_key())
-    cert_template["publicKey"]["subjectPublicKey"] = spki["subjectPublicKey"]
-    if not cert_template["publicKey"]["algorithm"].isValue:
-        cert_template["publicKey"]["algorithm"] = spki["algorithm"]
+    private_key, cert_template = _get_kga_private_key_and_update_template(
+        cert_template=cert_template,
+        invalid_kga_operation=invalid_kga_operation,
+    )
 
     cert = certbuildutils.build_cert_from_cert_template(
         cert_template=cert_template,
@@ -946,6 +1056,7 @@ def prepare_cert_and_private_key_for_kga(
         kga_cert_chain=kga_cert_chain,
         kga_key=kga_key,
         cmp_protection_cert=cmp_protection_cert,
+        key_save_type=key_save_type or "raw",
         **kwargs,
     )
     return cert, env_data
@@ -1392,7 +1503,7 @@ def validate_enc_key_with_id(
         raise BadAsn1Data("The `privateKey` field is missing in the `EncKeyWithID`.")
 
     der_data = encoder.encode(enc_key_with_id["privateKey"])
-    private_key = CombinedKeyFactory.load_key_from_one_asym_key(
+    private_key = CombinedKeyFactory.load_private_key_from_one_asym_key(
         data=der_data,
         must_be_version_2=False,
     )
@@ -2657,7 +2768,7 @@ def verify_encrypted_key_popo(
 
     data = encoder.encode(enc_key["privateKeyInfo"])
 
-    private_key = CombinedKeyFactory.load_key_from_one_asym_key(data, must_be_version_2=False)
+    private_key = CombinedKeyFactory.load_private_key_from_one_asym_key(data, must_be_version_2=False)
 
     if private_key.public_key() != client_public_key:
         raise ValueError("The decrypted key does not match the public key in the certificate request.")
@@ -4191,6 +4302,8 @@ def build_kga_cmp_response(  # noqa D417 undocumented-param
         - `ec_priv_key`: The private key to use for the KGA request. Defaults to `None`.
         - `cmp_protection_cert`: The certificate to use for CMP protection. Defaults to `None`.
         - `extensions`: The extensions to be added to the build certificate. Defaults to `None`.
+        - `key_save_type`: Whether to save the PQ-key as `seed`, `raw` or `seed_and_raw`. Defaults to `raw`.
+        - `default_key_type`: The default key type to generate for the client request. Defaults to `rsa`.
 
     Returns:
     -------
