@@ -589,4 +589,5 @@ Revoke Certificate
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}    status=accepted
+    Sleep    3
     RETURN    ${cert}    ${key}

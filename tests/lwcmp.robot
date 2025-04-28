@@ -1190,7 +1190,7 @@ CA MUST Reject IR With Too Large RSA Key In CertTemplate
     ...    the maximum allowed size and expect the CA to reject the request. The CA should reject any request with an
     ...    RSA key that is too large, marking the request with a badCertTemplate failinfo.
     [Tags]    certTemplate    config-dependent    ir    key    negative  sec-awareness
-    Skip If    not  ${LARGE_KEY_SIZE}    The `LARGE_KEY_SIZE` variable is not set, so this test is skipped.
+    Skip If  not ${LARGE_KEY_SIZE}    The `LARGE_KEY_SIZE` variable is not set, so this test is skipped.
     IF   ${LARGE_KEY_SIZE} < 18000
         ${bad_key}=    Load Private Key From File    ./data/keys/private-key-rsa-size-18000.pem
     ELSE
@@ -1348,6 +1348,7 @@ CA Must Reject Valid IR With Already Updated Certificate
     [Tags]    ir    negative    update
     ${is_set}=    Is Certificate And Key Set    ${UPDATED_CERT}    ${UPDATED_KEY}
     Skip If    not ${is_set}    The `UPDATED_CERT` and/or `UPDATED_KEY` variables are not set.
+    Sleep    3
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
     ${pki_message}=    Build IR From Key
     ...    signing_key=${key}
