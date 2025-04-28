@@ -320,7 +320,7 @@ Generate Default Key
     ...                Examples:
     ...                | ${private_key}=    Generate Default Key |
     [Tags]    key
-    VAR     ${params}    length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
+    VAR     &{params}    length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
     ${private_key}=    Generate Unique Key    algorithm=${DEFAULT_ALGORITHM}    &{params}
     RETURN    ${private_key}
 
