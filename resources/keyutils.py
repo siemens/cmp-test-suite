@@ -12,7 +12,7 @@ store them and retrieve them when needed.
 import os
 import re
 import textwrap
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Tuple, Union
 
 import pyasn1.error
 from cryptography.hazmat.primitives import serialization
@@ -832,6 +832,7 @@ def generate_different_public_key(  # noqa D417 undocumented-param
 
     return pub_key
 
+
 def _get_version_and_tmp_version(version: Union[int, str]) -> Tuple[int, int]:
     """Get the version and temporary version for the `OneAsymmetricKey` structure.
 
@@ -852,12 +853,13 @@ def _get_version_and_tmp_version(version: Union[int, str]) -> Tuple[int, int]:
 
     return version, tmp_version
 
+
 def _prepare_one_asym_key(
-        private_key_bytes: bytes,
+    private_key_bytes: bytes,
     public_key_bytes: Optional[bytes],
     version: int,
     alg_id: rfc5280.AlgorithmIdentifier,
-    ) -> rfc5958.OneAsymmetricKey:
+) -> rfc5958.OneAsymmetricKey:
     """Parse the `OneAsymmetricKey` structure from the given bytes.
 
     :param private_key_bytes: The private key bytes.
@@ -878,6 +880,7 @@ def _prepare_one_asym_key(
         )
         one_asym_key["publicKey"] = public_key_bit_str
     return one_asym_key
+
 
 @keyword(name="Prepare OneAsymmetricKey")
 def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
@@ -1076,6 +1079,7 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
         spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
 
     return spki
+
 
 def _prepare_spki_for_kga(
     key: Optional[Union[PrivateKey, PublicKey]] = None,
