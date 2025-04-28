@@ -16,6 +16,7 @@ from pyasn1.type import univ
 
 from pq_logic.keys.abstract_wrapper_keys import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey, MLKEMPublicKey
+from resources.exceptions import InvalidKeyData
 from resources.typingutils import ECDHPrivateKey
 
 ##################################
@@ -156,7 +157,7 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
         :raises ValueError: If the private key does not have a seed.
         """
         if self._seed is None:
-            raise ValueError("The private key does not have a seed.")
+            raise ValueError("The private key does not have a seed set.")
         return self._seed
 
     def get_oid(self) -> univ.ObjectIdentifier:
@@ -182,19 +183,29 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
         if len(data) == 32:
             return cls.expand(data)
 
-        if len(data) != 2432 and len(data) != 2432 + 64:
+        if len(data) != 2432 and len(data) != 2432 + 32:
             raise ValueError(
-                f"The private key must be 2400 bytes for ML-KEM and 32 bytes for X25519.Got: {len(data)} bytes."
+                f"The private key must be 2400 bytes for ML-KEM and 32 bytes for X25519."
+                f"Or the private key must be the 32 bytes seed and then raw key."
+                f"Got: {len(data)} bytes."
             )
-        if len(data) == 2432 + 64:
-            trad_data = data[2464:]
-            pq_data = data[:2464]
+        seed_key = None
+        if len(data) == 2432 + 32:
+            seed_key = cls(seed=data[:32])
+            trad_data = data[2432:]
+            pq_data = data[32:2432]
         else:
             trad_data = data[2400:]
             pq_data = data[:2400]
+
         trad_key = x25519.X25519PrivateKey.from_private_bytes(trad_data)
         pq_key = MLKEMPrivateKey.from_private_bytes(pq_data, "ml-kem-768")
-        return cls(pq_key, trad_key)
+        key = cls(pq_key, trad_key)
+        if seed_key is not None:
+            if seed_key.private_bytes_raw() != key.private_bytes_raw():
+                raise InvalidKeyData("The X-Wing private key does not match the seed.")
+            return seed_key
+        return key
 
     @staticmethod
     def kem_combiner(mlkem_ss: bytes, trad_ss: bytes, trad_ct: bytes, trad_pk: bytes) -> bytes:

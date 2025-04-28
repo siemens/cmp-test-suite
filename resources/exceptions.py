@@ -183,6 +183,10 @@ class InvalidKeyData(BadDataFormat):
     """Raised when the key cannot be loaded or decoded."""
 
 
+class MissMatchingKey(InvalidKeyData):
+    """Raised when the loaded public key does not match the private key."""
+
+
 # This Exception is not in the protocol but would be more accurate.
 class BadAsn1Data(CMPTestSuiteError):
     """Raised when the ASN.1 data has a remainder or ASN.1 data is incorrectly populated."""

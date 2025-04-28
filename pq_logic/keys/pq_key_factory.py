@@ -32,7 +32,7 @@ from pq_logic.keys.sig_keys import (
     SLHDSAPrivateKey,
     SLHDSAPublicKey,
 )
-from resources.exceptions import BadAlg, InvalidKeyData
+from resources.exceptions import BadAlg, InvalidKeyData, MissMatchingKey
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     FRODOKEM_NAME_2_OID,
@@ -68,7 +68,7 @@ def _load_and_validate(
         pub = key.public_key().from_public_bytes(data=public_bytes, name=name)
 
         if key.public_key() != pub:
-            raise ValueError(f"{name} public key does not match the private key.")
+            raise MissMatchingKey(f"{name} public key does not match the private key.")
 
     return private_cls(
         alg_name=name,
@@ -297,6 +297,10 @@ class PQKeyFactory:
 
         one_asym_key: rfc5958.OneAsymmetricKey
 
+        version = int(one_asym_key["version"])
+        if version not in [0, 1]:
+            raise InvalidKeyData(f"Invalid `OneAsymmetricKey` version: {version}. Supported versions are 0 and 1.")
+
         if must_be_version_2 and one_asym_key["version"] != 1:
             raise ValueError("The provided key must be a version 2 key.")
 
@@ -446,7 +450,8 @@ class PQKeyFactory:
         private_key: PQPrivateKey,
         public_key: Optional[PQPublicKey],
         include_pub_key: Optional[bool] = True,
-        version: int = 2,
+        version: int = 1,
+        unsafe: bool = False,
     ) -> Optional[bytes]:
         """May get the public key from the private key.
 
@@ -454,18 +459,22 @@ class PQKeyFactory:
         :param public_key: The public key to be included in the `OneAsymmetricKey` object. Defaults to `None`.
         :param include_pub_key: If True, include the public key in the `OneAsymmetricKey` object. Used
         for negative testing. Defaults to `None` will be determined by the version.
+        :param version: The version of the `OneAsymmetricKey` object. Defaults to `1`.
+        :param unsafe: The PQ liboqs keys do not allow one to derive the public key from the
+        private key, disables the exception call. Defaults to `False`.
+        :raise NotImplementedError: Version 1 is not supported for `liboqs` keys.
         """
         # safety check, because the public key cannot be generated from the private key
         # if the private key is a `liboqs` key.
         if not isinstance(private_key, (MLDSAPrivateKey, MLKEMPrivateKey, SLHDSAPrivateKey)):
-            if version == 1 or include_pub_key == False:  # noqa: E712
+            if version == 0 or include_pub_key == False and not unsafe:  # noqa: E712
                 raise NotImplementedError("The `OneAsymmetricKey` version 1 is not supported for a `liboqs` keys.")
 
         if include_pub_key:
             public_key = private_key.public_key()
             return public_key.public_bytes_raw()
 
-        if version == 2:
+        if version == 1:
             public_key = public_key or private_key.public_key()
             return public_key.public_bytes_raw()
 
@@ -475,14 +484,15 @@ class PQKeyFactory:
     def save_private_key_one_asym_key(
         private_key: PQPrivateKey,
         public_key: Optional[PQPublicKey] = None,
-        version: int = 2,
+        version: int = 1,
         save_type: Union[KeySaveType, str] = "seed",
         include_public_key: Optional[bool] = True,
+        unsafe: bool = False,
     ) -> bytes:
         """Load the private key into a `OneAsymmetricKey` object.
 
         :param private_key: The private key to be saved.
-        :param version: The version of the `OneAsymmetricKey` object. Defaults to 2.
+        :param version: The version of the `OneAsymmetricKey` object. Defaults to 1.
         :param include_public_key: If True, include the public key in the `OneAsymmetricKey` object.
         Used for negative testing. Defaults to `None` will be determined by the version.
         :param public_key: The public key to be included in the `OneAsymmetricKey` object. Defaults to `None`.
@@ -490,6 +500,10 @@ class PQKeyFactory:
             - "seed": Save the seed.
             - "raw": Save the private key.
             - "seed_and_raw": Save the seed and the private key.
+        :param unsafe: The PQ liboqs keys do not allow one to derive the public key from the
+        private key, disables the exception call. Defaults to `False`.
+        :return: The DER-encoded `OneAsymmetricKey` object.
+        :raises NotImplementedError: Version 1 is not supported for `liboqs` keys.
         """
         key_type = KeySaveType.get(save_type)
 
@@ -500,7 +514,13 @@ class PQKeyFactory:
         private_key_bytes = PQKeyFactory.save_keys_with_support_seed(private_key, key_type)
         one_asym_key["privateKey"] = private_key_bytes
 
-        public_key_bytes = PQKeyFactory._may_get_pub_key(private_key, public_key, include_public_key, version)
+        public_key_bytes = PQKeyFactory._may_get_pub_key(
+            private_key,
+            public_key,
+            include_public_key,
+            version=version,
+            unsafe=unsafe,
+        )
 
         if public_key_bytes is not None:
             public_key_asn1 = univ.BitString(hexValue=public_key_bytes.hex()).subtype(
