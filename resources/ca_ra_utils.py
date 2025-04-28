@@ -611,13 +611,14 @@ def prepare_invalid_kga_private_key(
     key_save_type: str = "raw",
 ) -> rfc5958.OneAsymmetricKey:
     """Prepare an invalid KGA private key."""
+
     if isinstance(invalid_operation, str):
         invalid_operation = InvalidOneAsymKeyType(invalid_operation)
 
     version = key_export_version
     invalid_pub_key = False
     invalid_priv_key = False
-    missmatched_key = False
+    miss_matched_key = False
     public_key = None
 
     if invalid_operation is None:
@@ -630,20 +631,21 @@ def prepare_invalid_kga_private_key(
     if invalid_operation == InvalidOneAsymKeyType.INVALID_VERSION_V1:
         version = "v1"
         public_key = new_private_key.public_key()
-    elif invalid_operation == InvalidOneAsymKeyType.INVALID_VERSION:
-        version = "v1"
 
     elif invalid_operation == InvalidOneAsymKeyType.INVALID_PUBLIC_KEY_SIZE:
         invalid_pub_key = True
 
     elif invalid_operation == InvalidOneAsymKeyType.INVALID_KEY_PAIR:
-        missmatched_key = True
+        miss_matched_key = True
 
     elif invalid_operation == InvalidOneAsymKeyType.INVALID_KEY_PAIR_CERT:
         pass
 
     elif invalid_operation == InvalidOneAsymKeyType.INVALID_PRIVATE_KEY_SIZE:
         invalid_priv_key = True
+
+    elif invalid_operation == InvalidOneAsymKeyType.INVALID_VERSION:
+        version = 4
 
     else:
         raise ValueError(f"Invalid operation: {invalid_operation}")
@@ -654,7 +656,7 @@ def prepare_invalid_kga_private_key(
         version=version,
         key_save_type=key_save_type,
         invalid_pub_key=invalid_pub_key,
-        missmatched_key=missmatched_key,
+        missmatched_key=miss_matched_key,
         invalid_priv_key=invalid_priv_key,
     )
     return return_value
@@ -966,10 +968,11 @@ def _prepare_recip_info_for_kga_request(
 
     raise ValueError(f"Invalid recipient type for KGA: {recip_type}")
 
+
 def _get_kga_private_key_and_update_template(
-        cert_template: rfc4211.CertTemplate,
-        invalid_kga_operation: Optional[Union[str, InvalidOneAsymKeyType]] = None,
-        default_key_type: Optional[str] = "rsa",
+    cert_template: rfc4211.CertTemplate,
+    invalid_kga_operation: Optional[Union[str, InvalidOneAsymKeyType]] = None,
+    default_key_type: Optional[str] = "rsa",
 ) -> Tuple[PrivateKey, rfc9480.CertTemplate]:
     """Prepare the private key and subject public key info for KGA.
 
@@ -978,7 +981,6 @@ def _get_kga_private_key_and_update_template(
     :param default_key_type: The default key type to generate. Defaults to "rsa".
     :return: The generated private key and the updated certificate template.
     """
-
     private_key = _get_kga_key_from_cert_template(cert_template, default_key_type=default_key_type)
     public_key = private_key.public_key()
     if invalid_kga_operation is not None:
@@ -1038,6 +1040,7 @@ def prepare_cert_and_private_key_for_kga(
     private_key, cert_template = _get_kga_private_key_and_update_template(
         cert_template=cert_template,
         invalid_kga_operation=invalid_kga_operation,
+        default_key_type=kwargs.get("default_key_type", "rsa"),
     )
 
     cert = certbuildutils.build_cert_from_cert_template(
@@ -1057,6 +1060,7 @@ def prepare_cert_and_private_key_for_kga(
         kga_key=kga_key,
         cmp_protection_cert=cmp_protection_cert,
         key_save_type=key_save_type or "raw",
+        invalid_kga_operation=invalid_kga_operation,
         **kwargs,
     )
     return cert, env_data
