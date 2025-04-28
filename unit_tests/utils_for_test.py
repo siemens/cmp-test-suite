@@ -33,8 +33,7 @@ from resources import certutils, cmputils, utils
 from resources.asn1_structures import PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.certbuildutils import build_certificate, build_csr, prepare_extensions, \
-    prepare_basic_constraints_extension, prepare_ski_extension, prepare_authority_key_identifier_extension, \
-    prepare_key_usage_extension
+    prepare_basic_constraints_extension, prepare_ski_extension, prepare_authority_key_identifier_extension
 from resources.certutils import parse_certificate, build_cert_chain_from_dir, \
     load_public_key_from_cert
 from resources.cmputils import parse_csr
@@ -638,11 +637,11 @@ def _build_time_independent_certs():
     _build_pq_certs()
 
 def _build_pq_certs():
-    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-65.pem")
-    mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
-    slh_dsa_key = load_private_key_from_file("data/keys/private-key-slh-dsa-sha2-256f.pem")
-    mcelliece_key = load_private_key_from_file("data/keys/private-key-mceliece-6960119.pem")
-    composite_sig_rsa = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
+    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-65-seed.pem")
+    mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
+    slh_dsa_key = load_private_key_from_file("data/keys/private-key-slh-dsa-sha2-256f-seed.pem")
+    mcelliece_key = load_private_key_from_file("data/keys/private-key-mceliece-6960119-raw.pem")
+    composite_sig_rsa = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem")
 
     cert, key = build_certificate(ca_key=mldsa_key, common_name="CN=PQ Root CA",
                                   is_ca=True, path_length=None, ski=True)
@@ -696,126 +695,153 @@ def compare_cert_chain(chain1: List[rfc9480.CMPCertificate], chain2: List[rfc948
 
 def setup_test_data():
     """Prepare test data by generating or loading certificate chains and dependent resources."""
-    _generate_pq_certs()
+    _generate_update_pq_certs()
     load_or_generate_cert_chain()
     _build_time_independent_certs()
 
 
 
 def _gen_and_save_keys():
-    # Generate ML-KEM keys
-    save_key(generate_key("ml-kem-1024"), "data/keys/private-key-ml-kem-1024.pem")
-    save_key(generate_key("ml-kem-768"), "data/keys/private-key-ml-kem-768.pem")
-    save_key(generate_key("ml-kem-512"), "data/keys/private-key-ml-kem-512.pem")
-    # Generate ML-DSA keys
-    save_key(generate_key("ml-dsa-44"), "data/keys/private-key-ml-dsa-44.pem")
-    save_key(generate_key("ml-dsa-65"), "data/keys/private-key-ml-dsa-65.pem")
-    save_key(generate_key("ml-dsa-87"), "data/keys/private-key-ml-dsa-87.pem")
-    # Generate SLH-DSA keys
-    save_key(generate_key("slh-dsa-sha2-256f"), "data/keys/private-key-slh-dsa-sha2-256f.pem")
-    save_key(generate_key("slh-dsa-sha2-192s"), "data/keys/private-key-slh-dsa-sha2-192s.pem")
-    save_key(generate_key("slh-dsa-sha2-192f"), "data/keys/private-key-slh-dsa-sha2-192f.pem")
-    save_key(generate_key("slh-dsa-sha2-128s"), "data/keys/private-key-slh-dsa-sha2-128s.pem")
-    save_key(generate_key("slh-dsa-sha2-128f"), "data/keys/private-key-slh-dsa-sha2-128f.pem")
-    save_key(generate_key("slh-dsa-shake-256s"), "data/keys/private-key-slh-dsa-shake-256s.pem")
-    save_key(generate_key("slh-dsa-shake-256f"), "data/keys/private-key-slh-dsa-shake-256f.pem")
-    save_key(generate_key("slh-dsa-shake-192s"), "data/keys/private-key-slh-dsa-shake-192s.pem")
-    save_key(generate_key("slh-dsa-shake-192f"), "data/keys/private-key-slh-dsa-shake-192f.pem")
-    save_key(generate_key("slh-dsa-shake-128s"), "data/keys/private-key-slh-dsa-shake-128s.pem")
-    save_key(generate_key("slh-dsa-shake-128f"), "data/keys/private-key-slh-dsa-shake-128f.pem")
+    # Generate ML-KEM and ML-DSA keys
+
+    keys = ["ml-kem-1024", "ml-kem-768", "ml-kem-512", "ml-dsa-44", "ml-dsa-65", "ml-dsa-87"]
+
+    for key_name in keys:
+        key = generate_key(key_name)
+        save_key(key,
+                 f"data/keys/private-key-{key_name}-seed.pem",
+                 save_type="seed",
+                 )
+        save_key(key,
+                 f"data/keys/private-key-{key_name}-raw.pem",
+                 save_type="raw",
+                 )
+
+    slh_names = ["slh-dsa-sha2-256f", "slh-dsa-sha2-192f", "slh-dsa-sha2-128f"]
+
+    for slh_name in slh_names:
+        slh_key = generate_key(slh_name)
+        save_key(slh_key,
+                 f"data/keys/private-key-{slh_name}-seed.pem",
+                 save_type="seed",
+                 )
+        save_key(slh_key,
+                 f"data/keys/private-key-{slh_name}-raw.pem",
+                 save_type="raw",
+                 )
+
+    # Generate other SLH-DSA keys
+    save_key(generate_key("slh-dsa-sha2-192s"),
+             "data/keys/private-key-slh-dsa-sha2-192s-seed.pem", save_type="seed",)
+    save_key(generate_key("slh-dsa-sha2-128s"),
+             "data/keys/private-key-slh-dsa-sha2-128s-seed.pem", save_type="seed",)
+    save_key(generate_key("slh-dsa-shake-256s"),
+             "data/keys/private-key-slh-dsa-shake-256s-seed.pem", save_type="seed",)
+    save_key(generate_key("slh-dsa-shake-256f"),
+             "data/keys/private-key-slh-dsa-shake-256f-seed.pem", save_type="seed",)
+    save_key(generate_key("slh-dsa-shake-192s"),
+             "data/keys/private-key-slh-dsa-shake-192s-seed.pem", save_type="seed",)
+    save_key(generate_key("slh-dsa-shake-192f"),
+             "data/keys/private-key-slh-dsa-shake-192f-seed.pem", save_type="seed",)
+    save_key(generate_key("slh-dsa-shake-128s"),
+             "data/keys/private-key-slh-dsa-shake-128s-seed.pem", save_type="seed",)
+    save_key(generate_key("slh-dsa-shake-128f"),
+             "data/keys/private-key-slh-dsa-shake-128f-seed.pem", save_type="seed",)
+    print("Finished generating PQ signature and ML-KEM keys")
 
 
 def _save_tmp_kem_pq_certs():
     """Generate and save a set of certificates for PQ algorithms.
 
-    Which have not finalized OIDs yet.
-    FrodoKEM, sntrup761 and McEliece.
+    Which have not finalized OIDs yet: FrodoKEM, sntrup761 and McEliece.
     """
 
-    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
     mldsa_cert = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
 
+    mc_eliece_keys = ["mceliece-348864", "mceliece-6960119", "mceliece-8192128"]
 
-    # Generate McEliece keys
-    save_key(generate_key("mceliece-348864"), "data/keys/private-key-mceliece-348864.pem")
-    save_key(generate_key("mceliece-6960119"), "data/keys/private-key-mceliece-6960119.pem")
-    save_key(generate_key("mceliece-8192128"), "data/keys/private-key-mceliece-8192128.pem")
-
+    for mc_eliece_name in mc_eliece_keys:
+        save_key(
+            generate_key(mc_eliece_name),
+            f"data/keys/private-key-{mc_eliece_name}-raw.pem",
+            save_type="raw",
+        )
 
     # Generate NTRU key:
-    save_key(generate_key("sntrup761"), "data/keys/private-key-sntrup761.pem")
+    save_key(generate_key("sntrup761"), "data/keys/private-key-sntrup761-raw.pem", save_type="raw")
 
-    cert, _ = build_certificate(private_key=load_private_key_from_file("data/keys/private-key-sntrup761.pem"),
+    cert, _ = build_certificate(private_key=load_private_key_from_file("data/keys/private-key-sntrup761-raw.pem"),
                                 ca_key=mldsa_key, common_name="CN=PQ KEM SNTRUP761", ca_cert=mldsa_cert)
 
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_cert_sntrup761.pem")
 
     # Generate FrodoKEM keys
     for x in FRODOKEM_NAME_2_OID:
-        save_key(generate_key(x), f"data/keys/private-key-{x}.pem")
+        save_key(generate_key(x), f"data/keys/private-key-{x}-raw.pem", save_type="raw")
 
-    frodo_cert, _ = build_certificate(private_key=load_private_key_from_file("data/keys/private-key-frodokem-976-aes.pem"),
+    frodo_cert, _ = build_certificate(private_key=load_private_key_from_file("data/keys/private-key-frodokem-976-aes-raw.pem"),
                                       ca_key=mldsa_key, common_name="CN=PQ KEM FrodoKEM 976 AES", ca_cert=mldsa_cert)
     write_cmp_certificate_to_pem(frodo_cert, "data/unittest/pq_cert_frodokem_976_aes.pem")
 
-
-
-    mc_key = load_private_key_from_file("data/keys/private-key-mceliece-6960119.pem", )
+    mc_key = load_private_key_from_file("data/keys/private-key-mceliece-6960119-raw.pem")
     mc_cert, _ = build_certificate(private_key=mc_key, ca_key=mldsa_key,
                                    common_name="CN=PQ KEM McEliece 6960119", ca_cert=mldsa_cert)
     write_cmp_certificate_to_pem(mc_cert, "data/unittest/pq_cert_mceliece_6960119.pem")
 
-def _generate_pq_certs():
-
+def _generate_update_pq_certs():
+    """Generate and save a set of certificates for PQ and Composite algorithms."""
     _gen_and_save_keys()
 
     # Generate PQ Signature certs:
-    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-65.pem", )
+    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-65-seed.pem")
     mldsa_cert, _ = build_certificate(private_key=mldsa_key, common_name="CN=PQ Root CA MLDSA 65")
     write_cmp_certificate_to_pem(mldsa_cert, "data/unittest/pq_root_ca_ml_dsa_65.pem")
 
-    mldsa_key44 = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+    mldsa_key44 = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
     mldsa_cert44, _ = build_certificate(private_key=mldsa_key44, common_name="CN=PQ Root CA MLDSA 44")
     write_cmp_certificate_to_pem(mldsa_cert44, "data/unittest/pq_root_ca_ml_dsa_44.pem")
 
-    slh_dsa_key = load_private_key_from_file("data/keys/private-key-slh-dsa-sha2-256f.pem", )
+    slh_dsa_key = load_private_key_from_file("data/keys/private-key-slh-dsa-sha2-256f-seed.pem")
     slh_dsa_cert, _ = build_certificate(private_key=slh_dsa_key, common_name="CN=PQ Root CA SLH-DSA-SHA2-256f")
     write_cmp_certificate_to_pem(slh_dsa_cert, "data/unittest/pq_root_ca_slh_dsa_sha2_256f.pem")
 
     # Generate PQ KEM certs:
-    mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem", )
+    mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
     mlkem_cert, _ = build_certificate(private_key=mlkem_key, ca_key=mldsa_key,
                                       common_name="CN=MLKEM 768", ca_cert=mldsa_cert)
     write_cmp_certificate_to_pem(mlkem_cert, "data/unittest/pq_cert_ml_kem_768.pem")
 
-
+    _save_tmp_kem_pq_certs()
     _save_composite_sig()
     _save_xwing()
     _save_composite_kem()
+    _generate_mock_ca_kem_certs()
 
 
 def _save_composite_sig():
     """Generate a self-signed Composite signature Key."""
     
     key = generate_key("composite-sig", trad_name="rsa", length="2048", pq_name="ml-dsa-44")
-    save_key(key, "data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
+    save_key(key, "data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem", save_type="raw")
     cert, _ = build_certificate(private_key=key, common_name="CN=Hybrid Root CompositeSig RSA2048 ML-DSA-44")
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_root_ca_composite_sig_rsa2048_ml_dsa_44.pem")
 
     key = generate_key("composite-sig", trad_name="ed448", pq_name="ml-dsa-87")
-    save_key(key, "data/keys/private-key-composite-sig-ed448-ml-dsa-87.pem")
+    save_key(key, "data/keys/private-key-composite-sig-ed448-ml-dsa-87-raw.pem", save_type="raw")
     cert, _ = build_certificate(private_key=key, common_name="CN=Hybrid Root CompositeSig ED448 ML-DSA-87")
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_root_ca_composite_sig_ed448_ml_dsa_87.pem")
 
 def _save_xwing():
     """Generate and save two X-Wing keys and certificates for testing."""
 
-    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
     ml_dsa_cert = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
 
     # xwing
     key = generate_key("xwing")
-    save_key(key, "data/keys/private-key-xwing.pem")
+    save_key(key, "data/keys/private-key-xwing-seed.pem", save_type="seed")
+    save_key(key, "data/keys/private-key-xwing-raw.pem", save_type="raw")
 
     xwing_key = key
     xwing_cert, _ = build_certificate(private_key=xwing_key, ca_key=mldsa_key, ca_cert=ml_dsa_cert,
@@ -823,24 +849,27 @@ def _save_xwing():
     write_cmp_certificate_to_pem(xwing_cert, "data/unittest/hybrid_cert_xwing.pem")
 
     key2 = generate_key("xwing")
-    save_key(key2, "data/keys/private-key-xwing-other.pem")
+    save_key(key2, "data/keys/private-key-xwing-other-seed.pem", save_type="seed")
+    save_key(key2, "data/keys/private-key-xwing-other-raw.pem", save_type="raw")
+
     xwing_cert2, _ = build_certificate(private_key=key2,
                                        ca_key=mldsa_key,
                                        ca_cert=ml_dsa_cert,
                                        common_name="CN=Hybrid Key X-Wing Other")
 
     write_cmp_certificate_to_pem(xwing_cert2, "data/unittest/hybrid_cert_xwing_other.pem")
+    print("Finished generating xwing keys and certificates.")
 
 
 def _save_composite_kem():
     """Generate and save Composite-KEM keys and certificates for testing."""
 
-    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+    mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
     ml_dsa_cert = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
 
 
     key = generate_key("composite-kem", trad_name="rsa", length="2048", pq_name="ml-kem-768")
-    save_key(key, "data/keys/private-key-composite-kem-ml-kem-768-rsa2048.pem")
+    save_key(key, "data/keys/private-key-composite-kem-ml-kem-768-rsa2048-raw.pem", save_type="raw")
     cert, _ = build_certificate(private_key=key,
                                 ca_key=mldsa_key,
                                 ca_cert=ml_dsa_cert,
@@ -850,14 +879,14 @@ def _save_composite_kem():
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_ml_kem_768_rsa2048.pem")
 
     key = generate_key("composite-kem", trad_name="x25519", pq_name="ml-kem-768")
-    save_key(key, "data/keys/private-key-composite-kem-ml-kem-1024-x25519.pem")
+    save_key(key, "data/keys/private-key-composite-kem-ml-kem-1024-x25519-raw.pem", save_type="raw")
     cert, _ = build_certificate(private_key=key,
                                 ca_key=mldsa_key,
                                 ca_cert=ml_dsa_cert,
                                 common_name="CN=Hybrid CompositeKEM ML-KEM-1024 x25519")
 
     key = generate_key("composite-kem", trad_name="x448", pq_name="ml-kem-1024")
-    save_key(key, "data/keys/private-key-composite-kem-ml-kem-1024-x448.pem")
+    save_key(key, "data/keys/private-key-composite-kem-ml-kem-1024-x448-raw.pem", save_type="raw")
     cert, _ = build_certificate(private_key=key,
                                 ca_key=mldsa_key,
                                 ca_cert=ml_dsa_cert,
@@ -866,7 +895,7 @@ def _save_composite_kem():
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_ml_kem_1024_x448.pem")
 
     key = generate_key(algorithm="composite-kem", pq_name="frodokem-976-aes",  trad_name="rsa", length="2048")
-    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-rsa2048.pem")
+    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-rsa2048-raw.pem", save_type="raw")
     cert, _ = build_certificate(private_key=key,
                                 ca_key=mldsa_key,
                                 ca_cert=ml_dsa_cert,
@@ -874,7 +903,7 @@ def _save_composite_kem():
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_frodokem_976_aes_rsa2048.pem")
 
     key = generate_key(algorithm="composite-kem", pq_name="frodokem-976-aes",  trad_name="x25519")
-    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-x25519.pem")
+    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-x25519-raw.pem", save_type="raw")
     cert, _ = build_certificate(private_key=key,
                                 ca_key=mldsa_key,
                                 ca_cert=ml_dsa_cert,
@@ -882,13 +911,14 @@ def _save_composite_kem():
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_frodokem_976_aes_x25519.pem")
 
     key = generate_key(algorithm="composite-kem", pq_name="frodokem-976-shake",  trad_name="x25519")
-    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-shake-x25519.pem")
+    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-shake-x25519-raw.pem", save_type="raw")
     cert, _ = build_certificate(private_key=key,
                                 ca_key=mldsa_key,
                                 ca_cert=ml_dsa_cert,
                                 common_name="CN=Hybrid CompositeKEM FrodoKEM-976-SHAKE x25519")
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_frodokem_976_shake_x25519.pem")
 
+    print("Finished generating composite keys and certificates.")
 
     # Chempat
 
@@ -959,21 +989,21 @@ def _save_migration_csrs():
     #
     ## ML-DSA CSR's
     key = load_private_key_from_file(
-        "data/keys/private-key-ml-dsa-44.pem"
+        "data/keys/private-key-ml-dsa-44-seed.pem"
     )
     csr = build_csr(signing_key=key, common_name="CN=PQ CSR ML-DSA-44")
     save_csr(csr, "data/csrs/pq_csr_ml_dsa_44.pem", save_as_pem=True, add_pretty_print=True)
 
     ## SLH-DSA CSR's
     key = load_private_key_from_file(
-        "data/keys/private-key-slh-dsa-shake-256s.pem"
+        "data/keys/private-key-slh-dsa-shake-256s-seed.pem"
     )
     csr = build_csr(signing_key=key, common_name="CN=PQ CSR SLH-DSA-SHAKE-256s")
     save_csr(csr, "data/csrs/pq_csr_slh_dsa_shake_256s.pem", save_as_pem=True, add_pretty_print=True)
 
     # Composite Signature CSR's
     key = load_private_key_from_file(
-        "data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem"
+        "data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem"
     )
     csr = build_csr(signing_key=key, common_name="CN=Hybrid CSR CompositeSig RSA2048 ML-DSA-44")
     save_csr(csr, "data/csrs/hybrid_csr_composite_sig_rsa2048_ml_dsa_44.pem", save_as_pem=True, add_pretty_print=True)
@@ -1044,7 +1074,7 @@ def update_cert_and_keys():
     Update the certificates/CRS and keys used for testing with new ones.
     """
     _gen_new_certs()
-    _generate_pq_certs()
+    _generate_update_pq_certs()
     _save_migration_csrs()
 
 
@@ -1377,7 +1407,7 @@ def _build_key_agreement_cert(
 def _generate_mock_ca_kem_certs():
     """Generate and save mock CA KEM certificates for testing."""
     ca_cert, ca_key = load_ca_cert_and_key()
-    mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
+    mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
 
     cert, _ = _build_key_encipherment_cert(
         ca_key=ca_key,
@@ -1389,7 +1419,7 @@ def _generate_mock_ca_kem_certs():
     print("Updated ML-KEM-768 CA Encr Cert")
 
     # Generate X-Wing
-    xwing_key = load_private_key_from_file("data/keys/private-key-xwing.pem")
+    xwing_key = load_private_key_from_file("data/keys/private-key-xwing-seed.pem")
     cert, _ = _build_key_encipherment_cert(
         ca_key=ca_key,
         ca_cert=ca_cert,
@@ -1399,7 +1429,7 @@ def _generate_mock_ca_kem_certs():
     write_cmp_certificate_to_pem(cert, "data/unittest/ca_encr_cert_xwing.pem")
     print("Updated X-Wing CA Encr Cert")
     # Generate FrodoKEM
-    frodo_key = load_private_key_from_file("data/keys/private-key-frodokem-976-aes.pem")
+    frodo_key = load_private_key_from_file("data/keys/private-key-frodokem-976-aes-raw.pem")
     cert, _ = _build_key_encipherment_cert(
         ca_key=ca_key,
         ca_cert=ca_cert,
@@ -1499,11 +1529,11 @@ def load_kem_certs():
     """Load the KEM certificate for Mock CA or testing."""
     data = {}
     cert = parse_certificate(load_and_decode_pem_file("data/unittest/ca_encr_cert_ml_kem_768.pem"))
-    ml_kem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
+    ml_kem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
     data["kem_cert"] = cert
     data["kem_key"] = ml_kem_key
     cert = parse_certificate(load_and_decode_pem_file("data/unittest/ca_encr_cert_xwing.pem"))
-    xwing_key = load_private_key_from_file("data/keys/private-key-xwing.pem")
+    xwing_key = load_private_key_from_file("data/keys/private-key-xwing-seed.pem")
     data["hybrid_kem_cert"] = cert
     data["hybrid_kem_key"] = xwing_key
     return data
