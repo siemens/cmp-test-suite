@@ -1488,7 +1488,10 @@ def validate_asymmetric_key_package(
 
     one_asym_key: rfc5958.OneAsymmetricKey = asym_key_package[int(key_index)]
     if int(one_asym_key["version"]) != 1:
-        raise ValueError("The version of the `OneAsymmetricKey` structure must be 1 (indicating v2)!")
+        raise ValueError(
+            "The version of the `OneAsymmetricKey` structure must be 1 (indicating v2)!. "
+            f"But Got: {int(one_asym_key['version'])}"
+        )
 
     private_key = CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key, must_be_version_2=True)
     return private_key
