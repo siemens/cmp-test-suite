@@ -62,7 +62,7 @@ class XWingPublicKey(AbstractHybridRawPublicKey):
         :return: The public key.
         """
         if len(data) != 1216:
-            raise ValueError(f"Public key must be 1216 bytes in total, but got: {len(data)}.")
+            raise InvalidKeyData(f"Public key must be 1216 bytes in total, but got: {len(data)}.")
 
         pk_M = data[:1184]
         pk_X = data[1184:]

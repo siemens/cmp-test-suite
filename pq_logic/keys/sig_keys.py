@@ -162,7 +162,9 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         """
         key = MLDSAPublicKey(alg_name=name, public_key=data)
         if key.key_size != len(data):
-            raise ValueError(f"Invalid public key size. Expected: {key.key_size}, got: {len(data)}")
+            raise InvalidKeyData(
+                f"Invalid public key size, for: {key.name}. Expected: {key.key_size}, got: {len(data)}"
+            )
         return key
 
 

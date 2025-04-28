@@ -216,7 +216,7 @@ class InvalidOneAsymKeyType(enum.Enum):
     INVALID_KEY_PAIR_CERT = "invalid_key_pair_cert"  # Valid key pair, but the public key inside the certificate is
     # different.
     INVALID_VERSION_V1 = "invalid_version_v1"  # Version set to 1, but the public key is present.
-    INVALID_VERSION = "invalid_version"  # Invalid version number 3.
+    INVALID_VERSION = "invalid_version"  # Invalid version number 4.
 
     @staticmethod
     def get(value: Union[str, "InvalidOneAsymKeyType"]) -> "InvalidOneAsymKeyType":
