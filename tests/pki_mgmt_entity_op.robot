@@ -76,7 +76,7 @@ Generate Protected Nested PKIMessage
     IF   ${id_length} < 4
         ${ids}=    Generate Unique Byte Values    length=4
     END
-    VAR   ${protected_irs}
+    VAR   @{protected_irs}
     FOR    ${i}    IN RANGE    3
         ${protected_ir}=    Default Build Inner IR Message    transaction_id=${ids}[${i}]
         ...                 sender_nonce=${nonces}[${i}]
