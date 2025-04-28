@@ -822,6 +822,9 @@ class CombinedKeyFactory:
         private_bytes = one_asym_key["privateKey"].asOctets()
         public_bytes = one_asym_key["publicKey"].asOctets() if one_asym_key["publicKey"].isValue else None
 
+        if version == 0 and public_bytes is not None:
+            raise InvalidKeyData("Version 0 keys do not support public key data.")
+
         if oid in COMPOSITE_SIG04_OID_2_NAME:
             _name = COMPOSITE_SIG04_OID_2_NAME[oid]
             return CombinedKeyFactory._decode_composite_sig04_key(_name, private_bytes, public_bytes)
