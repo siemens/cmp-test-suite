@@ -16,7 +16,6 @@ from typing import List, Optional, Union
 
 import pyasn1.error
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.hazmat.primitives.asymmetric import (
     dh,
     dsa,
@@ -31,6 +30,7 @@ from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pyasn1.codec.der import decoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5958, rfc6402, rfc6664, rfc9480
@@ -901,6 +901,8 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         unsafe=True,
     )
     one_asym_key, _ = decoder.decode(der_data, asn1Spec=rfc5958.OneAsymmetricKey())
+    one_asym_key_out = rfc5958.OneAsymmetricKey()
+
 
     public_key_bytes = None if not one_asym_key["publicKey"].isValue else one_asym_key["publicKey"].asOctets()
     private_key_bytes = one_asym_key["privateKey"].asOctets()
@@ -910,11 +912,11 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     else:
         version = int(version)
 
-    one_asym_key["version"] = univ.Integer(version)
+    one_asym_key_out["version"] = univ.Integer(version)
+    one_asym_key_out["privateKeyAlgorithm"] = one_asym_key["privateKeyAlgorithm"]
 
     if invalid_priv_key:
         private_key_bytes = private_key_bytes + os.urandom(16)
-        one_asym_key["privateKey"] = univ.OctetString(private_key_bytes)
 
     if invalid_pub_key:
         public_key_bytes = b"" if public_key_bytes is None else public_key_bytes
@@ -926,9 +928,10 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
             .fromOctetString(public_key_bytes)
             .subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
         )
-        one_asym_key["publicKey"] = public_key_bit_str
+        one_asym_key_out["publicKey"] = public_key_bit_str
 
-    return one_asym_key
+    one_asym_key_out["privateKey"] = univ.OctetString(private_key_bytes)
+    return one_asym_key_out
 
 
 @keyword(name="Prepare SubjectPublicKeyInfo")
