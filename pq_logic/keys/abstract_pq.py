@@ -12,6 +12,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 
 from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, KEMPublicKey, PQPrivateKey, PQPublicKey
+from resources.exceptions import InvalidKeyData
 
 if importlib.util.find_spec("oqs") is not None:
     import oqs  # pylint: disable=import-error
@@ -190,7 +191,7 @@ class PQKEMPublicKey(PQPublicKey, KEMPublicKey, ABC):
         """Create a new public key object from the provided bytes."""
         key = cls(alg_name=name, public_key=data)
         if key.key_size != len(data):
-            raise ValueError(f"Invalid key size expected {key.key_size}, but got: {len(data)}")
+            raise InvalidKeyData(f"Invalid key size expected {key.key_size}, but got: {len(data)}")
         return key
 
     def encaps(self) -> Tuple[bytes, bytes]:

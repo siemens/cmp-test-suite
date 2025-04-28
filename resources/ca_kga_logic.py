@@ -53,7 +53,7 @@ from resources import (
 from resources.asn1_structures import PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes
-from resources.exceptions import BadAlg, BadAsn1Data
+from resources.exceptions import BadAlg, BadAsn1Data, MissMatchingKey, InvalidKeyData
 from resources.oid_mapping import (
     compute_hash,
     get_hash_from_oid,
@@ -303,7 +303,7 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
     issued_cert_pub_key = certutils.load_public_key_from_cert(issued_cert)
 
     if issued_cert_pub_key != private_key.public_key():
-        raise ValueError("The extracted private key does not match the public key in the newly issued certificate.")
+        raise MissMatchingKey("The extracted private key does not match the public key in the newly issued certificate.")
 
     return private_key
 
@@ -1488,7 +1488,7 @@ def validate_asymmetric_key_package(
 
     one_asym_key: rfc5958.OneAsymmetricKey = asym_key_package[int(key_index)]
     if int(one_asym_key["version"]) != 1:
-        raise ValueError(
+        raise InvalidKeyData(
             "The version of the `OneAsymmetricKey` structure must be 1 (indicating v2)!. "
             f"But Got: {int(one_asym_key['version'])}"
         )
