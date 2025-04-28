@@ -5,19 +5,26 @@
 """Generate cryptographic keys using the `cryptography` library."""
 
 import logging
-from typing import Optional, Union
+import os
+from typing import Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import dh, dsa, ec, ed448, ed25519, rsa, x448, x25519
+from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5958, rfc6664, rfc9481, rfc5915, rfc8017
+from pyasn1_alt_modules import rfc3279, rfc4211, rfc5480, rfc5915, rfc5958, rfc6664, rfc8017, rfc9480, rfc9481
 from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_wrapper_keys import TradKEMPublicKey
+from pq_logic.keys.serialize_utils import ecc_private_key_to_bytes, prepare_ec_private_key, prepare_rsa_private_key
+from resources.asn1utils import try_decode_pyasn1
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MissMatchingKey
 from resources.oid_mapping import get_curve_instance, may_return_oid_to_name
-from resources.typingutils import PrivateKey, PublicKey
+from resources.typingutils import PrivateKey, PublicKey, TradPrivateKey
 
 
 @not_keyword
@@ -89,7 +96,7 @@ def _generate_dh_private_key(
 
 
 @not_keyword
-def generate_trad_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417 for RF docs
+def generate_trad_key(algorithm="rsa", **params) -> TradPrivateKey:  # noqa: D417 for RF docs
     """Generate a `cryptography` key based on the specified algorithm.
 
     This function supports generating keys for various cryptographic algorithms including RSA, DSA, ECDSA, ECDH,
@@ -171,37 +178,67 @@ def generate_trad_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417 fo
     return private_key
 
 
-def prepare_trad_private_key_one_asym_key(
-    private_key: PrivateKey,
-    public_key: Optional[PublicKey] = None,
+def _prepare_one_asym_key(
+    private_key_bytes: bytes,
+    alg_id: rfc9480.AlgorithmIdentifier,
     version: int = 1,
-    include_public_key: Optional[bool] = None,
-) -> bytes:
+    public_key_bytes: Optional[bytes] = None,
+) -> rfc5958.OneAsymmetricKey:
     """Prepare a OneAsymmetricKey object from a private key.
 
-    :param private_key: The private key to be converted.
-    :param public_key: The corresponding public key, if available.
+    :param private_key_bytes: The private key bytes to be included in the OneAsymmetricKey.
+    :param alg_id: The private key algorithm identifier.
     :param version: The version of the OneAsymmetricKey. Defaults to `1`.
-    :param include_public_key: If True, include the public key in the OneAsymmetricKey. Default is `None`.
+    :param public_key_bytes: The corresponding public key bytes, if available.
     :return: A OneAsymmetricKey object containing the private key.
     """
-    private_key_bytes = private_key.private_bytes(
+    one_asym_key = rfc5958.OneAsymmetricKey()
+    one_asym_key["version"] = univ.Integer(version)
+    one_asym_key["privateKeyAlgorithm"] = alg_id
+    one_asym_key["privateKey"] = private_key_bytes
+
+    if public_key_bytes:
+        one_asym_key["publicKey"] = (
+            rfc5958.PublicKey()
+            .fromOctetString(public_key_bytes)
+            .subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
+        )
+
+    return one_asym_key
+
+
+def _prepare_private_key_bytes(
+    private_key: PrivateKey, invalid_private_key: bool
+) -> Tuple[bytes, rfc9480.AlgorithmIdentifier]:
+    """Prepare the private key bytes for encoding.
+
+    :param private_key: The private key to be converted.
+    :return: The private key bytes in DER format and the algorithm identifier.
+    """
+    der_data = private_key.private_bytes(
         encoding=serialization.Encoding.DER,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption(),
     )
 
-    if version == 0 and not include_public_key:
-        one_asym_key, _ = decoder.decode(private_key_bytes, asn1Spec=rfc4211.PrivateKeyInfo())
-        return private_key_bytes
+    one_asym_key, _ = decoder.decode(der_data, rfc5958.OneAsymmetricKey())
+    alg_id = one_asym_key["privateKeyAlgorithm"]
 
-    one_asym_key, _ = decoder.decode(private_key_bytes, asn1Spec=rfc5958.OneAsymmetricKey())
-    one_asym_key["version"] = univ.Integer(version)
+    if invalid_private_key and not isinstance(private_key, (rsa.RSAPrivateKey, ec.EllipticCurvePrivateKey)):
+        raise ValueError("Invalid private key is only supported for RSA and ECC keys.")
+    if invalid_private_key:
+        return prepare_invalid_trad_private_key(private_key), alg_id
+    return one_asym_key["privateKey"].asOctets(), alg_id
 
-    if include_public_key is False:  # noqa: E711
-        return encoder.encode(one_asym_key)
 
-    public_key = public_key or private_key.public_key()
+def _get_public_key_bytes(public_key: PublicKey) -> Optional[bytes]:
+    """Get the public key bytes from a public key object.
+
+    :param public_key: The public key to be converted.
+    :return: The public key bytes in DER format or None if the public key is not provided.
+    """
+    if public_key is None:
+        return None
 
     if isinstance(public_key, rsa.RSAPublicKey):
         public_key_bytes = public_key.public_bytes(
@@ -224,13 +261,133 @@ def prepare_trad_private_key_one_asym_key(
     else:
         raise TypeError(f"Unsupported public key type. Got: {type(public_key)}")
 
-    public_key_bit_str = (
-        rfc5958.PublicKey()
-        .fromOctetString(public_key_bytes)
-        .subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
+    return public_key_bytes
+
+
+def prepare_trad_private_key_one_asym_key(
+    private_key: PrivateKey,
+    public_key: Optional[PublicKey] = None,
+    version: int = 1,
+    include_public_key: Optional[bool] = None,
+    invalid_private_key: bool = False,
+) -> bytes:
+    """Prepare a OneAsymmetricKey object from a private key.
+
+    :param private_key: The private key to be converted.
+    :param public_key: The corresponding public key, if available.
+    :param version: The version of the OneAsymmetricKey. Defaults to `1`.
+    :param include_public_key: If True, include the public key in the OneAsymmetricKey. Default is `None`.
+    :param invalid_private_key: If True, the private key is invalid, only supported for RSA and ECC keys.
+    Defaults to `False`.
+    :return: A OneAsymmetricKey object containing the private key.
+    """
+    private_key_bytes, alg_id = _prepare_private_key_bytes(private_key, invalid_private_key)
+
+    if version == 0 and not include_public_key or include_public_key is False:  # noqa: E711
+        return encoder.encode(
+            _prepare_one_asym_key(
+                private_key_bytes=private_key_bytes,
+                version=version,
+                alg_id=alg_id,
+            )
+        )
+
+    public_key = public_key or private_key.public_key()
+    public_key_bytes = _get_public_key_bytes(public_key)
+
+    one_asym_key = _prepare_one_asym_key(
+        private_key_bytes=private_key_bytes,
+        version=version,
+        alg_id=alg_id,
+        public_key_bytes=public_key_bytes,
     )
-    one_asym_key["publicKey"] = public_key_bit_str
     return encoder.encode(one_asym_key)
+
+
+def _load_raw_public_key(trad_name: Union[str, univ.ObjectIdentifier], public_key_bytes: bytes) -> PublicKey:
+    """Load a raw public key from bytes.
+
+    :param trad_name: The name of the traditional key or the OID.
+    :param public_key_bytes: The raw public key bytes.
+    :return: The loaded public key.
+    :raises ValueError: If the key is not supported.
+    """
+    if trad_name in ["x25519", rfc9481.id_X25519]:
+        if len(public_key_bytes) != 32:
+            raise InvalidKeyData(
+                f"The X25519 public key has an invalid length. Expected: 32 bytes, got: {len(public_key_bytes)} bytes."
+            )
+        return x25519.X25519PublicKey.from_public_bytes(public_key_bytes)
+    if trad_name in ["x448", rfc9481.id_X448]:
+        if len(public_key_bytes) != 56:
+            raise InvalidKeyData(
+                f"The X448 public key has an invalid length. Expected: 56 bytes, got: {len(public_key_bytes)} bytes."
+            )
+        return x448.X448PublicKey.from_public_bytes(public_key_bytes)
+    if trad_name in ["ed25519", rfc9481.id_Ed25519]:
+        if len(public_key_bytes) != 32:
+            raise InvalidKeyData(
+                f"The Ed25519 public key has an invalid length. Expected: 32 bytes, got: {len(public_key_bytes)} bytes."
+            )
+        return ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
+    if trad_name in ["ed448", rfc9481.id_Ed448]:
+        if len(public_key_bytes) != 57:
+            raise InvalidKeyData(
+                f"The Ed448 public key has an invalid length. Expected: 57 bytes, got: {len(public_key_bytes)} bytes."
+            )
+        return ed448.Ed448PublicKey.from_public_bytes(public_key_bytes)
+
+    raise ValueError(f"Unsupported raw algorithm name: {trad_name}")
+
+
+@not_keyword
+def load_trad_public_key(
+    trad_name: Union[str, univ.ObjectIdentifier], data: bytes, curve_name: Optional[str] = None
+) -> PublicKey:
+    """Load a traditional public key from bytes.
+
+    Supported algorithms are RSA, ECDSA, ECDH, Ed25519, Ed448, X25519, and X448.
+
+    :param trad_name: The traditional public key name or the OID.
+    :param data: The data to load.
+    :param curve_name: The name of the curve for ECC keys.
+    :return: The loaded public key.
+    :raises NotImplementedError: If the algorithm is not implemented.
+    :raises ValueError: If the curve name is not provided for ECC keys or not supported.
+    :raises InvalidKeyData: If the key data is invalid.
+    """
+    if trad_name in ["rsa", rfc9481.rsaEncryption]:
+        _, rest = try_decode_pyasn1(data, rfc3279.RSAPublicKey())
+        if rest:
+            raise InvalidKeyData("The `RSAPublicKey` data contains trailing data.")
+        try:
+            return serialization.load_der_public_key(data)
+        except ValueError as e:
+            raise InvalidKeyData("The `RSAPublicKey` cannot be loaded.") from e
+    if trad_name in ["ecdsa", "ecdh", "ec", rfc6664.id_ecPublicKey, rfc5480.id_ecMQV, rfc5480.id_ecDH]:
+        if curve_name is None:
+            raise ValueError("Curve name is required for ECC keys.")
+        curve_instance = get_curve_instance(curve_name=curve_name)
+        try:
+            return ec.EllipticCurvePublicKey.from_encoded_point(curve_instance, data)
+        except ValueError as e:
+            raise InvalidKeyData("The `ECPoint` data is not a valid point on the curve.") from e
+
+    _oids = [
+        "x25519",
+        rfc9481.id_X25519,
+        "ed25519",
+        rfc9481.id_Ed25519,
+        "x448",
+        rfc9481.id_X448,
+        "ed448",
+        rfc9481.id_Ed448,
+    ]
+
+    if trad_name in _oids:
+        return _load_raw_public_key(public_key_bytes=data, trad_name=trad_name)
+
+    raise NotImplementedError(f"The algorithm name: {trad_name} is not implemented to be loaded.")
 
 
 def _load_public_key(public_key_bytes: bytes, oid: univ.ObjectIdentifier) -> PublicKey:
@@ -241,30 +398,11 @@ def _load_public_key(public_key_bytes: bytes, oid: univ.ObjectIdentifier) -> Pub
     :return: The loaded public key.
     """
     try:
-        if oid == rfc9481.id_Ed25519:
-            return ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
-
-        if oid == rfc9481.id_Ed448:
-            return ed448.Ed448PublicKey.from_public_bytes(public_key_bytes)
-
-        if oid == rfc9481.id_X25519:
-            return x25519.X25519PublicKey.from_public_bytes(public_key_bytes)
-
-        if oid == rfc9481.id_X448:
-            return x448.X448PublicKey.from_public_bytes(public_key_bytes)
-
-        if oid == rfc9481.rsaEncryption:
-            # As per section 2 in RFC 5958: "Earlier versions of this
-            # specification [RFC5208] did not specify a particular encoding rule
-            # set, but generators SHOULD use DER [X.690] and receivers MUST support
-            # BER [X.690], which also includes DER [X.690]".
-            # RSAPublicKey DER-encoded.
-            return serialization.load_der_public_key(public_key_bytes)
+        return load_trad_public_key(oid, public_key_bytes)
     except ValueError as e:
         _name = may_return_oid_to_name(oid)
         raise InvalidKeyData(f"Failed to load {_name} public key.") from e
 
-    raise ValueError(f"Unsupported OID: {oid}")
 
 def _load_private_key(one_asym_key: rfc5958.OneAsymmetricKey) -> PrivateKey:
     """Load a private key from a OneAsymmetricKey object.
@@ -284,14 +422,11 @@ def _load_private_key(one_asym_key: rfc5958.OneAsymmetricKey) -> PrivateKey:
 
     private_info = encoder.encode(tmp)
 
-    if oid in [rfc9481.id_Ed25519, rfc9481.id_Ed448,
-        rfc9481.id_X25519, rfc9481.id_X448]:
-
-        data, rest = decoder.decode(private_key_bytes, univ.OctetString())
+    if oid in [rfc9481.id_Ed25519, rfc9481.id_Ed448, rfc9481.id_X25519, rfc9481.id_X448]:
+        _, rest = decoder.decode(private_key_bytes, univ.OctetString())
         if rest:
             name = may_return_oid_to_name(oid)
             raise InvalidKeyData(f"The {name.upper()} private key contained trailing data")
-
 
     if oid == rfc6664.id_ecPublicKey:
         _, rest = decoder.decode(private_key_bytes, asn1Spec=rfc5915.ECPrivateKey())
@@ -305,15 +440,33 @@ def _load_private_key(one_asym_key: rfc5958.OneAsymmetricKey) -> PrivateKey:
 
     try:
         return serialization.load_der_private_key(private_info, password=None)
-    except ValueError:
-        raise InvalidKeyData("The private key is not a valid DER-encoded private key.")
+    except ValueError as e:
+        raise InvalidKeyData("The private key is not a valid DER-encoded private key.") from e
+    except BaseException as e:
+        raise InvalidKeyData("The ECC private key is not a valid private key.") from e
+
+
+def _check_one_asym_key_version(
+    one_asym_key: rfc5958.OneAsymmetricKey,
+    must_be_version_2: bool = True,
+) -> None:
+    """Validate the version of a OneAsymmetricKey object."""
+    version = int(one_asym_key["version"])
+    if version not in [0, 1]:
+        raise InvalidKeyData(f"Unsupported `OneAsymmetricKey` version: {version}. Supported versions are 0 and 1.")
+
+    if version != 1 and must_be_version_2:
+        raise ValueError("The provided key is not a version 2 key.")
+
+    if version == 0 and one_asym_key["publicKey"].isValue:
+        raise InvalidKeyData("The `OneAsymmetricKey` version is 0, but a public key is present.")
+
 
 @not_keyword
 def parse_trad_key_from_one_asym_key(
-    one_asym_key: Union[rfc5958.OneAsymmetricKey, bytes,
-    rfc4211.PrivateKeyInfo],  # type: ignore
+    one_asym_key: Union[rfc5958.OneAsymmetricKey, bytes, rfc4211.PrivateKeyInfo],  # type: ignore
     must_be_version_2: bool = True,
-):
+) -> TradPrivateKey:
     """Parse a traditional key from a single asymmetric key.
 
     :param one_asym_key: The OneAsymmetricKey object or its DER-encoded bytes.
@@ -327,20 +480,16 @@ def parse_trad_key_from_one_asym_key(
         one_asym_key: rfc5958.OneAsymmetricKey
         if rest:
             raise BadAsn1Data("OneAsymmetricKey")
+    elif isinstance(one_asym_key, rfc4211.PrivateKeyInfo):
+        one_asym_key = rfc5958.OneAsymmetricKey()
+        one_asym_key["privateKeyAlgorithm"] = one_asym_key["privateKeyAlgorithm"]
+        one_asym_key["privateKey"] = one_asym_key["privateKey"]
+        one_asym_key["version"] = 0
 
-    version = int(one_asym_key["version"])
+    _check_one_asym_key_version(one_asym_key, must_be_version_2)
+
     private_key_bytes = one_asym_key["privateKey"].asOctets()
-
-    if version not in [0, 1]:
-        raise InvalidKeyData(f"Unsupported `OneAsymmetricKey` version: {version}. Supported versions are 0 and 1.")
-
-    if version != 1 and must_be_version_2:
-        raise ValueError("The provided key is not a version 2 key.")
-
     public_key_bytes = one_asym_key["publicKey"].asOctets() if one_asym_key["publicKey"].isValue else None
-
-    if version == 0 and public_key_bytes is not None:
-        raise InvalidKeyData("The `OneAsymmetricKey` version is 0, but a public key is present.")
 
     oid = one_asym_key["privateKeyAlgorithm"]["algorithm"]
 
@@ -355,23 +504,13 @@ def parse_trad_key_from_one_asym_key(
     logging.info("The Private Key size is: %d bytes", private_len)
     logging.info("The Public Key size is: %d bytes", pub_len)
 
-    if oid == rfc9481.id_Ed25519:
-        # Is saved as decoded OctetString, is done by the `cryprography` library.
-        # private_key = serialization.load_der_private_key(private_info, password=None)
-        # key_bytes = decoder.decode(private_key_bytes, univ.OctetString())[0].asOctets()
-        # private_key = ed25519.Ed25519PrivateKey.from_private_bytes(key_bytes)
-        public_key = _load_public_key(public_key_bytes, oid)
-
-    elif oid in [rfc9481.rsaEncryption]:
-        public_key = _load_public_key(public_key_bytes, oid)
-
-    elif oid == rfc6664.id_ecPublicKey:
+    if oid == rfc6664.id_ecPublicKey:
         if not isinstance(private_key, ec.EllipticCurvePrivateKey):
             raise ValueError("The private key is not an Elliptic Curve private key.")
         try:
             public_key = serialization.load_der_public_key(public_key_bytes)
         except ValueError:
-             public_key = ec.EllipticCurvePublicKey.from_encoded_point(data=public_key_bytes, curve=private_key.curve)
+            public_key = ec.EllipticCurvePublicKey.from_encoded_point(data=public_key_bytes, curve=private_key.curve)
 
         if not isinstance(public_key, ec.EllipticCurvePublicKey):
             raise InvalidKeyData("The public key is not an Elliptic Curve public key.")
@@ -394,3 +533,47 @@ def parse_trad_key_from_one_asym_key(
         raise MissMatchingKey("The public key does not match the private key.")
 
     return private_key
+
+
+def prepare_invalid_trad_private_key(
+    private_key: TradPrivateKey,
+    invalid_key: bool = False,
+    invalid_key_size: bool = False,
+) -> bytes:
+    """Prepare an invalid traditional private key.
+
+    This function creates an invalid version of the provided traditional private key.
+    The invalid key can be used for testing validation and error handling.
+
+    :param private_key: The private key to be prepared to be invalid.
+    :param invalid_key: If True, the key will be invalid.
+    :param invalid_key_size: If True, the key size will be invalid.
+    :return: The DER-encoded invalid private key bytes.
+    :raises ValueError: If the private key type is not supported.
+    """
+    if not invalid_key and not invalid_key_size:
+        raise ValueError("Either `invalid_key` or `invalid_key_size` must be True.")
+
+    if isinstance(private_key, rsa.RSAPrivateKey):
+        if invalid_key_size:
+            return prepare_rsa_private_key(private_key, add_to_n=False) + os.urandom(10)
+        return prepare_rsa_private_key(private_key, add_to_n=True)
+
+    if isinstance(private_key, ec.EllipticCurvePrivateKey):
+        if invalid_key_size:
+            ec_private_key = prepare_ec_private_key(private_key)
+            # Add random data to the end of the DER-encoded key
+            der_data = encoder.encode(ec_private_key) + os.urandom(10)
+            return der_data
+        # creates a too big private key for the curve.
+        neg_ecc_key_bytes = ecc_private_key_to_bytes(private_key) + os.urandom(10)
+        ec_private_key = prepare_ec_private_key(private_key, private_key_bytes=neg_ecc_key_bytes)
+        return encoder.encode(ec_private_key)
+
+    if isinstance(private_key, (X25519PrivateKey, X448PrivateKey, Ed25519PrivateKey, Ed448PrivateKey)):
+        if invalid_key:
+            raise ValueError(f"Invalid key is not supported for this type of key.Got: {type(private_key)}")
+
+        return private_key.private_bytes_raw() + os.urandom(10)
+
+    raise ValueError(f"Unsupported private key type: {type(private_key)}")

@@ -26,10 +26,10 @@ from cryptography.hazmat.primitives.asymmetric import (
     x448,
     x25519,
 )
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pyasn1.codec.der import decoder
 from pyasn1.type import tag, univ
@@ -64,7 +64,9 @@ from resources.oidutils import (
 from resources.typingutils import PrivateKey, PublicKey, SignKey, TradPrivateKey, TradSignKey, TradVerifyKey, VerifyKey
 
 
-def save_key(key: PrivateKey, path: str, password: Optional[str] = "11111", save_type: str = "seed"):  # noqa: D417 for RF docs
+def save_key(  # noqa: D417 undocumented-params
+    key: PrivateKey, path: str, password: Optional[str] = "11111", save_type: str = "seed"
+):
     """Save a private key to a file, optionally encrypting it with a passphrase.
 
     Arguments:
@@ -831,17 +833,16 @@ def generate_different_public_key(  # noqa D417 undocumented-param
     return pub_key
 
 
-keyword(name="Prepare OneAsymmetricKey")
-
-
+@keyword(name="Prepare OneAsymmetricKey")
 def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     private_key: PrivateKey,
     public_key: Optional[PublicKey] = None,
     version: Union[int, str] = "v2",
     key_save_type: str = "seed",
-    invalid_priv_key: bool = False,
-    invalid_pub_key: bool = False,
+    invalid_priv_key_size: bool = False,
+    invalid_pub_key_size: bool = False,
     missmatched_key: bool = False,
+    invalid_private_key: bool = False,
     include_public_key: Optional[bool] = None,
 ) -> rfc5958.OneAsymmetricKey:
     """Create a `OneAsymmetricKey` structure for a private key.
@@ -855,9 +856,13 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         - `private_key`: The private key to wrap.
         - `version`: The version of the structure. Defaults to "v2".
         - `key_save_type`: The type of key to save. Can be "seed", "raw", or "seed_and_raw". Defaults to "raw".
-        - `invalid_priv_key`: If True, the private key is invalid. Defaults to False.
-        - `invalid_pub_key`: If True, the public key is invalid. Defaults to False.
+        - `invalid_private_key`: If True, the private key is invalid. Only supported for RSA and ECC-keys. \
+        Defaults to `False`.
+        - `invalid_pub_key_size`: If True, the public key size is invalid. Defaults to `False`.
         - `missmatched_key`: If True, the public key does not match the private key. Defaults to `False`.
+        - `invalid_priv_key_size`: If True, the private key size is invalid. Defaults to `False`.
+        - `include_public_key`: If True, the public key is included in the structure. If `None`, \
+        it is set to `False` for version 0. Defaults to `None`.
 
     Returns:
     -------
@@ -866,6 +871,9 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     Raises:
     ------
         - `ValueError`: If the private key is not of a supported type or if the version is invalid.
+        - `ValueError`: If the key_save_type is invalid.
+        - `ValueError`: If the string version is not supported.
+        - `ValueError`: If the private key is invalid and the invalid_priv_key option is set.
 
     Examples:
     --------
@@ -873,6 +881,9 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     | ${one_asym_key}= | Prepare OneAsymmetricKey | ${private_key} | key_save_type="seed" |
 
     """
+    if not isinstance(private_key, (RSAPrivateKey, EllipticCurvePrivateKey)) and invalid_private_key:
+        raise ValueError("The invalid private key option is only supported for `RSA`- and `ECC`-keys.")
+
     if missmatched_key:
         public_key = generate_different_public_key(key_source=private_key)
 
@@ -897,12 +908,12 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         save_type=key_save_type,
         version=tmp_version,
         include_public_key=include_public_key,
+        invalid_private_key=invalid_private_key,
         password=None,
         unsafe=True,
     )
     one_asym_key, _ = decoder.decode(der_data, asn1Spec=rfc5958.OneAsymmetricKey())
     one_asym_key_out = rfc5958.OneAsymmetricKey()
-
 
     public_key_bytes = None if not one_asym_key["publicKey"].isValue else one_asym_key["publicKey"].asOctets()
     private_key_bytes = one_asym_key["privateKey"].asOctets()
@@ -915,10 +926,10 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     one_asym_key_out["version"] = univ.Integer(version)
     one_asym_key_out["privateKeyAlgorithm"] = one_asym_key["privateKeyAlgorithm"]
 
-    if invalid_priv_key:
+    if invalid_priv_key_size:
         private_key_bytes = private_key_bytes + os.urandom(16)
 
-    if invalid_pub_key:
+    if invalid_pub_key_size:
         public_key_bytes = b"" if public_key_bytes is None else public_key_bytes
         public_key_bytes = public_key_bytes + os.urandom(16)
 
@@ -1084,8 +1095,6 @@ def _prepare_spki_for_kga(
             spki["algorithm"]["parameters"]["namedCurve"] = rfc5480.secp256r1
 
     if key_name is not None:
-        from pq_logic.combined_factory import CombinedKeyFactory
-
         key = CombinedKeyFactory.generate_key(key_name).public_key()
         spki_tmp = subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_pss, use_pre_hash=use_pre_hash)
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]

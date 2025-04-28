@@ -184,7 +184,7 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
             return cls.expand(data)
 
         if len(data) != 2432 and len(data) != 2432 + 32:
-            raise ValueError(
+            raise InvalidKeyData(
                 f"The private key must be 2400 bytes for ML-KEM and 32 bytes for X25519."
                 f"Or the private key must be the 32 bytes seed and then raw key."
                 f"Got: {len(data)} bytes."

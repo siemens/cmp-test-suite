@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import pyasn1
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, x448, x25519
+from cryptography.hazmat.primitives.asymmetric import ec, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
@@ -58,6 +58,7 @@ from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey, RSADecapKey, RSAEncapKey
 from pq_logic.keys.trad_key_factory import (
     generate_trad_key,
+    load_trad_public_key,
     parse_trad_key_from_one_asym_key,
     prepare_trad_private_key_one_asym_key,
 )
@@ -241,25 +242,7 @@ class CombinedKeyFactory:
         :return: The loaded public key.
         :raises ValueError: If the traditional key type is not supported or cannot be loaded.
         """
-        if trad_name == "rsa":
-            return serialization.load_der_public_key(public_key)
-        if trad_name in ["ecdsa", "ecdh", "ec"]:
-            if curve is None:
-                raise ValueError("Curve name is required for ECDSA/ECDH keys.")
-            curve_instance = get_curve_instance(curve_name=curve)
-            return ec.EllipticCurvePublicKey.from_encoded_point(curve_instance, public_key)
-        if trad_name == "x25519":
-            return x25519.X25519PublicKey.from_public_bytes(public_key)
-        if trad_name == "x448":
-            return x448.X448PublicKey.from_public_bytes(public_key)
-
-        if trad_name == "ed25519":
-            return ed25519.Ed25519PublicKey.from_public_bytes(public_key)
-
-        if trad_name == "ed448":
-            return ed448.Ed448PublicKey.from_public_bytes(public_key)
-
-        raise ValueError(f"Unsupported traditional public key type: {trad_name}")
+        return load_trad_public_key(trad_name=trad_name, data=public_key, curve_name=curve)
 
     @staticmethod
     def _get_pq_and_trad_names(
@@ -637,7 +620,7 @@ class CombinedKeyFactory:
 
         pq_key_data, rest = decoder.decode(pq_data, asn1Spec=univ.OctetString())
         if rest:
-            raise BadAsn1Data("CompositeKEM06PrivateKey")
+            raise InvalidKeyData("The PQ-key for the `CompositeKEM06PrivateKey` had remaining data.")
 
         pq_key_data = pq_key_data.asOctets()
 
@@ -647,7 +630,7 @@ class CombinedKeyFactory:
         trad_data, rest = decoder.decode(trad_data, univ.OctetString())
 
         if rest:
-            raise BadAsn1Data("CompositeKEM06PrivateKey")
+            raise InvalidKeyData("The traditional key for the `CompositeKEM06PrivateKey` had remaining data.")
 
         trad_data = trad_data.asOctets()
         trad_key = CombinedKeyFactory._load_trad_private_key_from_data(trad_name, trad_data=trad_data, curve=curve)
@@ -661,7 +644,7 @@ class CombinedKeyFactory:
             pub_key = CombinedKeyFactory._load_hybrid_public_key(name, public_key)
 
             if pub_key != private_key.public_key():
-                raise InvalidKeyData("The composite KEM-06 public key does not match the private key.")
+                raise MissMatchingKey("The composite KEM-06 public key does not match the private key.")
 
         return private_key
 
@@ -756,7 +739,7 @@ class CombinedKeyFactory:
         trad_data, rest = decoder.decode(trad_data, univ.OctetString())
 
         if rest:
-            raise BadAsn1Data("CompositeSig04PrivateKey")
+            raise InvalidKeyData("Decoding the `CompositeSig04PrivateKey` structure had a remainder.")
 
         trad_data = trad_data.asOctets()
         pq_key = MLDSAPrivateKey.from_private_bytes(name=pq_name, data=mldsa_key)
@@ -899,6 +882,7 @@ class CombinedKeyFactory:
         save_type: Union[str, KeySaveType] = "seed",
         include_public_key: Optional[bool] = None,
         encoding: Encoding = Encoding.DER,
+        invalid_private_key: bool = False,
         unsafe: bool = False,
     ) -> bytes:
         """Save a private key to DER format.
@@ -912,6 +896,8 @@ class CombinedKeyFactory:
         :param encoding: The encoding format (DER or PEM).
         :param unsafe: The PQ liboqs keys do not allow to derive the public key from the
         private key, disables the exception call. Defaults to `False`.
+        :param invalid_private_key: If True, the private key is invalid, only supported for RSA and ECC keys.
+        Defaults to `False`.
         :return: The DER encoded private key data.
         :raises TypeError: If the key type is not supported.
         """
@@ -945,6 +931,7 @@ class CombinedKeyFactory:
                 public_key=public_key,
                 version=version,
                 include_public_key=include_public_key,
+                invalid_private_key=invalid_private_key,
             )
         elif isinstance(private_key, HybridPrivateKey):
             if not isinstance(public_key, HybridPublicKey) and public_key is not None:

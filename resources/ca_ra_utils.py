@@ -611,7 +611,6 @@ def prepare_invalid_kga_private_key(
     key_save_type: str = "raw",
 ) -> rfc5958.OneAsymmetricKey:
     """Prepare an invalid KGA private key."""
-
     if isinstance(invalid_operation, str):
         invalid_operation = InvalidOneAsymKeyType(invalid_operation)
 
@@ -655,9 +654,9 @@ def prepare_invalid_kga_private_key(
         public_key=public_key,
         version=version,
         key_save_type=key_save_type,
-        invalid_pub_key=invalid_pub_key,
+        invalid_pub_key_size=invalid_pub_key,
         missmatched_key=miss_matched_key,
-        invalid_priv_key=invalid_priv_key,
+        invalid_priv_key_size=invalid_priv_key,
     )
     return return_value
 
