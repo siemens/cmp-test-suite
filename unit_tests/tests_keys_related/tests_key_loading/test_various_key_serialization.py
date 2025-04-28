@@ -72,7 +72,7 @@ class TestVariousKeySerialization(unittest.TestCase):
             key,
             save_type=save_type,
             password=None,
-            version=1,
+            version=0,
         )
         return key, der_data
 
@@ -115,7 +115,7 @@ class TestVariousKeySerialization(unittest.TestCase):
                     key,
                     save_type="seed",
                     password=None,
-                    version=2,
+                    version=1,
                 )
 
                 loaded_key = CombinedKeyFactory.load_private_key_from_one_asym_key(der_data)

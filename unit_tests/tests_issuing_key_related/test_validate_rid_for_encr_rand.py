@@ -46,7 +46,7 @@ class TestValidateRidEncryptedRandom(unittest.TestCase):
         WHEN the encrypted random is validated.
         THEN the issuer and serial number are successfully validated.
         """
-        kem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
+        kem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
 
         issuer_and_ser = prepare_issuer_and_serial_number(
             issuer="Null-DN",

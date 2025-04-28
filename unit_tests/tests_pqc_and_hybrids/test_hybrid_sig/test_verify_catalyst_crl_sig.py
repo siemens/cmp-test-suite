@@ -23,7 +23,7 @@ class TestVerifyCatalystCRL(unittest.TestCase):
         cls.ca_cert = parse_certificate(
             load_and_decode_pem_file("data/unittest/bare_certificate.pem")
         )
-        cls.alt_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+        cls.alt_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
 
 
     def test_valid_crl_signature(self):

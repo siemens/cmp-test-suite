@@ -23,8 +23,8 @@ class TestMayLoadAltPublicKey(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rsa_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
-        cls.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
-        cls.comp_key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
+        cls.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
+        cls.comp_key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem")
 
         cls.ca_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.ca_cert = generate_certificate(private_key=cls.ca_key, hash_alg="sha256")

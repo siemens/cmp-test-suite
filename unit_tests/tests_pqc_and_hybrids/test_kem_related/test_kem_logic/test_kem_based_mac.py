@@ -24,7 +24,7 @@ class TestKEMBasedMac(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.mlkem_key: MLKEMPrivateKey = load_private_key_from_file("./data/keys/private-key-ml-kem-768.pem")
+        cls.mlkem_key: MLKEMPrivateKey = load_private_key_from_file("./data/keys/private-key-ml-kem-768-seed.pem")
         cls.rsa_key = load_private_key_from_file("./data/keys/private-key-rsa.pem", password=None)
         cls.kem_cert = generate_certificate(private_key=cls.mlkem_key, signing_key=cls.rsa_key)
 

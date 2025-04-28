@@ -14,10 +14,10 @@ class TestCompositeSig04(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rsa = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
-        cls.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+        cls.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
         cls.ecc_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
         cls.ed_key = generate_key("ed448")
-        cls.mldsa87_key = load_private_key_from_file("data/keys/private-key-ml-dsa-87.pem")
+        cls.mldsa87_key = load_private_key_from_file("data/keys/private-key-ml-dsa-87-seed.pem")
         cls.data = b"Hello, world!"
 
     def test_composite_sig04_rsa(self):

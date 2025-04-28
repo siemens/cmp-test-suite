@@ -15,8 +15,8 @@ class TestPrepareCatalystCertReq(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ec_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
-        cls.pq_kem = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
-        cls.pq_mldsa = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+        cls.pq_kem = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
+        cls.pq_mldsa = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
         cls.common_name = "CN=Hans the Tester"
 
     def test_trad_sig_key_and_pq_sig_key(self):

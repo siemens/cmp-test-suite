@@ -15,7 +15,7 @@ from pyasn1_alt_modules import rfc4211, rfc5958, rfc6664, rfc9481
 from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_wrapper_keys import TradKEMPublicKey
-from resources.exceptions import BadAlg, BadAsn1Data
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MissMatchingKey
 from resources.oid_mapping import get_curve_instance, may_return_oid_to_name
 from resources.typingutils import PrivateKey, PublicKey
 
@@ -174,14 +174,14 @@ def generate_trad_key(algorithm="rsa", **params) -> PrivateKey:  # noqa: D417 fo
 def prepare_trad_private_key_one_asym_key(
     private_key: PrivateKey,
     public_key: Optional[PublicKey] = None,
-    version: int = 2,
+    version: int = 1,
     include_public_key: Optional[bool] = None,
 ) -> bytes:
     """Prepare a OneAsymmetricKey object from a private key.
 
     :param private_key: The private key to be converted.
     :param public_key: The corresponding public key, if available.
-    :param version: The version of the OneAsymmetricKey. Default is 2.
+    :param version: The version of the OneAsymmetricKey. Defaults to `1`.
     :param include_public_key: If True, include the public key in the OneAsymmetricKey. Default is `None`.
     :return: A OneAsymmetricKey object containing the private key.
     """
@@ -191,14 +191,14 @@ def prepare_trad_private_key_one_asym_key(
         encryption_algorithm=serialization.NoEncryption(),
     )
 
-    if int(rfc5958.Version(version)) == 0 and not include_public_key:
+    if version == 0 and not include_public_key:
         one_asym_key, _ = decoder.decode(private_key_bytes, asn1Spec=rfc4211.PrivateKeyInfo())
         return private_key_bytes
 
     one_asym_key, _ = decoder.decode(private_key_bytes, asn1Spec=rfc5958.OneAsymmetricKey())
-    one_asym_key["version"] = rfc5958.Version(version)
+    one_asym_key["version"] = univ.Integer(version)
 
-    if not include_public_key:
+    if include_public_key is False:  # noqa: E711
         return encoder.encode(one_asym_key)
 
     public_key = public_key or private_key.public_key()
@@ -211,7 +211,9 @@ def prepare_trad_private_key_one_asym_key(
         public_key_bytes = public_key.public_bytes(
             encoding=serialization.Encoding.X962, format=serialization.PublicFormat.UncompressedPoint
         )
-    elif isinstance(public_key, (ed25519.Ed25519PublicKey, ed448.Ed448PublicKey)):
+    elif isinstance(
+        public_key, (ed25519.Ed25519PublicKey, ed448.Ed448PublicKey, x25519.X25519PublicKey, x448.X448PublicKey)
+    ):
         public_key_bytes = public_key.public_bytes(
             encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
         )
@@ -274,6 +276,10 @@ def parse_trad_key_from_one_asym_key(
 
     version = int(one_asym_key["version"])
     private_key_bytes = one_asym_key["privateKey"].asOctets()
+
+    if version not in [0, 1]:
+        raise InvalidKeyData(f"Unsupported `OneAsymmetricKey` version: {version}. Supported versions are 0 and 1.")
+
     if version != 1 and must_be_version_2:
         raise ValueError("The provided key is not a version 2 key.")
 
@@ -335,6 +341,6 @@ def parse_trad_key_from_one_asym_key(
         raise BadAlg(f"Can not load the traditional key for the algorithm: {_name}")
 
     if private_key.public_key() != public_key:
-        raise ValueError("The public key does not match the private key.")
+        raise MissMatchingKey("The public key does not match the private key.")
 
     return private_key

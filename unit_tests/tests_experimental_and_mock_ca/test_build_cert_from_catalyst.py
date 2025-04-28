@@ -20,8 +20,8 @@ class TestBuildCertFromCatalyst(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ec_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
-        cls.pq_mldsa = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
-        cls.pq_kem = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
+        cls.pq_mldsa = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
+        cls.pq_kem = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
         cls.common_name = "CN=Hans the Tester"
         cls.password = b"A" * 32
         cls.ca_cert = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
