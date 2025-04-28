@@ -12,7 +12,7 @@ store them and retrieve them when needed.
 import os
 import re
 import textwrap
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 import pyasn1.error
 from cryptography.hazmat.primitives import serialization
@@ -832,6 +832,52 @@ def generate_different_public_key(  # noqa D417 undocumented-param
 
     return pub_key
 
+def _get_version_and_tmp_version(version: Union[int, str]) -> Tuple[int, int]:
+    """Get the version and temporary version for the `OneAsymmetricKey` structure.
+
+    :param version: The version of the structure. Can be an integer or a string.
+    :return: A tuple containing the version and temporary version.
+    :raises ValueError: If the string version is not valid.
+    """
+    if isinstance(version, int):
+        tmp_version = 1 if version >= 1 else 0
+    elif isinstance(version, str) and not version.isdigit():
+        if version not in ["v1", "v2"]:
+            raise ValueError("Invalid version only supports 'v1', 'v2'")
+        version = 1 if version == "v2" else 0
+        tmp_version = version
+    else:
+        version = int(version)
+        tmp_version = 1 if version >= 1 else 0
+
+    return version, tmp_version
+
+def _prepare_one_asym_key(
+        private_key_bytes: bytes,
+    public_key_bytes: Optional[bytes],
+    version: int,
+    alg_id: rfc5280.AlgorithmIdentifier,
+    ) -> rfc5958.OneAsymmetricKey:
+    """Parse the `OneAsymmetricKey` structure from the given bytes.
+
+    :param private_key_bytes: The private key bytes.
+    :param public_key_bytes: The public key bytes, if available.
+    :param version: The version of the structure.
+    :param alg_id: The algorithm identifier.
+    :return: The parsed `OneAsymmetricKey` structure.
+    """
+    one_asym_key = rfc5958.OneAsymmetricKey()
+    one_asym_key["version"] = univ.Integer(version)
+    one_asym_key["privateKeyAlgorithm"] = alg_id
+    one_asym_key["privateKey"] = univ.OctetString(private_key_bytes)
+    if public_key_bytes is not None:
+        public_key_bit_str = (
+            rfc5958.PublicKey()
+            .fromOctetString(public_key_bytes)
+            .subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
+        )
+        one_asym_key["publicKey"] = public_key_bit_str
+    return one_asym_key
 
 @keyword(name="Prepare OneAsymmetricKey")
 def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
@@ -887,16 +933,7 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     if missmatched_key:
         public_key = generate_different_public_key(key_source=private_key)
 
-    if isinstance(version, int):
-        tmp_version = 1 if version >= 1 else 0
-    elif isinstance(version, str) and not version.isdigit():
-        if version not in ["v1", "v2"]:
-            raise ValueError("Invalid version only supports 'v1', 'v2'")
-        version = 1 if version == "v2" else 0
-        tmp_version = version
-    else:
-        version = int(version)
-        tmp_version = 1 if version >= 1 else 0
+    version, tmp_version = _get_version_and_tmp_version(version)
 
     if include_public_key is None:
         if version in ["v1", 0]:
@@ -913,18 +950,9 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         unsafe=True,
     )
     one_asym_key, _ = decoder.decode(der_data, asn1Spec=rfc5958.OneAsymmetricKey())
-    one_asym_key_out = rfc5958.OneAsymmetricKey()
 
     public_key_bytes = None if not one_asym_key["publicKey"].isValue else one_asym_key["publicKey"].asOctets()
     private_key_bytes = one_asym_key["privateKey"].asOctets()
-
-    if isinstance(version, str) and not version.isdigit():
-        version = 1 if version == "v2" else 0
-    else:
-        version = int(version)
-
-    one_asym_key_out["version"] = univ.Integer(version)
-    one_asym_key_out["privateKeyAlgorithm"] = one_asym_key["privateKeyAlgorithm"]
 
     if invalid_priv_key_size:
         private_key_bytes = private_key_bytes + os.urandom(16)
@@ -933,16 +961,12 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         public_key_bytes = b"" if public_key_bytes is None else public_key_bytes
         public_key_bytes = public_key_bytes + os.urandom(16)
 
-    if public_key_bytes is not None:
-        public_key_bit_str = (
-            rfc5958.PublicKey()
-            .fromOctetString(public_key_bytes)
-            .subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
-        )
-        one_asym_key_out["publicKey"] = public_key_bit_str
-
-    one_asym_key_out["privateKey"] = univ.OctetString(private_key_bytes)
-    return one_asym_key_out
+    return _prepare_one_asym_key(
+        private_key_bytes=private_key_bytes,
+        public_key_bytes=public_key_bytes,
+        version=version,
+        alg_id=one_asym_key["privateKeyAlgorithm"],
+    )
 
 
 @keyword(name="Prepare SubjectPublicKeyInfo")
@@ -1053,13 +1077,13 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
 
     return spki
 
-
 def _prepare_spki_for_kga(
     key: Optional[Union[PrivateKey, PublicKey]] = None,
     key_name: Optional[str] = None,
     use_pss: bool = False,
     use_pre_hash: bool = False,
     add_null: bool = False,
+    *,
     add_params_rand_bytes: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare a SubjectPublicKeyInfo for KGA usage.
