@@ -9,8 +9,6 @@ from typing import List, Optional, Union
 from cryptography.exceptions import InvalidSignature
 from pyasn1.type import univ
 
-from resources.oid_mapping import may_return_oid_to_name
-
 
 class CMPTestSuiteError(Exception):
     """Base class for CMP Test Suite errors."""
@@ -67,6 +65,8 @@ class UnknownOID(CMPTestSuiteError):
         :param oid: The OID that is unknown.
         :param extra_info: Additional information about the unknown OID.
         """
+        from resources.oid_mapping import may_return_oid_to_name
+
         oid_name = may_return_oid_to_name(oid)
         self.message = f"Unknown OID: {oid_name}:{oid} {extra_info}"
         self.oid = oid
