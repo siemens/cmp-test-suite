@@ -431,8 +431,8 @@ class PQPrivateKey(WrapperPrivateKey, ABC):
     def _to_one_asym_key(self) -> bytes:
         """Prepare a PyAsn1 OneAsymmetricKey structure."""
         one_asym_key = rfc5958.OneAsymmetricKey()
-        # MUST be version 2 otherwise, liboqs will generate a wrong key.
-        one_asym_key["version"] = 2
+        # MUST be version 1 otherwise, liboqs will generate a wrong key.
+        one_asym_key["version"] = 1
         one_asym_key["privateKeyAlgorithm"]["algorithm"] = self.get_oid()
         one_asym_key["privateKey"] = univ.OctetString(self._export_private_key())
         public_key_asn1 = univ.BitString(hexValue=self.public_key().public_bytes_raw().hex()).subtype(

@@ -11,11 +11,11 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import pyasn1
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+from cryptography.hazmat.primitives.serialization import Encoding
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5958, rfc6664
@@ -72,7 +72,7 @@ from pq_logic.tmp_oids import (
 )
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import ensure_is_kem_pub_key
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData, MissMatchingKey
 from resources.oid_mapping import get_curve_instance, may_return_oid_by_name
 from resources.oidutils import (
     CMS_COMPOSITE03_OID_2_NAME,
@@ -578,7 +578,12 @@ class CombinedKeyFactory:
             trad_key = RSADecapKey.from_pkcs8(obj[1])
             return CompositeKEMPrivateKey(pq_key=pq_key, trad_key=trad_key)  # type: ignore
 
-        trad_key = serialization.load_der_private_key(encoder.encode(obj[1]), password=None)
+        try:
+            trad_key = parse_trad_key_from_one_asym_key(
+                one_asym_key=obj[1],
+            )
+        except ValueError as e:
+            raise InvalidKeyData("The composite traditional key, is not a valid DER-encoded key.") from e
 
         def _cast_private_key(pq_key: PQPrivateKey, trad_key: TradPrivateKey):
             if prefix == "kem":
@@ -588,7 +593,7 @@ class CombinedKeyFactory:
         composite_key = _cast_private_key(pq_key, trad_key)
         if loaded_pub_key is not None:
             if loaded_pub_key != composite_key.public_key():
-                raise InvalidKeyData("The composite public key does not match the private key.")
+                raise MissMatchingKey("The composite public key does not match the private key.")
 
         return composite_key
 
@@ -701,7 +706,7 @@ class CombinedKeyFactory:
                 ml_pub = MLDSAPublicKey.from_public_bytes(tmp_data[tmp.key_size :], name=pq_name)
 
                 if ml_priv.public_key() != ml_pub:
-                    raise ValueError("The loaded public key is no match with the loaded private key.")
+                    raise MissMatchingKey("The loaded public key is no match with the loaded private key.")
 
                 return CompositeSig04PrivateKey(pq_key=ml_priv, trad_key=trad_key)  # type: ignore
 
@@ -786,7 +791,7 @@ class CombinedKeyFactory:
         public_key = CombinedKeyFactory._get_comp_sig04_key(oid, public_key_bytes=public_key)  # type: ignore
 
         if comp_key.public_key() != public_key:
-            raise ValueError("The loaded public is no match with the composite sig v04 private key")
+            raise MissMatchingKey("The loaded public is no match with the composite sig v04 private key")
         return comp_key
 
     @staticmethod
@@ -800,11 +805,18 @@ class CombinedKeyFactory:
         :return: The loaded private key.
         :raises ValueError: If the key type is invalid.
         :raises BadAlg: If the algorithm is not supported.
+        :raises InvalidKeyData: If the key data is invalid.
+        :raises InvalidKeyCombination: If the key combination is invalid.
+        :raises MissMatchingKey: If the private key does not match the public key.
         """
         if isinstance(data, bytes):
             one_asym_key, _ = decoder.decode(data, asn1Spec=rfc5958.OneAsymmetricKey())
         else:
             one_asym_key = data
+
+        version = int(one_asym_key["version"])
+        if version not in [0, 1]:
+            raise InvalidKeyData(f"Invalid `OneAsymmetricKey` version: {version}. Supported versions are 0 and 1.")
 
         oid = one_asym_key["privateKeyAlgorithm"]["algorithm"]
         private_bytes = one_asym_key["privateKey"].asOctets()
@@ -884,6 +896,7 @@ class CombinedKeyFactory:
         save_type: Union[str, KeySaveType] = "seed",
         include_public_key: Optional[bool] = None,
         encoding: Encoding = Encoding.DER,
+        unsafe: bool = False,
     ) -> bytes:
         """Save a private key to DER format.
 
@@ -894,6 +907,8 @@ class CombinedKeyFactory:
         :param version: The version of the key format. Defaults to `0`.
         :param save_type: The type of key to save (e.g., "seed", "raw", "seed_and_raw").
         :param encoding: The encoding format (DER or PEM).
+        :param unsafe: The PQ liboqs keys do not allow to derive the public key from the
+        private key, disables the exception call. Defaults to `False`.
         :return: The DER encoded private key data.
         :raises TypeError: If the key type is not supported.
         """
@@ -908,7 +923,7 @@ class CombinedKeyFactory:
                 raise InvalidKeyCombination("The public key must be a PQ public key, if provided.")
 
             if version is None:
-                version = 2
+                version = 1
 
             der_data = PQKeyFactory.save_private_key_one_asym_key(
                 private_key=private_key,
@@ -916,10 +931,11 @@ class CombinedKeyFactory:
                 version=version,
                 save_type=save_type,
                 include_public_key=include_public_key,
+                unsafe=unsafe,
             )
         elif isinstance(private_key, (TradPrivateKey, TradKEMPrivateKey)):
             if version is None:
-                version = 1
+                version = 0
 
             der_data = prepare_trad_private_key_one_asym_key(
                 private_key=private_key,
@@ -932,7 +948,7 @@ class CombinedKeyFactory:
                 raise InvalidKeyCombination("The public key must be a hybrid public key, if provided.")
 
             if version is None:
-                version = 2
+                version = 1
 
             der_data = HybridKeyFactory.save_private_key_one_asym_key(
                 private_key=private_key,
