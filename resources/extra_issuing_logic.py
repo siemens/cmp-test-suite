@@ -38,7 +38,6 @@ from resources.asn1_structures import ChallengeASN1, PKIMessageTMP
 from resources.convertutils import str_to_bytes
 from resources.cryptoutils import compute_aes_cbc, perform_ecdh
 from resources.exceptions import BadAsn1Data, BadRequest, InvalidKeyCombination
-from resources.protectionutils import compute_and_prepare_mac
 from resources.typingutils import ECDHPrivateKey, ECDHPublicKey, EnvDataPrivateKey, PrivateKey, Strint
 from resources.utils import get_openssl_name_notation
 
@@ -105,7 +104,10 @@ def prepare_pkmac_popo(  # noqa D417 undocumented-param
 
 @keyword(name="Prepare EncKeyWithID")
 def prepare_enc_key_with_id(  # noqa D417 undocumented-param
-    private_key: PrivateKey, sender: Optional[str] = None, use_string: bool = False
+    private_key: PrivateKey,
+    sender: Optional[str] = None,
+    use_string: bool = False,
+    key_save_type: str = "raw",
 ) -> rfc4211.EncKeyWithID:
     """Prepare the private key for the Proof-of-Possession structure.
 
@@ -116,6 +118,7 @@ def prepare_enc_key_with_id(  # noqa D417 undocumented-param
          Defaults to `None` (must be present if PoP).
         - `use_string`: Whether to use a string for the sender name. Defaults to `False`.
         Otherwise, a `GeneralName` structure is used, which sets the distinguished name.
+        - `key_save_type`: How to save the private key either as `seed`, `raw` or `seed_and_raw` . Defaults to `raw`.
 
     Returns:
     -------
@@ -126,12 +129,15 @@ def prepare_enc_key_with_id(  # noqa D417 undocumented-param
     | ${enc_key}= | Prepare EncKeyWithID | ${private_key} | ${sender} | use_string=${True} |
 
     """
-    one_asym_key = envdatautils.prepare_one_asymmetric_key(private_key)
+    one_asym_key = keyutils.prepare_one_asymmetric_key(
+        private_key,
+        key_save_type=key_save_type,
+    )
 
     data = rfc4211.EncKeyWithID()
 
     tmp = rfc4211.PrivateKeyInfo()
-    tmp["privateKeyAlgorithm"]["algorithm"] = one_asym_key["privateKeyAlgorithm"]["algorithm"]
+    tmp["privateKeyAlgorithm"] = one_asym_key["privateKeyAlgorithm"]
     tmp["privateKey"] = one_asym_key["privateKey"]
     tmp["version"] = 0
 
@@ -198,6 +204,7 @@ def prepare_kem_env_data_for_popo(  # noqa D417 undocumented-param
         data = prepare_enc_key_with_id(
             private_key=client_key,  # type: ignore
             sender=enc_key_sender,
+            key_save_type="raw",
         )
         data = asn1utils.encode_to_der(data)
 
@@ -721,7 +728,9 @@ def _prepare_pkmac_val(
     :return: The populated Proof-of-Possession structure with the `agreeMAC` field set.
     """
     pkmac_value = rfc4211.PKMACValue().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
-    alg_id, mac_value = compute_and_prepare_mac(key=shared_secret, data=data, mac_alg=mac_alg, **mac_params)
+    alg_id, mac_value = protectionutils.compute_and_prepare_mac(
+        key=shared_secret, data=data, mac_alg=mac_alg, **mac_params
+    )
 
     if bad_pop:
         mac_value = utils.manipulate_first_byte(mac_value)
