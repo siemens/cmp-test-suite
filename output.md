@@ -30,7 +30,7 @@ Adjustments to the location of the output can be made through adjusting the comm
 ### report.html
 Higher level test report.
 
-Under the section "Test Details" tab "All" you will find the name, Documentation, Tags, Status and if failed the Message of the tests you´ve run. 
+Under the section "Test Details" tab "All" you will find the name, documentation, tags, status and if failed the message of the tests you´ve run. 
 The background of the Report is green, if all tests passed. It is red, if at least one test is failed (or skipped).
 By clicking in one of the tests you will be navigated to the log.html.
 
@@ -44,6 +44,8 @@ This can be used for a detailed analysis for failed or skipped test cases.
 ### output.xml
 Results in machine readable XML format.
 
+<!---
+Maybe add a section about the smoke test:
 
 ## Smoke test
 What does it mean? ... explanation here...
