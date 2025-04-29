@@ -23,6 +23,14 @@ from urllib.parse import urlparse
 
 log = logging.getLogger("cmptest")
 
+def get_version():
+    """Read the version from the VERSION file."""
+    version_file = Path(__file__).parent.parent / "VERSION"
+    try:
+        with open(version_file, "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return "unknown"
 
 def valid_url(arg):
     """Check whether the given URL is valid."""
@@ -226,11 +234,12 @@ and follow this structure:
     # the end.
     command = f"{command} {additional_args} tests/"
 
-    run_robot_command(command)
+    run_robot_command(command, args.verbose)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)5s - %(message)s")
 
-    log.info("Starting CMP test suite")
+    version = get_version()
+    log.info("Starting CMP test suite v%s", version)
     main()

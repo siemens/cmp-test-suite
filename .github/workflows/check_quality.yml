@@ -80,6 +80,20 @@ jobs:
             exit 1
           fi
 
+  version_check:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Ensure version is referenced in CHANGELOG.md
+        run: |
+          VERSION=$(cat VERSION)
+          if ! grep -E "^# $VERSION" CHANGELOG.md; then
+            echo "Error: CHANGELOG.md does not contain an entry for version $VERSION."
+            exit 1
+          fi
+
   # ----------------------------------------------------------------------------
   # Stage 2: these checks are more expensive and do more with the code, e.g., attempt to import dependencies,
   # execute some logic, etc.

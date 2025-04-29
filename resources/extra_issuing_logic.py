@@ -131,7 +131,7 @@ def prepare_enc_key_with_id(  # noqa D417 undocumented-param
     data = rfc4211.EncKeyWithID()
 
     tmp = rfc4211.PrivateKeyInfo()
-    tmp["privateKeyAlgorithm"]["algorithm"] = one_asym_key["privateKeyAlgorithm"]["algorithm"]
+    tmp["privateKeyAlgorithm"] = one_asym_key["privateKeyAlgorithm"]
     tmp["privateKey"] = one_asym_key["privateKey"]
     tmp["version"] = 0
 
