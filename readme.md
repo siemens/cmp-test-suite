@@ -25,11 +25,7 @@ the emphasis on replicability - a test report is sufficient for someone to under
 the server and how the responses were processed.
 
 These instructions assume a linux-based system, but it is designed to be used with other platforms as well. Occasionally some additional Windows commands are provided. 
-Skills used here are: 
-- Basic use of git
-- Basic understanding of choosen operating system
-- Basic use of python virtual environment
-For further reading footnotes and a bibliography are provided. 
+
 
 The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the project.
 
@@ -83,7 +79,6 @@ You can run specific tests on specific environments by adjusting command line op
 - `make testlog env=ejbca` - as above, but use the `config/ejbca.robot` settings.
 - `make docs` - generate HTML documentation for test suites and available keywords, store in `doc/`.
 - `make unittest` - run unit tests that verify the functionality of the library itself.
-- `make setup_pq` - set up liboqs on your own machine to use post-quantum algorithms.
 
 The [detailed documentation](/cmp-test-suite/doc/index.html) covers test suites and available keywords. 
 If the referenced documentation is not available, run `make docs` to generate it.
