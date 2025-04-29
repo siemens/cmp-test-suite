@@ -35,9 +35,7 @@ OQS dependencies must be available
     [Documentation]    Checks if the OQS (openquantumsafe) dependencies are available https://github.com/open-quantum-safe/liboqs-python
     [Tags]    smoke
      ${rc} 	  ${output} = 	Run and Return RC and Output 	python -c "import oqs"
-    #For me this gives an error and that is kinda not want we want
-    #TODO: figure out how to write a good condition
-     Should be Equal    ${rc}    0
+     Should be Equal    ${rc}    ${0}
 
 
 
@@ -46,4 +44,4 @@ PQ keypair must be able get generated
     [Tags]    smoke
     ${key}=   Generate Key    ml-kem-768
     Log    ${key.public_key().public_bytes_raw()}
-    #TODO: Should be equal or something - how does it look like when it´s not working
+    Should Not Be Empty    ${key.public_key().public_bytes_raw()}
