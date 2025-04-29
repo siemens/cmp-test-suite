@@ -62,7 +62,7 @@ Note that if you haven´t yet activated the environment, do so now.
 2. Adjust the settings in the config/local.robot file to match your environment.
    - To run the Smoke test, this step is not necessary. 
 3. Run test:
-   - Run `robot --pythonpath=./ tests/smoke.robot` to run a test if everything works so far.
+   - Run `robot tests/smoke.robot` to run the smoke test, that checks if everything works so far.
    - Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment. 
 4. In your directory in the folder of cmp-test-suite you will find `report.html`.
    - [Detailed explanation of the output](Output.md)
