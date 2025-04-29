@@ -83,6 +83,7 @@ You can run specific tests on specific environments by adjusting command line op
 - `make testlog env=ejbca` - as above, but use the `config/ejbca.robot` settings.
 - `make docs` - generate HTML documentation for test suites and available keywords, store in `doc/`.
 - `make unittest` - run unit tests that verify the functionality of the library itself.
+- `make setup_pq` - set up liboqs on your own machine to use post-quantum algorithms.
 
 The [detailed documentation](/cmp-test-suite/doc/index.html) covers test suites and available keywords. 
 If the referenced documentation is not available, run `make docs` to generate it.
