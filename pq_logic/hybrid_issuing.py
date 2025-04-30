@@ -1237,6 +1237,7 @@ def build_related_cert_from_csr(  # noqa: D417 Missing argument descriptions in 
 
     return cert
 
+
 @not_keyword
 def is_hybrid_cert(cert: rfc9480.CMPCertificate) -> Optional[str]:
     """Check if the certificate is a hybrid certificate.

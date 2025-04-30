@@ -29,7 +29,6 @@ from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig
 from resources import asn1utils, certutils, cmputils, keyutils
 from resources.asn1_structures import PKIMessageTMP
 from resources.exceptions import BadAsn1Data
-from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import PYASN1_CM_NAME_2_OIDS
 from resources.typingutils import PrivateKey, PublicKey, Strint
 
@@ -969,5 +968,3 @@ def display_pki_status_info(  # noqa D417 undocumented-param
         data.append(f"  failInfo: {names}")
 
     return "\n".join(data)
-
-

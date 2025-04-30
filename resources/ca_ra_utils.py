@@ -2855,8 +2855,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
     entry: rfc9480.CertStatus
     for entry, issued_cert in zip(cert_conf, issued_certs):
         if entry["certReqId"] != 0 and enforce_lwcmp:
-            raise BadRequest(f"Invalid CertReqId in CertConf message. Got: {int(entry['certReqId'])}"
-                             f"Expected: 0.")
+            raise BadRequest(f"Invalid CertReqId in CertConf message. Got: {int(entry['certReqId'])}Expected: 0.")
 
         if not entry["certHash"].isValue:
             raise BadPOP("Certificate hash is missing in CertConf message.")
