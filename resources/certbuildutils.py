@@ -2690,6 +2690,36 @@ def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional
             raise BadCertTemplate("")
 
 
+def _contains_extn_id(extn_id: univ.ObjectIdentifier, extensions: Sequence[rfc5280.Extension]) -> bool:
+    """Check if the extension ID is present in the extensions.
+
+    :param extn_id: The extension ID to check.
+    :param extensions: The list of extensions to check against.
+    :return: `True` if the extension ID is present, `False` otherwise.
+    """
+    for extn in extensions:
+        if extn["extnID"] == extn_id:
+            return True
+    return False
+
+
+def _get_not_included_extensions(
+    validated_extensions: List[rfc5280.Extension], other_extensions: rfc9480.Extensions
+) -> List[rfc5280.Extension]:
+    """Get the extensions which are not included in the validated extensions.
+
+    :param validated_extensions: The validated extensions.
+    :param other_extensions: The other extensions to check against.
+    :return: The list of extensions which are not included in the validated extensions.
+    """
+    not_included = []
+    for extn in other_extensions:
+        if _contains_extn_id(extn["extnID"], validated_extensions):
+            continue
+        not_included.append(extn)
+    return not_included
+
+
 # TODO maybe not allow to correct the criticality of the extensions?
 
 
@@ -2782,6 +2812,9 @@ def check_extensions(  # noqa D417 undocumented params
 
             else:
                 validated_extensions.append(ext)
+
+        other = _get_not_included_extensions(validated_extensions, other_extensions)
+        validated_extensions.extend(other)
 
     extns.extend(validated_extensions)
     return extns
