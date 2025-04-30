@@ -16,7 +16,7 @@ Several usage scenarios are possible:
 - Run it "as is" and check whether your CMP server conforms to the specification.
 - Adapt the test suite to your needs, by writing test scenarios using the provided DSL.
 
-Additionally, the DSL can also be used for writing client-oriented tests. A usage scenarios could be: 
+Additionally, the DSL can also be used for writing client-oriented tests. A usage scenario could be: 
 - Extend the DSL, adding new keywords and correcting errors in existing ones.
 
 What makes this test suite unique is the high-level notation it is written in, making the reports and test scenarios
@@ -24,7 +24,7 @@ readable not only to software engineers, but also to PKI experts without program
 the emphasis on replicability - a test report is sufficient for someone to understand exactly what was transmitted to
 the server and how the responses were processed.
 
-These instructions assume a linux-based system, but it is designed to be used with other platforms as well. Occasionally some additional Windows commands are provided. 
+These instructions assume a Linux-based system, but it is designed to be used with other platforms as well. Occasionally, additional Windows commands are provided. 
 
 
 The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the project.
@@ -52,12 +52,12 @@ Create a Python virtual environment by installing the dependencies from `require
 
 
 ## Usage
-Note that if you haven´t yet activated the environment, do so now.
+Note that if you haven´t activated the environment yet, do so now.
 
 1. Navigate into the test suite: `cd cmp-test-suite`
 2. Adjust the settings in the config/local.robot file to match your environment.
    - To run the Smoke test, this step is not necessary. 
-3. Run test:
+3. Run the test:
    - Run `robot tests/smoke.robot` to run the smoke test, that checks if everything works so far.
    - Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment. 
 4. In your directory in the folder of cmp-test-suite you will find `report.html`.

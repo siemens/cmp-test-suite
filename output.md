@@ -6,15 +6,15 @@ SPDX-License-Identifier: Apache-2.0
 
 
 # Documentation of the output
-If you want to share the report, consider to include the configuration file. The configuration file contains essential settings and parameters that were used during the test execution, which can help others replicate the test environment and understand the context of the results.
-However, caution should be exercised when sharing these reports and configuration file. Always review the content of the report and configuration file to ensure that no confidential information is inadvertently shared.
+If you want to share the report, consider including the configuration file. The configuration file contains essential settings and parameters that were used during the test execution, which can help others replicate the test environment and understand the context of the results.
+However, caution should be exercised when sharing these reports and configurations files. Always review the content of the report and configuration file to ensure that no confidential information is inadvertently shared.
 
-Tests can have three types of status.
+Tests can have three types of status in the Robot Framework.
 - pass: all conditions in the test cases passed
 - fail: a condition in the test case failed 
-- skip: can have mutlipe reasons:
-    - a test case was not relevant in your set up of the test and there for skipped
-    - a test failed, but isn´t needed for RFC compliance
+- skip: can have multiple reasons:
+    - a test case was not relevant in your setup of the test and was therefore skipped.
+    - a test failed, but it isn’t required for RFC compliance.
 
 ## Output files
 Running tests generates the following three result files:
@@ -22,31 +22,31 @@ Running tests generates the following three result files:
 - log.html
 - output.xml
 
-For the smoke test the output files can be found in the same folder as cmp-test-suite. 
+or the smoke test, the output files (report.html, log.html, and output.xml) are generated in the root directory of the cmp-test-suite project. 
 
-Adjustments to the location of the output can be made through adjusting the command line options when running a test:
-`--outputdir=out` stores the results in the out directory.
+Adjustments to the location of the output can be made by modifying the command line options when running a test.
+For example `robot --outputdir=out tests/smoke.robot` stores the results in the out directory. 
 
 ### report.html
-Higher level test report.
+Higher-level test report.
 
 Under the section "Test Details" tab "All" you will find the name, documentation, tags, status and if failed the message of the tests you´ve run. 
-The background of the Report is green, if all tests passed. It is red, if at least one test is failed (or skipped).
-By clicking in one of the tests you will be navigated to the log.html.
+- The background of the report is green if all tests pass. 
+- It is red if at least one test fails (or is skipped).
 
-You can switch between the report.html view and the log.html view in the top right corner. 
+By clicking on one of the tests, you will be navigated to the log.html.
+Additionally, you can switch between the report.html view and the log.html view in the top right corner. 
 
 ### log.html
 Detailed test execution log.
 
-The Test Execution Log shows a detailed sequence of keywords used, their documentation and output. 
-This can be used for a detailed analysis for failed or skipped test cases.
-### output.xml
-Results in machine readable XML format.
+The Test Execution Log shows a detailed sequence of keywords used, along with their documentation and output. 
+This can be used for a detailed analysis of failed or skipped test cases.
 
-<!---
-Maybe add a section about the smoke test:
+### output.xml
+Results in machine-readable XML format.
+
 
 ## Smoke test
-What does it mean? ... explanation here...
-What does it cover? ... explanation here...
+The smoke test is a quick check to ensure that the basic functionality of the test suite is working correctly. It verifies that the environment is set up properly and that the test suite can communicate with the server. The smoke test does not cover all features but serves as a preliminary validation step.
+
