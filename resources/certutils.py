@@ -1340,6 +1340,8 @@ def check_ocsp_response(
     else:
         state = "unknown"
 
+    logging.info("OCSP response status: %s", state)
+
     if state == "unknown" and allow_unknown_status:
         return
 
