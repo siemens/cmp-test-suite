@@ -17,6 +17,8 @@ import requests
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.x509 import ExtensionNotFound, ReasonFlags, ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID
@@ -1581,6 +1583,10 @@ def build_ocsp_response(
         hash_inst = oid_mapping.hash_name_to_instance(hash_alg)
     else:
         hash_inst = None
+
+    if isinstance(responder_key, (Ed25519PrivateKey, Ed448PrivateKey)):
+        # Use the responder key directly for signing.
+        return builder.sign(responder_key, None)
 
     return builder.sign(responder_key, hash_inst)  # type: ignore
 
