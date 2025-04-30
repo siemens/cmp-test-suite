@@ -24,7 +24,13 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.hybrid_sig import catalyst_logic, cert_binding_for_multi_auth, chameleon_logic, sun_lamps_hybrid_scheme_00
+from pq_logic.hybrid_sig import (
+    catalyst_logic,
+    cert_binding_for_multi_auth,
+    certdiscovery,
+    chameleon_logic,
+    sun_lamps_hybrid_scheme_00,
+)
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import (
     prepare_related_cert_extension,
     validate_multi_auth_binding_csr,
@@ -36,10 +42,16 @@ from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPu
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
-from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME
+from pq_logic.tmp_oids import (
+    COMPOSITE_SIG04_OID_2_NAME,
+    id_altSignatureExt,
+    id_ce_deltaCertificateDescriptor,
+    id_relatedCert,
+)
 from resources import (
     ca_ra_utils,
     certbuildutils,
+    certextractutils,
     certutils,
     cmputils,
     keyutils,
@@ -63,6 +75,7 @@ from resources.oidutils import (
     PQ_SIG_PRE_HASH_OID_2_NAME,
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
+    id_ce_subjectAltPublicKeyInfo,
 )
 from resources.typingutils import (
     CACertResponse,
@@ -1223,3 +1236,49 @@ def build_related_cert_from_csr(  # noqa: D417 Missing argument descriptions in 
     )
 
     return cert
+
+@not_keyword
+def is_hybrid_cert(cert: rfc9480.CMPCertificate) -> Optional[str]:
+    """Check if the certificate is a hybrid certificate.
+
+    :param cert: The certificate to check.
+    :return: The hybrid key type if the certificate is a hybrid certificate, otherwise `None`.
+    """
+    alg_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+
+    if alg_oid in COMPOSITE_SIG04_OID_2_NAME:
+        return "composite-sig-04"
+    if alg_oid in CMS_COMPOSITE03_OID_2_NAME:
+        return "composite-sig-03"
+
+    dcd = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
+    if dcd is not None:
+        return "chameleon"
+
+    extn = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_altSignatureExt)
+    if extn is not None:
+        return "sun-hybrid"
+
+    extn = certextractutils.get_extension(
+        cert["tbsCertificate"]["extensions"],
+        id_ce_altSignatureValue,
+    )
+
+    extn2 = certextractutils.get_extension(
+        cert["tbsCertificate"]["extensions"],
+        id_ce_subjectAltPublicKeyInfo,
+    )
+
+    if extn is not None or extn2 is not None:
+        return "catalyst"
+
+    if certdiscovery.is_cert_discovery_cert(
+        cert=cert,
+    ):
+        return "cert-discovery"
+
+    extn = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_relatedCert)
+    if extn is not None:
+        return "related-cert"
+
+    return None
