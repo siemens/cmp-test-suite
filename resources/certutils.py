@@ -1737,6 +1737,7 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
     allow_request_failure: bool = False,
     allow_ocsp_unknown: bool = False,
     allow_no_crl_urls: bool = False,
+    expected_to_be_revoked: bool = False,
 ) -> None:
     """Validate if a certificate is revoked via OCSP and CRL checks.
 
@@ -1761,6 +1762,7 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
               disallow request failures.
        - `allow_ocsp_unknown`: Whether to allow OCSP 'unknown' status as non-revoked.
        - `allow_no_crl_urls`: Whether to allow no CRL URLs to be found in the certificate.
+       - `expected_to_be_revoked`: Whether the certificate is expected to be revoked.
 
     Raises:
     ------
@@ -1776,37 +1778,46 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
     | Validate If Certificate Is Revoked | cert=${cert} | crl_url=${crl_url} |
 
     """
-    if ca_cert:
-        try:
-            check_ocsp_response_for_cert(
-                cert=cert,
-                issuer=ca_cert,
-                ocsp_url=ocsp_url,
-                timeout=ocsp_timeout,
-                expected_status="good",
-                allow_request_failure=allow_request_failure,
-                allow_unknown_status=allow_ocsp_unknown,
-            )
-        except ValueError as err:
-            if "`revoked`" in str(err) or "`unknown`" in str(err):
-                raise CertRevoked("Certificate is revoked (by OCSP check).") from err
-            raise
+    try:
+        if ca_cert:
+            try:
+                check_ocsp_response_for_cert(
+                    cert=cert,
+                    issuer=ca_cert,
+                    ocsp_url=ocsp_url,
+                    timeout=ocsp_timeout,
+                    expected_status="good",
+                    allow_request_failure=allow_request_failure,
+                    allow_unknown_status=allow_ocsp_unknown,
+                )
+            except ValueError as err:
+                if "`revoked`" in str(err) or "`unknown`" in str(err):
+                    raise CertRevoked("Certificate is revoked (by OCSP check).") from err
+                raise
 
-    else:
-        logging.debug("No issuer provided; skipping OCSP check and going directly to CRL check.")
+        else:
+            logging.debug("No issuer provided; skipping OCSP check and going directly to CRL check.")
 
-    # 2. Check CRL
-    check_if_cert_is_revoked_crl(
-        cert=cert,
-        crl_url=crl_url,
-        crl_file_path=crl_file_path,
-        timeout=crl_timeout,
-        allow_no_crl_urls=allow_no_crl_urls,
-    )
+        # 2. Check CRL
+        check_if_cert_is_revoked_crl(
+            cert=cert,
+            crl_url=crl_url,
+            crl_file_path=crl_file_path,
+            timeout=crl_timeout,
+            allow_no_crl_urls=allow_no_crl_urls,
+        )
 
-    # 3. If we reach this point, neither the OCSP check nor the CRL check
-    #    confirmed revocation => conclude "not revoked."
-    logging.debug("Certificate does not appear to be revoked by OCSP or CRL.")
+        # 3. If we reach this point, neither the OCSP check nor the CRL check
+        #    confirmed revocation => conclude "not revoked."
+        logging.debug("Certificate does not appear to be revoked by OCSP or CRL.")
+    except CertRevoked as err:
+        if expected_to_be_revoked:
+            logging.debug("Certificate is revoked as expected.")
+            return
+        raise err
+
+    if expected_to_be_revoked:
+        raise ValueError("Certificate is not revoked as expected.")
 
 
 @keyword(name="Validate Migration Alg ID")
