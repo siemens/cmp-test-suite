@@ -742,7 +742,7 @@ PKIStatus Must Be
     [Arguments]    ${pki_message}  ${status}   ${index}=0
     ${pki_status}=    Get Status From PKIMessage      ${pki_message}    ${index}
     IF  not '${pki_status}' == '${status}'
-        ${pki_status_info}=   Get PKIStatusInfo    ${pki_message}    ${index}   # robocop: off=VAR02
+        ${pki_status_info}=   Display Pki Status Info    ${pki_message}    ${index}   # robocop: off=VAR02
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
 

@@ -26,8 +26,10 @@ from pq_logic.keys.composite_kem05 import CompositeKEMPrivateKey, CompositeKEMPu
 from pq_logic.keys.composite_kem06 import CompositeKEM06PrivateKey, CompositeKEM06PublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
-from resources import certutils, keyutils
+from resources import asn1utils, certutils, cmputils, keyutils
+from resources.asn1_structures import PKIMessageTMP
 from resources.exceptions import BadAsn1Data
+from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import PYASN1_CM_NAME_2_OIDS
 from resources.typingutils import PrivateKey, PublicKey, Strint
 
@@ -930,3 +932,42 @@ def get_cert_chain_names(certs: List[rfc9480.CMPCertificate]) -> str:
         names.append(entry)
 
     return "\n".join(names)
+
+
+def display_pki_status_info(  # noqa D417 undocumented-param
+    pki_status_info: Union[PKIMessageTMP, rfc9480.PKIStatusInfo],
+    index: Optional[Strint] = 0,
+) -> str:
+    """Display the PKI status information in a human-readable format.
+
+    Converts the provided PKI status information to its ASN.1 representation and logs it.
+
+    Arguments:
+    ---------
+        - `pki_status_info`: The PKI status information to be logged.
+        - `index`: The index of the PKI status information, if a PKIMessage is provided.
+
+    Examples:
+    --------
+    | Log PKI Status Info | ${pki_status_info} |
+    | Log PKI Status Info | ${pki_status_info} |
+
+    """
+    if isinstance(pki_status_info, PKIMessageTMP):
+        pki_status_info = cmputils.get_pkistatusinfo(pki_status_info, index)
+
+    data = ["PKIStatusInfo:"]
+    status = pki_status_info["status"].prettyPrint()
+    data.append(f"  Status: {status}")
+
+    if pki_status_info["statusString"].isValue:
+        status_lines = [str(txt) for txt in pki_status_info["statusString"]]
+        data.append(f"  StatusString: {' | '.join(status_lines)}")
+
+    if pki_status_info["failInfo"].isValue:
+        names = asn1utils.get_set_bitstring_names(pki_status_info["failInfo"])
+        data.append(f"  failInfo: {names}")
+
+    return "\n".join(data)
+
+
