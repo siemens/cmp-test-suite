@@ -2175,7 +2175,7 @@ def verify_kem_based_mac_protection(
     logging.debug("Computed MAC: %s", computed_mac.hex())
     logging.debug("Received MAC: %s", pki_message["protection"].asOctets().hex())
     if computed_mac != pki_message["protection"].asOctets():
-        raise ValueError("The KEMBasedMac verification failed.")
+        raise BadMessageCheck("The KEMBasedMac verification failed.")
 
 
 @not_keyword
