@@ -2855,7 +2855,8 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
     entry: rfc9480.CertStatus
     for entry, issued_cert in zip(cert_conf, issued_certs):
         if entry["certReqId"] != 0 and enforce_lwcmp:
-            raise BadRequest("Invalid CertReqId in CertConf message.")
+            raise BadRequest(f"Invalid CertReqId in CertConf message. Got: {int(entry['certReqId'])}"
+                             f"Expected: 0.")
 
         if not entry["certHash"].isValue:
             raise BadPOP("Certificate hash is missing in CertConf message.")
@@ -3095,9 +3096,8 @@ def _check_cert_for_revoked(
     :raises BadRequest: If the certificate is not revoked.
     """
     if revoked_certs is not None:
-        for revoked_cert in revoked_certs:
-            if encoder.encode(cert) == encoder.encode(revoked_cert):
-                raise CertRevoked("Certificate is already revoked.")
+        if certutils.cert_in_list(cert, revoked_certs):
+            raise CertRevoked("Certificate is already revoked.")
 
 
 def _check_cert_for_revive(
@@ -3110,9 +3110,8 @@ def _check_cert_for_revive(
     :raises BadCertId: If the certificate cannot be revived, because it was not revoked.
     """
     if revoked_certs is not None:
-        for revoked_cert in revoked_certs:
-            if encoder.encode(cert) == encoder.encode(revoked_cert):
-                return
+        if certutils.cert_in_list(cert, revoked_certs):
+            return
     else:
         return
 
