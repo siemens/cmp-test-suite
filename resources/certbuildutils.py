@@ -188,7 +188,7 @@ def sign_csr(  # noqa D417 undocumented-param
 @keyword(name="Build CSR")
 def build_csr(  # noqa D417 undocumented-param
     signing_key: SignKey,
-    common_name: str = "CN=Hans Mustermann",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     extensions: Optional[rfc9480.Extensions] = None,
     hash_alg: Union[None, str] = "sha256",
     use_rsa_pss: bool = False,
@@ -238,7 +238,10 @@ def build_csr(  # noqa D417 undocumented-param
     csr = rfc6402.CertificationRequest()
 
     csr["certificationRequestInfo"]["version"] = univ.Integer(0)
-    csr["certificationRequestInfo"]["subject"] = prepareutils.prepare_name(common_name)
+    if isinstance(common_name, str):
+        common_name = prepareutils.prepare_name(common_name)
+
+    csr["certificationRequestInfo"]["subject"] = common_name
 
     use_pre_hash_pub_key = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
     spki = spki or convertutils.subject_public_key_info_from_pubkey(
