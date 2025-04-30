@@ -57,6 +57,7 @@ CA Must Issue Certificate Via P10cr Without implicitConfirm
     ${response}=   Exchange PKIMessage    ${protected_p10cr}
     # could also be ip, kup, cp; consider examining the tag; the overall structure is CertRepMessage
     PKIMessage Body Type Must Be    ${response}    cp
+    PKIStatus Must Be    ${response}  accepted
     # prepare confirmation message by extracting the certificate and getting the needed
     # data from it cert_req_id must be also `0` for P10cr.
     ${conf_message}=   Build Cert Conf From Resp    ${response}   for_mac=True

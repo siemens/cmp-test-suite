@@ -150,7 +150,7 @@ CA MUST Issue A Valid Composite RSA-Prehashed Certificate
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True  use_rsa_pss=False
-    ${ir}=          Build Ir From Key    ${key} ${cm}  spki=${spki}  recipient=${RECIPIENT}
+    ${ir}=          Build Ir From Key    ${key}   ${cm}   spki=${spki}  recipient=${RECIPIENT}
     ...             exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_ir}=  Protect PKIMessage
     ...                pki_message=${ir}

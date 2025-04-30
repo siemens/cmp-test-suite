@@ -274,7 +274,7 @@ CA MUST Send A Valid KUP After Receiving valid KUR
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    kup
-    ${cert}=   Confirm Certificate If Needed   ${response}   protection=signature
+    ${cert}=   Confirm Certificate If Needed   ${response}   protection=signature   url=${CA_CMP_URL}
     Validate Ca Message Body    ${response}
     VAR    ${UPDATED_CERT}    ${cert}    scope=Global
     VAR    ${UPDATED_KEY}    ${kur_key}    scope=Global
@@ -452,7 +452,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid P10cr SIG-Protected
     ${protected_p10cr}=    Default Protect PKIMessage    ${p10cr}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIStatus Must Be    ${response}    status=accepted
-    ${cert}=  Confirm Certificate If Needed    ${response}
+    ${cert}=  Confirm Certificate If Needed    ${response}   url=${CA_CMP_URL}  cert_req_id=0
     Validate CA Message Body    ${response}    used_p10cr=True
     Certificate Must Be Valid    ${cert}
 
@@ -631,7 +631,7 @@ CA MUST Issue ECDSA Cert With KeyUsage
     ${protected_ir}=  Default Protect PKIMessage    ${ir}
     ${ca_response}=    Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be   ${ca_response}    status=accepted
-    ${cert}=  Confirm Certificate If Needed    ${ca_response}   request=${protected_ir}
+    ${cert}=  Confirm Certificate If Needed    ${ca_response}   request=${protected_ir}   url=${CA_CMP_URL}
     Validate KeyUsage   ${cert}    keyAgreement,digitalSignature    strictness=STRICT
     VAR    ${CLIENT_ECC_KEY}    ${new_key}    scope=Global
     VAR    ${CLIENT_ECC_CERT}    ${cert}    scope=Global

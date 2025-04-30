@@ -466,9 +466,11 @@ Confirm Certificate If Needed
         ELSE
             VAR   ${exclude_fields}    ${None}
         END
+        ${cert_req_id}=    Get From Dictionary    ${args}    cert_req_id   ${None}
         ${cert_conf}=   Build Cert Conf From Resp  ${response}   sender=${sender}
         ...                                         recipient=${recipient}
         ...                                         exclude_fields=${exclude_fields}
+        ...                                         cert_req_id=${cert_req_id}
         ${cert_conf}=   Default Protect PKIMessage    ${cert_conf}    &{params}
         ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
         ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
