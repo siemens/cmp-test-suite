@@ -45,7 +45,7 @@ work with them.
 import base64
 import textwrap
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x448, x25519
@@ -542,7 +542,7 @@ class HybridPublicKey(WrapperPublicKey, ABC):
         self._pq_key = pq_key
         self._trad_key = trad_key
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any):
         """Compare two hybrid public keys."""
         if not isinstance(other, HybridPublicKey):
             return False
@@ -599,7 +599,7 @@ class HybridSigPublicKey(HybridPublicKey, ABC):
     _trad_key: ECVerifyKey
     _name: str = "hybrid-sig"
 
-    def __eq__(self, other: "HybridPublicKey") -> bool:
+    def __eq__(self, other: Any) -> bool:
         """Compare two hybrid public keys."""
         if not isinstance(other, HybridSigPublicKey):
             return False
