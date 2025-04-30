@@ -278,6 +278,7 @@ CA MUST Send A Valid KUP After Receiving valid KUR
     Validate Ca Message Body    ${response}
     VAR    ${UPDATED_CERT}    ${cert}    scope=Global
     VAR    ${UPDATED_KEY}    ${kur_key}    scope=Global
+    Wait Until Server Updated Cert
 
 CA MUST Send A Valid CP After Receiving valid P10CR
     [Documentation]    According to RFC 9483 Section 4, when a valid PKCS#10 Certification Request (P10CR) is received,
@@ -407,6 +408,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid KUR
     END
     VAR    ${UPDATED_CERT}    ${cert}    scope=GLOBAL
     VAR    ${UPDATED_KEY}    ${kur_key}    scope=GLOBAL
+    Wait Until Server Updated Cert
     # positioned here so if the Response is incorrect, the certificate is still updated, so that it
     # can be used for other test cases.
     Validate CA Message Body    ${response}    used_p10cr=False

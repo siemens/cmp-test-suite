@@ -1348,7 +1348,6 @@ CA Must Reject Valid IR With Already Updated Certificate
     [Tags]    ir    negative    update
     ${is_set}=    Is Certificate And Key Set    ${UPDATED_CERT}    ${UPDATED_KEY}
     Skip If    not ${is_set}    The `UPDATED_CERT` and/or `UPDATED_KEY` variables are not set.
-    Sleep    3
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
     ${pki_message}=    Build IR From Key
     ...    signing_key=${key}

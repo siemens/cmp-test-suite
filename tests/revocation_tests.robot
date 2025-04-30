@@ -394,7 +394,9 @@ CA MUST Accept Valid Revocation Request
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}   status=accepted
-    Validate If Certificate Is Revoked    ${cert}
+    Wait Until Server Revoked Cert
+    VAR   ${ca_cert}   ${rr["extraCerts"][1]}
+    Validate If Certificate Is Revoked    ${REVOCATION_CERT}   ${ca_cert}   expected_to_be_revoked=True
 
 CA Should Respond with certRevoked for Already Revoked Cert
     [Documentation]    According to RFC 9483 Section 4.2, an rr message is used to request revocation of a certificate.
@@ -589,5 +591,5 @@ Revoke Certificate
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}    status=accepted
-    Sleep    3
+    Wait Until Server Revoked Cert
     RETURN    ${cert}    ${key}

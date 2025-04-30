@@ -128,6 +128,10 @@ ${ALLOW_KGA_RAW_KEYS}   ${False}
 
 # Section 4.2
 ${REVOCATION_STRICT_CHECK}    ${False}
+# The time to wait, until a certificate is revoked, so that
+# the test cases can be run.
+${REVOKED_WAIT_TIME}   10
+${UPDATE_WAIT_TIME}   3
 
 
 # Section 4.3

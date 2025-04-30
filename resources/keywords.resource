@@ -935,3 +935,13 @@ Set Up EnvelopedData Certs For Tests
     Issue POS RSA KTRI Cert
     Issue NEG ECC KARI Cert
     Issue POS ECC KARI Cert
+
+Wait Until Server Revoked Cert
+    [Documentation]    Wait time until the server revoked a certificate so that testing can be begin.
+    Sleep    ${REVOKED_WAIT_TIME}
+
+Wait Until Server Updated Cert
+    [Documentation]    Wait time until the server updated a certificate so that testing can be begin.
+    ...                Needed in some cases, if a updated certificate is treated as a revoked certificate,
+    ...                so that no new certificates can be issued.
+    Sleep    ${REVOKED_WAIT_TIME}
