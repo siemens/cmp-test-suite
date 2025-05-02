@@ -1161,6 +1161,30 @@ def check_generalinfo_field(pki_message: PKIMessageTMP) -> None:  # noqa D417 # 
     check_certprofile_in_generalinfo(pki_message=pki_message)
 
 
+def _check_message_time_for_request(
+    request_time: datetime.datetime,
+    allowed_interval: int,
+) -> None:
+    """Check if the `messageTime` field is set in the PKIMessage header from a client request.
+
+    :param request_time: The time when the request was made.
+    """
+    now_obj = datetime.datetime.now(datetime.timezone.utc)
+    time_diff = (now_obj - request_time).total_seconds()
+    if time_diff < 0:
+        raise BadTime(f"The `messageTime` field is in the future!The time difference is: {time_diff} seconds")
+
+    if time_diff == 0:
+        logging.warning("The `messageTime` field is set to the current time!")
+
+    if time_diff > allowed_interval:
+        raise BadTime(
+            f"The `messageTime` field is too old: {time_diff} seconds."
+            f"The allowed interval is: {allowed_interval} seconds."
+        )
+    logging.info("The time difference was: %.2f seconds, which is within the allowed interval.", time_diff)
+
+
 @not_keyword
 def check_message_time_field(
     pki_message: PKIMessageTMP,
@@ -1197,16 +1221,16 @@ def check_message_time_field(
         time_obj = msg_time.asDateTime
 
         if request_time is not None:
-            time_diff = time_obj - request_time
-            logging.info("time difference between request and response: %s", str(time_diff.seconds))
-            if time_diff.seconds > allowed_interval:
-                raise BadTime(f"The request time difference is greater then: {allowed_interval} seconds.")
+            time_diff = (time_obj - request_time).total_seconds()
+            logging.info("Time difference between request and response was: %d seconds.", int(time_diff))
         else:
-            time_now = datetime.datetime.now(datetime.timezone.utc)
-            time_dif = (time_now - time_obj).seconds
+            _check_message_time_for_request(time_obj, allowed_interval)
+            return
 
-            if time_dif > allowed_interval:
-                raise BadTime(f"Response time difference is greater than: {allowed_interval} seconds.")
+        if time_diff > allowed_interval:
+            raise BadTime(f"Time difference exceeds allowed {allowed_interval} seconds: {time_diff} seconds")
+
+        logging.info("The time difference was: %.2f seconds, which is within the allowed interval.", time_diff)
 
 
 def validate_sender_and_recipient_nonce(  # noqa D417 undocumented-param
