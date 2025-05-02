@@ -2956,7 +2956,7 @@ def build_ca_message(
     return pki_message
 
 
-def _contains_cert(cert_template, certs: Sequence[rfc9480.CMPCertificate]) -> Optional[rfc9480.CMPCertificate]:
+def _contains_cert_template(cert_template, certs: Sequence[rfc9480.CMPCertificate]) -> Optional[rfc9480.CMPCertificate]:
     """Check if the certificate template is in the list of certificates.
 
     :param cert_template: The certificate template to check.
@@ -3156,7 +3156,7 @@ def validate_rev_details(  # noqa D417 undocumented-param
     """
     _check_rev_details_mandatory_fields(rev_details["certDetails"])
 
-    cert = _contains_cert(
+    cert = _contains_cert_template(
         cert_template=rev_details["certDetails"],
         certs=issued_certs,
     )
@@ -3278,7 +3278,7 @@ def build_rp_from_rr(  # noqa: D417 missing argument descriptions in the docstri
         body["rp"]["status"].append(status_info)
 
         if not kwargs.get("enforce_lwcmp", True):
-            cert = _contains_cert(
+            cert = _contains_cert_template(
                 cert_template=entry["certDetails"],
                 certs=certs,
             )
