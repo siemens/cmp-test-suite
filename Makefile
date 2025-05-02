@@ -96,13 +96,13 @@ check-sigs:
 
 test-pq-hybrid:
     # Start the tests for PQ and Hybrid algorithms/mechanisms.
-	robot --pythonpath=./ --outputdir=reports --variable environment:$(env) tests tests_pq_and_hybrid
+	robot --pythonpath=./ --outputdir=reports --variable environment:$(env) tests_pq_and_hybrid
 
 start-mock-ca:
 	python ./mock_ca/ca_handler.py
 
 test-mock-ca:
     # exclude sec-awareness for faster execution.
-	robot --exclude sec-awareness --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests tests_pq_and_hybrid
-	# robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests
+	# robot --exclude sec-awareness --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests
+	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests tests_pq_and_hybrid
 
