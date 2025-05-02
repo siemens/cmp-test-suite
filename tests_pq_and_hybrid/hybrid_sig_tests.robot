@@ -306,10 +306,10 @@ CA MUST Reject Composite Sig with Traditional Revoked key Due Compromise
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    rejection
 
-CA SHOULD Reject Issuing Already in use Traditional Key
+CA MUST Reject Issuing Already in use Traditional Key
     [Documentation]    As defined in Composite Sig Draft CMS03 Section 11.3, we generate a valid IR with a composite
     ...                signature algorithm. The traditional algorithm is already in use and a matching ML-DSA key is
-    ...                generated. The CA SHOULD reject the request and MAY respond with the optional failInfo
+    ...                generated. The CA MUST reject the request and MAY respond with the optional failInfo
     ...                `badCertTemplate` or `badRequest`.
     [Tags]             composite-sig   negative  security
     ${key}=            Generate Key    algorithm=composite-sig  trad_key=${ISSUED_KEY}
