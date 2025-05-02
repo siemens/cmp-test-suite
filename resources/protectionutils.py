@@ -1121,6 +1121,8 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
     password: Optional[Union[bytes, str]] = None,
     public_key: Optional[VerifyKey] = None,
     shared_secret: Optional[bytes] = None,
+    *,
+    enforce_lwcmp: bool = False,
 ) -> None:
     """Verify the `PKIProtection` of a given `PKIMessageTMP`.
 
@@ -1141,6 +1143,7 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
         - `public_key`: The public key in case a self-signed certificate was used to sign the PKIMessage,
         and was omitted inside the extraCerts field, as specified in section 3.3.
         - `shared_secret`: The shared secret for DH-based MAC protection.
+        - `enforce_lwcmp`: If True, enforces the LWCMP algorithm Profile for verification. Defaults to `False`.
 
     Raises:
     ------
@@ -1160,6 +1163,9 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
     """
     protection_value: bytes = pki_message["protection"].asOctets()
     protection_type_oid = pki_message["header"]["protectionAlg"]["algorithm"]
+
+    if enforce_lwcmp:
+        protection_type_oid = get_protection_type_from_pkimessage(pki_message, enforce_lwcmp=True)
 
     if protection_type_oid == id_KemBasedMac:
         verify_kem_based_mac_protection(
@@ -1267,7 +1273,7 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     Arguments:
     ---------
         - `pki_message`: The PKIMessage object to check.
-        - `enforce_lwcmp`: Boolean flag to indicate if the lightweight CMP version is checked. Defaults to False.
+        - `enforce_lwcmp`: Boolean flag to indicate if the lightweight CMP version is checked. Defaults to `False`.
         Then only "pbmac1" and "password-based-mac" are allowed.
 
 
@@ -1278,38 +1284,47 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     Raises:
     ------
         - `UnknownOID`: If the OID is not valid, unsupported or not allowed.
+        - `ValueError`: If the protection algorithm is not a value.
+        - `ValueError`: If the protection algorithm is not allowed as in RFC 9483 specified (for `enforce_lwcmp`).
 
     Examples:
     --------
     | Get Protection Type From PKIMessage | ${pki_message} |
 
     """
-    alg_id = pki_message["header"]["protectionAlg"]["algorithm"]
-    alg_id: univ.ObjectIdentifier
+    alg_oid = pki_message["header"]["protectionAlg"]["algorithm"]
+    alg_oid: univ.ObjectIdentifier
 
-    if not alg_id.isValue:
+    if not alg_oid.isValue:
         raise ValueError("The protectionAlg field is not a value!")
 
     if enforce_lwcmp:
-        if alg_id in LWCMP_MAC_OID_2_NAME:
+        if alg_oid in LWCMP_MAC_OID_2_NAME:
             return "mac"
+
+        if alg_oid not in MSG_SIG_ALG:
+            raise ValueError(
+                f"Expected to be a `MSG_SIG_ALG` or `LWCMP_MAC_OID_2_NAME` algorithm, "
+                f"but got: {may_return_oid_to_name(alg_oid)}"
+            )
+
         raise ValueError(
-            f"Expected 'pbmac1' or 'password_based_mac' protection, but got: {may_return_oid_to_name(alg_id)}"
+            f"Expected 'pbmac1' or 'password_based_mac' protection, but got: {may_return_oid_to_name(alg_oid)}"
         )
 
-    if alg_id in SYMMETRIC_PROT_ALGO:
+    if alg_oid in SYMMETRIC_PROT_ALGO:
         return "mac"
 
-    if alg_id in MSG_SIG_ALG:
+    if alg_oid in MSG_SIG_ALG:
         return "sig"
 
-    if alg_id in CMS_COMPOSITE03_OID_2_NAME:
+    if alg_oid in CMS_COMPOSITE03_OID_2_NAME:
         return "composite-sig"
 
-    if alg_id in PQ_SIG_OID_2_NAME:
+    if alg_oid in PQ_SIG_OID_2_NAME:
         return "pq-sig"
 
-    raise UnknownOID(oid=alg_id)
+    raise UnknownOID(oid=alg_oid)
 
 
 def _compare_mac_params(
