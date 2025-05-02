@@ -301,7 +301,7 @@ class PQPublicKey(WrapperPublicKey, ABC):
         self._name, self._other_name = self._check_name(alg_name)
         self._initialize_key()
 
-    def __eq__(self, other: "PQPublicKey") -> bool:
+    def __eq__(self, other: "Any") -> bool:
         """Compare two public keys.
 
         :param other: The other public key to compare with.
