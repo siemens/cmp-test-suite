@@ -40,17 +40,18 @@ def send_request_to_static_cert1() -> None:
 
 
 def send_pkimessage_to_mock_ca(
-    pki_message: PKIMessageTMP, url: str = "http://127.0.0.1:5000/issuing"
+    pki_message: PKIMessageTMP, url: str = "http://127.0.0.1:5000/issuing", verify: bool = False
 ) -> Optional[PKIMessageTMP]:
     """Send a PKIMessage to a given URL.
 
     :param pki_message: The PKIMessage to send.
     :param url: The URL to send the PKIMessage to.
+    :param verify: Whether to verify the server's SSL certificate.
     :return: The response from the server.
     """
     der_data = encoder.encode(pki_message)
     try:
-        response = requests.post(url, data=der_data, timeout=60)
+        response = requests.post(url, data=der_data, timeout=60, verify=verify)
         if response.status_code == 200:
             print("Success:")
             der_data = response.content
