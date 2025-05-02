@@ -907,7 +907,7 @@ def certificates_are_trustanchors(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the certificates are not allowed/known trustanchors.
+        - `SignerNotTrusted`: If the certificates are not allowed/known trustanchors.
 
     Examples:
     --------
@@ -934,7 +934,7 @@ def certificates_are_trustanchors(  # noqa D417 undocumented-param
         if verbose:
             utils.log_certificates(none_anchors)
 
-        raise ValueError("Certificates are not trust anchors!")
+        raise SignerNotTrusted("Certificates are not trust anchors!")
 
 
 def certificates_must_be_trusted(  # noqa D417 undocumented-param
@@ -980,7 +980,7 @@ def certificates_must_be_trusted(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the last certificate inside the certificate chain is not trusted.
+        - `SignerNotTrusted`: If the last certificate inside the certificate chain is not trusted.
         - `ValueError`: If the certificate chain validation fails.
         - `ValueError`: If key usage validation fails on the EE certificate.
 
@@ -999,7 +999,9 @@ def certificates_must_be_trusted(  # noqa D417 undocumented-param
 
     if not trusted:
         subject_name = utils.get_openssl_name_notation(cert_chain[-1]["tbsCertificate"]["subject"])
-        raise ValueError(f"Subject={subject_name} is not a trust anchor!\nCertificate:\n{cert_chain[-1].prettyPrint()}")
+        raise SignerNotTrusted(
+            f"Subject={subject_name} is not a trust anchor!\nCertificate:\n{cert_chain[-1].prettyPrint()}"
+        )
 
     if len(cert_chain) == 1:
         logging.info("`certificates_must_be_trusted` got a single cert.")
@@ -1766,10 +1768,13 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
 
     Raises:
     ------
+        - `ValueError`: If the the ocsp request fails.
+        - `ValueError`: If `ca_cert` is not provided and `ocsp_url` is given.
         - `CertRevoked`: If the certificate is revoked.
         - `IOError`: If there's an issue loading or parsing the CRL or OCSP data.
         - `ValueError`: If the OCSP request fails.
         - `ValueError`: If the certificate does not contain any CRL URLs and non was provided.
+
 
     Examples:
     --------
@@ -1778,6 +1783,9 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
     | Validate If Certificate Is Revoked | cert=${cert} | crl_url=${crl_url} |
 
     """
+    if ca_cert is None and ocsp_url is not None:
+        raise ValueError("OCSP URL provided, but no issuer certificate provided. OCSP check cannot be performed.")
+
     try:
         if ca_cert:
             try:
