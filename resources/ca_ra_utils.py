@@ -671,6 +671,7 @@ def prepare_private_key_for_kga(
     hash_alg: str = "sha256",
     key_save_type: Optional[str] = "raw",
     invalid_kga_operation: Optional[Union[str, InvalidOneAsymKeyType]] = None,
+    new_private_keys: Optional[Union[List[rfc5958.OneAsymmetricKey], rfc5958.OneAsymmetricKey]] = None,
     **kwargs,
 ) -> rfc5652.EnvelopedData:
     """Prepare the private key for the key generation action.
@@ -683,6 +684,7 @@ def prepare_private_key_for_kga(
     :param kga_key: The key generation authority key to use. Defaults to `None`.
     :param key_save_type: Whether to save the PQ-key as `seed`, `raw` or `seed_and_raw`. Defaults to `raw`.
     :param invalid_kga_operation: The invalid operation to perform. Defaults to `None`.
+    :param new_private_keys: The new private keys to use. Defaults to `None`.
     :raises BadCertTemplate: If the key OID is not recognized.
     """
     recip_type = _get_kga_recipient_type(pki_message=request)
@@ -709,12 +711,13 @@ def prepare_private_key_for_kga(
     elif version_num.isdigit():
         version_num = int(version_num)
 
-    private_keys = prepare_invalid_kga_private_key(
-        new_private_key=new_private_key,
-        invalid_operation=invalid_kga_operation,
-        key_save_type=key_save_type or "raw",
-        key_export_version=version_num,
-    )
+    if new_private_keys is None:
+        private_keys = prepare_invalid_kga_private_key(
+            new_private_key=new_private_key,
+            invalid_operation=invalid_kga_operation,
+            key_save_type=key_save_type or "raw",
+            key_export_version=version_num,
+        )
 
     signed_data = envdatautils.prepare_signed_data(
         signing_key=kga_key,
@@ -4307,6 +4310,8 @@ def build_kga_cmp_response(  # noqa D417 undocumented-param
         - `extensions`: The extensions to be added to the build certificate. Defaults to `None`.
         - `key_save_type`: Whether to save the PQ-key as `seed`, `raw` or `seed_and_raw`. Defaults to `raw`.
         - `default_key_type`: The default key type to generate for the client request. Defaults to `rsa`.
+        - `new_private_key` (List[rfc5958.OneAsymmetricKey], rfc5958.OneAsymmetricKey): The new private key to use for the KGA request. \
+        Defaults to `None`.
 
     Returns:
     -------
