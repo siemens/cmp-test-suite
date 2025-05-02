@@ -947,3 +947,7 @@ Wait Until Server Updated Cert
     ...                Needed in some cases, if a updated certificate is treated as a revoked certificate,
     ...                so that no new certificates can be issued.
     Sleep    ${REVOKED_WAIT_TIME}
+
+Wait Until Server Revived Cert
+    [Documentation]    Wait time until the server revived a certificate so that testing can be begin.
+    Sleep    ${REVOKED_WAIT_TIME}
