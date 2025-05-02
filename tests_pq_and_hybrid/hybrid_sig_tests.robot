@@ -272,7 +272,7 @@ CA MUST Reject Composite RSA with invalid RSA key length
     ${pq_key}=     Generate Key       algorithm=ml-dsa-44
     ${key}=            Generate Key    algorithm=composite-sig   trad_key=${trad_key}   pq_key=${pq_key}
     ${cm}=             Get Next Common Name
-    ${spki}=   Prepare SubjectPublicKeyInfo   ${trad_key}
+    ${spki}=   Prepare SubjectPublicKeyInfo   ${key}
     ${ir}=    Build Ir From Key    ${key}  ${cm}
     ...         spki=${spki}  recipient=${RECIPIENT}  exclude_fields=sender,senderKID
     ${protected_ir}=  Protect PKIMessage
