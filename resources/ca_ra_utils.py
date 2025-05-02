@@ -712,7 +712,7 @@ def prepare_private_key_for_kga(
         version_num = int(version_num)
 
     if new_private_keys is None:
-        private_keys = prepare_invalid_kga_private_key(
+        new_private_keys = prepare_invalid_kga_private_key(
             new_private_key=new_private_key,
             invalid_operation=invalid_kga_operation,
             key_save_type=key_save_type or "raw",
@@ -723,7 +723,7 @@ def prepare_private_key_for_kga(
         signing_key=kga_key,
         sig_hash_name=None,  # will automatically be set to the hash algorithm used for the KGA key.
         cert=kga_cert_chain[0],
-        private_keys=private_keys,
+        private_keys=new_private_keys,
         cert_chain=kga_cert_chain,
     )
     signed_data_der = encoder.encode(signed_data)
