@@ -110,7 +110,7 @@ ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 #Indicating if the PKIFailInfo must be set correctly.
 ${FAILINFO_MUST_BE_CORRECT}   ${True}
 # For messageTime check.
-${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
+${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-501}
 
 ##### Section 4
 # If ALLOW_P10CR is enabled, all generic test cases will be done
