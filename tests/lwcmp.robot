@@ -212,6 +212,7 @@ CA MUST Reject PKIMessage Without messageTime
     ...    in Section 3.5.
     [Tags]    negative    rfc9483-header    strict    time
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
+    ${key}=  Generate Default Key
     ${ir}=    Build Ir From Key
     ...    ${key}
     ...    sender=${SENDER}
@@ -257,6 +258,7 @@ CA MUST Reject PKIMessage With A Long Passed messageTime
     ...    as specified in Section 3.5.
     [Tags]    negative    rfc9483-header    strict    time
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
+    ${key}=  Generate Default Key
     ${ir}=    Build Ir From Key
     ...    ${key}
     ...    sender=${SENDER}
