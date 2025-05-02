@@ -1577,11 +1577,9 @@ def build_ocsp_response(
 
     builder = builder.responder_id(encoding=_encoding, responder_cert=crypto_responder_cert)
 
-    if nonce is None:
-        # allow range is 1-32 from the RFC 8954.
-        nonce = os.urandom(16)
-
-    builder = builder.add_extension(x509.OCSPNonce(nonce), critical=False)
+    # Allow range is 1-32 from the RFC 8954.
+    if nonce is not None:
+        builder = builder.add_extension(x509.OCSPNonce(nonce), critical=False)
 
     if hash_alg is not None:
         hash_inst = oid_mapping.hash_name_to_instance(hash_alg)

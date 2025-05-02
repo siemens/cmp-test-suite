@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Union
 
 from cryptography import x509
-from cryptography.x509 import CertificateRevocationList, ocsp
+from cryptography.x509 import CertificateRevocationList, ExtensionNotFound, ocsp
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc5280, rfc9480
 
@@ -264,6 +264,18 @@ class CertRevStateDB:
         """Return the number of revoked certificates."""
         return len(self.rev_entry_list)
 
+    @staticmethod
+    def _get_nonce(ocsp_request: ocsp.OCSPRequest) -> Optional[bytes]:
+        """Get the OCSP nonce from the request."""
+        try:
+            ocsp_nonce = ocsp_request.extensions.get_extension_for_class(x509.OCSPNonce)
+            nonce = ocsp_nonce.value.nonce
+            logging.info("OCSP Nonce: %s", nonce.hex())
+            return nonce
+        except ExtensionNotFound:
+            logging.info("OCSP Nonce not found in the request.")
+            return None
+
     def get_ocsp_response(
         self,
         request: ocsp.OCSPRequest,
@@ -295,12 +307,15 @@ class CertRevStateDB:
                 f"Certificate with serial number {num} not found in the list of revoked or issued certificates."
             )
 
+        nonce = self._get_nonce(request)
+
         return certutils.build_ocsp_response(
             cert=found_cert,
             ca_cert=ca_cert,
             status=status,
             responder_key=sign_key,
             responder_cert=responder_cert,
+            nonce=nonce,
         )
 
     def get_crl_response(
