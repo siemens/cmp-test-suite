@@ -212,11 +212,10 @@ CA MUST Reject PKIMessage Without messageTime
     ...    in Section 3.5.
     [Tags]    negative    rfc9483-header    strict    time
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
-    ${ir}=    Build Ir From CSR
-    ...    ${EXP_CSR}
-    ...    ${EXP_KEY}
-    ...    exclude_fields=messageTime,sender,senderKID
+    ${ir}=    Build Ir From Key
+    ...    ${key}
     ...    sender=${SENDER}
+    ...    exclude_fields=messageTime,sender,senderKID
     ...    recipient=${RECIPIENT}
     ${protected_ir}=    Protect PKIMessage
     ...    pki_message=${ir}
@@ -234,9 +233,9 @@ CA MUST Reject PKIMessage With messageTime Outside Allowed Window
     ...    include the failinfo `badTime`, as specified in Section 3.5.
     [Tags]    negative    rfc9483-header    strict    time
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
-    ${ir}=    Build Ir From CSR
-    ...    ${EXP_CSR}
-    ...    ${EXP_KEY}
+    ${key}=  Generate Default Key
+    ${ir}=    Build Ir From Key
+    ...    ${key}
     ...    sender=${SENDER}
     ...    exclude_fields=messageTime,sender,senderKID
     ...    recipient=${RECIPIENT}
@@ -258,11 +257,10 @@ CA MUST Reject PKIMessage With A Long Passed messageTime
     ...    as specified in Section 3.5.
     [Tags]    negative    rfc9483-header    strict    time
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
-    ${ir}=    Build Ir From CSR
-    ...    ${EXP_CSR}
-    ...    ${EXP_KEY}
-    ...    exclude_fields=messageTime,sender,senderKID
+    ${ir}=    Build Ir From Key
+    ...    ${key}
     ...    sender=${SENDER}
+    ...    exclude_fields=messageTime,sender,senderKID
     ...    recipient=${RECIPIENT}
     ${ir}=    Patch MessageTime    ${ir}    2024-01-01 15:30:00.000000
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
