@@ -394,9 +394,10 @@ CA MUST Accept Valid Revocation Request
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}   status=accepted
+    Verify statusString   ${response}   revoked,Revoked
     Wait Until Server Revoked Cert
     VAR   ${ca_cert}   ${rr["extraCerts"][1]}
-    Validate If Certificate Is Revoked    ${REVOCATION_CERT}   ${ca_cert}   expected_to_be_revoked=True
+    Validate If Certificate Is Revoked    ${cert}   ${ca_cert}   expected_to_be_revoked=True
 
 CA Should Respond with certRevoked for Already Revoked Cert
     [Documentation]    According to RFC 9483 Section 4.2, an rr message is used to request revocation of a certificate.
@@ -478,25 +479,19 @@ CA MUST Accept Valid Revive Request
     ...    all required details. The CA MUST accept the request and successfully revive the
     ...    certificate.
     [Tags]    positive    revive
-    ${rr}=  Build CMP Revoke Request    cert=${REVOCATION_CERT}  recipient=${RECIPIENT}
-    ${rr}=    Protect PKIMessage
-    ...    ${rr}
-    ...    protection=signature
-    ...    cert=${REVOCATION_CERT}
-    ...    private_key=${REVOCATION_KEY}
-    ${response}=    Exchange PKIMessage    ${rr}
-    PKIMessage Body Type Must Be    ${response}    rp
-    PKIStatus Must Be    ${response}   status=accepted
+    ${cert}   ${key}=   Revoke Certificate
     ${rr}=    Build CMP Revive Request
-    ...    cert=${REVOCATION_CERT}
+    ...    cert=${cert}
     ...    recipient=${RECIPIENT}
     ${rr}=    Protect PKIMessage   ${rr}   protection=signature
-    ...    cert=${REVOCATION_CERT}   private_key=${REVOCATION_KEY}
+    ...    cert=${cert}   private_key=${key}
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be   ${response}    status=accepted
     Verify StatusString   ${response}    Revive,revive
-    # TODO: Check if the certificate is actually revived, examine the CRL or do an OCSP request
+    Wait Until Server Revived Cert
+    VAR   ${ca_cert}   ${rr["extraCerts"][1]}
+    Validate If Certificate Is Revoked    ${cert}   ${ca_cert}   expected_to_be_revoked=False
 
 #### Section 4 RR checks for issuing.
 
@@ -585,7 +580,7 @@ Revoke Certificate
     ...    Examples:
     ...    --------
     ...    ${cert}    ${key}=    Revoke Certificate    ${cert}    ${key}
-    [Arguments]    ${cert}    ${key}
+    [Arguments]    ${cert}=${REVOCATION_CERT}    ${key}=${REVOCATION_KEY}
     ${rr}=    Build CMP Revoke Request    cert=${cert}    recipient=${RECIPIENT}
     ${rr}=    Protect PKIMessage    ${rr}    signature    cert=${cert}    private_key=${key}
     ${response}=    Exchange PKIMessage    ${rr}
