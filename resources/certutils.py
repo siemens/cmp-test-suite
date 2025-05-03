@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
@@ -1524,6 +1524,7 @@ def build_ocsp_response(
     responder_cert: Optional[rfc9480.CMPCertificate] = None,
     responder_hash_alg: str = "sha256",
     revocation_time: Optional[datetime] = None,
+    this_update: Optional[datetime] = None,
     build_by_key: bool = True,
     nonce: Optional[bytes] = None,
 ) -> ocsp.OCSPResponse:
@@ -1539,6 +1540,7 @@ def build_ocsp_response(
     :param responder_hash_alg: The hash algorithm to use for the responder. Defaults to "sha256".
     :param revocation_time: The revocation time for the certificate. Defaults to `None`.
     (must be present if the certificate is revoked, but will be set to the current time if not provided).
+    :param this_update: The time of the OCSP response. Defaults to `None` (now).
     :param build_by_key: Whether to build the OCSP response by hash of the key or name. Defaults to `True`.
     :param nonce: The nonce to include in the OCSP response. Defaults to 16 random bytes.
     :return: The OCSP response.
@@ -1562,7 +1564,7 @@ def build_ocsp_response(
         algorithm=resp_hash_inst,
         cert_status=cert_status,
         revocation_reason=reason,
-        this_update=datetime.now(),
+        this_update=this_update or datetime.now(tz=timezone.utc),
         next_update=None,
         revocation_time=revocation_time,
     )

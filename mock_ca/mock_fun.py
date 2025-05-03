@@ -309,10 +309,16 @@ class CertRevStateDB:
 
         nonce = self._get_nonce(request)
 
+        # TODO maybe also save revocation time.
+        revocation_time = datetime.now(timezone.utc) - timedelta(seconds=360)
+
         return certutils.build_ocsp_response(
             cert=found_cert,
             ca_cert=ca_cert,
+            hash_alg=request.hash_algorithm.name,
             status=status,
+            revocation_time=revocation_time,
+            responder_hash_alg=request.hash_algorithm.name,
             responder_key=sign_key,
             responder_cert=responder_cert,
             nonce=nonce,
