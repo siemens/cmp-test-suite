@@ -427,13 +427,22 @@ class CAHandler:
         ca_alt_key: Optional[PQSignaturePrivateKey] = None,
         state: Optional[MockCAState] = None,
         port: int = 5000,
-        allow_only_authorized_certs: bool = True,
         use_openssl: bool = False,
         base_url: str = "http://127.0.0.1",
     ):
         """Initialize the CA Handler.
 
+        :param ca_cert: The CA issuer certificate. Defaults to `load_ca_cert_and_key()`.
+        :param ca_key: The CA issuer key.  Defaults to `load_ca_cert_and_key()`.
+        :param ca_alt_key: The CA alternative catalyst sign key. Defaults to `None`.
+        :param pre_shared_secret: The pre-shared secret for the CA. Defaults to b"SiemensIT".
+        :param state: The state of the CA, creates a fresh state if not provided. Defaults to `None`.
+        :param port: The port for the CA, used for the Extensions preparation. Defaults to `5000`.
+        :param use_openssl: If OpenSSL should be used for verification. Defaults to `False`.
         :param config: The configuration for the CA Handler.
+        :param base_url: The base URL for the CA ONLY used to prepare the extensions. Defaults to `http://localhost:5000`.
+        (CRL-DP, OCSP, IDP, Sun-Hybrid)
+        :raises BadConfig: If the CA certificate and key are not provided.
         """
         if ca_cert is None and ca_key is None:
             ca_cert, ca_key = load_ca_cert_and_key()
@@ -520,7 +529,7 @@ class CAHandler:
         extensions = self.extensions
 
         self.verify_state = VerifyState(
-            allow_only_authorized_certs=allow_only_authorized_certs,
+            allow_only_authorized_certs=True,
             use_openssl=use_openssl,
         )
 
@@ -1365,4 +1374,13 @@ def handle_catalyst():
 
 
 if __name__ == "__main__":
+    # import ssl
+    # DOMAIN = "mydomain.com"
+    # CERT_DIR = f"/etc/letsencrypt/live/{DOMAIN}"
+    # CERT_FILE = os.path.join(CERT_DIR, "fullchain.pem")
+    # KEY_FILE = os.path.join(CERT_DIR, "privkey.pem")
+    # context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    # context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
+    # context = "adhoc"
+    # app.run(port=5000, debug=True, ssl_context=context)
     app.run(port=5000, debug=True)
