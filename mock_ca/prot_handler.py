@@ -29,6 +29,7 @@ from resources.certutils import (
 from resources.checkutils import check_if_response_contains_encrypted_cert, check_if_response_contains_private_key
 from resources.cryptoutils import perform_ecdh
 from resources.exceptions import (
+    BadAlg,
     BadConfig,
     BadMessageCheck,
     CMPTestSuiteError,
@@ -374,6 +375,12 @@ class ProtectionHandler:
             verify_hybrid_pkimessage_protection(
                 pki_message=pki_message,
             )
+        except BadAlg as e:
+            raise BadMessageCheck(
+                message="Invalid algorithm or combination for signature protection.",
+                error_details=[e.message] + e.error_details,
+            )
+
         except (InvalidSignature, InvalidAltSignature, ValueError):
             raise BadMessageCheck(message="Invalid signature protection.")
 
