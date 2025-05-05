@@ -22,15 +22,13 @@ Running tests generates the following three result files:
 - log.html
 - output.xml
 
-or the smoke test, the output files (report.html, log.html, and output.xml) are generated in the root directory of the cmp-test-suite project. 
-
 Adjustments to the location of the output can be made by modifying the command line options when running a test.
 For example `robot --outputdir=out tests/smoke.robot` stores the results in the out directory. 
 
 ### report.html
 Higher-level test report.
 
-Under the section "Test Details" tab "All" you will find the name, documentation, tags, status and if failed the message of the tests you´ve run. 
+Under the section "Test Details" tab "All" you will find the name, documentation, tags, status and if failed the message of the tests you have run. 
 - The background of the report is green if all tests pass. 
 - It is red if at least one test fails (or is skipped).
 

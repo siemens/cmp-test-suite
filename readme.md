@@ -24,7 +24,7 @@ readable not only to software engineers, but also to PKI experts without program
 the emphasis on replicability - a test report is sufficient for someone to understand exactly what was transmitted to
 the server and how the responses were processed.
 
-These instructions assume a Linux-based system, but it is designed to be used with other platforms as well. Occasionally, additional Windows commands are provided. 
+These instructions assume a Debian-based Linux system, but it is designed to be used with other platforms as well. Occasionally, additional Windows commands are provided. 
 
 
 The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the project.

@@ -11,15 +11,6 @@ Resource            ../resources/keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             String
-Library             ../resources/utils.py
-Library             ../resources/asn1utils.py
-Library             ../resources/cmputils.py
-Library             ../resources/keyutils.py
-Library             ../resources/certbuildutils.py
-Library             ../resources/protectionutils.py
-Library             ../resources/checkutils.py
-Library             ../resources/extra_issuing_logic.py
-Library             ../resources/certextractutils.py
 
 
 
@@ -34,8 +25,8 @@ The smoke test must pass
 OQS dependencies must be available
     [Documentation]    Checks if the OQS (openquantumsafe) dependencies are available https://github.com/open-quantum-safe/liboqs-python
     [Tags]    smoke
-     ${rc} 	  ${output} = 	Run and Return RC and Output 	python -c "import oqs"
-     Should be Equal    ${rc}    ${0}
+    ${rc} 	  ${output} = 	Run and Return RC and Output 	python -c "import oqs"
+    Should be Equal    ${rc}    ${0}
 
 
 
