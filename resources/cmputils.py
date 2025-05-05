@@ -48,7 +48,7 @@ from resources import (
     protectionutils,
     utils,
 )
-from resources.asn1_structures import KemCiphertextInfoAsn1, PKIMessagesTMP, PKIMessageTMP
+from resources.asn1_structures import CertProfileValueAsn1, KemCiphertextInfoAsn1, PKIMessagesTMP, PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadDataFormat, BadRequest
@@ -3889,6 +3889,7 @@ def _prepare_generalinfo(
     if confirm_wait_time is not None:
         confirm_wait_time_obj = rfc9480.InfoTypeAndValue()
         confirm_wait_time_obj["infoType"] = rfc9480.id_it_confirmWaitTime
+
         new_time = datetime.now(timezone.utc)
         new_time = new_time + timedelta(seconds=int(confirm_wait_time))
         if negative_value:
@@ -3901,15 +3902,17 @@ def _prepare_generalinfo(
 
     if cert_profile is not None:
         cert_profile_obj = rfc9480.InfoTypeAndValue()
-        cert_profile_obj["infoType"] = rfc9480.id_it_certReqTemplate
-        cert_profile_obj["infoValue"] = rfc9480.CertProfileValue(cert_profile)
-        general_info_wrapper.append(cert_profile_obj)
+        value = CertProfileValueAsn1()
+        value.append(char.UTF8String(cert_profile))
 
         if negative_value:
-            cert_profile_obj2 = rfc9480.InfoTypeAndValue()
-            cert_profile_obj2["infoType"] = rfc9480.id_it_certReqTemplate
-            cert_profile_obj2["infoValue"] = rfc9480.CertProfileValue(modify_random_str(cert_profile))
-            general_info_wrapper.append(cert_profile_obj2)
+            # MUST be present in the same size as either `GenMsgContent` or `CertReqMsg`.
+            value.append(char.UTF8String(modify_random_str(cert_profile)))
+
+        value.append(cert_profile)
+        cert_profile_obj["infoType"] = rfc9480.id_it_certProfile
+        cert_profile_obj["infoValue"] = value
+        general_info_wrapper.append(cert_profile_obj)
 
     return general_info_wrapper
 

@@ -20,6 +20,7 @@ from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from resources import cmputils, keyutils
 from resources.asn1_structures import (
     AlgorithmIdentifiers,
+    CertProfileValueAsn1,
     CRLSourceAsn1,
     CRLStatusAsn1,
     CRLStatusListValueAsn1,
@@ -141,6 +142,8 @@ class GeneralMessageHandler:
         self.add_env_data_certs = False
         self.all_rel_env_data_certs = all_relevant_env_certs
         self.crl_url = crl_url
+        self.supports_implicit_confirm = True
+        self.known_cert_profiles = []
 
     def _check_general_message(self, pki_message: PKIMessageTMP) -> None:
         """Check the general message."""
@@ -195,14 +198,16 @@ class GeneralMessageHandler:
 
         for entry in pki_message["body"]["genm"]:
             self.process_absent_info_type(entry)
-            out, text = self._process_general_message_entry(entry, pki_message)
+            out, text = self._process_general_message_entry(
+                entry, pki_message, msg_size=len(pki_message["body"]["genm"])
+            )
             processed.append(out)
             if text:
                 texts.append(text)
         return self.prepare_genp_response(pki_message, processed, texts=texts)
 
     def _process_general_message_entry(
-        self, entry: rfc9480.InfoTypeAndValue, pki_message: PKIMessageTMP
+        self, entry: rfc9480.InfoTypeAndValue, pki_message: PKIMessageTMP, msg_size: int
     ) -> Tuple[rfc9480.InfoTypeAndValue, Optional[str]]:
         """Process a general message entry."""
         oid = entry["infoType"]
@@ -254,7 +259,54 @@ class GeneralMessageHandler:
         if oid == rfc9480.id_it_caCerts:
             return self._process_ca_certs()
 
+        if oid == rfc9480.id_it_implicitConfirm:
+            return self._process_implicit_confirm(entry)
+
+        if oid == rfc9480.id_it_certProfile:
+            return self._process_cert_profile(entry), "The certificate profile is not implemented."
+
         raise NotImplementedError(f"The processing of the info type {entry['infoType']} is not implemented.")
+
+    def _process_cert_profile(self, entry: rfc9480.InfoTypeAndValue) -> rfc9480.InfoTypeAndValue:
+        """Process the certificate profile."""
+        # GenMsg: {id-it 21}, CertProfileValue
+        # Could maybe be used to check if the CertProfile is supported/known?
+        cert_profiles = _try_decode_mock_ca(entry["infoValue"].asOctets(), CertProfileValueAsn1())  # type: ignore
+        cert_profiles: CertProfileValueAsn1
+        if len(cert_profiles) == 0:
+            raise BadRequest("The certificate profiles sequence is empty.")
+
+        if len(cert_profiles) != 1:
+            raise BadRequest("The certificate profiles sequence length is not 1.")
+
+        entry = cert_profiles[0].prettyPrint()
+        if entry not in self.known_cert_profiles:
+            raise BadRequest("The certificate profile is not known by the CA.")
+
+        raise BadRequest(
+            "The certificate profile is not supposed to be used individually."
+            "Please add it inside the `generalInfo` field, with the `CertReqTemplateValue` general message."
+        )
+
+    def _process_implicit_confirm(self, entry: rfc9480.InfoTypeAndValue) -> Tuple[rfc9480.InfoTypeAndValue, str]:
+        """Process the implicit confirm info type."""
+        # GenMsg: {id-it 5}, < absent >
+        # Could maybe be used to check if the implicitConfirm is allowed?
+        if entry["infoValue"].isValue:
+            raise BadValueBehavior("The info value for the implicit confirm is set.")
+
+        if entry["infoType"] != rfc9480.id_it_implicitConfirm:
+            raise BadRequest("The info type for the implicit confirm is not set.")
+
+        _ = _try_decode_mock_ca(entry["infoValue"].asOctets(), rfc9480.ImplicitConfirmValue())
+
+        if not self.supports_implicit_confirm:
+            raise BadRequest("The implicit confirm is not supported.")
+
+        info_value = rfc9480.InfoTypeAndValue()
+        info_value["infoType"] = rfc9480.id_it_implicitConfirm
+        info_value["infoValue"] = rfc9480.ImplicitConfirmValue("")
+        return info_value, "The implicit confirmation is implemented."
 
     def _process_root_ca_key_update(self):
         """Process a root CA key update."""

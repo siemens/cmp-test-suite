@@ -39,10 +39,15 @@ from resources.checkutils import (
     check_is_protection_present,
     check_message_time_field,
     check_sender_cmp_protection,
+    validate_cert_profile_for_ca,
     validate_request_message_nonces_and_tx_id,
     validate_senderkid_for_cmp_protection,
 )
-from resources.cmputils import build_cmp_error_message, find_oid_in_general_info, patch_generalinfo
+from resources.cmputils import (
+    build_cmp_error_message,
+    find_oid_in_general_info,
+    patch_generalinfo,
+)
 from resources.convertutils import ensure_is_verify_key
 from resources.copyasn1utils import copy_name
 from resources.data_objects import ExtraIssuingData
@@ -441,6 +446,7 @@ class CertReqHandler:
     def validate_general_info(pki_message: PKIMessageTMP) -> None:
         """Validate the general info of a PKIMessage."""
         check_generalinfo_field(pki_message=pki_message)
+        validate_cert_profile_for_ca(pki_message)
 
     @staticmethod
     def check_signer(pki_message: PKIMessageTMP) -> None:

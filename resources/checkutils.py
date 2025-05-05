@@ -33,7 +33,7 @@ from resources import (
     protectionutils,
     utils,
 )
-from resources.asn1_structures import PKIMessageTMP
+from resources.asn1_structures import CertProfileValueAsn1, PKIMessageTMP
 from resources.exceptions import (
     BadAlg,
     BadAsn1Data,
@@ -1103,12 +1103,92 @@ def check_confirmwaittime_in_generalinfo(pki_message: PKIMessageTMP) -> None:  #
             )
 
 
+def _get_cert_profile_msg_size(request: PKIMessageTMP) -> int:
+    """Get the number of Request to match then later the CertProfile number.
+
+    :param request: The PKIMessage object containing the `certProfile` field.
+    :return: The number of requests in the PKIMessage.
+    """
+    msg_type = cmputils.get_cmp_message_type(request)
+
+    if msg_type == "p10cr":
+        return 1
+
+    if msg_type in ["ir", "cr", "kur"]:
+        return len(request["body"][msg_type])
+
+    if msg_type == "genm":
+        return len(request["body"]["genm"])
+
+    raise BadRequest(f"Unknown message type: {msg_type} for certProfile size check!")
+
+
+@keyword(name="Validate certProfile For CA")
+def validate_cert_profile_for_ca(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP,
+    cert_profiles: Optional[List[str]] = None,
+) -> None:
+    """Validate the `certProfile` field in the PKIMessage for a CA.
+
+    Arguments:
+    ---------
+        - `pki_message`: The PKIMessage object containing the `certProfile` field, inside the `generalInfo` field.
+        - `cert_profiles`: The list of `certProfile` to validate against. If `None`, the function will
+        not perform any validation. If provided will add `""` to the list of profiles. Defaults to `None`.
+
+    Raises:
+    ------
+        - `BadRequest`: If the `certProfile` is not allowed for CMP messages.
+        - `BadRequest`: If the `certProfile` is present in messages where it should not be.
+
+    Examples:
+    --------
+    | Validate CertProfiles for CA | ${pki_message} |
+    | Validate CertProfiles for CA | ${pki_message} | ${cert_profiles} |
+
+    """
+    if not pki_message["header"]["generalInfo"].isValue:
+        return
+
+    msg_type = cmputils.get_cmp_message_type(pki_message)
+
+    value = cmputils.get_value_from_seq_of_info_value_field(
+        pki_message["header"]["generalInfo"], rfc9480.id_it_certProfile
+    )
+
+    if value is None:
+        return
+
+    if msg_type not in {"ir", "cr", "kur", "p10cr", "genm"}:
+        raise BadRequest(f"`certProfile` should not be present in {msg_type} messages!")
+
+    profiles, rest = asn1utils.try_decode_pyasn1(  # type: ignore
+        value.asOctets(), CertProfileValueAsn1()
+    )
+    profiles: CertProfileValueAsn1
+
+    if rest != b"":
+        raise BadAsn1Data("CertProfileValue")
+
+    if len(profiles) == 0:
+        raise BadRequest("The `certProfile` structure must contain at least one profile.")
+
+    if len(profiles) == _get_cert_profile_msg_size(pki_message):
+        raise BadRequest("The `certProfile` structure must not contain the same profile multiple times.")
+
+    if cert_profiles is not None:
+        cert_profiles.append("")
+        for profile in profiles:
+            if profile.prettyPrint() not in cert_profiles:
+                raise BadRequest(f"The `certProfile` {profile} is not known to the CA!")
+
+
 @keyword(name="Check certProfile In generalInfo")
 def check_certprofile_in_generalinfo(pki_message: PKIMessageTMP) -> None:  # noqa D417 undocumented-param
     """Check if `certProfile` is correctly set in the generalInfo field of the `pki_message`.
 
     The `certProfile` field is optional and can only be present in messages of type `ir`, `cr`, `kur`, `p10cr`,
-    and `genm` of type `id-it-certReqTemplate`. Ensures it is properly set or omitted as required.
+    and `genm` of type `id-it-certProfile`. Ensures it is properly set or omitted as required.
 
     Arguments:
     ---------
@@ -1127,13 +1207,13 @@ def check_certprofile_in_generalinfo(pki_message: PKIMessageTMP) -> None:  # noq
         return
 
     msg_type = cmputils.get_cmp_message_type(pki_message)
-    cert_req_template = cmputils.find_oid_in_general_info(pki_message, rfc9480.id_it_certReqTemplate)
+    cert_profiles = cmputils.find_oid_in_general_info(pki_message, rfc9480.id_it_certProfile)
 
-    if cert_req_template:
+    if cert_profiles:
         if msg_type not in {"ir", "cr", "kur", "p10cr", "genm"}:
             raise BadRequest("`certProfile` should not be present!")
 
-    # other checks are not relevant.
+    # other checks are not relevant, for the Client.
 
 
 @keyword(name="Check generalInfo Field")

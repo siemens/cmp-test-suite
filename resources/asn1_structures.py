@@ -7,7 +7,7 @@
 Will be removed as soon as the draft becomes an RFC.
 """
 
-from pyasn1.type import constraint, namedtype, tag, univ
+from pyasn1.type import char, constraint, namedtype, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 
 
@@ -449,4 +449,11 @@ class CRLStatusListValueAsn1(univ.SequenceOf):
     """
 
     componentType = CRLStatusAsn1()
+    subtypeSpec = constraint.ValueSizeConstraint(1, MAX)
+
+
+class CertProfileValueAsn1(univ.SequenceOf):
+    """Defines the ASN.1 structure for the `CertProfileValue`."""
+
+    componentType = char.UTF8String()
     subtypeSpec = constraint.ValueSizeConstraint(1, MAX)
