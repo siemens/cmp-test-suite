@@ -52,11 +52,11 @@ Create a Python virtual environment by installing the dependencies from `require
 
 
 ## Usage
-Note that if you haven´t activated the environment yet, do so now.
+Note that if you have not activated the environment yet, do so now.
 
 1. Navigate into the test suite: `cd cmp-test-suite`
 2. Adjust the settings in the config/local.robot file to match your environment.
-   - To run the Smoke test, this step is not necessary. 
+   - To run the smoke test, this step is not necessary. 
 3. Run the test:
    - Run `robot tests/smoke.robot` to run the smoke test, that checks if everything works so far.
    - Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment. 
