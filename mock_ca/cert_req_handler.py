@@ -290,11 +290,8 @@ class CertReqHandler:
             certs=certs,
         )
 
-    def process_cr(self, pki_message: PKIMessageTMP):
-        """Process a certificate request (CR) message."""
-        logging.debug("CertReqHandler: Processing CR message")
-        for_mac = self._get_for_mac(request=pki_message)
-
+    def check_signer_is_a_issued_cert(self, pki_message: PKIMessageTMP) -> None:
+        """Check if the signer of the CR message known to the CA, by being an issued certificate."""
         if pki_message["header"]["protectionAlg"].isValue:
             prot_type = get_protection_type_from_pkimessage(pki_message)
             alg_name = get_protection_alg_name(pki_message)
@@ -313,6 +310,14 @@ class CertReqHandler:
                         "The certificate was not found in the state. CR messages are only "
                         "allowed for known certificates."
                     )
+
+
+
+    def process_cr(self, pki_message: PKIMessageTMP):
+        """Process a certificate request (CR) message."""
+        logging.debug("CertReqHandler: Processing CR message")
+        for_mac = self._get_for_mac(request=pki_message)
+        self.check_signer_is_a_issued_cert(pki_message)
 
         response, certs = build_cp_cmp_message(
             request=pki_message,
@@ -362,6 +367,8 @@ class CertReqHandler:
         """
         logging.debug("CertReqHandler: Processing KUR message")
 
+
+
         if not pki_message["header"]["protectionAlg"].isValue:
             raise BadMessageCheck("Protection algorithm was not set.")
 
@@ -369,6 +376,8 @@ class CertReqHandler:
         if get_protection_type_from_pkimessage(pki_message) == "mac":
             if oid not in [rfc9480.id_DHBasedMac, id_KemBasedMac]:
                 raise WrongIntegrity("The key updated request was MAC protected")
+
+        self.check_signer_is_a_issued_cert(pki_message)
 
         try:
             verify_hybrid_pkimessage_protection(pki_message=pki_message)

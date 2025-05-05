@@ -69,11 +69,13 @@ class ProtectionHandler:
         self.use_openssl = use_openssl
         self.pre_shared_secret = pre_shared_secret
         self.prot_alt_key = prot_alt_key
+        self.mock_ca_trusted_dir = "data/mock_ca/trustanchors"
         self.cmp_cert_chain = build_cert_chain_from_dir(
             ee_cert=self.prot_cert,
             cert_chain_dir="data/unittest",
-            root_dir="data/trustanchors",
+            root_dir=self.mock_ca_trusted_dir,
         )
+
         self.kari_data = load_env_data_certs()
         self.kem_shared_secret = kem_ss_list
         self.enforce_lwcmp = False
@@ -451,8 +453,6 @@ class ProtectionHandler:
         cert_chain = build_cmp_chain_from_pkimessage(pki_message, for_issued_cert=False)
         logging.info("Certificate chain length: %s", len(cert_chain))
         may_trusted_cert = cert_chain[-1]
-        # Check if the certificate is trusted
-        certificates_are_trustanchors(may_trusted_cert, trustanchors="data/unittest")
 
         if self.use_openssl:
             try:
@@ -462,7 +462,7 @@ class ProtectionHandler:
                     key_usage_strict=1,
                     key_usages="digitalSignature",
                     crl_check=False,
-                    trustanchors="data/unittest",
+                    trustanchors=self.mock_ca_trusted_dir,
                 )
                 logging.debug("Certificate chain is trusted")
             except FileNotFoundError:
@@ -472,3 +472,6 @@ class ProtectionHandler:
                     "The certificate `KeyUsage` indicates that the certificate,"
                     "is not authorized to be used for signing."
                 ) from e
+        else:
+            # Check if the certificate is trusted.
+            certificates_are_trustanchors(may_trusted_cert, trustanchors=self.mock_ca_trusted_dir)

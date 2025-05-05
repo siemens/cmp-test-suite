@@ -408,7 +408,7 @@ CA MUST Reject KUR With badPOP From Trusted PKI With raVerified
     ...    certs_dir=${RA_CERT_CHAIN_DIR}
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIStatus Must Be    ${response}    status=rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck,badPOP   exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck,badPOP,notAuthorized   exclusive=True
 
 CA MUST Reject KUR With Invalid Protection From Trusted PKI
     [Documentation]    According to RFC 9483 Section 5.2.3, `raVerified` is not allowed to be used in a key update

@@ -693,8 +693,8 @@ def must_not_contain_key_usage(  # noqa D417 undocumented-param
         names = asn1utils.get_set_bitstring_names(usage)
         raise ValueError(f"KeyUsage Extension was expected to not contain: {key_usages}, but is {names}")
 
-
-def _cert_chain_to_file(cert_chain: List[rfc9480.CMPCertificate], path: str):
+@not_keyword
+def write_cert_chain_to_file(cert_chain: List[rfc9480.CMPCertificate], path: str):
     """Write a certificate chain to a single PEM file, overwriting the file if it already exists.
 
     Used to write a parseable file to the OpenSSL command.
@@ -767,7 +767,7 @@ def _verify_more_certs_than_three(cert_chain: List[rfc9480.CMPCertificate], dir_
     utils.write_cmp_certificate_to_pem(cert_chain[-1], anchor)
 
     ca_path = os.path.join(dir_fpath, "intermediates.pem")
-    _cert_chain_to_file(cert_chain[1:-1], ca_path)
+    write_cert_chain_to_file(cert_chain[1:-1], ca_path)
 
     ee_path = os.path.join(dir_fpath, "ee.pem")
     utils.write_cmp_certificate_to_pem(cert_chain[0], ee_path)
@@ -1279,7 +1279,7 @@ def verify_openssl_crl(crl_chain: List, timeout: int = 60):
     tmp = crl_chain[1:]
     tmp.reverse()
 
-    _cert_chain_to_file(tmp, anchor)
+    write_cert_chain_to_file(tmp, anchor)
     command.extend(["-CAfile", anchor, "-verify"])
     try:
         result = subprocess.run(command, capture_output=True, check=True, text=True, timeout=timeout)
