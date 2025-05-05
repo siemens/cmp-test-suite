@@ -52,10 +52,11 @@ from resources.exceptions import (
     BadMessageCheck,
     BadTime,
     CMPTestSuiteError,
+    NotAuthorized,
     SignerNotTrusted,
     TransactionIdInUse,
     UnsupportedVersion,
-    WrongIntegrity, NotAuthorized,
+    WrongIntegrity,
 )
 from resources.keyutils import load_public_key_from_cert_template
 from resources.oidutils import id_KemBasedMac
@@ -308,8 +309,10 @@ class CertReqHandler:
             if pki_message["extraCerts"].isValue and result:
                 cert = pki_message["extraCerts"][0]
                 if not self.state.contains_cert(cert):
-                    raise NotAuthorized("The certificate was not found in the state. CR messages are only "
-                                     "allowed for known certificates.")
+                    raise NotAuthorized(
+                        "The certificate was not found in the state. CR messages are only "
+                        "allowed for known certificates."
+                    )
 
         response, certs = build_cp_cmp_message(
             request=pki_message,
