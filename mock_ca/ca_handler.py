@@ -372,10 +372,64 @@ class VerifyState:
 class CAHandler:
     """A simple class to handle the CA operations."""
 
-    def __init__(
+    def _prepare_extensions(
         self,
         ca_cert: rfc9480.CMPCertificate,
-        ca_key: SignKey,
+        base_url: str = "http://localhost:5000",
+        cfg_extensions: Optional[Sequence[rfc5280.Extension]] = None,
+    ) -> rfc9480.Extensions:
+        """Prepare the extensions for the CA.
+
+        Prepares the authority key identifier, OCSP, and CRL distribution point extensions.
+
+        :param base_url: The base URL for the CA, so that the OCSP and CRL URLs can be generated.
+        :param ca_cert: The CA issuer certificate.
+        :param cfg_extensions: Additional extensions to add.
+        :return: The list of extensions.
+        """
+        ca_pub_key = load_public_key_from_cert(ca_cert)
+
+        if not isinstance(ca_pub_key, VerifyKey):
+            raise BadConfig(f"The CA public key is not a `VerifyKey`. Got: {type(ca_pub_key)}")
+
+        aki_extn = prepare_authority_key_identifier_extension(ca_pub_key, critical=False)
+        crl_url = f"{base_url}/crl"
+        self.ocsp_extn = prepare_ocsp_extension(ocsp_url=f"{base_url}/ocsp")
+        dis_point = prepare_distribution_point(
+            full_name=crl_url,
+            reason_flags="all",
+        )
+
+        self.crl_extn = prepare_crl_distribution_point_extension(
+            dis_point,
+            crl_issuers=ca_cert["tbsCertificate"]["subject"],
+            critical=False,
+        )
+
+        idp = prepare_issuing_distribution_point(
+            full_name=crl_url,
+            only_some_reasons=None,
+            only_contains_user_certs=False,
+            only_contains_ca_certs=False,
+            only_contains_attribute_certs=False,
+            indirect_crl=False,
+        )
+
+        idp_extn = prepare_issuing_distribution_point_extension(
+            iss_dis_point=idp,
+            critical=False,
+        )
+
+        extensions = rfc9480.Extensions()
+        extensions.extend([aki_extn, self.ocsp_extn, self.crl_extn, idp_extn])
+        if cfg_extensions is not None:
+            extensions.extend(cfg_extensions)
+        return extensions
+
+    def __init__(
+        self,
+        ca_cert: Optional[rfc9480.CMPCertificate] = None,
+        ca_key: Optional[SignKey] = None,
         config: Optional[dict] = None,
         pre_shared_secret: bytes = b"SiemensIT",
         ca_alt_key: Optional[PQSignaturePrivateKey] = None,
@@ -383,11 +437,20 @@ class CAHandler:
         port: int = 5000,
         allow_only_authorized_certs: bool = True,
         use_openssl: bool = False,
+        base_url: str = "http://127.0.0.1",
     ):
         """Initialize the CA Handler.
 
         :param config: The configuration for the CA Handler.
         """
+        if ca_cert is None and ca_key is None:
+            ca_cert, ca_key = load_ca_cert_and_key()
+
+        if ca_cert is None or ca_key is None:
+            raise BadConfig("CA certificate and key must be provided.")
+
+        self.base_url = f"{base_url}:{port}"
+
         config = config or {"ca_alt_key": ca_alt_key}
 
         for key, item in load_env_data_certs().items():
@@ -396,11 +459,14 @@ class CAHandler:
 
         config["ca_cert"] = ca_cert
         config["ca_key"] = ca_key
+        self.ca_cert = ca_cert
+        self.ca_key = ca_key
         self.operation_state = MockCAOPCertsAndKeys(**config)
 
         self.config = config
-        self.ocsp_extn = prepare_ocsp_extension(ocsp_url=f"http://localhost:{port}/ocsp")
-        self.crl_extn = prepare_crl_distribution_point_extension(crl_url=f"http://localhost:{port}/crl")
+
+        self.extensions = self._prepare_extensions(self.ca_cert, self.base_url, config.get("extensions"))
+
         self.comp_key = generate_key("composite-sig")
         self.comp_cert = build_certificate(private_key=self.comp_key, is_ca=True, common_name="CN=Test CA")[0]
         self.sun_hybrid_key = generate_key("composite-sig")  # type: ignore
@@ -414,15 +480,14 @@ class CAHandler:
             ca_cert=ca_cert,
             ca_key=self.sun_hybrid_key.trad_key,  # type: ignore
             alt_private_key=self.sun_hybrid_key.pq_key,  # type: ignore
-            pub_key_loc=f"http://localhost:{port}/pubkey/1",
-            sig_loc=f"http://localhost:{port}/sig/1",
+            pub_key_loc=f"{self.base_url}/pubkey/1",
+            sig_loc=f"{self.base_url}/sig/1",
             serial_number=1,
             extensions=[self.ocsp_extn, self.crl_extn],
         )
 
         self.sender = "CN=Mock CA"
-        self.ca_cert = ca_cert
-        self.ca_key = ca_key
+
         self.ca_alt_key = ca_alt_key
         self.state = state or MockCAState()
         self.pre_shared_secret = pre_shared_secret
@@ -460,10 +525,7 @@ class CAHandler:
         self.rev_handler = RevocationHandler(self.state.cert_state_db)
         self.cert_conf_handler = CertConfHandler(self.state)
 
-        ca_pub_key = ensure_is_verify_key(self.ca_key.public_key())
-        aki_extn = prepare_authority_key_identifier_extension(ca_pub_key, critical=False)
-        extensions = rfc9480.Extensions()
-        extensions.extend([self.ocsp_extn, self.crl_extn, aki_extn])
+        extensions = self.extensions
 
         self.verify_state = VerifyState(
             allow_only_authorized_certs=allow_only_authorized_certs,
