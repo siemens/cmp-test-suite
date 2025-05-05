@@ -1172,7 +1172,7 @@ def _check_message_time_for_request(
     now_obj = datetime.datetime.now(datetime.timezone.utc)
     time_diff = (now_obj - request_time).total_seconds()
     if time_diff < 0:
-        raise BadTime(f"The `messageTime` field is in the future!The time difference is: {time_diff} seconds")
+        raise BadTime(f"The `messageTime` field is in the future! The time difference is: {time_diff} seconds")
 
     if time_diff == 0:
         logging.warning("The `messageTime` field is set to the current time!")

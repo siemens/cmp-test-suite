@@ -409,6 +409,7 @@ class MockCAOPCertsAndKeys:
         # Or for the experimental ECC keyAgreement revocation.
         if key is None:
             return None
+
         if isinstance(key, X448PrivateKey):
             cert = self.x448_cert
         elif isinstance(key, X25519PrivateKey):

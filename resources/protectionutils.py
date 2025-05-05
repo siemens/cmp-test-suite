@@ -2333,8 +2333,6 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
         verify_rsassa_pss_from_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
 
     elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
-
-
         try:
             hash_alg = get_hash_from_oid(oid, only_hash=True)
             keyutils.check_consistency_sig_alg_id_and_key(alg_id, public_key)
