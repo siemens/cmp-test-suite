@@ -55,7 +55,7 @@ from resources.exceptions import (
     SignerNotTrusted,
     TransactionIdInUse,
     UnsupportedVersion,
-    WrongIntegrity,
+    WrongIntegrity, NotAuthorized,
 )
 from resources.keyutils import load_public_key_from_cert_template
 from resources.oidutils import id_KemBasedMac
@@ -293,6 +293,23 @@ class CertReqHandler:
         """Process a certificate request (CR) message."""
         logging.debug("CertReqHandler: Processing CR message")
         for_mac = self._get_for_mac(request=pki_message)
+
+        if pki_message["header"]["protectionAlg"].isValue:
+            prot_type = get_protection_type_from_pkimessage(pki_message)
+            alg_name = get_protection_alg_name(pki_message)
+
+            if alg_name == "dh_based_mac" or alg_name == "kem_based_mac":
+                result = True
+            elif prot_type == "mac":
+                result = False
+            else:
+                result = True
+
+            if pki_message["extraCerts"].isValue and result:
+                cert = pki_message["extraCerts"][0]
+                if not self.state.contains_cert(cert):
+                    raise NotAuthorized("The certificate was not found in the state. CR messages are only "
+                                     "allowed for known certificates.")
 
         response, certs = build_cp_cmp_message(
             request=pki_message,
