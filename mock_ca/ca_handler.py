@@ -760,8 +760,6 @@ class CAHandler:
                     response: PKIMessageTMP
                     ecc_key: ECDHPrivateKey
                     cert = self.operation_state.get_ecc_cert(ecc_key)
-                    if cert is None:
-                        raise BadConfig("The ECC certificate could not be found, to prepare the challenge response.")
                     return self.sign_response(
                         response=response,
                         request_msg=pki_message,
@@ -1193,9 +1191,7 @@ class CAHandler:
 app = Flask(__name__)
 state = MockCAState()
 
-ca_cert, ca_key = load_ca_cert_and_key()
-
-handler = CAHandler(ca_cert=ca_cert, ca_key=ca_key, config={}, state=state)
+handler = CAHandler(ca_cert=None, ca_key=None, config={}, state=state)
 
 
 def _build_response(pki_message: PKIMessageTMP, status: int = 200) -> Response:
