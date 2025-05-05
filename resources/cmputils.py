@@ -52,6 +52,7 @@ from resources.asn1_structures import KemCiphertextInfoAsn1, PKIMessagesTMP, PKI
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadDataFormat, BadRequest
+from resources.prepareutils import parse_to_general_name
 from resources.typingutils import CertObjOrPath, ControlsType, ExtensionsType, PrivateKey, PublicKey, SignKey, Strint
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
@@ -60,33 +61,6 @@ sys.set_int_max_str_digits(0)
 
 # from pyasn1 import debug
 # debug.setLogger(debug.Debug('all'))
-
-
-def _prepare_pki_message_gen_name(
-    sender: Union[str, rfc9480.GeneralName, rfc9480.Name, rfc9480.CMPCertificate],
-    gen_type: str = "rfc822Name",
-) -> rfc5280.GeneralName:
-    """Prepare a `GeneralName` object from a string.
-
-    :param sender: The sender's name to be converted to a `GeneralName`.
-    :param gen_type: The type of the `GeneralName`. Defaults to "rfc822Name".
-    :return: A `GeneralName` object.
-    """
-    if isinstance(sender, rfc9480.GeneralName):
-        return sender
-    if isinstance(sender, str):
-        return prepareutils.prepare_general_name(
-            name_type=gen_type,
-            name_str=sender,
-        )
-
-    if isinstance(sender, (rfc9480.Name, rfc9480.CMPCertificate)):
-        return prepareutils.prepare_general_name_from_name(
-            name_obj=sender,
-            extract_subject=True,
-        )
-
-    raise TypeError(f"Sender must be a string, Name or a GeneralName object.Got: {type(sender)}")
 
 
 def _prepare_pki_header(
@@ -110,10 +84,10 @@ def _prepare_pki_header(
         pki_header["pvno"] = univ.Integer(pvno)  # type: ignore
 
     if "sender" not in exclude_fields:
-        pki_header["sender"] = _prepare_pki_message_gen_name(sender)
+        pki_header["sender"] = parse_to_general_name(sender)
 
     if "recipient" not in exclude_fields:
-        pki_header["recipient"] = _prepare_pki_message_gen_name(recipient)
+        pki_header["recipient"] = parse_to_general_name(recipient)
 
     return pki_header
 
