@@ -8,6 +8,7 @@ import logging
 import os
 import shutil
 import subprocess
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
@@ -815,7 +816,152 @@ def _verify_certificate_chain(command: List[str], cert_chain: List[rfc9480.CMPCe
         logging.error("An unexpected error occurred during certificate validation: %s", err)
         raise SignerNotTrusted(f"Validation of the certificate failed! Error: {err}") from err
     finally:
+        if os.path.exists("data/tmp_crl"):
+            shutil.rmtree("data/tmp_crl")
+
         shutil.rmtree(dir_fpath)
+
+    logging.info("Certificate chain verified successfully.")
+
+
+def _get_crls_from_certs(
+    cert_chain: List[rfc9480.CMPCertificate],
+    crl_path: Optional[str] = None,
+    check_crl_all: bool = False,
+) -> List[str]:
+    """Get the CRLs from the certificates in the chain.
+
+    :param cert_chain: A list of `rfc9480.CMPCertificate` objects representing the certificate chain.
+    :param crl_path: The path to the CRL file to use for verification. Defaults to `None`.
+    :return: A list of DER-encoded CRLs.
+    """
+    if crl_path is not None:
+        return [crl_path]
+
+    if check_crl_all:
+        tmp_cert_chain = cert_chain
+    else:
+        tmp_cert_chain = [cert_chain[0]]
+
+    crl_urls = []
+    for i, cert in enumerate(tmp_cert_chain):
+        urls = _extract_crl_urls_from_cert_pyasn1(cert=cert)
+        crl_urls.extend(urls)
+        # So that the Root CA does not need to have an CRl-DP set.
+        if not urls and check_crl_all and i != len(tmp_cert_chain) - 1:
+            raise ValueError(
+                f"CRL URLs were not found in the certificate: {cert.prettyPrint()}."
+                f"At index {i} of the chain. "
+                f"Please provide a valid CRL path or set `check_crl_all` to `False`."
+            )
+
+    if not crl_urls:
+        raise ValueError("Could not find the CRL URLs in the certificate chain.")
+    return crl_urls
+
+
+def ensure_is_pem_crl(data: bytes) -> bytes:
+    """Ensure that the CRL is PEM encoded and returns it PEM encoded.
+
+    :param data: The CRL data in bytes.
+    :return: The PEM-encoded CRL data.
+    """
+    try:
+        # Attempt to load as DER
+        crl = x509.load_der_x509_crl(data)
+        return crl.public_bytes(serialization.Encoding.PEM)
+    except ValueError:
+        pass
+
+    try:
+        _ = x509.load_pem_x509_crl(data)
+        return data
+    except ValueError:
+        raise ValueError("Data is neither valid DER nor PEM format.")
+
+
+def _fetch_crls(crl_urls: List[str]) -> List[str]:
+    """Download CRL files from the given list of URLs and saves them as temporary files.
+
+    :param crl_urls: List of CRL URLs to download.
+    :return: List of paths to the downloaded CRL files.
+    """
+    downloaded_files = []
+
+    for url in crl_urls:
+        try:
+            logging.info(f"Fetching CRL from: {url}")
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+
+            # Create a temporary file with a .crl suffix
+            temp_file = tempfile.NamedTemporaryFile(dir="data/tmp_crl", mode="wb", delete=False, suffix=".crl")
+            data = ensure_is_pem_crl(response.content)
+            temp_file.write(data)
+            temp_file.flush()
+            temp_file.close()
+
+            downloaded_files.append(temp_file.name)
+            logging.info(f"Saved to temporary file: {temp_file.name}")
+
+        except Exception as e:
+            logging.info(f"Failed to fetch CRL from {url}: {e}")
+
+    return downloaded_files
+
+
+def _concatenate_crls(crl_files: Union[None, str, List[str]], filename: str = "combined_crls.crl") -> None:
+    """Concatenates multiple CRL files into a single temporary PEM file.
+
+    :param crl_files: List or a single path to CRL files to be concatenated.
+    :return: Path to the concatenated temporary CRL file.
+    """
+    if not crl_files:
+        raise ValueError("No CRL files provided for concatenation.")
+
+    if isinstance(crl_files, str):
+        crl_files = [crl_files]
+
+    output_dir = Path("data/tmp_crl")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / filename
+    with open(output_file, "wb") as outfile:
+        for crl_file in crl_files:
+            with open(crl_file, "rb") as infile:
+                data = ensure_is_pem_crl(infile.read())
+                outfile.write(data)
+
+
+def _get_crl_filepath_for_verification(
+    cert_chain: List[rfc9480.CMPCertificate],
+    crl_path: Optional[str] = None,
+    check_crl_all: bool = False,
+) -> None:
+    """Get the CRL file path for verification.
+
+    :param cert_chain: A list of `rfc9480.CMPCertificate` objects representing the certificate chain.
+    :param crl_path: The path to the CRL file to use for verification. Defaults to `None`.
+    :return: The path to the CRL file.
+    :raises ValueError: If the CRL file path is not valid or if the CRL URLs are not found in the certificate chain.
+    """
+    if crl_path is not None:
+        if not os.path.isfile(crl_path):
+            raise ValueError(f"The provided CRL path does not exist: {crl_path}")
+        return
+
+    os.makedirs("data/tmp_crl", exist_ok=True)
+
+    crl_urls = _get_crls_from_certs(crl_path=crl_path, cert_chain=cert_chain, check_crl_all=check_crl_all)
+
+    crl_files = []
+    for uri in set(crl_urls):
+        if uri.startswith("http://") or uri.startswith("https://"):
+            crl_files += _fetch_crls(crl_urls)
+
+    if not crl_files:
+        raise ValueError(f"Could not fetch the CRLs form the uri: {crl_urls}.")
+
+    _concatenate_crls(crl_files=crl_files)
 
 
 @keyword(name="Verify Cert Chain OpenSSL")
@@ -824,10 +970,19 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     crl_check: bool = False,
     verbose: bool = True,
     timeout: typingutils.Strint = 60,
-):
+    crl_path: Optional[str] = None,
+    crl_check_all: bool = False,
+) -> None:
     """Verify a certificate chain using OpenSSL.
 
     The certificate chain has to start from the end-entity certificate and ends with the Root certificate.
+
+    Note:
+    ----
+      - The OpenSSL command will be executed in a temporary directory. data/tmp_cert_check and data/tmp_crl.
+      - The certificates will be written to files in PEM format, as well as the CRL files (For debugging).
+      - If cert_check_all is set to `True`, the CRL check will be performed for all certificates in the chain,
+      but also expects **every certificate** to have a CRL distribution point set, besides the **root certificate**.
 
     Arguments:
     ---------
@@ -837,6 +992,8 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
         - `verbose`: Whether to use the verbose output flag for the OpenSSL `verify` command.
         Defaults to `True`.
         - `timeout`: The timeout of the verify command in seconds. Defaults to `60`.
+        - `crl_path`: The path to the CRL file to use for verification. Defaults to `None`.
+        - `crl_check_all`: Whether to check all certificates in the chain against the CRL(s).
 
     Raises:
     ------
@@ -857,13 +1014,22 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     if not os.path.isdir("./data/tmp_cert_check"):
         os.mkdir(temp_dir)
 
-    if not crl_check:
+    if not crl_check and not crl_check_all:
         logging.warning("Please Note the CRL check is deactivate!")
 
     command = ["openssl", "verify"]
+
+    if crl_check or crl_check_all:
+        _get_crl_filepath_for_verification(cert_chain=cert_chain, crl_path=crl_path, check_crl_all=crl_check_all)
+        crl_path = crl_path or "data/tmp_crl/combined_crls.crl"
+        command.extend(["-CRLfile", crl_path])
+
+    if crl_check_all:
+        command.append("-crl_check_all")
     if crl_check:
         command.append("-crl_check")
-    else:
+
+    if not crl_check and not crl_check_all:
         command.append("-no-CApath")
 
     if verbose:
@@ -1253,7 +1419,7 @@ def get_ocsp_url_from_cert(
     ocsp_urls = []
     for entry in aia:
         if str(entry["accessMethod"]) == AuthorityInformationAccessOID.OCSP.dotted_string:
-            gen_name = entry["accessLocation"]
+            gen_name: rfc9480.GeneralName = entry["accessLocation"]
             option = gen_name.getName()
             if option == "uniformResourceIdentifier":
                 ocsp_urls.append(str(entry["accessLocation"][option]))
@@ -1613,7 +1779,7 @@ def _extract_crl_urls_from_cert_pyasn1(cert: rfc9480.CMPCertificate) -> List[str
         if dist_point["distributionPoint"]["fullName"].isValue:
             for full_name in dist_point["distributionPoint"]["fullName"]:
                 if full_name["uniformResourceIdentifier"].isValue:
-                    crl_urls.append(full_name["uniformResourceIdentifier"])
+                    crl_urls.append(full_name["uniformResourceIdentifier"].prettyPrint())
 
     return crl_urls
 
