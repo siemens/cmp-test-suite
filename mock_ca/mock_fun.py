@@ -367,7 +367,7 @@ class CertRevStateDB:
             nums += self.update_entry_list.serial_numbers
 
         crypto_ca_cert = convert_to_crypto_lib_cert(ca_cert)
-        _now = datetime.now(timezone.utc)
+        _now = datetime.now(timezone.utc) - timedelta(seconds=60)  # to avoid time issues.
         _next_update = _now + timedelta(days=1)
 
         aia_value = x509.AuthorityKeyIdentifier.from_issuer_public_key(crypto_ca_cert.public_key())  # type: ignore

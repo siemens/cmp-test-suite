@@ -1726,7 +1726,7 @@ def default_validity(
         return prepare_validity(not_before, not_after)
 
     # otherwise will OpenSSL say: "certificate is not yet valid"
-    not_before = datetime.now() - timedelta(days=1)
+    not_before = datetime.now(timezone.utc) - timedelta(days=1)
     not_after = not_before + timedelta(days=days)
     return prepare_validity(not_before, not_after)
 
