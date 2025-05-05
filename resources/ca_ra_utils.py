@@ -1009,6 +1009,10 @@ def _verify_pop_signature(
             raise BadPOP("Public key is missing in the certificate request.Can not verify the POP signature.")
         try:
             public_key = convertutils.ensure_is_verify_key(public_key)
+
+            if isinstance(public_key, DSAPublicKey):
+                raise BadPOP("The DSA keys are not supported", failinfo="badPOP,badCertTemplate,badAlg")
+
         except ValueError as err:
             raise BadPOP("Public key is not a valid verify key.", failinfo="badPOP,badCertTemplate,badAlg") from err
 
