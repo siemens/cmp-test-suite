@@ -2209,7 +2209,7 @@ def _prepare_extension(
     extension = rfc5280.Extension()
     extension["extnID"] = oid
     extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(value)
+    extension["extnValue"] = univ.OctetString(data)
     return extension
 
 
