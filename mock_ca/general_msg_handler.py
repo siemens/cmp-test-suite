@@ -106,6 +106,7 @@ class GeneralMessageHandler:
         prot_enc_cert: Optional[rfc9480.CMPCertificate] = None,
         prot_enc_key: Optional[EnvDataPrivateKey] = None,
         ca_cert_chain: Optional[List[rfc9480.CMPCertificate]] = None,
+        crl_url: str = "http://127.0.0.1/crl",
     ):
         """Initialize the handler.
 
@@ -120,6 +121,7 @@ class GeneralMessageHandler:
         :param prot_enc_cert: The protocol encryption certificate.
         :param prot_enc_key: The protocol encryption key.
         :param ca_cert_chain: The CA certificate chain.
+        :param crl_url: The CRL URL. Defaults to "http://127.0.0.1/crl".
         """
         self.sender = "CN=Mock CA"
         self.root_ca_cert = root_ca_cert
@@ -138,6 +140,7 @@ class GeneralMessageHandler:
         self.rsa_req_length = 2048
         self.add_env_data_certs = False
         self.all_rel_env_data_certs = all_relevant_env_certs
+        self.crl_url = crl_url
 
     def _check_general_message(self, pki_message: PKIMessageTMP) -> None:
         """Check the general message."""
@@ -465,7 +468,7 @@ class GeneralMessageHandler:
         out_crls = []
         texts = []
         info_value = rfc9480.InfoTypeAndValue()
-        info_value["infoType"] = rfc9480.id_it_crlStatusList
+        info_value["infoType"] = rfc9480.id_it_crls
 
         crl_status_list: List[CRLStatusAsn1]
         for i, crl_status in enumerate(crl_status_list):
@@ -487,13 +490,26 @@ class GeneralMessageHandler:
 
         return info_value, "The CRL status list is up to date."
 
+    def _pretty_print_general_names(self, general_names: rfc9480.GeneralNames) -> str:
+        """Pretty print the general names."""
+        data = "GeneralNames: "
+        for i, entry in enumerate(general_names):
+            entry: rfc9480.GeneralName
+            if entry in ["uniformResourceIdentifier", "rfc822Name"]:
+                data += f"At index: {i} {entry.prettyPrint()}, \n"
+            elif entry.getName() == "directoryName":
+                data += f"At index: {i} {entry['directoryName'].prettyPrint()}, \n"
+            else:
+                data += f"At index: {i} {entry.getName()}, {entry[entry.getName()].prettyPrint()} \n"
+
+        return data
+
     def _process_crl_status(self, crl_status: CRLStatusAsn1, index: int) -> Tuple[Optional[bytes], Optional[str]]:
         """Process the CRL status."""
-        source = crl_status["crlSource"]
         # TODO add a github issue for this structure.
+        source = crl_status["source"]
         source: CRLSourceAsn1
         time = crl_status["thisUpdate"]
-        time: rfc9480.Time
 
         text = None
 
@@ -513,10 +529,13 @@ class GeneralMessageHandler:
             dnp: rfc9480.DistributionPointName = source["dpn"]
             if dnp.getName() == "fullName":
                 issuer: rfc9480.GeneralNames = dnp["fullName"]
-                result = find_name_inside_general_names(issuer, root_ca_name)
+                result = find_name_inside_general_names(issuer, root_ca_name, self.crl_url)
                 if not result:
-                    issuer_name = get_openssl_name_notation(source["issuer"])
-                    text = f"The issuer inside the `DPN` is not the root CA. Got: {issuer_name}, at index: {index}."
+                    issuer_name = self._pretty_print_general_names(source["issuer"])
+                    text = (
+                        f"The issuer inside the `DPN` is not the root CA or the CRL URL."
+                        f" Got: {issuer_name}, at index: {index}."
+                    )
 
             elif dnp.getName() == "nameRelativeToCRLIssuer":
                 name: rfc5280.RelativeDistinguishedName = dnp["nameRelativeToCRLIssuer"]
@@ -534,7 +553,7 @@ class GeneralMessageHandler:
             # This means that the structure was updated.
             raise NotImplementedError(f"The processing of the CRL source is not implemented.Got: {source.getName()}")
 
-        if text:
+        if text is not None:
             return None, text
 
         if not time.isValue:

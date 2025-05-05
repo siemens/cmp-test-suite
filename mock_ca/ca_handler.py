@@ -584,6 +584,7 @@ class CAHandler:
             enforce_lwcmp=True,
             prot_enc_cert=prot_enc_cert,
             prot_enc_key=prot_enc_key,
+            crl_url=self.base_url + "/crl",
         )
 
         self.hybrid_handler = HybridIssuingHandler(
