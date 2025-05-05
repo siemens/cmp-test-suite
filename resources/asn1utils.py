@@ -438,15 +438,49 @@ def is_bit_set(  # noqa D417 undocumented-param
         # gets the names of as single values.
         values = bit_indices.strip(" ").split(",")
         # gets the indices to the corresponding human-readable-names.
-        names = list(asn1_bitstring.namedValues.keys())
+        names = get_all_asn1_named_value_names(asn1_bitstring, get_keys=True)
+        all_set_names = get_set_bitstring_names(asn1_bitstring).split(", ")
+
         try:
             bit_indices = [names.index(val.strip()) for val in values]  # type: ignore
         except ValueError as err:
             raise ValueError(f"Provided names: {values} but allowed are: {names}") from err
 
+        if all_set_names == values and not exclusive:
+            # to ensure that if all bits are set, it will return True.
+            return True
+
+        if all_set_names == values and exclusive:
+            return True
+
+        if all_set_names == names and exclusive:
+            raise ValueError("All bits are set, so exclusive check is not possible!")
+
         return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)  # type: ignore
 
     raise ValueError("Expected to get either an int or a string as input, for `bit_indices`!")
+
+
+@not_keyword
+def get_all_asn1_named_value_names(
+    asn1_object: Union[base.Asn1Item, base.Asn1Type], get_keys: bool = True
+) -> List[str]:
+    """Retrieve all named values from a `pyasn1` object.
+
+    :param asn1_object: The `pyasn1` object to extract names from.
+    :param get_keys: If `True`, return the keys of the named values. Default is `True`.
+    :return: A list of names corresponding to the named values in the `pyasn1` object.
+    :raises ValueError: If the provided object does not have named values.
+    """
+    if not hasattr(asn1_object, "namedValues"):
+        raise ValueError(
+            f"The provided object does not have named values. "
+            f"Please provide a valid `pyasn1` object with named values. Type: {type(asn1_object)}"
+        )
+
+    if get_keys:
+        return list(asn1_object.namedValues.keys())  # type: ignore
+    return list(asn1_object.namedValues.values())  # type: ignore
 
 
 @not_keyword
@@ -457,7 +491,7 @@ def get_set_bitstring_names(asn1_bitstring: univ.BitString) -> str:
     :return: A comma-separated string of names corresponding to the set bits.
     """
     binary_string = asn1_bitstring.asBinary()
-    options = list(asn1_bitstring.namedValues.keys())
+    options = get_all_asn1_named_value_names(asn1_bitstring, get_keys=True)
     names = []
     for i, name in enumerate(options):
         if len(binary_string) == i:
