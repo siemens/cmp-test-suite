@@ -1073,8 +1073,10 @@ Initialize Global Variables
     VAR    ${REVOKED_CERT}    ${None}    scope=GLOBAL
     VAR    ${REVOKED_PRIVATE_KEY}    ${None}    scope=GLOBAL
     # Only needed to test LWCMP version, where DSA is not allowed as signing algorithm.
-    VAR    ${DSA_CERT}    ${None}    scope=GLOBAL
-    VAR    ${DSA_KEY}    ${None}    scope=GLOBAL
+    
+    ${dsa_cert}   ${dsa_key}=    May Load Cert And Key     ${DSA_CERT}   ${DSA_KEY}   ${DSA_KEY_PASSWORD}
+    VAR    ${DSA_CERT}    ${dsa_cert}    scope=GLOBAL
+    VAR    ${DSA_KEY}    ${dsa_key}    scope=GLOBAL
     # To Test with KARI, if allowed.
     VAR    ${X25519_CERT}    ${None}    scope=GLOBAL
     VAR    ${X25519_KEY}    ${None}    scope=GLOBAL

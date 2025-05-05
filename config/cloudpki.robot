@@ -109,6 +109,10 @@ ${FAILINFO_MUST_BE_CORRECT}=    True
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 
+# DSA is not allowed by RFC9483.
+${DSA_KEY}         ${None}
+${DSA_KEY_PASSWORD}   ${None}
+${DSA_CERT}        ${None}
 ##### Section 4
 # If ALLOW_P10CR is enabled, all generic test cases will be done
 # using P10CR because Header checks are body-independent and are only done

@@ -1410,10 +1410,42 @@ def _generate_mock_ca_kem_certs():
     print("Updated FrodoKEM-976-AES CA Encr Cert")
 
 
+def _generate_mock_ca_issued_dsa_cert():
+    """Generate and save a mock CA-issued DSA certificate for testing purposes.
+
+    This certificate is intended for use in a test that verifies the CA correctly
+    rejects PKIMessages signed with a DSA certificate, as DSA is not supported
+    by Lightweight CMP (LwCMP) according to RFC 9483.
+    """
+    ca_cert, ca_key = load_ca_cert_and_key()
+    dsa_key = load_private_key_from_file("data/keys/private-key-dsa.pem")
+
+    from mock_ca.ca_handler import CAHandler
+    ca_handler = CAHandler()
+    exts = ca_handler._prepare_extensions(
+        ca_cert=ca_cert,
+    )
+
+    key_usage_extn = prepare_key_usage_extension("digitalSignature", critical=False)
+    exts.append(key_usage_extn)
+
+    dsa_cert, _ = build_certificate(
+        private_key=dsa_key,
+        common_name="CN=DSA Certificate",
+        extensions=exts,
+        ca_cert=ca_cert,
+        ca_key=ca_key,
+    )
+    write_cmp_certificate_to_pem(dsa_cert, "data/unittest/dsa_certificate.pem")
+    print("Updated DSA certificate")
+
 def _generate_mock_ca_certs():
     """Generate and save mock CA certificates for testing."""
     ca_cert, ca_key = load_ca_cert_and_key()
     rsa_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
+
+    # For DSA test case.
+    _generate_mock_ca_issued_dsa_cert()
 
     exts = _prepare_ca_ra_extensions(
         issuer_key=ca_key,

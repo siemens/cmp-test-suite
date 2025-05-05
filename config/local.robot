@@ -59,6 +59,10 @@ ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 ${INITIAL_KEY_PATH}    ${None}
 ${INITIAL_CERT_PATH}   ${None}
 ${INITIAL_KEY_PASSWORD}   11111
+# DSA is not allowed by RFC9483.
+${DSA_KEY}         ${None}
+${DSA_KEY_PASSWORD}   ${None}
+${DSA_CERT}        ${None}
 
 # Device certificate and key (None means not provided).
 ${DEVICE_CERT}   ${None}

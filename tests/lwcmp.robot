@@ -1255,19 +1255,19 @@ CA MUST Reject PKIMessage With Different Protection Algorithm Than MSG_SIG_ALG
     Skip If    not ${LWCMP}    This test is only for LwCMP.
     ${is_set}=    Is Certificate And Key Set    ${DSA_CERT}    ${DSA_KEY}
     Skip If    not ${is_set}    The variable DSA_CERTIFICATE is not set, skipping test.
-    ${pki_message}=    Build Ir From CSR
-    ...    ${EXP_CSR}
-    ...    ${EXP_KEY}
+    ${key}=  Generate Default Key
+    ${pki_message}=    Build Ir From Key
+    ...    ${key}
     ...    exclude_fields=sender,senderKID
     ...    recipient=${RECIPIENT}
     ${pki_message}=    Protect PKIMessage
     ...    ${pki_message}
     ...    protection=signature
-    ...    private_key=${DSA_CERTIFICATE_KEY}
-    ...    cert=${DSA_CERTIFICATE}
+    ...    private_key=${DSA_KEY}
+    ...    cert=${DSA_CERT}
     ${response}=    Exchange PKIMessage    ${pki_message}
     PKIMessage Body Type Must Be      ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=badMessageCheck
+    PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=badMessageCheck,badAlg
 
 ### Section 4.1.3
 # similar checks omitted.

@@ -49,6 +49,10 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
 
+# DSA is not allowed by RFC9483.
+${DSA_KEY}         ${None}
+${DSA_KEY_PASSWORD}   ${None}
+${DSA_CERT}        ${None}
 # Certificates and Keys to set.
 ${INITIAL_KEY_PATH}    ${None}
 ${INITIAL_CERT_PATH}   ${None}
