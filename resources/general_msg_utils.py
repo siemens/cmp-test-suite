@@ -489,7 +489,7 @@ def validate_get_certificate_request_template(  # noqa D417 undocumented-param
 
 
 @not_keyword
-def prepare_distribution_point_name(
+def prepare_distribution_point_name_gen_name(
     ca_crl_url: Optional[str] = None, ca_name: Optional[str] = None
 ) -> rfc9480.DistributionPointName:
     """Prepare the `pyasn1` `DistributionPointName` if the certificate does not contain a extension for it.
@@ -658,7 +658,7 @@ def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
             crl_source["dpn"] = dpn
 
     if not crl_source["dpn"].isValue:
-        dpn = prepare_distribution_point_name(ca_crl_url=ca_crl_url, ca_name=ca_name)
+        dpn = prepare_distribution_point_name_gen_name(ca_crl_url=ca_crl_url, ca_name=ca_name)
         crl_source["dpn"] = dpn
 
     status = rfc9480.CRLStatus()
