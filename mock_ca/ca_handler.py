@@ -49,6 +49,7 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
+from resources import certutils
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import (
     build_cp_cmp_message,
@@ -77,7 +78,7 @@ from resources.cmputils import (
     parse_pkimessage,
 )
 from resources.compareutils import compare_pyasn1_names
-from resources.convertutils import ensure_is_sign_key, ensure_is_verify_key
+from resources.convertutils import ensure_is_sign_key
 from resources.exceptions import (
     BadAlg,
     BadAsn1Data,
@@ -102,7 +103,7 @@ from resources.protectionutils import (
     protect_pkimessage,
     verify_pkimessage_protection,
 )
-from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PublicKey, SignKey
+from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PublicKey, SignKey, VerifyKey
 from resources.utils import load_and_decode_pem_file
 from unit_tests.utils_for_test import load_ca_cert_and_key, load_env_data_certs
 
@@ -289,6 +290,10 @@ class MockCAState:
         """Check if a certificate is updated based on its serial number."""
         hashed_cert = compute_hash("sha1", encoder.encode(cert))
         return self.cert_state_db.is_updated_by_hash(hashed_cert)
+
+    def contains_cert(self, cert: rfc9480.CMPCertificate) -> bool:
+        """Check if the certificate is already in use."""
+        return certutils.cert_in_list(cert, self.issued_certs)
 
 
 def _build_error_from_exception(e: CMPTestSuiteError, request: Optional[PKIMessageTMP] = None) -> PKIMessageTMP:
