@@ -2333,9 +2333,17 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
         verify_rsassa_pss_from_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
 
     elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
-        hash_alg = get_hash_from_oid(oid, only_hash=True)
 
-        keyutils.check_consistency_sig_alg_id_and_key(alg_id, public_key)
+
+        try:
+            hash_alg = get_hash_from_oid(oid, only_hash=True)
+            keyutils.check_consistency_sig_alg_id_and_key(alg_id, public_key)
+
+        except ValueError as e:
+            raise BadAlg(f"Algorithm identifier and key mismatch: {e}. Could not determine the hash algorithm.") from e
+
+        except BadAlg as e:
+            raise InvalidSignature(e.message)
         cryptoutils.verify_signature(public_key=public_key, signature=signature, data=data, hash_alg=hash_alg)
     else:
         raise BadAlg(f"Unsupported public key type: {type(public_key).__name__}.")

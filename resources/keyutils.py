@@ -697,7 +697,13 @@ def check_consistency_sig_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, ke
 
         return
 
-    hash_alg = get_hash_from_oid(alg_id["algorithm"], only_hash=True)
+    try:
+        hash_alg = get_hash_from_oid(alg_id["algorithm"], only_hash=True)
+    except ValueError:
+        name = may_return_oid_to_name(oid)
+        raise BadAlg(
+            f"The algorithm identifier was not valid or is not supported. OID: {name}."
+        )
 
     if isinstance(key, (PQSignaturePublicKey, PQSignaturePrivateKey)):
         _alg = "" if hash_alg is None else "-" + hash_alg
