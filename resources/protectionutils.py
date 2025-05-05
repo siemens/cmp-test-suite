@@ -847,6 +847,7 @@ def _prepare_certificate_chain(
     cert: Optional[rfc9480.CMPCertificate] = None,
     certs_dir: Optional[str] = None,
     cert_chain_path: Optional[str] = None,
+    cert_chain: Optional[List[rfc9480.CMPCertificate]] = None,
 ) -> Optional[list]:
     """Build a certificate chain from the provided certificate, directory of certificates, or a certificate chain file.
 
@@ -856,7 +857,9 @@ def _prepare_certificate_chain(
     :return: A list representing the certificate chain or `None` if no chain is built.
     :raises ValueError: If there is an issue with loading or parsing the certificates.
     """
-    cert_chain = None
+    if cert_chain is not None:
+        return cert_chain
+
     if cert is not None:
         if certs_dir is not None:
             cert_chain = certutils.build_cert_chain_from_dir(cert, certs_dir)
@@ -950,6 +953,9 @@ def protect_pkimessage(  # noqa: D417
         - `no_patch` (bool): Indicate if the sender and senderKID field are patched for signature-based protection,
             as described by RFC 9483 Section 3.1. Defaults to `False` (so by default they are patched).
         - `mac_alg` (str): The MAC algorithm to use for DH-based MAC protection. Defaults to "hmac".
+        - `cert_chain` (List[CMPCertificates]): The certificate chain to use for the PKIMessage, will be used to patch \
+        the sender and senderKID fields, if `cert` is not provided. Defaults to `None`.
+        - `peer` (CMPCertificate, ECDHPublicKey): The peer certificate or public key for DH-based MAC protection.
 
     Returns:
     -------
@@ -997,6 +1003,9 @@ def protect_pkimessage(  # noqa: D417
         der_data = utils.load_and_decode_pem_file(cert)
         cert = certutils.parse_certificate(der_data)
 
+    if cert is None and params.get("cert_chain") is not None:
+        cert = params["cert_chain"][0]
+
     if protection in ["signature", "rsassa-pss", "rsassa_pss", "dh"]:
         pki_message = patch_sender_and_sender_kid(
             do_patch=params.get("do_patch", True), pki_message=pki_message, cert=cert
@@ -1021,6 +1030,7 @@ def protect_pkimessage(  # noqa: D417
         cert,  # type: ignore
         certs_dir=certs_dir,
         cert_chain_path=cert_chain_fpath,
+        cert_chain=params.get("cert_chain"),
     )
 
     if cert is None and isinstance(private_key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
