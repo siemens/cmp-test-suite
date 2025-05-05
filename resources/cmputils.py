@@ -3626,6 +3626,11 @@ def get_cert_response_from_pkimessage(  # noqa D417 undocumented-param
 
     """
     message_type = get_cmp_message_type(pki_message)
+
+    if message_type == "error":
+        utils.display_pki_status_info(pki_message, index=response_index)
+        raise ValueError("The provided `PKIMessage` is an error message, which does not contain a certificate.")
+
     if message_type not in {"cp", "kup", "ip", "ccp"}:
         raise ValueError(f"The provided `PKIBody` does not contain a certificate. Got: `{message_type}`")
 

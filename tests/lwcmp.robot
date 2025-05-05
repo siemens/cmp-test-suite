@@ -57,6 +57,7 @@ CA Must Issue Certificate Via P10cr Without implicitConfirm
     ${response}=   Exchange PKIMessage    ${protected_p10cr}
     # could also be ip, kup, cp; consider examining the tag; the overall structure is CertRepMessage
     PKIMessage Body Type Must Be    ${response}    cp
+    PKIStatus Must Be    ${response}  accepted
     # prepare confirmation message by extracting the certificate and getting the needed
     # data from it cert_req_id must be also `0` for P10cr.
     ${conf_message}=   Build Cert Conf From Resp    ${response}   for_mac=True
@@ -211,11 +212,10 @@ CA MUST Reject PKIMessage Without messageTime
     ...    in Section 3.5.
     [Tags]    negative    rfc9483-header    strict    time
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
-    ${ir}=    Build Ir From CSR
-    ...    ${EXP_CSR}
-    ...    ${EXP_KEY}
-    ...    exclude_fields=messageTime,sender,senderKID
+    ${ir}=    Build Ir From Key
+    ...    ${key}
     ...    sender=${SENDER}
+    ...    exclude_fields=messageTime,sender,senderKID
     ...    recipient=${RECIPIENT}
     ${protected_ir}=    Protect PKIMessage
     ...    pki_message=${ir}
@@ -233,9 +233,9 @@ CA MUST Reject PKIMessage With messageTime Outside Allowed Window
     ...    include the failinfo `badTime`, as specified in Section 3.5.
     [Tags]    negative    rfc9483-header    strict    time
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
-    ${ir}=    Build Ir From CSR
-    ...    ${EXP_CSR}
-    ...    ${EXP_KEY}
+    ${key}=  Generate Default Key
+    ${ir}=    Build Ir From Key
+    ...    ${key}
     ...    sender=${SENDER}
     ...    exclude_fields=messageTime,sender,senderKID
     ...    recipient=${RECIPIENT}
@@ -257,11 +257,10 @@ CA MUST Reject PKIMessage With A Long Passed messageTime
     ...    as specified in Section 3.5.
     [Tags]    negative    rfc9483-header    strict    time
     Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
-    ${ir}=    Build Ir From CSR
-    ...    ${EXP_CSR}
-    ...    ${EXP_KEY}
-    ...    exclude_fields=messageTime,sender,senderKID
+    ${ir}=    Build Ir From Key
+    ...    ${key}
     ...    sender=${SENDER}
+    ...    exclude_fields=messageTime,sender,senderKID
     ...    recipient=${RECIPIENT}
     ${ir}=    Patch MessageTime    ${ir}    2024-01-01 15:30:00.000000
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
@@ -1348,7 +1347,6 @@ CA Must Reject Valid IR With Already Updated Certificate
     [Tags]    ir    negative    update
     ${is_set}=    Is Certificate And Key Set    ${UPDATED_CERT}    ${UPDATED_KEY}
     Skip If    not ${is_set}    The `UPDATED_CERT` and/or `UPDATED_KEY` variables are not set.
-    Sleep    3
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
     ${pki_message}=    Build IR From Key
     ...    signing_key=${key}

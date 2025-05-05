@@ -188,7 +188,7 @@ def sign_csr(  # noqa D417 undocumented-param
 @keyword(name="Build CSR")
 def build_csr(  # noqa D417 undocumented-param
     signing_key: SignKey,
-    common_name: str = "CN=Hans Mustermann",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     extensions: Optional[rfc9480.Extensions] = None,
     hash_alg: Union[None, str] = "sha256",
     use_rsa_pss: bool = False,
@@ -238,7 +238,10 @@ def build_csr(  # noqa D417 undocumented-param
     csr = rfc6402.CertificationRequest()
 
     csr["certificationRequestInfo"]["version"] = univ.Integer(0)
-    csr["certificationRequestInfo"]["subject"] = prepareutils.prepare_name(common_name)
+    if isinstance(common_name, str):
+        common_name = prepareutils.prepare_name(common_name)
+
+    csr["certificationRequestInfo"]["subject"] = common_name
 
     use_pre_hash_pub_key = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
     spki = spki or convertutils.subject_public_key_info_from_pubkey(
@@ -2687,6 +2690,36 @@ def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional
             raise BadCertTemplate("")
 
 
+def _contains_extn_id(extn_id: univ.ObjectIdentifier, extensions: Sequence[rfc5280.Extension]) -> bool:
+    """Check if the extension ID is present in the extensions.
+
+    :param extn_id: The extension ID to check.
+    :param extensions: The list of extensions to check against.
+    :return: `True` if the extension ID is present, `False` otherwise.
+    """
+    for extn in extensions:
+        if extn["extnID"] == extn_id:
+            return True
+    return False
+
+
+def _get_not_included_extensions(
+    validated_extensions: List[rfc5280.Extension], other_extensions: rfc9480.Extensions
+) -> List[rfc5280.Extension]:
+    """Get the extensions which are not included in the validated extensions.
+
+    :param validated_extensions: The validated extensions.
+    :param other_extensions: The other extensions to check against.
+    :return: The list of extensions which are not included in the validated extensions.
+    """
+    not_included = []
+    for extn in other_extensions:
+        if _contains_extn_id(extn["extnID"], validated_extensions):
+            continue
+        not_included.append(extn)
+    return not_included
+
+
 # TODO maybe not allow to correct the criticality of the extensions?
 
 
@@ -2779,6 +2812,9 @@ def check_extensions(  # noqa D417 undocumented params
 
             else:
                 validated_extensions.append(ext)
+
+        other = _get_not_included_extensions(validated_extensions, other_extensions)
+        validated_extensions.extend(other)
 
     extns.extend(validated_extensions)
     return extns

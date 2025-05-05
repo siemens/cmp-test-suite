@@ -110,7 +110,7 @@ ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 #Indicating if the PKIFailInfo must be set correctly.
 ${FAILINFO_MUST_BE_CORRECT}   ${True}
 # For messageTime check.
-${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
+${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-501}
 
 ##### Section 4
 # If ALLOW_P10CR is enabled, all generic test cases will be done
@@ -131,7 +131,10 @@ ${ALLOW_KGA_RAW_KEYS}   ${False}
 
 # Section 4.2
 ${REVOCATION_STRICT_CHECK}    ${False}
-
+# The time to wait, until a certificate is revoked, so that
+# the test cases can be run.
+${REVOKED_WAIT_TIME}   10
+${UPDATE_WAIT_TIME}   3
 
 # Section 4.3
 # Whether a Support message can be used with a pre-shared-Secret.

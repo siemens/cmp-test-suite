@@ -106,16 +106,12 @@ CA MUST support KEMBasedMAC
     [Tags]    kem-based-mac   genm
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
-    ${cm}=    Get Next Common Name
-    ${info_val}=    Prepare KEMCiphertextInfo   ${KEM_KEY}
-    ${genm}=   Build CMP General Message   info_values=${info_val}   sender=${SENDER}   recipient=${RECIPIENT}
-    ${cert_chain}=   Build Cert Chain From Dir    ${KEM_CERT}     cert_chain_dir=./data/cert_logs
-    ${genm}=   Patch ExtraCerts    ${genm}    ${cert_chain}
+    ${genm}=   Build KEMBasedMAC Geneal Message   ${KEM_KEY}    ${KEM_CERT}
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
-    ${key}=  Generate Default Key
-    ${ir}=    Build Ir From Key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
-    ${protected_ir}=  Protect PKIMessage KemBasedMac    ${ir}    shared_secret=${ss}
+    ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
+    ${protected_ir}=   Build IR Request KEMBasedMac Protected
+    ...       ${tx_id}   ${ss}   True
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}   accepted
 
@@ -128,16 +124,12 @@ CA Reject invalid KEMBasedMAC Protected Message
     [Tags]    kem-based-mac   genm
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
-    ${info_val}=    Prepare KEMCiphertextInfo   ${KEM_KEY}
-    ${cm}=    Get Next Common Name
-    ${genm}=   Build CMP General Message   info_values=${info_val}   sender=${SENDER}   recipient=${RECIPIENT}
-    ${cert_chain}=   Build Cert Chain From Dir    ${KEM_CERT}     cert_chain_dir=./data/cert_logs
-    ${genm}=   Patch ExtraCerts    ${genm}    ${cert_chain}
+    ${genm}=   Build KEMBasedMAC Geneal Message   ${KEM_KEY}    ${KEM_CERT}
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
-    ${key}=  Generate Default Key
-    ${ir}=    Build Ir From Key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
-    ${protected_ir}=  Protect PKIMessage KemBasedMac    ${ir}    shared_secret=${ss}    bad_message_check=True
+    ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
+    ${protected_ir}=   Build IR Request KEMBasedMac Protected
+    ...       ${tx_id}   ${ss}   True  ${None}   True
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}   rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}   badMessageCheck
@@ -147,29 +139,25 @@ CA MUST not reuse the same ss for KEMBASEDMAC
     ...                the establishment of a shared secret MUST only be used once.
     ...                We send a valid KEMBasedMAC protected message with the same shared secret.
     ...                The CA MUST detect the reuse of the shared secret and MAY return the
-    ...                optional failInfo `badMessageCheck,badRequest`.
+    ...                optional failInfo `badMessageCheck,badRequest,systemFailure`.
     [Tags]    kem-based-mac   genm
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
     ${cm}=    Get Next Common Name
-    ${info_val}=    Prepare KEMCiphertextInfo   ${KEM_KEY}
-    ${genm}=   Build CMP General Message   info_values=${info_val}   sender=${SENDER}   recipient=${RECIPIENT}
-    ${cert_chain}=   Build Cert Chain From Dir    ${KEM_CERT}     cert_chain_dir=./data/cert_logs
-    ${genm}=   Patch ExtraCerts    ${genm}    ${cert_chain}
+    ${genm}=   Build KEMBasedMAC Geneal Message   ${KEM_KEY}    ${KEM_CERT}
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${key}=  Generate Default Key
-    ${ir}=    Build Ir From Key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
-    ${protected_ir}=  Protect PKIMessage KemBasedMac    ${ir}    shared_secret=${ss}    bad_message_check=True
+    ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
+    ${protected_ir}=   Build IR Request KEMBasedMac Protected
+    ...       ${tx_id}   ${ss}   True  ${None}
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}   accepted
-    ${key}=  Generate Default Key
-    ${ir}=    Build Ir From Key  ${key}   ${cm}    sender=${SENDER}   recipient=${RECIPIENT}
-    ${protected_ir}=  Protect PKIMessage KemBasedMac    ${ir}    shared_secret=${ss}
-    ...               bad_message_check=True
+    ${protected_ir}=   Build IR Request KEMBasedMac Protected
+    ...       ${tx_id}   ${ss}   True  ${None}
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}   rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response}   badMessageCheck,badRequest
+    PKIStatusInfo Failinfo Bit Must Be    ${response}   badMessageCheck,badRequest,systemFailure
 
 #####################
 # Other PQ KEMs
@@ -201,3 +189,59 @@ CA MUST ISSUE A Valid sntrup761 Certificate
     PKIMessage Body Type Must Be    ${response}    ip
     ${cert}=  Validate EncrCert For KEM    ${response}    ${key}
     Validate Migration OID In Certificate    ${cert}    sntrup761
+
+
+*** Keywords ***
+Build KEMBasedMAC Geneal Message
+    [Documentation]    Build a KEMBasedMAC General Message.
+    ...
+    ...                Arguments:
+    ...                - ${kem_key}: The KEM key to use for the message.
+    ...                - ${kem_cert}: The KEM certificate to use for the message.
+    ...                - ${random_value}: Optional random value to use for the message, for negative tests.
+    ...                The `infoValue` field **MUST** be absent.
+    [Arguments]    ${kem_key}    ${kem_cert}   ${random_value}=${None}
+    ${info_val}=    Prepare KEMCiphertextInfo   ${kem_key}    ${None}
+    ${genm}=   Build CMP General Message   info_values=${info_val}
+    ...        sender=${SENDER}   recipient=${RECIPIENT}
+    ${cert_chain}=   Build Cert Chain From Dir    ${kem_cert}     cert_chain_dir=./data/cert_logs
+    ${genm}=   Patch ExtraCerts    ${genm}    ${cert_chain}
+    RETURN    ${genm}
+
+Build IR Request KEMBasedMac Protected
+    [Documentation]    Build a IR request with KEMBasedMac protected.
+    ...
+    ...                Arguments:
+    ...                - ${tx_id}: The transaction ID to use for the request.
+    ...                - ${ss}: The shared secret to use for the request.
+    ...                - ${for_mac}: Whether to use the request for MAC or SIG.
+    ...                - ${cert_chain}: The certificate chain to use for the request.
+    ...                - ${bad_message_check}: Whether to invalidate the protection.
+    ...
+    ...                Returns:
+    ...                - The protected IR request.
+    ...
+    ...                Examples:
+    ...                | ${protected_ir}= | Build IR Request KEMBasedMac Protected | ${tx_id} | ${ss} |
+    ...                | ${protected_ir}= | Build IR Request KEMBasedMac Protected | ${tx_id} | ${ss} | for_mac=True |
+    ...
+    [Arguments]    ${tx_id}    ${ss}    ${for_mac}=False  ${cert_chain}=${None}   ${bad_message_check}=False
+    ${cm}=    Get Next Common Name
+    ${key}=  Generate Default Key
+    IF   ${for_mac}
+        VAR   ${exclude_fields}  ${None}
+    ELSE
+        VAR   ${exclude_fields}  senderKID,sender
+    END
+    # TODO decide if both options are allowed, or the `GeneralName` must be for MAC or SIG.
+    ${ir}=    Build Ir From Key  ${key}   ${cm}   for_mac=${for_mac}
+    ...       sender=${SENDER}   recipient=${RECIPIENT}   transaction_id=${tx_id}
+    ...       exclude_fields=${exclude_fields}
+    IF   ${cert_chain} is not None
+        ${ir}=   Patch ExtraCerts    ${ir}    ${cert_chain}
+        ${ir}=    Patch Sender    ${ir}    ${cert_chain}[0]
+        ${ir}=    Patch SenderKID    ${ir}    ${cert_chain}[0]
+    END
+    ${protected_ir}=  Protect PKIMessage KemBasedMac    ${ir}    shared_secret=${ss}
+    ...    bad_message_check=${bad_message_check}
+    RETURN    ${protected_ir}

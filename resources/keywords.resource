@@ -466,9 +466,11 @@ Confirm Certificate If Needed
         ELSE
             VAR   ${exclude_fields}    ${None}
         END
+        ${cert_req_id}=    Get From Dictionary    ${args}    cert_req_id   ${None}
         ${cert_conf}=   Build Cert Conf From Resp  ${response}   sender=${sender}
         ...                                         recipient=${recipient}
         ...                                         exclude_fields=${exclude_fields}
+        ...                                         cert_req_id=${cert_req_id}
         ${cert_conf}=   Default Protect PKIMessage    ${cert_conf}    &{params}
         ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
         ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
@@ -742,7 +744,7 @@ PKIStatus Must Be
     [Arguments]    ${pki_message}  ${status}   ${index}=0
     ${pki_status}=    Get Status From PKIMessage      ${pki_message}    ${index}
     IF  not '${pki_status}' == '${status}'
-        ${pki_status_info}=   Get PKIStatusInfo    ${pki_message}    ${index}   # robocop: off=VAR02
+        ${pki_status_info}=   Display Pki Status Info    ${pki_message}    ${index}   # robocop: off=VAR02
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
 
@@ -935,3 +937,17 @@ Set Up EnvelopedData Certs For Tests
     Issue POS RSA KTRI Cert
     Issue NEG ECC KARI Cert
     Issue POS ECC KARI Cert
+
+Wait Until Server Revoked Cert
+    [Documentation]    Wait time until the server revoked a certificate so that testing can be begin.
+    Sleep    ${REVOKED_WAIT_TIME}
+
+Wait Until Server Updated Cert
+    [Documentation]    Wait time until the server updated a certificate so that testing can be begin.
+    ...                Needed in some cases, if a updated certificate is treated as a revoked certificate,
+    ...                so that no new certificates can be issued.
+    Sleep    ${REVOKED_WAIT_TIME}
+
+Wait Until Server Revived Cert
+    [Documentation]    Wait time until the server revived a certificate so that testing can be begin.
+    Sleep    ${REVOKED_WAIT_TIME}

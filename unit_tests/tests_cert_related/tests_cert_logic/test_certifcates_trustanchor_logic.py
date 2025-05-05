@@ -1,13 +1,14 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import tempfile
 import unittest
 from typing import List
 
 from pyasn1_alt_modules import rfc9480
 from resources import utils
 from resources.certutils import certificates_are_trustanchors, certificates_must_be_trusted, parse_certificate
+from resources.exceptions import SignerNotTrusted
 
 from unit_tests.utils_for_test import load_or_generate_cert_chain
 
@@ -50,12 +51,12 @@ class TestCertAndValidateLogic(unittest.TestCase):
         """
         GIVEN a certificate that is not a trust anchor and no trust anchors are provided
         WHEN `certificates_are_trustanchors` is called with this certificate,
-        THEN it should raise a `ValueError` indicating the certificate is not a trust anchor
+        THEN it should raise a `SignerNotTrusted` indicating the certificate is not a trust anchor
         """
         der_data = utils.load_and_decode_pem_file(self.path_to_trust_anchor)
         untrusted_cert = parse_certificate(der_data)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(SignerNotTrusted):
             certificates_are_trustanchors(
                 [untrusted_cert],
                 allow_os_store=True,
@@ -69,14 +70,18 @@ class TestCertAndValidateLogic(unittest.TestCase):
         WHEN `certificates_must_be_trusted` is called with this chain and invalid trust anchors,
         THEN it should raise a `ValueError` indicating the chain is not trusted
         """
-        with self.assertRaises(ValueError):
-            certificates_must_be_trusted(
-                cert_chain=self.cert_chain,
-                allow_os_store=True,
-                trustanchors="data/trustanchors",
-                crl_check=False,
-                verbose=False,
-            )
+        with tempfile.TemporaryDirectory() as temp_trust_dir:
+            # Optionally populate temp_trust_dir with dummy trust anchors.
+            with self.assertRaises(SignerNotTrusted):
+                certificates_must_be_trusted(
+                    cert_chain=self.cert_chain,
+                    allow_os_store=True,
+                    trustanchors=temp_trust_dir,
+                    crl_check=False,
+                    verbose=False,
+                    key_usages="keyCertSign, cRLSign",
+                )
+
 
     def test_certificate_must_be_trusted_with_anchor_valid_chain(self):
         """

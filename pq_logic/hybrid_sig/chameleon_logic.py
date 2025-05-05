@@ -4,9 +4,10 @@
 
 """Logic for building/validating Chameleon certificates/certification requests."""
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
@@ -31,7 +32,7 @@ from resources.copyasn1utils import copy_csr, copy_name, copy_validity
 from resources.exceptions import BadAltPOP, BadAsn1Data, BadCertTemplate
 from resources.oid_mapping import get_hash_from_oid
 from resources.prepareutils import prepare_name
-from resources.typingutils import SignKey
+from resources.typingutils import PublicKey, SignKey, VerifyKey
 
 
 def _prepare_issuer_and_subject(
@@ -334,7 +335,7 @@ def prepare_delta_cert_req(
 def build_paired_csr(  # noqa: D417 Missing argument descriptions in the docstring
     base_private_key: SignKey,
     delta_private_key: SignKey,
-    base_common_name: str = "CN=Hans Mustermann",
+    base_common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     base_extensions: Optional[rfc5280.Extensions] = None,
     delta_extensions: Optional[rfc5280.Extensions] = None,
     **kwargs,
@@ -431,6 +432,33 @@ def build_paired_csr(  # noqa: D417 Missing argument descriptions in the docstri
 ###################
 # Server side
 ###################
+
+
+@not_keyword
+def load_chameleon_csr_delta_key_and_sender(csr: rfc6402.CertificationRequest) -> Tuple[PublicKey, rfc9480.Name]:
+    """Load the public key and sender from the `DeltaCertificateRequestValue`.
+
+    :param csr: The `CertificationRequest` to extract the public key from.
+    :return: The public key of the Delta Certificate request.
+    :raises: ValueError: If the Delta Certificate request attribute is missing.
+    :raises: InvalidKeyData: If the public key is not a valid key.
+    """
+    delta_req = None
+    for attr in csr["certificationRequestInfo"]["attributes"]:
+        if attr["attrType"] == id_at_deltaCertificateRequest:
+            delta_req = decoder.decode(attr["attrValues"][0], asn1Spec=DeltaCertificateRequestValue())[0]
+            break
+
+    if delta_req is None:
+        raise ValueError("`DeltaCertificateRequestValue` attribute is missing.")
+
+    if not delta_req["subject"].isValue:
+        sender = csr["certificationRequestInfo"]["subject"]
+    else:
+        target = rfc9480.Name()
+        sender = copy_name(filled_name=delta_req["subject"], target=target)
+
+    return keyutils.load_public_key_from_spki(delta_req["subjectPKInfo"]), sender
 
 
 @not_keyword
@@ -585,6 +613,44 @@ def build_delta_cert(
     )
 
 
+def _validate_keys(
+    first_key: PublicKey,
+    delta_key: PublicKey,
+    min_key_size: int = 2048,
+    max_key_size: int = 8192,
+) -> None:
+    """Validate the keys used for the Base and Delta Certificates.
+
+    :param first_key: The public key of the Base Certificate.
+    :param delta_key: The public key of the Delta Certificate.
+    :raises ValueError: If the keys are not compatible.
+    """
+    if not isinstance(first_key, VerifyKey):
+        raise BadCertTemplate(f"Base Certificate public key is not a verifying key.Got {type(first_key)} instead.")
+
+    if not isinstance(delta_key, VerifyKey):
+        raise BadCertTemplate(f"Delta Certificate public key is not a verifying key.Got {type(delta_key)} instead.")
+
+    if delta_key == first_key:
+        raise BadCertTemplate("Delta Certificate public key must not match the Base Certificate public key.")
+
+    if isinstance(delta_key, RSAPublicKey):
+        key_size = delta_key.key_size
+        if key_size < min_key_size or key_size > max_key_size:
+            raise BadCertTemplate(
+                f"Delta Certificate public key size {key_size} is not within the "
+                f"allowed range ({min_key_size}-{max_key_size})."
+            )
+
+    if isinstance(first_key, RSAPublicKey):
+        key_size = first_key.key_size
+        if key_size < min_key_size or key_size > max_key_size:
+            raise BadCertTemplate(
+                f"Base Certificate public key size {key_size} is not within the "
+                f"allowed range ({min_key_size}-{max_key_size})."
+            )
+
+
 @not_keyword
 def build_chameleon_cert_from_paired_csr(
     csr: rfc6402.CertificationRequest,
@@ -614,8 +680,10 @@ def build_chameleon_cert_from_paired_csr(
     first_key = keyutils.load_public_key_from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
     delta_key = keyutils.load_public_key_from_spki(delta_req["subjectPKInfo"])
 
-    if delta_key == first_key:
-        raise BadCertTemplate("Delta Certificate public key must not match the Base Certificate public key.")
+    _validate_keys(
+        first_key=first_key,
+        delta_key=delta_key,
+    )
 
     cert = certbuildutils.build_cert_from_csr(
         csr=csr, ca_key=ca_key, ca_cert=ca_cert, alt_sign_key=alt_key, use_rsa_pss=use_rsa_pss

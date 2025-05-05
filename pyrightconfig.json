@@ -1,5 +1,5 @@
 {
-  "include": ["./resources", "./pq_logic"],
+  "include": ["./resources", "./pq_logic", "./mock_ca"],
   "exclude": [
     "./unit_tests",
   "./pq_logic/hybrid_structures.py",

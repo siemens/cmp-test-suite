@@ -18,7 +18,7 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import OnRelatedCertificateDescriptor, RelatedCertificateDescriptor
 from pq_logic.tmp_oids import id_ad_certDiscovery, id_ad_relatedCertificateDescriptor
-from resources import certutils, compareutils, utils
+from resources import certextractutils, certutils, compareutils, utils
 
 
 def _prepare_related_certificate_descriptor(
@@ -166,6 +166,47 @@ def extract_related_cert_des_from_sis_extension(  # noqa D417 undocumented-param
     obj, _ = decoder.decode(other_name["value"], RelatedCertificateDescriptor())
 
     return obj
+
+
+@not_keyword
+def is_cert_discovery_cert(
+    cert: rfc9480.CMPCertificate,
+) -> bool:
+    """Check if the certificate is a certDiscovery certificate.
+
+    :param cert: The certificate to check.
+    :return: True if the certificate is a certDiscovery certificate, False otherwise.
+    """
+    extension = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], rfc5280.id_pe_subjectInfoAccess)
+
+    if extension is None:
+        return False
+
+    sia, _ = decoder.decode(extension["extnValue"].asOctets(), rfc5280.SubjectInfoAccessSyntax())
+    for access_description in sia:
+        if access_description["accessMethod"] == id_ad_certDiscovery:
+            return True
+    return False
+
+
+@not_keyword
+def get_cert_discovery_cert(cert: rfc9480.CMPCertificate) -> Optional[rfc9480.CMPCertificate]:
+    """Get the certDiscovery certificate from the given certificate.
+
+    :param cert: The certificate to check.
+    :return: The certDiscovery certificate if found, None otherwise.
+    """
+    extension = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], rfc5280.id_pe_subjectInfoAccess)
+
+    if extension is None:
+        return None
+
+    rel_dis_des = extract_related_cert_des_from_sis_extension(
+        extension=extension,
+    )
+    uri = rel_dis_des["uniformResourceIdentifier"].prettyPrint()
+    other_cert = utils.load_certificate_from_uri(uri=uri, load_chain=False)[0]
+    return other_cert
 
 
 @not_keyword

@@ -12,5 +12,6 @@ cd liboqs-python
 pip install .
 # shellcheck disable=SC2103
 cd ..
-
-
+# sanity check, if an error occurs, the script will try to install itself,
+# which resolves the problem.
+python liboqs-python/examples/kem.py

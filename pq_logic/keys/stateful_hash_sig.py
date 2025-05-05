@@ -34,6 +34,10 @@ class PQHashStatefulSigPublicKey(PQPublicKey, ABC):
     def _export_public_key(self) -> bytes:
         """Return the public key as bytes."""
 
+    def __eq__(self, other):
+        """Compare two public keys for equality."""
+        raise NotImplementedError("Equality check is not implemented for this class: type(self)")
+
 
 class PQHashStatefulSigPrivateKey(PQPrivateKey, ABC):
     """Abstract base class for Post-Quantum Hash Stateful Signature Private Keys."""

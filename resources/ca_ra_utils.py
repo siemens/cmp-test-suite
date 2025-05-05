@@ -2855,7 +2855,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
     entry: rfc9480.CertStatus
     for entry, issued_cert in zip(cert_conf, issued_certs):
         if entry["certReqId"] != 0 and enforce_lwcmp:
-            raise BadRequest("Invalid CertReqId in CertConf message.")
+            raise BadRequest(f"Invalid CertReqId in CertConf message. Got: {int(entry['certReqId'])}Expected: 0.")
 
         if not entry["certHash"].isValue:
             raise BadPOP("Certificate hash is missing in CertConf message.")
@@ -2956,7 +2956,7 @@ def build_ca_message(
     return pki_message
 
 
-def _contains_cert(cert_template, certs: Sequence[rfc9480.CMPCertificate]) -> Optional[rfc9480.CMPCertificate]:
+def _contains_cert_template(cert_template, certs: Sequence[rfc9480.CMPCertificate]) -> Optional[rfc9480.CMPCertificate]:
     """Check if the certificate template is in the list of certificates.
 
     :param cert_template: The certificate template to check.
@@ -3095,9 +3095,8 @@ def _check_cert_for_revoked(
     :raises BadRequest: If the certificate is not revoked.
     """
     if revoked_certs is not None:
-        for revoked_cert in revoked_certs:
-            if encoder.encode(cert) == encoder.encode(revoked_cert):
-                raise CertRevoked("Certificate is already revoked.")
+        if certutils.cert_in_list(cert, revoked_certs):
+            raise CertRevoked("Certificate is already revoked.")
 
 
 def _check_cert_for_revive(
@@ -3110,9 +3109,8 @@ def _check_cert_for_revive(
     :raises BadCertId: If the certificate cannot be revived, because it was not revoked.
     """
     if revoked_certs is not None:
-        for revoked_cert in revoked_certs:
-            if encoder.encode(cert) == encoder.encode(revoked_cert):
-                return
+        if certutils.cert_in_list(cert, revoked_certs):
+            return
     else:
         return
 
@@ -3158,7 +3156,7 @@ def validate_rev_details(  # noqa D417 undocumented-param
     """
     _check_rev_details_mandatory_fields(rev_details["certDetails"])
 
-    cert = _contains_cert(
+    cert = _contains_cert_template(
         cert_template=rev_details["certDetails"],
         certs=issued_certs,
     )
@@ -3280,7 +3278,7 @@ def build_rp_from_rr(  # noqa: D417 missing argument descriptions in the docstri
         body["rp"]["status"].append(status_info)
 
         if not kwargs.get("enforce_lwcmp", True):
-            cert = _contains_cert(
+            cert = _contains_cert_template(
                 cert_template=entry["certDetails"],
                 certs=certs,
             )
