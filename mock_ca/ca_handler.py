@@ -27,7 +27,7 @@ from mock_ca.cert_req_handler import CertReqHandler
 from mock_ca.challenge_handler import ChallengeHandler
 from mock_ca.general_msg_handler import GeneralMessageHandler
 from mock_ca.hybrid_handler import HybridIssuingHandler
-from mock_ca.mock_fun import CertRevStateDB, KEMSharedSecretList, RevokedEntry
+from mock_ca.mock_fun import CertRevStateDB, KEMSharedSecretList, KeySecurityChecker
 from mock_ca.nested_handler import NestedHandler
 from mock_ca.nestedutils import validate_orig_pkimessage
 from mock_ca.operation_dbs import MockCAOPCertsAndKeys
@@ -73,11 +73,9 @@ from resources.checkutils import (
 from resources.cmputils import (
     build_cmp_error_message,
     find_oid_in_general_info,
-    get_cert_response_from_pkimessage,
     get_cmp_message_type,
     parse_pkimessage,
 )
-from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import ensure_is_sign_key
 from resources.exceptions import (
     BadAlg,
@@ -182,11 +180,16 @@ class MockCAState:
         :param sender: The sender of the request.
         :return: `True` if the public key is already in use, otherwise `False`.
         """
-        for cert in self.issued_certs:
-            if self._compare_pub_keys(pub_key, cert):
-                return compare_pyasn1_names(sender, cert["tbsCertificate"]["subject"], "without_tag")
+        key_sec_check = KeySecurityChecker(
+            issued_certs=self.issued_certs,
+            revoked_certs=self.cert_state_db.revoked_certs,
+            updated_certs=self.cert_state_db.updated_certs,
+        )
 
-        return False
+        return key_sec_check.contains_pub_key(
+            pub_key=pub_key,
+            sender=sender,
+        )
 
     def add_tx_id(self, tx_id: bytes) -> None:
         """Store the transaction ID.
@@ -283,8 +286,7 @@ class MockCAState:
 
     def add_updated_cert(self, cert: rfc9480.CMPCertificate):
         """Add an updated certificate to the state."""
-        hashed_cert = compute_hash("sha1", encoder.encode(cert))
-        self.cert_state_db.add_update_entry(RevokedEntry("updated", cert, hashed_cert))
+        self.cert_state_db.add_updated_cert(cert)
 
     def is_updated(self, cert: rfc9480.CMPCertificate) -> bool:
         """Check if a certificate is updated based on its serial number."""
@@ -304,24 +306,6 @@ def _build_error_from_exception(e: CMPTestSuiteError, request: Optional[PKIMessa
     """
     msg = build_cmp_error_message(failinfo=e.failinfo, texts=e.message, status="rejection", error_texts=e.error_details)
     return msg
-
-
-def _is_encrypted_cert(pki_message: PKIMessageTMP) -> bool:
-    """Check if the certificate is encrypted.
-
-    :param pki_message: The PKIMessage.
-    :return: `True` if the certificate is encrypted, otherwise `False`.
-    """
-    rep = get_cert_response_from_pkimessage(pki_message, response_index=0)
-
-    # Otherwise, deletes the entries.
-    if not rep["certifiedKeyPair"].isValue:
-        return False
-
-    if not rep["certifiedKeyPair"]["certOrEncCert"].isValue:
-        return False
-
-    return rep["certifiedKeyPair"]["certOrEncCert"]["encryptedCert"].isValue
 
 
 def _contains_challenge(request_msg: PKIMessageTMP) -> bool:

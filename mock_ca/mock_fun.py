@@ -17,7 +17,9 @@ from pyasn1_alt_modules import rfc5280, rfc9480
 from pq_logic.keys.abstract_wrapper_keys import HybridPublicKey, KEMPublicKey
 from resources import ca_ra_utils, certutils, keyutils
 from resources.asn1_structures import PKIMessageTMP
+from resources.certutils import load_public_key_from_cert
 from resources.cmputils import get_cmp_message_type
+from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import ensure_is_trad_sign_key
 from resources.copyasn1utils import copy_subject_public_key_info
 from resources.deprecatedutils import _sign_crl_builder
@@ -257,7 +259,12 @@ class CertRevStateDB:
     @property
     def revoked_certs(self) -> List[rfc9480.CMPCertificate]:
         """Return the revoked certificates."""
-        return self.rev_entry_list.certs
+        return self.rev_entry_list.certs or []
+
+    @property
+    def updated_certs(self) -> List[rfc9480.CMPCertificate]:
+        """Return the updated certificates."""
+        return self.update_entry_list.certs or []
 
     @property
     def len_revoked_certs(self) -> int:
@@ -633,3 +640,89 @@ class KEMSharedSecretList:
                 request=request,
                 ss=ss,
             )
+
+
+@dataclass
+class KeySecurityChecker:
+    """Check if a public key is already in use (issued, updated or revoked)."""
+
+    issued_certs: List[rfc9480.CMPCertificate] = field(default_factory=list)
+    revoked_certs: List[rfc9480.CMPCertificate] = field(default_factory=list)
+    updated_certs: List[rfc9480.CMPCertificate] = field(default_factory=list)
+
+    @staticmethod
+    def _compare_pub_keys(pub_key: PublicKey, cert: rfc9480.CMPCertificate) -> bool:
+        """Compare the public key with the certificate.
+
+        :param pub_key: The public key to compare.
+        :param cert: The certificate to compare with.
+        :return: `True` if the public key matches the certificate, otherwise `False`.
+        """
+        loaded_pub_key = load_public_key_from_cert(cert)
+        if isinstance(pub_key, HybridPublicKey):
+            if not isinstance(loaded_pub_key, HybridPublicKey):
+                return pub_key.trad_key == loaded_pub_key or pub_key.pq_key == loaded_pub_key
+
+            if pub_key == loaded_pub_key:
+                return True
+            if pub_key.trad_key == loaded_pub_key.trad_key:
+                return True
+            if pub_key.pq_key == loaded_pub_key.pq_key:
+                return True
+            if pub_key.pq_key == loaded_pub_key.trad_key:
+                return True
+            return False
+
+        if isinstance(loaded_pub_key, HybridPublicKey):
+            if pub_key == loaded_pub_key.trad_key:
+                return True
+            if pub_key == loaded_pub_key.pq_key:
+                return True
+            return False
+
+        return pub_key == loaded_pub_key
+
+    def contains_pub_key(self, pub_key: PublicKey, sender: rfc9480.Name) -> bool:
+        """Check if the public key is already in use (issued or revoked).
+
+        :param pub_key: The public key to check.
+        :param sender: The sender of the request.
+        :return: `True` if the public key is already in use, otherwise `False`.
+        """
+        all_certs = self.issued_certs + self.revoked_certs + self.updated_certs
+        for cert in all_certs:
+            if self._compare_pub_keys(pub_key, cert):
+                return compare_pyasn1_names(sender, cert["tbsCertificate"]["subject"], "without_tag")
+        return False
+
+    def _check_contains_pub_key(
+        self,
+        certs: List[rfc9480.CMPCertificate],
+        pub_key: PublicKey,
+        sender: rfc9480.Name,
+    ) -> bool:
+        """Check if the public key is already in use."""
+        for cert in certs:
+            if self._compare_pub_keys(pub_key, cert):
+                return compare_pyasn1_names(sender, cert["tbsCertificate"]["subject"], "without_tag")
+        return False
+
+    def check_cert_status(
+        self,
+        pub_key: PublicKey,
+        sender: rfc9480.Name,
+    ) -> str:
+        """Check the status of the certificate.
+
+        :return: The status of the certificate ("good", "revoked", "updated", "in_use").
+        """
+        if self._check_contains_pub_key(certs=self.issued_certs, pub_key=pub_key, sender=sender):
+            return "in_use"
+
+        if self._check_contains_pub_key(certs=self.revoked_certs, pub_key=pub_key, sender=sender):
+            return "revoked"
+
+        if self._check_contains_pub_key(certs=self.updated_certs, pub_key=pub_key, sender=sender):
+            return "updated"
+
+        return "good"
