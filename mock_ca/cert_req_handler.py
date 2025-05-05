@@ -311,8 +311,6 @@ class CertReqHandler:
                         "allowed for known certificates."
                     )
 
-
-
     def process_cr(self, pki_message: PKIMessageTMP):
         """Process a certificate request (CR) message."""
         logging.debug("CertReqHandler: Processing CR message")
@@ -366,8 +364,6 @@ class CertReqHandler:
         :return: The response `PKIMessage`.
         """
         logging.debug("CertReqHandler: Processing KUR message")
-
-
 
         if not pki_message["header"]["protectionAlg"].isValue:
             raise BadMessageCheck("Protection algorithm was not set.")

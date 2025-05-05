@@ -693,6 +693,7 @@ def must_not_contain_key_usage(  # noqa D417 undocumented-param
         names = asn1utils.get_set_bitstring_names(usage)
         raise ValueError(f"KeyUsage Extension was expected to not contain: {key_usages}, but is {names}")
 
+
 @not_keyword
 def write_cert_chain_to_file(cert_chain: List[rfc9480.CMPCertificate], path: str):
     """Write a certificate chain to a single PEM file, overwriting the file if it already exists.

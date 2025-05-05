@@ -371,7 +371,7 @@ def load_certificate_chain(filepath: str) -> List[rfc9480.CMPCertificate]:
     """Load and decode all certificates from a PEM-encoded certificate chain.
 
     :param filepath: path of the file containing the certificate chain.
-    :return: List of `rfc9480.CMPCertificate` objects.
+    :return: List of `CMPCertificate` objects.
     """
     certificates = []
     certificate = []
