@@ -64,16 +64,21 @@ sys.set_int_max_str_digits(0)
 
 def _prepare_pki_message_gen_name(
     sender: Union[str, rfc9480.GeneralName, rfc9480.Name, rfc9480.CMPCertificate],
+    gen_type: str = "rfc822Name",
 ) -> rfc5280.GeneralName:
     """Prepare a `GeneralName` object from a string.
 
     :param sender: The sender's name to be converted to a `GeneralName`.
+    :param gen_type: The type of the `GeneralName`. Defaults to "rfc822Name".
     :return: A `GeneralName` object.
     """
     if isinstance(sender, rfc9480.GeneralName):
         return sender
     if isinstance(sender, str):
-        return rfc5280.GeneralName().setComponentByName("rfc822Name", sender)
+        return prepareutils.prepare_general_name(
+            name_type=gen_type,
+            name_str=sender,
+        )
 
     if isinstance(sender, (rfc9480.Name, rfc9480.CMPCertificate)):
         return prepareutils.prepare_general_name_from_name(
@@ -223,7 +228,10 @@ def prepare_pki_message(
         if message_time:
             pki_header["messageTime"] = message_time
         else:
-            msg_time_obj = useful.GeneralizedTime().fromDateTime(datetime.now(timezone.utc))
+            # the date is not correctly converted, so that it could happen for test cases,
+            # that the messageTime is in the future. So a slightly older time is used
+            date_time = datetime.now(timezone.utc) - timedelta(seconds=3)
+            msg_time_obj = useful.GeneralizedTime().fromDateTime(date_time)
             message_time_subtyped = msg_time_obj.subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
             pki_header["messageTime"] = message_time_subtyped
 
