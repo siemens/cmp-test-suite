@@ -39,7 +39,7 @@ from resources import (
     typingutils,
     utils,
 )
-from resources.asn1utils import get_set_bitstring_names
+from resources.asn1utils import get_all_asn1_named_value_names, get_set_bitstring_names
 from resources.convertutils import subject_public_key_info_from_pubkey
 from resources.copyasn1utils import copy_name
 from resources.exceptions import BadAsn1Data, BadCertTemplate
@@ -50,7 +50,8 @@ from resources.oidutils import (
     PQ_SIG_PRE_HASH_OID_2_NAME,
 )
 from resources.prepare_alg_ids import prepare_alg_id, prepare_sig_alg_id  # noqa: F401
-from resources.typingutils import ExtensionsType, PrivateKey, PublicKey, SignKey, Strint, VerifyKey
+from resources.prepareutils import _GeneralNamesType, parse_to_general_names
+from resources.typingutils import CRLFullNameType, ExtensionsType, PrivateKey, PublicKey, SignKey, Strint, VerifyKey
 
 
 # TODO verify if `utcTime` is allowed for CertTemplate, because is not allowed
@@ -2213,36 +2214,91 @@ def _prepare_extension(
     return extension
 
 
-# TODO implement with pyasn1.
+def _prepare_crl_distribution_points(
+    distribution_points: Optional[Union[Sequence[rfc5280.DistributionPoint], rfc5280.DistributionPoint]] = None,
+    crl_issuers: Optional[_GeneralNamesType] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+) -> rfc5280.CRLDistributionPoints:
+    """Prepare a CRL Distribution Point.
 
-
-@not_keyword
-def prepare_crl_distribution_point_extension(
-    crl_url: str,
-    critical: bool = False,
-) -> rfc5280.Extension:
-    """Prepare a CRL distribution point extension.
-
-    :param crl_url: The URL of the CRL distribution point.
-    :param critical: Whether the extension is marked as critical or not. Defaults to `False`.
-    :return: The prepared `CRLDistributionPoints` extension.
+    :param distribution_points: A single or list of DistributionPoint objects.
+    :param crl_issuers: CRL issuer name.
+    :param full_name: List of GeneralName objects for the full name.
+    :param relative_name: List of RelativeDistinguishedName objects for the relative name.
+    :return: The populated `CRLDistributionPoints` structure.
     """
-    crl_dp = x509.CRLDistributionPoints(
-        [
-            x509.DistributionPoint(
-                full_name=[x509.UniformResourceIdentifier(crl_url)],
-                relative_name=None,
-                reasons=None,
-                crl_issuer=None,
-            )
-        ]
+    crl_distribution_point = rfc5280.CRLDistributionPoints()
+
+    if distribution_points is None:
+        if crl_issuers is None and full_name is None and relative_name is None:
+            raise ValueError("At least one of `crl_issuers`, `full_name`, or `relative_name` must be provided.")
+
+    if distribution_points is not None:
+        if isinstance(distribution_points, rfc5280.DistributionPoint):
+            distribution_points = [distribution_points]
+
+        for distribution_point in distribution_points:
+            crl_distribution_point.append(distribution_point)
+
+    if crl_issuers is not None or full_name is not None or relative_name is not None:
+        distribution_point = prepare_distribution_point(
+            crl_issuers=crl_issuers, full_name=full_name, relative_name=relative_name
+        )
+        crl_distribution_point.append(distribution_point)
+
+    return crl_distribution_point
+
+
+@keyword(name="Prepare CRLDistributionPoint Extension")
+def prepare_crl_distribution_point_extension(  # noqa: D417 undocumented-param
+    distribution_points: Optional[Union[Sequence[rfc5280.DistributionPoint], rfc5280.DistributionPoint]] = None,
+    crl_issuers: Optional[_GeneralNamesType] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+    critical: bool = False,
+    add_rand_val: bool = False,
+) -> rfc5280.Extension:
+    """Prepare a CRL Distribution Point extension.
+
+    Arguments:
+    ---------
+        - distribution_points: A single or list of DistributionPoint objects.
+        - crl_issuers: CRL issuer name.
+        - full_name: List of GeneralName objects for the full name.
+        - relative_name: A RelativeDistinguishedName objects for the relative name.
+        - critical: Whether the extension is critical. Defaults to `False`.
+        - add_rand_val: Whether to add a random value to the `extnValue` field. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure for the CRLDistributionPoints.
+
+    Raises:
+    ------
+        - ValueError: If both `full_name` and `relative_name` are provided.
+        - ValueError: If `distribution_points` is not provided and `crl_issuers`, `full_name`, \
+        or `relative_name` are not provided.
+
+    Examples:
+    --------
+    | ${crl_dp_ext} | Prepare CRLDistributionPoint Extension | crl_issuers="CN=Issuer" |
+    | ${crl_dp_ext} | Prepare CRLDistributionPoint Extension | full_name="CN=FullName" |
+
+    """
+    crl_distribution_point = _prepare_crl_distribution_points(
+        distribution_points=distribution_points,
+        crl_issuers=crl_issuers,
+        full_name=full_name,
+        relative_name=relative_name,
     )
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_cRLDistributionPoints
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(crl_dp.public_bytes())
-    return extension
+    return _prepare_extension(
+        oid=rfc5280.id_ce_cRLDistributionPoints,
+        critical=critical,
+        value=crl_distribution_point,
+        add_rand_val=add_rand_val,
+    )
 
 
 def _try_decode_extension_val(
@@ -2880,3 +2936,287 @@ def prepare_issuer_and_serial_number(  # noqa D417 undocumented-param
         serial_number = int(serial_number) + 1
     iss_ser_num["serialNumber"] = rfc5280.CertificateSerialNumber(serial_number)
     return iss_ser_num
+
+
+@not_keyword
+def prepare_distribution_point_name(
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+) -> rfc5280.DistributionPointName:
+    """Prepare a Distribution Point Name.
+
+    :param full_name: List of GeneralName objects for the full name.
+    :param relative_name: List of RelativeDistinguishedName objects for the relative name.
+    :return: The populated `DistributionPointName` structure.
+    """
+    if full_name is not None and relative_name is not None:
+        raise ValueError(
+            "Either `full_name` or `relative_name` must be provided, not both."
+            "Can only populate the `DistributionPointName` with one of them."
+        )
+
+    distribution_point_name = rfc5280.DistributionPointName()
+
+    if full_name:
+        full_names = parse_to_general_names(full_name)
+        distribution_point_name["fullName"].extend(full_names)
+
+    if relative_name:
+        distribution_point_name["nameRelativeToCRLIssuer"].extend(relative_name)
+
+    return distribution_point_name
+
+
+def prepare_relative_distinguished_name(
+    name: Optional[Union[str, rfc9480.Name, rfc5280.RelativeDistinguishedName]],
+) -> Optional[rfc5280.RelativeDistinguishedName]:
+    """Prepare a Relative Distinguished Name.
+
+    :param name: The name to prepare.
+    :return: The populated `RelativeDistinguishedName` structure.
+    """
+    if isinstance(name, str):
+        name_obj = rfc5280.RelativeDistinguishedName()
+
+        if "=" not in name:
+            raise ValueError("Invalid name format. Expected 'key=value'.")
+
+        for item in name.split(","):
+            key, value = item.split("=")
+        raise NotImplementedError("This function is not implemented yet.")
+
+    elif isinstance(name, rfc9480.Name):
+        return name["rdnSequence"][0]
+
+    return name
+
+
+@keyword(name="Prepare DistributionPoint")
+def prepare_distribution_point(  # noqa: D417 undocumented-param
+    reason_flags: Optional[str] = None,
+    crl_issuers: Optional[_GeneralNamesType] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+) -> rfc5280.DistributionPoint:
+    """Prepare a Distribution Point.
+
+    Arguments:
+    ---------
+        - reason_flags: Reason flags for the CRL.
+        - crl_issuers: CRL issuer name.
+        - crl_issuers: List of CRL issuers names.
+        - full_name: List of GeneralName objects for the full name.
+        - relative_name: List of RelativeDistinguishedName objects for the relative name.
+
+    Returns:
+    -------
+        - The populated DistributionPoint structure.
+
+    Raises:
+    ------
+        - ValueError: If both full_name and relative_name are not `None`.
+
+    Examples:
+    --------
+    | ${dis_point} | Prepare DistributionPoint | reason_flags="keyCompromise" | crl_issuers="CN=Issuer" |
+    | ${dis_point} | Prepare DistributionPoint | full_name="CN=FullName" | relative_name |
+
+    """
+    distribution_point = rfc5280.DistributionPoint()
+
+    dis_point_name = rfc5280.DistributionPointName().subtype(
+        implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0)
+    )
+
+    distribution_point["distributionPoint"] = dis_point_name
+    if reason_flags:
+        flags = _prepare_reason_flags(reason_flags)  # type: ignore
+        flags: rfc5280.ReasonFlags
+        distribution_point["reasons"] = flags.subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1))
+
+    if crl_issuers is not None:
+        crl_issuers = parse_to_general_names(crl_issuers, gen_type="directoryName")
+        distribution_point["cRLIssuer"].extend(crl_issuers)
+
+    if full_name or relative_name:
+        distribution_point_name = prepare_distribution_point_name(full_name, relative_name)
+        choice_name = distribution_point_name.getName()
+        distribution_point["distributionPoint"][choice_name] = distribution_point_name[choice_name]
+
+    return distribution_point
+
+
+def _prepare_reason_flags(
+    reason_flags: Optional[str] = None,
+) -> Optional[rfc5280.ReasonFlags]:
+    """Prepare ReasonFlags.
+
+    :param reason_flags: Reason flags for the CRL.
+    :return: The populated `ReasonFlags` structure, correctly tagged.
+    """
+    if reason_flags == "all":
+        all_options = asn1utils.get_all_asn1_named_value_names(rfc5280.ReasonFlags(), get_keys=True)
+        reason_flags = ",".join(all_options)
+        return rfc5280.ReasonFlags(reason_flags)
+
+    if reason_flags is not None:
+        options = list(rfc5280.ReasonFlags.namedValues.keys())
+        for entry in reason_flags.split(","):
+            if entry not in options:
+                raise ValueError(f"Invalid `ReasonFlags`: {entry}. Must be one of {options}.")
+
+        return rfc5280.ReasonFlags(reason_flags)
+
+    return None
+
+
+def _prepare_dp_name_for_idp(
+    distribution_point: Optional[rfc5280.DistributionPointName] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+) -> rfc5280.DistributionPointName:
+    """Prepare a Distribution Point for Issuing Distribution Point.
+
+    :param full_name: List of GeneralName objects for the full name.
+    :param relative_name: List of RelativeDistinguishedName objects for the relative name.
+    :return: The populated `DistributionPoint` structure.
+    """
+    if distribution_point is not None and (full_name is not None or relative_name is not None):
+        raise ValueError(
+            "Either `distribution_point` or `full_name` or `relative_name` must be provided, not both."
+            "Can only populate the `DistributionPointName` with one of them."
+        )
+
+    if distribution_point is None:
+        return prepare_distribution_point_name(
+            full_name=full_name,
+            relative_name=relative_name,
+        )
+    return distribution_point
+
+
+@keyword(name="Prepare IssuingDistributionPoint")
+def prepare_issuing_distribution_point(  # noqa: D417 undocumented-param
+    dis_point_name: Optional[rfc5280.DistributionPointName] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+    only_contains_user_certs: bool = False,
+    only_contains_ca_certs: bool = False,
+    only_some_reasons: Optional[str] = None,
+    indirect_crl: bool = False,
+    only_contains_attribute_certs: bool = False,
+) -> rfc5280.IssuingDistributionPoint:
+    """Prepare an Issuing Distribution Point.
+
+    This Extension is used to indicate the distribution point for the CRL. It can specify whether the CRL contains \
+    only user certificates, CA certificates, or attribute certificates. It can also specify the reasons for which the \
+    CRL is issued (e.g., key compromise, CA key compromise, etc.).
+
+    Arguments:
+    ---------
+        - dis_point_name: The distribution point name to parse. Defaults to `None`.
+        - full_name: List of GeneralName objects for the full name. Defaults to `None`.
+        - relative_name: List of RelativeDistinguishedName objects for the relative name. Defaults to `None`.
+        - only_contains_user_certs: Indicates if the CRL only contains user certificates. Defaults to `False`.
+        - only_contains_ca_certs: Indicates if the CRL only contains CA certificates. Defaults to `False`.
+        - only_some_reasons: Specifies the `ReasonFlags` for which the CRL is issued (e.g., `keyCompromise`). \
+        Can be `all` or a comma-separated human representation of the `ReasonFlags`. Defaults to `None`.
+        - indirect_crl: Indicates if the CRL is an indirect CRL. Defaults to `False`.
+        - only_contains_attribute_certs: Indicates if the CRL only contains attribute certificates. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `IssuingDistributionPoint` structure.
+
+    Raises:
+    ------
+        - ValueError: If both `dis_point_name` and `full_name` are provided or if neither is provided.
+        - ValueError: If `issuing_distribution_point` is not provided and `dis_point_name` or \
+        `full_name` are not provided.
+        - ValueError: If `only_some_reasons` is not a valid `ReasonFlags` value.
+
+    Examples:
+    --------
+    | ${issuing_dp} | Prepare IssuingDistributionPoint | dis_point_name={dis_point_name} |
+    | ${issuing_dp} | Prepare IssuingDistributionPoint | full_name="CN=FullName" |
+
+    """
+    issuing_distribution_point = rfc5280.IssuingDistributionPoint()
+
+    if dis_point_name is not None or full_name is not None or relative_name is not None:
+        dis_point_name = _prepare_dp_name_for_idp(
+            distribution_point=dis_point_name,
+            full_name=full_name,
+            relative_name=relative_name,
+        )
+        option = dis_point_name.getName()
+        issuing_distribution_point["distributionPoint"][option] = dis_point_name[option]
+
+    issuing_distribution_point["onlyContainsUserCerts"] = only_contains_user_certs
+    issuing_distribution_point["onlyContainsCACerts"] = only_contains_ca_certs
+
+    if only_some_reasons is not None:
+        reason_flags = _prepare_reason_flags(only_some_reasons)
+        names = get_all_asn1_named_value_names(reason_flags)  # type: ignore
+        issuing_distribution_point["onlySomeReasons"] = rfc5280.ReasonFlags(names).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3)
+        )
+
+    issuing_distribution_point["indirectCRL"] = indirect_crl
+    issuing_distribution_point["onlyContainsAttributeCerts"] = only_contains_attribute_certs
+
+    return issuing_distribution_point
+
+
+@keyword(name="Prepare IssuingDistributionPoint Extension")
+def prepare_issuing_distribution_point_extension(  # noqa: D417 undocumented-param
+    iss_dis_point: Optional[rfc5280.IssuingDistributionPoint] = None,
+    dis_point_name: Optional[rfc5280.DistributionPointName] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    add_rand_val: bool = False,
+    critical: bool = False,
+) -> rfc5280.Extension:
+    """Prepare an Issuing Distribution Point extension.
+
+    Arguments:
+    ---------
+        - iss_dis_point: The Issuing Distribution Point to prepare. Defaults to `None`.
+        - dis_point_name: The distribution point name to parse. Defaults to `None`.
+        - full_name: A single or list of GeneralName objects for the full name. Defaults to `None`.
+        - add_rand_val: Whether to add a random value to the `extnValue` field. Defaults to `False`.
+        - critical: Whether the extension is critical. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure for the IssuingDistributionPoint.
+
+    Raises:
+    ------
+        - ValueError: If both `dis_point_name` and `full_name` are provided or if neither is provided.
+        - ValueError: If `iss_dis_point` is not provided and `dis_point_name` or `full_name` are not provided.
+
+    Examples:
+    --------
+    | ${idp_ext} | Prepare IssuingDistributionPoint Extension | full_name="CN=Issuer" |
+    | ${idp_ext} | Prepare IssuingDistributionPoint Extension | dis_point_name={dis_point_name} |
+    | ${idp_ext} | Prepare IssuingDistributionPoint Extension | iss_dis_point={iss_dis_point} |
+
+    """
+    if iss_dis_point is None:
+        if dis_point_name is None and full_name is None:
+            raise ValueError("At least one of `iss_dis_point`, `dis_point_name`, or `full_name` must be provided.")
+
+        if dis_point_name is not None and full_name is not None:
+            raise ValueError("Either `dis_point_name` or `full_name` must be provided, not both.")
+
+        iss_dis_point = prepare_issuing_distribution_point(
+            dis_point_name=dis_point_name,
+            full_name=full_name,
+        )
+
+    return _prepare_extension(
+        oid=rfc5280.id_ce_issuingDistributionPoint,
+        critical=critical,
+        value=iss_dis_point,
+        add_rand_val=add_rand_val,
+    )

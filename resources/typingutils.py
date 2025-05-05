@@ -155,3 +155,11 @@ ExtensionsType = Union[
 CAResponse = Tuple[PKIMessageTMP, List[rfc9480.CMPCertificate]]
 CACertResponse = Tuple[CertResponseTMP, rfc9480.CMPCertificate]
 CACertResponses = Tuple[List[CertResponseTMP], List[rfc9480.CMPCertificate]]
+
+# The `CRLFullNameType` includes all types supported for CRL full names.
+# This type ensures that only compatible types are used in CRL-related preparation functions.
+CRLFullNameType = Union[
+    str,
+    rfc9480.GeneralName,
+    Sequence[rfc9480.GeneralName],
+]

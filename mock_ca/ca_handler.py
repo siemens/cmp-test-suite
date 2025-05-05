@@ -7,7 +7,7 @@
 import logging
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -20,7 +20,7 @@ sys.path.append(".")
 from cryptography import x509
 from flask import Flask, Response, request
 from pyasn1.codec.der import encoder
-from pyasn1_alt_modules import rfc9480
+from pyasn1_alt_modules import rfc5280, rfc9480
 
 from mock_ca.cert_conf_handler import CertConfHandler
 from mock_ca.cert_req_handler import CertReqHandler
@@ -60,6 +60,9 @@ from resources.certbuildutils import (
     prepare_authority_key_identifier_extension,
     prepare_cert_template,
     prepare_crl_distribution_point_extension,
+    prepare_distribution_point,
+    prepare_issuing_distribution_point,
+    prepare_issuing_distribution_point_extension,
     prepare_ocsp_extension,
 )
 from resources.certutils import load_public_key_from_cert, parse_certificate
