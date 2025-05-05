@@ -158,6 +158,7 @@ ${ALLOW_SUPPORT_MESSAGES}   ${True}
 # Can be used to check if the General Message CRL Update Retrieval works with the last CRL.
 ${CRL_FILEPATH}    ${None}
 ${CRL_CERT_IDP}  ${False}
+${CRL_CERT_IDP}  data/unittest/dsa_certificate.pem
 
 
 ${OLD_ROOT_CERT}   ${None}

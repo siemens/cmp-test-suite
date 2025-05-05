@@ -521,11 +521,11 @@ def prepare_distribution_point_name(
 
 @not_keyword
 def prepare_dpn_from_cert(
-    cert: rfc9480.CMPCertificate, crl_dp_index: int = 0
-) -> Union[None, rfc5280.DistributionPointName]:
+    cert: Union[rfc9480.CMPCertificate, rfc5280.CertificateList], crl_dp_index: int = 0
+) -> Optional[rfc5280.DistributionPointName]:
     """Prepare the pyasn1 `DistributionPointName` from a certificate, if possible.
 
-    :param cert: The certificate to extract either the CRLDistributionPoints extension
+    :param cert: The certificate or CRL to extract either the CRLDistributionPoints extension
     or the IssuingDistributionPoint
     :param crl_dp_index: if there are more DistributionPointNames inside the
     `CRLDistributionPoints` extension then an index should be provided.
@@ -538,6 +538,7 @@ def prepare_dpn_from_cert(
         dpn: rfc5280.DistributionPointName = extension[crl_dp_index]["distributionPoint"]
         new_dpn = dpn
     else:
+        # inside here has tag o the same as inside CRLSource.
         issuing_dp = certextractutils.get_issuing_distribution_point(cert)
         if issuing_dp is not None:
             new_dpn = issuing_dp["distributionPoint"]
@@ -569,15 +570,39 @@ def _prepare_time_for_crl_update_retrieval(negative: bool, crl_filepath: Union[s
     return time_obj
 
 
+def _prepare_dpn_with_crl_file(
+    crl_filepath: str,
+    crl_dp_index: int = 0,
+) -> rfc5280.DistributionPointName:
+    """Prepare the `DistributionPointName` with the CRL file.
+
+    :param crl_filepath: The file path to the CRL.
+    """
+    crl_object = utils.load_crl_from_file(crl_filepath)
+    crl_extensions = crl_object["tbsCertList"]["crlExtensions"]
+    if crl_extensions.isValue:
+        value = prepare_dpn_from_cert(crl_object, crl_dp_index=crl_dp_index)
+        if value is not None:
+            return value
+
+    gen_names = prepareutils.parse_to_general_names(name=crl_object["tbsCertList"]["issuer"])
+
+    dpn = rfc5280.DistributionPointName().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0))
+
+    dpn["fullName"].extend(gen_names)
+    return dpn
+
+
 @keyword(name="Prepare CRL Update Retrieval")
 def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
-    cert: Optional[rfc9480.CMPCertificate] = None,
+    cert: Optional[Union[rfc9480.CMPCertificate, str]] = None,
     ca_name: Optional[str] = None,
     ca_crl_url: Optional[str] = None,
     crl_filepath: Optional[str] = None,
     crl_dp_index: int = 0,
     *,
-    negative: bool = False,
+    bad_this_update: bool = False,
+    exclude_this_update: bool = False,
 ) -> rfc9480.InfoTypeAndValue:
     """Prepare CRL update retrieval information for a 'General Message'.
 
@@ -586,7 +611,7 @@ def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
 
     Arguments:
     ---------
-        - `cert`: An optional `rfc9480.CMPCertificate` object to extract CRL distribution
+        - `cert`: An optional `CMPCertificate` object or the filepath to extract CRL distribution
                   points. If provided, this is the primary source for CRL data.
         - `ca_name`: An optional string specifying the name of the CA to use if no CRL
                      distribution points are available in the certificate.
@@ -597,7 +622,7 @@ def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
                           is used to retrieve the `thisUpdate` field from the CRL.
         - `crl_dp_index`: An integer specifying the index of the CRL distribution point
                           to use in the certificate. Defaults to `0`.
-        - `negative`: A boolean flag for negative testing. If `True`, simulates invalid CRL
+        - `bad_this_update`: A boolean flag for negative testing. If `True`, simulates invalid CRL
                       data by adjusting the `thisUpdate` field.
 
     Returns:
@@ -620,9 +645,17 @@ def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
     crl_source = rfc9480.CRLSource()
     # MUST Be the extension otherwise use the ca_name
     if cert is not None:
+        if isinstance(cert, str):
+            cert = certutils.parse_certificate(utils.load_and_decode_pem_file(cert))
+
         new_dpn = prepare_dpn_from_cert(cert, crl_dp_index=crl_dp_index)
         if new_dpn is not None:
             crl_source["dpn"] = new_dpn
+
+    if ca_crl_url is None and ca_name is None:
+        if crl_filepath is not None:
+            dpn = _prepare_dpn_with_crl_file(crl_filepath=crl_filepath)
+            crl_source["dpn"] = dpn
 
     if not crl_source["dpn"].isValue:
         dpn = prepare_distribution_point_name(ca_crl_url=ca_crl_url, ca_name=ca_name)
@@ -631,8 +664,10 @@ def prepare_crl_update_retrieval(  # noqa D417 undocumented-param
     status = rfc9480.CRLStatus()
     status["source"] = crl_source
 
-    if negative or crl_filepath is not None:
-        status["thisUpdate"] = _prepare_time_for_crl_update_retrieval(negative=negative, crl_filepath=crl_filepath)
+    if (bad_this_update or crl_filepath is not None) and not exclude_this_update:
+        status["thisUpdate"] = _prepare_time_for_crl_update_retrieval(
+            negative=bad_this_update, crl_filepath=crl_filepath
+        )
 
     status_list_val = rfc9480.CRLStatusListValue()
     status_list_val.append(status)
@@ -713,9 +748,7 @@ def validate_crl_update_retrieval(  # noqa D417 undocumented-param
     value = cmputils.get_value_from_seq_of_info_value_field(genp_content, oid=rfc9480.id_it_crls)
     if value is None:
         logging.info("General Response: \n%s", genp_content.prettyPrint())
-        raise ValueError(
-            "The Server response did not contain the oid for `id-it-caCerts` as of Section 4.3.4 specified!"
-        )
+        raise ValueError("The Server response did not contain the oid for `id-it-crls` as of Section 4.3.4 specified!")
 
     if value.isValue:
         crl_values, rest = decoder.decode(value, rfc9480.CRLsValue())
@@ -912,7 +945,7 @@ def build_cmp_general_message(  # noqa D417 undocumented-param
                 crl_filepath=crl_filepath,
                 ca_name=ca_name,
                 ca_crl_url=ca_crl_url,
-                negative=negative,
+                bad_this_update=negative,
                 crl_dp_index=crl_dp_index,
             )
         )

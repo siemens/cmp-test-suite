@@ -206,10 +206,11 @@ CA MUST Respond To Valid MAC Protected CRL Update Retrieval
     ...    is available.
     [Tags]    mac    positive
     Skip If    not ${ALLOW_MAC_PROTECTED_SUPPORT_MSG}    Skipped because MAC-protected support messages are disabled.
-    Skip If
-    ...    not ${CRL_CERT_IDP}
+    Skip If    '${CRL_CERT_IDP}' == 'None'
     ...    Skipped because no certificate with the issuing distribution point extension was provided.
-    ${genm}=    Build CMP General Message    add_messages=crl_update_ret    recipient=${RECIPIENT}    sender=${SENDER}
+    ${info_val}=   Prepare CRL Update Retrieval   cert=${CRL_CERT_IDP}
+    ${genm}=    Build CMP General Message    info_values=${info_val}
+    ...         recipient=${RECIPIENT}    sender=${SENDER}
     ${protected_genm}=    Default Protect General Message    ${genm}
     ${genp}=    Exchange PKIMessage    ${protected_genm}
     Validate CRL Update Retrieval    ${genp}
@@ -221,9 +222,9 @@ CA MUST Respond To Valid MAC Protected CRL Update Retrieval With CRL File
     ...    the provided CRL is outdated or leave the `infoValue` field absent if no update is available.
     [Tags]    mac    positive    robot:skip-on-failure
     Skip If    '${CRL_FILEPATH}' == 'None'    Skipped because the CRL_FILEPATH variable is not set.
+    ${info_val}=   Prepare CRL Update Retrieval    crl_filepath=${CRL_FILEPATH}    exclude_this_update=True    
     ${genm}=    Build CMP General Message
-    ...    add_messages=crl_update_ret
-    ...    crl_file=${CRL_FILEPATH}
+    ...    info_values=${info_val}
     ...    recipient=${RECIPIENT}
     ...    sender=${SENDER}
     ${protected_genm}=    Default Protect General Message    ${genm}
