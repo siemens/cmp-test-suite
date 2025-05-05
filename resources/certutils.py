@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
@@ -1556,7 +1556,7 @@ def build_ocsp_response(
 
     if cert_status == ocsp.OCSPCertStatus.REVOKED and revocation_time is None:
         # must be present if the certificate is revoked.
-        revocation_time = datetime.now()
+        revocation_time = datetime.now(timezone.utc) - timedelta(seconds=30)
 
     builder = builder.add_response(
         cert=crypto_cert,

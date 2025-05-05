@@ -7,7 +7,7 @@
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from cryptography import x509
 from cryptography.x509 import CertificateRevocationList, ExtensionNotFound, ocsp
@@ -276,6 +276,41 @@ class CertRevStateDB:
             logging.info("OCSP Nonce not found in the request.")
             return None
 
+    def _check_ocps_request_cert_status(
+        self,
+        request: ocsp.OCSPRequest,
+        issued_certs: List[rfc9480.CMPCertificate],
+    ) -> Tuple[Optional[rfc9480.CMPCertificate], str]:
+        """Check the OCSP request for the certificate status.
+
+        If the certificate is not found in the list of issued certificates,
+        is the status set to "unauthorized".
+
+        :param request: The OCSP request.
+        :param issued_certs: The list of issued certificates.
+        :return: The certificate, if found and the status.
+        """
+        num = request.serial_number
+
+        nums = self.rev_entry_list.serial_numbers
+
+        if self._update_eq_rev:
+            nums += self.update_entry_list.serial_numbers
+
+        status = "unauthorized"
+        found_cert = None
+        if num in nums:
+            status = "revoked"
+            found_cert = self.rev_entry_list.get_cert_by_serial_number(num)
+        else:
+            for cert in issued_certs:
+                if num == int(cert["tbsCertificate"]["serialNumber"]):
+                    found_cert = cert
+                    status = "good"
+                    break
+
+        return found_cert, status
+
     def get_ocsp_response(
         self,
         request: ocsp.OCSPRequest,
@@ -285,32 +320,23 @@ class CertRevStateDB:
         responder_cert: Optional[rfc9480.CMPCertificate] = None,
     ) -> ocsp.OCSPResponse:
         """Get the OCSP response for the request."""
-        num = request.serial_number
+        found_cert, status = self._check_ocps_request_cert_status(request, issued_certs)
 
-        nums = self.rev_entry_list.serial_numbers
-
-        if self._update_eq_rev:
-            nums += self.update_entry_list.serial_numbers
-
-        found_cert = None
-        if num in nums:
-            status = "revoked"
-            found_cert = self.rev_entry_list.get_cert_by_serial_number(num)
-        else:
-            status = "good"
-            for cert in issued_certs:
-                if num == int(cert["tbsCertificate"]["serialNumber"]):
-                    found_cert = cert
-
-        if found_cert is None:
-            raise ValueError(
-                f"Certificate with serial number {num} not found in the list of revoked or issued certificates."
-            )
+        if found_cert is None and status == "unauthorized":
+            # As of RFC 6960, section 2.3
+            # The response "unauthorized" is returned in cases where the client is
+            # not authorized to make this query to this server or the server is not
+            # capable of responding authoritatively (cf. [RFC5019], Section 2.2.3).
+            return ocsp.OCSPResponseBuilder.build_unsuccessful(ocsp.OCSPResponseStatus.UNAUTHORIZED)
+        elif found_cert is None:
+            raise NotImplementedError("Certificate not found in the list of issued certificates.")
 
         nonce = self._get_nonce(request)
 
         # TODO maybe also save revocation time.
-        revocation_time = datetime.now(timezone.utc) - timedelta(seconds=360)
+        revocation_time = None
+        if status == "revoked":
+            revocation_time = datetime.now(timezone.utc) - timedelta(seconds=60)
 
         return certutils.build_ocsp_response(
             cert=found_cert,

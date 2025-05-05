@@ -1144,7 +1144,12 @@ class CAHandler:
 
     def process_ocsp_request(self, data: bytes) -> bytes:
         """Process the OCSP request and return the response."""
-        ocsp_request = ocsp.load_der_ocsp_request(data)
+        try:
+            ocsp_request = ocsp.load_der_ocsp_request(data)
+        except ValueError:
+            logging.error("Failed to load OCSP request")
+            ocsp_response = ocsp.OCSPResponseBuilder.build_unsuccessful(ocsp.OCSPResponseStatus.MALFORMED_REQUEST)
+            return ocsp_response.public_bytes(encoding=Encoding.DER)
 
         response = self.state.cert_state_db.get_ocsp_response(
             request=ocsp_request,
