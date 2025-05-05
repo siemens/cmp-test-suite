@@ -23,6 +23,12 @@ ${DEFAULT_EC_CURVE}    None
 ${ALLOW_ONLY_HTTP_STATUS_CODE}    200, 201, 202, 203, 3xx, 4xx, 5xx
 ${DEFAULT_X509NAME}    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
 
+# The initial issued certificate and key for running the tests setup.
+${INIT_SUFFIX}   ${None}
+${INITIAL_KEY_PATH}    ${None}
+${INITIAL_CERT_PATH}   ${None}
+${INITIAL_KEY_PASSWORD}   ${None}
+
 ##### About Algorithms
 ${DEFAULT_KEY_LENGTH}    2048
 ${DEFAULT_ALGORITHM}    rsa
@@ -48,15 +54,16 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 # Sensitive Service so maybe disallowed
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
+##### Section 3
+#Indicating if the PKIFailInfo must be set correctly.
+${FAILINFO_MUST_BE_CORRECT}=    True
+# For messageTime check.
+${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 
 # DSA is not allowed by RFC9483.
 ${DSA_KEY}         ${None}
 ${DSA_KEY_PASSWORD}   ${None}
 ${DSA_CERT}        ${None}
-# Certificates and Keys to set.
-${INITIAL_KEY_PATH}    ${None}
-${INITIAL_CERT_PATH}   ${None}
-${INITIAL_KEY_PASSWORD}   11111
 
 # Device certificate and key (None means not provided).
 ${DEVICE_CERT}   ${None}

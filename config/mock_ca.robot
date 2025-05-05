@@ -28,6 +28,12 @@ ${DEFAULT_X509NAME}    CN=CloudCA-Integration-Test-User
 # either signature or an MAC algorithm.
 ${DEFAULT_PROTECTION}   signature
 
+# The initial issued certificate and key for running the tests setup.
+${INIT_SUFFIX}   ${None}
+${INITIAL_KEY_PATH}    ${None}
+${INITIAL_CERT_PATH}   ${None}
+${INITIAL_KEY_PASSWORD}   ${None}
+
 ##### About Issuing:
 
 # Implicit confirmation allowed.
@@ -117,6 +123,10 @@ ${DSA_KEY}         data/keys/private-key-dsa.pem
 ${DSA_KEY_PASSWORD}   11111
 ${DSA_CERT}        data/unittest/dsa_certificate.pem
 
+# Device certificate and key (None means not provided).
+${DEVICE_CERT}   ${None}
+${DEVICE_KEY}  ${None}
+
 ##### Section 4
 # If ALLOW_P10CR is enabled, all generic test cases will be done
 # using P10CR because Header checks are body-independent and are only done
@@ -153,8 +163,6 @@ ${CRL_CERT_IDP}  ${False}
 ${OLD_ROOT_CERT}   ${None}
 ${CERT_PROFILE}    ${None}
 
-
-
 # Sets the allowed time interval between request and response to 300 seconds.
 ${ALLOWED_TIME_INTERVAL}   ${300}
 
@@ -162,11 +170,6 @@ ${ALLOWED_TIME_INTERVAL}   ${300}
 ${ALLOW_CRL_CHECK}   ${False}
 ${REVOKE_CERT_ON_ERROR}  ${False}
 ${REVOKE_CERT_ON_LATE_CONFIRMATION}  ${False}
-
-# Certificates and Keys to set.
-${INITIAL_KEY_PATH}    ${None}
-${INITIAL_CERT_PATH}   ${None}
-${INITIAL_KEY_PASSWORD}   11111
 
 # Device certificate and key (None means not provided).
 ${DEVICE_CERT}   ${None}

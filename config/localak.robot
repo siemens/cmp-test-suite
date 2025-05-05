@@ -13,7 +13,11 @@ ${CA_BASE_URL}    http://139.25.105.164:5556/lraserver/default/
 # The initial issued certificate and key for running the tests.
 ${ISSUED_KEY}    ${None}
 ${ISSUED_CERT}   ${None}
+# The initial issued certificate and key for running the tests setup.
 ${INIT_SUFFIX}   ${None}
+${INITIAL_KEY_PATH}    ${None}
+${INITIAL_CERT_PATH}   ${None}
+${INITIAL_KEY_PASSWORD}   ${None}
 
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CloudCA-Integration-Test-User
@@ -54,15 +58,16 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 # Sensitive Service so maybe disallowed
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
+##### Section 3
+#Indicating if the PKIFailInfo must be set correctly.
+${FAILINFO_MUST_BE_CORRECT}=    True
+# For messageTime check.
+${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 
 # DSA is not allowed by RFC9483.
 ${DSA_KEY}         ${None}
 ${DSA_KEY_PASSWORD}   ${None}
 ${DSA_CERT}        ${None}
-# Certificates and Keys to set.
-${INITIAL_KEY_PATH}    ${None}
-${INITIAL_CERT_PATH}   ${None}
-${INITIAL_KEY_PASSWORD}   11111
 
 # Device certificate and key (None means not provided).
 ${DEVICE_CERT}   ${None}
