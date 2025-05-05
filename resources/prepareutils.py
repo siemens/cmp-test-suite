@@ -249,8 +249,13 @@ def parse_to_general_names(
         gen_names.append(name)
         return gen_names
 
-    else:
+    elif isinstance(name, (rfc9480.Name, str, rfc9480.CMPCertificate)):
         gen_name = parse_to_general_name(name, gen_type=gen_type)
         gen_names = rfc9480.GeneralNames()
         gen_names.append(gen_name)
         return gen_names
+    else:
+        raise NotImplementedError(
+            f"GeneralName name_type is Unsupported: {type(name)}. Supported types are: "
+            f"str, Name, GeneralName, GeneralNames."
+        )
