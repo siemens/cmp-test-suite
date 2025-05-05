@@ -1003,8 +1003,10 @@ def protect_pkimessage(  # noqa: D417
         der_data = utils.load_and_decode_pem_file(cert)
         cert = certutils.parse_certificate(der_data)
 
-    if cert is None and params.get("cert_chain") is not None:
+    elif cert is None and params.get("cert_chain") is not None:
         cert = params["cert_chain"][0]
+        if not isinstance(cert, rfc9480.CMPCertificate):
+            raise ValueError("cert_chain must be a list of CMPCertificates.")
 
     if protection in ["signature", "rsassa-pss", "rsassa_pss", "dh"]:
         pki_message = patch_sender_and_sender_kid(
