@@ -57,8 +57,9 @@ ${DSA_KEY_PASSWORD}   ${None}
 ${DSA_CERT}        ${None}
 
 # Device certificate and key (None means not provided).
-${DEVICE_CERT}   ${None}
+${DEVICE_CERT_CHAIN}   ${None}
 ${DEVICE_KEY}  ${None}
+${DEVICE_KEY_PASSWORD}   ${None}
 
 # Section 4.2
 ${REVOCATION_STRICT_CHECK}    ${False}

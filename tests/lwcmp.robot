@@ -846,13 +846,14 @@ CA MUST Reject CR With Other PKI Management Entity Request
     ...    certificate must have been issued by the PKI that it is requesting the certificate from.
     ...    In this test case, we send a `cr` message that is signed by a device certificate from a
     ...    different PKI. The CA must reject the request and may respond with the optional failinfo
-    ...    `notAuthorized` or `badRequest`, as specified in Section 3.5.
-    [Tags]    cr    negative    robot:skip-on-failure
-    ${is_set}=    Is Certificate And Key Set    ${DEVICE_CERT}    ${DEVICE_KEY}
-    Skip If    not ${is_set}    The `DEVICE_CERT` and/or `DEVICE_KEY` variable is not set, skipping test.
-    ${cert_chain}=    Build Cert Chain From Dir    ${DEVICE_CERT}    cert_chain_dir=./certs
+    ...    `notAuthorized` or `BadRequest`, as specified in Section 3.5.
+    [Tags]    cr    negative    other-ca-cert  trust
+    Skip If    '${DEVICE_CERT_CHAIN}' == 'None'    The test is skipped because the `DEVICE_CERT_CHAIN` variable is not set.
+    File Should Exist    ${DEVICE_CERT_CHAIN}    The `DEVICE_CERT_CHAIN` variable is not correctly set, so the test is skipped.
+    ${device_key}=   Load Private Key From File    ${DEVICE_KEY}   ${DEVICE_KEY_PASSWORD}
+    ${cert_chain}=    Load Certificate Chain    ${DEVICE_CERT_CHAIN}
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
-    ${ir}=    Build Cr From Key
+    ${ir}=    Build Ir From Key
     ...    ${key}
     ...    cert_template=${cert_template}
     ...    recipient=${RECIPIENT}
@@ -861,11 +862,12 @@ CA MUST Reject CR With Other PKI Management Entity Request
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
     ...    protection=signature
-    ...    private_key=${DEVICE_KEY}
-    ...    cert=${DEVICE_CERT}
-    ...    cert_chain=${cert_chain}
+    ...    private_key=${device_key}
+    ...    cert=${cert_chain[0]}
+    ...    exclude_certs=True
+    ${protected_ir}=   Patch ExtraCerts    ${protected_ir}    ${cert_chain}
     ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIStatus Must Be    ${response}    cp
+    PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=notAuthorized,badRequest
 
 CA MUST Reject Valid IR With Same Key

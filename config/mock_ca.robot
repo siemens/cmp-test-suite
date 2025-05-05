@@ -124,8 +124,9 @@ ${DSA_KEY_PASSWORD}   11111
 ${DSA_CERT}        data/unittest/dsa_certificate.pem
 
 # Device certificate and key (None means not provided).
-${DEVICE_CERT}   ${None}
-${DEVICE_KEY}  ${None}
+${DEVICE_CERT_CHAIN}   data/mock_ca/device_cert_ecdsa_cert_chain.pem
+${DEVICE_KEY}  data/keys/private-key-ecdsa.pem
+${DEVICE_KEY_PASSWORD}   11111
 
 ##### Section 4
 # If ALLOW_P10CR is enabled, all generic test cases will be done
@@ -156,8 +157,7 @@ ${UPDATE_WAIT_TIME}   3
 ${ALLOW_MAC_PROTECTED_SUPPORT_MSG}   ${True}
 ${ALLOW_SUPPORT_MESSAGES}   ${True}
 # Can be used to check if the General Message CRL Update Retrieval works with the last CRL.
-${CRL_FILEPATH}    ${None}
-${CRL_CERT_IDP}  ${False}
+${CRL_FILEPATH}    current_crl.pem
 ${CRL_CERT_IDP}  data/unittest/dsa_certificate.pem
 
 
