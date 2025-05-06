@@ -994,13 +994,13 @@ class CombinedKeyFactory:
             )
 
         if not callable(getattr(private_key, "private_numbers")):
-            raise NotImplementedError("The private key does not have private numbers `methode`.")
+            raise NotImplementedError("The private key does not have private numbers `method`.")
 
         if not hasattr(private_key, "private_bytes_raw"):
-            raise NotImplementedError("The private key does not have private bytes `methode`.")
+            raise NotImplementedError("The private key does not have private bytes `method`.")
 
         if not callable(getattr(private_key, "private_bytes_raw")):
-            raise NotImplementedError("The private key does not have private bytes `methode`.")
+            raise NotImplementedError("The private key does not have private bytes `method`.")
 
         if key_type == KeySaveType.SEED:
             if private_key_bytes != private_key.private_numbers():  # type: ignore
