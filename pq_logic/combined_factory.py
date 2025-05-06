@@ -974,6 +974,79 @@ class CombinedKeyFactory:
 
         return der_data
 
+    @staticmethod
+    def _validate_key_export_single(
+        private_key: Union[PQPrivateKey, HybridPrivateKey],
+        private_key_bytes: bytes,
+        key_type: KeySaveType,
+    ) -> None:
+        """Validate the key export type for a single key.
+
+        :param private_key: The private key to validate.
+        :param private_key_bytes: The bytes of the private key.
+        :param key_type: The type of key export (e.g., "seed", "raw", "seed_and_raw").
+        :raises InvalidKeyData: If the key data is invalid.
+        :raises NotImplementedError: If the key export type is not supported for that key.
+        """
+        if not hasattr(private_key, "private_numbers"):
+            raise NotImplementedError(
+                "The private key does not have private numbers.Can not determine the key export type of the key."
+            )
+
+        if not callable(getattr(private_key, "private_numbers")):
+            raise NotImplementedError("The private key does not have private numbers `methode`.")
+
+        if not hasattr(private_key, "private_bytes_raw"):
+            raise NotImplementedError("The private key does not have private bytes `methode`.")
+
+        if not callable(getattr(private_key, "private_bytes_raw")):
+            raise NotImplementedError("The private key does not have private bytes `methode`.")
+
+        if key_type == KeySaveType.SEED:
+            if private_key_bytes != private_key.private_numbers():  # type: ignore
+                raise InvalidKeyData("The private key bytes do not match the private key data, for type `seed`.")
+
+        elif key_type == KeySaveType.SEED_AND_RAW:
+            data = private_key.private_numbers() + private_key.private_bytes_raw()  # type: ignore
+            if private_key_bytes != data:
+                raise InvalidKeyData(
+                    "The private key bytes do not match the private key data, for type `seed_and_raw`."
+                )
+
+        elif key_type == KeySaveType.RAW:
+            if private_key_bytes != private_key.private_bytes_raw():  # type: ignore
+                raise InvalidKeyData("The private key bytes do not match the private key data, for type `raw`.")
+
+        else:
+            raise NotImplementedError(f"Unsupported key export type: {key_type.value}.")
+
+    @staticmethod
+    def validate_key_export_type(
+        private_key: Union[PQPrivateKey, HybridPrivateKey],
+        private_key_bytes: bytes,
+        key_save_type: Union[str, KeySaveType],
+    ) -> None:
+        """Validate the key export type for PQ and hybrid keys.
+
+        :param private_key: The private key to validate.
+        :param private_key_bytes: The bytes of the private key.
+        :param key_save_type: The type of key export (e.g., "seed", "raw", "seed_and_raw").
+        :raises InvalidKeyData: If the key data is invalid.
+        :raises NotImplementedError: If the key export type is not supported for that key.
+        :raises TypeError: If the key type is not supported.
+        """
+        key_type = KeySaveType.get(key_save_type)
+
+        if isinstance(private_key, PQPrivateKey):
+            CombinedKeyFactory._validate_key_export_single(private_key, private_key_bytes, key_type)
+        elif isinstance(private_key, XWingPrivateKey):
+            CombinedKeyFactory._validate_key_export_single(private_key, private_key_bytes, key_type)
+        elif isinstance(private_key, HybridPrivateKey):
+            pq_key = private_key.pq_key
+            CombinedKeyFactory._validate_key_export_single(pq_key, private_key_bytes, key_type)
+        else:
+            raise TypeError(f"Unsupported key type: {type(private_key)}. Only PQ keys and hybrid keys are supported.")
+
 
 def _load_traditional_ecc_private_key(name: str, private_data: bytes, curve: Optional[str] = None):
     """Load a traditional private key from the given private key data."""
