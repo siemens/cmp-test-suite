@@ -73,7 +73,7 @@ from pq_logic.tmp_oids import (
 )
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import ensure_is_kem_pub_key
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData, MissMatchingKey
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData, MisMatchingKey
 from resources.oid_mapping import get_curve_instance, may_return_oid_by_name
 from resources.oidutils import (
     CMS_COMPOSITE03_OID_2_NAME,
@@ -576,7 +576,7 @@ class CombinedKeyFactory:
         composite_key = _cast_private_key(pq_key, trad_key)
         if loaded_pub_key is not None:
             if loaded_pub_key != composite_key.public_key():
-                raise MissMatchingKey("The composite public key does not match the private key.")
+                raise MisMatchingKey("The composite public key does not match the private key.")
 
         return composite_key
 
@@ -644,7 +644,7 @@ class CombinedKeyFactory:
             pub_key = CombinedKeyFactory._load_hybrid_public_key(name, public_key)
 
             if pub_key != private_key.public_key():
-                raise MissMatchingKey("The composite KEM-06 public key does not match the private key.")
+                raise MisMatchingKey("The composite KEM-06 public key does not match the private key.")
 
         return private_key
 
@@ -689,7 +689,7 @@ class CombinedKeyFactory:
                 ml_pub = MLDSAPublicKey.from_public_bytes(tmp_data[tmp.key_size :], name=pq_name)
 
                 if ml_priv.public_key() != ml_pub:
-                    raise MissMatchingKey("The loaded public key is no match with the loaded private key.")
+                    raise MisMatchingKey("The loaded public key is no match with the loaded private key.")
 
                 return CompositeSig04PrivateKey(pq_key=ml_priv, trad_key=trad_key)  # type: ignore
 
@@ -774,7 +774,7 @@ class CombinedKeyFactory:
         public_key = CombinedKeyFactory._get_comp_sig04_key(oid, public_key_bytes=public_key)  # type: ignore
 
         if comp_key.public_key() != public_key:
-            raise MissMatchingKey("The loaded public is no match with the composite sig v04 private key")
+            raise MisMatchingKey("The loaded public is no match with the composite sig v04 private key")
         return comp_key
 
     @staticmethod

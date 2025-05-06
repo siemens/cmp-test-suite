@@ -183,7 +183,7 @@ class InvalidKeyData(BadDataFormat):
     """Raised when the key cannot be loaded or decoded."""
 
 
-class MissMatchingKey(InvalidKeyData):
+class MisMatchingKey(InvalidKeyData):
     """Raised when the loaded public key does not match the private key."""
 
 

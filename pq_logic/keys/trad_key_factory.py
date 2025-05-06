@@ -22,7 +22,7 @@ from robot.api.deco import not_keyword
 from pq_logic.keys.abstract_wrapper_keys import TradKEMPublicKey
 from pq_logic.keys.serialize_utils import ecc_private_key_to_bytes, prepare_ec_private_key, prepare_rsa_private_key
 from resources.asn1utils import try_decode_pyasn1
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MissMatchingKey
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MisMatchingKey
 from resources.oid_mapping import get_curve_instance, may_return_oid_to_name
 from resources.typingutils import PrivateKey, PublicKey, TradPrivateKey
 
@@ -530,7 +530,7 @@ def parse_trad_key_from_one_asym_key(
         raise BadAlg(f"Can not load the traditional key for the algorithm: {_name}")
 
     if private_key.public_key() != public_key:
-        raise MissMatchingKey("The public key does not match the private key.")
+        raise MisMatchingKey("The public key does not match the private key.")
 
     return private_key
 

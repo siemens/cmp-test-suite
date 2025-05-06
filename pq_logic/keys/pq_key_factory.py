@@ -32,7 +32,7 @@ from pq_logic.keys.sig_keys import (
     SLHDSAPrivateKey,
     SLHDSAPublicKey,
 )
-from resources.exceptions import BadAlg, InvalidKeyData, MissMatchingKey
+from resources.exceptions import BadAlg, InvalidKeyData, MisMatchingKey
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     FRODOKEM_NAME_2_OID,
@@ -68,7 +68,7 @@ def _load_and_validate(
         pub = key.public_key().from_public_bytes(data=public_bytes, name=name)
 
         if key.public_key() != pub:
-            raise MissMatchingKey(f"{name} public key does not match the private key.")
+            raise MisMatchingKey(f"{name} public key does not match the private key.")
 
     return private_cls(
         alg_name=name,

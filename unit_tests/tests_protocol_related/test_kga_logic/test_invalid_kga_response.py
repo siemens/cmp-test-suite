@@ -8,7 +8,7 @@ from resources.asn1_structures import PKIMessageTMP
 from resources.ca_kga_logic import validate_not_local_key_gen
 from resources.ca_ra_utils import build_kga_cmp_response
 from resources.cmputils import build_ir_from_key
-from resources.exceptions import InvalidKeyData, MissMatchingKey
+from resources.exceptions import InvalidKeyData, MisMatchingKey
 from resources.protectionutils import protect_pkimessage
 from resources.suiteenums import InvalidOneAsymKeyType
 from unit_tests.utils_for_test import load_ca_cert_and_key, load_kga_cert_chain_and_key
@@ -84,7 +84,7 @@ class TestInvalidKeyKGAResponse(unittest.TestCase):
         THEN the response should be prepared correctly.
         """
         response = self._build_invalid_kga_response(InvalidOneAsymKeyType.INVALID_KEY_PAIR_CERT.value)
-        with self.assertRaises(MissMatchingKey):
+        with self.assertRaises(MisMatchingKey):
             validate_not_local_key_gen(
                 response,
                 password="SiemensIT",

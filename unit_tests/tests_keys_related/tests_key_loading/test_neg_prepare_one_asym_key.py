@@ -1,7 +1,7 @@
 import unittest
 
 from pq_logic.combined_factory import CombinedKeyFactory
-from resources.exceptions import InvalidKeyData, MissMatchingKey
+from resources.exceptions import InvalidKeyData, MisMatchingKey
 from resources.keyutils import generate_key, load_private_key_from_file, prepare_one_asymmetric_key
 
 
@@ -29,7 +29,7 @@ class TestNegPrepareOneAsymKey(unittest.TestCase):
         for name, key in self.keys.items():
             with self.subTest(key_type=name):
                 one_asym_key = prepare_one_asymmetric_key(private_key=key, missmatched_key=True)
-                with self.assertRaises(MissMatchingKey):
+                with self.assertRaises(MisMatchingKey):
                     CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key)
 
     def test_unknown_version(self):
