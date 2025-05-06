@@ -106,7 +106,7 @@ CA MUST support KEMBasedMAC
     [Tags]    kem-based-mac   genm
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
-    ${genm}=   Build KEMBasedMAC Geneal Message   ${KEM_KEY}    ${KEM_CERT}
+    ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
@@ -124,7 +124,7 @@ CA Reject invalid KEMBasedMAC Protected Message
     [Tags]    kem-based-mac   genm
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
-    ${genm}=   Build KEMBasedMAC Geneal Message   ${KEM_KEY}    ${KEM_CERT}
+    ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
@@ -144,7 +144,7 @@ CA MUST not reuse the same ss for KEMBASEDMAC
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
     ${cm}=    Get Next Common Name
-    ${genm}=   Build KEMBasedMAC Geneal Message   ${KEM_KEY}    ${KEM_CERT}
+    ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${key}=  Generate Default Key
@@ -192,7 +192,7 @@ CA MUST ISSUE A Valid sntrup761 Certificate
 
 
 *** Keywords ***
-Build KEMBasedMAC Geneal Message
+Build KEMBasedMAC General Message
     [Documentation]    Build a KEMBasedMAC General Message.
     ...
     ...                Arguments:
