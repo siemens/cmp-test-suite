@@ -143,7 +143,7 @@ class GeneralMessageHandler:
         self.all_rel_env_data_certs = all_relevant_env_certs
         self.crl_url = crl_url
         self.supports_implicit_confirm = True
-        self.known_cert_profiles = []
+        self.known_cert_profiles = ["base"]
 
     def _check_general_message(self, pki_message: PKIMessageTMP) -> None:
         """Check the general message."""

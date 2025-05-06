@@ -149,7 +149,7 @@ ${ALLOW_KGA_RAW_KEYS}   ${False}
 ${REVOCATION_STRICT_CHECK}    ${False}
 # The time to wait, until a certificate is revoked, so that
 # the test cases can be run.
-${REVOKED_WAIT_TIME}   10
+${REVOKED_WAIT_TIME}   5
 ${UPDATE_WAIT_TIME}   3
 
 # Section 4.3
@@ -162,7 +162,7 @@ ${CRL_CERT_IDP}  data/unittest/dsa_certificate.pem
 
 
 ${OLD_ROOT_CERT}   ${None}
-${CERT_PROFILE}    ${None}
+${CERT_PROFILE}    base
 
 # Sets the allowed time interval between request and response to 300 seconds.
 ${ALLOWED_TIME_INTERVAL}   ${300}

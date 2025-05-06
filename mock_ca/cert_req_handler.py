@@ -446,7 +446,7 @@ class CertReqHandler:
     def validate_general_info(pki_message: PKIMessageTMP) -> None:
         """Validate the general info of a PKIMessage."""
         check_generalinfo_field(pki_message=pki_message)
-        validate_cert_profile_for_ca(pki_message)
+        validate_cert_profile_for_ca(pki_message, cert_profiles=["base"])
 
     @staticmethod
     def check_signer(pki_message: PKIMessageTMP) -> None:
