@@ -61,6 +61,7 @@ from resources.oidutils import (
     PQ_SIG_PRE_HASH_OID_2_NAME,
     TRAD_STR_OID_TO_KEY_NAME,
 )
+from resources.suiteenums import KeySaveType
 from resources.typingutils import PrivateKey, PublicKey, SignKey, TradPrivateKey, TradSignKey, TradVerifyKey, VerifyKey
 
 
@@ -887,7 +888,7 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     private_key: PrivateKey,
     public_key: Optional[PublicKey] = None,
     version: Union[int, str] = "v2",
-    key_save_type: str = "seed",
+    key_save_type: Union[str, KeySaveType] = "seed",
     invalid_priv_key_size: bool = False,
     invalid_pub_key_size: bool = False,
     mis_matching_key: bool = False,

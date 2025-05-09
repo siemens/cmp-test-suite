@@ -83,7 +83,7 @@ from resources.exceptions import (
 )
 from resources.oid_mapping import compute_hash, get_hash_from_oid, may_return_oid_to_name, sha_alg_name_to_oid
 from resources.oidutils import CURVE_OID_2_NAME, id_KemBasedMac
-from resources.suiteenums import InvalidOneAsymKeyType
+from resources.suiteenums import InvalidOneAsymKeyType, KeySaveType
 from resources.typingutils import (
     CAResponse,
     CertOrCerts,
@@ -608,23 +608,32 @@ def prepare_invalid_kga_private_key(
     invalid_operation: Optional[Union[str, InvalidOneAsymKeyType]],
     new_private_key: PrivateKey,
     key_export_version: Union[str, int] = "v2",
-    key_save_type: str = "raw",
+    key_save_type: KeySaveType = KeySaveType.RAW,
 ) -> rfc5958.OneAsymmetricKey:
-    """Prepare an invalid KGA private key."""
+    """Prepare an invalid KGA private key.
+
+    :param invalid_operation: The invalid operation to perform. Defaults to `None`.
+    :param new_private_key: The private key to prepare.
+    :param key_export_version: The key export version to use. Defaults to "v2".
+    :param key_save_type: The key save type to use. Defaults to "KeySaveType.RAW".
+    :return: The prepared `OneAsymmetricKey` structure.
+    :raises ValueError: If an invalid operation is provided.
+
+    """
     if isinstance(invalid_operation, str):
         invalid_operation = InvalidOneAsymKeyType(invalid_operation)
 
     version = key_export_version
     invalid_pub_key = False
     invalid_priv_key = False
-    miss_matched_key = False
+    mis_matching_key = False
     public_key = None
 
     if invalid_operation is None:
         return keyutils.prepare_one_asymmetric_key(
             private_key=new_private_key,
             version=version,
-            key_save_type=key_save_type,
+            key_save_type=KeySaveType.get(key_save_type).value,
         )
 
     if invalid_operation == InvalidOneAsymKeyType.INVALID_VERSION_V1:
@@ -669,7 +678,7 @@ def prepare_private_key_for_kga(
     kga_cert_chain: List[rfc9480.CMPCertificate],
     password: Optional[Union[bytes, str]] = None,
     hash_alg: str = "sha256",
-    key_save_type: Optional[str] = "raw",
+    key_save_type: Optional[Union[str, KeySaveType]] = KeySaveType.RAW,
     invalid_kga_operation: Optional[Union[str, InvalidOneAsymKeyType]] = None,
     new_private_keys: Optional[Union[List[rfc5958.OneAsymmetricKey], rfc5958.OneAsymmetricKey]] = None,
     **kwargs,
@@ -682,7 +691,7 @@ def prepare_private_key_for_kga(
     :param kga_cert_chain: The KGA certificate chain to use. Defaults to `None`.
     :param hash_alg: The hash algorithm to use. Defaults to "sha256".
     :param kga_key: The key generation authority key to use. Defaults to `None`.
-    :param key_save_type: Whether to save the PQ-key as `seed`, `raw` or `seed_and_raw`. Defaults to `raw`.
+    :param key_save_type: Whether to save the PQ-key as `seed`, `raw` or `seed_and_raw`. Defaults to `KeySaveType.RAW`.
     :param invalid_kga_operation: The invalid operation to perform. Defaults to `None`.
     :param new_private_keys: The new private keys to use. Defaults to `None`.
     :raises BadCertTemplate: If the key OID is not recognized.
@@ -715,7 +724,7 @@ def prepare_private_key_for_kga(
         new_private_keys = prepare_invalid_kga_private_key(
             new_private_key=new_private_key,
             invalid_operation=invalid_kga_operation,
-            key_save_type=key_save_type or "raw",
+            key_save_type=KeySaveType.get(key_save_type or KeySaveType.RAW),
             key_export_version=version_num,
         )
 
