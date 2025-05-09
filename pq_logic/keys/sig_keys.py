@@ -618,7 +618,6 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
             # 3 * n is the length of the seed: sk_seed, sk_prf, pk_seed.
             s_key = cls.from_seed(alg_name=name, seed=data)
 
-
         elif len(data) == 7 * _n:
             # 7 * n is the length of the seed + private_key
             seed = data[: 3 * _n]

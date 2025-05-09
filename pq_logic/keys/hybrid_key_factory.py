@@ -37,6 +37,7 @@ from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
 from resources.oidutils import (
     ALL_COMPOSITE_SIG04_COMBINATIONS,
     ALL_COMPOSITE_SIG_COMBINATIONS,
+    PQ_NAME_2_OID,
     XWING_OID_STR,
 )
 from resources.suiteenums import KeySaveType
@@ -394,6 +395,23 @@ class HybridKeyFactory:
         return _parse_private_keys(algorithm, pq_key, trad_key)
 
     @staticmethod
+    def _load_pq_key(name: str, data: bytes) -> PQPrivateKey:
+        """Load a post-quantum key from the provided bytes.
+
+        Necessary for loading hybrid keys, to ensure that the old key loading logic and the
+        new key loading logic are compatible (ML-KEM and ML-DSA keys).
+
+        :param name: The name of the key.
+        :param data: The key bytes.
+        :return: The loaded post-quantum key.
+        """
+        pq_one_asym_key = rfc5958.OneAsymmetricKey()
+        pq_one_asym_key["version"] = 0
+        pq_one_asym_key["privateKeyAlgorithm"]["algorithm"] = PQ_NAME_2_OID[name]
+        pq_one_asym_key["privateKey"] = data
+        return PQKeyFactory.from_one_asym_key(pq_one_asym_key)
+
+    @staticmethod
     def _load_chempat_private_key(
         private_bytes: bytes,
         oid: univ.ObjectIdentifier,
@@ -414,7 +432,7 @@ class HybridKeyFactory:
         pq_private_bytes = private_bytes[4 : 4 + _length]
         pq_name = PQKeyFactory.get_pq_alg_name(tmp_name)
         try:
-            pq_key = PQKeyFactory.from_private_bytes(data=pq_private_bytes, name=pq_name)
+            pq_key = HybridKeyFactory._load_pq_key(name=pq_name, data=pq_private_bytes)
         except InvalidKeyData as e:
             raise InvalidKeyData(f"Invalid Chempat pq private key data for {tmp_name}: {e}") from e
 
@@ -429,7 +447,14 @@ class HybridKeyFactory:
 
     @staticmethod
     def from_one_asym_key(one_asym_key: Union[rfc5958.OneAsymmetricKey, bytes]) -> "HybridPrivateKey":  # ytpe: ignore
-        """Create a new hybrid key from an `OneAsymmetricKey` structure."""
+        """Create a new hybrid key from an `OneAsymmetricKey` structure.
+
+        :param one_asym_key: The `OneAsymmetricKey` structure or its DER-encoded bytes.
+        :return: An instance of HybridPrivateKey.
+        :raises BadAlg: If the algorithm is not supported.
+        :raises MismatchingKey: If the public key does not match the private key.
+        :raises InvalidKeyData: If the key data is invalid.
+        """
         if isinstance(one_asym_key, bytes):
             one_asym_key = decoder.decode(one_asym_key, asn1Spec=rfc5958.OneAsymmetricKey())[0]
 

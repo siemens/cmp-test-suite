@@ -51,7 +51,7 @@ from pq_logic.keys.composite_sig03 import (
 )
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.keys.hybrid_key_factory import HybridKeyFactory
-from pq_logic.keys.kem_keys import FrodoKEMPublicKey, MLKEMPublicKey
+from pq_logic.keys.kem_keys import FrodoKEMPublicKey, MLKEMPrivateKey, MLKEMPublicKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.serialize_utils import prepare_enc_key_pem
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
@@ -622,11 +622,7 @@ class CombinedKeyFactory:
         if rest:
             raise InvalidKeyData("The PQ-key for the `CompositeKEM06PrivateKey` had remaining data.")
 
-        pq_key_data = pq_key_data.asOctets()
-
-        pq_key = PQKeyFactory.generate_pq_key(pq_name)
-        loaded_pq_key = pq_key.from_private_bytes(pq_key_data, name=pq_name)
-
+        loaded_pq_key = CombinedKeyFactory._load_pq_key(name=pq_name, data=pq_key_data.asOctets())
         trad_data, rest = decoder.decode(trad_data, univ.OctetString())
 
         if rest:
@@ -649,12 +645,39 @@ class CombinedKeyFactory:
         return private_key
 
     @staticmethod
+    def _load_pq_key(name: str, data: bytes) -> PQPrivateKey:
+        """Load a post-quantum key from the provided bytes.
+
+        Necessary for loading hybrid keys, to ensure that the old key loading logic and the
+        new key loading logic are compatible (ML-KEM and ML-DSA keys).
+
+        :param name: The name of the key.
+        :param data: The key bytes.
+        :return: The loaded post-quantum key.
+        """
+        pq_one_asym_key = rfc5958.OneAsymmetricKey()
+        pq_one_asym_key["version"] = 0
+        pq_one_asym_key["privateKeyAlgorithm"]["algorithm"] = PQ_NAME_2_OID[name]
+        pq_one_asym_key["privateKey"] = data
+        return PQKeyFactory.from_one_asym_key(pq_one_asym_key)
+
+    @staticmethod
     def _decode_composite_sig04_key(
         name: str,
         private_key: bytes,
         public_key: Optional[bytes],
     ) -> CompositeSig04PrivateKey:
-        """Load a composite sig version 4 private key."""
+        """Load a composite sig version 4 private key.
+
+        :param name: The name of the key.
+        :param private_key: The private key bytes.
+        :param public_key: The public key bytes.
+        :return: The loaded composite signature version 4 private key.
+        :raises ValueError: If the key type is invalid.
+        :raises InvalidKeyData: If the key data is invalid.
+        :raises InvalidKeyCombination: If the key combination is invalid.
+        :raises MismatchingKey: If the private key does not match the public key.
+        """
         prefix = _any_string_in_string(name, ["sig-04-hash", "sig-04"])
         name = name.replace(f"composite-{prefix}-", "", 1)
         pq_name = PQKeyFactory.get_pq_alg_name(algorithm=name)
@@ -672,31 +695,16 @@ class CombinedKeyFactory:
         else:
             rsa_length = int(rest)
 
-        tmp = MLDSAPrivateKey(pq_name)
         try:
             other = copy.deepcopy(private_key)
             obj, _ = decoder.decode(other, asn1Spec=CompositeSignaturePrivateKeyAsn1())
         except pyasn1.error.PyAsn1Error:  # type: ignore
             pass
         else:
-            tmp_data = obj[0]["privateKey"].asOctets()
-            if len(tmp_data) == tmp.key_size + 32:
-                raise NotImplementedError("Not implemented yet, to load a private key with the seed and the raw data.")
-
-            trad_key = serialization.load_der_private_key(encoder.encode(obj[1]), password=None)
-            if len(tmp_data) == tmp.key_size + tmp.public_key().key_size:
-                ml_priv = MLDSAPrivateKey.from_private_bytes(tmp_data[: tmp.key_size], name=pq_name)
-                ml_pub = MLDSAPublicKey.from_public_bytes(tmp_data[tmp.key_size :], name=pq_name)
-
-                if ml_priv.public_key() != ml_pub:
-                    raise MisMatchingKey("The loaded public key is no match with the loaded private key.")
-
-                return CompositeSig04PrivateKey(pq_key=ml_priv, trad_key=trad_key)  # type: ignore
-
-            ml_dsa_key = CombinedKeyFactory.load_private_key_from_one_asym_key(encoder.encode(obj[0]))
-
+            trad_key = serialization.load_der_private_key(obj[1], password=None)
+            ml_dsa_key = PQKeyFactory.from_one_asym_key(obj[0])
             if not isinstance(ml_dsa_key, MLDSAPrivateKey):
-                raise ValueError("The loaded key is not a valid MLDSA key.")
+                raise InvalidKeyData("The loaded key is not a valid MLDSA key.")
 
             if ml_dsa_key.name != pq_name:
                 raise ValueError(
@@ -717,24 +725,9 @@ class CombinedKeyFactory:
             raise BadAsn1Data("CompositeSig04PrivateKey")
 
         mldsa_key = obj.asOctets()
-
-        if len(mldsa_key) not in [tmp.key_size, 32, tmp.key_size + 32]:
-            raise ValueError(
-                f"Invalid composite signature version 4 {pq_name} key."
-                f"Composite name: {name} "
-                f"Expected: {tmp.key_size}, 32, {tmp.key_size + 32}, got: {len(mldsa_key)}"
-            )
-
-        if len(mldsa_key) == tmp.key_size + 32:
-            tmp1 = MLDSAPrivateKey(pq_name, seed=mldsa_key[:32])
-            tmp2 = MLDSAPrivateKey(pq_name, seed=mldsa_key[tmp.key_size :])
-            if tmp1.private_bytes_raw() == mldsa_key[32:]:
-                mldsa_key = mldsa_key[:32]
-
-            elif tmp2.private_bytes_raw() == mldsa_key[tmp.key_size]:
-                mldsa_key = mldsa_key[tmp.key_size :]
-            else:
-                raise ValueError(f"Invalid composite signature version 4 {pq_name} key.")
+        pq_key = CombinedKeyFactory._load_pq_key(name=pq_name, data=mldsa_key)
+        if not isinstance(pq_key, MLDSAPrivateKey):
+            raise InvalidKeyData("The composite pq-private-key is not a valid MLDSA key.")
 
         trad_data, rest = decoder.decode(trad_data, univ.OctetString())
 
@@ -742,7 +735,6 @@ class CombinedKeyFactory:
             raise InvalidKeyData("Decoding the `CompositeSig04PrivateKey` structure had a remainder.")
 
         trad_data = trad_data.asOctets()
-        pq_key = MLDSAPrivateKey.from_private_bytes(name=pq_name, data=mldsa_key)
         if trad_name == "ed25519":
             trad_key = Ed25519PrivateKey.from_private_bytes(trad_data)
         elif trad_name == "ed448":
@@ -988,6 +980,10 @@ class CombinedKeyFactory:
         :raises InvalidKeyData: If the key data is invalid.
         :raises NotImplementedError: If the key export type is not supported for that key.
         """
+        if isinstance(private_key, (MLDSAPrivateKey, MLKEMPrivateKey)):
+            PQKeyFactory.validate_ml_key_export_single(private_key, private_key_bytes, key_type)
+            return
+
         if not hasattr(private_key, "private_numbers"):
             raise NotImplementedError(
                 "The private key does not have private numbers.Can not determine the key export type of the key."
@@ -1038,7 +1034,7 @@ class CombinedKeyFactory:
         key_type = KeySaveType.get(key_save_type)
 
         if isinstance(private_key, PQPrivateKey):
-            CombinedKeyFactory._validate_key_export_single(private_key, private_key_bytes, key_type)
+            PQKeyFactory.validate_pq_key_export(private_key, private_key_bytes, key_type)
         elif isinstance(private_key, XWingPrivateKey):
             CombinedKeyFactory._validate_key_export_single(private_key, private_key_bytes, key_type)
         elif isinstance(private_key, HybridPrivateKey):
