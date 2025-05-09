@@ -939,7 +939,10 @@ def display_pki_status_info(  # noqa D417 undocumented-param
 ) -> str:
     """Display the PKI status information in a human-readable format.
 
-    Converts the provided PKI status information to its ASN.1 representation and logs it.
+    Converts the provided or extracted PKI status information to a string representation,
+    which will be automatically logged, if called, by the Robot Framework (RF).
+    This function shows the human-readable representation of the PKI status.
+    Additionally, it will show the failInfo bits, which are otherwise not shown in the default logging.
 
     Arguments:
     ---------
