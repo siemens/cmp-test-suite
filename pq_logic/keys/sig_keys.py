@@ -615,9 +615,12 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
         _n = obj._slh_class.n
 
         if len(data) == 3 * _n:
+            # 3 * n is the length of the seed: sk_seed, sk_prf, pk_seed.
             s_key = cls.from_seed(alg_name=name, seed=data)
 
+
         elif len(data) == 7 * _n:
+            # 7 * n is the length of the seed + private_key
             seed = data[: 3 * _n]
             private_key = data[3 * _n : 7 * _n]
             s_key = cls.from_seed(alg_name=name, seed=seed)
@@ -628,6 +631,8 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
             raise InvalidKeyData(f"Invalid private key size. Expected: {4 * _n}, got: {len(data)}")
 
         else:
+            # private_key = sk_seed || sk_prf || pk_seed || pk_root
+            # Which is 4 * n bytes long.
             s_key = SLHDSAPrivateKey(alg_name=name, private_bytes=data)
 
         return s_key
