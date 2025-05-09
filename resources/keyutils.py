@@ -50,6 +50,7 @@ from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME, id_rsa_kem_spki
 from resources import oid_mapping, typingutils, utils
+from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
 from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, UnknownOID
 from resources.oid_mapping import KEY_CLASS_MAPPING, get_curve_instance, get_hash_from_oid, may_return_oid_to_name
@@ -67,7 +68,8 @@ from resources.typingutils import PrivateKey, PublicKey, SignKey, TradPrivateKey
 
 
 def save_key(  # noqa: D417 undocumented-params
-    key: PrivateKey, path: str,
+    key: PrivateKey,
+    path: str,
     password: Optional[str] = "11111",
     save_type: str = "seed",
     save_old: bool = False,
@@ -107,13 +109,13 @@ def save_key(  # noqa: D417 undocumented-params
             encryption_algorithm=encrypt_algo,  # type: ignore
         )
 
-    elif isinstance(key,  (MLKEMPrivateKey, MLDSAPrivateKey, HybridPublicKey)) and save_old:
+    elif isinstance(key, (MLKEMPrivateKey, MLDSAPrivateKey, HybridPublicKey)) and save_old:
         warnings.warn(
             "'old_param=True' is deprecated and will be removed in a future version. "
             "Please update your code so that you can support the ne export for ML-KEM and ML-DSA keys."
             "Hybrid keys will be supported until the next release, of the corresponding drafts.",
             category=DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         # Save the key as raw bytes (old format)
         data = key.private_bytes(
@@ -489,7 +491,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
     return private_key
 
 
-def load_public_key_from_file(filepath: str, key_type: Optional[str] = None) -> PublicKey:  # noqa: D417 for RF docs
+def load_public_key_from_file(filepath: str) -> PublicKey:  # noqa: D417 for RF docs
     """Load a public key from a file.
 
     Load a cryptographic public key from a PEM-encoded file.
@@ -497,8 +499,6 @@ def load_public_key_from_file(filepath: str, key_type: Optional[str] = None) -> 
     Arguments:
     ---------
         - `filepath`: the path to the file containing the key data.
-        - `key_type`: the type of the key, needed for x448 and x25519 (also ed-versions).
-
 
     Returns:
     -------
@@ -516,23 +516,14 @@ def load_public_key_from_file(filepath: str, key_type: Optional[str] = None) -> 
     | ${x25519_key}= | Load Public Key From File | /path/to/ed25519_public_key.pem | key_type=ed25519 |
 
     """
-    if key_type in ["x448", "x25519", "ed448", "ed25519"]:
-        pem_data = utils.load_and_decode_pem_file(filepath)
-    else:
-        with open(filepath, "rb") as pem_file:
-            pem_data = pem_file.read()
+    der_data = utils.load_and_decode_pem_file(filepath)
 
-    if key_type == "x448":
-        return x448.X448PublicKey.from_public_bytes(data=pem_data)
-    if key_type == "x25519":
-        return x25519.X25519PublicKey.from_public_bytes(data=pem_data)
+    spki, rest = try_decode_pyasn1(der_data, rfc5280.SubjectPublicKeyInfo())  # type: ignore
+    spki: rfc5280.SubjectPublicKeyInfo
+    if rest != b"":
+        raise BadAsn1Data("SubjectPublicKeyInfo")
 
-    if key_type == "ed448":
-        return ed448.Ed448PublicKey.from_public_bytes(data=pem_data)
-    if key_type == "ed25519":
-        return ed25519.Ed25519PublicKey.from_public_bytes(data=pem_data)
-
-    return serialization.load_pem_public_key(pem_data)
+    return CombinedKeyFactory.load_public_key_from_spki(spki)
 
 
 def load_public_key_from_spki(data: Union[bytes, rfc5280.SubjectPublicKeyInfo]) -> PublicKey:  # noqa: D417 for RF docs
