@@ -38,7 +38,7 @@ class TestValidateEncKeyWithId(unittest.TestCase):
                 der_data = encoder.encode(enc_key_with_id)
                 validate_enc_key_with_id(der_data, cert_template)
 
-    def test_miss_matching_enc_key_with_id(self):
+    def test_mis_matching_enc_key_with_id(self):
         """
         GIVEN an encrypted key with ID that does not match the public key inside the `CertTemplate`.
         WHEN calling validate_enc_key_with_id,

@@ -22,7 +22,7 @@ from robot.api.deco import not_keyword
 from pq_logic.keys.abstract_wrapper_keys import TradKEMPublicKey
 from pq_logic.keys.serialize_utils import ecc_private_key_to_bytes, prepare_ec_private_key, prepare_rsa_private_key
 from resources.asn1utils import try_decode_pyasn1
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MisMatchingKey
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MismatchingKey
 from resources.oid_mapping import get_curve_instance, may_return_oid_to_name
 from resources.typingutils import PrivateKey, PublicKey, TradPrivateKey
 
@@ -472,14 +472,15 @@ def parse_trad_key_from_one_asym_key(
     :param one_asym_key: The OneAsymmetricKey object or its DER-encoded bytes.
     :param must_be_version_2: If True, the key must be a version 2 key.
     :return: The parsed private key.
-    :raises BadAsn1Data: If the provided data is not a OneAsymmetricKey object.
     :raises ValueError: If the key is not a version 2 key.
+    :raises InvalidKeyData: If the key data is invalid or does not match the expected format.
+    :raises MismatchingKey: If the public key does not match the private key.
     """
     if isinstance(one_asym_key, bytes):
         one_asym_key, rest = decoder.decode(one_asym_key, rfc5958.OneAsymmetricKey())  # type: ignore
         one_asym_key: rfc5958.OneAsymmetricKey
         if rest:
-            raise BadAsn1Data("OneAsymmetricKey")
+            raise InvalidKeyData(BadAsn1Data("OneAsymmetricKey").message)
     elif isinstance(one_asym_key, rfc4211.PrivateKeyInfo):
         one_asym_key = rfc5958.OneAsymmetricKey()
         one_asym_key["privateKeyAlgorithm"] = one_asym_key["privateKeyAlgorithm"]
@@ -530,7 +531,7 @@ def parse_trad_key_from_one_asym_key(
         raise BadAlg(f"Can not load the traditional key for the algorithm: {_name}")
 
     if private_key.public_key() != public_key:
-        raise MisMatchingKey("The public key does not match the private key.")
+        raise MismatchingKey("The public key does not match the private key.")
 
     return private_key
 

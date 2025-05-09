@@ -5,7 +5,7 @@
 import unittest
 
 from pq_logic.combined_factory import CombinedKeyFactory
-from resources.exceptions import InvalidKeyData, MisMatchingKey
+from resources.exceptions import InvalidKeyData, MismatchingKey
 from resources.keyutils import generate_key, load_private_key_from_file, prepare_one_asymmetric_key
 
 
@@ -24,16 +24,16 @@ class TestNegPrepareOneAsymKey(unittest.TestCase):
             "Composite-SIG": generate_key("composite-sig"),
         }
 
-    def test_missmatching_pub_key(self):
+    def test_mismatching_pub_key(self):
         """
         GIVEN a private key and a public key that do not match.
         WHEN calling prepare_one_asymmetric_key and the structure is validated,
-        THEN should a MissMatchingKey exception be raised.
+        THEN should a MisMatchingKey exception be raised.
         """
         for name, key in self.keys.items():
             with self.subTest(key_type=name):
-                one_asym_key = prepare_one_asymmetric_key(private_key=key, missmatched_key=True)
-                with self.assertRaises(MisMatchingKey):
+                one_asym_key = prepare_one_asymmetric_key(private_key=key, mis_matching_key=True)
+                with self.assertRaises(MismatchingKey):
                     CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key)
 
     def test_unknown_version(self):

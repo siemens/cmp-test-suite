@@ -635,7 +635,7 @@ def prepare_invalid_kga_private_key(
         invalid_pub_key = True
 
     elif invalid_operation == InvalidOneAsymKeyType.INVALID_KEY_PAIR:
-        miss_matched_key = True
+        mis_matching_key = True
 
     elif invalid_operation == InvalidOneAsymKeyType.INVALID_KEY_PAIR_CERT:
         pass
@@ -655,7 +655,7 @@ def prepare_invalid_kga_private_key(
         version=version,
         key_save_type=key_save_type,
         invalid_pub_key_size=invalid_pub_key,
-        missmatched_key=miss_matched_key,
+        mis_matching_key=mis_matching_key,
         invalid_priv_key_size=invalid_priv_key,
     )
     return return_value

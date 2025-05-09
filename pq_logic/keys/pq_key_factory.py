@@ -61,6 +61,9 @@ def _load_and_validate(
     :param name: The name of the algorithm.
     :param private_bytes: The private key data.
     :param public_bytes: The public key data. If None, the public key is not validated.
+    :return: The private key instance.
+    :raises InvalidKeyData: If the key data is invalid or does not match the expected format.
+    :raises MismatchingKey: If the public key does not match the private key.
     """
     key = private_cls.from_private_bytes(data=private_bytes, name=name)  # type: ignore
 
@@ -68,7 +71,7 @@ def _load_and_validate(
         pub = key.public_key().from_public_bytes(data=public_bytes, name=name)
 
         if key.public_key() != pub:
-            raise MisMatchingKey(f"{name} public key does not match the private key.")
+            raise MismatchingKey(f"{name} public key does not match the private key.")
 
     return private_cls(
         alg_name=name,

@@ -890,7 +890,7 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     key_save_type: str = "seed",
     invalid_priv_key_size: bool = False,
     invalid_pub_key_size: bool = False,
-    missmatched_key: bool = False,
+    mis_matching_key: bool = False,
     invalid_private_key: bool = False,
     include_public_key: Optional[bool] = None,
 ) -> rfc5958.OneAsymmetricKey:
@@ -908,7 +908,7 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         - `invalid_private_key`: If True, the private key is invalid. Only supported for RSA and ECC-keys. \
         Defaults to `False`.
         - `invalid_pub_key_size`: If True, the public key size is invalid. Defaults to `False`.
-        - `missmatched_key`: If True, the public key does not match the private key. Defaults to `False`.
+        - `mis_matching_key`: If True, the public key does not match the private key. Defaults to `False`.
         - `invalid_priv_key_size`: If True, the private key size is invalid. Defaults to `False`.
         - `include_public_key`: If True, the public key is included in the structure. If `None`, \
         it is set to `False` for version 0. Defaults to `None`.
@@ -933,7 +933,7 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     if not isinstance(private_key, (RSAPrivateKey, EllipticCurvePrivateKey)) and invalid_private_key:
         raise ValueError("The invalid private key option is only supported for `RSA`- and `ECC`-keys.")
 
-    if missmatched_key:
+    if mis_matching_key:
         public_key = generate_different_public_key(key_source=private_key)
 
     version, tmp_version = _get_version_and_tmp_version(version)

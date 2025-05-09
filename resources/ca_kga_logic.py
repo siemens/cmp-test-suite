@@ -53,7 +53,7 @@ from resources import (
 from resources.asn1_structures import PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MisMatchingKey
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MismatchingKey
 from resources.oid_mapping import (
     compute_hash,
     get_hash_from_oid,
@@ -255,6 +255,8 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
         - `ValueError`: If the key unwrap fails.
         - `ValueError`: If the KGA certificate is not a trust anchor or does not have the `cmKGA`
           ExtendedKeyUsage extension.
+        - `MismatchingKey`: If the extracted private key does not match the public key or not the public key
+            in the newly issued certificate.
 
     Examples:
     --------
@@ -310,7 +312,7 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
     issued_cert_pub_key = certutils.load_public_key_from_cert(issued_cert)
 
     if issued_cert_pub_key != private_key.public_key():
-        raise MisMatchingKey("The extracted private key does not match the public key in the newly issued certificate.")
+        raise MismatchingKey("The extracted private key does not match the public key in the newly issued certificate.")
 
     return private_key
 

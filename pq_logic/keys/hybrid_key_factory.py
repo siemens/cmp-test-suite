@@ -32,7 +32,7 @@ from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, RSADecapKey
 from pq_logic.keys.trad_key_factory import generate_trad_key, prepare_trad_private_key_one_asym_key
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import CHEMPAT_OID_2_NAME
-from resources.exceptions import BadAlg, InvalidKeyCombination, InvalidKeyData, MisMatchingKey
+from resources.exceptions import BadAlg, InvalidKeyCombination, InvalidKeyData, MismatchingKey
 from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
 from resources.oidutils import (
     ALL_COMPOSITE_SIG04_COMBINATIONS,
@@ -448,7 +448,7 @@ class HybridKeyFactory:
             if public_bytes is not None:
                 pub = private_key.public_key().from_public_bytes(public_bytes)
                 if pub.public_bytes_raw() != private_key.public_key().public_bytes_raw():
-                    raise MisMatchingKey("Public key does not match the private key.")
+                    raise MismatchingKey("Public key does not match the private key.")
             return private_key
 
         if oid in CHEMPAT_OID_2_NAME:
@@ -465,7 +465,7 @@ class HybridKeyFactory:
                 # If the seed derivation is implemented, this part can be removed.
                 private_key.pq_key._public_key_bytes = public_key.pq_key._public_key_bytes  # pylint: disable=protected-access
                 if public_key.public_bytes_raw() != private_key.public_key().public_bytes_raw():
-                    raise MisMatchingKey("Public key does not match the private key.")
+                    raise MismatchingKey("Public key does not match the private key.")
             return private_key
 
         _name = may_return_oid_to_name(oid)

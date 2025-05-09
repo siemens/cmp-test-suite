@@ -73,7 +73,7 @@ from pq_logic.tmp_oids import (
 )
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import ensure_is_kem_pub_key
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData, MisMatchingKey
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData, MismatchingKey
 from resources.oid_mapping import get_curve_instance, may_return_oid_by_name
 from resources.oidutils import (
     CMS_COMPOSITE03_OID_2_NAME,
@@ -576,7 +576,7 @@ class CombinedKeyFactory:
         composite_key = _cast_private_key(pq_key, trad_key)
         if loaded_pub_key is not None:
             if loaded_pub_key != composite_key.public_key():
-                raise MisMatchingKey("The composite public key does not match the private key.")
+                raise MismatchingKey("The composite public key does not match the private key.")
 
         return composite_key
 
@@ -644,7 +644,7 @@ class CombinedKeyFactory:
             pub_key = CombinedKeyFactory._load_hybrid_public_key(name, public_key)
 
             if pub_key != private_key.public_key():
-                raise MisMatchingKey("The composite KEM-06 public key does not match the private key.")
+                raise MismatchingKey("The composite KEM-06 public key does not match the private key.")
 
         return private_key
 
@@ -774,7 +774,7 @@ class CombinedKeyFactory:
         public_key = CombinedKeyFactory._get_comp_sig04_key(oid, public_key_bytes=public_key)  # type: ignore
 
         if comp_key.public_key() != public_key:
-            raise MisMatchingKey("The loaded public is no match with the composite sig v04 private key")
+            raise MismatchingKey("The loaded public is no match with the composite sig v04 private key")
         return comp_key
 
     @staticmethod
@@ -790,7 +790,7 @@ class CombinedKeyFactory:
         :raises BadAlg: If the algorithm is not supported.
         :raises InvalidKeyData: If the key data is invalid.
         :raises InvalidKeyCombination: If the key combination is invalid.
-        :raises MissMatchingKey: If the private key does not match the public key.
+        :raises MismatchingKey: If the private key does not match the public key.
         """
         if isinstance(data, bytes):
             one_asym_key, _ = decoder.decode(data, asn1Spec=rfc5958.OneAsymmetricKey())
