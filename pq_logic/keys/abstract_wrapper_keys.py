@@ -48,6 +48,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import NoEncryption, BestAvailableEncryption
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey, Ed448PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
@@ -208,7 +209,7 @@ class WrapperPrivateKey(BaseKey):
         self,
         encoding: Encoding = Encoding.PEM,
         format: PrivateFormat = PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
+        encryption_algorithm: Union[NoEncryption, BestAvailableEncryption]=NoEncryption(),
     ) -> bytes:
         """Get the serialized private key in bytes format.
 

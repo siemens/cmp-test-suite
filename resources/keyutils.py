@@ -12,6 +12,7 @@ store them and retrieve them when needed.
 import os
 import re
 import textwrap
+import warnings
 from typing import List, Optional, Tuple, Union
 
 import pyasn1.error
@@ -39,7 +40,7 @@ from robot.api.deco import keyword, not_keyword
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
+from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey, HybridPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
@@ -66,7 +67,10 @@ from resources.typingutils import PrivateKey, PublicKey, SignKey, TradPrivateKey
 
 
 def save_key(  # noqa: D417 undocumented-params
-    key: PrivateKey, path: str, password: Optional[str] = "11111", save_type: str = "seed"
+    key: PrivateKey, path: str,
+    password: Optional[str] = "11111",
+    save_type: str = "seed",
+    save_old: bool = False,
 ):
     """Save a private key to a file, optionally encrypting it with a passphrase.
 
@@ -76,11 +80,8 @@ def save_key(  # noqa: D417 undocumented-params
         - `path`: The file path where the key will be saved.
         - `passphrase`: Optional passphrase to encrypt the key. If None, save without encryption. Defaults to "11111".
         - `save_type`: How to save the pq-key. Can be "seed", "raw" or "seed_and_raw". Defaults to "seed".
-
-    Notes:
-    -----
-        - `DHPrivateKey`: Serialized in PKCS8 format.
-        - `X448PrivateKey` and `X25519PrivateKey` and ed versions: (cannot be encrypted).
+        - `save_old`: If True, save the ML-KEM or ML-DSA key as raw bytes \
+        (Otherwise uses the new `Choice` structure.) Defaults to `False`.
 
     Raises:
     ------
@@ -105,6 +106,22 @@ def save_key(  # noqa: D417 undocumented-params
             format=format_,
             encryption_algorithm=encrypt_algo,  # type: ignore
         )
+
+    elif isinstance(key,  (MLKEMPrivateKey, MLDSAPrivateKey, HybridPublicKey)) and save_old:
+        warnings.warn(
+            "'old_param=True' is deprecated and will be removed in a future version. "
+            "Please update your code so that you can support the ne export for ML-KEM and ML-DSA keys."
+            "Hybrid keys will be supported until the next release, of the corresponding drafts.",
+            category=DeprecationWarning,
+            stacklevel=2
+        )
+        # Save the key as raw bytes (old format)
+        data = key.private_bytes(
+            encoding=encoding_,
+            format=format_,
+            encryption_algorithm=encrypt_algo,
+        )
+
     else:
         data = CombinedKeyFactory.save_private_key_one_asym_key(
             private_key=key,
