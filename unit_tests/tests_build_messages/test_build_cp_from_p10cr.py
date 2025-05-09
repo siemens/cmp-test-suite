@@ -21,7 +21,7 @@ class TestBuildCpFromP10cr(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.common_name = "CN=Hans the Tester"
-        cls.pq_mldsa = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+        cls.pq_mldsa = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
         cls.pq_cert = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
 
     def test_build_cp_from_csr(self):

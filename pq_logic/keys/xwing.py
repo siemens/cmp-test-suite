@@ -5,6 +5,7 @@
 
 """XWing key classes."""
 
+import copy
 import logging
 import os
 from typing import Optional, Tuple
@@ -15,6 +16,7 @@ from pyasn1.type import univ
 
 from pq_logic.keys.abstract_wrapper_keys import AbstractHybridRawPrivateKey, AbstractHybridRawPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey, MLKEMPublicKey
+from resources.exceptions import InvalidKeyData
 from resources.typingutils import ECDHPrivateKey
 
 ##################################
@@ -60,7 +62,7 @@ class XWingPublicKey(AbstractHybridRawPublicKey):
         :return: The public key.
         """
         if len(data) != 1216:
-            raise ValueError(f"Public key must be 1216 bytes in total, but got: {len(data)}.")
+            raise InvalidKeyData(f"Public key must be 1216 bytes in total, but got: {len(data)}.")
 
         pk_M = data[:1184]
         pk_X = data[1184:]
@@ -155,7 +157,7 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
         :raises ValueError: If the private key does not have a seed.
         """
         if self._seed is None:
-            raise ValueError("The private key does not have a seed.")
+            raise ValueError("The private key does not have a seed set.")
         return self._seed
 
     def get_oid(self) -> univ.ObjectIdentifier:
@@ -173,15 +175,37 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
         :param data: The byte string to create the private key from.
         :return: The private key.
         """
+        if len(data) == 96:
+            pq_key = MLKEMPrivateKey.from_private_bytes(name="ml-kem-768", data=data[:64])
+            trad_key = x25519.X25519PrivateKey.from_private_bytes(data[64:])
+            return cls(pq_key, trad_key)
+
         if len(data) == 32:
             return cls.expand(data)
 
-        if len(data) != 2432:
-            raise ValueError("The private key must be 2400 bytes for ML-KEM and 32 bytes for X25519.")
+        if len(data) != 2432 and len(data) != 2432 + 32:
+            raise InvalidKeyData(
+                f"The private key must be 2400 bytes for ML-KEM and 32 bytes for X25519."
+                f"Or the private key must be the 32 bytes seed and then raw key."
+                f"Got: {len(data)} bytes."
+            )
+        seed_key = None
+        if len(data) == 2432 + 32:
+            seed_key = cls(seed=data[:32])
+            trad_data = data[2432:]
+            pq_data = data[32:2432]
+        else:
+            trad_data = data[2400:]
+            pq_data = data[:2400]
 
-        trad_key = x25519.X25519PrivateKey.from_private_bytes(data[2400:])
-        pq_key = MLKEMPrivateKey.from_private_bytes(data[:2400], "ml-kem-768")
-        return cls(pq_key, trad_key)
+        trad_key = x25519.X25519PrivateKey.from_private_bytes(trad_data)
+        pq_key = MLKEMPrivateKey.from_private_bytes(pq_data, "ml-kem-768")
+        key = cls(pq_key, trad_key)
+        if seed_key is not None:
+            if seed_key.private_bytes_raw() != key.private_bytes_raw():
+                raise InvalidKeyData("The X-Wing private key does not match the seed.")
+            return seed_key
+        return key
 
     @staticmethod
     def kem_combiner(mlkem_ss: bytes, trad_ss: bytes, trad_ct: bytes, trad_pk: bytes) -> bytes:
@@ -243,7 +267,7 @@ class XWingPrivateKey(AbstractHybridRawPrivateKey):
     @staticmethod
     def _from_seed(seed: bytes) -> Tuple[MLKEMPrivateKey, x25519.X25519PrivateKey, bytes]:
         """Create a new key from the given seed."""
-        seed_before = seed
+        seed_before = copy.copy(seed)
         if len(seed) == 32:
             shake = hashes.SHAKE256(digest_size=96)
             hasher = hashes.Hash(shake)

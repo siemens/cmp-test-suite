@@ -19,7 +19,7 @@ class TestBuildCmpCkuann(unittest.TestCase):
     def setUpClass(cls):
         cls.old_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.new_key = load_private_key_from_file(
-            "data/keys/private-key-ml-dsa-44.pem",
+            "data/keys/private-key-ml-dsa-44-seed.pem",
         )
 
     def _build_old_cert(self) -> rfc9480.CMPCertificate:

@@ -20,7 +20,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.kem_key: MLKEMPrivateKey = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
+        cls.kem_key: MLKEMPrivateKey = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
         cls.x25519 = load_private_key_from_file("data/keys/private-key-x25519.pem")
         cls.kem_cert = parse_certificate(
             load_and_decode_pem_file("data/unittest/pq_cert_ml_kem_768.pem"))
@@ -29,9 +29,9 @@ class TestValidateEnvDataPOP(unittest.TestCase):
         cls.mock_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
 
 
-        cls.xwing_key = load_private_key_from_file("data/keys/private-key-xwing.pem")
+        cls.xwing_key = load_private_key_from_file("data/keys/private-key-xwing-seed.pem")
         cls.xwing_cert = parse_certificate(load_and_decode_pem_file("data/unittest/hybrid_cert_xwing.pem"))
-        cls.xwing_key_other = load_private_key_from_file("data/keys/private-key-xwing-other.pem")
+        cls.xwing_key_other = load_private_key_from_file("data/keys/private-key-xwing-other-seed.pem")
 
         rsa_key = generate_key("rsa", length=2048)
         pq_key = generate_key("ml-kem-768")

@@ -240,13 +240,20 @@ class ChempatPrivateKey(AbstractHybridRawPrivateKey):
     @classmethod
     def from_private_bytes(cls, data: bytes, name: str) -> "ChempatPrivateKey":
         """Load the private key from raw bytes."""
+        _length = int.from_bytes(data[:4], "little")
+        pq_data = data[4 : 4 + _length]
+        trad_data = data[4 + _length :]
         name = name.lower()
         tmp_name = name.replace("chempat-", "", 1)
         pq_name = PQKeyFactory.get_pq_alg_name(tmp_name)
-        pq_key, rest = PQKeyFactory.from_private_bytes(data=data, name=pq_name, allow_rest=True)
+        pq_key = PQKeyFactory.from_private_bytes(data=pq_data, name=pq_name)
+
+        if not isinstance(pq_key, PQKEMPrivateKey):
+            raise InvalidKeyCombination(f"Unsupported post-quantum key type for Chempat: {pq_key.name}")
+
         tmp_name = tmp_name.replace(f"{pq_name}-", "", 1)
-        trad_key = DHKEMPrivateKey.from_private_bytes(data=rest, name=tmp_name)
-        return cls(pq_key, trad_key)  # type: ignore
+        trad_key = DHKEMPrivateKey.from_private_bytes(data=trad_data, name=tmp_name)
+        return cls(pq_key, trad_key)
 
     @property
     def ct_length(self) -> int:

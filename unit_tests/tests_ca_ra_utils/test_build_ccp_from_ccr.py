@@ -20,7 +20,7 @@ class TestBuildCppFromCrr(unittest.TestCase):
     def setUpClass(cls):
         cls.ca_cert, cls.ca_key = load_ca_cert_and_key()
         cls.rsa_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
-        cls.ml_kem_key = load_private_key_from_file("data/keys/private-key-ml-kem-512.pem")
+        cls.ml_kem_key = load_private_key_from_file("data/keys/private-key-ml-kem-512-seed.pem")
         cls.sender = "CN=Hans the CA Tester"
 
     def _generate_valid_ccr_template(self) -> rfc9480.CertTemplate:

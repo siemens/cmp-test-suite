@@ -36,6 +36,20 @@ from pq_logic.keys.abstract_wrapper_keys import (
 from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from resources.asn1_structures import CertResponseTMP, PKIMessageTMP
 
+# The `ECDHPrivKeyTypes` includes all private key types supported
+# for ECDH operations. This type ensures that only compatible
+# private keys are used in ECDH-related operations.
+# Used in Key Generation Authority logic to make sure the key agreement
+# used the correct type.
+ECDHPrivateKey = Union[EllipticCurvePrivateKey, X25519PrivateKey, X448PrivateKey]
+
+# The `ECDHPubKeyTypes` includes all public key types supported
+# for ECDH operations. This type ensures that only compatible
+# public keys are used in ECDH-related operations.
+# Used in Key Generation Authority logic to make sure the key agreement
+# used the correct type.
+ECDHPublicKey = Union[EllipticCurvePublicKey, X25519PublicKey, X448PublicKey]
+
 ECSignKey = Union[
     Ed25519PrivateKey,
     Ed448PrivateKey,
@@ -59,8 +73,12 @@ TradVerifyKey = Union[
     DSAPublicKey,
 ]
 
+ECPrivateKey = Union[ECDHPrivateKey, ECSignKey]
+
+TradPrivateKey = Union[TradSignKey, DHPrivateKey, X25519PrivateKey, X448PrivateKey]
+
 # Type alias for supported private key types
-PrivateKey = Union[TradSignKey, DHPrivateKey, X25519PrivateKey, X448PrivateKey, WrapperPrivateKey]
+PrivateKey = Union[TradPrivateKey, WrapperPrivateKey]
 
 
 # Type alias for supported public key types
@@ -101,20 +119,6 @@ Strint = Union[str, int]
 # and will transform them internally, as required.
 CertObjOrPath = Union[rfc9480.CMPCertificate, str]
 
-
-# The `ECDHPrivKeyTypes` includes all private key types supported
-# for ECDH operations. This type ensures that only compatible
-# private keys are used in ECDH-related operations.
-# Used in Key Generation Authority logic to make sure the key agreement
-# used the correct type.
-ECDHPrivateKey = Union[EllipticCurvePrivateKey, X25519PrivateKey, X448PrivateKey]
-
-# The `ECDHPubKeyTypes` includes all public key types supported
-# for ECDH operations. This type ensures that only compatible
-# public keys are used in ECDH-related operations.
-# Used in Key Generation Authority logic to make sure the key agreement
-# used the correct type.
-ECDHPublicKey = Union[EllipticCurvePublicKey, X25519PublicKey, X448PublicKey]
 
 # The `KGAKeyTypes` includes all private key types supported
 # for operations in the Key Generation Authority (KGA) logic.

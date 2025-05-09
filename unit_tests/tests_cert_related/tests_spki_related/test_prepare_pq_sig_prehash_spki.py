@@ -4,8 +4,7 @@
 
 import unittest
 
-from resources.certbuildutils import prepare_subject_public_key_info
-from resources.keyutils import generate_key
+from resources.keyutils import generate_key, prepare_subject_public_key_info
 from resources.oidutils import id_ml_dsa_44_with_sha512, PQ_NAME_2_OID
 
 

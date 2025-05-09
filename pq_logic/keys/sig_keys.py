@@ -34,6 +34,7 @@ from pq_logic.fips import fips204, fips205
 from pq_logic.fips.fips204 import ML_DSA
 from pq_logic.fips.fips205 import SLH_DSA, integer_to_bytes
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from resources.exceptions import InvalidKeyData
 from resources.oid_mapping import compute_hash, sha_alg_name_to_oid
 from resources.oidutils import SLH_DSA_PRE_HASH_NAME_2_OID
 
@@ -161,8 +162,13 @@ class MLDSAPublicKey(PQSignaturePublicKey):
         """
         key = MLDSAPublicKey(alg_name=name, public_key=data)
         if key.key_size != len(data):
-            raise ValueError(f"Invalid public key size. Expected: {key.key_size}, got: {len(data)}")
+            raise InvalidKeyData(
+                f"Invalid public key size, for: {key.name}. Expected: {key.key_size}, got: {len(data)}"
+            )
         return key
+
+
+ML_DSA_PRIVATE_KEY_SIZE = {"ml-dsa-44": 2560, "ml-dsa-65": 4032, "ml-dsa-87": 4896}
 
 
 class MLDSAPrivateKey(PQSignaturePrivateKey):
@@ -262,15 +268,30 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
 
         :param data: The byte string to create the private key from.
         :param name: The name of the signature algorithm.
+        :return: The loaded MLDSAPrivateKey.
+        :raises ValueError: If the key name is not supported.
+        :raises InvalidKeyData: If the private key data is invalid.
         """
         if len(data) == 32:
             return cls.from_seed(alg_name=name, seed=data)
 
-        key = cls(alg_name=name, private_bytes=data)
-        if key.key_size != len(data):
-            raise ValueError(f"Invalid private key size. Expected: {key.key_size}, got: {len(data)}")
+        key_size = ML_DSA_PRIVATE_KEY_SIZE[name]
 
-        return key
+        if len(data) == key_size:
+            key = cls(alg_name=name, private_bytes=data)
+            return key
+
+        if len(data) == key_size + 32:
+            seed = data[:32]
+            seed_key = cls.from_seed(alg_name=name, seed=seed)
+            data = data[32:]
+
+            if seed_key.private_bytes_raw() != data:
+                raise InvalidKeyData("The ML-DSA private key does not match the seed.")
+
+            return seed_key
+
+        raise InvalidKeyData(f"Invalid private key size. Expected: {key_size}, got: {len(data)}")
 
     def _get_header_name(self) -> bytes:
         """Return the algorithm name."""
@@ -292,8 +313,7 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
     @property
     def key_size(self) -> int:
         """Return the size of the private key."""
-        key_size = {"ml-dsa-44": 2560, "ml-dsa-65": 4032, "ml-dsa-87": 4896}
-        return key_size[self.name]
+        return ML_DSA_PRIVATE_KEY_SIZE[self.name]
 
     @property
     def sig_size(self) -> int:
@@ -587,17 +607,31 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
 
         :param data: The byte string to create the private key from.
         :param name: The name of the signature algorithm.
+        :return: The loaded SLHDSAPrivateKey.
+        :raises ValueError: If the key name is not supported.
+        :raises InvalidKeyData: If the key data is invalid.
         """
         obj = cls(alg_name=name)
         _n = obj._slh_class.n
 
         if len(data) == 3 * _n:
+            # 3 * n is the length of the seed: sk_seed, sk_prf, pk_seed.
             s_key = cls.from_seed(alg_name=name, seed=data)
 
+        elif len(data) == 7 * _n:
+            # 7 * n is the length of the seed + private_key
+            seed = data[: 3 * _n]
+            private_key = data[3 * _n : 7 * _n]
+            s_key = cls.from_seed(alg_name=name, seed=seed)
+            if s_key.private_bytes_raw() != private_key:
+                raise InvalidKeyData("The private key does not match the seed.")
+
         elif _n * 4 != len(data):
-            raise ValueError(f"Invalid private key size. Expected: {4 * _n}, got: {len(data)}")
+            raise InvalidKeyData(f"Invalid private key size. Expected: {4 * _n}, got: {len(data)}")
 
         else:
+            # private_key = sk_seed || sk_prf || pk_seed || pk_root
+            # Which is 4 * n bytes long.
             s_key = SLHDSAPrivateKey(alg_name=name, private_bytes=data)
 
         return s_key

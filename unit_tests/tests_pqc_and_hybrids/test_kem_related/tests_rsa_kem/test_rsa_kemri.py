@@ -69,7 +69,7 @@ class TestRSAKEMRI(unittest.TestCase):
         """
         kem_recip_info, _, _ = parse_cms_kemri(load_cms_bytes())
 
-        fpath = "data/rfc_data/rsa_kem_rfc9696_private_key.pem"
+        fpath = "data/rfc_test_vectors/rsa_kem_rfc9696_private_key.pem"
         bob_private_key = load_private_key_from_file(fpath, password=None)
 
         cek = process_kem_recip_info(

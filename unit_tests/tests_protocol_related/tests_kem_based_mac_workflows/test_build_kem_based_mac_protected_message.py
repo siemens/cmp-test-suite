@@ -20,7 +20,7 @@ class TestBuildKemBasedMacProtectedMessage(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.common_name = "CN=Hans the Tester"
-        cls.xwing = load_private_key_from_file("data/keys/private-key-xwing.pem")
+        cls.xwing = load_private_key_from_file("data/keys/private-key-xwing-seed.pem")
         cls.xwing_cert = parse_certificate(load_and_decode_pem_file("data/unittest/hybrid_cert_xwing.pem"))
 
     def test_build_kem_based_mac_protected_message_with_cert(self):

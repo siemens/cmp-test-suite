@@ -34,7 +34,7 @@ class TestBuildCatalystCertFromP10cr(unittest.TestCase):
         )
 
         mldsa_key = load_private_key_from_file(
-            "data/keys/private-key-ml-dsa-87.pem",
+            "data/keys/private-key-ml-dsa-87-seed.pem",
         )
         alg_id = prepare_sig_alg_id(
             signing_key=mldsa_key,
