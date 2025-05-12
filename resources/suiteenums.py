@@ -14,6 +14,16 @@ from typing import List, Union
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9480
 
+from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME
+from resources.asn1_structures import PKIMessageTMP
+from resources.exceptions import UnknownOID
+from resources.oidutils import (
+    PQ_SIG_OID_2_NAME,
+    SYMMETRIC_PROT_ALGO,
+    TRAD_SIG_OID_2_NAME,
+    id_KemBasedMac,
+)
+
 
 class ProtectionAlgorithm(enum.Enum):
     """Identifiers for ProtectionAlgorithm options used in a PKIMessage."""
@@ -176,3 +186,51 @@ class GeneralInfoOID(enum.Enum):  #
             if item.value == oid:
                 return item.name
         raise ValueError(f"Unknown ObjectIdentifier: {oid}")
+
+
+class ProtectedType(enum.Enum):
+    """All possible supported types for the `protectedAlg` field in a PKIMessage."""
+
+    TRAD_SIGNATURE = "trad_sig"
+    KEM = "kem_based_mac"
+    DH = "dh_based_mac"
+    MAC = "mac"
+    PQ_SIG = "pq-sig"
+    COMPOSITE_SIG = "composite-sig"
+
+    @classmethod
+    def get_protection_type(
+        cls, value: Union[str, univ.ObjectIdentifier, rfc9480.AlgorithmIdentifier, PKIMessageTMP]
+    ) -> "ProtectedType":
+        """Retrieve the protection type based on the provided value."""
+        if isinstance(value, str):
+            if value.lower() in cls.__dict__.values():
+                return getattr(cls, value.upper())
+            raise ValueError(
+                f"'{value}' is not a valid protection type. Available values are: {', '.join(cls.__dict__.values())}."
+            )
+        elif isinstance(value, rfc9480.AlgorithmIdentifier):
+            return cls.get_protection_type(value["algorithm"])
+
+        elif isinstance(value, univ.ObjectIdentifier):
+            oid = value
+            if oid == id_KemBasedMac:
+                return cls.KEM
+            if oid == rfc9480.id_DHBasedMac:
+                return cls.DH
+            if oid in SYMMETRIC_PROT_ALGO:
+                return cls.MAC
+            if oid in TRAD_SIG_OID_2_NAME:
+                return cls.TRAD_SIGNATURE
+            if oid in PQ_SIG_OID_2_NAME:
+                return cls.PQ_SIG
+            if oid in COMPOSITE_SIG04_OID_2_NAME or oid in COMPOSITE_SIG03_OID_2_NAME:
+                return cls.COMPOSITE_SIG
+            raise UnknownOID(oid, "The OID is not supported, to retrieve the protection type from.")
+
+        elif isinstance(value, PKIMessageTMP):
+            if not value["header"]["protectionAlg"].isValue:
+                raise ValueError("The `protectedAlg` field is not set in the PKIMessage.")
+            return cls.get_protection_type(value["header"]["protectionAlg"]["algorithm"])
+        else:
+            raise TypeError(f"Unsupported type: {type(value)}")
