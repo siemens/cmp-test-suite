@@ -20,7 +20,6 @@ from pyasn1_alt_modules import (
     rfc5753,
     rfc5990,
     rfc6664,
-    rfc6960,
     rfc8017,
     rfc8018,
     rfc8619,
@@ -50,6 +49,7 @@ from pq_logic.tmp_oids import (
     id_altSignatureExt,
     id_altSubPubKeyExt,
     id_ce_deltaCertificateDescriptor,
+    id_relatedCert,
     id_sntrup761_str,
 )
 
@@ -141,10 +141,10 @@ ECDSA_SHA3_OID_2_NAME = {
     rfc9688.id_ecdsa_with_sha3_512: "ecdsa-sha3_512",
 }
 RSA_SHA3_OID_2_NAME = {
-    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_224: "rsassa_pss-sha3_224",
-    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_256: "rsassa_pss-sha3_256",
-    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_384: "rsassa_pss-sha3_384",
-    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_512: "rsassa_pss-sha3_512",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_224: "rsa-sha3_224",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_256: "rsa-sha3_256",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_384: "rsa-sha3_384",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_512: "rsa-sha3_512",
 }
 
 
@@ -171,8 +171,10 @@ AES_GCM_OID_2_NAME = {v: k for k, v in AES_GCM_NAME_2_OID.items()}
 # computed with the same algorithm as the one in the signature
 OID_HASH_MAP: Dict[univ.ObjectIdentifier, str] = {}
 OID_HASH_MAP.update(RSA_SHA_OID_2_NAME)
+OID_HASH_MAP.update(RSA_SHA3_OID_2_NAME)
 OID_HASH_MAP.update(RSASSA_PSS_OID_2_NAME)
 OID_HASH_MAP.update(ECDSA_SHA_OID_2_NAME)
+OID_HASH_MAP.update(ECDSA_SHA3_OID_2_NAME)
 OID_HASH_MAP.update(HMAC_OID_2_NAME)
 OID_HASH_MAP.update(SHA_OID_2_NAME)
 OID_HASH_MAP.update(SHA3_OID_2_NAME)
@@ -186,7 +188,15 @@ MSG_SIG_ALG.update(RSA_SHA_OID_2_NAME)
 MSG_SIG_ALG.update(RSASSA_PSS_OID_2_NAME)
 MSG_SIG_ALG.update(ECDSA_SHA_OID_2_NAME)
 
-MSG_SIG_ALG_NAME_2_OID = {y: x for x, y in MSG_SIG_ALG.items()}
+# Add additional OIDs specified in RFC9688.
+TRAD_SIG_OID_2_NAME = {}
+TRAD_SIG_OID_2_NAME.update(MSG_SIG_ALG)
+TRAD_SIG_OID_2_NAME.update(RSA_SHA3_OID_2_NAME)
+TRAD_SIG_OID_2_NAME.update(ECDSA_SHA3_OID_2_NAME)
+
+TRAD_SIG_NAME_2_OID = {v: k for k, v in TRAD_SIG_OID_2_NAME.items()}
+
+MSG_SIG_ALG_NAME_2_OID = {v: k for k, v in MSG_SIG_ALG.items()}
 
 LWCMP_MAC_OID_2_NAME = {rfc9480.id_PasswordBasedMac: "password_based_mac", rfc8018.id_PBMAC1: "pbmac1"}
 
@@ -211,7 +221,7 @@ SUPPORTED_MAC_OID_2_NAME.update(SYMMETRIC_PROT_ALGO)
 
 # reverse the dictionary to get OIDs with names
 # to perform lookups for getting PKIMessage Protection AlgorithmIdentifier
-SUPPORTED_MAC_NAME_2_OID = {y: x for x, y in SUPPORTED_MAC_OID_2_NAME.items()}
+SUPPORTED_MAC_NAME_2_OID = {v: k for k, v in SUPPORTED_MAC_OID_2_NAME.items()}
 
 # used for non-local Key generation if the ktri structure is used.
 KM_KT_ALG = {rfc9481.rsaEncryption: "rsa", rfc9481.id_RSAES_OAEP: "rsaes-oaep"}
@@ -599,15 +609,13 @@ STATEFUL_HASH_SIGNATURE_NAME_2_OID = {y: x for x, y in STATEFUL_HASH_SIGNATURE_O
 PQ_SIG_NAME_2_OID = {}
 PQ_SIG_NAME_2_OID.update(ML_DSA_NAME_2_OID)
 PQ_SIG_NAME_2_OID.update(SLH_DSA_NAME_2_OID)
+PQ_SIG_NAME_2_OID.update(FALCON_NAME_2_OID)
 
 PQ_SIG_OID_2_NAME = {y: x for x, y in PQ_SIG_NAME_2_OID.items()}
-
 
 PQ_NAME_2_OID = {}
 PQ_NAME_2_OID.update(PQ_SIG_NAME_2_OID)
 PQ_NAME_2_OID.update(PQ_KEM_NAME_2_OID)
-
-PQ_NAME_2_OID.update(FALCON_NAME_2_OID)
 
 KEY_WRAP_NAME_2_OID = {
     "aes128_wrap": rfc3565.id_aes128_wrap,
@@ -758,9 +766,12 @@ EXTENSION_NAME_2_OID = {
     "alt_sig_val": id_ce_altSignatureValue,
     "alt_spki": id_ce_subjectAltPublicKeyInfo,
     "crl": rfc5280.id_ce_cRLDistributionPoints,
-    "ocsp": rfc6960.id_pkix_ocsp,
     "sun_hybrid_alt_sig": id_altSignatureExt,
     "sun_hybrid_alt_pubkey": id_altSubPubKeyExt,
+    "idp": rfc5280.id_ce_issuingDistributionPoint,
+    "related_cert": id_relatedCert,
+    "private_key_usage_period": rfc5280.id_ce_privateKeyUsagePeriod,
+    "cert_policies": rfc5280.id_ce_certificatePolicies,
 }
 
 EXTENSION_OID_2_SPECS = {
@@ -772,7 +783,10 @@ EXTENSION_OID_2_SPECS = {
     rfc5280.id_ce_issuerAltName: rfc5280.IssuerAltName,
     rfc5280.id_ce_subjectKeyIdentifier: rfc5280.SubjectKeyIdentifier,
     rfc5280.id_ce_cRLDistributionPoints: rfc5280.CRLDistributionPoints,
+    rfc5280.id_ce_issuingDistributionPoint: rfc5280.IssuingDistributionPoint,
     rfc5280.id_pe_authorityInfoAccess: rfc5280.AuthorityInfoAccessSyntax,
+    rfc5280.id_ce_privateKeyUsagePeriod: rfc5280.PrivateKeyUsagePeriod,
+    rfc5280.id_ce_certificatePolicies: rfc5280.CertificatePolicies,
 }
 
 ALL_SIG_ALG_OID_2_NAME = {}
@@ -788,6 +802,8 @@ ALL_SIG_ALG_NAME_2_OID = {y: x for x, y in ALL_SIG_ALG_OID_2_NAME.items()}
 EXTENSION_OID_2_NAME = {y: x for x, y in EXTENSION_NAME_2_OID.items()}
 
 ALL_KNOWN_OIDS_2_NAME["id_ecPublicKey"] = rfc6664.id_ecPublicKey
+ALL_KNOWN_OIDS_2_NAME["id_ecDH"] = rfc6664.id_ecDH
+ALL_KNOWN_OIDS_2_NAME["id_ecMQV"] = rfc6664.id_ecMQV
 ALL_KNOWN_OIDS_2_NAME.update(EXTENSION_OID_2_NAME)
 ALL_KNOWN_OIDS_2_NAME.update(COMPOSITE_KEM06_OID_2_NAME)
 ALL_KNOWN_NAMES_2_OID = {y: x for x, y in ALL_KNOWN_OIDS_2_NAME.items()}
