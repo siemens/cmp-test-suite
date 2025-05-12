@@ -49,6 +49,7 @@ from pq_logic.tmp_oids import (
     id_relatedCert,
 )
 from resources import (
+    asn1utils,
     ca_ra_utils,
     certbuildutils,
     certextractutils,
@@ -60,16 +61,21 @@ from resources import (
     utils,
 )
 from resources.asn1_structures import PKIMessageTMP
-from resources.ca_ra_utils import build_ca_message
-from resources.certbuildutils import build_cert_from_csr
-from resources.certextractutils import extract_extensions_from_csr, get_extension
 from resources.convertutils import (
     copy_asn1_certificate,
     ensure_is_single_sign_key,
     ensure_is_single_verify_key,
     ensure_is_verify_key,
 )
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidAltSignature, InvalidKeyCombination, UnknownOID
+from resources.exceptions import (
+    BadAlg,
+    BadAltPOP,
+    BadAsn1Data,
+    BadPOP,
+    InvalidAltSignature,
+    InvalidKeyCombination,
+    UnknownOID,
+)
 from resources.oidutils import (
     CMS_COMPOSITE03_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
@@ -269,7 +275,7 @@ def build_enc_cert_response(
         text="Issued encrypted certificate please verify with `CertConf`",
     )
 
-    pki_message = build_ca_message(
+    pki_message = ca_ra_utils.build_ca_message(
         request=request,
         responses=[cert_response],
         transaction_id=request["header"]["transactionID"].asOctets(),
@@ -519,8 +525,8 @@ def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descri
     """
     cert_template = cert_req_msg["certReq"]["certTemplate"]
     alt_pub_key = catalyst_logic.load_catalyst_public_key(cert_template["extensions"])
-    alt_sig_alg_id = get_extension(cert_template["extensions"], id_ce_altSignatureAlgorithm)
-    alt_sig = get_extension(cert_template["extensions"], id_ce_altSignatureValue)
+    alt_sig_alg_id = certextractutils.get_extension(cert_template["extensions"], id_ce_altSignatureAlgorithm)
+    alt_sig = certextractutils.get_extension(cert_template["extensions"], id_ce_altSignatureValue)
 
     first_key = ca_ra_utils.get_public_key_from_cert_req_msg(cert_req_msg)
 
@@ -774,7 +780,7 @@ def _generate_catalyst_alt_sig_key(
     :raises BadAlg: If the algorithm is not supported.
     """
     if extensions is not None:
-        alt_sig_alg = get_extension(extensions, id_ce_altSignatureAlgorithm)
+        alt_sig_alg = certextractutils.get_extension(extensions, id_ce_altSignatureAlgorithm)
 
     pq_hash_alg = None
     if alt_sig_alg is not None and allow_chosen_sig_alg:
@@ -829,11 +835,11 @@ def build_catalyst_signed_cert_from_p10cr(
     :return:
     """
     certutils.verify_csr_signature(csr=request["body"]["p10cr"])
-    crs_extensions = extract_extensions_from_csr(request["body"]["p10cr"])
+    crs_extensions = certextractutils.extract_extensions_from_csr(request["body"]["p10cr"])
 
     alt_sig_alg = None
     if crs_extensions is not None:
-        alt_sig_alg = get_extension(crs_extensions, id_ce_altSignatureAlgorithm)
+        alt_sig_alg = certextractutils.get_extension(crs_extensions, id_ce_altSignatureAlgorithm)
 
     alt_key, pq_hash_alg = _generate_catalyst_alt_sig_key(
         alt_sig_alg=alt_sig_alg, alt_key=alt_key, allow_chosen_sig_alg=allow_chosen_sig_alg
@@ -1078,7 +1084,7 @@ def build_catalyst_signed_cert_from_req(  # noqa: D417 Missing argument descript
             f"Body type needs to be either `p10cr` or `ir` or `cr` or `kur` or `crr`.Got: {request['body'].getName()}"
         )
 
-    pki_message = build_ca_message(request=request, responses=cert_responses)
+    pki_message = ca_ra_utils.build_ca_message(request=request, responses=cert_responses)
     return pki_message, certs
 
 
@@ -1259,7 +1265,7 @@ def build_related_cert_from_csr(  # noqa: D417 Missing argument descriptions in 
         extn.extend(kwargs.get("extensions"))  # type: ignore
 
     # build the certificate
-    cert = build_cert_from_csr(
+    cert = certbuildutils.build_cert_from_csr(
         csr=csr,
         ca_key=ca_key,
         ca_cert=ca_cert,
