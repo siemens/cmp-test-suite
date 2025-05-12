@@ -20,7 +20,6 @@ from typing import List, Optional
 
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.hazmat.primitives.serialization import pkcs7
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
@@ -118,16 +117,14 @@ def prepare_requester_certificate(  # noqa: D417 Missing argument descriptions i
         oid = cert_a["tbsCertificate"]["signature"]["algorithm"]
         hash_alg = get_hash_from_oid(oid, only_hash=True)
 
-    if isinstance(cert_a_key, (rsa.RSAPrivateKey, ec.EllipticCurvePrivateKey)) and hash_alg is None:
-        # This solution is not inside the draft.
-        # TODO maybe file an issue on github or ask if this is allowed solution.
-        hash_alg = get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"])
+    if hash_alg is None:
+        hash_alg = ca_kga_logic.get_digest_hash_alg_from_alg_id(cert_a["tbsCertificate"]["signature"])
 
     signature = cryptoutils.sign_data(data=data, key=cert_a_key, hash_alg=hash_alg)
 
     logging.info("Signature: %s", signature)
     if bad_pop:
-        signature = utils.manipulate_first_byte(signature)
+        signature = utils.manipulate_bytes_based_on_key(signature, cert_a_key)
 
     req_cert["signature"] = univ.BitString.fromOctetString(signature)
     return req_cert
@@ -216,9 +213,17 @@ def validate_related_cert_extension(  # noqa: D417 Missing argument descriptions
     if not signature:
         raise ValueError("The Certificate did not contain the RelatedCertificate extension.")
 
-    hash_alg = hash_alg or get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
-    cert_hash = cmputils.calculate_cert_hash(cert=cert_a, hash_alg=hash_alg)
+    hash_alg = _get_hash_alg(hash_alg, cert_a, must_be_determined=True)
+
+    cert_hash = cmputils.calculate_cert_hash(cert=related_cert, hash_alg=hash_alg)
+
     if cert_hash != signature:
+        logging.debug("The certificate serial number: %d", int(related_cert["tbsCertificate"]["serialNumber"]))
+        logging.debug("Cert A hash: %s", cert_hash.hex())
+        logging.debug("Related Cert hash: %s", signature.hex())
+        logging.debug("Hash algorithm: %s", hash_alg)
+        logging.debug("Signature lengths: sig:%s computed:%s", len(signature), len(cert_hash))
+
         raise ValueError(f"The certificate hash is not the same, we used hash_alg: {hash_alg}")
 
     validate_ku_and_eku_related_cert(cert_a=cert_a, related_cert=related_cert)
@@ -366,11 +371,35 @@ def process_mime_message(mime_data: bytes):
     raise ValueError("No application/pkcs7-mime part found in the message.")
 
 
+def _get_hash_alg(hash_alg: Optional[str], cert_a: rfc9480.CMPCertificate, must_be_determined: bool = False) -> str:
+    """Get the hash algorithm for the certificate.
+
+    :param hash_alg: The hash algorithm to use. If `None`, it will be determined from the certificate.
+    :param cert_a: The certificate from which to extract the hash algorithm.
+    :return: The hash algorithm as a string.
+    """
+    if hash_alg is not None:
+        return hash_alg
+
+    alg_id = cert_a["tbsCertificate"]["signature"]
+    hash_alg = get_hash_from_oid(alg_id["algorithm"], only_hash=True)
+    if hash_alg is not None:
+        return hash_alg
+
+    hash_alg = ca_kga_logic.get_digest_hash_alg_from_alg_id(alg_id)
+
+    if hash_alg is None:
+        raise ValueError("The hash algorithm could not be determined.")
+
+    return hash_alg
+
+
 @keyword(name="Validate Related Cert PoP")
 def validate_related_cert_pop(  # noqa: D417 Missing argument descriptions in the docstring
     csr: rfc6402.CertificationRequest,
     max_freshness_seconds: Strint = 500,
     load_chain: bool = False,
+    hash_alg: Optional[str] = None,
 ) -> List[rfc9480.CMPCertificate]:
     """Validate the Proof-of-Possession (PoP) of the related certificate.
 
@@ -379,6 +408,7 @@ def validate_related_cert_pop(  # noqa: D417 Missing argument descriptions in th
         - `csr`: The CSR containing the `RequesterCertificate` attribute.
         - `max_freshness_seconds`: How fresh the `BinaryTime` must be in seconds. Defaults to `500`.
         - `load_chain`: Whether to load a chain or a single certificate. Defaults to `False`.
+        - `hash_alg`: The hash algorithm to use for the certificate. Defaults to `None`.
 
     Returns:
     -------
@@ -409,7 +439,7 @@ def validate_related_cert_pop(  # noqa: D417 Missing argument descriptions in th
 
     # validate binding
     public_key = certutils.load_public_key_from_cert(cert_a)
-    hash_alg = get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
+    hash_alg = _get_hash_alg(hash_alg, cert_a)
 
     sig_name = may_return_oid_to_name(cert_a["tbsCertificate"]["signature"]["algorithm"])
     logging.info("Signature algorithm: %s", sig_name)
