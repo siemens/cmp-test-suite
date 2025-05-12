@@ -310,6 +310,8 @@ def compute_pbmac1(
     salt: Optional[bytes] = None,
     length: int = 32,
     hash_alg: str = "sha256",
+    *,
+    mac_hash_alg: Optional[str] = None,
 ) -> bytes:
     """Compute HMAC for the given data using specified key.
 
@@ -319,6 +321,7 @@ def compute_pbmac1(
     :param key: Key to use for the HMAC.
     :param salt: Salt value for PBKDF2.
     :param hash_alg: Optional name of the hash algorithm to use.
+    :param mac_hash_alg: Optional name of the hash algorithm to use for the `HMAC` algorithm. Defaults to the same as `hash_alg`.
     :return: The HMAC signature.
     """
     hash_alg_instance = hash_name_to_instance(hash_alg)
@@ -338,24 +341,30 @@ def compute_pbmac1(
     derived_key = kdf.derive(key)
     logging.info("Derived key: %s", derived_key.hex())
 
-    signature = compute_hmac(key=derived_key, hash_alg=hash_alg, data=data)
+    signature = compute_hmac(key=derived_key, hash_alg=mac_hash_alg or hash_alg, data=data)
     logging.info("Signature: %s", signature.hex())
     return signature
 
 
 @not_keyword
 def compute_password_based_mac(
-    data: bytes, key: bytes, iterations: int = 1000, salt: Optional[bytes] = None, hash_alg: str = "sha256"
+    data: bytes,
+    key: bytes,
+    iterations: int = 1000,
+    salt: Optional[bytes] = None,
+    hash_alg: str = "sha256",
+    *,
+    mac_hash_alg: Optional[str] = None,
 ):
     """Implement the password-based MAC algorithm defined in RFC 4210 Sec. 5.1.3.1. The MAC is always HMAC_hash_alg.
 
-    :param data: bytes, data to be hashed.
-    :param key: bytes, key to use for the HMAC.
-    :param iterations: optional int, the number of times to do the hash iterations
-    :param salt: optional bytes, salt to use; if not given, a random 16-byte salt will be generated
-    :param hash_alg: optional str, name of the hash algorithm to use, e.g., 'sha256'
-
-    :returns: bytes, the HMAC signature
+    :param data: The data to be hashed.
+    :param key: The key to use for the HMAC.
+    :param iterations: The number of times to do the hash iterations
+    :param salt: The salt to use; if not given, a random 16-byte salt will be generated
+    :param hash_alg: The name of the hash algorithm to use, e.g., 'sha256'
+    :param mac_hash_alg: The name of the hash algorithm to use for the `HMAC` algorithm. Defaults to the same as `hash_alg`.
+    :returns: The HMAC signature
     """
     salt = salt or os.urandom(16)
 
@@ -366,7 +375,7 @@ def compute_password_based_mac(
     for _ in range(iterations):
         initial_input = compute_hash(hash_alg, initial_input)
 
-    signature = compute_hmac(data=data, key=initial_input, hash_alg=hash_alg)
+    signature = compute_hmac(data=data, key=initial_input, hash_alg=mac_hash_alg or hash_alg)
     logging.info("Signature: %s", signature.hex())
     return signature
 
