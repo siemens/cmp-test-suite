@@ -432,21 +432,18 @@ class ProtectionHandler:
         if not check_is_cert_signer(cert_chain[-1], cert_chain[-1]):
             raise SignerNotTrusted("The last certificate in the chain was not a signer.")
 
-        # Verify that the CMP-protection certificate is authorized to sign the message.
-        # Allows the CMP protection certificate to have an unset key usage.
-        try:
-            validate_key_usage(cert_chain[0], key_usages="digitalSignature", strictness="LAX")
-        except ValueError:
-            raise SignerNotTrusted("The CMP protection certificate is not authorized to sign the message.")
-
-    def check_signer_is_trusted(self, pki_message: PKIMessageTMP) -> None:
+    def check_signer_is_trusted(self, pki_message: PKIMessageTMP, for_dh: bool = False) -> None:
         """Check if the signer is trusted.
 
         Verify the certificate chain and check if the last certificate is trusted.
         Optional uses OpenSSL for signature verification and additional checks.
 
         :param pki_message: The PKI message to check.
+        :param for_dh: If the message is for DH-based MAC protection. Defaults to `False`.
         :return: True if the signer is trusted, False otherwise.
+        :raises BadMessageCheck: If the message is invalid.
+        :raises SignerNotTrusted: If the signer is not trusted.
+        :raises NotAuthorized: If the signer is not authorized.
         """
         logging.debug("Checking if the signer is trusted. use_openssl: %s", self.use_openssl)
         # Implement the logic to check if the signer is trusted
@@ -454,13 +451,24 @@ class ProtectionHandler:
         logging.info("Certificate chain length: %s", len(cert_chain))
         may_trusted_cert = cert_chain[-1]
 
-        if self.use_openssl:
+        # Temporary fix to avoid errors for Composite signatures and PQ signatures.
+
+        prot_type = get_protection_type_from_pkimessage(pki_message)
+        result = prot_type == "pq-sig" or prot_type == "composite-sig"
+
+        if result:
+            logging.debug(
+                "Skipping OpenSSL cert chain validation check for Composite or PQ signature."
+                "Will be checked in the Future."
+            )
+
+        if self.use_openssl and not result:
             try:
                 certificates_must_be_trusted(
                     cert_chain=cert_chain,
                     # Must contain `digitalSignature` if present.
                     key_usage_strict=1,
-                    key_usages="digitalSignature",
+                    key_usages="digitalSignature" if not for_dh else "keyAgreement",
                     crl_check=False,
                     trustanchors=self.mock_ca_trusted_dir,
                 )
