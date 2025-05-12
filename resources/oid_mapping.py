@@ -122,9 +122,12 @@ def get_curve_instance(curve_name: str) -> ec.EllipticCurve:
 def get_hash_from_oid(oid: univ.ObjectIdentifier, only_hash: bool = False) -> Union[str, None]:
     """Determine the name of a hashing function used in a signature algorithm given by its oid.
 
+    Note: If only a hash name is needed, set `only_hash` to `True`, unless only a hash name is contained in the OID.
+    Then use `only_hash=False`.
+
     :param oid: `pyasn1 univ.ObjectIdentifier`, OID of signing algorithm
     :param only_hash: A flag indicating if only the hash name shall be returned if one is contained.
-    :return: name of hashing algorithm, e.g., 'sha256' or `None`, if the
+    :return: The name of the hashing algorithm, e.g., 'sha256' or `None`, if the
     signature algorithm does not use one.
     """
     if oid in {rfc9481.id_Ed25519, rfc9481.id_Ed448}:
