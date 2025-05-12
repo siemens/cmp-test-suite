@@ -1378,7 +1378,7 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     if alg_oid in PQ_SIG_OID_2_NAME:
         return "pq-sig"
 
-    raise UnknownOID(oid=alg_oid)
+    raise UnknownOID(oid=alg_oid, extra_info="Can not determine the protection type.")
 
 
 def _compare_mac_params(
@@ -1726,7 +1726,7 @@ def verify_rsassa_pss_from_alg_id(
     salt_length = None
     if alg_id["algorithm"] == rfc9481.id_RSASSA_PSS:
         if not alg_id["parameters"].isValue:
-            raise ValueError("The `protectionAlg` field must have parameters for RSASSA-PSS set.")
+            raise ValueError("The `AlgorithmIdentifier` must have parameters for RSASSA-PSS set.")
 
         if not isinstance(alg_id["parameters"], rfc8017.RSASSA_PSS_params):
             params, rest = decoder.decode(alg_id["parameters"], rfc8017.RSASSA_PSS_params())
