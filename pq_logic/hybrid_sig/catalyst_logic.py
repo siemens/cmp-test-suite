@@ -458,13 +458,13 @@ def build_catalyst_cert(  # noqa: D417 Missing a parameter in the Docstring
 
 
 def load_catalyst_public_key(  # noqa: D417 Missing a parameter in the Docstring
-    extensions: rfc9480.Extensions,
+    extensions: Union[rfc9480.Extensions, rfc9480.CMPCertificate],
 ) -> PublicKey:
     """Load a public key from the `AltPublicKeyInfo` extension.
 
     Arguments:
     ---------
-        - `extensions`: The extensions to load the public key from.
+        - `extensions`: The certificate or extensions to load the public key from.
 
     Returns:
     -------
@@ -481,6 +481,9 @@ def load_catalyst_public_key(  # noqa: D417 Missing a parameter in the Docstring
     | ${public_key}= | Load Catalyst Public Key | ${extensions} |
 
     """
+    if isinstance(extensions, rfc9480.CMPCertificate):
+        extensions = extensions["tbsCertificate"]["extensions"]
+
     extn_alt_spki = certextractutils.get_extension(extensions, id_ce_subjectAltPublicKeyInfo)
     if extn_alt_spki is None:
         raise ValueError("AltPublicKeyInfo extension not found.")
