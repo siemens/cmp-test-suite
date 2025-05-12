@@ -40,7 +40,7 @@ from resources import (
 )
 from resources.asn1utils import get_set_bitstring_names
 from resources.convertutils import ensure_is_verify_key, pyasn1_time_obj_to_py_datetime
-from resources.exceptions import BadAsn1Data
+from resources.exceptions import BadAsn1Data, BadCertTemplate, BadPOP
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.typingutils import SignKey, Strint
 
@@ -451,14 +451,20 @@ def validate_related_cert_pop(  # noqa: D417 Missing argument descriptions in th
     # extra the bound value to verify the signature
     data = encoder.encode(attributes["requestTime"]) + encoder.encode(attributes["certID"])
 
-    verify_key = ensure_is_verify_key(public_key)
+    try:
+        verify_key = ensure_is_verify_key(public_key)
+    except ValueError as e:
+        raise BadCertTemplate("The public key is not a valid verify key.") from e
 
-    cryptoutils.verify_signature(
-        data=data,
-        signature=signature,
-        hash_alg=hash_alg,
-        public_key=verify_key,
-    )
+    try:
+        cryptoutils.verify_signature(
+            data=data,
+            signature=signature,
+            hash_alg=hash_alg,
+            public_key=verify_key,
+        )
+    except InvalidSignature as e:
+        raise BadPOP(f"The signature with the related certificate is invalid.Used hash alg: {hash_alg}") from e
 
     return cert_chain
 
