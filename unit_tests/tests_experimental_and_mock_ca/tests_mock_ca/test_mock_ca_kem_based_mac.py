@@ -1,11 +1,12 @@
 # SPDX-FileCopyrightText: Copyright 2025 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import os
 import unittest
 from typing import Dict
 
 from mock_ca.ca_handler import CAHandler
+from mock_ca.db_config_vars import CertConfConfigVars
 from mock_ca.mock_fun import KEMSharedSharedState, KEMSharedSecretList
 
 from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey
@@ -265,6 +266,10 @@ class TestCMPKEMBasedMAC(unittest.TestCase):
             ca_cert=self.ca_cert,
             ca_key=self.ca_key,
         )
+        cert_conf_cfg = CertConfConfigVars(must_be_fresh_nonce=True)
+        mock_ca_obj.set_config_vars(
+            cert_conf_handler=cert_conf_cfg
+        )
 
         tx_id = b"G" * 16
         genm = self._build_genm_request(tx_id)
@@ -292,6 +297,7 @@ class TestCMPKEMBasedMAC(unittest.TestCase):
             sender_kid=b"CN=Hans the Tester",
             recipient="CN=Mock-CA",
             for_mac=True,
+            sender_nonce=os.urandom(16),
         )
 
         prot_cert_conf = protect_pkimessage_kem_based_mac(

@@ -1,12 +1,13 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import os
 import unittest
 
 from mock_ca.ca_handler import CAHandler
 from pyasn1_alt_modules import rfc9480
 
+from mock_ca.db_config_vars import CertConfConfigVars
 from resources.asn1utils import is_bit_set
 from resources.cmputils import (
     build_cert_conf_from_resp,
@@ -27,6 +28,8 @@ class TestMockCAIssuing(unittest.TestCase):
     def setUpClass(cls):
         cls.ca_cert, cls.ca_key = load_ca_cert_and_key()
         cls.ca_handler = CAHandler(ca_cert=cls.ca_cert, ca_key=cls.ca_key)
+        cert_conf_cf = CertConfConfigVars(must_be_fresh_nonce=True)
+        cls.ca_handler.set_config_vars(cert_conf_handler=cert_conf_cf)
 
     def test_issue_cert_with_implicit_confirm(self):
         """
@@ -75,6 +78,7 @@ class TestMockCAIssuing(unittest.TestCase):
             ca_message=response,
             cert=cert,
             pvno=3,
+            sender_nonce=os.urandom(16),
             sender="CN=Hans the Tester",
             recipient="CN=Mock CA",
             for_mac=True,
