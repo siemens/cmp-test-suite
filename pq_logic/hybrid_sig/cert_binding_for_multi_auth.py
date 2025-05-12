@@ -19,6 +19,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.serialization import pkcs7
 from pyasn1.codec.der import decoder, encoder
@@ -38,7 +39,7 @@ from resources import (
     cryptoutils,
     utils,
 )
-from resources.asn1utils import get_set_bitstring_names
+from resources.asn1utils import get_set_bitstring_names, try_decode_pyasn1
 from resources.convertutils import ensure_is_verify_key, pyasn1_time_obj_to_py_datetime
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadPOP
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
@@ -656,13 +657,15 @@ def prepare_related_cert_extension(  # noqa: D417 Missing argument descriptions 
 
     # TODO tell the specifier to fix for sig algorithm without hash!
     # ed25519 and ML-DSA.
-
-    # for negative testing or ed-keys and so on.
-    hash_alg = hash_alg or get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
+    hash_alg = _get_hash_alg(hash_alg, cert_a, must_be_determined=True)
 
     if hash_alg is None:
         raise ValueError("The hash algorithm could not be determined.")
 
+    logging.info("The RelatedCertificate extension will be created with hash algorithm: %s", hash_alg)
+    logging.warning(
+        "The RelatedCertificate extension for serial number: %d", int(cert_a["tbsCertificate"]["serialNumber"])
+    )
     cert_hash = cmputils.calculate_cert_hash(cert=cert_a, hash_alg=hash_alg)
     extension = rfc5280.Extension()
     extension["extnID"] = id_relatedCert
