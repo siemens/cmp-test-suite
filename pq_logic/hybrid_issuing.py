@@ -337,9 +337,17 @@ def build_cert_from_catalyst_request(  # noqa: D417 Missing argument description
     cert_template = cert_req_msg["certReq"]["certTemplate"]
     second_key = catalyst_logic.load_catalyst_public_key(cert_template["extensions"])
 
-    verify_sig_popo_catalyst_cert_req_msg(
-        cert_req_msg=cert_req_msg,
-    )
+    try:
+        verify_sig_popo_catalyst_cert_req_msg(
+            cert_req_msg=cert_req_msg,
+        )
+
+    except InvalidAltSignature as e:
+        raise BadAltPOP("The alternative signature POP is invalid.") from e
+
+    except InvalidSignature as e:
+        raise BadPOP("The signature POP is invalid.") from e
+
     tbs_certs = certbuildutils.prepare_tbs_certificate_from_template(
         cert_template=cert_template,
         issuer=ca_cert["tbsCertificate"]["subject"],
@@ -368,6 +376,10 @@ def build_cert_from_catalyst_request(  # noqa: D417 Missing argument description
     if popo.getName() == "keyEncipherment" or isinstance(second_key, PQKEMPublicKey):
         if isinstance(second_key, PQKEMPublicKey):
             public_key = second_key
+            popo = cmputils.prepare_popo_challenge_for_non_signing_key(True, True)
+            cert_req_msg = ca_ra_utils.get_cert_req_msg_from_pkimessage(request)
+            cert_req_msg["popo"] = popo
+
         else:
             public_key = None
 
