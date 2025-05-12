@@ -225,13 +225,14 @@ def get_asn1_value_as_string(asn1_obj: base.Asn1Item, query: str, decode: bool =
     return result.prettyPrint()  # type: ignore
 
 
-def get_asn1_value_as_number(asn1_obj: base.Asn1Type, query: str) -> int:  # noqa D417 undocumented-param
+def get_asn1_value_as_number(asn1_obj: base.Asn1Type, query: str, decode: bool = True) -> int:  # noqa D417 undocumented-param
     """Retrieve a value from a pyasn1 object and return it as an integer.
 
     Arguments:
     ---------
         - `asn1_obj`: The pyasn1 object to query.
         - `query`: The path to the value you want to extract, given as dot-notation.
+        - `decode`: If `True`, the result is decoded before returning. Defaults to `True`.
 
     Returns:
     -------
@@ -248,7 +249,10 @@ def get_asn1_value_as_number(asn1_obj: base.Asn1Type, query: str) -> int:  # noq
 
     """
     result = get_asn1_value(asn1_obj, query)
-    decoded, _rest = decoder.decode(result)
+    if decode:
+        decoded, _rest = decoder.decode(result)
+    else:
+        decoded = result
     return int(decoded)
 
 
