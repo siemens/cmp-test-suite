@@ -471,6 +471,7 @@ def validate_multi_auth_binding_csr(  # noqa: D417 Missing argument descriptions
     allow_os_store: bool = False,
     crl_check: bool = False,
     do_openssl_check: bool = True,
+    cert_chain: Optional[List[rfc9480.CMPCertificate]] = None,
 ) -> rfc9480.CMPCertificate:
     """Process a CSR containing the `relatedCertRequest` attribute.
 
@@ -485,6 +486,7 @@ def validate_multi_auth_binding_csr(  # noqa: D417 Missing argument descriptions
         - `allow_os_store`: Whether to allow the OS trust store. Defaults to `False`.
         - `crl_check`: Whether to check the CRL. Defaults to `False`.
         - `do_openssl_check`: Whether to do the OpenSSL certificate chain validation. Defaults to `True`.
+        - `cert_chain`: The certificate chain to use. Defaults to `None`.
 
     Returns:
     -------
@@ -505,16 +507,30 @@ def validate_multi_auth_binding_csr(  # noqa: D417 Missing argument descriptions
     extensions = certextractutils.extract_extensions_from_csr(csr)
     # For certificate chains, this extension MUST only be included in the end-entity certificate.
     if extensions is not None:
-        ca_extn = certextractutils.get_extension(extensions, rfc5280.id_ce_basicConstraints)  # type: ignore
-        ca_extn: rfc5280.BasicConstraints
-        if ca_extn["cA"]:
-            raise ValueError("The `Cert B` MUST be an end entity certificate.")
+        if _validate_is_ca_cert(extensions):
+            raise BadCertTemplate("The `Cert B` MUST be an end entity certificate.")
 
-    cert_chain = validate_related_cert_pop(csr, max_freshness_seconds=max_freshness_seconds, load_chain=load_chain)
-    cert_a = cert_chain[0]
-    certutils.certificates_are_trustanchors(cert_chain[-1], trustanchors=trustanchors, allow_os_store=allow_os_store)
+    loaded_cert_chain = validate_related_cert_pop(
+        csr, max_freshness_seconds=max_freshness_seconds, load_chain=load_chain
+    )
+    cert_a = loaded_cert_chain[0]
+
+    if _validate_is_ca_cert(cert_a["tbsCertificate"]["extensions"]):
+        raise BadCertTemplate("The Related cert (`Cert A`) MUST be an end entity certificate.")
+
+    if not load_chain and len(loaded_cert_chain) == 1:
+        # If only one certificate is loaded, we need to load the chain from the trust anchors.
+        loaded_cert_chain = certutils.build_cert_chain_from_dir(cert_a, cert_chain_dir=trustanchors)
+
+    if cert_chain is not None:
+        # If a certificate chain is provided, we need to validate it.
+        loaded_cert_chain = cert_chain
+
+    certutils.certificates_are_trustanchors(
+        loaded_cert_chain[-1], trustanchors=trustanchors, allow_os_store=allow_os_store
+    )
     if do_openssl_check:
-        certutils.verify_cert_chain_openssl(cert_chain=cert_chain, crl_check=crl_check)
+        certutils.verify_cert_chain_openssl(cert_chain=loaded_cert_chain, crl_check=crl_check)
     return cert_a
 
 
