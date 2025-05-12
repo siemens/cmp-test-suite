@@ -1219,7 +1219,7 @@ CA MAY Issue A DSA Certificate
     ...    process the request accordingly. If the CA's policy allows issuing certificates with DSA keys,
     ...    it should issue the requested certificate. Otherwise, the CA must reject the request to maintain
     ...    PKI integrity.
-    [Tags]    ir    key    positive    robot:skip-on-failure    setup   minimal
+    [Tags]    ir    key    positive     robot:skip-on-failure  setup   minimal  lwcmp   dsa
     ${key}=    Generate Key    dsa    length=${DEFAULT_KEY_LENGTH}
     ${ir}=    Build Ir From Key
     ...    ${key}
@@ -1229,24 +1229,15 @@ CA MAY Issue A DSA Certificate
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
     ${prot_ir}=    Default Protect PKIMessage    ${ir}
     ${response}=    Exchange PKIMessage    ${prot_ir}
-    PKIMessage Body Type Must Be    ${response}   ip
-    PKIStatus Must Be    ${response}    accepted
-    ${cert}=    Get Cert From PKIMessage    ${response}
-    IF    not ${ALLOW_IMPLICIT_CONFIRM}
-        ${cert_conf}=    Build Cert Conf From Resp
-        ...    ${response}
-        ...    exclude_fields=sender,senderKID
-        ...    recipient=${RECIPIENT}
-        ${protected_cert_conf}=    Protect PKIMessage
-        ...    ${cert_conf}
-        ...    signature
-        ...    private_key=${ISSUED_KEY}
-        ...    cert=${ISSUED_CERTIFICATE}
-        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    PKIMessage Body Type Must Be    ${response}    ip
+    ${status}=    Get PKIStatusInfo    ${response}
+    IF  '${status["status"]}' == 'accepted'
+        ${cert}=    Confirm Certificate If Needed    ${response}   url=${CA_CMP_URL}
+        VAR    ${DSA_CERT}    ${cert}    scope=Global
+        VAR    ${DSA_KEY}    ${key}    scope=Global
     END
-    VAR    ${DSA_CERT}    ${cert}    scope=Global
-    VAR    ${DSA_KEY}    ${key}    scope=Global
+    PKIStatus Must Be    ${response}    rejection
+
 
 CA MUST Reject PKIMessage With Different Protection Algorithm Than MSG_SIG_ALG
     [Documentation]    According to RFC 9483 Section 3.1, the CA must enforce the use of algorithms specified in
