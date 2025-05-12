@@ -98,6 +98,13 @@ class InvalidAltSignature(InvalidSignature):
     """Raised when the alternative signature is invalid."""
 
 
+class LwCMPViolation(CMPTestSuiteError):
+    """Raised when the LwCMP profile is violated, because of the algorithm population or the message size."""
+
+    failinfo = "badRequest"
+    bit_num = 2
+
+
 #########################
 # CMP Protocol Errors
 ##########################

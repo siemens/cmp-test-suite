@@ -65,7 +65,15 @@ from resources.convertutils import (
     str_to_bytes,
     subject_public_key_info_from_pubkey,
 )
-from resources.exceptions import BadAlg, BadMessageCheck, InvalidKeyCombination, UnknownOID
+from resources.exceptions import (
+    BadAlg,
+    BadDataFormat,
+    BadMacProtection,
+    BadMessageCheck,
+    InvalidKeyCombination,
+    LwCMPViolation,
+    UnknownOID,
+)
 from resources.oid_mapping import (
     get_alg_oid_from_key_hash,
     get_hash_from_oid,
@@ -91,7 +99,7 @@ from resources.oidutils import (
     id_ce_subjectAltPublicKeyInfo,
     id_KemBasedMac,
 )
-from resources.suiteenums import ProtectionAlgorithm
+from resources.suiteenums import ProtectedType, ProtectionAlgorithm
 from resources.typingutils import (
     CertObjOrPath,
     ECDHPrivateKey,
@@ -335,6 +343,7 @@ def _compute_pbmac1_from_param(
     password: bytes,
     data: bytes,
     unsafe_decoding: bool,
+    enforce_lwcmp: bool = False,
 ) -> bytes:
     """Compute the PBMAC1 with the DER-encoded bytes or the structure.
 
@@ -342,6 +351,7 @@ def _compute_pbmac1_from_param(
     :param password: The shared secret used for the key derivation.
     :param data: The data to authenticate.
     :param unsafe_decoding: If True, allows extra data (rest) after decoding the structure.
+    :param enforce_lwcmp: If True, enforces that the hash algorithm is the same for `prf` and `mac`.
     :return: The computed message authentication code value.
     """
     if not isinstance(prot_params, rfc8018.PBMAC1_params):
@@ -359,8 +369,16 @@ def _compute_pbmac1_from_param(
     else:
         pbkdf2_param = prot_params["keyDerivationFunc"]["parameters"]  # type: ignore
 
-    derived_key = cryptoutils.compute_pbkdf2_from_parameter(pbkdf2_param, key=password)
     hash_alg = HMAC_OID_2_NAME[prot_params["messageAuthScheme"]["algorithm"]].split("-")[1]  # type: ignore
+    pbkdf2_hash_alg = get_hash_from_oid(pbkdf2_param["prf"]["algorithm"])
+    if pbkdf2_hash_alg != hash_alg and enforce_lwcmp:
+        raise LwCMPViolation(
+            "The `owf` and `mac` fields in `PBMAC1Parameters` must be the same hash algorithm."
+            f"MAC: {hash_alg}, PBKDF2: {pbkdf2_hash_alg}"
+        )
+
+    derived_key = cryptoutils.compute_pbkdf2_from_parameter(pbkdf2_param, key=password)
+
     mac = cryptoutils.compute_hmac(key=derived_key, data=data, hash_alg=hash_alg)
     return mac
 
@@ -532,12 +550,19 @@ def compute_mac_from_alg_id(key: bytes, alg_id: rfc9480.AlgorithmIdentifier, dat
     raise ValueError(f"Unsupported Symmetric MAC Protection: {protection_type_oid}")
 
 
-def _compute_symmetric_protection(pki_message: PKIMessageTMP, password: bytes, unsafe_decoding: bool = False) -> bytes:
+def _compute_symmetric_protection(
+    pki_message: PKIMessageTMP,
+    password: bytes,
+    unsafe_decoding: bool = False,
+    enforce_lwcmp: bool = False,
+) -> bytes:
     """Compute the `PKIMessageTMP` protection.
 
     :param pki_message: `PKIMessageTMP` object to protect.
     :param password: A symmetric password to protect the message.
     :param unsafe_decoding: If True, allows extra data (rest) after decoding structures. Defaults to False.
+    :param enforce_lwcmp: If True, enforces that the hash algorithm is the same, throughout the algorithm.
+    Defaults to `False`.
     :return: The computed protection value.
     """
     encoded = extract_protected_part(pki_message)
@@ -555,7 +580,11 @@ def _compute_symmetric_protection(pki_message: PKIMessageTMP, password: bytes, u
 
     if protection_type_oid == rfc8018.id_PBMAC1:
         mac = _compute_pbmac1_from_param(
-            prot_params=prot_params, password=password, data=encoded, unsafe_decoding=unsafe_decoding
+            prot_params=prot_params,
+            password=password,
+            data=encoded,
+            unsafe_decoding=unsafe_decoding,
+            enforce_lwcmp=enforce_lwcmp,
         )
 
         return mac
@@ -568,9 +597,23 @@ def _compute_symmetric_protection(pki_message: PKIMessageTMP, password: bytes, u
 
         salt = prot_params["salt"].asOctets()
         iterations = int(prot_params["iterationCount"])
+
+        hash_alg_owf = get_hash_from_oid(prot_params["owf"]["algorithm"])
+
         hash_alg = HMAC_OID_2_NAME[prot_params["mac"]["algorithm"]].split("-")[1]
+
+        if hash_alg != hash_alg_owf and enforce_lwcmp:
+            raise LwCMPViolation(
+                f"The hash algorithm in `owf` and `mac` must be the same. Got {hash_alg_owf} and {hash_alg}."
+            )
+
         return cryptoutils.compute_password_based_mac(
-            data=encoded, key=password, iterations=iterations, salt=salt, hash_alg=hash_alg
+            data=encoded,
+            key=password,
+            iterations=iterations,
+            salt=salt,
+            hash_alg=hash_alg_owf,
+            mac_hash_alg=hash_alg,
         )
 
     if protection_type_oid in AES_GMAC_OID_2_NAME:
