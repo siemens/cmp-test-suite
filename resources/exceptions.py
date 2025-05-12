@@ -58,6 +58,13 @@ class BadConfig(CMPTestSuiteError):
 ##########################
 
 
+class BadSigAlgID(CMPTestSuiteError):
+    """Raised when the algorithm identifier and the signing key do not match."""
+
+    failinfo = "badDataFormat"
+    bit_num = 0
+
+
 class UnknownOID(CMPTestSuiteError):
     """Raised when an OID is unknown."""
 
