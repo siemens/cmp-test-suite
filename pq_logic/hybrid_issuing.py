@@ -670,10 +670,12 @@ def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descr
         )
         sig = protectionutils.sign_data_with_alg_id(key=comp_key, alg_id=sig_alg, data=data)
 
-        if bad_pop:
-            sig = utils.manipulate_bytes_based_on_key(sig, comp_key)
-
-        popo = cmputils.prepare_popo(signature=sig, alg_oid=sig_alg["algorithm"])
+        popo = cmputils.prepare_sig_popo_structure(
+            alg_id=sig_alg,
+            signature=sig,
+            signing_key=comp_key,
+            bad_pop=bad_pop,
+        )
 
     elif isinstance(first_key, PQKEMPrivateKey) and isinstance(alt_key, TradSignKey):
         popo = cmputils.prepare_popo_challenge_for_non_signing_key(use_encr_cert=True)
@@ -701,7 +703,16 @@ def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descr
             signing_key=signing_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg
         )
         sig = protectionutils.sign_data_with_alg_id(key=signing_key, alg_id=sig_alg, data=data)
-        popo = cmputils.prepare_popo(signature=sig, signing_key=signing_key, alg_oid=sig_alg["algorithm"])
+
+        if bad_pop:
+            sig = utils.manipulate_first_byte(sig)
+
+        popo = cmputils.prepare_sig_popo_structure(
+            alg_id=sig_alg,
+            signature=sig,
+            signing_key=first_key,
+            bad_pop=bad_pop,
+        )
 
     elif isinstance(alt_key, PQKEMPrivateKey) and isinstance(first_key, TradSignKey):
         extn = catalyst_logic.prepare_subject_alt_public_key_info_extn(
@@ -711,14 +722,16 @@ def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descr
         cert_template["extensions"].append(extn)
         cert_req["certTemplate"] = cert_template
 
-        data = encoder.encode(cert_req)
-        sig_alg = prepare_alg_ids.prepare_sig_alg_id(signing_key=first_key, use_rsa_pss=True, hash_alg=hash_alg)
+        data = asn1utils.encode_to_der(cert_req)
+        sig_alg = prepare_alg_ids.prepare_sig_alg_id(signing_key=first_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg)
         sig = protectionutils.sign_data_with_alg_id(key=first_key, alg_id=sig_alg, data=data)
 
-        if bad_pop:
-            sig = utils.manipulate_first_byte(sig)
-
-        popo = cmputils.prepare_popo(signature=sig, signing_key=first_key, alg_oid=sig_alg["algorithm"])
+        popo = cmputils.prepare_sig_popo_structure(
+            alg_id=sig_alg,
+            signature=sig,
+            signing_key=first_key,
+            bad_pop=bad_pop,
+        )
 
     else:
         raise InvalidKeyCombination(

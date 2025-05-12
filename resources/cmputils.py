@@ -1893,6 +1893,43 @@ def prepare_cert_request(  # noqa D417 undocumented-param
     return cert_request
 
 
+@not_keyword
+def prepare_sig_popo_structure(
+    alg_id: Union[rfc9480.AlgorithmIdentifier, univ.ObjectIdentifier],
+    signing_key: SignKey,
+    signature: bytes,
+    bad_pop: bool = False,
+    poposk_input: Optional[rfc4211.POPOSigningKeyInput] = None,
+) -> rfc4211.ProofOfPossession:
+    """Prepare the `ProofOfPossession` (POPO) structure for a certificate request.
+
+    :param alg_id: The algorithm identifier to use.
+    :param signing_key: The signing key used to sign the certificate request.
+    :param signature: The signature of the `CertRequest` to include.
+    :param bad_pop: If `True`, the first byte of the signature will be modified to create an invalid POP signature.
+    :param poposk_input: The `POPOSigningKeyInput` structure to include in the POPO. Defaults to `None`.
+    :return: A populated `ProofOfPossession` object.
+    """
+    popo = rfc4211.ProofOfPossession()
+    popo_key = rfc4211.POPOSigningKey().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 1))
+
+    if isinstance(alg_id, univ.ObjectIdentifier):
+        alg_id = rfc9480.AlgorithmIdentifier()
+        alg_id["algorithm"] = alg_id
+
+    popo_key["algorithmIdentifier"] = alg_id
+
+    if bad_pop:
+        signature = utils.manipulate_bytes_based_on_key(signature, signing_key)
+
+    if poposk_input is not None:
+        popo_key["poposkInput"] = poposk_input
+
+    popo_key["signature"] = univ.BitString().fromOctetString(signature)
+    popo["signature"] = popo_key
+    return popo
+
+
 @keyword(name="Prepare Signature POPO")
 def prepare_signature_popo(  # noqa: D417 undocumented-param
     signing_key: SignKey,
@@ -1936,10 +1973,7 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
         use_pre_hash=use_pre_hash,
         use_rsa_pss=use_rsa_pss,
     )
-    logging.info("Calculated POPO: %s", signature.hex())
-
-    if bad_pop:
-        signature = utils.manipulate_bytes_based_on_key(signature, signing_key)
+    logging.info("Calculated POPO without manipulation: %s", signature.hex())
 
     alg_id = prepare_alg_ids.prepare_sig_alg_id(
         signing_key=signing_key,
@@ -1949,16 +1983,17 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
         add_params_rand_val=add_params_rand_val,
     )
 
-    popo = rfc4211.ProofOfPossession()
-    popo_key = rfc4211.POPOSigningKey().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 1))
-
-    popo_key["signature"] = univ.BitString().fromOctetString(signature)
-    popo_key["algorithmIdentifier"] = alg_id
-
+    poposk_input = None
     if sender is not None:
-        popo_key["poposkInput"] = _prepare_poposigningkeyinput(sender=sender, public_key=signing_key.public_key())
+        poposk_input = _prepare_poposigningkeyinput(sender=sender, public_key=signing_key.public_key())
 
-    popo["signature"] = popo_key
+    popo = prepare_sig_popo_structure(
+        alg_id=alg_id,
+        signing_key=signing_key,
+        signature=signature,
+        bad_pop=bad_pop,
+        poposk_input=poposk_input,
+    )
     return popo
 
 
