@@ -14,7 +14,7 @@ from resources.checkutils import validate_senderkid_for_cmp_protection
 from resources.cmputils import (
     build_p10cr_from_csr,
     parse_csr,
-    patch_senderkid,
+    patch_senderkid, parse_pkimessage,
 )
 from resources.prepareutils import prepare_general_name
 from resources.exceptions import BadMessageCheck
@@ -62,7 +62,7 @@ class TestValidateSenderKID(unittest.TestCase):
         )
         # simulates send over wire.
         der_data = encode_to_der(protected_msg)
-        received_pki_msg, _ = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
+        received_pki_msg = parse_pkimessage(der_data)
         validate_senderkid_for_cmp_protection(pki_message=received_pki_msg)
 
     def test_check_sig_senderKID_with_invalid_ski(self):
