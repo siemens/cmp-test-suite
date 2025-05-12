@@ -49,7 +49,7 @@ from resources import (
 )
 from resources.asn1_structures import PKIMessageTMP
 from resources.convertutils import ensure_is_kem_pub_key, ensure_is_verify_key
-from resources.exceptions import BadAsn1Data, BadPOP, CertRevoked, SignerNotTrusted, UnknownOID
+from resources.exceptions import BadAsn1Data, BadPOP, BadSigAlgID, CertRevoked, SignerNotTrusted, UnknownOID
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
@@ -383,7 +383,7 @@ def check_is_cert_signer(cert: rfc9480.CMPCertificate, poss_issuer: rfc9480.CMPC
             )
 
         return True
-    except (ValueError, InvalidSignature) as err:
+    except (ValueError, InvalidSignature, BadSigAlgID) as err:
         logging.info("%s", err)
     return False
 

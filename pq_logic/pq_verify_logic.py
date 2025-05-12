@@ -33,7 +33,7 @@ from pq_logic.tmp_oids import (
 from resources import certutils, compareutils, convertutils, keyutils, protectionutils, utils
 from resources.asn1_structures import PKIMessageTMP
 from resources.certextractutils import get_extension
-from resources.exceptions import BadAsn1Data, BadMessageCheck, InvalidAltSignature, UnknownOID
+from resources.exceptions import BadAsn1Data, BadMessageCheck, BadSigAlgID, InvalidAltSignature, UnknownOID
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import (
     CMS_COMPOSITE03_OID_2_NAME,
@@ -321,7 +321,7 @@ def build_migration_cert_chain(  # noqa D417 undocumented-param
             cert_chain.append(poss_issuer)
             cert = poss_issuer
 
-        except (InvalidSignature, ValueError):
+        except (InvalidSignature, ValueError, BadSigAlgID):
             continue
 
     if len(cert_chain) == 1 and not allow_self_signed:
