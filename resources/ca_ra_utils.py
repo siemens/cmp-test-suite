@@ -73,6 +73,7 @@ from resources.exceptions import (
     BadMessageCheck,
     BadPOP,
     BadRequest,
+    BadSigAlgID,
     CertRevoked,
     CMPTestSuiteError,
     InvalidAltSignature,
@@ -1026,6 +1027,11 @@ def _verify_pop_signature(
         if cert_req_msg["regInfo"].isValue:
             logging.debug("regInfo is present in the CertReqMsg,but server logic is not supported yet.")
 
+    except BadSigAlgID as err:
+        raise BadPOP(
+            "Invalid signature algorithm identifier.", error_details=[err.message] + err.error_details
+        ) from err
+
     except pyasn1.error.PyAsn1Error as err:
         raise BadAsn1Data("Failed to encode the CertRequest.", overwrite=True) from err
 
@@ -1305,11 +1311,17 @@ def validate_cert_template_public_key(
             )
         try:
             public_key = convertutils.ensure_is_verify_key(public_key)
+            keyutils.check_consistency_sig_alg_id_and_key(sig_popo_alg_id, public_key)
         except ValueError as e:
             raise BadCertTemplate(
                 "The public key was not a valid verify key.", failinfo="badAlg,badCertTemplate"
             ) from e
-        keyutils.check_consistency_sig_alg_id_and_key(sig_popo_alg_id, public_key)
+        except BadSigAlgID as e:
+            raise BadCertTemplate(
+                "The public key and the signature algorithm identifier did not match.",
+                failinfo="badPOP,badCertTemplate",
+                error_details=[e.message] + e.error_details,
+            ) from e
 
     if cert_template["publicKey"].isValue:
         if cert_template["publicKey"]["subjectPublicKey"].asOctets() != b"":
@@ -1922,6 +1934,10 @@ def verify_sig_pop_for_pki_request(  # noqa: D417 Missing argument descriptions 
         - BadAsn1Data: If the ASN.1 data is invalid.
         - BadPOP: If the signature is invalid.
 
+    Examples:
+    --------
+    | Verify Signature POP For PKI Request | ${pki_message} | ${cert_index} |
+
     """
     body_name = pki_message["body"].getName()
     if body_name in {"ir", "cr", "kur", "crr"}:
@@ -1929,13 +1945,23 @@ def verify_sig_pop_for_pki_request(  # noqa: D417 Missing argument descriptions 
         popo: rfc4211.ProofOfPossession = cert_req_msg["popo"]
         if not popo["signature"].isValue:
             raise BadPOP("POP signature is missing in the PKIMessage.")
-
-        _verify_pop_signature(pki_message, request_index=int(cert_index))
+        try:
+            _verify_pop_signature(pki_message, request_index=int(cert_index))
+        except BadSigAlgID as e:
+            raise BadPOP(
+                "POP signature is missing in the PKIMessage.", error_details=[e.message] + e.error_details
+            ) from e
 
     elif pki_message["p10cr"]:
         csr = pki_message["p10cr"]
         try:
             certutils.verify_csr_signature(csr)
+
+        except BadSigAlgID as e:
+            raise BadPOP(
+                "POP signature is missing in the PKIMessage.", error_details=[e.message] + e.error_details
+            ) from e
+
         except InvalidSignature:
             raise BadPOP("POP verification for `p10cr` failed.")  # pylint: disable=raise-missing-from
 
@@ -2099,8 +2125,9 @@ def _process_one_cert_request(
                 keyutils.check_consistency_sig_alg_id_and_key(
                     cert_req_msg["popo"]["signature"]["algorithmIdentifier"], public_key
                 )
-            except BadAlg as e:
-                raise BadCertTemplate("The `signature` POP alg id and the public key are of different types.") from e
+
+            except BadSigAlgID as e:
+                raise BadPOP("The `signature` POP alg id and the public key are of different types.") from e
 
     elif not cert_req_msg["popo"].isValue:
         if not check_if_request_is_for_kga(request):
