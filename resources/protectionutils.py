@@ -36,7 +36,7 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.keys.sig_keys import MLDSAPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, id_it_KemCiphertextInfo
+from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME, id_it_KemCiphertextInfo
 from resources import (
     certbuildutils,
     certextractutils,
@@ -1329,7 +1329,7 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
 
     Returns:
     -------
-        - A string indicating the protection type: 'mac', 'sig', 'composite-sig' or 'pq-sig'.
+        - A string indicating the protection type: 'mac', 'kem_based_mac', 'sig', 'composite-sig' or 'pq-sig'.
 
     Raises:
     ------
@@ -1362,13 +1362,17 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
             f"Expected 'pbmac1' or 'password_based_mac' protection, but got: {may_return_oid_to_name(alg_oid)}"
         )
 
+    prot_type = ProtectedType.get_protection_type(alg_oid)
+    if prot_type == ProtectedType.KEM:
+        return "kem_based_mac"
+
     if alg_oid in SYMMETRIC_PROT_ALGO:
         return "mac"
 
-    if alg_oid in MSG_SIG_ALG:
+    if alg_oid in TRAD_SIG_OID_2_NAME:
         return "sig"
 
-    if alg_oid in CMS_COMPOSITE03_OID_2_NAME:
+    if alg_oid in COMPOSITE_SIG03_OID_2_NAME or alg_oid in COMPOSITE_SIG04_OID_2_NAME:
         return "composite-sig"
 
     if alg_oid in PQ_SIG_OID_2_NAME:
@@ -2312,7 +2316,7 @@ def sign_data_with_alg_id(  # noqa: D417 Missing argument descriptions in the do
         hash_alg = get_hash_from_oid(oid, only_hash=True)
         return cryptoutils.sign_data(key=key, data=data, hash_alg=hash_alg, use_rsa_pss=True)
 
-    if oid in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
+    if oid in PQ_OID_2_NAME or oid in TRAD_SIG_OID_2_NAME:
         hash_alg = get_hash_from_oid(oid, only_hash=True)
         return cryptoutils.sign_data(key=key, data=data, hash_alg=hash_alg, use_rsa_pss=False)
     raise ValueError(f"Unsupported private key type: {type(key).__name__} oid:{may_return_oid_to_name(oid)}")
@@ -2382,7 +2386,7 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
     elif oid in RSASSA_PSS_OID_2_NAME and isinstance(public_key, rsa.RSAPublicKey):
         verify_rsassa_pss_from_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
 
-    elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
+    elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in TRAD_SIG_OID_2_NAME:
         try:
             hash_alg = get_hash_from_oid(oid, only_hash=True)
             keyutils.check_consistency_sig_alg_id_and_key(alg_id, public_key)
