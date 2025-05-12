@@ -55,6 +55,7 @@ Set Up Test Suite
     ...                configuration file, and will then be loaded from there.
     [Tags]    setup
     IF  '${ISSUED_KEY}' == '${None}'
+        Initialize PQ Cert And Key Variables
         ${issued_key}=    Generate Default Key
         IF    ${ALLOW_MAC_PROTECTION}
             ${extensions}=    Prepare Extensions    digitalSignature,keyEncipherment
@@ -94,6 +95,14 @@ Set Up Test Suite
     ${cert}  ${key}=   May Load Cert And Key    ${OTHER_TRUSTED_PKI_CERT}    ${OTHER_TRUSTED_PKI_KEY}
     VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global  # robocop: off=VAR04
     VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global    # robocop: off=VAR04
+
+Initialize PQ Cert And Key Variables
+    [Documentation]    Initialize the variables for the PQ certificate and key, to store freshly issued
+    ...                certificates and keys. So that those certificates can be used to issue further certificates.
+    ...                Additionally used, to verify if the PKIProtection is working as expected.
+    # Initialize the newly issued certificates and keys.
+    VAR   &{PQ_SIG_CERTS}  scope=Global
+    VAR   &{PQ_SIG_KEYS}   scope=Global
 
 Increase TestIndex
     [Documentation]    Perform the incrementation of the `TestIndex` to update the sender name inside the PKIMessage,
