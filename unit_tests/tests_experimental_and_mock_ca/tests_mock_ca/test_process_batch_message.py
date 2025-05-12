@@ -10,7 +10,7 @@ from pyasn1_alt_modules import rfc9481
 from resources.asn1_structures import PKIMessageTMP
 from resources.certutils import parse_certificate
 from resources.cmputils import build_ir_from_key, build_nested_pkimessage, generate_unique_byte_values
-from resources.exceptions import BadMessageCheck
+from resources.exceptions import BadMessageCheck, BadMacProtection
 from resources.keyutils import load_private_key_from_file
 from resources.protectionutils import protect_pkimessage
 from resources.utils import load_and_decode_pem_file
@@ -108,7 +108,7 @@ class TestProcessBatchMessage(unittest.TestCase):
         """Test processing a batch message with bad message check."""
         nested = self._generate_nested_message(True, False)
 
-        with self.assertRaises(BadMessageCheck) as cm:
+        with self.assertRaises(BadMacProtection) as cm:
             process_batch_message(
                 request=nested,
                 ca_cert=self.ra_cert,
@@ -118,4 +118,4 @@ class TestProcessBatchMessage(unittest.TestCase):
                 must_be_protected=True,
                 shared_secret=self.password,
             )
-        self.assertEqual(str(cm.exception), "The protection of the a nested entry was not valid.")
+        self.assertIn("PKIMessage Protection should be: ", str(cm.exception))

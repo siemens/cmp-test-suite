@@ -12,6 +12,7 @@ from resources.cmputils import patch_extra_certs
 from resources.envdatautils import (
     wrap_key_password_based_key_management_technique, prepare_password_recipient_info,
 )
+from resources.exceptions import BadMacProtection
 from resources.keyutils import load_private_key_from_file
 from resources.protectionutils import protect_pkimessage
 from resources.utils import load_and_decode_pem_file
@@ -106,7 +107,7 @@ class TestCAMessageWithEnvelopeDataPWRI(unittest.TestCase):
         ca_message = protect_pkimessage(ca_message, password="TEST PASSWORD2", protection="password_based_mac")
         ca_message = de_and_encode_pkimessage(ca_message)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMacProtection):
              validate_not_local_key_gen(
                 ca_message, trustanchors="data/unittest", password=self.password
             )

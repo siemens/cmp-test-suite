@@ -1252,7 +1252,7 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
         raise ValueError(f"Unsupported protection algorithm for verification : {protection_type_oid}.")
 
     if protection_value != expected_protection_value:
-        raise ValueError(
+        raise BadMacProtection(
             f"PKIMessage Protection should be: {expected_protection_value.hex()} but was: {protection_value.hex()}"
         )
 

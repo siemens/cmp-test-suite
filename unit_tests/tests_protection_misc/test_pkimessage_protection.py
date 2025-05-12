@@ -5,6 +5,7 @@
 import unittest
 
 from resources.certbuildutils import generate_certificate
+from resources.exceptions import BadMacProtection
 from resources.keyutils import load_private_key_from_file
 from resources.protectionutils import protect_pkimessage, verify_pkimessage_protection
 
@@ -38,7 +39,7 @@ class TestPKIMessageProtection(unittest.TestCase):
         THEN the HMAC verification should raise a ValueError exceptions.
         """
         protected_msg = protect_pkimessage(pki_message=self.pki_message, protection="hmac", password=PASSWORD)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMacProtection):
             verify_pkimessage_protection(pki_message=protected_msg, password=INVALID_PASSWORD)
 
     def test_kmac_protection(self):
@@ -68,7 +69,7 @@ class TestPKIMessageProtection(unittest.TestCase):
             return
 
         protected_msg = protect_pkimessage(pki_message=self.pki_message, protection="kmac", password=PASSWORD)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMacProtection):
             verify_pkimessage_protection(pki_message=protected_msg, password=INVALID_PASSWORD)
 
     def test_gmac_protection(self):
@@ -88,7 +89,7 @@ class TestPKIMessageProtection(unittest.TestCase):
         THEN the GMAC verification should raise a ValueError exceptions.
         """
         protected_msg = protect_pkimessage(pki_message=self.pki_message, protection="aes-gmac", password=PASSWORD)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMacProtection):
             verify_pkimessage_protection(pki_message=protected_msg, password=INVALID_PASSWORD)
 
     def test_password_based_mac_protection(self):
@@ -112,7 +113,7 @@ class TestPKIMessageProtection(unittest.TestCase):
         protected_msg = protect_pkimessage(
             pki_message=self.pki_message, protection="password_based_mac", password=PASSWORD
         )
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMacProtection):
             verify_pkimessage_protection(pki_message=protected_msg, password=INVALID_PASSWORD)
 
     def test_pbmac1_protection(self):
@@ -132,7 +133,7 @@ class TestPKIMessageProtection(unittest.TestCase):
         THEN the PBMAC1 verification should raise a ValueError exceptions.
         """
         protected_msg = protect_pkimessage(pki_message=self.pki_message, protection="pbmac1", password=PASSWORD)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadMacProtection):
             verify_pkimessage_protection(pki_message=protected_msg, password=INVALID_PASSWORD)
 
     def test_sig_rsa(self):
