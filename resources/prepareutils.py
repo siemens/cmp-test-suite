@@ -131,9 +131,7 @@ def _prepare_date_time_object(
     if date is None:
         return datetime.now(timezone.utc)
     if isinstance(date, str):
-        new_time_obj = DateTime.convert_date(date)  # type: ignore
-        if isinstance(date, str):
-            new_time_obj = datetime.fromisoformat(date)
+        new_time_obj = DateTime.convert_date(date, result_format="datetime")  # type: ignore
     elif isinstance(date, float):
         new_time_obj = datetime.fromtimestamp(date)
 
