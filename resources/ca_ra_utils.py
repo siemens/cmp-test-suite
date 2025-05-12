@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448P
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6664, rfc9480
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6664, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
@@ -54,6 +54,7 @@ from resources import (
 )
 from resources.asn1_structures import CertResponseTMP, ChallengeASN1, PKIBodyTMP, PKIMessageTMP
 from resources.asn1utils import get_set_bitstring_names, try_decode_pyasn1
+from resources.ca_kga_logic import get_digest_hash_alg_from_alg_id
 from resources.certextractutils import get_extension
 from resources.convertutils import (
     copy_asn1_certificate,
@@ -2884,6 +2885,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
         raise ValueError("Number of CertConf entries does not match the number of issued certificates.")
 
     entry: rfc9480.CertStatus
+    hash_alg = kwargs.get("hash_alg")
     for entry, issued_cert in zip(cert_conf, issued_certs):
         if entry["certReqId"] != 0 and enforce_lwcmp:
             raise BadRequest(f"Invalid CertReqId in CertConf message. Got: {int(entry['certReqId'])}Expected: 0.")
@@ -2907,6 +2909,9 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
         else:
             alg_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
             hash_alg = get_hash_from_oid(alg_oid, only_hash=True)
+            if kwargs.get("allow_auto_ed", False):
+                if alg_oid in [rfc9481.id_Ed25519, rfc9481.id_Ed448]:
+                    hash_alg = get_digest_hash_alg_from_alg_id(alg_id=issued_cert["tbsCertificate"]["signature"])
 
         if hash_alg is None:
             raise BadCertId(
