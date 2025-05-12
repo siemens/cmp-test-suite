@@ -251,6 +251,7 @@ Request With PQ Sig Key
     ${popo}=   Prepare Signature POPO    ${pq_key}   ${cert_request}  bad_pop=${bad_pop}
     ...        hash_alg=${hash_alg}
     ${ir}=   Build Ir From Key    ${pq_key}   cert_request=${cert_request}  popo=${popo}
+    ...      exclude_fields=sender,senderKID   implicit_confirm=True
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
     ${url}=  Get PQ Issuing URL
     ${response}=   Exchange PKIMessage PQ    ${protected_ir}
@@ -260,4 +261,7 @@ Request With PQ Sig Key
     ELSE
         PKIStatus Must Be    ${response}    accepted
         Validate Certificate Was Issued For Expected Alg  ${response}  ${alg_name}
+        ${cert}=   Confirm Certificate If Needed    ${response}   url=${url}
+        Set To Dictionary    ${PQ_SIG_KEYS}    ${alg_name}=${pq_key}
+        Set To Dictionary    ${PQ_SIG_CERTS}   ${alg_name}=${cert}
     END
