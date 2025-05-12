@@ -115,6 +115,82 @@ CA MUST support KEMBasedMAC
     ${response}=   Exchange PKIMessage PQ    ${protected_ir}
     PKIStatus Must Be    ${response}   accepted
 
+CA MUST Support KEMBasedMAC Until Certificate Is Confirmed
+    [Documentation]    According to rfc4210bis16 Section 5.1.3.4. Key Encapsulation,
+    ...                the CA MUST perform the encapsulation of the shared secret and
+    ...                return the ciphertext to the client. We send then a valid KEMBasedMAC protected
+    ...                message and then a certificate confirmation message. The CA MUST process the request and
+    ...                respond with an `accepted` status.
+    [Tags]    kem-based-mac   genm  certConf
+    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
+    ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
+    SKIP IF  not ${result}    KEM Certificate and Key not set
+    ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
+    ${genp}=   Exchange PKIMessage PQ    ${genm}
+    ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
+    ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
+    ${protected_ir}=   Build IR Request KEMBasedMac Protected
+    ...       ${tx_id}   ${ss}   True
+    ${response}=   Exchange PKIMessage PQ    ${protected_ir}
+    PKIStatus Must Be    ${response}   accepted
+    ${cert_conf}=  Build Cert Conf From Resp    ${response}   sender=${SENDER}
+    ...            recipient=${RECIPIENT}    for_mac=True
+    ${cert_conf}=  Protect PKIMessage KEMBasedMAC    ${cert_conf}    shared_secret=${ss}
+    ${response}=   Exchange PKIMessage PQ    ${cert_conf}
+    PKIMessage Body Type Must Be    ${response}    pkiconf
+    
+CA Should Respond with the a valid KEMBasedMAC Protected Message
+    [Documentation]    According to rfc4210bis16 Section 5.1.3.4. Key Encapsulation,
+    ...                the CA MUST perform the encapsulation of the shared secret and
+    ...                return the ciphertext to the client. We send then a valid KEMBasedMAC protected
+    ...                message. The CA MUST process the request and respond with an `accepted` status
+    ...                and the KEMBasedMAC protected message.
+    [Tags]    kem-based-mac   genm
+    ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
+    SKIP IF  not ${result}    KEM Certificate and Key not set
+    ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
+    ${genp}=   Exchange PKIMessage PQ    ${genm}
+    ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
+    ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
+    ${protected_ir}=   Build IR Request KEMBasedMac Protected
+    ...       ${tx_id}   ${ss}   True
+    ${response}=   Exchange PKIMessage PQ    ${protected_ir}
+    PKIStatus Must Be    ${response}   accepted
+    ${prot_type}=   Get Protection Type From PKIMessage    ${response}
+    IF   not '${prot_type}' == 'kem_based_mac'
+        Fail    The protection type is not KEMBasedMac. Got: ${prot_type}
+    END
+    Verify PKIMessage Protection    ${response}    shared_secret=${ss}
+
+CA MUST Protect pkiconf message with KEMBasedMAC
+    [Documentation]    According to rfc4210bis16 Section 5.1.3.4. Key Encapsulation,
+    ...                the CA MUST perform the encapsulation of the shared secret and
+    ...                return the ciphertext to the client. We send then a valid KEMBasedMAC protected
+    ...                message and then a certificate confirmation message. The CA MUST protect the
+    ...                pkiconf message with the KEMBasedMAC.
+    [Tags]    kem-based-mac   genm  certConf
+    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
+    ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
+    SKIP IF  not ${result}    KEM Certificate and Key not set
+    ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
+    ${genp}=   Exchange PKIMessage PQ    ${genm}
+    ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
+    ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
+    ${protected_ir}=   Build IR Request KEMBasedMac Protected
+    ...       ${tx_id}   ${ss}   True
+    ${response}=   Exchange PKIMessage PQ    ${protected_ir}
+    PKIStatus Must Be    ${response}   accepted
+    ${cert_conf}=  Build Cert Conf From Resp    ${response}   sender=${SENDER}
+    ...            recipient=${RECIPIENT}    for_mac=True
+    ${cert_conf}=  Protect PKIMessage KEMBasedMAC    ${cert_conf}    shared_secret=${ss}
+    ${response}=   Exchange PKIMessage PQ    ${cert_conf}
+    PKIMessage Body Type Must Be    ${response}    pkiconf
+    ${prot_type}=   Get Protection Type From PKIMessage    ${response}
+    IF   not '${prot_type}' == 'kem_based_mac'
+        Fail    The protection type is not KEMBasedMac. Got: ${prot_type}
+    END
+    Verify PKIMessage Protection    ${response}    shared_secret=${ss}
+
 CA Reject invalid KEMBasedMAC Protected Message
     [Documentation]    According to rfc4210bis16 Section 5.1.3.4. Key Encapsulation
     ...                The CA MUST perform the encapsulation of the shared secret and
