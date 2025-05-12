@@ -94,6 +94,7 @@ from resources.oidutils import (
     RSASSA_PSS_OID_2_NAME,
     SHA_OID_2_NAME,
     SYMMETRIC_PROT_ALGO,
+    TRAD_SIG_OID_2_NAME,
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
     id_ce_subjectAltPublicKeyInfo,
@@ -666,7 +667,6 @@ def _compute_pkimessage_protection(
     pki_message: PKIMessageTMP,
     password: Optional[Union[str, bytes]] = None,
     private_key: Optional[PrivateKey] = None,
-    hash_alg: str = "sha256",
     shared_secret: Optional[bytes] = None,
     peer: Optional[Union[rfc9480.CMPCertificate, ECDHPublicKey]] = None,
 ) -> bytes:
@@ -675,7 +675,6 @@ def _compute_pkimessage_protection(
     :param pki_message: `PKIMessageTMP` object to compute the protection for.
     :param password: Optional shared secret for MAC-based protection or a server private key for DHBasedMac.
     :param private_key: Optional PrivateKey used for signature-based protection or DH-based MAC computation.
-    :param hash_alg: Optional string specifying the hash algorithm used for RSASSA-PSS (e.g., "sha256").
     :param shared_secret: Optional shared secret for DH-based MAC computation.
     :raises ValueError: If the protection algorithm OID is not supported or required parameters are not provided.
     :returns bytes: The computed protection value for the `PKIMessage`.
@@ -703,11 +702,6 @@ def _compute_pkimessage_protection(
 
     data = extract_protected_part(pki_message)
     sign_key = ensure_is_sign_key(private_key)
-
-    if protection_type_oid in RSASSA_PSS_OID_2_NAME:
-        if not isinstance(sign_key, rsa.RSAPrivateKey):
-            raise ValueError("The protection algorithm is `RSASSA-PSS` but the private key was not a `RSAPrivateKey`.")
-        return sign_rsa_pss_data_with_alg_id(private_key=sign_key, data=data, alg_id=alg_id, hash_alg=hash_alg)
 
     if protection_type_oid == rfc5480.id_dsa_with_sha256 and isinstance(sign_key, dsa.DSAPrivateKey):
         return cryptoutils.sign_data(data=data, key=sign_key, hash_alg="sha256")  # type: ignore
@@ -1198,7 +1192,8 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
         - `public_key`: The public key in case a self-signed certificate was used to sign the PKIMessage,
         and was omitted inside the extraCerts field, as specified in section 3.3.
         - `shared_secret`: The shared secret for DH-based MAC protection.
-        - `enforce_lwcmp`: If True, enforces the LWCMP algorithm Profile for verification. Defaults to `False`.
+        - `enforce_lwcmp`: If True, enforces the LWCMP algorithm Profile for verification and the same hash algorithm.
+        Defaults to `False`.
 
     Raises:
     ------
@@ -1243,9 +1238,9 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
         if password is None:
             raise ValueError("For the symmetric protection a password has to be provided!")
         byte_secret = convertutils.str_to_bytes(password)
-        expected_protection_value = _compute_symmetric_protection(pki_message, byte_secret)
+        expected_protection_value = _compute_symmetric_protection(pki_message, byte_secret, enforce_lwcmp=enforce_lwcmp)
 
-    elif protection_type_oid in RSASSA_PSS_OID_2_NAME or protection_type_oid in MSG_SIG_ALG:
+    elif protection_type_oid in RSASSA_PSS_OID_2_NAME or protection_type_oid in TRAD_SIG_OID_2_NAME:
         _verify_pki_message_sig(pki_message, public_key)
         return
     else:
