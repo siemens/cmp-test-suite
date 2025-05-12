@@ -22,6 +22,7 @@ from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
+from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey
 from pq_logic.keys.composite_kem05 import CompositeKEMPrivateKey, CompositeKEMPublicKey
 from pq_logic.keys.composite_kem06 import CompositeKEM06PrivateKey, CompositeKEM06PublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
@@ -589,7 +590,9 @@ def may_load_cert_and_key(  # noqa D417 undocumented-param
 
 
 def is_certificate_and_key_set(  # noqa D417 undocumented-param
-    cert: Optional[Union[str, rfc9480.CMPCertificate]] = None, key: Optional[Union[PrivateKey, str]] = None
+    cert: Optional[Union[str, rfc9480.CMPCertificate]] = None,
+    key: Optional[Union[PrivateKey, str]] = None,
+    for_sun_hybrid: bool = False,
 ) -> bool:
     """Check if a certificate and its corresponding private key are valid and set.
 
@@ -599,6 +602,7 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
     ---------
         - `cert`: The certificate or path of the certificate to validate. Default is `None`.
         - `key`: The private key to validate against the certificate. Default is `None`.
+        - `for_sun_hybrid`: Whether the certificate is Sun-Hybrid certificate. Default is `False`.
 
     Returns:
     -------
@@ -629,8 +633,17 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
         cert = certutils.parse_certificate(der_cert)
 
     cert_pub_key = certutils.load_public_key_from_cert(cert)  # type: ignore
-    if key.public_key() != cert_pub_key:
-        raise ValueError("The private key and the public key inside the certificate are not a pair!")
+
+    if not for_sun_hybrid:
+        if key.public_key() != cert_pub_key:
+            raise ValueError("The private key and the public key inside the certificate are not a pair!")
+
+    else:
+        if not isinstance(key, HybridPrivateKey):
+            raise ValueError("The Sun-Hybrid private key is not a `HybridPrivateKey`!")
+
+        if key.trad_key.public_key() != cert_pub_key:
+            raise ValueError("The private key and the public key inside the certificate are not a pair!")
 
     return True
 
