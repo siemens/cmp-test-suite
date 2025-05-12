@@ -677,11 +677,16 @@ Issue New Cert For Testing
     ...    - `cert`: The issued certificate.
     ...    - `key`: The key used to generate the certificate request.
     [Tags]    setup
-    ${cert_template}   ${key}=    Generate CertTemplate For Testing
+    [Arguments]    ${url}=${CA_CMP_URL}    ${key}=${None}
+    IF    '${key}' == '${None}'
+        ${cert_template}   ${key}=    Generate CertTemplate For Testing
+    ELSE
+        VAR   ${cert_template}   ${None}
+    END
     ${ir}=    Build IR From Key   ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
     ...                  implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}    exclude_fields=sender,senderKID
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage    ${protected_ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}   ${url}
     PKIStatus Must Be   ${response}   accepted
     ${cert}=   Confirm Certificate If Needed    ${response}
     RETURN   ${cert}    ${key}
