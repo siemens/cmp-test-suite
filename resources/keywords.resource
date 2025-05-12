@@ -391,7 +391,8 @@ Generate Default Composite Sig Key
     VAR   &{params}  trad_name=${DEFAULT_TRAD_ALG}
     ...              length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
     ...              pq_name=${DEFAULT_PQ_SIG_ALG}
-    ${key}=      Generate Key    algorithm=composite-sig    &{params}
+    # Generates always the latest (supported) version of the algorithm.
+    ${key}=      Generate Unique Key    algorithm=composite-sig    &{params}
     RETURN     ${key}
 
 Default Protect PKIMessage
