@@ -1916,7 +1916,7 @@ def respond_to_cert_req_msg(  # noqa: D417 Missing argument descriptions in the 
     raise ValueError(f"Invalid POP structure: {name}.")
 
 
-@keyword(name="Verify POP Signature For PKI Request")
+@keyword(name="Verify Signature POP For PKI Request")
 def verify_sig_pop_for_pki_request(  # noqa: D417 Missing argument descriptions in the docstring
     pki_message: PKIMessageTMP, cert_index: Union[int, str] = 0
 ) -> None:
