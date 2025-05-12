@@ -157,8 +157,9 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
         pki_message, _ = ca_ra_utils.build_cp_from_p10cr(request=request, cert=cert4, cert_req_id=-1)
 
     elif request["body"].getName() in ["ir", "cr", "kur", "crr"]:
+        body_name = request["body"].getName()
         cert_index = cert_index if cert_index is not None else 0
-        cert_req_msg: rfc4211.CertReqMsg = request["body"]["ir"][cert_index]
+        cert_req_msg: rfc4211.CertReqMsg = request["body"][body_name][cert_index]
         public_key = ca_ra_utils.get_public_key_from_cert_req_msg(cert_req_msg)
         if isinstance(public_key, CompositeSig03PublicKey):
             ca_ra_utils.verify_sig_pop_for_pki_request(request, cert_index)
@@ -174,10 +175,15 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
                 bad_alt_sig=kwargs.get("bad_alt_sig", False),
             )
 
-            pki_message, _ = ca_ra_utils.build_ip_cmp_message(
-                cert=cert4,
-                request=request,
+            cert_response = ca_ra_utils.prepare_cert_response(
                 cert_req_id=int(cert_req_msg["certReq"]["certReqId"]),
+                cert=cert4,
+            )
+
+            pki_message = ca_ra_utils.build_ca_message(
+                request=request,
+                responses=cert_response,
+                **kwargs,
             )
 
         elif isinstance(public_key, HybridKEMPublicKey):
