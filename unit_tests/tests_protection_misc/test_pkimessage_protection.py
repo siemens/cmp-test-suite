@@ -250,7 +250,7 @@ class TestPKIMessageProtection(unittest.TestCase):
         # verifies with self-signed certificate, generated inside if not provided.
         verify_pkimessage_protection(pki_message=protected_msg)
 
-    def test_sig_ecdsa_with_rsassa_pss_without_cert(self):
+    def test_sig_rsassa_pss_without_cert(self):
         """
         GIVEN a PKIMessage and an RSA private key without a certificate.
         WHEN the PKIMessage is protected using an RSASSA-PSS signature with sha256 algorithm.
@@ -269,4 +269,46 @@ class TestPKIMessageProtection(unittest.TestCase):
         protected_msg = de_and_encode_pkimessage(pki_message=protected_msg)
 
         # verifies with self-signed certificate, generated inside if not provided.
-        verify_pkimessage_protection(pki_message=protected_msg)
+        verify_pkimessage_protection(pki_message=protected_msg, public_key=private_key.public_key())
+
+    def test_sig_rsassa_pss_shake128_without_cert(self):
+        """
+        GIVEN a PKIMessage and an RSA private key without a certificate.
+        WHEN the PKIMessage is protected using an RSASSA-PSS signature with shake128 algorithm.
+        THEN the RSASSA-PSS signature verification should succeed with a self-signed certificate.
+        """
+        private_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
+        protected_msg = protect_pkimessage(
+            pki_message=self.pki_message,
+            cert=None,
+            private_key=private_key,
+            protection="rsassa-pss",
+            password=None,
+            hash_alg="shake128",
+        )
+        # simulate over wire. because expects the `parameters` field to be un-decoded.
+        protected_msg = de_and_encode_pkimessage(pki_message=protected_msg)
+
+        # verifies with self-signed certificate, generated inside if not provided.
+        verify_pkimessage_protection(pki_message=protected_msg, public_key=private_key.public_key())
+
+    def test_sig_rsassa_pss_shake256_without_cert(self):
+        """
+        GIVEN a PKIMessage and an RSA private key without a certificate.
+        WHEN the PKIMessage is protected using an RSASSA-PSS signature with shake256 algorithm.
+        THEN the RSASSA-PSS signature verification should succeed with a self-signed certificate.
+        """
+        private_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
+        protected_msg = protect_pkimessage(
+            pki_message=self.pki_message,
+            cert=None,
+            private_key=private_key,
+            protection="rsassa-pss",
+            password=None,
+            hash_alg="shake256",
+        )
+        # simulate over wire. because expects the `parameters` field to be un-decoded.
+        protected_msg = de_and_encode_pkimessage(pki_message=protected_msg)
+
+        # verifies with self-signed certificate, generated inside if not provided.
+        verify_pkimessage_protection(pki_message=protected_msg, public_key=private_key.public_key())
