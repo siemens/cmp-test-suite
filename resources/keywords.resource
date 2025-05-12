@@ -39,7 +39,6 @@ ${TEST_INDEX}            ${0}
 ...        private_key=${ISSUED_KEY}    cert=${ISSUED_CERT}
 ...        password=${PRESHARED_SECRET}    protection=signature
 
-
 *** Keywords ***
 Set Up Test Suite
     [Documentation]    This keyword is used to set up the test suite. It is called at the beginning of the test suite.
@@ -966,3 +965,15 @@ Wait Until Server Updated Cert
 Wait Until Server Revived Cert
     [Documentation]    Wait time until the server revived a certificate so that testing can be begin.
     Sleep    ${REVOKED_WAIT_TIME}
+
+Get PQ Issuing URL
+    [Documentation]    Return the URL for the PQ issuing endpoint.
+    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
+    RETURN  ${url}
+
+Exchange PKIMessage PQ
+    [Documentation]    Exchange a PKIMessage with the PQ issuing endpoint.
+    [Arguments]    ${pki_message}
+    ${url}=   Get PQ Issuing URL
+    ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
+    RETURN   ${response}
