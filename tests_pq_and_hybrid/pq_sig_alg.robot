@@ -252,7 +252,8 @@ Request With PQ Sig Key
     ...        hash_alg=${hash_alg}
     ${ir}=   Build Ir From Key    ${pq_key}   cert_request=${cert_request}  popo=${popo}
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange PKIMessage    ${protected_ir}
+    ${url}=  Get PQ Issuing URL
+    ${response}=   Exchange PKIMessage PQ    ${protected_ir}
     IF   ${bad_pop}
         PKIStatus Must Be    ${response}    rejection
         PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP

@@ -107,12 +107,12 @@ CA MUST support KEMBasedMAC
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
     ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
-    ${genp}=   Exchange PKIMessage    ${genm}
+    ${genp}=   Exchange PKIMessage PQ    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
     ${protected_ir}=   Build IR Request KEMBasedMac Protected
     ...       ${tx_id}   ${ss}   True
-    ${response}=   Exchange PKIMessage    ${protected_ir}
+    ${response}=   Exchange PKIMessage PQ    ${protected_ir}
     PKIStatus Must Be    ${response}   accepted
 
 CA Reject invalid KEMBasedMAC Protected Message
@@ -125,12 +125,12 @@ CA Reject invalid KEMBasedMAC Protected Message
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
     ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
-    ${genp}=   Exchange PKIMessage    ${genm}
+    ${genp}=   Exchange PKIMessage PQ    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
     ${protected_ir}=   Build IR Request KEMBasedMac Protected
     ...       ${tx_id}   ${ss}   True  ${None}   True
-    ${response}=   Exchange PKIMessage    ${protected_ir}
+    ${response}=   Exchange PKIMessage PQ    ${protected_ir}
     PKIStatus Must Be    ${response}   rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}   badMessageCheck
 
@@ -143,19 +143,20 @@ CA MUST not reuse the same ss for KEMBASEDMAC
     [Tags]    kem-based-mac   genm
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
+    ${url}=   Get PQ Issuing URL
     ${cm}=    Get Next Common Name
     ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
-    ${genp}=   Exchange PKIMessage    ${genm}
+    ${genp}=   Exchange PKIMessage PQ    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
     ${key}=  Generate Default Key
     ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
     ${protected_ir}=   Build IR Request KEMBasedMac Protected
     ...       ${tx_id}   ${ss}   True  ${None}
-    ${response}=   Exchange PKIMessage    ${protected_ir}
+    ${response}=   Exchange PKIMessage PQ    ${protected_ir}
     PKIStatus Must Be    ${response}   accepted
     ${protected_ir}=   Build IR Request KEMBasedMac Protected
     ...       ${tx_id}   ${ss}   True  ${None}
-    ${response}=   Exchange PKIMessage    ${protected_ir}
+    ${response}=   Exchange PKIMessage PQ    ${protected_ir}
     PKIStatus Must Be    ${response}   rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}   badMessageCheck,badRequest,systemFailure
 
