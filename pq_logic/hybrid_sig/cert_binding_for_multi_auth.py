@@ -469,6 +469,22 @@ def validate_related_cert_pop(  # noqa: D417 Missing argument descriptions in th
     return cert_chain
 
 
+def _validate_is_ca_cert(extensions: rfc9480.Extensions) -> bool:
+    """Validate if the certificate is a CA certificate.
+
+    :param extensions: The extensions of the certificate, to check for the `BasicConstraints` extension.
+    :return: `True` if the certificate is a CA certificate, `False` otherwise.
+    """
+    extn = certextractutils.get_extension(extensions, rfc5280.id_ce_basicConstraints)
+    if extn is None:
+        return False
+    ca_extn, rest = try_decode_pyasn1(extn["extnValue"].asOctets(), rfc5280.BasicConstraints())  # type: ignore
+    if rest:
+        raise BadAsn1Data("`BasicConstraints`")
+    ca_extn: rfc5280.BasicConstraints
+    return ca_extn["cA"]
+
+
 def validate_multi_auth_binding_csr(  # noqa: D417 Missing argument descriptions in the docstring
     csr: rfc6402.CertificationRequest,
     load_chain: bool = False,
