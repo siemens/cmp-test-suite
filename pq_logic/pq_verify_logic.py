@@ -597,12 +597,15 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
         pki_message["header"]["generalInfo"] = other_fields
         data = protectionutils.prepare_protected_part(pki_message)
         other_key = convertutils.ensure_is_verify_key(other_key)
-        protectionutils.verify_signature_with_alg_id(
-            public_key=other_key,
-            alg_id=sig_alg_id,
-            data=data,
-            signature=alt_sig,
-        )
+        try:
+            protectionutils.verify_signature_with_alg_id(
+                public_key=other_key,
+                alg_id=sig_alg_id,
+                data=data,
+                signature=alt_sig,
+            )
+        except InvalidSignature as e:
+            raise InvalidAltSignature("The alternative signature is invalid.") from e
 
 
 @keyword(name="Verify CRL Signature")
