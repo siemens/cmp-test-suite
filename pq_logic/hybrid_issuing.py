@@ -683,7 +683,7 @@ def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descr
         data = encoder.encode(cert_req)
         sig_alg = prepare_alg_ids.prepare_sig_alg_id(
             signing_key=comp_key,  # type: ignore
-            use_rsa_pss=True,
+            use_rsa_pss=use_rsa_pss,
             hash_alg=hash_alg,
         )
         sig = protectionutils.sign_data_with_alg_id(key=comp_key, alg_id=sig_alg, data=data)
