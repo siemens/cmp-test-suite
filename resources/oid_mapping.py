@@ -35,6 +35,7 @@ from resources.oidutils import (
     PQ_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
     SUPPORTED_MAC_NAME_2_OID,
+    TRAD_SIG_NAME_2_OID,
 )
 from resources.typingutils import PrivateKey
 
@@ -83,7 +84,14 @@ def get_signing_oid(key, hash_alg: Optional[str], use_pss: bool = False) -> Opti
 
     else:
         name = key_type
-    return oid or OID_HASH_NAME_2_OID.get(name) or SUPPORTED_MAC_NAME_2_OID.get(key_type)
+
+    if oid is not None:
+        return oid
+
+    if key_type in TRAD_SIG_NAME_2_OID:
+        return TRAD_SIG_NAME_2_OID[key_type]
+
+    return OID_HASH_NAME_2_OID.get(name) or SUPPORTED_MAC_NAME_2_OID.get(key_type)
 
 
 @not_keyword
