@@ -55,6 +55,7 @@ from resources.oidutils import (
     RSASSA_PSS_OID_2_NAME,
     id_KemBasedMac,
 )
+from resources.suiteenums import ProtectedType
 from resources.typingutils import Strint
 
 
@@ -354,6 +355,35 @@ def check_is_protection_present(  # noqa D417 undocumented-param
     return True
 
 
+def _verify_sender_field_for_mac(sender_name: rfc9480.GeneralName, allow_failure: bool = False) -> None:
+    """Verify the sender field for MAC-based protection.
+
+    :param sender_name: The sender name to verify.
+    :param allow_failure: If True, allows failure without raising an exception. Defaults to False.
+    :raises BadMessageCheck: If the sender field is not of type `directoryName` or does not contain a common name.
+    """
+    if sender_name.getName() != "directoryName":
+        if allow_failure:
+            logging.info("For MAC protection the sender is supposed to be of type `directoryName`")
+            return
+
+        raise BadMessageCheck(
+            " For MAC-based protection, the CA "
+            "MUST use an identifier in the commonName field of the directoryName choice."
+        )
+
+    cm_name = utils.get_openssl_name_notation(name=sender_name["directoryName"], oids=[rfc5280.id_at_commonName])
+
+    if not allow_failure:
+        if cm_name is None:
+            raise BadMessageCheck(
+                " For MAC-based protection, the CA "
+                "MUST use an identifier in the commonName field of the directoryName choice."
+            )
+
+    logging.info("sender for MAC-based protection is %s", cm_name)
+
+
 @keyword(name="Check Sender CMP Protection")
 def check_sender_cmp_protection(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP, must_be_protected=True, allow_failure=True
@@ -389,53 +419,35 @@ def check_sender_cmp_protection(  # noqa D417 undocumented-param
     sender_name = asn1utils.get_asn1_value(pki_message, query="header.sender")  # type: ignore
     sender_name: rfc9480.GeneralName
     check_is_protection_present(pki_message=pki_message, must_be_protected=must_be_protected)
+    protection_type = ProtectedType.get_protection_type(pki_message)
 
-    if protectionutils.get_protection_type_from_pkimessage(pki_message) == "sig":
-        cert_name = asn1utils.get_asn1_value(
-            pki_message["extraCerts"][0],  # type: ignore
-            query="tbsCertificate.subject",
-        )
-        cert_name: rfc9480.Name
-        are_same_names = compareutils.compare_general_name_and_name(general_name=sender_name, name=cert_name)
+    if protection_type in [ProtectedType.MAC, ProtectedType.KEM]:
+        _verify_sender_field_for_mac(sender_name=sender_name, allow_failure=allow_failure)
+        return
 
-        if not are_same_names:
-            if allow_failure:
-                n = sender_name.getName()
-                sender_name = f"{n}: {str(sender_name[n])}"  # type: ignore
-                logging.warning(
-                    "The subjectDN should be the same as the sender Name. sender: %s, certificate: %s",
-                    sender_name,
-                    cert_name.prettyPrint(),
-                )
-            else:
-                n = sender_name.getName()
-                sender_name = f"{n}: {str(sender_name[n])}"  # type: ignore
-                raise BadMessageCheck(
-                    f"The subjectDN should be the same as the sender Name. sender: {sender_name}, "
-                    f"certificate: {cert_name.prettyPrint()}"
-                )
+    cert_name = asn1utils.get_asn1_value(
+        pki_message["extraCerts"][0],  # type: ignore
+        query="tbsCertificate.subject",
+    )
+    cert_name: rfc9480.Name
+    are_same_names = compareutils.compare_general_name_and_name(general_name=sender_name, name=cert_name)
 
-    else:
-        if sender_name.getName() != "directoryName":
-            if allow_failure:
-                logging.info("For MAC protection the sender is supposed to be of type `directoryName`")
-                return
-
-            raise BadMessageCheck(
-                " For MAC-based protection, the CA "
-                "MUST use an identifier in the commonName field of the directoryName choice."
+    if not are_same_names:
+        if allow_failure:
+            n = sender_name.getName()
+            sender_name = f"{n}: {str(sender_name[n])}"  # type: ignore
+            logging.warning(
+                "The subjectDN should be the same as the sender Name. sender: %s, certificate: %s",
+                sender_name,
+                cert_name.prettyPrint(),
             )
-
-        cm_name = utils.get_openssl_name_notation(name=sender_name["directoryName"], oids=[rfc5280.id_at_commonName])
-
-        if not allow_failure:
-            if cm_name is None:
-                raise BadMessageCheck(
-                    " For MAC-based protection, the CA "
-                    "MUST use an identifier in the commonName field of the directoryName choice."
-                )
-
-        logging.info("sender for MAC-based protection is %s", cm_name)
+        else:
+            n = sender_name.getName()
+            sender_name = f"{n}: {str(sender_name[n])}"  # type: ignore
+            raise BadMessageCheck(
+                f"The subjectDN should be the same as the sender Name. sender: {sender_name}, "
+                f"certificate: {cert_name.prettyPrint()}"
+            )
 
 
 def _check_cmp_protection_for_extra_certs(pki_message: PKIMessageTMP, allow_self_signed: bool) -> None:
@@ -611,6 +623,9 @@ def _verify_senderkid_for_mac(pki_message: PKIMessageTMP, allow_mac_failure: boo
         )
 
 
+# TODO add test cases for all algorithms (PQ, Composite, etc.)
+
+
 @keyword(name="Validate senderKID For CMP Protection")
 def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP,
@@ -661,10 +676,11 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
         protection_cert = pki_message["extraCerts"][0]
 
     # Determine the type of protection
-    protection_type = protectionutils.get_protection_type_from_pkimessage(pki_message)
+    protection_type = ProtectedType.get_protection_type(pki_message)
     sender_kid = pki_message["header"]["senderKID"].asOctets()
-    alg_name = protectionutils.get_protection_alg_name(pki_message)
-    if protection_type == "sig" or alg_name in ["dh_based_mac", "kem_based_mac"]:
+    if ProtectedType.MAC == protection_type:
+        _verify_senderkid_for_mac(pki_message=pki_message, allow_mac_failure=allow_mac_failure)
+    else:
         # For signature-based protection, the senderKID must match the certificate's SubjectKeyIdentifier
         subject_ski = certextractutils.get_subject_key_identifier(protection_cert)  # type: ignore
         if subject_ski is None:
@@ -676,9 +692,6 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
             raise BadMessageCheck(
                 "The SubjectKeyIdentifier of the CMP-protection certificate differs from the senderKID."
             )
-
-    else:
-        _verify_senderkid_for_mac(pki_message=pki_message, allow_mac_failure=allow_mac_failure)
 
 
 @keyword(name="Validate PKIMessage Signature Protection")
