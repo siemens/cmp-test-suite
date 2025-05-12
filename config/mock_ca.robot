@@ -157,7 +157,7 @@ ${UPDATE_WAIT_TIME}   3
 ${ALLOW_MAC_PROTECTED_SUPPORT_MSG}   ${True}
 ${ALLOW_SUPPORT_MESSAGES}   ${True}
 # Can be used to check if the General Message CRL Update Retrieval works with the last CRL.
-${CRL_FILEPATH}    current_crl.pem
+${CRL_FILEPATH}    data/mock_ca/current_crl.pem
 ${CRL_CERT_IDP}  data/unittest/dsa_certificate.pem
 
 
@@ -205,17 +205,17 @@ ${DEFAULT_PQ_SIG_ALG}   ml-dsa-44
 
 ${INIT_SUFFIX}   issuing
 ${PQ_ISSUING_SUFFIX}   issuing
-${URI_MULTIPLE_AUTH}   ${None}
+${URI_RELATED_CERT}   http://127.0.0.1:5000/cert
+${NEG_URI_RELATED_CERT}   http://127.0.0.1:5000/cert_neg
 ${ISSUING_SUFFIX}   issuing
 ${COMPOSITE_URL_PREFIX}   issuing
 ${CATALYST_ISSUING}  catalyst-issuing
 ${CATALYST_SIGNATURE}   catalyst-sig
 ${SUN_HYBRID_SUFFIX}   sun-hybrid
 ${CHAMELEON_SUFFIX}   chameleon
-${RELATED_CERT_SUFFIX}   related-Cert
+${RELATED_CERT_SUFFIX}   related-cert
 ${MULTI_AUTH_SUFFIX}   multi-auth
 ${CERT_DISCOVERY_SUFFIX}   cert-discovery
-
 
 # CMP and LwCMP certificates and keys
 ${UPDATED_CERT}    ${None}
