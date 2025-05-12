@@ -333,7 +333,8 @@ def build_migration_cert_chain(  # noqa D417 undocumented-param
 
 
 def build_sun_hybrid_cert_chain(  # noqa D417 undocumented-param
-    cert: rfc9480.CMPCertificate, certs: Iterable[rfc9480.CMPCertificate]
+    cert: rfc9480.CMPCertificate,
+    certs: Union[Iterable[rfc9480.CMPCertificate], PKIMessageTMP],
 ) -> List[rfc9480.CMPCertificate]:
     """Build the SUN hybrid certificate chain.
 
@@ -355,17 +356,22 @@ def build_sun_hybrid_cert_chain(  # noqa D417 undocumented-param
     | ${chain} = | Build Sun Hybrid Cert Chain | ${cert} | ${certs} |
 
     """
+    if isinstance(certs, PKIMessageTMP):
+        certs = certs["extraCerts"]
+        if not certs.isValue:
+            raise ValueError("The `PKIMessage` does not contain any extra certificates.")
+
     cert4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(cert, "Form4")
 
-    chain = [cert4]
-    for entry in certs:
+    all_poss_form4 = []
+    for x in certs:
         try:
-            issuer = find_sun_hybrid_issuer_cert(cert, entry)
+            form4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(x, "Form4")
+            all_poss_form4.append(form4)
         except ValueError:
-            continue
-        chain.append(issuer)
-        cert = issuer
+            pass
 
+    chain = certutils.build_chain_from_list(cert4, all_poss_form4)
     if len(chain) == 1:
         raise ValueError("No issuer certificate found.")
     return chain
