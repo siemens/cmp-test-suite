@@ -6,9 +6,10 @@
 
 import base64
 import textwrap
+from typing import Optional
 
-from cryptography.hazmat.primitives._serialization import Encoding, PublicFormat
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5915, rfc8017
@@ -46,17 +47,23 @@ def prepare_enc_key_pem(password: str, one_asym_key: bytes, key_name: bytes) -> 
 
 
 @not_keyword
-def prepare_rsa_private_key(rsa_key: rsa.RSAPrivateKey) -> bytes:
+def prepare_rsa_private_key(rsa_key: rsa.RSAPrivateKey, add_to_n: bool = False) -> bytes:
     """Prepare an RSA private key for encoding.
 
     :param rsa_key: The RSA private key to prepare.
+    :param add_to_n: If True, add 1 to the modulus `n` for negative testing.
     :return: The RSA private key as DER-encoded `RSAPrivateKey`.
     """
     private_nums = rsa_key.private_numbers()
 
+    n = private_nums.public_numbers.n
+    if add_to_n:
+        # Add 1 to n for demonstration purposes
+        n += 1
+
     rsa_asn1_key = rfc8017.RSAPrivateKey()
     rsa_asn1_key["version"] = 0
-    rsa_asn1_key["modulus"] = private_nums.public_numbers.n
+    rsa_asn1_key["modulus"] = n
     rsa_asn1_key["publicExponent"] = private_nums.public_numbers.e
     rsa_asn1_key["privateExponent"] = private_nums.d
     rsa_asn1_key["prime1"] = private_nums.p
@@ -69,14 +76,27 @@ def prepare_rsa_private_key(rsa_key: rsa.RSAPrivateKey) -> bytes:
 
 
 @not_keyword
-def prepare_ec_private_key(ec_key: ec.EllipticCurvePrivateKey) -> rfc5915.ECPrivateKey:
-    """Prepare an EC private key for encoding in ASN.1."""
+def ecc_private_key_to_bytes(ec_key: ec.EllipticCurvePrivateKey) -> bytes:
+    """Convert an EC private key to big endian byte format.
+
+    :param ec_key: The EC private key to convert.
+    :return: The DER-encoded EC private key.
+    """
     private_nums = ec_key.private_numbers()
+    return private_nums.private_value.to_bytes((private_nums.private_value.bit_length() + 7) // 8, "big")
+
+
+@not_keyword
+def prepare_ec_private_key(
+    ec_key: ec.EllipticCurvePrivateKey, private_key_bytes: Optional[bytes] = None
+) -> rfc5915.ECPrivateKey:
+    """Prepare an EC private key for encoding in ASN.1."""
     ec_private_key = rfc5915.ECPrivateKey()
     ec_private_key["version"] = 1
-    ec_private_key["privateKey"] = private_nums.private_value.to_bytes(
-        (private_nums.private_value.bit_length() + 7) // 8, "big"
-    )
+
+    private_key_bytes = private_key_bytes or ecc_private_key_to_bytes(ec_key)
+
+    ec_private_key["privateKey"] = private_key_bytes
     curve_oid = CURVE_NAME_2_OID[ec_key.curve.name.lower()]
     ec_private_key["parameters"]["namedCurve"] = curve_oid
 

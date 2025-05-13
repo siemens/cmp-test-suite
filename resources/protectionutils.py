@@ -65,7 +65,7 @@ from resources.convertutils import (
     str_to_bytes,
     subject_public_key_info_from_pubkey,
 )
-from resources.exceptions import BadAlg, BadMessageCheck, InvalidKeyCombination, UnknownOID
+from resources.exceptions import BadAlg, BadAsn1Data, BadMessageCheck, InvalidKeyCombination, UnknownOID
 from resources.oid_mapping import (
     get_alg_oid_from_key_hash,
     get_hash_from_oid,
@@ -2124,10 +2124,10 @@ def verify_kem_based_mac_protection(
     :param pki_message: The `PKIMessage` to verify.
     :param private_key: The private key kem used to verify the KEMBasedMac.
     :param shared_secret: The shared secret to use for verification. Defaults to `None`.
-    :raises ValueError: If the KEMBasedMac verification fails.
+    :raises BadMessageCheck: If the KEMBasedMac verification fails.
     ValueError: If neither `private_key` nor `shared_secret` is provided.
     ValueError: If the KEM algorithm OID does not match the private key's OID.
-    ValueError: If the decoding of the `KemCiphertextInfoValue` had a remainder.
+    BadAsn1Data: If the decoding of the `KemCiphertextInfoValue` had a remainder.
     """
     if private_key is None and shared_secret is None:
         raise ValueError("Either `private_key` or `shared_secret` must be provided.")
@@ -2146,12 +2146,12 @@ def verify_kem_based_mac_protection(
                 break
 
         if kem_ct_info is None:
-            raise ValueError("The `KemCiphertextInfo` field is missing in the `PKIMessage`.")
+            raise BadAsn1Data("The `KemCiphertextInfo` field is missing in the `PKIMessage`.")
 
         kem_ct_info_val, rest = decoder.decode(kem_ct_info, asn1Spec=KemCiphertextInfoValue())
 
         if rest:
-            raise ValueError("The decoding of the `KemCiphertextInfoValue` had a remainder.")
+            raise BadAsn1Data("The decoding of the `KemCiphertextInfoValue` had a remainder.")
 
         kem_oid = kem_ct_info_val["kem"]["algorithm"]
 
@@ -2175,7 +2175,7 @@ def verify_kem_based_mac_protection(
     logging.debug("Computed MAC: %s", computed_mac.hex())
     logging.debug("Received MAC: %s", pki_message["protection"].asOctets().hex())
     if computed_mac != pki_message["protection"].asOctets():
-        raise ValueError("The KEMBasedMac verification failed.")
+        raise BadMessageCheck("The KEMBasedMac verification failed.")
 
 
 @not_keyword

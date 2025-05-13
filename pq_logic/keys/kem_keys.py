@@ -29,6 +29,7 @@ from typing import Tuple
 from pq_logic.fips.fips203 import ML_KEM
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
+from resources.exceptions import InvalidKeyData
 
 if importlib.util.find_spec("oqs") is not None:
     import oqs  # pylint: disable=import-error # type: ignore[import]
@@ -45,6 +46,7 @@ VALID_MCELIECE_OPTIONS = {
     "mceliece-8192128": "Classic-McEliece-8192128",
 }
 ML_KEM_NAMES = ["ml-kem-512", "ml-kem-768", "ml-kem-1024"]
+ML_KEM_PRIVATE_KEY_SIZE = {"ml-kem-768": 2400, "ml-kem-512": 1632, "ml-kem-1024": 3168}
 
 ##########################
 # ML-KEM
@@ -110,6 +112,10 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
 
         if self._private_key_bytes is None and self._public_key_bytes is None:
             self._seed = self._seed or os.urandom(64)
+
+            if len(self._seed) != 64:
+                raise InvalidKeyData(f"Invalid seed length. Expected 64 bytes. Got: {len(self._seed)}")
+
             d, z = self._seed[:32], self._seed[32:]
             self._public_key_bytes, self._private_key_bytes = self.ml_class.keygen_internal(d=d, z=z)
 
@@ -172,14 +178,29 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
 
         :param data: The public key as raw bytes.
         :param name: The algorithm name.
-        :return: An instance of `MLKEMPublicKey`.
+        :return: The ML-KEM public key.
+        :raises ValueError: If the key name is not supported.
+        :raises InvalidKeyData: If the key data is invalid.
         """
         if len(data) == 64:
             return cls.from_seed(alg_name=name, seed=data)  # type: ignore
 
-        key = cls(alg_name=name, private_bytes=data)
-        if key.key_size != len(data):
-            raise ValueError(f"Invalid key size expected {key.key_size}, but got: {len(data)}")
+        key_size = ML_KEM_PRIVATE_KEY_SIZE[name]
+
+        if len(data) == key_size + 64:
+            # The first 64 bytes are the seed, the rest is the private key
+            seed = data[:64]
+            private_key = data[64:]
+            key = cls(alg_name=name, private_bytes=private_key, seed=seed)
+            if key.private_bytes_raw() != private_key:
+                raise InvalidKeyData("Invalid private key data the key does not match the provided seed.")
+
+        elif len(data) == key_size:
+            # The data is the private key
+            key = cls(alg_name=name, private_bytes=data)
+        else:
+            raise InvalidKeyData(f"Invalid key size expected {key_size}, but got: {len(data)}")
+
         return key
 
     def decaps(self, ct: bytes) -> bytes:
@@ -204,7 +225,7 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
     @property
     def key_size(self) -> int:
         """Get the size of the key."""
-        return {"ml-kem-768": 2400, "ml-kem-512": 1632, "ml-kem-1024": 3168}[self.name]
+        return ML_KEM_PRIVATE_KEY_SIZE[self.name]
 
     @property
     def nist_level(self) -> int:

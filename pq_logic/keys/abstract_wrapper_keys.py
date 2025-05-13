@@ -52,7 +52,13 @@ from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey, Ed448PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, PublicFormat
+from cryptography.hazmat.primitives.serialization import (
+    BestAvailableEncryption,
+    Encoding,
+    NoEncryption,
+    PrivateFormat,
+    PublicFormat,
+)
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5958
@@ -208,7 +214,7 @@ class WrapperPrivateKey(BaseKey):
         self,
         encoding: Encoding = Encoding.PEM,
         format: PrivateFormat = PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
+        encryption_algorithm: Union[NoEncryption, BestAvailableEncryption] = NoEncryption(),
     ) -> bytes:
         """Get the serialized private key in bytes format.
 
@@ -431,8 +437,8 @@ class PQPrivateKey(WrapperPrivateKey, ABC):
     def _to_one_asym_key(self) -> bytes:
         """Prepare a PyAsn1 OneAsymmetricKey structure."""
         one_asym_key = rfc5958.OneAsymmetricKey()
-        # MUST be version 2 otherwise, liboqs will generate a wrong key.
-        one_asym_key["version"] = 2
+        # MUST be version 1 otherwise, liboqs will generate a wrong key.
+        one_asym_key["version"] = 1
         one_asym_key["privateKeyAlgorithm"]["algorithm"] = self.get_oid()
         one_asym_key["privateKey"] = univ.OctetString(self._export_private_key())
         public_key_asn1 = univ.BitString(hexValue=self.public_key().public_bytes_raw().hex()).subtype(
@@ -579,7 +585,7 @@ class HybridPrivateKey(WrapperPrivateKey, ABC):
         self._trad_key = trad_key
 
     @property
-    def pq_key(self) -> WrapperPrivateKey:
+    def pq_key(self) -> PQPrivateKey:
         """Get the private key of the post-quantum algorithm."""
         return self._pq_key
 
@@ -985,7 +991,9 @@ class AbstractHybridRawPrivateKey(HybridKEMPrivateKey, ABC):
 
     def _export_private_key(self) -> bytes:
         """Export the private key as bytes."""
-        return self.private_bytes_raw()
+        pq_data = self._pq_key.private_bytes_raw()
+        _length = len(pq_data)
+        return _length.to_bytes(4, "little") + pq_data + self._encode_trad_part()
 
     @classmethod
     @abstractmethod

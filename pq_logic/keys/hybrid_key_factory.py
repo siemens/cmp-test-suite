@@ -7,30 +7,41 @@
 import logging
 from typing import Dict, List, Optional, Tuple, Union
 
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from pyasn1.codec.der import decoder
-from pyasn1_alt_modules import rfc5958
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import tag, univ
+from pyasn1_alt_modules import rfc5280, rfc5958
 
-from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey, PQPrivateKey, TradKEMPrivateKey
+from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1
+from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey, HybridPublicKey, PQPrivateKey, TradKEMPrivateKey
 from pq_logic.keys.chempat_key import ChempatPrivateKey, ChempatPublicKey
 from pq_logic.keys.composite_kem05 import (
     CompositeKEMPrivateKey,
 )
-from pq_logic.keys.composite_kem06 import CompositeDHKEMRFC9180PrivateKey, CompositeKEM06PrivateKey
+from pq_logic.keys.composite_kem06 import (
+    CompositeDHKEMRFC9180PrivateKey,
+    CompositeKEM06PrivateKey,
+)
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
-from pq_logic.keys.trad_key_factory import generate_trad_key
+from pq_logic.keys.serialize_utils import prepare_ec_private_key
+from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, RSADecapKey
+from pq_logic.keys.trad_key_factory import generate_trad_key, prepare_trad_private_key_one_asym_key
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import CHEMPAT_OID_2_NAME
-from resources.exceptions import BadAlg, InvalidKeyCombination
+from resources.exceptions import BadAlg, InvalidKeyCombination, InvalidKeyData, MismatchingKey
 from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
 from resources.oidutils import (
     ALL_COMPOSITE_SIG04_COMBINATIONS,
     ALL_COMPOSITE_SIG_COMBINATIONS,
+    PQ_NAME_2_OID,
     XWING_OID_STR,
 )
-from resources.typingutils import ECDHPrivateKey, ECSignKey, Strint
+from resources.suiteenums import KeySaveType
+from resources.typingutils import ECDHPrivateKey, ECPrivateKey, ECSignKey, Strint
 
 TradPartPrivateKey = Union[ECSignKey, ECDHPrivateKey, RSAPrivateKey, TradKEMPrivateKey]
 
@@ -228,6 +239,8 @@ class HybridKeyFactory:
         "sig-04": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "sig-03": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "kem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
+        "kem-05": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
+        "kem-06": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "chempat": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "dhkem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
     }
@@ -382,8 +395,66 @@ class HybridKeyFactory:
         return _parse_private_keys(algorithm, pq_key, trad_key)
 
     @staticmethod
+    def _load_pq_key(name: str, data: bytes) -> PQPrivateKey:
+        """Load a post-quantum key from the provided bytes.
+
+        Necessary for loading hybrid keys, to ensure that the old key loading logic and the
+        new key loading logic are compatible (ML-KEM and ML-DSA keys).
+
+        :param name: The name of the key.
+        :param data: The key bytes.
+        :return: The loaded post-quantum key.
+        """
+        pq_one_asym_key = rfc5958.OneAsymmetricKey()
+        pq_one_asym_key["version"] = 0
+        pq_one_asym_key["privateKeyAlgorithm"]["algorithm"] = PQ_NAME_2_OID[name]
+        pq_one_asym_key["privateKey"] = data
+        return PQKeyFactory.from_one_asym_key(pq_one_asym_key)
+
+    @staticmethod
+    def _load_chempat_private_key(
+        private_bytes: bytes,
+        oid: univ.ObjectIdentifier,
+    ) -> ChempatPrivateKey:
+        """Load a Chempat private key from the provided bytes.
+
+        :param private_bytes: The private key bytes to load.
+        :param oid: The OID of the key.
+        :return: An instance of ChempatPrivateKey.
+        :raises InvalidKeyData: If the private key data is invalid.
+        :raises ValueError: If the name is invalid.
+        """
+        name = CHEMPAT_OID_2_NAME[oid]
+        name = name.lower()
+        tmp_name = name.replace("chempat-", "", 1)
+        _length = int.from_bytes(private_bytes[:4], "little")
+
+        pq_private_bytes = private_bytes[4 : 4 + _length]
+        pq_name = PQKeyFactory.get_pq_alg_name(tmp_name)
+        try:
+            pq_key = HybridKeyFactory._load_pq_key(name=pq_name, data=pq_private_bytes)
+        except InvalidKeyData as e:
+            raise InvalidKeyData(f"Invalid Chempat pq private key data for {tmp_name}: {e}") from e
+
+        trad_private_bytes = private_bytes[4 + _length :]
+        tmp_name = tmp_name.replace(f"{pq_name}-", "", 1)
+        try:
+            trad_key = DHKEMPrivateKey.from_private_bytes(data=trad_private_bytes, name=tmp_name)
+        except ValueError as e:
+            raise InvalidKeyData(f"Invalid Chempat traditional private key data for {tmp_name}: {e}") from e
+        private_key = ChempatPrivateKey.parse_keys(pq_key, trad_key)
+        return private_key
+
+    @staticmethod
     def from_one_asym_key(one_asym_key: Union[rfc5958.OneAsymmetricKey, bytes]) -> "HybridPrivateKey":  # ytpe: ignore
-        """Create a new hybrid key from an `OneAsymmetricKey` structure."""
+        """Create a new hybrid key from an `OneAsymmetricKey` structure.
+
+        :param one_asym_key: The `OneAsymmetricKey` structure or its DER-encoded bytes.
+        :return: An instance of HybridPrivateKey.
+        :raises BadAlg: If the algorithm is not supported.
+        :raises MismatchingKey: If the public key does not match the private key.
+        :raises InvalidKeyData: If the key data is invalid.
+        """
         if isinstance(one_asym_key, bytes):
             one_asym_key = decoder.decode(one_asym_key, asn1Spec=rfc5958.OneAsymmetricKey())[0]
 
@@ -398,25 +469,206 @@ class HybridKeyFactory:
             private_key = XWingPrivateKey.from_private_bytes(private_bytes)
             if len(private_bytes) not in [32, 96]:
                 logging.info("The XWing key size is not 32 or 96 bytes.")
+
             if public_bytes is not None:
                 pub = private_key.public_key().from_public_bytes(public_bytes)
                 if pub.public_bytes_raw() != private_key.public_key().public_bytes_raw():
-                    raise ValueError("Public key does not match the private key.")
+                    raise MismatchingKey("Public key does not match the private key.")
             return private_key
 
         if oid in CHEMPAT_OID_2_NAME:
             name = CHEMPAT_OID_2_NAME[oid]
-            private_key = ChempatPrivateKey.from_private_bytes(data=private_bytes, name=name)
+            private_key = HybridKeyFactory._load_chempat_private_key(
+                private_bytes=private_bytes,
+                oid=oid,
+            )
+
             if public_bytes is not None:
                 public_key = ChempatPublicKey.from_public_bytes(data=public_bytes, name=name)
                 # Currently does OQS not support the derivation of the public key from the private key.
                 # Therefore, we need to set the public key bytes manually.
                 # If the seed derivation is implemented, this part can be removed.
-                private_key.pq_key._public_key_bytes = public_key._public_key_bytes  # pylint: disable=protected-access
-
+                private_key.pq_key._public_key_bytes = public_key.pq_key._public_key_bytes  # pylint: disable=protected-access
                 if public_key.public_bytes_raw() != private_key.public_key().public_bytes_raw():
-                    raise ValueError("Public key does not match the private key.")
+                    raise MismatchingKey("Public key does not match the private key.")
             return private_key
 
         _name = may_return_oid_to_name(oid)
         raise BadAlg(f"Cannot load the private key. Unsupported algorithm: {_name}")
+
+    @staticmethod
+    def _get_hybrid_pub_key_bytes(public_key: HybridPublicKey) -> bytes:
+        """Get the public key bytes from the hybrid public key."""
+        der_data = public_key.public_bytes(
+            encoding=Encoding.DER,
+            format=PublicFormat.SubjectPublicKeyInfo,
+        )
+
+        spki = decoder.decode(der_data, asn1Spec=rfc5280.SubjectPublicKeyInfo())[0]
+        return spki["subjectPublicKey"].asOctets()
+
+    @staticmethod
+    def _may_get_pub_key(
+        private_key: HybridPrivateKey,
+        public_key: Optional[HybridPublicKey],
+        include_pub_key: Optional[bool] = True,
+        version: int = 1,
+    ) -> Optional[bytes]:
+        """May get the public key from the private key.
+
+        :param private_key: The private key to be saved.
+        :param public_key: The public key to be included in the `OneAsymmetricKey` object. Defaults to `None`.
+        :param include_pub_key: If True, include the public key in the `OneAsymmetricKey` object. Used
+        for negative testing. Defaults to `None` will be determined by the version.
+        :param version: The version of the `OneAsymmetricKey` object. Defaults to 1.
+        """
+        if include_pub_key or version >= 1:
+            public_key = public_key or private_key.public_key()
+            return HybridKeyFactory._get_hybrid_pub_key_bytes(public_key)
+
+        return None
+
+    @staticmethod
+    def _get_private_trad_key_der_data(
+        private_key: Union[TradKEMPrivateKey, TradPartPrivateKey],
+    ) -> bytes:
+        """Save the private key in the respected format.
+
+        :param private_key: The private key to be saved.
+        :return: The DER-encoded private key.
+        :raises ValueError: If the private key is not supported.
+        """
+        if isinstance(private_key, RSAPrivateKey):
+            private_key = RSADecapKey(private_key)
+
+        elif isinstance(private_key, EllipticCurvePrivateKey):
+            ec_key_asn1 = prepare_ec_private_key(
+                ec_key=private_key,
+            )
+            return encoder.encode(ec_key_asn1)
+
+        if isinstance(private_key, ECPrivateKey):
+            private_key = DHKEMPrivateKey(private_key)
+
+        return private_key.encode()
+
+    @staticmethod
+    def _save_keys_with_support_seed(
+        private_key: HybridPrivateKey,
+        save_type: Union[str, KeySaveType] = "seed",
+        unsafe: bool = False,
+    ) -> bytes:
+        """Save the private key in a format that supports seed extraction.
+
+        :param private_key: The private key to be saved.
+        :param save_type: The type of saving (e.g., 'seed', 'raw', 'seed_and_raw'). Defaults to 'seed'.
+        :param unsafe: The PQ liboqs keys do not allow one to derive the public key from the
+        private key, disables the exception call. Defaults to `False`.
+        :return: The DER-encoded private key.
+        :raise NotImplementedError: Version 1 is not supported for `liboqs` keys.
+        """
+        key_type = KeySaveType.get(save_type)
+
+        pq_key_bytes = PQKeyFactory.save_keys_with_support_seed(
+            private_key=private_key.pq_key,
+            key_type=key_type,
+        )
+
+        if isinstance(private_key, (CompositeKEM06PrivateKey, CompositeSig04PrivateKey)):
+            private_key_bytes = PQKeyFactory.save_keys_with_support_seed(
+                private_key=private_key.pq_key,
+                key_type=key_type,
+            )
+            private_trad_key_bytes = HybridKeyFactory._get_private_trad_key_der_data(
+                private_key=private_key.trad_key,
+            )
+            der_data_trad = encoder.encode(univ.OctetString(private_trad_key_bytes))
+            der_data_pq = encoder.encode(univ.OctetString(private_key_bytes))
+            _length = len(der_data_pq)
+            return _length.to_bytes(4, "little") + der_data_pq + der_data_trad
+
+        if isinstance(private_key, (CompositeKEMPrivateKey, CompositeSig03PrivateKey)):
+            pq_key_bytes = PQKeyFactory.save_private_key_one_asym_key(
+                private_key=private_key.pq_key,
+                save_type=KeySaveType.get(save_type),
+                version=1,
+                include_public_key=None,
+                unsafe=unsafe,
+            )
+
+            pq_one_asy_key = decoder.decode(pq_key_bytes, asn1Spec=rfc5958.OneAsymmetricKey())[0]
+            trad_der_data = prepare_trad_private_key_one_asym_key(
+                private_key=private_key.trad_key,
+                version=1,
+                include_public_key=None,
+            )
+            trad_one_asym_key = decoder.decode(trad_der_data, asn1Spec=rfc5958.OneAsymmetricKey())[0]
+
+            comp_key = CompositeSignaturePrivateKeyAsn1()
+            comp_key.extend([pq_one_asy_key, trad_one_asym_key])
+            return encoder.encode(comp_key)
+
+        if isinstance(private_key, XWingPrivateKey):
+            if key_type == KeySaveType.SEED:
+                return private_key.private_numbers()
+            elif key_type == KeySaveType.RAW:
+                return private_key.private_bytes_raw()
+            return private_key.private_numbers() + private_key.private_bytes_raw()
+
+        if isinstance(private_key, ChempatPrivateKey):
+            _length = len(pq_key_bytes)
+            return _length.to_bytes(4, "little") + pq_key_bytes + private_key.trad_key.encode()
+
+        raise ValueError(
+            f"Unsupported private key type: {type(private_key)}. "
+            f"Supported types are: {HybridKeyFactory.hybrid_mappings}"
+        )
+
+    @staticmethod
+    def save_private_key_one_asym_key(
+        private_key: HybridPrivateKey,
+        public_key: Optional[HybridPublicKey] = None,
+        version: int = 1,
+        save_type: Union[str, KeySaveType] = "seed",
+        include_public_key: Optional[bool] = None,
+        unsafe: bool = False,
+    ) -> bytes:
+        """Convert a hybrid private key to an `OneAsymmetricKey` structure, DER-encoded.
+
+        :param private_key: The hybrid private key to be converted.
+        :param public_key:  The corresponding public key. Defaults to `None`.
+        :param version:     The version of the `OneAsymmetricKey` structure. Defaults to `1`.
+        :param save_type:   The type of pq-key saving (e.g., 'seed', 'raw', 'seed_and_raw'). Defaults to 'seed'.
+        :param include_public_key: Whether to include the public key in the output. If `None`, it will be
+        determined based on the key type. Defaults to `None`.
+        :param unsafe: The PQ liboqs keys do not allow one to derive the public key from the
+        private key, disables the exception call. Defaults to `False`.
+        :return: The DER-encoded private key.
+        :raise NotImplementedError: Version 1 is not supported for `liboqs` keys.
+        """
+        key_type = KeySaveType.get(save_type)
+        one_asym_key = rfc5958.OneAsymmetricKey()
+        one_asym_key["version"] = version
+
+        if isinstance(private_key, CompositeSig04PrivateKey):
+            oid = private_key.get_oid(use_pss=True)
+        else:
+            oid = private_key.get_oid()
+
+        one_asym_key["privateKeyAlgorithm"]["algorithm"] = oid
+
+        one_asym_key["privateKey"] = HybridKeyFactory._save_keys_with_support_seed(
+            private_key=private_key, save_type=key_type, unsafe=unsafe
+        )
+        public_key_bytes = HybridKeyFactory._may_get_pub_key(
+            private_key=private_key, public_key=public_key, include_pub_key=include_public_key, version=version
+        )
+
+        if public_key_bytes is not None:
+            public_key_asn1 = univ.BitString(hexValue=public_key_bytes.hex()).subtype(
+                implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)
+            )
+            one_asym_key["publicKey"] = public_key_asn1
+
+        der_data = encoder.encode(one_asym_key)
+        return der_data

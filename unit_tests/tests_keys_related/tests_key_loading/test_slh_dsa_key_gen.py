@@ -121,7 +121,7 @@ class TestSLHDSAKeyGen(unittest.TestCase):
         pub_key = SLHDSAPublicKey.from_public_bytes(data=out, name="slh-dsa-sha2-128s")
         self.assertEqual(pub_key.public_bytes_raw(), private_key.public_key().public_bytes_raw())
 
-        key2 = CombinedKeyFactory.load_key_from_one_asym_key(private_bytes)
+        key2 = CombinedKeyFactory.load_private_key_from_one_asym_key(private_bytes)
         self.assertEqual(key2._export_private_key().hex(), seed.hex())
 
 

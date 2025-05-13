@@ -20,7 +20,7 @@ class TestPrepareChallengeEncRand(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rsa_key = load_private_key_from_file("./data/keys/private-key-rsa.pem", password=None)
-        cls.mlkem_key = load_private_key_from_file("./data/keys/private-key-ml-kem-768.pem")
+        cls.mlkem_key = load_private_key_from_file("./data/keys/private-key-ml-kem-768-seed.pem")
 
     def test_prepare_with_rsa(self):
         """
@@ -58,8 +58,8 @@ class TestPrepareChallengeEncRand(unittest.TestCase):
         WHEN preparing a challenge with XWing.
         THEN the challenge is valid.
         """
-        xwing_key = load_private_key_from_file("./data/keys/private-key-xwing.pem")
-        xwing_key_other = load_private_key_from_file("./data/keys/private-key-xwing-other.pem")
+        xwing_key = load_private_key_from_file("./data/keys/private-key-xwing-seed.pem")
+        xwing_key_other = load_private_key_from_file("./data/keys/private-key-xwing-other-seed.pem")
         challenge = prepare_challenge_enc_rand(public_key=xwing_key.public_key(),
                                                rand_sender="CN=Hans the Tester", hybrid_kem_key=xwing_key_other)
         der_data = encoder.encode(challenge)

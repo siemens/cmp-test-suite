@@ -75,7 +75,7 @@ class TestPrepareRecipInfo(unittest.TestCase):
         WHEN preparing the recipient info.
         THEN the recipient info should be correctly prepared.
         """
-        mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
+        mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
         kem_cert = generate_certificate(private_key=mlkem_key, signing_key=self.ec_private_key)
 
 

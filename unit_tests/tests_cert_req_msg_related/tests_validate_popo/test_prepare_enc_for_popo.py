@@ -22,7 +22,7 @@ class TestPrepareEncKeyForPOPO(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.key = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
+        cls.key = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
 
         cls.ca_cert = parse_certificate(
             load_and_decode_pem_file("data/unittest/ca2_cert_rsa.pem")
