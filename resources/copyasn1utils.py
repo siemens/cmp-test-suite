@@ -83,8 +83,8 @@ def copy_validity(
     if target is None:
         target = rfc5280.Validity()
 
-    target["notBefore"][not_before_type].fromDateTime(copy.copy(not_before))
-    target["notAfter"][not_after_type].fromDateTime(copy.copy(not_after))
+    target["notBefore"][not_before_type] = target["notBefore"][not_before_type].fromDateTime(copy.copy(not_before))
+    target["notAfter"][not_after_type] = target["notAfter"][not_after_type].fromDateTime(copy.copy(not_after))
     return target
 
 
