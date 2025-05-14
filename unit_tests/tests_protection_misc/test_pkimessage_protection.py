@@ -4,6 +4,8 @@
 
 import unittest
 
+from cryptography.exceptions import InvalidSignature
+
 from resources.certbuildutils import generate_certificate
 from resources.exceptions import BadMacProtection
 from resources.keyutils import load_private_key_from_file
@@ -289,7 +291,6 @@ class TestPKIMessageProtection(unittest.TestCase):
         # simulate over wire. because expects the `parameters` field to be un-decoded.
         protected_msg = de_and_encode_pkimessage(pki_message=protected_msg)
 
-        # verifies with self-signed certificate, generated inside if not provided.
         verify_pkimessage_protection(pki_message=protected_msg, public_key=private_key.public_key())
 
     def test_sig_rsassa_pss_shake256_without_cert(self):
@@ -310,5 +311,26 @@ class TestPKIMessageProtection(unittest.TestCase):
         # simulate over wire. because expects the `parameters` field to be un-decoded.
         protected_msg = de_and_encode_pkimessage(pki_message=protected_msg)
 
-        # verifies with self-signed certificate, generated inside if not provided.
         verify_pkimessage_protection(pki_message=protected_msg, public_key=private_key.public_key())
+
+    def test_invalid_sig_rsassa_pss_shake256_without_cert(self):
+        """
+        GIVEN a PKIMessage and an RSA private key without a certificate.
+        WHEN the PKIMessage is invalid protected using an RSASSA-PSS signature with shake256 algorithm.
+        THEN the RSASSA-PSS signature verification should raise an InvalidSignature exception.
+        """
+        private_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
+        protected_msg = protect_pkimessage(
+            pki_message=self.pki_message,
+            cert=None,
+            private_key=private_key,
+            protection="rsassa-pss",
+            password=None,
+            bad_message_check=True,
+            hash_alg="shake256",
+        )
+        # simulate over wire. because expects the `parameters` field to be un-decoded.
+        protected_msg = de_and_encode_pkimessage(pki_message=protected_msg)
+
+        with self.assertRaises(InvalidSignature):
+            verify_pkimessage_protection(pki_message=protected_msg, public_key=private_key.public_key())
