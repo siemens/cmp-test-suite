@@ -66,10 +66,10 @@ from resources.exceptions import (
 from resources.keyutils import load_public_key_from_cert_template
 from resources.oidutils import id_KemBasedMac
 from resources.protectionutils import (
-    get_protection_alg_name,
     get_protection_type_from_pkimessage,
     verify_pkimessage_protection,
 )
+from resources.suiteenums import ProtectedType
 from resources.typingutils import SignKey
 from resources.utils import get_openssl_name_notation
 from unit_tests.utils_for_test import load_env_data_certs
@@ -481,14 +481,13 @@ class CertReqHandler:
             pki_message, must_be_protected=self.must_be_protected, allow_mac_failure=False
         )
         oid = pki_message["header"]["protectionAlg"]["algorithm"]
-        prot_name = get_protection_alg_name(pki_message)
         if pki_message["header"]["protectionAlg"].isValue:
-            prot_type = get_protection_type_from_pkimessage(pki_message)
-            if prot_type != "mac":
+            prot_type2 = ProtectedType.get_protection_type(pki_message)
+            if prot_type2 not in [ProtectedType.MAC, ProtectedType.KEM, ProtectedType.DH]:
                 self.check_signer(pki_message)
 
-            elif prot_name in ["dh_based_mac", "kem_based_mac"]:
-                logging.debug("The message was MAC protected, with %s.", prot_name)
+            elif prot_type2 in [ProtectedType.DH, ProtectedType.KEM]:
+                logging.debug("CertReqHandler: Processing KEM/DH protection")
 
             else:
                 if oid not in [rfc9480.id_PasswordBasedMac, rfc9481.id_PBMAC1]:
