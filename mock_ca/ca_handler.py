@@ -6,9 +6,10 @@
 
 import argparse
 import logging
+import os
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -77,8 +78,12 @@ from resources.cmputils import (
     find_oid_in_general_info,
     get_cmp_message_type,
     parse_pkimessage,
+    patch_extra_certs,
+    patch_sender,
+    patch_senderkid,
 )
-from resources.convertutils import ensure_is_sign_key
+from resources.compareutils import compare_pyasn1_names
+from resources.convertutils import ensure_is_sign_key, ensure_is_verify_key
 from resources.exceptions import (
     BadAlg,
     BadAsn1Data,
@@ -92,17 +97,23 @@ from resources.exceptions import (
     InvalidAltSignature,
     NotAuthorized,
     TransactionIdInUse,
+    UnknownOID,
 )
 from resources.general_msg_utils import build_genp_kem_ct_info_from_genm
-from resources.keyutils import generate_key, load_private_key_from_file
+from resources.keyutils import generate_key, load_private_key_from_file, load_public_key_from_spki
 from resources.oid_mapping import compute_hash, may_return_oid_to_name
-from resources.oidutils import MSG_SIG_ALG, SUPPORTED_MAC_OID_2_NAME, id_KemBasedMac
+from resources.oidutils import (
+    HYBRID_SIG_OID_2_NAME,
+    PQ_SIG_OID_2_NAME,
+    SUPPORTED_MAC_OID_2_NAME,
+    TRAD_SIG_OID_2_NAME,
+)
 from resources.protectionutils import (
-    get_protection_type_from_pkimessage,
     protect_hybrid_pkimessage,
     protect_pkimessage,
-    verify_pkimessage_protection,
+    protect_pkimessage_kem_based_mac,
 )
+from resources.suiteenums import ProtectedType
 from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PublicKey, SignKey, VerifyKey
 from resources.utils import load_and_decode_pem_file
 from unit_tests.utils_for_test import load_ca_cert_and_key, load_env_data_certs
@@ -617,6 +628,13 @@ class CAHandler:
         )
 
     def verify_protection(self, request: PKIMessageTMP, must_be_protected: bool = True) -> None:
+        self.sun_hybrid_handler = SunHybridHandler(
+            ca_cert=self.sun_hybrid_cert,
+            ca_key=self.sun_hybrid_key,
+            sun_hybrid_state=self.state.sun_hybrid_state,
+            cert_chain=None,
+            pre_shared_secret=self.pre_shared_secret,
+        )
     def build_error_from_exception(
         self, e: CMPTestSuiteError, request_msg: Optional[PKIMessageTMP] = None
     ) -> PKIMessageTMP:
@@ -979,7 +997,7 @@ class CAHandler:
         if pki_message["body"].getName() == "p10cr":
             try:
                 if pki_message["extraCerts"].isValue:
-                    self.hybrid_handler.is_revoked(request=pki_message, used_both_certs=False)
+                    self.hybrid_handler.is_revoked_for_issuing(request=pki_message, used_both_certs=False)
 
                 self.hybrid_handler.chameleon_handler.is_delta_key_revoked(request=pki_message)
 
@@ -1015,6 +1033,40 @@ class CAHandler:
             f"Not implemented to handle a chameleon request with body: {pki_message['body'].getName()}"
         )
 
+    def _get_serial_number(self) -> int:
+        """Get a unique serial number."""
+        serial_number = None
+        for _ in range(100):
+            serial_number = x509.random_serial_number()
+            if serial_number not in self.state.sun_hybrid_state.sun_hybrid_certs:
+                break
+        if serial_number is None:
+            raise Exception("Could not generate a unique serial number.")
+        return serial_number
+
+    def _after_request(
+        self,
+        request_msg: PKIMessageTMP,
+        response: PKIMessageTMP,
+        certs: List[rfc9480.CMPCertificate],
+        confirmed: bool = False,
+    ) -> None:
+        """Perform actions after the request is processed.
+
+        :param request_msg: The PKI message request.
+        :param response: The PKI message response.
+        :param certs: The list of certificates.
+        """
+        if not confirmed:
+            self.state.store_transaction_certificate(
+                pki_message=request_msg,
+                certs=certs,
+            )
+            self.cert_conf_handler.add_request(pki_message=request_msg)
+            self.cert_conf_handler.add_response(pki_message=response, certs=certs)
+        else:
+            self.state.add_certs(certs=certs)
+
     def process_sun_hybrid(
         self,
         pki_message: PKIMessageTMP,
@@ -1026,55 +1078,63 @@ class CAHandler:
         :param bad_alt_sig: If `True`, the alternative signature will be invalid.
         :return: The PKI message containing the response.
         """
+        if is_hybrid_cert(pki_message["extraCerts"][0]):
+            logging.info("Processing hybrid cert")
+
+        prot_type = ProtectedType.get_protection_type(pki_message)
+        if prot_type != ProtectedType.MAC:
+            try:
+                self.hybrid_handler.is_revoked_for_issuing(request=pki_message, used_both_certs=False)
+            except CertRevoked as e:
+                return self.build_error_from_exception(e, request_msg=pki_message)
+
         if pki_message["body"].getName() == "certConf":
-            return self.process_cert_conf(pki_message)
+            response = self.process_cert_conf(pki_message)
+            return self.sun_hybrid_handler.sign_response(
+                response=response,
+                request=pki_message,
+                protection_config=self.protection_handler.prot_handler_config,
+            )
 
-        serial_number = None
-        for _ in range(100):
-            serial_number = x509.random_serial_number()
-            if serial_number not in self.state.sun_hybrid_state.sun_hybrid_certs:
-                break
+        if pki_message["body"].getName() == "rr":
+            pki_message = self.sun_hybrid_handler.validate_for_rev_request(pki_message)
+            response = self.process_rr(pki_message)
+            return self.sun_hybrid_handler.sign_response(
+                response=response, request=pki_message, protection_config=self.protection_handler.prot_handler_config
+            )
 
-        if serial_number is None:
-            raise Exception("Could not generate a unique serial number.")
+        serial_number = self._get_serial_number()
 
         if not isinstance(self.sun_hybrid_key, CompositeSig03PrivateKey):
             raise Exception("The Sun-Hybrid CA key is not a CompositeSig03PrivateKey.")
 
-        response, cert4, cert1 = build_sun_hybrid_cert_from_request(
-            request=pki_message,
-            ca_key=self.sun_hybrid_key,
-            serial_number=serial_number,  # type: ignore
-            ca_cert=self.ca_cert,
-            pub_key_loc=f"http://localhost:5000/pubkey/{serial_number}",
-            sig_loc=f"http://localhost:5000/sig/{serial_number}",
-            extensions=[self.ocsp_extn, self.crl_extn],
-            bad_alt_sig=bad_alt_sig,
-        )
-
-        result = True  # _is_encrypted_cert(response)
-        if not result:
-            self.state.store_transaction_certificate(
-                pki_message=pki_message,
-                certs=[cert4],
+        try:
+            response, issued_cert, to_be_confirmed = self.sun_hybrid_handler.process_request(
+                request=pki_message,
+                base_url=self.base_url,
+                serial_number=serial_number,
+                extensions=self.extensions,
+                bad_alt_sig=bad_alt_sig,
+                protection_config=self.protection_handler.prot_handler_config,
             )
-            return self.sign_response(response=response, request_msg=pki_message)
-        else:
-            public_key = sun_lamps_hybrid_scheme_00.get_sun_hybrid_alt_pub_key(cert1["tbsCertificate"]["extensions"])
-            alt_sig = extract_sun_hybrid_alt_sig(cert1)
-            if public_key is None:
-                raise Exception("The Sun-hybrid public key could not be extracted from the certificate.")
-            self.state.sun_hybrid_state.sun_hybrid_certs[serial_number] = cert4
-            self.state.sun_hybrid_state.sun_hybrid_pub_keys[serial_number] = public_key
-            self.state.sun_hybrid_state.sun_hybrid_signatures[serial_number] = alt_sig
+        except CMPTestSuiteError as e:
+            return self.build_error_from_exception(e, pki_message)
 
-            self.state.add_certs(certs=[cert4])
+        if sum([issued_cert is None, to_be_confirmed is None]) in [0, 2]:
+            raise Exception(
+                "The newly issued certificate can either be implicit confirmed ormust be confirmed, but not both."
+            )
 
-        return self.sign_response(
-            response=response,
+        print("Issued certs is confined:", issued_cert is not None)
+
+        self._after_request(
             request_msg=pki_message,
-            secondary_cert=cert1,
+            response=response,
+            certs=[issued_cert] if issued_cert else [to_be_confirmed],  # type: ignore
+            confirmed=issued_cert is not None,
         )
+
+        return response
 
     def process_multi_auth(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Process the Multi-Auth message.
@@ -1247,6 +1307,13 @@ class CAHandler:
             cert=cert,
             request=pki_message,
             cert_req_id=-1,
+        )
+
+        self._after_request(
+            request_msg=pki_message,
+            response=response,
+            certs=[cert],
+            confirmed=result,
         )
 
         return self.sign_response(response=response, request_msg=pki_message)
