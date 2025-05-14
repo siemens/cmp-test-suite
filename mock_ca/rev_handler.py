@@ -37,15 +37,15 @@ from resources.exceptions import (
     CertRevoked,
     CMPTestSuiteError,
     NotAuthorized,
-    WrongIntegrity,
+    WrongIntegrity, BadRequest,
 )
 from resources.oid_mapping import compute_hash
 from resources.oidutils import id_KemBasedMac
 from resources.protectionutils import (
-    get_protection_type_from_pkimessage,
     verify_kem_based_mac_protection,
     verify_pkimessage_protection,
 )
+from resources.suiteenums import ProtectedType
 from resources.typingutils import ECDHPublicKey, PublicKey, SignKey
 from resources.utils import display_pki_status_info
 from unit_tests.utils_for_test import compare_pyasn1_objects
@@ -373,20 +373,23 @@ class RevocationHandler:
         if not pki_message["header"]["protectionAlg"].isValue:
             raise BadMessageCheck("Protection algorithm not provided for revocation request.")
 
-        if pki_message["header"]["protectionAlg"]["algorithm"] == id_KemBasedMac:
+
+        prot_type = ProtectedType.get_protection_type(pki_message)
+
+        if prot_type == ProtectedType.KEM:
             if shared_secret is None:
-                raise ValueError("Shared secret MUST be provided for KEM-based protection.")
+                raise BadRequest("Shared secret MUST be provided for KEM-based protection.")
             verify_kem_based_mac_protection(pki_message=pki_message, shared_secret=shared_secret)
             return
 
-        elif pki_message["header"]["protectionAlg"]["algorithm"] == id_DHBasedMac:
+        if prot_type == ProtectedType.DH:
             cmp_cert = pki_message["extraCerts"][0]
             public_key = load_public_key_from_cert(cmp_cert)
             shared_secret = self._get_ecdh_shared_secret(public_key)
 
             verify_pkimessage_protection(pki_message=pki_message, shared_secret=shared_secret)
 
-        if get_protection_type_from_pkimessage(pki_message=pki_message) == "mac":
+        if prot_type == ProtectedType.MAC:
             raise WrongIntegrity("MAC protection is not supported for revocation requests.")
 
         try:
