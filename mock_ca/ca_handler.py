@@ -1312,7 +1312,6 @@ class CAHandler:
             if os.path.exists("data/mock_ca/tmp_crl.pem"):
                 os.remove("data/mock_ca/tmp_crl.pem")
 
-
         response, _ = build_cp_cmp_message(
             cert=cert,
             request=pki_message,
