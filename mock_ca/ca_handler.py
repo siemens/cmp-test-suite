@@ -291,13 +291,39 @@ class MockCAState:
         return certutils.cert_in_list(cert, self.issued_certs)
 
 
-def _build_error_from_exception(e: CMPTestSuiteError, request: Optional[PKIMessageTMP] = None) -> PKIMessageTMP:
+def _build_error_from_exception(e: CMPTestSuiteError, request_msg: Optional[PKIMessageTMP] = None) -> PKIMessageTMP:
     """Build an error response from an exception.
 
     :param e: The exception.
-    :return: The error response, as raw bytes.
+    :param request_msg: The PKIMessage request.
+    :return: The build error response.
     """
-    msg = build_cmp_error_message(failinfo=e.failinfo, texts=e.message, status="rejection", error_texts=e.error_details)
+    exclude_fields = []
+    if request_msg is not None:
+        if not request_msg["header"]["senderNonce"].isValue:
+            recip_nonce = None
+            exclude_fields.append("recipNonce")
+        else:
+            recip_nonce = request_msg["header"]["senderNonce"].asOctets()
+
+        if not request_msg["header"]["transactionID"].isValue:
+            tx_id = None
+            exclude_fields.append("transactionID")
+        else:
+            tx_id = request_msg["header"]["transactionID"].asOctets()
+    else:
+        recip_nonce = None
+        tx_id = None
+
+    msg = build_cmp_error_message(
+        failinfo=e.failinfo,
+        texts=e.message,
+        status="rejection",
+        error_texts=e.error_details,
+        recip_nonce=recip_nonce,
+        transaction_id=tx_id,
+        exclude_fields=", ".join(exclude_fields) if exclude_fields else None,
+    )
     return msg
 
 
