@@ -18,6 +18,7 @@ from mock_ca.mock_fun import KEMSharedSecretList
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import get_public_key_from_cert_req_msg
+from resources.certbuildutils import validate_private_key_usage_period
 from resources.certutils import (
     build_cert_chain_from_dir,
     build_cmp_chain_from_pkimessage,
@@ -30,10 +31,13 @@ from resources.certutils import (
 from resources.checkutils import check_if_response_contains_encrypted_cert, check_if_response_contains_private_key
 from resources.cmputils import get_cmp_message_type, patch_sender, patch_senderkid
 from resources.cryptoutils import perform_ecdh
+from resources.data_objects import KARICertsAndKeys
 from resources.exceptions import (
     BadAlg,
+    BadAsn1Data,
     BadConfig,
     BadMessageCheck,
+    BadSigAlgID,
     CMPTestSuiteError,
     InvalidAltSignature,
     LwCMPViolation,
@@ -41,14 +45,13 @@ from resources.exceptions import (
     SignerNotTrusted,
     WrongIntegrity,
 )
-from resources.oid_mapping import may_return_oid_to_name
-from resources.oidutils import id_KemBasedMac
 from resources.protectionutils import (
-    get_protection_type_from_pkimessage,
     protect_hybrid_pkimessage,
     protect_pkimessage,
+    protect_pkimessage_kem_based_mac,
     verify_pkimessage_protection,
 )
+from resources.suiteenums import ProtectedType
 from resources.typingutils import SignKey
 from unit_tests.utils_for_test import load_env_data_certs
 
@@ -301,10 +304,26 @@ class ProtectionHandler:
                 protected_pki_message["extraCerts"].extend(add_certs)
             return protected_pki_message
 
-        if "mac" == prot_type:
+        if prot_type == ProtectedType.KEM:
+            ss = self.kem_shared_secret.get_shared_secret_object(request=request)
+            logging.info("Looking for the shared secret object: %s", str(ss is not None))
+            if ss is not None:
+                response = self.patch_for_mac(response)
+                protected_response = protect_pkimessage_kem_based_mac(
+                    pki_message=response,
+                    shared_secret=ss.shared_secret,
+                )
+                if secondary_cert is not None:
+                    protected_response["extraCerts"].append(secondary_cert)
+                if add_certs is not None:
+                    protected_response["extraCerts"].extend(add_certs)
+                return protected_response
+
+        if prot_type == ProtectedType.MAC:
             prot_type = self.get_same_mac_protection(
                 request["header"]["protectionAlg"], use_same=not bad_protection_type
             )
+            response = self.patch_for_mac(response)
             protected_pki_message = protect_pkimessage(
                 password=self._prot_config.pre_shared_secret,
                 pki_message=response,
@@ -431,6 +450,13 @@ class ProtectionHandler:
             verify_hybrid_pkimessage_protection(
                 pki_message=pki_message,
             )
+
+        except BadSigAlgID as e:
+            raise BadMessageCheck(
+                message="Invalid signature algorithm and public key type.",
+                error_details=[e.message] + e.error_details,
+            ) from e
+
         except BadAlg as e:
             raise BadMessageCheck(
                 message="Invalid algorithm or combination for signature protection.",
