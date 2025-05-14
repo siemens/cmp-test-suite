@@ -1188,14 +1188,36 @@ state = MockCAState()
 handler = CAHandler(ca_cert=None, ca_key=None, config={}, state=state)
 
 
-def _build_response(pki_message: PKIMessageTMP, status: int = 200) -> Response:
+def _build_response(
+    pki_message: Union[PKIMessageTMP, bytes, rfc9480.CMPCertificate],
+    status: int = 200,
+    for_msg: bool = True,
+) -> Response:
     """Build a response from a PKIMessage.
 
     :param pki_message: The PKIMessage to encode.
     :return: The response.
     """
-    response_data = encoder.encode(pki_message)
-    return Response(response_data, content_type="application/octet-stream", status=status)
+    if isinstance(pki_message, bytes):
+        response_data = pki_message
+        content_type = "application/octet-stream"
+
+    elif isinstance(pki_message, PKIMessageTMP):
+        response_data = asn1utils.encode_to_der(pki_message)
+        content_type = "application/pkixcmp"
+
+    elif isinstance(pki_message, rfc9480.CMPCertificate):
+        response_data = asn1utils.encode_to_der(pki_message)
+        content_type = "application/pkix-cert"
+    else:
+        raise TypeError(f"Expected bytes, cert or PKIMessage, got {type(pki_message)}")
+
+    # Update the content type based on the request:
+    # https://www.iana.org/assignments/media-types/media-types.xhtml
+    if for_msg:
+        content_type = "application/pkixcmp"
+
+    return Response(response_data, content_type=content_type, status=status)
 
 
 @app.route("/ocsp", methods=["POST"])
