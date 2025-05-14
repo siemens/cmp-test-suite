@@ -1056,93 +1056,110 @@ CA MUST Reject IR With Missing Subject In CertTemplate
 
 CA MUST Issue A ECC Certificate With A Valid IR
     [Documentation]    According to RFC 9483, Section 4.1.3, when the CA receives a valid initialization request (ir)
-    ...    containing an Elliptic Curve Cryptography (ECC) key, it should issue an ECC certificate if the
-    ...    algorithm is allowed by CA policy. We send an IR with an ECC key. The CA issues a
-    ...    certificate when the request meets all requirements. If ECC is unsupported, the CA should
-    ...    respond with a failinfo of `badCertTemplate` or `badAlg`.
+    ...    containing an Elliptic Curve Cryptography (ECC) key, it should issue an ECC certificate.
+    ...    The CA must respond with a valid certificate.
     [Tags]    ir    key    positive   robot:skip-on-failure  minimal
     Should Contain    ${ALLOWED_ALGORITHM}    ecc
-    ${ecc_key}=    Generate Key    ecc    curve=${DEFAULT_ECC_CURVE}
-    ${extensions}=    Prepare Extensions    key_usage=keyAgreement,digitalSignature
-    ${pki_message}=    Build IR From Key
+    ${ecc_key}=    Generate Unique Key    ecc   curve=${DEFAULT_ECC_CURVE}
+    ${cm}=    Get Next Common Name
+    ${extensions}=    Prepare Extensions    key_usage=digitalSignature,keyAgreement
+    ${ir}=    Build Ir From Key
+    ...    ${ecc_key}
+    ...    ${cm}
     ...    extensions=${extensions}
-    ...    signing_key=${ecc_key}
-    ...    common_name=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
     ...    exclude_fields=sender,senderKID
-    ${pki_message}=    Protect PKIMessage
-    ...    ${pki_message}
-    ...    signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${pki_message}
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be        ${response}    ip
     PKIStatus Must Be    ${response}    accepted
-    ${cert}=    Get Cert From PKIMessage    ${response}
-    IF    not ${ALLOW_IMPLICIT_CONFIRM}
-        ${cert_conf}=    Build Cert Conf From Resp
-        ...    ${response}
-        ...    exclude_fields=sender,senderKID
-        ...    recipient=${RECIPIENT}
-        ${protected_cert_conf}=    Protect PKIMessage
-        ...    pki_message=${cert_conf}
-        ...    protection=signature
-        ...    private_key=${ISSUED_KEY}
-        ...    cert=${ISSUED_CERTIFICATE}
-        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-    END
+    ${cert}=    Confirm Certificate If Needed    ${response}
+    ${public_key}=   Load Public Key From Cert    ${cert}
+    ${key_name}=   Get Key Name   ${public_key}
+    Should Be Equal    ${key_name}    ecdsa
     VAR    ${ECDSA_CERT}    ${cert}    scope=Global
     VAR    ${ECDSA_KEY}    ${ecc_key}    scope=Global
 
 CA MAY Issue A Ed25519 Certificate With A Valid IR
     [Documentation]    According to RFC 9483, Section 4.1.3, the CA may issue a certificate for a valid initialization
     ...    request (ir) containing an Ed25519 key if its policy allows this algorithm. We send an ir
-    ...    message with an Ed25519 key and expects the CA to issue a certificate if Ed25519 is supported.
-    ...    If not, the CA should respond with the failinfo set to `badCertTemplate` or `badAlg`.
+    ...    message with an Ed25519 key and expects the CA to issue a certificate for Ed25519.
     [Tags]    key    positive   robot:skip-on-failure  minimal
     Should Contain    ${ALLOWED_ALGORITHM}    ed25519
-    ${ecc_key}=    Load Private Key From File    ./data/keys/private-key-ed25519.pem
+    ${ed_key}=    Generate Unique Key    ed25519
+    ${cm}=    Get Next Common Name
     ${extensions}=    Prepare Extensions    key_usage=digitalSignature
-    ${pki_message}=    Build Ir From Key
-    ...    signing_key=${ecc_key}
-    ...    extensions=${extensions}
-    ...    common_name=${SENDER}
+    ${ir}=    Build Ir From Key
+    ...    ${ed_key}
+    ...    ${cm}
     ...    extensions=${extensions}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
     ...    exclude_fields=sender,senderKID
-    ${pki_message}=    Protect PKIMessage
-    ...    pki_message=${pki_message}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
-    ${response}=    Exchange PKIMessage    ${pki_message}
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be        ${response}    ip
     PKIStatus Must Be    ${response}    accepted
-    ${cert}=    Get Cert From PKIMessage    ${response}
-    IF    not ${ALLOW_IMPLICIT_CONFIRM}
-        ${cert_conf}=    Build Cert Conf From Resp
-        ...    ${response}
-        ...    exclude_fields=sender,senderKID
-        ...    recipient=${RECIPIENT}
-        ${protected_cert_conf}=    Protect PKIMessage
-        ...    pki_message=${cert_conf}
-        ...    protection=signature
-        ...    private_key=${ISSUED_KEY}
-        ...    cert=${ISSUED_CERTIFICATE}
-        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-    END
+    ${cert}=    Confirm Certificate If Needed    ${response}
+    ${public_key}=   Load Public Key From Cert    ${cert}
+    ${key_name}=   Get Key Name   ${public_key}
+    Should Be Equal    ${key_name}    ed25519
     VAR    ${Ed25519_CERT}    ${cert}    scope=Global     # robocop: off=VAR07
-    VAR    ${Ed25519_KEY}    ${ecc_key}    scope=Global   # robocop: off=VAR07
+    VAR    ${Ed25519_KEY}    ${ed_key}    scope=Global   # robocop: off=VAR07
 
-CA MUST Accept ED25519 Protection
-    No Operation
+CA MAY Issue A Ed448 Certificate With A Valid IR
+    [Documentation]    According to RFC 9483, Section 4.1.3, the CA may issue a certificate for a valid initialization
+    ...    request (ir) containing an Ed448 key if its policy allows this algorithm. We send an ir
+    ...    message with an Ed448 key and expects the CA to issue a certificate for Ed448.
+    [Tags]    key    positive   robot:skip-on-failure  minimal
+    Should Contain    ${ALLOWED_ALGORITHM}    ed448
+    ${ed_key}=    Generate Unique Key    ed448
+    ${cm}=    Get Next Common Name
+    ${extensions}=    Prepare Extensions    key_usage=digitalSignature
+    ${ir}=    Build Ir From Key
+    ...    ${ed_key}
+    ...    ${cm}
+    ...    extensions=${extensions}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be        ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=    Confirm Certificate If Needed    ${response}
+    ${public_key}=   Load Public Key From Cert    ${cert}
+    ${key_name}=   Get Key Name   ${public_key}
+    Should Be Equal    ${key_name}    ed448
+    VAR    ${Ed448_CERT}    ${cert}    scope=Global     # robocop: off=VAR07
+    VAR    ${Ed448_KEY}    ${ed_key}    scope=Global   # robocop: off=VAR07
 
-CA MUST Accept ED448 Protection
-    No Operation
+CA MAY Issue A RSA Certificate With A Valid IR
+    [Documentation]    According to RFC 9483, Section 4.1.3, the CA may issue a certificate for a valid initialization
+    ...    request (ir) containing an RSA key if its policy allows this algorithm. We send an ir
+    ...    message with an RSA key and expects the CA to issue a certificate for RSA.
+    Should Contain    ${ALLOWED_ALGORITHM}    rsa
+    ${rsa_key}=    Generate Unique Key    rsa
+    ${cm}=    Get Next Common Name
+    ${extensions}=    Prepare Extensions    key_usage=digitalSignature
+    ${ir}=    Build Ir From Key
+    ...    ${rsa_key}
+    ...    ${cm}
+    ...    extensions=${extensions}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be        ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=    Confirm Certificate If Needed    ${response}
+    ${public_key}=   Load Public Key From Cert    ${cert}
+    ${key_name}=   Get Key Name   ${public_key}
+    Should Be Equal    ${key_name}    rsa
+    VAR    ${RSA_CERT}    ${cert}    scope=Global     # robocop: off=VAR07
+    VAR    ${RSA_KEY}    ${rsa_key}    scope=Global   # robocop: off=VAR07
 
 CA MUST Reject IR With Invalid Algorithm
     [Documentation]    We Send a initialization request (ir) using Diffie-Hellman (DH) as the certificate algorithm
