@@ -492,6 +492,7 @@ class CAHandler:
         config["ca_key"] = ca_key
         self.ca_cert = ca_cert
         self.ca_key = ca_key
+        self.ca_cert_chain = config.get("ca_cert_chain", [ca_cert])
         self.operation_state = MockCAOPCertsAndKeys(**config)
 
         self.config = config
@@ -627,7 +628,9 @@ class CAHandler:
             extensions=extensions,
         )
 
-    def verify_protection(self, request: PKIMessageTMP, must_be_protected: bool = True) -> None:
+        if not isinstance(self.sun_hybrid_key, CompositeSig03PrivateKey):
+            raise BadConfig(f"The Sun Hybrid key is not a `CompositeSig03PrivateKey`.Got: {type(self.sun_hybrid_key)}")
+
         self.sun_hybrid_handler = SunHybridHandler(
             ca_cert=self.sun_hybrid_cert,
             ca_key=self.sun_hybrid_key,
@@ -635,6 +638,16 @@ class CAHandler:
             cert_chain=None,
             pre_shared_secret=self.pre_shared_secret,
         )
+
+        self.alg_profile = {}
+        self.alg_profile.update(TRAD_SIG_OID_2_NAME)
+        self.alg_profile.update(SUPPORTED_MAC_OID_2_NAME)
+        self.alg_profile.update(PQ_SIG_OID_2_NAME)
+        self.alg_profile.update(HYBRID_SIG_OID_2_NAME)
+
+        # The default algorithm for the CA, just to correctly build the error message.
+        self.default_algorithms = rfc9481.ecdsa_with_SHA512
+
     def build_error_from_exception(
         self, e: CMPTestSuiteError, request_msg: Optional[PKIMessageTMP] = None
     ) -> PKIMessageTMP:
