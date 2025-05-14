@@ -577,8 +577,7 @@ def build_delta_cert(
     ca_key: SignKey,
     ca_cert: rfc9480.CMPCertificate,
     alt_sign_key: Optional[SignKey] = None,
-    hash_alg: str = "sha256",
-    use_rsa_pss: bool = False,
+    **kwargs,
 ) -> rfc9480.CMPCertificate:
     """Prepare a Delta Certificate from a paired CSR.
 
@@ -590,8 +589,6 @@ def build_delta_cert(
     :param ca_key: The CA key for signing the certificate.
     :param ca_cert: The CA certificate matching the CA key.
     :param alt_sign_key: An alternative signing key for the certificate. Defaults to `None`.
-    :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
-    :param use_rsa_pss: Whether to use PSS-padding for signing. Defaults to `False`.
     :return: The populated `TBSCertificate` structure.
     """
     csr_tmp = rfc6402.CertificationRequest()
@@ -603,7 +600,7 @@ def build_delta_cert(
 
     csr_tmp["certificationRequestInfo"]["subjectPublicKeyInfo"] = delta_value["subjectPKInfo"]
 
-    if delta_value["extensions"].isValue:
+    if delta_value["extensions"].isValue and kwargs.get("include_delta_extensions", True):
         csr_tmp = certbuildutils.csr_add_extensions(
             csr_tmp,
             delta_value["extensions"],
@@ -614,8 +611,12 @@ def build_delta_cert(
         ca_key=ca_key,
         ca_cert=ca_cert,
         alt_sign_key=alt_sign_key,
-        hash_alg=hash_alg,
-        use_rsa_pss=use_rsa_pss,
+        hash_alg=kwargs.get("hash_alg", "sha256"),
+        use_rsa_pss=kwargs.get("use_rsa_pss", False),
+        include_ski=kwargs.get("include_ski", True),
+        extensions=kwargs.get("extensions"),
+        include_csr_extensions=kwargs.get("include_csr_extensions", False),
+        validity=kwargs.get("validity"),
     )
 
 
