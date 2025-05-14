@@ -37,6 +37,10 @@ from resources import (
     prepareutils,
     utils,
 )
+from resources.convertutils import (
+    copy_asn1_certificate,
+    subject_public_key_info_from_pubkey,
+)
 from resources.copyasn1utils import copy_csr, copy_name, copy_validity
 from resources.exceptions import BadAltPOP, BadAsn1Data, BadCertTemplate
 from resources.oid_mapping import get_hash_from_oid
@@ -135,7 +139,9 @@ def prepare_dcd_extension_from_delta(delta_cert: rfc9480.CMPCertificate, base_ce
 
 
 def _prepare_dcd_extensions(
-    delta_certificate, base_certificate, exclude_extensions: bool = False
+    delta_certificate: rfc9480.CMPCertificate,
+    base_certificate: rfc9480.CMPCertificate,
+    exclude_extensions: bool = False,
 ) -> List[rfc5280.Extension]:
     """Prepare the `Extensions` field of the DCD extension by comparing the Base and Delta Certificate.
 
@@ -656,6 +662,268 @@ def _validate_keys(
                 f"Base Certificate public key size {key_size} is not within the "
                 f"allowed range ({min_key_size}-{max_key_size})."
             )
+
+
+def _parse_extension(
+    csr: Union[rfc6402.CertificationRequest, DeltaCertificateRequestValue],
+    target_extensions: rfc9480.Extensions,
+    include_ski: Optional[bool] = True,
+    ski_critical: bool = False,
+) -> rfc9480.Extensions:
+    """Parse the extension and copy it to the target.
+
+    :param csr: The `CSR` or `DeltaCertificateRequestValue` to parse.
+    :param target_extensions: The target extensions to copy to.
+    :param include_ski: Whether to include the Subject Key Identifier (SKI) extension, if `None` it will be included,
+    if it is present in the `csr`. Defaults to `True`.
+    :param ski_critical: Whether the SKI extension is critical.
+    :return: The target extensions with the parsed extensions.
+    """
+    csr_extension, spki = certbuildutils.parse_extension_and_public_key(csr)
+
+    is_base = isinstance(csr, rfc6402.CertificationRequest)
+
+    if csr_extension is None:
+        return target_extensions
+
+    ski, _ = certbuildutils.validate_subject_key_identifier_extension(csr, prepare_extn=include_ski is True)
+    if ski is not None and include_ski in [True, None]:
+        target_extensions.append(ski)
+    elif ski is not None:
+        public_key = keyutils.load_public_key_from_spki(spki)
+        ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+        target_extensions.append(ski)
+
+    for x in csr_extension:
+        if x["extnID"] == id_ce_deltaCertificateDescriptor:
+            msg = "DeltaCertificateRequestValue" if not is_base else "Base CSR"
+            raise BadCertTemplate(f"DeltaCertificateDescriptor extension is not allowed in the {msg}.")
+
+        if x["extnID"] == rfc5280.id_ce_subjectKeyIdentifier:
+            continue
+
+        if not certbuildutils.extensions_contains_extn_id(x["extnID"], target_extensions):  # type: ignore
+            target_extensions.append(x)
+
+    return target_extensions
+
+
+def _process_remove_extensions(
+    csr: rfc6402.CertificationRequest,
+    delta_req_value: DeltaCertificateRequestValue,
+    oids: List[univ.ObjectIdentifier],
+    include_ski: Optional[bool] = None,
+    ski_critical: bool = False,
+    additional_extensions: Optional[rfc9480.Extensions] = None,
+) -> Tuple[rfc9480.Extensions, rfc9480.Extensions]:
+    """Remove the extensions from the CSR and Delta Certificate."""
+    base_extensions = rfc9480.Extensions()
+    delta_extensions = rfc9480.Extensions()
+
+    if additional_extensions is None:
+        additional_extensions = rfc9480.Extensions()
+
+    csr_extensions, _ = certbuildutils.parse_extension_and_public_key(csr)
+
+    if csr_extensions is None:
+        raise ValueError("CSR extensions are missing. This function should not be called.")
+
+    csr_ski, _ = certbuildutils.validate_subject_key_identifier_extension(csr, prepare_extn=include_ski in [True, None])
+    delta_ski, _ = certbuildutils.validate_subject_key_identifier_extension(
+        delta_req_value, critical=ski_critical, prepare_extn=include_ski in [True, None]
+    )
+    if include_ski in [None, True]:
+        base_extensions.append(csr_ski)
+
+    if include_ski in [None, True]:
+        delta_extensions.append(delta_ski)
+
+    base_extensions.extend(additional_extensions)
+    delta_extensions.extend(additional_extensions)
+
+    for oid in oids:
+        if (
+            not certbuildutils.extensions_contains_extn_id(oid, base_extensions)
+            and oid != rfc5280.id_ce_subjectKeyIdentifier
+        ):
+            extn = certextractutils.get_extension(csr_extensions, oid)
+            base_extensions.append(extn)
+
+    for oid in oids:
+        if (
+            not certbuildutils.extensions_contains_extn_id(oid, delta_extensions)
+            and oid != rfc5280.id_ce_subjectKeyIdentifier
+        ):
+            extn = certextractutils.get_extension(delta_req_value["extensions"], oid)
+            delta_extensions.append(extn)
+
+    return base_extensions, delta_extensions
+
+
+def _clean_base_and_delta_extensions(
+    base_extensions: rfc9480.Extensions, delta_extensions: rfc9480.Extensions
+) -> rfc9480.Extensions:
+    """Remove the extension which have the same values inside the Base and Delta extensions.
+
+    :param base_extensions: The extensions to be added to the Base Certificate.
+    :param delta_extensions: The extensions to be added to the Delta Certificate.
+    :return: The cleaned extensions, which only contain the differing extensions.
+    """
+    if not base_extensions.isValue and not delta_extensions.isValue:
+        return rfc9480.Extensions()
+
+    delta_out = rfc9480.Extensions()
+    for base_ext in base_extensions:
+        extn = certextractutils.get_extension(delta_extensions, base_ext["extnID"])
+        if extn is None:
+            pass
+        elif extn["critical"] != base_ext["critical"]:
+            delta_out.append(extn)
+        elif extn["extnValue"].asOctets() != base_ext["extnValue"].asOctets():
+            delta_out.append(extn)
+
+    return delta_out
+
+
+def _process_extension_oids(
+    csr_extensions: rfc9480.Extensions,
+    delta_req_value: DeltaCertificateRequestValue,
+) -> Tuple[List[univ.ObjectIdentifier], List[univ.ObjectIdentifier]]:
+    """Process the OIDs of the extensions in the CSR and Delta Certificate."""
+    base_all_oids = [ext["extnID"] for ext in csr_extensions]
+    delta_all_oids = [ext["extnID"] for ext in delta_req_value["extensions"]]
+    logging.debug("Base OIDs: %s", str(base_all_oids))
+    logging.debug("Delta OIDs: %s", str(delta_all_oids))
+
+    # The extensions field contains the extensions whose criticality and/or DER-encoded
+    # value are different in the Delta Certificate compared to the Base Certificate
+    # with the exception of the DCD extension itself.
+
+    # TODO should be MUST not, otherwise is it not possible to correctly
+    # prepare the extensions.
+    # Additionally, the Base Certificate SHALL NOT include any extensions, which
+    # are not included in the Delta Certificate, with the exception of the
+    # DCD extension itself.
+
+    not_included_oids = []
+    shared_oids = []
+    for oid in base_all_oids:
+        if oid not in delta_all_oids:
+            not_included_oids.append(oid)
+        else:
+            shared_oids.append(oid)
+
+    logging.debug("Not included OIDs: %s", not_included_oids)
+    logging.debug("Shared OIDs: %s", shared_oids)
+    return not_included_oids, shared_oids
+
+
+@not_keyword
+def process_extensions_for_chameleon(
+    csr: rfc6402.CertificationRequest,
+    delta_req_value: DeltaCertificateRequestValue,
+    include_ski: Optional[bool] = None,
+    additional_extensions: Optional[rfc9480.Extensions] = None,
+    ski_critical: bool = False,
+    strict: bool = False,
+    issue_same_extensions: bool = False,
+) -> Tuple[rfc9480.Extensions, rfc9480.Extensions]:
+    """Prepare the extensions for the Base and Delta Certificates."""
+    base_extensions = rfc9480.Extensions()
+    delta_extensions = rfc9480.Extensions()
+
+    if additional_extensions is None:
+        additional_extensions = rfc9480.Extensions()
+
+    base_extensions.extend(additional_extensions)
+    delta_extensions.extend(additional_extensions)
+
+    csr_extensions = certextractutils.extract_extensions_from_csr(csr)
+    if csr_extensions is None and not delta_req_value["extensions"].isValue:
+        if include_ski:
+            public_key = keyutils.load_public_key_from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
+            csr_ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+            base_extensions.append(csr_ski)
+
+            public_key = keyutils.load_public_key_from_spki(delta_req_value["subjectPKInfo"])
+            delta_ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+            delta_extensions.append(delta_ski)
+
+        return base_extensions, delta_extensions
+
+    if csr_extensions is not None and not delta_req_value["extensions"].isValue:
+        if include_ski:
+            public_key = keyutils.load_public_key_from_spki(delta_req_value["subjectPKInfo"])
+            delta_ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+            delta_extensions.append(delta_ski)
+
+        return _parse_extension(
+            csr=csr,
+            target_extensions=csr_extensions,
+            include_ski=include_ski,
+            ski_critical=ski_critical,
+        ), delta_extensions
+
+    if delta_req_value["extensions"].isValue and csr_extensions is None:
+        if include_ski:
+            public_key = keyutils.load_public_key_from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
+            csr_ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+            base_extensions.append(csr_ski)
+
+        return _parse_extension(
+            csr=delta_req_value,
+            target_extensions=delta_extensions,
+            include_ski=include_ski,
+            ski_critical=ski_critical,
+        ), delta_extensions
+
+    logging.debug("Both CSR and Delta Certificate have extensions.")
+    # Both are values.
+
+    if csr_extensions is None:
+        raise ValueError("CSR extensions are missing. This path should not be called.")
+
+    not_included_oids, shared_oids = _process_extension_oids(
+        csr_extensions=csr_extensions,
+        delta_req_value=delta_req_value,
+    )
+    if not_included_oids:
+        if strict:
+            raise BadCertTemplate(
+                f"Base Certificate contains extensions not included in the Delta Certificate: {not_included_oids}"
+            )
+        if issue_same_extensions:
+            return _process_remove_extensions(
+                csr=csr,
+                delta_req_value=delta_req_value,
+                oids=shared_oids,
+                include_ski=include_ski,
+                ski_critical=ski_critical,
+                additional_extensions=additional_extensions,
+            )
+
+        # Just parse the extensions.
+        return _parse_extension(
+            csr=csr,
+            target_extensions=base_extensions,
+            include_ski=include_ski,
+            ski_critical=ski_critical,
+        ), _parse_extension(
+            csr=delta_req_value,
+            target_extensions=delta_extensions,
+            include_ski=include_ski,
+            ski_critical=ski_critical,
+        )
+
+    # Have the same extensions
+    return _process_remove_extensions(
+        csr=csr,
+        delta_req_value=delta_req_value,
+        oids=shared_oids,
+        include_ski=include_ski,
+        ski_critical=ski_critical,
+        additional_extensions=additional_extensions,
+    )
 
 
 @not_keyword
