@@ -21,17 +21,18 @@ sys.path.append(".")
 from cryptography import x509
 from flask import Flask, Response, request
 from pyasn1.codec.der import encoder
-from pyasn1_alt_modules import rfc5280, rfc9480
+from pyasn1_alt_modules import rfc5280, rfc9480, rfc9481
 
 from mock_ca.cert_conf_handler import CertConfHandler
 from mock_ca.cert_req_handler import CertReqHandler
 from mock_ca.challenge_handler import ChallengeHandler
+from mock_ca.db_config_vars import CertConfConfigVars, VerifyState
 from mock_ca.general_msg_handler import GeneralMessageHandler
-from mock_ca.hybrid_handler import HybridIssuingHandler
+from mock_ca.hybrid_handler import HybridIssuingHandler, SunHybridHandler
 from mock_ca.mock_fun import CertRevStateDB, KEMSharedSecretList, KeySecurityChecker
 from mock_ca.nested_handler import NestedHandler
 from mock_ca.nestedutils import validate_orig_pkimessage
-from mock_ca.operation_dbs import MockCAOPCertsAndKeys
+from mock_ca.operation_dbs import MockCAOPCertsAndKeys, SunHybridState
 from mock_ca.prot_handler import ProtectionHandler
 from mock_ca.rev_handler import RevocationHandler
 from pq_logic.hybrid_issuing import (
@@ -40,9 +41,9 @@ from pq_logic.hybrid_issuing import (
     build_cert_from_catalyst_request,
     build_chameleon_from_p10cr,
     build_related_cert_from_csr,
-    build_sun_hybrid_cert_from_request,
+    is_hybrid_cert,
 )
-from pq_logic.hybrid_sig import sun_lamps_hybrid_scheme_00
+from pq_logic.hybrid_sig.cert_binding_for_multi_auth import validate_multi_auth_binding_csr
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import extract_sun_hybrid_alt_sig, sun_cert_template_to_cert
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridPublicKey
@@ -50,7 +51,7 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
-from resources import certutils
+from resources import asn1utils, certutils
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import (
     build_cp_cmp_message,
@@ -105,15 +106,6 @@ from resources.protectionutils import (
 from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PublicKey, SignKey, VerifyKey
 from resources.utils import load_and_decode_pem_file
 from unit_tests.utils_for_test import load_ca_cert_and_key, load_env_data_certs
-
-
-@dataclass
-class SunHybridState:
-    """A simple class to store the state of the SunHybridHandler."""
-
-    sun_hybrid_certs: Dict[int, rfc9480.CMPCertificate] = field(default_factory=dict)
-    sun_hybrid_pub_keys: Dict[int, PublicKey] = field(default_factory=dict)
-    sun_hybrid_signatures: Dict[int, bytes] = field(default_factory=dict)
 
 
 @dataclass

@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Defines Dataclass for the Mock-CA."""
 
-from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple, Union
 
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
@@ -18,7 +18,7 @@ from resources.certutils import build_cert_chain_from_dir, parse_certificate
 from resources.convertutils import ensure_is_sign_key, str_to_bytes
 from resources.exceptions import BadConfig
 from resources.keyutils import load_private_key_from_file
-from resources.typingutils import ECDHPrivateKey, PrivateKey, SignKey
+from resources.typingutils import ECDHPrivateKey, PrivateKey, PublicKey, SignKey
 from resources.utils import (
     is_certificate_and_key_set,
     load_and_decode_pem_file,
@@ -423,3 +423,12 @@ class MockCAOPCertsAndKeys:
             )
 
         return cert
+
+
+@dataclass
+class SunHybridState:
+    """A simple class to store the state of the SunHybridHandler."""
+
+    sun_hybrid_certs: Dict[int, rfc9480.CMPCertificate] = field(default_factory=dict)
+    sun_hybrid_pub_keys: Dict[int, PublicKey] = field(default_factory=dict)
+    sun_hybrid_signatures: Dict[int, bytes] = field(default_factory=dict)
