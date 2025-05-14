@@ -15,8 +15,8 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ, useful
 from pyasn1.type.base import Asn1Item, Asn1Type
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc8954, rfc9480, rfc9481
 from pyasn1.type.base import Asn1Type
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc6664, rfc8954, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
@@ -2448,13 +2448,21 @@ def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.E
         return None
 
     key_usages = asn1utils.get_set_bitstring_names(key_usage).split(", ")  # type: ignore
-    public_key = keyutils.load_public_key_from_cert_template(cert_template)
 
-    if public_key is None:
+    if not spki.isValue:
         raise ValueError(
             "The public key could not be extracted from the certificate template."
             "The `KeyUsage` extension cannot be verified."
         )
+
+    public_key = keyutils.load_public_key_from_spki(spki)
+
+    if spki["algorithm"]["algorithm"] == rfc6664.id_ecDH:
+        name = "ECDH"
+    elif spki["algorithm"]["algorithm"] == rfc6664.id_ecMQV:
+        name = "ECMQV"
+    else:
+        name = keyutils.get_key_name(public_key)
 
     if hasattr(public_key, "name"):
         _name = public_key.name  # type: ignore
@@ -2466,7 +2474,6 @@ def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.E
         else:
             raise ValueError(f"Unknown key type: {_name}, for verifying the key usage.")
     else:
-        name = keyutils.get_key_name(public_key)
         if name in ["ed448", "ed25519", "dsa"]:
             _check_sig_key(set(key_usages), name)
 
@@ -2475,7 +2482,7 @@ def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.E
 
         elif name in ["rsa"]:
             pass
-        elif name in ["x25519", "x448"]:
+        elif name in ["x25519", "x448", "id_ecMQV", "id_ecDH"]:
             _check_x_ecc_key_usage(set(key_usages), name)
 
         else:
