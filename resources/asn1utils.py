@@ -192,7 +192,9 @@ def get_asn1_value(asn1_obj: base.Asn1Item, query: str) -> base.Asn1Item:  # noq
     return asn1_obj
 
 
-def get_asn1_value_as_string(asn1_obj: base.Asn1Item, query: str, decode: bool = False):  # noqa D417 undocumented-param
+def get_asn1_value_as_string(  # noqa D417 undocumented-param
+    asn1_obj: base.Asn1Item, query: str, decode: bool = False
+):
     """Retrieve a value from a pyasn1 object and return it as a string.
 
     :Arguments:

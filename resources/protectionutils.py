@@ -2395,7 +2395,7 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
             raise BadAlg(f"Algorithm identifier and key mismatch: {e}. Could not determine the hash algorithm.") from e
 
         except BadAlg as e:
-            raise InvalidSignature(e.message)
+            raise InvalidSignature(e.message) from e
         cryptoutils.verify_signature(public_key=public_key, signature=signature, data=data, hash_alg=hash_alg)
     else:
         raise BadAlg(f"Unsupported public key type: {type(public_key).__name__}.")

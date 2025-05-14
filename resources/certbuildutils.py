@@ -3088,7 +3088,7 @@ def prepare_relative_distinguished_name(
             key, value = item.split("=")
         raise NotImplementedError("This function is not implemented yet.")
 
-    elif isinstance(name, rfc9480.Name):
+    if isinstance(name, rfc9480.Name):
         return name["rdnSequence"][0]
 
     return name
