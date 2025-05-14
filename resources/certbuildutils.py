@@ -3265,7 +3265,48 @@ def prepare_issuing_distribution_point_extension(  # noqa: D417 undocumented-par
         value=iss_dis_point,
         add_rand_data=add_trailing_data,
     )
+def _check_extn_present(
+    oid: univ.ObjectIdentifier,
+    name: str,
+    extensions: Optional[rfc9480.Extensions],
+    must_be_present: bool = False,
+    muss_be_critical: Optional[bool] = None,
+) -> Optional[rfc5280.Extension]:
+    """Check if the extension is present in the extensions.
+
+    :param oid: The OID of the extension to check.
+    :param name: The name of the extension to check, for the error message (e.g. `BasicConstraints`).
+    :param extensions: The extensions to check.
+    :param must_be_present: Whether the extension must be present. Defaults to `False`.
+    :param muss_be_critical: Whether the extension must be critical, if `None`, it will not be checked.
+    Defaults to `None`.
+    :return: The extension if present, `None` otherwise.
+    """
+    if extensions is None and must_be_present:
+        raise ValueError("The Extensions were expected to be present but were not empty.")
+
+    if extensions is None:
+        return None
+
+    extn = certextractutils.get_extension(
+        extensions=extensions,
+        oid=oid,
     )
+    if extn is None and must_be_present:
+        raise ValueError(f"The `{name}` extension was expected to be present but was not found.")
+
+    if extn is None:
+        return None
+
+    if muss_be_critical is not None:
+        if extn["critical"] != muss_be_critical:
+            raise ValueError(
+                f"The `{name}` was expected to have the critical value: {muss_be_critical}, but was: {extn['critical']}"
+            )
+
+    return extn
+
+
 def _compute_ski(key: Union[PublicKey, PrivateKey]) -> bytes:
     """Compute the Subject Key Identifier (SKI) for a given public key.
 
