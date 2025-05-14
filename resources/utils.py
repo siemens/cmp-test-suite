@@ -22,11 +22,13 @@ from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
+from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey
 from pq_logic.keys.composite_kem05 import CompositeKEMPrivateKey, CompositeKEMPublicKey
 from pq_logic.keys.composite_kem06 import CompositeKEM06PrivateKey, CompositeKEM06PublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
-from resources import certutils, keyutils
+from resources import asn1utils, certutils, cmputils, keyutils
+from resources.asn1_structures import PKIMessageTMP
 from resources.exceptions import BadAsn1Data
 from resources.oidutils import PYASN1_CM_NAME_2_OIDS
 from resources.typingutils import PrivateKey, PublicKey, Strint
@@ -370,7 +372,7 @@ def load_certificate_chain(filepath: str) -> List[rfc9480.CMPCertificate]:
     """Load and decode all certificates from a PEM-encoded certificate chain.
 
     :param filepath: path of the file containing the certificate chain.
-    :return: List of `rfc9480.CMPCertificate` objects.
+    :return: List of `CMPCertificate` objects.
     """
     certificates = []
     certificate = []
@@ -588,7 +590,9 @@ def may_load_cert_and_key(  # noqa D417 undocumented-param
 
 
 def is_certificate_and_key_set(  # noqa D417 undocumented-param
-    cert: Optional[Union[str, rfc9480.CMPCertificate]] = None, key: Optional[Union[PrivateKey, str]] = None
+    cert: Optional[Union[str, rfc9480.CMPCertificate]] = None,
+    key: Optional[Union[PrivateKey, str]] = None,
+    for_sun_hybrid: bool = False,
 ) -> bool:
     """Check if a certificate and its corresponding private key are valid and set.
 
@@ -598,6 +602,7 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
     ---------
         - `cert`: The certificate or path of the certificate to validate. Default is `None`.
         - `key`: The private key to validate against the certificate. Default is `None`.
+        - `for_sun_hybrid`: Whether the certificate is Sun-Hybrid certificate. Default is `False`.
 
     Returns:
     -------
@@ -628,8 +633,17 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
         cert = certutils.parse_certificate(der_cert)
 
     cert_pub_key = certutils.load_public_key_from_cert(cert)  # type: ignore
-    if key.public_key() != cert_pub_key:
-        raise ValueError("The private key and the public key inside the certificate are not a pair!")
+
+    if not for_sun_hybrid:
+        if key.public_key() != cert_pub_key:
+            raise ValueError("The private key and the public key inside the certificate are not a pair!")
+
+    else:
+        if not isinstance(key, HybridPrivateKey):
+            raise ValueError("The Sun-Hybrid private key is not a `HybridPrivateKey`!")
+
+        if key.trad_key.public_key() != cert_pub_key:
+            raise ValueError("The private key and the public key inside the certificate are not a pair!")
 
     return True
 
@@ -930,3 +944,43 @@ def get_cert_chain_names(certs: List[rfc9480.CMPCertificate]) -> str:
         names.append(entry)
 
     return "\n".join(names)
+
+
+def display_pki_status_info(  # noqa D417 undocumented-param
+    pki_status_info: Union[PKIMessageTMP, rfc9480.PKIStatusInfo],
+    index: Strint = 0,
+) -> str:
+    """Display the PKI status information in a human-readable format.
+
+    Converts the provided or extracted PKI status information to a string representation,
+    which will be automatically logged, if called, by the Robot Framework (RF).
+    This function shows the human-readable representation of the PKI status.
+    Additionally, it will show the failInfo bits, which are otherwise not shown in the default logging.
+
+    Arguments:
+    ---------
+        - `pki_status_info`: The PKI status information to be logged.
+        - `index`: The index of the PKI status information, if a PKIMessage is provided.
+
+    Examples:
+    --------
+    | Log PKI Status Info | ${pki_status_info} |
+    | Log PKI Status Info | ${pki_status_info} |
+
+    """
+    if isinstance(pki_status_info, PKIMessageTMP):
+        pki_status_info = cmputils.get_pkistatusinfo(pki_status_info, index)
+
+    data = ["PKIStatusInfo:"]
+    status = pki_status_info["status"].prettyPrint()
+    data.append(f"  Status: {status}")
+
+    if pki_status_info["statusString"].isValue:
+        status_lines = [str(txt) for txt in pki_status_info["statusString"]]
+        data.append(f"  StatusString: {' | '.join(status_lines)}")
+
+    if pki_status_info["failInfo"].isValue:
+        names = asn1utils.get_set_bitstring_names(pki_status_info["failInfo"])
+        data.append(f"  failInfo: {names}")
+
+    return "\n".join(data)

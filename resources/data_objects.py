@@ -260,3 +260,66 @@ class LwCMPAlgProfile(AlgorithmProfile):
 
     The algorithms are defined in RFC 9481.
     """
+
+
+from Crypto.Hash import SHAKE128, SHAKE256
+
+
+class FixedSHAKE128:
+    """Wrapper for SHAKE128 to have a digest_size attribute to use RSA-PSS."""
+
+    def __init__(self, data: Optional[bytes] = None):
+        """Initialize the SHAKE with the given name and data."""
+        self._shake = SHAKE128.new(data) if data else SHAKE128.new()
+        self.digest_length = 32
+        self._digest = None
+
+    def update(self, data: bytes) -> None:
+        """Update the SHAKE with the given data."""
+        self._shake.update(data)
+
+    def digest(self) -> bytes:
+        """Return the digest of the data passed to the update() method so far."""
+        if self._digest is None:
+            self._digest = self._shake.read(self.digest_length)
+        return self._digest
+
+    @property
+    def digest_size(self) -> int:
+        """Return the digest size."""
+        return self.digest_length
+
+    @classmethod
+    def new(cls, data: Optional[bytes] = None) -> "FixedSHAKE128":
+        """Create a new instance of FixedSHAKE128."""
+        return cls(data=data)
+
+
+class FixedSHAKE256:
+    """Wrapper for SHAKE256 to have a digest_size attribute to use RSA-PSS."""
+
+    def __init__(self, data: Optional[bytes] = None):
+        """Initialize the SHAKE with the given name and data."""
+        self._shake = SHAKE256.new(data) if data else SHAKE256.new()
+        self.digest_length = 64
+        self._digest = None
+
+    def update(self, data: bytes):
+        """Update the SHAKE with the given data."""
+        self._shake.update(data)
+
+    def digest(self) -> bytes:
+        """Return the digest of the data passed to the update() method so far."""
+        if self._digest is None:
+            self._digest = self._shake.read(self.digest_length)
+        return self._digest
+
+    @property
+    def digest_size(self) -> int:
+        """Return the digest size."""
+        return self.digest_length
+
+    @classmethod
+    def new(cls, data: Optional[bytes] = None) -> "FixedSHAKE256":
+        """Create a new instance of FixedSHAKE256."""
+        return cls(data=data)

@@ -19,8 +19,13 @@ from pyasn1.type import constraint, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from robot.api.deco import keyword
 
-from pq_logic.hybrid_sig import cert_binding_for_multi_auth, certdiscovery, chameleon_logic, sun_lamps_hybrid_scheme_00
-from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
+from pq_logic.hybrid_sig import (
+    catalyst_logic,
+    cert_binding_for_multi_auth,
+    certdiscovery,
+    chameleon_logic,
+    sun_lamps_hybrid_scheme_00,
+)
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
@@ -33,7 +38,8 @@ from pq_logic.tmp_oids import (
 from resources import certutils, compareutils, convertutils, keyutils, protectionutils, utils
 from resources.asn1_structures import PKIMessageTMP
 from resources.certextractutils import get_extension
-from resources.exceptions import BadAsn1Data, BadMessageCheck, InvalidAltSignature, UnknownOID
+from resources.convertutils import ensure_is_pq_verify_key
+from resources.exceptions import BadAsn1Data, BadMessageCheck, BadSigAlgID, InvalidAltSignature, UnknownOID
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import (
     CMS_COMPOSITE03_OID_2_NAME,
@@ -321,7 +327,7 @@ def build_migration_cert_chain(  # noqa D417 undocumented-param
             cert_chain.append(poss_issuer)
             cert = poss_issuer
 
-        except (InvalidSignature, ValueError):
+        except (InvalidSignature, ValueError, BadSigAlgID):
             continue
 
     if len(cert_chain) == 1 and not allow_self_signed:
@@ -333,7 +339,8 @@ def build_migration_cert_chain(  # noqa D417 undocumented-param
 
 
 def build_sun_hybrid_cert_chain(  # noqa D417 undocumented-param
-    cert: rfc9480.CMPCertificate, certs: Iterable[rfc9480.CMPCertificate]
+    cert: rfc9480.CMPCertificate,
+    certs: Union[Iterable[rfc9480.CMPCertificate], PKIMessageTMP],
 ) -> List[rfc9480.CMPCertificate]:
     """Build the SUN hybrid certificate chain.
 
@@ -355,17 +362,22 @@ def build_sun_hybrid_cert_chain(  # noqa D417 undocumented-param
     | ${chain} = | Build Sun Hybrid Cert Chain | ${cert} | ${certs} |
 
     """
+    if isinstance(certs, PKIMessageTMP):
+        certs = certs["extraCerts"]
+        if not certs.isValue:  # type: ignore
+            raise ValueError("The `PKIMessage` does not contain any extra certificates.")
+
     cert4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(cert, "Form4")
 
-    chain = [cert4]
-    for entry in certs:
+    all_poss_form4 = []
+    for x in certs:
         try:
-            issuer = find_sun_hybrid_issuer_cert(cert, entry)
+            form4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(x, "Form4")
+            all_poss_form4.append(form4)
         except ValueError:
-            continue
-        chain.append(issuer)
-        cert = issuer
+            pass
 
+    chain = certutils.build_chain_from_list(cert4, all_poss_form4)
     if len(chain) == 1:
         raise ValueError("No issuer certificate found.")
     return chain
@@ -591,12 +603,15 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
         pki_message["header"]["generalInfo"] = other_fields
         data = protectionutils.prepare_protected_part(pki_message)
         other_key = convertutils.ensure_is_verify_key(other_key)
-        protectionutils.verify_signature_with_alg_id(
-            public_key=other_key,
-            alg_id=sig_alg_id,
-            data=data,
-            signature=alt_sig,
-        )
+        try:
+            protectionutils.verify_signature_with_alg_id(
+                public_key=other_key,
+                alg_id=sig_alg_id,
+                data=data,
+                signature=alt_sig,
+            )
+        except InvalidSignature as e:
+            raise InvalidAltSignature("The alternative signature is invalid.") from e
 
 
 @keyword(name="Verify CRL Signature")
@@ -761,11 +776,11 @@ def may_extract_alt_key_from_cert(  # noqa: D417 Missing argument descriptions i
 
     if extn_alt_spki is not None:
         logging.info("Validate signature with alternative public key.")
-        spki, rest = decoder.decode(extn_alt_spki["extnValue"].asOctets(), SubjectAltPublicKeyInfoExt())
-        if rest:
-            raise BadAsn1Data("The alternative public key extension contains remainder data.", overwrite=True)
-        alt_issuer_key = keyutils.load_public_key_from_spki(spki)
-        return alt_issuer_key  # type: ignore
+
+        extensions = rfc9480.Extensions()
+        extensions.append(extn_alt_spki)
+        loaded_key = catalyst_logic.load_catalyst_public_key(extensions)
+        return ensure_is_pq_verify_key(loaded_key)
 
     if rel_cert_desc is not None:
         logging.info("Validate signature with cert discovery.")

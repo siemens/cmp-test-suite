@@ -21,7 +21,7 @@ Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/hybrid_prepare.py
 Library             ../pq_logic/pq_verify_logic.py
 
-Test Tags           pq-sig   pqc
+Test Tags           pq-sig   pqc  verbose-alg
 
 Suite Setup         Set Up Test Suite
 
@@ -251,12 +251,17 @@ Request With PQ Sig Key
     ${popo}=   Prepare Signature POPO    ${pq_key}   ${cert_request}  bad_pop=${bad_pop}
     ...        hash_alg=${hash_alg}
     ${ir}=   Build Ir From Key    ${pq_key}   cert_request=${cert_request}  popo=${popo}
+    ...      exclude_fields=sender,senderKID   implicit_confirm=True
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange PKIMessage    ${protected_ir}
+    ${url}=  Get PQ Issuing URL
+    ${response}=   Exchange PKIMessage PQ    ${protected_ir}
     IF   ${bad_pop}
         PKIStatus Must Be    ${response}    rejection
         PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP
     ELSE
         PKIStatus Must Be    ${response}    accepted
         Validate Certificate Was Issued For Expected Alg  ${response}  ${alg_name}
+        ${cert}=   Confirm Certificate If Needed    ${response}   url=${url}
+        Set To Dictionary    ${PQ_SIG_KEYS}    ${alg_name}=${pq_key}
+        Set To Dictionary    ${PQ_SIG_CERTS}   ${alg_name}=${cert}
     END

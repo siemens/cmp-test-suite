@@ -10,6 +10,8 @@ import os
 from typing import List, Optional, Tuple, Union
 
 import pyasn1.error
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pss
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dsa, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
@@ -36,7 +38,7 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.keys.sig_keys import MLDSAPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, id_it_KemCiphertextInfo
+from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME, id_it_KemCiphertextInfo
 from resources import (
     certbuildutils,
     certextractutils,
@@ -65,7 +67,17 @@ from resources.convertutils import (
     str_to_bytes,
     subject_public_key_info_from_pubkey,
 )
-from resources.exceptions import BadAlg, BadAsn1Data, BadMessageCheck, InvalidKeyCombination, UnknownOID
+from resources.data_objects import FixedSHAKE128, FixedSHAKE256
+from resources.exceptions import (
+    BadAlg,
+    BadAsn1Data,
+    BadDataFormat,
+    BadMacProtection,
+    BadMessageCheck,
+    InvalidKeyCombination,
+    LwCMPViolation,
+    UnknownOID,
+)
 from resources.oid_mapping import (
     get_alg_oid_from_key_hash,
     get_hash_from_oid,
@@ -86,12 +98,13 @@ from resources.oidutils import (
     RSASSA_PSS_OID_2_NAME,
     SHA_OID_2_NAME,
     SYMMETRIC_PROT_ALGO,
+    TRAD_SIG_OID_2_NAME,
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
     id_ce_subjectAltPublicKeyInfo,
     id_KemBasedMac,
 )
-from resources.suiteenums import ProtectionAlgorithm
+from resources.suiteenums import ProtectedType, ProtectionAlgorithm
 from resources.typingutils import (
     CertObjOrPath,
     ECDHPrivateKey,
@@ -335,6 +348,7 @@ def _compute_pbmac1_from_param(
     password: bytes,
     data: bytes,
     unsafe_decoding: bool,
+    enforce_lwcmp: bool = False,
 ) -> bytes:
     """Compute the PBMAC1 with the DER-encoded bytes or the structure.
 
@@ -342,6 +356,7 @@ def _compute_pbmac1_from_param(
     :param password: The shared secret used for the key derivation.
     :param data: The data to authenticate.
     :param unsafe_decoding: If True, allows extra data (rest) after decoding the structure.
+    :param enforce_lwcmp: If True, enforces that the hash algorithm is the same for `prf` and `mac`.
     :return: The computed message authentication code value.
     """
     if not isinstance(prot_params, rfc8018.PBMAC1_params):
@@ -359,8 +374,16 @@ def _compute_pbmac1_from_param(
     else:
         pbkdf2_param = prot_params["keyDerivationFunc"]["parameters"]  # type: ignore
 
-    derived_key = cryptoutils.compute_pbkdf2_from_parameter(pbkdf2_param, key=password)
     hash_alg = HMAC_OID_2_NAME[prot_params["messageAuthScheme"]["algorithm"]].split("-")[1]  # type: ignore
+    pbkdf2_hash_alg = get_hash_from_oid(pbkdf2_param["prf"]["algorithm"])
+    if pbkdf2_hash_alg != hash_alg and enforce_lwcmp:
+        raise LwCMPViolation(
+            "The `owf` and `mac` fields in `PBMAC1Parameters` must be the same hash algorithm."
+            f"MAC: {hash_alg}, PBKDF2: {pbkdf2_hash_alg}"
+        )
+
+    derived_key = cryptoutils.compute_pbkdf2_from_parameter(pbkdf2_param, key=password)
+
     mac = cryptoutils.compute_hmac(key=derived_key, data=data, hash_alg=hash_alg)
     return mac
 
@@ -532,12 +555,19 @@ def compute_mac_from_alg_id(key: bytes, alg_id: rfc9480.AlgorithmIdentifier, dat
     raise ValueError(f"Unsupported Symmetric MAC Protection: {protection_type_oid}")
 
 
-def _compute_symmetric_protection(pki_message: PKIMessageTMP, password: bytes, unsafe_decoding: bool = False) -> bytes:
+def _compute_symmetric_protection(
+    pki_message: PKIMessageTMP,
+    password: bytes,
+    unsafe_decoding: bool = False,
+    enforce_lwcmp: bool = False,
+) -> bytes:
     """Compute the `PKIMessageTMP` protection.
 
     :param pki_message: `PKIMessageTMP` object to protect.
     :param password: A symmetric password to protect the message.
     :param unsafe_decoding: If True, allows extra data (rest) after decoding structures. Defaults to False.
+    :param enforce_lwcmp: If True, enforces that the hash algorithm is the same, throughout the algorithm.
+    Defaults to `False`.
     :return: The computed protection value.
     """
     encoded = extract_protected_part(pki_message)
@@ -547,15 +577,19 @@ def _compute_symmetric_protection(pki_message: PKIMessageTMP, password: bytes, u
     prot_params = alg_id["parameters"]
 
     if protection_type_oid in HMAC_OID_2_NAME:
-        hash_alg = HMAC_OID_2_NAME[protection_type_oid].split("-")[1]
-        return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
+        mac_hash_alg = HMAC_OID_2_NAME[protection_type_oid].split("-")[1]
+        return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=mac_hash_alg)
 
     if protection_type_oid in KMAC_OID_2_NAME:
         return cryptoutils.compute_kmac_from_alg_id(alg_id=alg_id, data=encoded, key=password)
 
     if protection_type_oid == rfc8018.id_PBMAC1:
         mac = _compute_pbmac1_from_param(
-            prot_params=prot_params, password=password, data=encoded, unsafe_decoding=unsafe_decoding
+            prot_params=prot_params,
+            password=password,
+            data=encoded,
+            unsafe_decoding=unsafe_decoding,
+            enforce_lwcmp=enforce_lwcmp,
         )
 
         return mac
@@ -568,9 +602,29 @@ def _compute_symmetric_protection(pki_message: PKIMessageTMP, password: bytes, u
 
         salt = prot_params["salt"].asOctets()
         iterations = int(prot_params["iterationCount"])
-        hash_alg = HMAC_OID_2_NAME[prot_params["mac"]["algorithm"]].split("-")[1]
+
+        hash_alg_owf = get_hash_from_oid(prot_params["owf"]["algorithm"])
+
+        if hash_alg_owf is None:
+            raise ValueError(
+                f"Unsupported hash algorithm in `owf`: {prot_params['owf']['algorithm']}"
+                f"{may_return_oid_to_name(prot_params['owf']['algorithm'])}"
+            )
+
+        mac_hash_alg = HMAC_OID_2_NAME[prot_params["mac"]["algorithm"]].split("-")[1]
+
+        if mac_hash_alg != hash_alg_owf and enforce_lwcmp:
+            raise LwCMPViolation(
+                f"The hash algorithm in `owf` and `mac` must be the same. Got {hash_alg_owf} and {mac_hash_alg}."
+            )
+
         return cryptoutils.compute_password_based_mac(
-            data=encoded, key=password, iterations=iterations, salt=salt, hash_alg=hash_alg
+            data=encoded,
+            key=password,
+            iterations=iterations,
+            salt=salt,
+            hash_alg=hash_alg_owf,
+            mac_hash_alg=mac_hash_alg,
         )
 
     if protection_type_oid in AES_GMAC_OID_2_NAME:
@@ -623,7 +677,6 @@ def _compute_pkimessage_protection(
     pki_message: PKIMessageTMP,
     password: Optional[Union[str, bytes]] = None,
     private_key: Optional[PrivateKey] = None,
-    hash_alg: str = "sha256",
     shared_secret: Optional[bytes] = None,
     peer: Optional[Union[rfc9480.CMPCertificate, ECDHPublicKey]] = None,
 ) -> bytes:
@@ -632,7 +685,6 @@ def _compute_pkimessage_protection(
     :param pki_message: `PKIMessageTMP` object to compute the protection for.
     :param password: Optional shared secret for MAC-based protection or a server private key for DHBasedMac.
     :param private_key: Optional PrivateKey used for signature-based protection or DH-based MAC computation.
-    :param hash_alg: Optional string specifying the hash algorithm used for RSASSA-PSS (e.g., "sha256").
     :param shared_secret: Optional shared secret for DH-based MAC computation.
     :raises ValueError: If the protection algorithm OID is not supported or required parameters are not provided.
     :returns bytes: The computed protection value for the `PKIMessage`.
@@ -660,11 +712,6 @@ def _compute_pkimessage_protection(
 
     data = extract_protected_part(pki_message)
     sign_key = ensure_is_sign_key(private_key)
-
-    if protection_type_oid in RSASSA_PSS_OID_2_NAME:
-        if not isinstance(sign_key, rsa.RSAPrivateKey):
-            raise ValueError("The protection algorithm is `RSASSA-PSS` but the private key was not a `RSAPrivateKey`.")
-        return sign_rsa_pss_data_with_alg_id(private_key=sign_key, data=data, alg_id=alg_id, hash_alg=hash_alg)
 
     if protection_type_oid == rfc5480.id_dsa_with_sha256 and isinstance(sign_key, dsa.DSAPrivateKey):
         return cryptoutils.sign_data(data=data, key=sign_key, hash_alg="sha256")  # type: ignore
@@ -847,6 +894,7 @@ def _prepare_certificate_chain(
     cert: Optional[rfc9480.CMPCertificate] = None,
     certs_dir: Optional[str] = None,
     cert_chain_path: Optional[str] = None,
+    cert_chain: Optional[List[rfc9480.CMPCertificate]] = None,
 ) -> Optional[list]:
     """Build a certificate chain from the provided certificate, directory of certificates, or a certificate chain file.
 
@@ -856,7 +904,9 @@ def _prepare_certificate_chain(
     :return: A list representing the certificate chain or `None` if no chain is built.
     :raises ValueError: If there is an issue with loading or parsing the certificates.
     """
-    cert_chain = None
+    if cert_chain is not None:
+        return cert_chain
+
     if cert is not None:
         if certs_dir is not None:
             cert_chain = certutils.build_cert_chain_from_dir(cert, certs_dir)
@@ -950,6 +1000,9 @@ def protect_pkimessage(  # noqa: D417
         - `no_patch` (bool): Indicate if the sender and senderKID field are patched for signature-based protection,
             as described by RFC 9483 Section 3.1. Defaults to `False` (so by default they are patched).
         - `mac_alg` (str): The MAC algorithm to use for DH-based MAC protection. Defaults to "hmac".
+        - `cert_chain` (List[CMPCertificates]): The certificate chain to use for the PKIMessage, will be used to patch \
+        the sender and senderKID fields, if `cert` is not provided. Defaults to `None`.
+        - `peer` (CMPCertificate, ECDHPublicKey): The peer certificate or public key for DH-based MAC protection.
 
     Returns:
     -------
@@ -997,6 +1050,11 @@ def protect_pkimessage(  # noqa: D417
         der_data = utils.load_and_decode_pem_file(cert)
         cert = certutils.parse_certificate(der_data)
 
+    elif cert is None and params.get("cert_chain") is not None:
+        cert = params["cert_chain"][0]
+        if not isinstance(cert, rfc9480.CMPCertificate):
+            raise ValueError("cert_chain must be a list of CMPCertificates.")
+
     if protection in ["signature", "rsassa-pss", "rsassa_pss", "dh"]:
         pki_message = patch_sender_and_sender_kid(
             do_patch=params.get("do_patch", True), pki_message=pki_message, cert=cert
@@ -1021,6 +1079,7 @@ def protect_pkimessage(  # noqa: D417
         cert,  # type: ignore
         certs_dir=certs_dir,
         cert_chain_path=cert_chain_fpath,
+        cert_chain=params.get("cert_chain"),
     )
 
     if cert is None and isinstance(private_key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
@@ -1121,6 +1180,8 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
     password: Optional[Union[bytes, str]] = None,
     public_key: Optional[VerifyKey] = None,
     shared_secret: Optional[bytes] = None,
+    *,
+    enforce_lwcmp: bool = False,
 ) -> None:
     """Verify the `PKIProtection` of a given `PKIMessageTMP`.
 
@@ -1141,6 +1202,8 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
         - `public_key`: The public key in case a self-signed certificate was used to sign the PKIMessage,
         and was omitted inside the extraCerts field, as specified in section 3.3.
         - `shared_secret`: The shared secret for DH-based MAC protection.
+        - `enforce_lwcmp`: If True, enforces the LWCMP algorithm Profile for verification and the same hash algorithm.
+        Defaults to `False`.
 
     Raises:
     ------
@@ -1160,6 +1223,9 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
     """
     protection_value: bytes = pki_message["protection"].asOctets()
     protection_type_oid = pki_message["header"]["protectionAlg"]["algorithm"]
+
+    if enforce_lwcmp:
+        protection_type_oid = get_protection_type_from_pkimessage(pki_message, enforce_lwcmp=True)
 
     if protection_type_oid == id_KemBasedMac:
         verify_kem_based_mac_protection(
@@ -1182,16 +1248,16 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
         if password is None:
             raise ValueError("For the symmetric protection a password has to be provided!")
         byte_secret = convertutils.str_to_bytes(password)
-        expected_protection_value = _compute_symmetric_protection(pki_message, byte_secret)
+        expected_protection_value = _compute_symmetric_protection(pki_message, byte_secret, enforce_lwcmp=enforce_lwcmp)
 
-    elif protection_type_oid in RSASSA_PSS_OID_2_NAME or protection_type_oid in MSG_SIG_ALG:
+    elif protection_type_oid in RSASSA_PSS_OID_2_NAME or protection_type_oid in TRAD_SIG_OID_2_NAME:
         _verify_pki_message_sig(pki_message, public_key)
         return
     else:
         raise ValueError(f"Unsupported protection algorithm for verification : {protection_type_oid}.")
 
     if protection_value != expected_protection_value:
-        raise ValueError(
+        raise BadMacProtection(
             f"PKIMessage Protection should be: {expected_protection_value.hex()} but was: {protection_value.hex()}"
         )
 
@@ -1267,49 +1333,62 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     Arguments:
     ---------
         - `pki_message`: The PKIMessage object to check.
-        - `enforce_lwcmp`: Boolean flag to indicate if the lightweight CMP version is checked. Defaults to False.
+        - `enforce_lwcmp`: Boolean flag to indicate if the lightweight CMP version is checked. Defaults to `False`.
         Then only "pbmac1" and "password-based-mac" are allowed.
 
 
     Returns:
     -------
-        - A string indicating the protection type: 'mac', 'sig', 'composite-sig' or 'pq-sig'.
+        - A string indicating the protection type: 'mac', 'kem_based_mac', 'sig', 'composite-sig' or 'pq-sig'.
 
     Raises:
     ------
         - `UnknownOID`: If the OID is not valid, unsupported or not allowed.
+        - `ValueError`: If the protection algorithm is not a value.
+        - `ValueError`: If the protection algorithm is not allowed as in RFC 9483 specified (for `enforce_lwcmp`).
 
     Examples:
     --------
     | Get Protection Type From PKIMessage | ${pki_message} |
 
     """
-    alg_id = pki_message["header"]["protectionAlg"]["algorithm"]
-    alg_id: univ.ObjectIdentifier
+    alg_oid = pki_message["header"]["protectionAlg"]["algorithm"]
+    alg_oid: univ.ObjectIdentifier
 
-    if not alg_id.isValue:
+    if not alg_oid.isValue:
         raise ValueError("The protectionAlg field is not a value!")
 
     if enforce_lwcmp:
-        if alg_id in LWCMP_MAC_OID_2_NAME:
+        if alg_oid in LWCMP_MAC_OID_2_NAME:
             return "mac"
+
+        if alg_oid not in MSG_SIG_ALG:
+            raise ValueError(
+                f"Expected to be a `MSG_SIG_ALG` or `LWCMP_MAC_OID_2_NAME` algorithm, "
+                f"but got: {may_return_oid_to_name(alg_oid)}"
+            )
+
         raise ValueError(
-            f"Expected 'pbmac1' or 'password_based_mac' protection, but got: {may_return_oid_to_name(alg_id)}"
+            f"Expected 'pbmac1' or 'password_based_mac' protection, but got: {may_return_oid_to_name(alg_oid)}"
         )
 
-    if alg_id in SYMMETRIC_PROT_ALGO:
+    prot_type = ProtectedType.get_protection_type(alg_oid)
+    if prot_type == ProtectedType.KEM:
+        return "kem_based_mac"
+
+    if alg_oid in SYMMETRIC_PROT_ALGO:
         return "mac"
 
-    if alg_id in MSG_SIG_ALG:
+    if alg_oid in TRAD_SIG_OID_2_NAME:
         return "sig"
 
-    if alg_id in CMS_COMPOSITE03_OID_2_NAME:
+    if alg_oid in COMPOSITE_SIG03_OID_2_NAME or alg_oid in COMPOSITE_SIG04_OID_2_NAME:
         return "composite-sig"
 
-    if alg_id in PQ_SIG_OID_2_NAME:
+    if alg_oid in PQ_SIG_OID_2_NAME:
         return "pq-sig"
 
-    raise UnknownOID(oid=alg_id)
+    raise UnknownOID(oid=alg_oid, extra_info="Can not determine the protection type.")
 
 
 def _compare_mac_params(
@@ -1654,10 +1733,9 @@ def verify_rsassa_pss_from_alg_id(
     :param alg_id: The parsed `protectionAlg` from the `PKIMessage`
     :raises InvalidSignature: If the signature is invalid.
     """
-    salt_length = None
     if alg_id["algorithm"] == rfc9481.id_RSASSA_PSS:
         if not alg_id["parameters"].isValue:
-            raise ValueError("The `protectionAlg` field must have parameters for RSASSA-PSS set.")
+            raise ValueError("The `AlgorithmIdentifier` must have parameters for RSASSA-PSS set.")
 
         if not isinstance(alg_id["parameters"], rfc8017.RSASSA_PSS_params):
             params, rest = decoder.decode(alg_id["parameters"], rfc8017.RSASSA_PSS_params())
@@ -1686,10 +1764,10 @@ def verify_rsassa_pss_from_alg_id(
         if mgf["algorithm"] != params["hashAlgorithm"]["algorithm"]:
             raise ValueError("Mismatch between the algorithm for MGF1 and hashAlgorithm!")
 
-    elif alg_id["algorithm"] == rfc9481.id_RSASSA_PSS_SHAKE128:
-        hash_algorithm = hash_name_to_instance("shake128")
-    elif alg_id["algorithm"] == rfc9481.id_RSASSA_PSS_SHAKE256:
-        hash_algorithm = hash_name_to_instance("shake256")
+    elif alg_id["algorithm"] in [rfc9481.id_RSASSA_PSS_SHAKE128, rfc9481.id_RSASSA_PSS_SHAKE256]:
+        verify_rsassa_pss_shake(public_key, data, signature, alg_id)
+        return
+
     else:
         raise ValueError("Unknown RSASSA PSS OID")
 
@@ -1701,6 +1779,44 @@ def verify_rsassa_pss_from_alg_id(
         ),
         algorithm=hash_algorithm,
     )
+
+
+@not_keyword
+def verify_rsassa_pss_shake(
+    public_key: rsa.RSAPublicKey,
+    data: bytes,
+    signature: bytes,
+    alg_id: rfc9480.AlgorithmIdentifier,
+    salt_length: Optional[int] = None,
+):
+    """Verify an RSASSA-PSS signature with the `AlgorithmIdentifier`.
+
+    :param public_key: The RSA public key.
+    :param data: The original data that was signed.
+    :param signature: The signature to verify.
+    :param alg_id: The parsed `protectionAlg` from the `PKIMessage`
+    :param salt_length: The length of the salt to use. If not provided, defaults to the hash algorithm's digest size.
+    :raises InvalidSignature: If the signature is invalid.
+    """
+    if alg_id["parameters"].isValue:
+        raise BadDataFormat("The `AlgorithmIdentifier` for RSASSA-PSS with SHAKE must not have parameters set.")
+
+    if alg_id["algorithm"] == rfc9481.id_RSASSA_PSS_SHAKE128:
+        hash_for_verifying = FixedSHAKE128.new(data)
+    else:
+        hash_for_verifying = FixedSHAKE256.new(data)
+
+    n, e = public_key.public_numbers().n, public_key.public_numbers().e
+    pub_key_tmp = RSA.construct((n, e))
+
+    if salt_length is None:
+        salt_length = hash_for_verifying.digest_size
+
+    verifier = pss.new(pub_key_tmp, salt_bytes=salt_length)
+    try:
+        verifier.verify(hash_for_verifying, signature)  # type: ignore
+    except ValueError as err:
+        raise InvalidSignature("Signature verification failed for RSASSA-PSS with SHAKE.") from err
 
 
 @keyword(name="Patch protectionAlg")
@@ -2247,7 +2363,7 @@ def sign_data_with_alg_id(  # noqa: D417 Missing argument descriptions in the do
         hash_alg = get_hash_from_oid(oid, only_hash=True)
         return cryptoutils.sign_data(key=key, data=data, hash_alg=hash_alg, use_rsa_pss=True)
 
-    if oid in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
+    if oid in PQ_OID_2_NAME or oid in TRAD_SIG_OID_2_NAME:
         hash_alg = get_hash_from_oid(oid, only_hash=True)
         return cryptoutils.sign_data(key=key, data=data, hash_alg=hash_alg, use_rsa_pss=False)
     raise ValueError(f"Unsupported private key type: {type(key).__name__} oid:{may_return_oid_to_name(oid)}")
@@ -2317,10 +2433,16 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
     elif oid in RSASSA_PSS_OID_2_NAME and isinstance(public_key, rsa.RSAPublicKey):
         verify_rsassa_pss_from_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
 
-    elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in MSG_SIG_ALG:
-        hash_alg = get_hash_from_oid(oid, only_hash=True)
+    elif oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME or oid in TRAD_SIG_OID_2_NAME:
+        try:
+            hash_alg = get_hash_from_oid(oid, only_hash=True)
+            keyutils.check_consistency_sig_alg_id_and_key(alg_id, public_key)
 
-        keyutils.check_consistency_sig_alg_id_and_key(alg_id, public_key)
+        except ValueError as e:
+            raise BadAlg(f"Algorithm identifier and key mismatch: {e}. Could not determine the hash algorithm.") from e
+
+        except BadAlg as e:
+            raise InvalidSignature(e.message) from e
         cryptoutils.verify_signature(public_key=public_key, signature=signature, data=data, hash_alg=hash_alg)
     else:
         raise BadAlg(f"Unsupported public key type: {type(public_key).__name__}.")

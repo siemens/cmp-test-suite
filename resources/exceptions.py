@@ -56,6 +56,13 @@ class BadConfig(CMPTestSuiteError):
 ##########################
 
 
+class BadSigAlgID(CMPTestSuiteError):
+    """Raised when the algorithm identifier and the signing key do not match."""
+
+    failinfo = "badDataFormat"
+    bit_num = 0
+
+
 class UnknownOID(CMPTestSuiteError):
     """Raised when an OID is unknown."""
 
@@ -89,6 +96,13 @@ class AlgorithmProfileError(CMPTestSuiteError):
 
 class InvalidAltSignature(InvalidSignature):
     """Raised when the alternative signature is invalid."""
+
+
+class LwCMPViolation(CMPTestSuiteError):
+    """Raised when the LwCMP profile is violated, because of the algorithm population or the message size."""
+
+    failinfo = "badRequest"
+    bit_num = 2
 
 
 #########################
@@ -200,6 +214,7 @@ class BadAsn1Data(CMPTestSuiteError):
         remainder: Optional[bytes] = None,
         overwrite: bool = False,
         error_details: Optional[Union[List[str], str]] = None,
+        *,
         failinfo: str = "badDataFormat",
     ):
         """Initialize the exception with the message.

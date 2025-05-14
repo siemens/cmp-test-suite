@@ -35,10 +35,12 @@ class TestCheckMessageTimeField(unittest.TestCase):
         with self.assertLogs(level="INFO") as log:
             check_message_time_field(pki_message=response_pki_message, allowed_interval=60, request_time=request_time)
             # Normally, it returns 29 seconds, but I'll be forgiving.
-            time_msg1 = "INFO:root:time difference between request and response: 29" in log.output[0]
-            time_msg2 = "INFO:root:time difference between request and response: 30" in log.output[0]
-            time_msg3 = "INFO:root:time difference between request and response: 28" in log.output[0]
+            time_msg1 = "INFO:root:Time difference between request and response was: 28 seconds." in log.output[0]
+            time_msg2 = "INFO:root:Time difference between request and response was: 29 seconds." in log.output[0]
+            time_msg3 = "INFO:root:Time difference between request and response was: 30 seconds." in log.output[0]
+            print(log.output[0])
             self.assertTrue(time_msg1 or time_msg2 or time_msg3)
+
 
     def test_messagetime_exceeds_allowed_interval(self):
         """

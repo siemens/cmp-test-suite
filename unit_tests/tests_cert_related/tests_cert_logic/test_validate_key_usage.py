@@ -6,17 +6,18 @@ import unittest
 
 from resources.certbuildutils import build_certificate
 from resources.certutils import validate_key_usage
+from resources.exceptions import NotAuthorized
 from resources.suiteenums import KeyUsageStrictness
 
 
 class TestValidateKeyUsage(unittest.TestCase):
     def setUp(self):
         # Prepare certificates with specific key usages for testing
-        cert_valid, _ = build_certificate(ski=True, key_usage="digitalSignature")
+        cert_valid, _ = build_certificate(include_ski=True, key_usage="digitalSignature")
         self.cert_valid = cert_valid
 
         # Certificate with different key usage
-        self.cert_different_usage, _ = build_certificate(ski=True, key_usage="keyAgreement")
+        self.cert_different_usage, _ = build_certificate(include_ski=True, key_usage="keyAgreement")
 
     def test_validate_correct_usage(self):
         """
@@ -37,7 +38,7 @@ class TestValidateKeyUsage(unittest.TestCase):
         WHEN validate_key_usage is called with strictness=LAX and key_usages="digitalSignature"
         THEN a ValueError should be raised indicating the key usage is invalid
         """
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotAuthorized):
             validate_key_usage(
                 cert=self.cert_different_usage, strictness=KeyUsageStrictness.LAX.value, key_usages="digitalSignature"
             )
@@ -49,7 +50,7 @@ class TestValidateKeyUsage(unittest.TestCase):
         THEN a ValueError should be raised indicating the KeyUsage extension is missing
         """
         # Build a certificate without KeyUsage extension
-        cert_no_usage, _ = build_certificate(ski=True, key_usage=None)
+        cert_no_usage, _ = build_certificate(include_ski=True, key_usage=None)
         with self.assertRaises(ValueError):
             validate_key_usage(
                 cert=cert_no_usage, strictness=KeyUsageStrictness.STRICT.value, key_usages="digitalSignature"

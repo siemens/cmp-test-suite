@@ -4,15 +4,16 @@
 
 """Logic for building/validating Chameleon certificates/certification requests."""
 
-from typing import List, Optional, Tuple
+import logging
+from typing import List, Optional, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-import resources.certutils
 import resources.prepare_alg_ids
 import resources.protectionutils
 from pq_logic.hybrid_structures import (
@@ -25,13 +26,25 @@ from pq_logic.tmp_oids import (
     id_at_deltaCertificateRequestSignature,
     id_ce_deltaCertificateDescriptor,
 )
-from resources import certbuildutils, certextractutils, compareutils, convertutils, cryptoutils, keyutils, utils
-from resources.convertutils import copy_asn1_certificate, subject_public_key_info_from_pubkey
+from resources import (
+    certbuildutils,
+    certextractutils,
+    certutils,
+    compareutils,
+    convertutils,
+    cryptoutils,
+    keyutils,
+    prepareutils,
+    utils,
+)
+from resources.convertutils import (
+    copy_asn1_certificate,
+    subject_public_key_info_from_pubkey,
+)
 from resources.copyasn1utils import copy_csr, copy_name, copy_validity
 from resources.exceptions import BadAltPOP, BadAsn1Data, BadCertTemplate
 from resources.oid_mapping import get_hash_from_oid
-from resources.prepareutils import prepare_name
-from resources.typingutils import SignKey
+from resources.typingutils import PublicKey, SignKey, VerifyKey
 
 
 def _prepare_issuer_and_subject(
@@ -59,6 +72,16 @@ def _prepare_issuer_and_subject(
         dcd["subject"] = subject
 
     return dcd
+
+
+def _compare_times(time1: rfc5280.Time, time2: rfc5280.Time) -> bool:
+    """Compare two `rfc5280.Time` objects.
+
+    :param time1: The first `rfc5280.Time` object.
+    :param time2: The second `rfc5280.Time` object.
+    :return: True if the times are equal, False otherwise.
+    """
+    return encoder.encode(time1) == encoder.encode(time2)
 
 
 @not_keyword
@@ -90,37 +113,25 @@ def prepare_dcd_extension_from_delta(delta_cert: rfc9480.CMPCertificate, base_ce
     if not same_alg_id:
         dcd["signature"]["algorithm"] = delta_cert["tbsCertificate"]["signature"]["algorithm"]
 
-    same_issuer = compareutils.compare_pyasn1_names(
-        delta_cert["tbsCertificate"]["issuer"], base_cert["tbsCertificate"]["issuer"]
+    dcd = _prepare_issuer_and_subject(
+        dcd=dcd,
+        delta_cert=delta_cert,
+        base_cert=base_cert,
     )
 
-    if not same_issuer:
-        obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
-        name_obj = copy_name(filled_name=delta_cert["tbsCertificate"]["issuer"], target=obj)
-        dcd["issuer"] = name_obj
-
-    val1 = encoder.encode(delta_cert["tbsCertificate"]["validity"])
-    val2 = encoder.encode(base_cert["tbsCertificate"]["validity"])
-
-    if val1 != val2:
+    if not _compare_times(delta_cert["tbsCertificate"]["validity"], base_cert["tbsCertificate"]["validity"]):
         validity2 = rfc5280.Validity().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 2))
         dcd["validity"] = copy_validity(delta_cert["tbsCertificate"]["validity"], target=validity2)
-
-    same_subject = compareutils.compare_pyasn1_names(
-        delta_cert["tbsCertificate"]["subject"], base_cert["tbsCertificate"]["subject"]
-    )
-
-    if not same_subject:
-        obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
-        name_obj = copy_name(filled_name=delta_cert["tbsCertificate"]["subject"], target=obj)
-        dcd["subject"] = name_obj
 
     dcd["subjectPublicKeyInfo"] = delta_cert["tbsCertificate"]["subjectPublicKeyInfo"]
 
     # Include differing extensions, if any
-    differing_extensions = _prepare_dcd_extensions(delta_cert, base_cert)
-    if differing_extensions:
-        dcd["extensions"] = rfc5280.Extensions(differing_extensions)
+    differing_extensions = _clean_base_and_delta_extensions(
+        base_cert["tbsCertificate"]["extensions"], delta_cert["tbsCertificate"]["extensions"]
+    )
+    logging.debug("Differing extensions: %s", differing_extensions.prettyPrint())
+    if differing_extensions.isValue:
+        dcd["extensions"].extend(differing_extensions)
 
     dcd["signatureValue"] = delta_cert["signature"]
 
@@ -128,7 +139,9 @@ def prepare_dcd_extension_from_delta(delta_cert: rfc9480.CMPCertificate, base_ce
 
 
 def _prepare_dcd_extensions(
-    delta_certificate, base_certificate, exclude_extensions: bool = False
+    delta_certificate: rfc9480.CMPCertificate,
+    base_certificate: rfc9480.CMPCertificate,
+    exclude_extensions: bool = False,
 ) -> List[rfc5280.Extension]:
     """Prepare the `Extensions` field of the DCD extension by comparing the Base and Delta Certificate.
 
@@ -306,7 +319,7 @@ def prepare_delta_cert_req(
 
     if delta_common_name:
         name = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0))
-        parsed_name = prepare_name(delta_common_name, target=name)
+        parsed_name = prepareutils.prepare_name(delta_common_name, target=name)
         delta_req["subject"] = parsed_name
 
     delta_req["subjectPKInfo"] = subject_public_key_info_from_pubkey(signing_key.public_key())
@@ -334,7 +347,7 @@ def prepare_delta_cert_req(
 def build_paired_csr(  # noqa: D417 Missing argument descriptions in the docstring
     base_private_key: SignKey,
     delta_private_key: SignKey,
-    base_common_name: str = "CN=Hans Mustermann",
+    base_common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     base_extensions: Optional[rfc5280.Extensions] = None,
     delta_extensions: Optional[rfc5280.Extensions] = None,
     **kwargs,
@@ -434,6 +447,33 @@ def build_paired_csr(  # noqa: D417 Missing argument descriptions in the docstri
 
 
 @not_keyword
+def load_chameleon_csr_delta_key_and_sender(csr: rfc6402.CertificationRequest) -> Tuple[PublicKey, rfc9480.Name]:
+    """Load the public key and sender from the `DeltaCertificateRequestValue`.
+
+    :param csr: The `CertificationRequest` to extract the public key from.
+    :return: The public key of the Delta Certificate request.
+    :raises: ValueError: If the Delta Certificate request attribute is missing.
+    :raises: InvalidKeyData: If the public key is not a valid key.
+    """
+    delta_req = None
+    for attr in csr["certificationRequestInfo"]["attributes"]:
+        if attr["attrType"] == id_at_deltaCertificateRequest:
+            delta_req = decoder.decode(attr["attrValues"][0], asn1Spec=DeltaCertificateRequestValue())[0]
+            break
+
+    if delta_req is None:
+        raise ValueError("`DeltaCertificateRequestValue` attribute is missing.")
+
+    if not delta_req["subject"].isValue:
+        sender = csr["certificationRequestInfo"]["subject"]
+    else:
+        target = rfc9480.Name()
+        sender = copy_name(filled_name=delta_req["subject"], target=target)
+
+    return keyutils.load_public_key_from_spki(delta_req["subjectPKInfo"]), sender
+
+
+@not_keyword
 def extract_chameleon_attributes(
     csr: rfc6402.CertificationRequest,
 ) -> Tuple[List[rfc5652.Attribute], DeltaCertificateRequestValue, DeltaCertificateRequestSignatureValue]:
@@ -494,7 +534,7 @@ def verify_paired_csr_signature(  # noqa: D417 Missing argument description in t
     """
     csr_tmp = copy_csr(csr)
 
-    resources.certutils.verify_csr_signature(csr=csr_tmp)
+    certutils.verify_csr_signature(csr=csr_tmp)
     attributes, delta_req, delta_sig = extract_chameleon_attributes(csr=csr_tmp)
 
     if delta_req is None:
@@ -543,8 +583,7 @@ def build_delta_cert(
     ca_key: SignKey,
     ca_cert: rfc9480.CMPCertificate,
     alt_sign_key: Optional[SignKey] = None,
-    hash_alg: str = "sha256",
-    use_rsa_pss: bool = False,
+    **kwargs,
 ) -> rfc9480.CMPCertificate:
     """Prepare a Delta Certificate from a paired CSR.
 
@@ -556,8 +595,6 @@ def build_delta_cert(
     :param ca_key: The CA key for signing the certificate.
     :param ca_cert: The CA certificate matching the CA key.
     :param alt_sign_key: An alternative signing key for the certificate. Defaults to `None`.
-    :param hash_alg: The hash algorithm used for signing. Defaults to "sha256".
-    :param use_rsa_pss: Whether to use PSS-padding for signing. Defaults to `False`.
     :return: The populated `TBSCertificate` structure.
     """
     csr_tmp = rfc6402.CertificationRequest()
@@ -569,7 +606,7 @@ def build_delta_cert(
 
     csr_tmp["certificationRequestInfo"]["subjectPublicKeyInfo"] = delta_value["subjectPKInfo"]
 
-    if delta_value["extensions"].isValue:
+    if delta_value["extensions"].isValue and kwargs.get("include_delta_extensions", True):
         csr_tmp = certbuildutils.csr_add_extensions(
             csr_tmp,
             delta_value["extensions"],
@@ -580,8 +617,312 @@ def build_delta_cert(
         ca_key=ca_key,
         ca_cert=ca_cert,
         alt_sign_key=alt_sign_key,
-        hash_alg=hash_alg,
-        use_rsa_pss=use_rsa_pss,
+        hash_alg=kwargs.get("hash_alg", "sha256"),
+        use_rsa_pss=kwargs.get("use_rsa_pss", False),
+        include_ski=kwargs.get("include_ski", True),
+        extensions=kwargs.get("extensions"),
+        include_csr_extensions=kwargs.get("include_csr_extensions", False),
+        validity=kwargs.get("validity"),
+    )
+
+
+def _validate_keys(
+    first_key: PublicKey,
+    delta_key: PublicKey,
+    min_key_size: int = 2048,
+    max_key_size: int = 8192,
+) -> None:
+    """Validate the keys used for the Base and Delta Certificates.
+
+    :param first_key: The public key of the Base Certificate.
+    :param delta_key: The public key of the Delta Certificate.
+    :raises ValueError: If the keys are not compatible.
+    """
+    if not isinstance(first_key, VerifyKey):
+        raise BadCertTemplate(f"Base Certificate public key is not a verifying key.Got {type(first_key)} instead.")
+
+    if not isinstance(delta_key, VerifyKey):
+        raise BadCertTemplate(f"Delta Certificate public key is not a verifying key.Got {type(delta_key)} instead.")
+
+    if delta_key == first_key:
+        raise BadCertTemplate("Delta Certificate public key must not match the Base Certificate public key.")
+
+    if isinstance(delta_key, RSAPublicKey):
+        key_size = delta_key.key_size
+        if key_size < min_key_size or key_size > max_key_size:
+            raise BadCertTemplate(
+                f"Delta Certificate public key size {key_size} is not within the "
+                f"allowed range ({min_key_size}-{max_key_size})."
+            )
+
+    if isinstance(first_key, RSAPublicKey):
+        key_size = first_key.key_size
+        if key_size < min_key_size or key_size > max_key_size:
+            raise BadCertTemplate(
+                f"Base Certificate public key size {key_size} is not within the "
+                f"allowed range ({min_key_size}-{max_key_size})."
+            )
+
+
+def _parse_extension(
+    csr: Union[rfc6402.CertificationRequest, DeltaCertificateRequestValue],
+    target_extensions: rfc9480.Extensions,
+    include_ski: Optional[bool] = True,
+    ski_critical: bool = False,
+) -> rfc9480.Extensions:
+    """Parse the extension and copy it to the target.
+
+    :param csr: The `CSR` or `DeltaCertificateRequestValue` to parse.
+    :param target_extensions: The target extensions to copy to.
+    :param include_ski: Whether to include the Subject Key Identifier (SKI) extension, if `None` it will be included,
+    if it is present in the `csr`. Defaults to `True`.
+    :param ski_critical: Whether the SKI extension is critical.
+    :return: The target extensions with the parsed extensions.
+    """
+    csr_extension, spki = certbuildutils.parse_extension_and_public_key(csr)
+
+    is_base = isinstance(csr, rfc6402.CertificationRequest)
+
+    if csr_extension is None:
+        return target_extensions
+
+    ski, _ = certbuildutils.validate_subject_key_identifier_extension(csr, prepare_extn=include_ski is True)
+    if ski is not None and include_ski in [True, None]:
+        target_extensions.append(ski)
+    elif ski is not None:
+        public_key = keyutils.load_public_key_from_spki(spki)
+        ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+        target_extensions.append(ski)
+
+    for x in csr_extension:
+        if x["extnID"] == id_ce_deltaCertificateDescriptor:
+            msg = "DeltaCertificateRequestValue" if not is_base else "Base CSR"
+            raise BadCertTemplate(f"DeltaCertificateDescriptor extension is not allowed in the {msg}.")
+
+        if x["extnID"] == rfc5280.id_ce_subjectKeyIdentifier:
+            continue
+
+        if not certbuildutils.extensions_contains_extn_id(x["extnID"], target_extensions):  # type: ignore
+            target_extensions.append(x)
+
+    return target_extensions
+
+
+def _process_remove_extensions(
+    csr: rfc6402.CertificationRequest,
+    delta_req_value: DeltaCertificateRequestValue,
+    oids: List[univ.ObjectIdentifier],
+    include_ski: Optional[bool] = None,
+    ski_critical: bool = False,
+    additional_extensions: Optional[rfc9480.Extensions] = None,
+) -> Tuple[rfc9480.Extensions, rfc9480.Extensions]:
+    """Remove the extensions from the CSR and Delta Certificate."""
+    base_extensions = rfc9480.Extensions()
+    delta_extensions = rfc9480.Extensions()
+
+    if additional_extensions is None:
+        additional_extensions = rfc9480.Extensions()
+
+    csr_extensions, _ = certbuildutils.parse_extension_and_public_key(csr)
+
+    if csr_extensions is None:
+        raise ValueError("CSR extensions are missing. This function should not be called.")
+
+    csr_ski, _ = certbuildutils.validate_subject_key_identifier_extension(csr, prepare_extn=include_ski in [True, None])
+    delta_ski, _ = certbuildutils.validate_subject_key_identifier_extension(
+        delta_req_value, critical=ski_critical, prepare_extn=include_ski in [True, None]
+    )
+    if include_ski in [None, True]:
+        base_extensions.append(csr_ski)
+
+    if include_ski in [None, True]:
+        delta_extensions.append(delta_ski)
+
+    base_extensions.extend(additional_extensions)
+    delta_extensions.extend(additional_extensions)
+
+    for oid in oids:
+        if (
+            not certbuildutils.extensions_contains_extn_id(oid, base_extensions)
+            and oid != rfc5280.id_ce_subjectKeyIdentifier
+        ):
+            extn = certextractutils.get_extension(csr_extensions, oid)
+            base_extensions.append(extn)
+
+    for oid in oids:
+        if (
+            not certbuildutils.extensions_contains_extn_id(oid, delta_extensions)
+            and oid != rfc5280.id_ce_subjectKeyIdentifier
+        ):
+            extn = certextractutils.get_extension(delta_req_value["extensions"], oid)
+            delta_extensions.append(extn)
+
+    return base_extensions, delta_extensions
+
+
+def _clean_base_and_delta_extensions(
+    base_extensions: rfc9480.Extensions, delta_extensions: rfc9480.Extensions
+) -> rfc9480.Extensions:
+    """Remove the extension which have the same values inside the Base and Delta extensions.
+
+    :param base_extensions: The extensions to be added to the Base Certificate.
+    :param delta_extensions: The extensions to be added to the Delta Certificate.
+    :return: The cleaned extensions, which only contain the differing extensions.
+    """
+    if not base_extensions.isValue and not delta_extensions.isValue:
+        return rfc9480.Extensions()
+
+    delta_out = rfc9480.Extensions()
+    for base_ext in base_extensions:
+        extn = certextractutils.get_extension(delta_extensions, base_ext["extnID"])
+        if extn is None:
+            pass
+        elif extn["critical"] != base_ext["critical"]:
+            delta_out.append(extn)
+        elif extn["extnValue"].asOctets() != base_ext["extnValue"].asOctets():
+            delta_out.append(extn)
+
+    return delta_out
+
+
+def _process_extension_oids(
+    csr_extensions: rfc9480.Extensions,
+    delta_req_value: DeltaCertificateRequestValue,
+) -> Tuple[List[univ.ObjectIdentifier], List[univ.ObjectIdentifier]]:
+    """Process the OIDs of the extensions in the CSR and Delta Certificate."""
+    base_all_oids = [ext["extnID"] for ext in csr_extensions]
+    delta_all_oids = [ext["extnID"] for ext in delta_req_value["extensions"]]
+    logging.debug("Base OIDs: %s", str(base_all_oids))
+    logging.debug("Delta OIDs: %s", str(delta_all_oids))
+
+    # The extensions field contains the extensions whose criticality and/or DER-encoded
+    # value are different in the Delta Certificate compared to the Base Certificate
+    # with the exception of the DCD extension itself.
+
+    # TODO should be MUST not, otherwise is it not possible to correctly
+    # prepare the extensions.
+    # Additionally, the Base Certificate SHALL NOT include any extensions, which
+    # are not included in the Delta Certificate, with the exception of the
+    # DCD extension itself.
+
+    not_included_oids = []
+    shared_oids = []
+    for oid in base_all_oids:
+        if oid not in delta_all_oids:
+            not_included_oids.append(oid)
+        else:
+            shared_oids.append(oid)
+
+    logging.debug("Not included OIDs: %s", not_included_oids)
+    logging.debug("Shared OIDs: %s", shared_oids)
+    return not_included_oids, shared_oids
+
+
+@not_keyword
+def process_extensions_for_chameleon(
+    csr: rfc6402.CertificationRequest,
+    delta_req_value: DeltaCertificateRequestValue,
+    include_ski: Optional[bool] = None,
+    additional_extensions: Optional[rfc9480.Extensions] = None,
+    ski_critical: bool = False,
+    strict: bool = False,
+    issue_same_extensions: bool = False,
+) -> Tuple[rfc9480.Extensions, rfc9480.Extensions]:
+    """Prepare the extensions for the Base and Delta Certificates."""
+    base_extensions = rfc9480.Extensions()
+    delta_extensions = rfc9480.Extensions()
+
+    if additional_extensions is None:
+        additional_extensions = rfc9480.Extensions()
+
+    base_extensions.extend(additional_extensions)
+    delta_extensions.extend(additional_extensions)
+
+    csr_extensions = certextractutils.extract_extensions_from_csr(csr)
+    if csr_extensions is None and not delta_req_value["extensions"].isValue:
+        if include_ski:
+            public_key = keyutils.load_public_key_from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
+            csr_ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+            base_extensions.append(csr_ski)
+
+            public_key = keyutils.load_public_key_from_spki(delta_req_value["subjectPKInfo"])
+            delta_ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+            delta_extensions.append(delta_ski)
+
+        return base_extensions, delta_extensions
+
+    if csr_extensions is not None and not delta_req_value["extensions"].isValue:
+        if include_ski:
+            public_key = keyutils.load_public_key_from_spki(delta_req_value["subjectPKInfo"])
+            delta_ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+            delta_extensions.append(delta_ski)
+
+        return _parse_extension(
+            csr=csr,
+            target_extensions=csr_extensions,
+            include_ski=include_ski,
+            ski_critical=ski_critical,
+        ), delta_extensions
+
+    if delta_req_value["extensions"].isValue and csr_extensions is None:
+        if include_ski:
+            public_key = keyutils.load_public_key_from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
+            csr_ski = certbuildutils.prepare_ski_extension(key=public_key, critical=ski_critical)
+            base_extensions.append(csr_ski)
+
+        return _parse_extension(
+            csr=delta_req_value,
+            target_extensions=delta_extensions,
+            include_ski=include_ski,
+            ski_critical=ski_critical,
+        ), delta_extensions
+
+    logging.debug("Both CSR and Delta Certificate have extensions.")
+    # Both are values.
+
+    if csr_extensions is None:
+        raise ValueError("CSR extensions are missing. This path should not be called.")
+
+    not_included_oids, shared_oids = _process_extension_oids(
+        csr_extensions=csr_extensions,
+        delta_req_value=delta_req_value,
+    )
+    if not_included_oids:
+        if strict:
+            raise BadCertTemplate(
+                f"Base Certificate contains extensions not included in the Delta Certificate: {not_included_oids}"
+            )
+        if issue_same_extensions:
+            return _process_remove_extensions(
+                csr=csr,
+                delta_req_value=delta_req_value,
+                oids=shared_oids,
+                include_ski=include_ski,
+                ski_critical=ski_critical,
+                additional_extensions=additional_extensions,
+            )
+
+        # Just parse the extensions.
+        return _parse_extension(
+            csr=csr,
+            target_extensions=base_extensions,
+            include_ski=include_ski,
+            ski_critical=ski_critical,
+        ), _parse_extension(
+            csr=delta_req_value,
+            target_extensions=delta_extensions,
+            include_ski=include_ski,
+            ski_critical=ski_critical,
+        )
+
+    # Have the same extensions
+    return _process_remove_extensions(
+        csr=csr,
+        delta_req_value=delta_req_value,
+        oids=shared_oids,
+        include_ski=include_ski,
+        ski_critical=ski_critical,
+        additional_extensions=additional_extensions,
     )
 
 
@@ -593,6 +934,7 @@ def build_chameleon_cert_from_paired_csr(
     alt_key: Optional[SignKey] = None,
     use_rsa_pss: bool = False,
     hash_alg: str = "sha256",
+    **kwargs,
 ) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Build a Paired Certificate from a paired CSR.
 
@@ -614,11 +956,36 @@ def build_chameleon_cert_from_paired_csr(
     first_key = keyutils.load_public_key_from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
     delta_key = keyutils.load_public_key_from_spki(delta_req["subjectPKInfo"])
 
-    if delta_key == first_key:
-        raise BadCertTemplate("Delta Certificate public key must not match the Base Certificate public key.")
+    _validate_keys(
+        first_key=first_key,
+        delta_key=delta_key,
+    )
 
-    cert = certbuildutils.build_cert_from_csr(
-        csr=csr, ca_key=ca_key, ca_cert=ca_cert, alt_sign_key=alt_key, use_rsa_pss=use_rsa_pss
+    base_extensions, delta_extensions = process_extensions_for_chameleon(
+        csr=csr,
+        delta_req_value=delta_req,
+        include_ski=kwargs.get("include_ski"),
+        additional_extensions=kwargs.get("extensions"),
+        ski_critical=kwargs.get("ski_critical", False),
+        strict=kwargs.get("strict", False),
+        issue_same_extensions=kwargs.get("issue_same_extensions", True),
+    )
+
+    logging.debug("Base Extensions before cert building: %s", base_extensions.prettyPrint())
+    logging.debug("Delta Extensions before cert building: %s", delta_extensions.prettyPrint())
+
+    validity = kwargs.get("validity") or certbuildutils.default_validity(days=kwargs.get("days", 30))
+
+    base_cert = certbuildutils.build_cert_from_csr(
+        csr=csr,
+        ca_key=ca_key,
+        ca_cert=ca_cert,
+        alt_sign_key=alt_key,
+        use_rsa_pss=use_rsa_pss,
+        include_ski=False,
+        validity=validity,
+        extensions=base_extensions,  # type: ignore
+        include_csr_extensions=False,
     )
 
     delta_cert = build_delta_cert(
@@ -629,14 +996,30 @@ def build_chameleon_cert_from_paired_csr(
         alt_sign_key=alt_key,
         use_rsa_pss=use_rsa_pss,
         hash_alg=hash_alg,
+        include_ski=False,
+        validity=validity,
+        extensions=delta_extensions,
+        include_csr_extensions=False,
+        include_delta_extensions=False,
+    )
+
+    logging.debug(
+        "Delta Certificate extensions after cert building: %s", delta_cert["tbsCertificate"]["extensions"].prettyPrint()
+    )
+    logging.debug(
+        "Base Certificate extensions after cert building: %s", base_cert["tbsCertificate"]["extensions"].prettyPrint()
     )
 
     paired_cert = build_chameleon_base_certificate(
         delta_cert=delta_cert,
-        base_tbs_cert=cert["tbsCertificate"],
+        base_tbs_cert=base_cert["tbsCertificate"],
         ca_key=ca_key,
         use_rsa_pss=use_rsa_pss,
         hash_alg=None,  # only supposed to be used for negative testing.
+    )
+    logging.debug(
+        "Delta Certificate extensions after after cert building: %s",
+        delta_cert["tbsCertificate"]["extensions"].prettyPrint(),
     )
 
     return paired_cert, delta_cert

@@ -19,8 +19,9 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
-from pyasn1_alt_modules import rfc5280, rfc5652, rfc9480, rfc9629
+from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480, rfc9629
 
+from pq_logic.hybrid_structures import DeltaCertificateDescriptor, DeltaCertificateRequestValue
 from pq_logic.keys.abstract_pq import (
     PQSignaturePrivateKey,
     PQSignaturePublicKey,
@@ -151,7 +152,7 @@ ControlsType = Union[
     rfc9480.AttributeTypeAndValue,
 ]
 
-ExtensionsType = Union[
+ExtensionsParseType = Union[
     rfc9480.Extensions,
     Sequence[rfc5280.Extension],
     rfc5280.Extension,
@@ -159,3 +160,25 @@ ExtensionsType = Union[
 CAResponse = Tuple[PKIMessageTMP, List[rfc9480.CMPCertificate]]
 CACertResponse = Tuple[CertResponseTMP, rfc9480.CMPCertificate]
 CACertResponses = Tuple[List[CertResponseTMP], List[rfc9480.CMPCertificate]]
+
+# The `CRLFullNameType` includes all types supported for CRL full names.
+# This type ensures that only compatible types are used in CRL-related preparation functions.
+CRLFullNameType = Union[
+    str,
+    rfc9480.GeneralName,
+    Sequence[rfc9480.GeneralName],
+]
+
+CertRequestType = Union[
+    rfc9480.CertTemplate,
+    rfc6402.CertificationRequest,
+    DeltaCertificateRequestValue,
+]
+
+CertRelatedType = Union[
+    rfc9480.CMPCertificate,
+    CertRequestType,
+    DeltaCertificateDescriptor,
+]
+
+ExtensionsType = Union[rfc5280.Extensions, Sequence[rfc5280.Extension], List[rfc9480.Extensions]]

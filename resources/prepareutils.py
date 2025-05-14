@@ -11,7 +11,7 @@ These prepare functions are used in various other structures and do not require
 from datetime import datetime, timezone
 
 # TODO refactor to shared prepare utils used by the CA and Client logic used.
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 from cryptography import x509
 from pyasn1.codec.der import decoder
@@ -19,6 +19,8 @@ from pyasn1.type import tag, useful
 from pyasn1_alt_modules import rfc5280, rfc9480
 from robot.api.deco import keyword, not_keyword
 from robot.libraries import DateTime
+
+_GeneralNamesType = Union[str, rfc9480.GeneralName, Sequence[rfc9480.GeneralName], rfc9480.GeneralNames, rfc9480.Name]
 
 
 @not_keyword
@@ -129,9 +131,8 @@ def _prepare_date_time_object(
     if date is None:
         return datetime.now(timezone.utc)
     if isinstance(date, str):
-        new_time_obj = DateTime.convert_date(date)  # type: ignore
-        if isinstance(date, str):
-            new_time_obj = datetime.fromisoformat(date)
+        new_time_obj = DateTime.convert_date(date, result_format="datetime")  # type: ignore
+        new_time_obj: datetime
     elif isinstance(date, float):
         new_time_obj = datetime.fromtimestamp(date)
 
@@ -192,3 +193,68 @@ def prepare_general_name_from_name(
     general_name = rfc9480.GeneralName() if target is None else target
     general_name["directoryName"]["rdnSequence"] = name_obj["rdnSequence"]  # type: ignore
     return general_name
+
+
+@not_keyword
+def parse_to_general_name(
+    sender: Union[str, rfc9480.GeneralName, rfc9480.Name, rfc9480.CMPCertificate],
+    gen_type: str = "rfc822Name",
+) -> rfc5280.GeneralName:
+    """Prepare a `GeneralName` object from a string.
+
+    :param sender: The sender's name to be converted to a `GeneralName`.
+    :param gen_type: The type of the `GeneralName`. Defaults to "rfc822Name".
+    :return: A `GeneralName` object.
+    """
+    if isinstance(sender, rfc9480.GeneralName):
+        return sender
+    if isinstance(sender, str):
+        return prepare_general_name(
+            name_type=gen_type,
+            name_str=sender,
+        )
+
+    if isinstance(sender, (rfc9480.Name, rfc9480.CMPCertificate)):
+        return prepare_general_name_from_name(
+            name_obj=sender,
+            extract_subject=True,
+        )
+
+    raise TypeError(f"Sender must be a string, Name or a GeneralName object.Got: {type(sender)}")
+
+
+@not_keyword
+def parse_to_general_names(
+    name: _GeneralNamesType,
+    gen_type: str = "uri",
+) -> rfc9480.GeneralNames:
+    """Parse a name to GeneralNames.
+
+    :param name: The name to parse.
+    :param gen_type: The type of `GeneralName` to create.
+    :return: GeneralNames object.
+    """
+    if isinstance(name, list):
+        gen_names = rfc9480.GeneralNames()
+        for tmp_name in name:
+            gen_name = parse_to_general_names(tmp_name, gen_type=gen_type)
+            gen_names.extend(gen_name)
+        return gen_names
+    if isinstance(name, rfc9480.GeneralNames):
+        return name
+
+    if isinstance(name, rfc9480.GeneralName):
+        gen_names = rfc9480.GeneralNames()
+        gen_names.append(name)
+        return gen_names
+
+    if isinstance(name, (rfc9480.Name, str, rfc9480.CMPCertificate)):
+        gen_name = parse_to_general_name(name, gen_type=gen_type)
+        gen_names = rfc9480.GeneralNames()
+        gen_names.append(gen_name)
+        return gen_names
+
+    raise NotImplementedError(
+        f"GeneralName name_type is Unsupported: {type(name)}. Supported types are: "
+        f"str, Name, GeneralName, GeneralNames."
+    )

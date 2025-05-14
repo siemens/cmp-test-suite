@@ -438,7 +438,7 @@ def compare_alg_id_without_tag(  # noqa D417 undocumented-param
 
 @keyword(name="Compare GeneralName And Name")
 def compare_general_name_and_name(  # noqa D417 # undocumented-param
-    general_name: rfc5280.GeneralName, name: rfc5280.Name
+    general_name: rfc5280.GeneralName, name: rfc5280.Name, url: Optional[str] = None
 ) -> bool:
     """Compare a `pyasn1` GeneralName with a `pyasn1` Name.
 
@@ -454,6 +454,7 @@ def compare_general_name_and_name(  # noqa D417 # undocumented-param
     ---------
         - `general_name`: The `pyasn1` GeneralName object to compare.
         - `name`: The `pyasn1` Name object to compare with the GeneralName.
+        - `url`: Optional URL string for `uniformResourceIdentifier` comparison. Defaults to `None`.
 
     Returns:
     -------
@@ -462,6 +463,7 @@ def compare_general_name_and_name(  # noqa D417 # undocumented-param
     Raises:
     ------
         - `NotImplementedError`: If the `GeneralName` is of another type than `directoryName` or `rfc822Name`.
+        - `ValueError`: If the `url` is required but not provided for `uniformResourceIdentifier` comparison.
 
     Examples:
     --------
@@ -477,6 +479,11 @@ def compare_general_name_and_name(  # noqa D417 # undocumented-param
             return False
         return str_name == str(general_name[general_name.getName()])
 
+    if general_name.getName() == "uniformResourceIdentifier":
+        if url is None:
+            raise ValueError("URL must be provided for uniformResourceIdentifier comparison.")
+        return url == str(general_name[general_name.getName()])
+
     raise NotImplementedError(
         f"GeneralName type '{general_name.getName()}' is not supported. Supported types are: "
         "'directoryName' and 'rfc822Name'."
@@ -485,7 +492,7 @@ def compare_general_name_and_name(  # noqa D417 # undocumented-param
 
 @keyword(name="Find Name Inside GeneralNames")
 def find_name_inside_general_names(  # noqa D417 # undocumented-param
-    gen_names: rfc9480.GeneralNames, name: rfc5280.Name
+    gen_names: rfc9480.GeneralNames, name: rfc5280.Name, url: Optional[str] = None
 ) -> bool:
     """Find a `Name` object inside a `GeneralNames`.
 
@@ -493,6 +500,7 @@ def find_name_inside_general_names(  # noqa D417 # undocumented-param
     ---------
         - `gen_names`: The `GeneralNames` object to search.
         - `name`: The `Name` object to search for.
+        - `url`: Optional URL string for `uniformResourceIdentifier` comparison. Defaults to `None`.
 
     Returns:
     -------
@@ -504,7 +512,7 @@ def find_name_inside_general_names(  # noqa D417 # undocumented-param
 
     """
     for gen_name in gen_names:
-        if compare_general_name_and_name(gen_name, name):
+        if compare_general_name_and_name(gen_name, name, url):
             return True
     return False
 

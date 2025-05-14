@@ -9,7 +9,7 @@ from pyasn1_alt_modules import rfc9480
 from resources.asn1utils import encode_to_der
 from resources.certbuildutils import generate_certificate, generate_signed_csr
 from resources.checkutils import check_pkimessage_signature_protection
-from resources.cmputils import build_p10cr_from_csr, parse_csr, patch_extra_certs
+from resources.cmputils import build_p10cr_from_csr, parse_csr, patch_extra_certs, parse_pkimessage
 from resources.prepareutils import prepare_general_name
 from resources.exceptions import BadMessageCheck
 from resources.keyutils import generate_key, load_private_key_from_file
@@ -36,7 +36,7 @@ class TestCheckSignatureProtection(unittest.TestCase):
         WHEN the PKIMessage is protected using a signature-based method.
         THEN the signature verification should succeed without any exceptions.
         """
-        private_key = generate_key()
+        private_key = generate_key("rsa")
 
         sender = prepare_general_name("directoryName", "CN=Hans")
         pki_message = build_pkimessage(sender=sender)
@@ -53,7 +53,7 @@ class TestCheckSignatureProtection(unittest.TestCase):
         # The difference lies in the name structure. If not transmitted, the values contain the actual string inside,
         # but they need to include the ASN.1 tag and size.
         der_data = encode_to_der(protected_msg)
-        protected_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
+        protected_msg = parse_pkimessage(der_data)
 
         check_pkimessage_signature_protection(pki_message=protected_msg, check_sender_kid=False)
 
@@ -110,7 +110,7 @@ class TestCheckSignatureProtection(unittest.TestCase):
         # The difference lies in the name structure. If not transmitted, the values contain the actual string inside,
         # but they need to include the ASN.1 tag and size.
         der_data = encode_to_der(protected_msg)
-        protected_msg, rest = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
+        protected_msg = parse_pkimessage(der_data)
 
         with self.assertRaises(BadMessageCheck):
             check_pkimessage_signature_protection(pki_message=protected_msg, check_sender_kid=False)

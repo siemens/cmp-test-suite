@@ -274,10 +274,11 @@ CA MUST Send A Valid KUP After Receiving valid KUR
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    kup
-    ${cert}=   Confirm Certificate If Needed   ${response}   protection=signature
+    ${cert}=   Confirm Certificate If Needed   ${response}   protection=signature   url=${CA_CMP_URL}
     Validate Ca Message Body    ${response}
     VAR    ${UPDATED_CERT}    ${cert}    scope=Global
     VAR    ${UPDATED_KEY}    ${kur_key}    scope=Global
+    Wait Until Server Updated Cert
 
 CA MUST Send A Valid CP After Receiving valid P10CR
     [Documentation]    According to RFC 9483 Section 4, when a valid PKCS#10 Certification Request (P10CR) is received,
@@ -407,6 +408,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid KUR
     END
     VAR    ${UPDATED_CERT}    ${cert}    scope=GLOBAL
     VAR    ${UPDATED_KEY}    ${kur_key}    scope=GLOBAL
+    Wait Until Server Updated Cert
     # positioned here so if the Response is incorrect, the certificate is still updated, so that it
     # can be used for other test cases.
     Validate CA Message Body    ${response}    used_p10cr=False
@@ -450,7 +452,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid P10cr SIG-Protected
     ${protected_p10cr}=    Default Protect PKIMessage    ${p10cr}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIStatus Must Be    ${response}    status=accepted
-    ${cert}=  Confirm Certificate If Needed    ${response}
+    ${cert}=  Confirm Certificate If Needed    ${response}   url=${CA_CMP_URL}  cert_req_id=0
     Validate CA Message Body    ${response}    used_p10cr=True
     Certificate Must Be Valid    ${cert}
 
@@ -629,7 +631,7 @@ CA MUST Issue ECDSA Cert With KeyUsage
     ${protected_ir}=  Default Protect PKIMessage    ${ir}
     ${ca_response}=    Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be   ${ca_response}    status=accepted
-    ${cert}=  Confirm Certificate If Needed    ${ca_response}   request=${protected_ir}
+    ${cert}=  Confirm Certificate If Needed    ${ca_response}   request=${protected_ir}   url=${CA_CMP_URL}
     Validate KeyUsage   ${cert}    keyAgreement,digitalSignature    strictness=STRICT
     VAR    ${CLIENT_ECC_KEY}    ${new_key}    scope=Global
     VAR    ${CLIENT_ECC_CERT}    ${cert}    scope=Global
@@ -1071,8 +1073,10 @@ Initialize Global Variables
     VAR    ${REVOKED_CERT}    ${None}    scope=GLOBAL
     VAR    ${REVOKED_PRIVATE_KEY}    ${None}    scope=GLOBAL
     # Only needed to test LWCMP version, where DSA is not allowed as signing algorithm.
-    VAR    ${DSA_CERT}    ${None}    scope=GLOBAL
-    VAR    ${DSA_KEY}    ${None}    scope=GLOBAL
+    
+    ${dsa_cert}   ${dsa_key}=    May Load Cert And Key     ${DSA_CERT}   ${DSA_KEY}   ${DSA_KEY_PASSWORD}
+    VAR    ${DSA_CERT}    ${dsa_cert}    scope=GLOBAL
+    VAR    ${DSA_KEY}    ${dsa_key}    scope=GLOBAL
     # To Test with KARI, if allowed.
     VAR    ${X25519_CERT}    ${None}    scope=GLOBAL
     VAR    ${X25519_KEY}    ${None}    scope=GLOBAL

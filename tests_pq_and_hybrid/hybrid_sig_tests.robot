@@ -150,14 +150,10 @@ CA MUST Issue A Valid Composite RSA-Prehashed Certificate
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True  use_rsa_pss=False
-    ${ir}=          Build Ir From Key    ${key} ${cm}  spki=${spki}  recipient=${RECIPIENT}
+    ${ir}=          Build Ir From Key    ${key}   ${cm}   spki=${spki}  recipient=${RECIPIENT}
     ...             exclude_fields=senderKID,sender   implicit_confirm=${True}
-    ${protected_ir}=  Protect PKIMessage
-    ...                pki_message=${ir}
-    ...                protection=signature
-    ...                private_key=${ISSUED_KEY}
-    ...                cert=${ISSUED_CERT}
-    ${response}=       Exchange PKIMessage    ${protected_ir}
+    ${protected_ir}=  Default Protect PKIMessage   ${ir}
+    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
@@ -171,12 +167,8 @@ CA MUST Issue A Valid Composite RSA-PSS-Prehashed Certificate
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True   use_rsa_pss=True
     ${ir}=          Build Ir From Key    ${key}  ${cm}  spki=${spki}   recipient=${RECIPIENT}
     ...             exclude_fields=senderKID,sender   implicit_confirm=${True}
-    ${protected_ir}=  Protect PKIMessage
-    ...                pki_message=${ir}
-    ...                protection=signature
-    ...                private_key=${ISSUED_KEY}
-    ...                cert=${ISSUED_CERT}
-    ${response}=       Exchange PKIMessage    ${protected_ir}
+    ${protected_ir}=  Default Protect PKIMessage   ${ir}
+    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
@@ -191,12 +183,8 @@ CA MUST Issue A Valid Composite EC-Prehashed Certificate
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
     ${ir}=          Build Ir From Key    ${key}  ${cm}  spki=${spki}   recipient=${RECIPIENT}
     ...             exclude_fields=senderKID,sender
-    ${protected_ir}=  Protect PKIMessage
-    ...                pki_message=${ir}
-    ...                protection=signature
-    ...                private_key=${ISSUED_KEY}
-    ...                cert=${ISSUED_CERT}
-    ${response}=       Exchange PKIMessage    ${protected_ir}
+    ${protected_ir}=  Default Protect PKIMessage   ${ir}
+    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
@@ -212,12 +200,8 @@ CA MUST Issue A Valid Composite EC-brainpool-Prehashed Certificate
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
     ${ir}=          Build Ir From Key    ${key}  ${cm}  spki=${spki}
     ...             recipient=${RECIPIENT}   exclude_fields=senderKID,sender
-    ${protected_ir}=  Protect PKIMessage
-    ...                pki_message=${ir}
-    ...                protection=signature
-    ...                private_key=${ISSUED_KEY}
-    ...                cert=${ISSUED_CERT}
-    ${response}=       Exchange PKIMessage    ${protected_ir}
+    ${protected_ir}=  Default Protect PKIMessage   ${ir}
+    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
@@ -231,12 +215,8 @@ CA MUST Issue A Valid Composite ED25519-Prehashed Certificate
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
     ${ir}=          Build Ir From Key    ${key}  ${cm}  spki=${spki}   recipient=${RECIPIENT}
     ...             exclude_fields=senderKID,sender
-    ${protected_ir}=  Protect PKIMessage
-    ...                pki_message=${ir}
-    ...                protection=signature
-    ...                private_key=${ISSUED_KEY}
-    ...                cert=${ISSUED_CERT}
-    ${response}=       Exchange PKIMessage    ${protected_ir}
+    ${protected_ir}=  Default Protect PKIMessage   ${ir}
+    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
@@ -250,12 +230,8 @@ CA MUST Issue A Valid Composite ED448-Prehashed Certificate
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
     ${ir}=          Build Ir From Key    ${key}  ${cm}   spki=${spki}
     ...             recipient=${RECIPIENT}   exclude_fields=senderKID,sender
-    ${protected_ir}=  Protect PKIMessage
-    ...                pki_message=${ir}
-    ...                protection=signature
-    ...                private_key=${ISSUED_KEY}
-    ...                cert=${ISSUED_CERT}
-    ${response}=       Exchange PKIMessage    ${protected_ir}
+    ${protected_ir}=  Default Protect PKIMessage   ${ir}
+    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
@@ -272,15 +248,11 @@ CA MUST Reject Composite RSA with invalid RSA key length
     ${pq_key}=     Generate Key       algorithm=ml-dsa-44
     ${key}=            Generate Key    algorithm=composite-sig   trad_key=${trad_key}   pq_key=${pq_key}
     ${cm}=             Get Next Common Name
-    ${spki}=   Prepare SubjectPublicKeyInfo   ${trad_key}
+    ${spki}=   Prepare SubjectPublicKeyInfo   ${key}
     ${ir}=    Build Ir From Key    ${key}  ${cm}
     ...         spki=${spki}  recipient=${RECIPIENT}  exclude_fields=sender,senderKID
-    ${protected_ir}=  Protect PKIMessage
-    ...                pki_message=${ir}
-    ...                protection=signature
-    ...                private_key=${ISSUED_KEY}
-    ...                cert=${ISSUED_CERT}
-    ${response}=       Exchange PKIMessage    ${protected_ir}
+    ${protected_ir}=  Default Protect PKIMessage   ${ir}
+    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badDataFormat
@@ -302,14 +274,14 @@ CA MUST Reject Composite Sig with Traditional Revoked key Due Compromise
     ...                protection=signature
     ...                private_key=${revoked_key}
     ...                cert=${revoked_cert}
-    ${response}=       Exchange PKIMessage    ${protected_ir}
+    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    rejection
 
-CA SHOULD Reject Issuing Already in use Traditional Key
+CA MUST Reject Issuing Already in use Traditional Key
     [Documentation]    As defined in Composite Sig Draft CMS03 Section 11.3, we generate a valid IR with a composite
     ...                signature algorithm. The traditional algorithm is already in use and a matching ML-DSA key is
-    ...                generated. The CA SHOULD reject the request and MAY respond with the optional failInfo
+    ...                generated. The CA MUST reject the request and MAY respond with the optional failInfo
     ...                `badCertTemplate` or `badRequest`.
     [Tags]             composite-sig   negative  security
     ${key}=            Generate Key    algorithm=composite-sig  trad_key=${ISSUED_KEY}
@@ -317,6 +289,15 @@ CA SHOULD Reject Issuing Already in use Traditional Key
     ${ir}=    Build Ir From Key    ${key}   cert_template=${cert_template}
     ...       recipient=${RECIPIENT}   exclude_fields=senderKID,sender
     ${protected_ir}=  Default Protect PKIMessage    ${ir}
-    ${response}=       Exchange PKIMessage    ${protected_ir}
+    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badRequest
+
+
+*** Keywords ***
+Exchange Composite Request
+    [Arguments]    ${pki_message}
+    [Documentation]    Exchanges a PKIMessage for a composite algorithm with the CA and return the response.
+    ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
+    ${response}=       Exchange PKIMessage    ${pki_message}  ${url}
+    RETURN   ${response}

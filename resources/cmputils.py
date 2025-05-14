@@ -48,11 +48,20 @@ from resources import (
     protectionutils,
     utils,
 )
-from resources.asn1_structures import KemCiphertextInfoAsn1, PKIMessagesTMP, PKIMessageTMP
+from resources.asn1_structures import CertProfileValueAsn1, KemCiphertextInfoAsn1, PKIMessagesTMP, PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadDataFormat, BadRequest
-from resources.typingutils import CertObjOrPath, ControlsType, ExtensionsType, PrivateKey, PublicKey, SignKey, Strint
+from resources.prepareutils import parse_to_general_name
+from resources.typingutils import (
+    CertObjOrPath,
+    ControlsType,
+    ExtensionsParseType,
+    PrivateKey,
+    PublicKey,
+    SignKey,
+    Strint,
+)
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -60,28 +69,6 @@ sys.set_int_max_str_digits(0)
 
 # from pyasn1 import debug
 # debug.setLogger(debug.Debug('all'))
-
-
-def _prepare_pki_message_gen_name(
-    sender: Union[str, rfc9480.GeneralName, rfc9480.Name, rfc9480.CMPCertificate],
-) -> rfc5280.GeneralName:
-    """Prepare a `GeneralName` object from a string.
-
-    :param sender: The sender's name to be converted to a `GeneralName`.
-    :return: A `GeneralName` object.
-    """
-    if isinstance(sender, rfc9480.GeneralName):
-        return sender
-    if isinstance(sender, str):
-        return rfc5280.GeneralName().setComponentByName("rfc822Name", sender)
-
-    if isinstance(sender, (rfc9480.Name, rfc9480.CMPCertificate)):
-        return prepareutils.prepare_general_name_from_name(
-            name_obj=sender,
-            extract_subject=True,
-        )
-
-    raise TypeError(f"Sender must be a string, Name or a GeneralName object.Got: {type(sender)}")
 
 
 def _prepare_pki_header(
@@ -105,10 +92,10 @@ def _prepare_pki_header(
         pki_header["pvno"] = univ.Integer(pvno)  # type: ignore
 
     if "sender" not in exclude_fields:
-        pki_header["sender"] = _prepare_pki_message_gen_name(sender)
+        pki_header["sender"] = parse_to_general_name(sender)
 
     if "recipient" not in exclude_fields:
-        pki_header["recipient"] = _prepare_pki_message_gen_name(recipient)
+        pki_header["recipient"] = parse_to_general_name(recipient)
 
     return pki_header
 
@@ -223,7 +210,10 @@ def prepare_pki_message(
         if message_time:
             pki_header["messageTime"] = message_time
         else:
-            msg_time_obj = useful.GeneralizedTime().fromDateTime(datetime.now(timezone.utc))
+            # the date is not correctly converted, so that it could happen for test cases,
+            # that the messageTime is in the future. So a slightly older time is used
+            date_time = datetime.now(timezone.utc) - timedelta(seconds=3)
+            msg_time_obj = useful.GeneralizedTime().fromDateTime(date_time)
             message_time_subtyped = msg_time_obj.subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
             pki_header["messageTime"] = message_time_subtyped
 
@@ -613,7 +603,7 @@ def add_controls_to_pkimessage(  # noqa D417 undocumented-param
 @keyword(name="Add Extension To PKIMessage")
 def add_extensions_to_pkimessage(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP,
-    extension: ExtensionsType,
+    extension: ExtensionsParseType,
     cert_req_index: Optional[Strint] = 0,
 ) -> PKIMessageTMP:
     """Add `Extension` objects to a PKIMessage for a specific certificate request.
@@ -1911,6 +1901,43 @@ def prepare_cert_request(  # noqa D417 undocumented-param
     return cert_request
 
 
+@not_keyword
+def prepare_sig_popo_structure(
+    alg_id: Union[rfc9480.AlgorithmIdentifier, univ.ObjectIdentifier],
+    signing_key: SignKey,
+    signature: bytes,
+    bad_pop: bool = False,
+    poposk_input: Optional[rfc4211.POPOSigningKeyInput] = None,
+) -> rfc4211.ProofOfPossession:
+    """Prepare the `ProofOfPossession` (POPO) structure for a certificate request.
+
+    :param alg_id: The algorithm identifier to use.
+    :param signing_key: The signing key used to sign the certificate request.
+    :param signature: The signature of the `CertRequest` to include.
+    :param bad_pop: If `True`, the first byte of the signature will be modified to create an invalid POP signature.
+    :param poposk_input: The `POPOSigningKeyInput` structure to include in the POPO. Defaults to `None`.
+    :return: A populated `ProofOfPossession` object.
+    """
+    popo = rfc4211.ProofOfPossession()
+    popo_key = rfc4211.POPOSigningKey().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 1))
+
+    if isinstance(alg_id, univ.ObjectIdentifier):
+        alg_id = rfc9480.AlgorithmIdentifier()
+        alg_id["algorithm"] = alg_id
+
+    popo_key["algorithmIdentifier"] = alg_id
+
+    if bad_pop:
+        signature = utils.manipulate_bytes_based_on_key(signature, signing_key)
+
+    if poposk_input is not None:
+        popo_key["poposkInput"] = poposk_input
+
+    popo_key["signature"] = univ.BitString().fromOctetString(signature)
+    popo["signature"] = popo_key
+    return popo
+
+
 @keyword(name="Prepare Signature POPO")
 def prepare_signature_popo(  # noqa: D417 undocumented-param
     signing_key: SignKey,
@@ -1954,10 +1981,7 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
         use_pre_hash=use_pre_hash,
         use_rsa_pss=use_rsa_pss,
     )
-    logging.info("Calculated POPO: %s", signature.hex())
-
-    if bad_pop:
-        signature = utils.manipulate_bytes_based_on_key(signature, signing_key)
+    logging.info("Calculated POPO without manipulation: %s", signature.hex())
 
     alg_id = prepare_alg_ids.prepare_sig_alg_id(
         signing_key=signing_key,
@@ -1967,16 +1991,17 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
         add_params_rand_val=add_params_rand_val,
     )
 
-    popo = rfc4211.ProofOfPossession()
-    popo_key = rfc4211.POPOSigningKey().subtype(implicitTag=Tag(tagClassContext, tagFormatConstructed, 1))
-
-    popo_key["signature"] = univ.BitString().fromOctetString(signature)
-    popo_key["algorithmIdentifier"] = alg_id
-
+    poposk_input = None
     if sender is not None:
-        popo_key["poposkInput"] = _prepare_poposigningkeyinput(sender=sender, public_key=signing_key.public_key())
+        poposk_input = _prepare_poposigningkeyinput(sender=sender, public_key=signing_key.public_key())
 
-    popo["signature"] = popo_key
+    popo = prepare_sig_popo_structure(
+        alg_id=alg_id,
+        signing_key=signing_key,
+        signature=signature,
+        bad_pop=bad_pop,
+        poposk_input=poposk_input,
+    )
     return popo
 
 
@@ -3141,13 +3166,17 @@ def patch_pkimessage_header_with_other_message(  # noqa D417 undocumented-param
 
 @not_keyword
 def extract_fields_for_exchange(
-    other_msg: PKIMessageTMP, exclude_fields: Optional[str] = None, for_py_functions: bool = True
+    other_msg: PKIMessageTMP,
+    exclude_fields: Optional[str] = None,
+    for_py_functions: bool = True,
+    use_fresh_nonce: bool = False,
 ) -> dict:
     """Extract fields from a `PKIMessage`, to patch another one.
 
     :param other_msg: The `PKIMessage` to extract fields from.
     :param exclude_fields: The fields to exclude.
     :param for_py_functions: Whether to use the extracted fields for python functions.Defaults to `True`.
+    :param use_fresh_nonce: Whether to use a fresh nonce. Defaults to `False`.
     :return: The extracted fields in a dictionary with the field name as key and the value as value.
     """
     to_exclude = exclude_fields or []  # type: ignore
@@ -3164,7 +3193,11 @@ def extract_fields_for_exchange(
         extracted_fields[field_name] = recipient_nonce
 
     if "senderNonce" not in to_exclude:
-        sender_nonce = other_msg["header"]["recipNonce"].asOctets()
+        if not use_fresh_nonce:
+            sender_nonce = other_msg["header"]["recipNonce"].asOctets()
+
+        else:
+            sender_nonce = os.urandom(16)
         field_name = "sender_nonce" if for_py_functions else "senderNonce"
         extracted_fields[field_name] = sender_nonce
 
@@ -3284,6 +3317,8 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
        ( set the sender inside the directoryName choice of the GeneralName structure)
        - `allow_set_hash` (bool): Flag indicating if the hash can be automatically set for EdDSA signatures or
        other algorithms which do not use a direct hash algorithm. Defaults to `True`.
+       - `use_fresh_nonce` (bool): Flag indicating if a fresh nonce should be used for the `senderNonce` or the
+         `recipNonce` from the request. Defaults to `True`.
 
 
     Returns:
@@ -3301,7 +3336,7 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
     | ${cert_conf}= | Build Cert Conf From Resp | ${response} | sender=tests@example.com | transaction_id=${new_id} |
 
     """
-    extracted_fields = extract_fields_for_exchange(ca_message)
+    extracted_fields = extract_fields_for_exchange(ca_message, use_fresh_nonce=params.get("use_fresh_nonce", True))
     for key, value in extracted_fields.items():
         if key not in params:
             params[key] = value
@@ -3626,6 +3661,11 @@ def get_cert_response_from_pkimessage(  # noqa D417 undocumented-param
 
     """
     message_type = get_cmp_message_type(pki_message)
+
+    if message_type == "error":
+        utils.display_pki_status_info(pki_message, index=response_index)
+        raise ValueError("The provided `PKIMessage` is an error message, which does not contain a certificate.")
+
     if message_type not in {"cp", "kup", "ip", "ccp"}:
         raise ValueError(f"The provided `PKIBody` does not contain a certificate. Got: `{message_type}`")
 
@@ -3902,6 +3942,7 @@ def _prepare_generalinfo(
     if confirm_wait_time is not None:
         confirm_wait_time_obj = rfc9480.InfoTypeAndValue()
         confirm_wait_time_obj["infoType"] = rfc9480.id_it_confirmWaitTime
+
         new_time = datetime.now(timezone.utc)
         new_time = new_time + timedelta(seconds=int(confirm_wait_time))
         if negative_value:
@@ -3914,15 +3955,17 @@ def _prepare_generalinfo(
 
     if cert_profile is not None:
         cert_profile_obj = rfc9480.InfoTypeAndValue()
-        cert_profile_obj["infoType"] = rfc9480.id_it_certReqTemplate
-        cert_profile_obj["infoValue"] = rfc9480.CertProfileValue(cert_profile)
-        general_info_wrapper.append(cert_profile_obj)
+        value = CertProfileValueAsn1()
+        value.append(char.UTF8String(cert_profile))
 
         if negative_value:
-            cert_profile_obj2 = rfc9480.InfoTypeAndValue()
-            cert_profile_obj2["infoType"] = rfc9480.id_it_certReqTemplate
-            cert_profile_obj2["infoValue"] = rfc9480.CertProfileValue(modify_random_str(cert_profile))
-            general_info_wrapper.append(cert_profile_obj2)
+            # MUST be present in the same size as either `GenMsgContent` or `CertReqMsg`.
+            value.append(char.UTF8String(modify_random_str(cert_profile)))
+
+        value.append(cert_profile)
+        cert_profile_obj["infoType"] = rfc9480.id_it_certProfile
+        cert_profile_obj["infoValue"] = value
+        general_info_wrapper.append(cert_profile_obj)
 
     return general_info_wrapper
 

@@ -33,7 +33,7 @@ from resources import (
     protectionutils,
     utils,
 )
-from resources.asn1_structures import PKIMessageTMP
+from resources.asn1_structures import CertProfileValueAsn1, PKIMessageTMP
 from resources.exceptions import (
     BadAlg,
     BadAsn1Data,
@@ -55,6 +55,7 @@ from resources.oidutils import (
     RSASSA_PSS_OID_2_NAME,
     id_KemBasedMac,
 )
+from resources.suiteenums import ProtectedType
 from resources.typingutils import Strint
 
 
@@ -354,6 +355,35 @@ def check_is_protection_present(  # noqa D417 undocumented-param
     return True
 
 
+def _verify_sender_field_for_mac(sender_name: rfc9480.GeneralName, allow_failure: bool = False) -> None:
+    """Verify the sender field for MAC-based protection.
+
+    :param sender_name: The sender name to verify.
+    :param allow_failure: If True, allows failure without raising an exception. Defaults to False.
+    :raises BadMessageCheck: If the sender field is not of type `directoryName` or does not contain a common name.
+    """
+    if sender_name.getName() != "directoryName":
+        if allow_failure:
+            logging.info("For MAC protection the sender is supposed to be of type `directoryName`")
+            return
+
+        raise BadMessageCheck(
+            " For MAC-based protection, the CA "
+            "MUST use an identifier in the commonName field of the directoryName choice."
+        )
+
+    cm_name = utils.get_openssl_name_notation(name=sender_name["directoryName"], oids=[rfc5280.id_at_commonName])
+
+    if not allow_failure:
+        if cm_name is None:
+            raise BadMessageCheck(
+                " For MAC-based protection, the CA "
+                "MUST use an identifier in the commonName field of the directoryName choice."
+            )
+
+    logging.info("sender for MAC-based protection is %s", cm_name)
+
+
 @keyword(name="Check Sender CMP Protection")
 def check_sender_cmp_protection(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP, must_be_protected=True, allow_failure=True
@@ -389,53 +419,35 @@ def check_sender_cmp_protection(  # noqa D417 undocumented-param
     sender_name = asn1utils.get_asn1_value(pki_message, query="header.sender")  # type: ignore
     sender_name: rfc9480.GeneralName
     check_is_protection_present(pki_message=pki_message, must_be_protected=must_be_protected)
+    protection_type = ProtectedType.get_protection_type(pki_message)
 
-    if protectionutils.get_protection_type_from_pkimessage(pki_message) == "sig":
-        cert_name = asn1utils.get_asn1_value(
-            pki_message["extraCerts"][0],  # type: ignore
-            query="tbsCertificate.subject",
-        )
-        cert_name: rfc9480.Name
-        are_same_names = compareutils.compare_general_name_and_name(general_name=sender_name, name=cert_name)
+    if protection_type in [ProtectedType.MAC, ProtectedType.KEM]:
+        _verify_sender_field_for_mac(sender_name=sender_name, allow_failure=allow_failure)
+        return
 
-        if not are_same_names:
-            if allow_failure:
-                n = sender_name.getName()
-                sender_name = f"{n}: {str(sender_name[n])}"  # type: ignore
-                logging.warning(
-                    "The subjectDN should be the same as the sender Name. sender: %s, certificate: %s",
-                    sender_name,
-                    cert_name.prettyPrint(),
-                )
-            else:
-                n = sender_name.getName()
-                sender_name = f"{n}: {str(sender_name[n])}"  # type: ignore
-                raise BadMessageCheck(
-                    f"The subjectDN should be the same as the sender Name. sender: {sender_name}, "
-                    f"certificate: {cert_name.prettyPrint()}"
-                )
+    cert_name = asn1utils.get_asn1_value(
+        pki_message["extraCerts"][0],  # type: ignore
+        query="tbsCertificate.subject",
+    )
+    cert_name: rfc9480.Name
+    are_same_names = compareutils.compare_general_name_and_name(general_name=sender_name, name=cert_name)
 
-    else:
-        if sender_name.getName() != "directoryName":
-            if allow_failure:
-                logging.info("For MAC protection the sender is supposed to be of type `directoryName`")
-                return
-
-            raise BadMessageCheck(
-                " For MAC-based protection, the CA "
-                "MUST use an identifier in the commonName field of the directoryName choice."
+    if not are_same_names:
+        if allow_failure:
+            n = sender_name.getName()
+            sender_name = f"{n}: {str(sender_name[n])}"  # type: ignore
+            logging.warning(
+                "The subjectDN should be the same as the sender Name. sender: %s, certificate: %s",
+                sender_name,
+                cert_name.prettyPrint(),
             )
-
-        cm_name = utils.get_openssl_name_notation(name=sender_name["directoryName"], oids=[rfc5280.id_at_commonName])
-
-        if not allow_failure:
-            if cm_name is None:
-                raise BadMessageCheck(
-                    " For MAC-based protection, the CA "
-                    "MUST use an identifier in the commonName field of the directoryName choice."
-                )
-
-        logging.info("sender for MAC-based protection is %s", cm_name)
+        else:
+            n = sender_name.getName()
+            sender_name = f"{n}: {str(sender_name[n])}"  # type: ignore
+            raise BadMessageCheck(
+                f"The subjectDN should be the same as the sender Name. sender: {sender_name}, "
+                f"certificate: {cert_name.prettyPrint()}"
+            )
 
 
 def _check_cmp_protection_for_extra_certs(pki_message: PKIMessageTMP, allow_self_signed: bool) -> None:
@@ -611,6 +623,9 @@ def _verify_senderkid_for_mac(pki_message: PKIMessageTMP, allow_mac_failure: boo
         )
 
 
+# TODO add test cases for all algorithms (PQ, Composite, etc.)
+
+
 @keyword(name="Validate senderKID For CMP Protection")
 def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP,
@@ -661,10 +676,11 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
         protection_cert = pki_message["extraCerts"][0]
 
     # Determine the type of protection
-    protection_type = protectionutils.get_protection_type_from_pkimessage(pki_message)
+    protection_type = ProtectedType.get_protection_type(pki_message)
     sender_kid = pki_message["header"]["senderKID"].asOctets()
-    alg_name = protectionutils.get_protection_alg_name(pki_message)
-    if protection_type == "sig" or alg_name in ["dh_based_mac", "kem_based_mac"]:
+    if ProtectedType.MAC == protection_type:
+        _verify_senderkid_for_mac(pki_message=pki_message, allow_mac_failure=allow_mac_failure)
+    else:
         # For signature-based protection, the senderKID must match the certificate's SubjectKeyIdentifier
         subject_ski = certextractutils.get_subject_key_identifier(protection_cert)  # type: ignore
         if subject_ski is None:
@@ -676,9 +692,6 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
             raise BadMessageCheck(
                 "The SubjectKeyIdentifier of the CMP-protection certificate differs from the senderKID."
             )
-
-    else:
-        _verify_senderkid_for_mac(pki_message=pki_message, allow_mac_failure=allow_mac_failure)
 
 
 @keyword(name="Validate PKIMessage Signature Protection")
@@ -1103,12 +1116,92 @@ def check_confirmwaittime_in_generalinfo(pki_message: PKIMessageTMP) -> None:  #
             )
 
 
+def _get_cert_profile_msg_size(request: PKIMessageTMP) -> int:
+    """Get the number of Request to match then later the CertProfile number.
+
+    :param request: The PKIMessage object containing the `certProfile` field.
+    :return: The number of requests in the PKIMessage.
+    """
+    msg_type = cmputils.get_cmp_message_type(request)
+
+    if msg_type == "p10cr":
+        return 1
+
+    if msg_type in ["ir", "cr", "kur"]:
+        return len(request["body"][msg_type])
+
+    if msg_type == "genm":
+        return len(request["body"]["genm"])
+
+    raise BadRequest(f"Unknown message type: {msg_type} for certProfile size check!")
+
+
+@keyword(name="Validate certProfile For CA")
+def validate_cert_profile_for_ca(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP,
+    cert_profiles: Optional[List[str]] = None,
+) -> None:
+    """Validate the `certProfile` field in the PKIMessage for a CA.
+
+    Arguments:
+    ---------
+        - `pki_message`: The PKIMessage object containing the `certProfile` field, inside the `generalInfo` field.
+        - `cert_profiles`: The list of `certProfile` to validate against. If `None`, the function will
+        not perform any validation. If provided will add `""` to the list of profiles. Defaults to `None`.
+
+    Raises:
+    ------
+        - `BadRequest`: If the `certProfile` is not allowed for CMP messages.
+        - `BadRequest`: If the `certProfile` is present in messages where it should not be.
+
+    Examples:
+    --------
+    | Validate CertProfiles for CA | ${pki_message} |
+    | Validate CertProfiles for CA | ${pki_message} | ${cert_profiles} |
+
+    """
+    if not pki_message["header"]["generalInfo"].isValue:
+        return
+
+    msg_type = cmputils.get_cmp_message_type(pki_message)
+
+    value = cmputils.get_value_from_seq_of_info_value_field(
+        pki_message["header"]["generalInfo"], rfc9480.id_it_certProfile
+    )
+
+    if value is None:
+        return
+
+    if msg_type not in {"ir", "cr", "kur", "p10cr", "genm"}:
+        raise BadRequest(f"`certProfile` should not be present in {msg_type} messages!")
+
+    profiles, rest = asn1utils.try_decode_pyasn1(  # type: ignore
+        value.asOctets(), CertProfileValueAsn1()
+    )
+    profiles: CertProfileValueAsn1
+
+    if rest != b"":
+        raise BadAsn1Data("CertProfileValue")
+
+    if len(profiles) == 0:
+        raise BadRequest("The `certProfile` structure must contain at least one profile.")
+
+    if len(profiles) == _get_cert_profile_msg_size(pki_message):
+        raise BadRequest("The `certProfile` structure must not contain the same profile multiple times.")
+
+    if cert_profiles is not None:
+        cert_profiles.append("")
+        for profile in profiles:
+            if profile.prettyPrint() not in cert_profiles:
+                raise BadRequest(f"The `certProfile` {profile} is not known to the CA!")
+
+
 @keyword(name="Check certProfile In generalInfo")
 def check_certprofile_in_generalinfo(pki_message: PKIMessageTMP) -> None:  # noqa D417 undocumented-param
     """Check if `certProfile` is correctly set in the generalInfo field of the `pki_message`.
 
     The `certProfile` field is optional and can only be present in messages of type `ir`, `cr`, `kur`, `p10cr`,
-    and `genm` of type `id-it-certReqTemplate`. Ensures it is properly set or omitted as required.
+    and `genm` of type `id-it-certProfile`. Ensures it is properly set or omitted as required.
 
     Arguments:
     ---------
@@ -1127,13 +1220,13 @@ def check_certprofile_in_generalinfo(pki_message: PKIMessageTMP) -> None:  # noq
         return
 
     msg_type = cmputils.get_cmp_message_type(pki_message)
-    cert_req_template = cmputils.find_oid_in_general_info(pki_message, rfc9480.id_it_certReqTemplate)
+    cert_profiles = cmputils.find_oid_in_general_info(pki_message, rfc9480.id_it_certProfile)
 
-    if cert_req_template:
+    if cert_profiles:
         if msg_type not in {"ir", "cr", "kur", "p10cr", "genm"}:
             raise BadRequest("`certProfile` should not be present!")
 
-    # other checks are not relevant.
+    # other checks are not relevant, for the Client.
 
 
 @keyword(name="Check generalInfo Field")
@@ -1159,6 +1252,30 @@ def check_generalinfo_field(pki_message: PKIMessageTMP) -> None:  # noqa D417 # 
     check_implicitconfirm_in_generalinfo(pki_message=pki_message)
     check_confirmwaittime_in_generalinfo(pki_message=pki_message)
     check_certprofile_in_generalinfo(pki_message=pki_message)
+
+
+def _check_message_time_for_request(
+    request_time: datetime.datetime,
+    allowed_interval: int,
+) -> None:
+    """Check if the `messageTime` field is set in the PKIMessage header from a client request.
+
+    :param request_time: The time when the request was made.
+    """
+    now_obj = datetime.datetime.now(datetime.timezone.utc)
+    time_diff = (now_obj - request_time).total_seconds()
+    if time_diff < 0:
+        raise BadTime(f"The `messageTime` field is in the future! The time difference is: {time_diff} seconds")
+
+    if time_diff == 0:
+        logging.warning("The `messageTime` field is set to the current time!")
+
+    if time_diff > allowed_interval:
+        raise BadTime(
+            f"The `messageTime` field is too old: {time_diff} seconds."
+            f"The allowed interval is: {allowed_interval} seconds."
+        )
+    logging.info("The time difference was: %.2f seconds, which is within the allowed interval.", time_diff)
 
 
 @not_keyword
@@ -1197,16 +1314,16 @@ def check_message_time_field(
         time_obj = msg_time.asDateTime
 
         if request_time is not None:
-            time_diff = time_obj - request_time
-            logging.info("time difference between request and response: %s", str(time_diff.seconds))
-            if time_diff.seconds > allowed_interval:
-                raise BadTime(f"The request time difference is greater then: {allowed_interval} seconds.")
+            time_diff = (time_obj - request_time).total_seconds()
+            logging.info("Time difference between request and response was: %d seconds.", int(time_diff))
         else:
-            time_now = datetime.datetime.now(datetime.timezone.utc)
-            time_dif = (time_now - time_obj).seconds
+            _check_message_time_for_request(time_obj, allowed_interval)
+            return
 
-            if time_dif > allowed_interval:
-                raise BadTime(f"Response time difference is greater than: {allowed_interval} seconds.")
+        if time_diff > allowed_interval:
+            raise BadTime(f"Time difference exceeds allowed {allowed_interval} seconds: {time_diff} seconds")
+
+        logging.info("The time difference was: %.2f seconds, which is within the allowed interval.", time_diff)
 
 
 def validate_sender_and_recipient_nonce(  # noqa D417 undocumented-param

@@ -39,7 +39,6 @@ ${TEST_INDEX}            ${0}
 ...        private_key=${ISSUED_KEY}    cert=${ISSUED_CERT}
 ...        password=${PRESHARED_SECRET}    protection=signature
 
-
 *** Keywords ***
 Set Up Test Suite
     [Documentation]    This keyword is used to set up the test suite. It is called at the beginning of the test suite.
@@ -55,6 +54,7 @@ Set Up Test Suite
     ...                configuration file, and will then be loaded from there.
     [Tags]    setup
     IF  '${ISSUED_KEY}' == '${None}'
+        Initialize PQ Cert And Key Variables
         ${issued_key}=    Generate Default Key
         IF    ${ALLOW_MAC_PROTECTION}
             ${extensions}=    Prepare Extensions    digitalSignature,keyEncipherment
@@ -94,6 +94,14 @@ Set Up Test Suite
     ${cert}  ${key}=   May Load Cert And Key    ${OTHER_TRUSTED_PKI_CERT}    ${OTHER_TRUSTED_PKI_KEY}
     VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global  # robocop: off=VAR04
     VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global    # robocop: off=VAR04
+
+Initialize PQ Cert And Key Variables
+    [Documentation]    Initialize the variables for the PQ certificate and key, to store freshly issued
+    ...                certificates and keys. So that those certificates can be used to issue further certificates.
+    ...                Additionally used, to verify if the PKIProtection is working as expected.
+    # Initialize the newly issued certificates and keys.
+    VAR   &{PQ_SIG_CERTS}  scope=Global
+    VAR   &{PQ_SIG_KEYS}   scope=Global
 
 Increase TestIndex
     [Documentation]    Perform the incrementation of the `TestIndex` to update the sender name inside the PKIMessage,
@@ -391,7 +399,8 @@ Generate Default Composite Sig Key
     VAR   &{params}  trad_name=${DEFAULT_TRAD_ALG}
     ...              length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
     ...              pq_name=${DEFAULT_PQ_SIG_ALG}
-    ${key}=      Generate Key    algorithm=composite-sig    &{params}
+    # Generates always the latest (supported) version of the algorithm.
+    ${key}=      Generate Unique Key    algorithm=composite-sig    &{params}
     RETURN     ${key}
 
 Default Protect PKIMessage
@@ -466,9 +475,11 @@ Confirm Certificate If Needed
         ELSE
             VAR   ${exclude_fields}    ${None}
         END
+        ${cert_req_id}=    Get From Dictionary    ${args}    cert_req_id   ${None}
         ${cert_conf}=   Build Cert Conf From Resp  ${response}   sender=${sender}
         ...                                         recipient=${recipient}
         ...                                         exclude_fields=${exclude_fields}
+        ...                                         cert_req_id=${cert_req_id}
         ${cert_conf}=   Default Protect PKIMessage    ${cert_conf}    &{params}
         ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
         ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
@@ -671,15 +682,25 @@ Issue New Cert For Testing
     [Documentation]    Issue a new certificate to be used in tests. It ensures that a valid certificate
     ...    is available for testing.
     ...
+    ...    Arguments:
+    ...    ---------
+    ...    - `url`: The URL of the CA to send the request to. Defaults to `${CA_CMP_URL}`.
+    ...    - `key`: The key to use for the certificate request. If not provided, a new default key will be generated.
+    ...
     ...    Returns:
     ...    - `cert`: The issued certificate.
     ...    - `key`: The key used to generate the certificate request.
     [Tags]    setup
-    ${cert_template}   ${key}=    Generate CertTemplate For Testing
+    [Arguments]    ${url}=${CA_CMP_URL}    ${key}=${None}
+    IF    '${key}' == '${None}'
+        ${cert_template}   ${key}=    Generate CertTemplate For Testing
+    ELSE
+        VAR   ${cert_template}   ${None}
+    END
     ${ir}=    Build IR From Key   ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
     ...                  implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}    exclude_fields=sender,senderKID
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage    ${protected_ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}   ${url}
     PKIStatus Must Be   ${response}   accepted
     ${cert}=   Confirm Certificate If Needed    ${response}
     RETURN   ${cert}    ${key}
@@ -742,7 +763,7 @@ PKIStatus Must Be
     [Arguments]    ${pki_message}  ${status}   ${index}=0
     ${pki_status}=    Get Status From PKIMessage      ${pki_message}    ${index}
     IF  not '${pki_status}' == '${status}'
-        ${pki_status_info}=   Get PKIStatusInfo    ${pki_message}    ${index}   # robocop: off=VAR02
+        ${pki_status_info}=   Display Pki Status Info    ${pki_message}    ${index}   # robocop: off=VAR02
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
 
@@ -935,3 +956,41 @@ Set Up EnvelopedData Certs For Tests
     Issue POS RSA KTRI Cert
     Issue NEG ECC KARI Cert
     Issue POS ECC KARI Cert
+
+Wait Until Server Revoked Cert
+    [Documentation]    Wait time until the server revoked a certificate so that testing can be begin.
+    Sleep    ${REVOKED_WAIT_TIME}
+
+Wait Until Server Updated Cert
+    [Documentation]    Wait time until the server updated a certificate so that testing can be begin.
+    ...                Needed in some cases, if a updated certificate is treated as a revoked certificate,
+    ...                so that no new certificates can be issued.
+    Sleep    ${UPDATE_WAIT_TIME}
+
+Wait Until Server Revived Cert
+    [Documentation]    Wait time until the server revived a certificate so that testing can be begin.
+    Sleep    ${REVOKED_WAIT_TIME}
+
+Get PQ Issuing URL
+    [Documentation]    Return the URL for the PQ issuing endpoint.
+    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
+    RETURN  ${url}
+
+Exchange PKIMessage PQ
+    [Documentation]    Exchange a PKIMessage with the PQ issuing endpoint.
+    [Arguments]    ${pki_message}
+    ${url}=   Get PQ Issuing URL
+    ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
+    RETURN   ${response}
+
+Prepare Related Cert URL
+    [Documentation]    Prepare the URL for the related certificate, by adding the serial number to the URL.
+    [Arguments]    ${cert}
+    ${ser_num}=   Get Asn1 Value As Number    ${cert}   tbsCertificate.serialNumber  False
+    ${url}=   Add URL Suffix    ${URI_RELATED_CERT}   ${ser_num}
+    RETURN  ${url}
+
+Get Related Cert URL
+    [Documentation]    Get the URL for the related certificate issuing endpoint, to send the request to.
+    ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${RELATED_CERT_SUFFIX}
+    RETURN  ${url}
