@@ -46,6 +46,19 @@ from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.typingutils import SignKey, Strint
 
 
+def _prepare_related_data_to_sign(attributes: RequesterCertificate) -> bytes:
+    """Prepare the data to be signed for the `RequesterCertificate`.
+
+    :param attributes: The `RequesterCertificate` attributes.
+    :return: The data to be signed as bytes.
+    """
+    # As of section 3.1
+    # last part: the signature field contains a digital signature over the concatenation of
+    # DER encoded requestTime and IssuerAndSerialNumber.
+    data = encoder.encode(attributes["requestTime"]) + encoder.encode(attributes["certID"])
+    return data
+
+
 @keyword(name="Prepare RequesterCertificate")
 def prepare_requester_certificate(  # noqa: D417 Missing argument descriptions in the docstring
     cert_a: rfc9480.CMPCertificate,
@@ -105,10 +118,7 @@ def prepare_requester_certificate(  # noqa: D417 Missing argument descriptions i
     req_cert["certID"] = cert_id
     req_cert["locationInfo"] = uri
 
-    # As of section 3.1
-    # last part: the signature field contains a digital signature over the concatenation of
-    # DER encoded requestTime and IssuerAndSerialNumber.
-    data = encoder.encode(bin_time) + encoder.encode(cert_id)
+    data = _prepare_related_data_to_sign(req_cert)
 
     # As of section 3.1 signed with the signature algorithm associated with the private key
     # of the certificate.
