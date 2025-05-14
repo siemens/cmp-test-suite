@@ -106,7 +106,7 @@ class TestRSAKEM(unittest.TestCase):
         """
 
         bob_private_key = load_private_key_from_file(
-            "data/rfc_data/rsa_kem_rfc9696_private_key.pem",
+            "data/rfc_test_vectors/rsa_kem_rfc9696_private_key.pem",
             password=None,
         )
 

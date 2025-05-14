@@ -11,11 +11,12 @@ from typing import Any, List, Optional, Sequence, Set, Tuple, Union
 
 import pyasn1.error
 from cryptography import x509
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives._serialization import PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import base, tag, univ, useful
 from pyasn1.type.base import Asn1Type
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc6664, rfc8954, rfc9480, rfc9481
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc6664, rfc8954, rfc9480, rfc9481, rfc9690
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
@@ -24,7 +25,7 @@ from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.tmp_oids import COMPOSITE_SIG03_HASH_OID_2_NAME, COMPOSITE_SIG04_HASH_OID_2_NAME, id_rsa_kem_spki
+from pq_logic.tmp_oids import COMPOSITE_SIG03_HASH_OID_2_NAME, COMPOSITE_SIG04_HASH_OID_2_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -1741,7 +1742,7 @@ def _prepare_spki_for_kga(
             "rsa": univ.ObjectIdentifier("1.2.840.113549.1.1.1"),
             "dsa": univ.ObjectIdentifier("1.2.840.10040.4.1"),
             "ecc": univ.ObjectIdentifier("1.2.840.10045.3.1.7"),
-            "rsa-kem": id_rsa_kem_spki,
+            "rsa-kem": rfc9690.id_rsa_kem_spki,
         }
         spki["algorithm"]["algorithm"] = names_2_oid[key_name]
         if key_name == "ecc":

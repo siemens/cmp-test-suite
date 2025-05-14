@@ -24,7 +24,7 @@ from unit_tests.utils_for_test import compare_pyasn1_objects, load_ca_cert_and_k
 class TestBuildChameleonCert(unittest.TestCase):
     def setUp(self):
         self.ec_key = load_private_key_from_file("./data/keys/private-key-ecdsa.pem")
-        self.mldsa_key = load_private_key_from_file("./data/keys/private-key-ml-dsa-44.pem")
+        self.mldsa_key = load_private_key_from_file("./data/keys/private-key-ml-dsa-44-seed.pem")
         self.common_name = "CN=Hans the Tester"
         self.ca_cert, self.ca_key = load_ca_cert_and_key()
 

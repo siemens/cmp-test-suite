@@ -436,7 +436,7 @@ class GeneralMessageHandler:
                 info_value["infoType"] = rfc9480.id_it_rootCaKeyUpdate
                 return info_value, "The root CA certificate is not the same as the one in the Mock CA."
 
-        key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+        key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
         key = ensure_is_sign_key(key)
 
         info_value["infoType"] = rfc9480.id_it_rootCaKeyUpdate

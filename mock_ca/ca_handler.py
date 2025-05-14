@@ -525,7 +525,7 @@ class CAHandler:
 
         else:
             self.xwing_cert = parse_certificate(load_and_decode_pem_file("data/unittest/hybrid_cert_xwing.pem"))
-            self.xwing_key = load_private_key_from_file("data/keys/private-key-xwing.pem")
+            self.xwing_key = load_private_key_from_file("data/keys/private-key-xwing-seed.pem")
 
         if self.xwing_key is not None:
             if not isinstance(self.xwing_key, HybridKEMPrivateKey):

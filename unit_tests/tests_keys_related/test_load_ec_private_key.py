@@ -11,8 +11,7 @@ from pyasn1_alt_modules import rfc5915, rfc5958
 
 from pq_logic.keys.trad_key_factory import parse_trad_key_from_one_asym_key
 from pq_logic.keys.serialize_utils import prepare_ec_private_key
-from resources.envdatautils import prepare_one_asymmetric_key
-from resources.keyutils import generate_key
+from resources.keyutils import generate_key, prepare_one_asymmetric_key
 
 
 class TestLoadECPrivateKey(unittest.TestCase):

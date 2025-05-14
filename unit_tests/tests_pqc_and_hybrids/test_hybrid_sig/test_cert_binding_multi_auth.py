@@ -40,7 +40,7 @@ class TestCertBindingMultiAuth(unittest.TestCase):
         cls.cm = "CN=Hans the Tester"
         cls.csr_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.uri = "https://localhost:8080/cmp/cert-bindings-for-multiple-authentication"
-        cls.pq_key = load_private_key_from_file("data/keys/private-key-ml-dsa-65.pem")
+        cls.pq_key = load_private_key_from_file("data/keys/private-key-ml-dsa-65-seed.pem")
         cls.cert_a_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.cert_a = generate_certificate(cls.cert_a_key, "CN=Test RSA", issuer_cert=cls.ca_cert, signing_key=cls.ca_key)
         cls.cert_b = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))

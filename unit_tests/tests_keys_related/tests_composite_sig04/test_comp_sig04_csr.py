@@ -17,7 +17,7 @@ class TestCompositeSig04CSR(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ecc = generate_key("ed25519")
-        cls.ml_dsa_65 = load_private_key_from_file("data/keys/private-key-ml-dsa-65.pem") # type: ignore
+        cls.ml_dsa_65 = load_private_key_from_file("data/keys/private-key-ml-dsa-65-seed.pem") # type: ignore
         cls.ml_dsa_65: MLDSAPrivateKey
 
     def test_csr_comp_sig_pure_ecc(self):

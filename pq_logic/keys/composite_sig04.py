@@ -64,6 +64,11 @@ class CompositeSig04PublicKey(CompositeSig03PublicKey):
         _length = len(_pq_export).to_bytes(4, byteorder="little", signed=False)
         return _length + _pq_export + self.encode_trad_part()
 
+    def public_bytes_raw(self) -> bytes:
+        """Export the raw public key, starting with the length of the PQ key."""
+        # Export the raw key.
+        return self._export_public_key()
+
     @property
     def name(self) -> str:
         """Return the name of the composite signature."""

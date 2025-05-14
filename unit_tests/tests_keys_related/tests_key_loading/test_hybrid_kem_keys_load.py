@@ -37,7 +37,7 @@ class TestKeyRoundTrip(unittest.TestCase):
         finally:
             os.remove(file_path)
 
-    def test_composite_dhkem_encrypted_round_trip(self):
+    def test_composite_dhkem_encrypted_round_trip_password(self):
         private_key = generate_key("composite-dhkem")
         with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as tmp:
             file_path = tmp.name
@@ -63,7 +63,7 @@ class TestKeyRoundTrip(unittest.TestCase):
         finally:
             os.remove(file_path)
 
-    def test_composite_sig_encrypted_round_trip(self):
+    def test_composite_sig_encrypted_round_trip_password(self):
         private_key = generate_key("composite-sig")
         with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as tmp:
             file_path = tmp.name
@@ -89,7 +89,7 @@ class TestKeyRoundTrip(unittest.TestCase):
         finally:
             os.remove(file_path)
 
-    def test_composite_kem_encrypted_round_trip(self):
+    def test_composite_kem_encrypted_round_trip_password(self):
         private_key = generate_key("composite-kem")
         with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as tmp:
             file_path = tmp.name
@@ -116,7 +116,7 @@ class TestKeyRoundTrip(unittest.TestCase):
         finally:
             os.remove(file_path)
 
-    def test_chempat_encrypted_round_trip(self):
+    def test_chempat_encrypted_round_trip_password(self):
         private_key = generate_key("chempat")
         with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as tmp:
             file_path = tmp.name

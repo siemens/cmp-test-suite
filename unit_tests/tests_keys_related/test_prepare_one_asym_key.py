@@ -10,7 +10,7 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc3447, rfc5915, rfc5958
 from resources import keyutils
 from resources.asn1utils import encode_to_der
-from resources.envdatautils import prepare_one_asymmetric_key
+from resources.keyutils import prepare_one_asymmetric_key
 
 from unit_tests.utils_for_test import crypto_lib_private_key_to_der, der_to_crypto_lib_private_key
 

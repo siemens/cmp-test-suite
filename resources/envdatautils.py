@@ -6,7 +6,7 @@
 
 import logging
 import os
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 from cryptography import x509
 from cryptography.hazmat.primitives import keywrap, serialization
@@ -33,7 +33,7 @@ from pyasn1_alt_modules import (
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey, HybridKEMPublicKey, KEMPublicKey
+from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
@@ -75,6 +75,12 @@ from resources.typingutils import (
     Strint,
     VerifyKey,
 )
+
+_PrivateKeyCast = Union[
+    Sequence[Union[PrivateKey, rfc5958.OneAsymmetricKey]],
+    PrivateKey,
+    rfc5958.OneAsymmetricKey,
+]
 
 
 @not_keyword
@@ -607,7 +613,7 @@ def prepare_signed_data(  # noqa D417 undocumented-param
     digest_hash_name: Optional[str] = None,
     bad_sig: bool = False,
     cert_chain: Optional[List[rfc9480.CMPCertificate]] = None,
-    private_keys: Optional[List[PrivateKey]] = None,
+    private_keys: Optional[_PrivateKeyCast] = None,
     signer_infos: Optional[Union[rfc5652.SignerInfo, List[rfc5652.SignerInfo]]] = None,
 ) -> rfc5652.SignedData:
     """Prepare a `SignedData` structure for the provided content, key, and certificate.
@@ -690,7 +696,7 @@ def prepare_signed_data(  # noqa D417 undocumented-param
 
 @not_keyword
 def prepare_asymmetric_key_package(
-    private_keys: List[PrivateKey],
+    private_keys: _PrivateKeyCast, key_save_type: str = "raw"
 ) -> rfc5958.AsymmetricKeyPackage:
     """Create an `AsymmetricKeyPackage` containing private keys.
 
@@ -698,67 +704,26 @@ def prepare_asymmetric_key_package(
     This function prepares the package by including the provided private keys.
 
     :param private_keys: List of private keys to include (e.g., newly generated keys).
+    :param key_save_type: Whether to save the PQ-key as `seed`, `raw` or `seed_and_raw`. Defaults to `raw`.
     :return: An `AsymmetricKeyPackage` structure containing the private keys.
     """
     asym_key_package = rfc5958.AsymmetricKeyPackage()
-    for key in private_keys:
-        asym_key_package.append(prepare_one_asymmetric_key(private_key=key))
-    return asym_key_package
 
-
-@not_keyword
-def prepare_one_asymmetric_key(
-    private_key,
-    version: str = "v2",
-) -> rfc5958.OneAsymmetricKey:
-    """Create a `OneAsymmetricKey` structure for a private key.
-
-    Wraps a private key into the `OneAsymmetricKey` structure,
-    including the algorithm identifier and the public key. It's used when
-    preparing an `AsymmetricKeyPackage`.
-
-    :param private_key: Private key to include.
-    :param version: Version of the structure. Defaults to "v2".
-    :return: A `OneAsymmetricKey` structure containing the private key.
-    """
-    private_key_bytes = private_key.private_bytes(
-        encoding=serialization.Encoding.DER,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-
-    if int(rfc5958.Version(version)) == 0:
-        one_asym_key, _ = decoder.decode(private_key_bytes, asn1Spec=rfc4211.PrivateKeyInfo())
-        return private_key_bytes
-
-    one_asym_key, _ = decoder.decode(private_key_bytes, asn1Spec=rfc5958.OneAsymmetricKey())
-    one_asym_key["version"] = rfc5958.Version(version)
-
-    if isinstance(private_key, rsa.RSAPrivateKey):
-        public_key_bytes = private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.DER, format=serialization.PublicFormat.PKCS1
-        )
-    elif isinstance(private_key, ec.EllipticCurvePrivateKey):
-        public_key_bytes = private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.X962, format=serialization.PublicFormat.UncompressedPoint
-        )
-
-    elif isinstance(private_key, AbstractCompositePrivateKey):
-        public_key_bytes = private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-
+    if isinstance(private_keys, (PrivateKey, rfc5958.OneAsymmetricKey)):
+        keys = [private_keys]  # type: ignore
     else:
-        public_key_bytes = private_key.public_key().public_bytes_raw()
+        keys = private_keys  # type: ignore
 
-    public_key_bit_str = (
-        rfc5958.PublicKey()
-        .fromOctetString(public_key_bytes)
-        .subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
-    )
-    one_asym_key["publicKey"] = public_key_bit_str
+    keys: Sequence[Union[PrivateKey, rfc5958.OneAsymmetricKey]]
 
-    return one_asym_key
+    for key in keys:
+        if isinstance(key, PrivateKey):
+            one_asym_key = keyutils.prepare_one_asymmetric_key(private_key=key, version=1, key_save_type=key_save_type)
+        else:
+            one_asym_key = key
+
+        asym_key_package.append(one_asym_key)
+    return asym_key_package
 
 
 def _get_rsa_kari_alg_id(use_rsa_oaep: bool) -> rfc5652.KeyEncryptionAlgorithmIdentifier:
