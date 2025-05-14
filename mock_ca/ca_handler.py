@@ -4,6 +4,7 @@
 
 """Contains the CA Handler for the Mock CA."""
 
+import argparse
 import logging
 import sys
 from dataclasses import dataclass, field
@@ -1374,6 +1375,12 @@ def handle_catalyst():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Mock CA server")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="The host address, is set to 0.0.0.0 for docker.")
+    parser.add_argument("--port", type=int, default=5000, help="The port to run the server on.")
+
+    args = parser.parse_args()
+
     # import ssl
     # DOMAIN = "mydomain.com"
     # CERT_DIR = f"/etc/letsencrypt/live/{DOMAIN}"
@@ -1383,4 +1390,4 @@ if __name__ == "__main__":
     # context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
     # context = "adhoc"
     # app.run(port=5000, debug=True, ssl_context=context)
-    app.run(port=5000, debug=True)
+    app.run(host=args.host, port=args.port, debug=True)
