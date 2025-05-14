@@ -1257,13 +1257,17 @@ class CAHandler:
         :param pki_message: The Catalyst Sig message.
         :return: The PKI message containing the response.
         """
-        pki_message, certs = build_catalyst_signed_cert_from_req(
-            request=pki_message,
-            ca_cert=self.ca_cert,
-            ca_key=self.ca_key,
-            extensions=[self.ocsp_extn, self.crl_extn],
-        )
-        return self.sign_response(response=pki_message, request_msg=pki_message)
+        try:
+            response, certs = build_catalyst_signed_cert_from_req(
+                request=pki_message,
+                ca_cert=self.ca_cert,
+                ca_key=self.ca_key,
+                extensions=[self.ocsp_extn, self.crl_extn],
+            )
+            return self.sign_response(response=response, request_msg=pki_message)
+        except CMPTestSuiteError as e:
+            logging.info("An error occurred: %s", str(e.message))
+            return self.build_error_from_exception(e, request_msg=pki_message)
 
     def process_catalyst_issuing(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Process the Catalyst request message.
@@ -1271,13 +1275,19 @@ class CAHandler:
         :param pki_message: The Catalyst message.
         :return: The PKI message containing the response.
         """
-        pki_message, cert = build_cert_from_catalyst_request(
-            request=pki_message,
-            ca_cert=self.ca_cert,
-            ca_key=self.ca_key,
-            extensions=[self.ocsp_extn, self.crl_extn],
-        )
-        return self.sign_response(response=pki_message, request_msg=pki_message)
+        try:
+            response, cert = build_cert_from_catalyst_request(
+                request=pki_message,
+                ca_cert=self.ca_cert,
+                ca_key=self.ca_key,
+                extensions=[self.ocsp_extn, self.crl_extn],
+            )
+
+        except CMPTestSuiteError as e:
+            logging.info("An error occurred: %s", str(e.message))
+            response = self.build_error_from_exception(e, pki_message)
+
+        return self.sign_response(response=response, request_msg=pki_message)
 
     def process_ocsp_request(self, data: bytes) -> bytes:
         """Process the OCSP request and return the response."""
