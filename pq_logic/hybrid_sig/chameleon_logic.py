@@ -4,6 +4,7 @@
 
 """Logic for building/validating Chameleon certificates/certification requests."""
 
+import logging
 from typing import List, Optional, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
@@ -13,7 +14,6 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-import resources.certutils
 import resources.prepare_alg_ids
 import resources.protectionutils
 from pq_logic.hybrid_structures import (
@@ -26,12 +26,20 @@ from pq_logic.tmp_oids import (
     id_at_deltaCertificateRequestSignature,
     id_ce_deltaCertificateDescriptor,
 )
-from resources import certbuildutils, certextractutils, compareutils, convertutils, cryptoutils, keyutils, utils
-from resources.convertutils import copy_asn1_certificate, subject_public_key_info_from_pubkey
+from resources import (
+    certbuildutils,
+    certextractutils,
+    certutils,
+    compareutils,
+    convertutils,
+    cryptoutils,
+    keyutils,
+    prepareutils,
+    utils,
+)
 from resources.copyasn1utils import copy_csr, copy_name, copy_validity
 from resources.exceptions import BadAltPOP, BadAsn1Data, BadCertTemplate
 from resources.oid_mapping import get_hash_from_oid
-from resources.prepareutils import prepare_name
 from resources.typingutils import PublicKey, SignKey, VerifyKey
 
 
@@ -60,6 +68,16 @@ def _prepare_issuer_and_subject(
         dcd["subject"] = subject
 
     return dcd
+
+
+def _compare_times(time1: rfc5280.Time, time2: rfc5280.Time) -> bool:
+    """Compare two `rfc5280.Time` objects.
+
+    :param time1: The first `rfc5280.Time` object.
+    :param time2: The second `rfc5280.Time` object.
+    :return: True if the times are equal, False otherwise.
+    """
+    return encoder.encode(time1) == encoder.encode(time2)
 
 
 @not_keyword
@@ -91,37 +109,25 @@ def prepare_dcd_extension_from_delta(delta_cert: rfc9480.CMPCertificate, base_ce
     if not same_alg_id:
         dcd["signature"]["algorithm"] = delta_cert["tbsCertificate"]["signature"]["algorithm"]
 
-    same_issuer = compareutils.compare_pyasn1_names(
-        delta_cert["tbsCertificate"]["issuer"], base_cert["tbsCertificate"]["issuer"]
+    dcd = _prepare_issuer_and_subject(
+        dcd=dcd,
+        delta_cert=delta_cert,
+        base_cert=base_cert,
     )
 
-    if not same_issuer:
-        obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
-        name_obj = copy_name(filled_name=delta_cert["tbsCertificate"]["issuer"], target=obj)
-        dcd["issuer"] = name_obj
-
-    val1 = encoder.encode(delta_cert["tbsCertificate"]["validity"])
-    val2 = encoder.encode(base_cert["tbsCertificate"]["validity"])
-
-    if val1 != val2:
+    if not _compare_times(delta_cert["tbsCertificate"]["validity"], base_cert["tbsCertificate"]["validity"]):
         validity2 = rfc5280.Validity().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 2))
         dcd["validity"] = copy_validity(delta_cert["tbsCertificate"]["validity"], target=validity2)
-
-    same_subject = compareutils.compare_pyasn1_names(
-        delta_cert["tbsCertificate"]["subject"], base_cert["tbsCertificate"]["subject"]
-    )
-
-    if not same_subject:
-        obj = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
-        name_obj = copy_name(filled_name=delta_cert["tbsCertificate"]["subject"], target=obj)
-        dcd["subject"] = name_obj
 
     dcd["subjectPublicKeyInfo"] = delta_cert["tbsCertificate"]["subjectPublicKeyInfo"]
 
     # Include differing extensions, if any
-    differing_extensions = _prepare_dcd_extensions(delta_cert, base_cert)
-    if differing_extensions:
-        dcd["extensions"] = rfc5280.Extensions(differing_extensions)
+    differing_extensions = _clean_base_and_delta_extensions(
+        base_cert["tbsCertificate"]["extensions"], delta_cert["tbsCertificate"]["extensions"]
+    )
+    logging.debug("Differing extensions: %s", differing_extensions.prettyPrint())
+    if differing_extensions.isValue:
+        dcd["extensions"].extend(differing_extensions)
 
     dcd["signatureValue"] = delta_cert["signature"]
 
