@@ -1377,7 +1377,7 @@ def handle_catalyst_sig():
 
 
 @app.route("/catalyst-issuing", methods=["POST"])
-def handle_catalyst():
+def handle_catalyst_issuing():
     """Handle the catalyst request.
 
     :return: The DER-encoded response.
