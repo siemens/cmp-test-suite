@@ -16,6 +16,7 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ, useful
 from pyasn1.type.base import Asn1Item, Asn1Type
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc8954, rfc9480, rfc9481
+from pyasn1.type.base import Asn1Type
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
@@ -345,11 +346,16 @@ def generate_signed_csr(  # noqa D417 undocumented-param
     return csr, key  # type: ignore
 
 
-def _prepare_extended_key_usage(oids: List[univ.ObjectIdentifier], critical: bool = True) -> rfc5280.Extension:
+def _prepare_extended_key_usage(
+    oids: List[univ.ObjectIdentifier],
+    critical: bool = True,
+    add_trailing_data: bool = False,
+) -> rfc5280.Extension:
     """Generate pyasn1 `ExtendedKeyUsage` object with the provided list of OIDs.
 
     :param oids: A list of OIDs (strings) representing the allowed usages.
     :param critical: Whether the extension should be marked as critical. Defaults to `True`.
+    :param add_trailing_data: Whether to add trailing data to the extension value. Defaults to `False`.
     :return: Encoded ASN.1 ExtendedKeyUsage object.
     """
     extended_key_usage = rfc5280.ExtKeyUsageSyntax()
@@ -357,17 +363,20 @@ def _prepare_extended_key_usage(oids: List[univ.ObjectIdentifier], critical: boo
     for oid in oids:
         extended_key_usage.append(oid)
 
-    ext = rfc5280.Extension()
-    ext["extnID"] = rfc5280.id_ce_extKeyUsage
-    ext["critical"] = critical
-    ext["extnValue"] = univ.OctetString(encoder.encode(extended_key_usage))
-
-    return ext
+    return prepare_extension_structure(
+        rfc5280.id_ce_extKeyUsage,
+        value=extended_key_usage,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare SubjectKeyIdentifier Extension")
 def prepare_ski_extension(  # noqa D417 undocumented-param
-    key: Union[typingutils.PrivateKey, typingutils.PublicKey], critical: bool = True, invalid_ski: bool = False
+    key: Union[typingutils.PrivateKey, typingutils.PublicKey],
+    critical: bool = True,
+    invalid_ski: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare a SubjectKeyIdentifier (SKI) extension.
 
@@ -378,6 +387,7 @@ def prepare_ski_extension(  # noqa D417 undocumented-param
         - `key`: The public or private key to prepare the extension for.
         - `critical`: Whether the extension should be marked as critical. Defaults to `True`.
         - `invalid_ski`: Whether to prepare an invalid SKI value. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -398,11 +408,12 @@ def prepare_ski_extension(  # noqa D417 undocumented-param
 
     subject_key_identifier = rfc5280.SubjectKeyIdentifier(ski)
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_subjectKeyIdentifier
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(encoder.encode(subject_key_identifier))
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_subjectKeyIdentifier,
+        value=subject_key_identifier,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare AuthorityKeyIdentifier Extension")
@@ -416,6 +427,7 @@ def prepare_authority_key_identifier_extension(  # noqa D417 undocumented-param
     increase_serial: bool = False,
     ca_name: Optional[str] = None,
     general_names: Optional[List[rfc9480.GeneralName]] = None,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare an `AuthorityKeyIdentifier` extension.
 
@@ -433,6 +445,7 @@ def prepare_authority_key_identifier_extension(  # noqa D417 undocumented-param
         - `increase_serial`: Whether to increase the serial number by one. Defaults to `False`.
         - `ca_name`: The name of the CA. Defaults to `None`.
         - `general_names`: The general names to include in the extension. Defaults to `None`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -482,16 +495,20 @@ def prepare_authority_key_identifier_extension(  # noqa D417 undocumented-param
             _num += 1
         aki["authorityCertSerialNumber"] = _num
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_authorityKeyIdentifier
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(encoder.encode(aki))
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_authorityKeyIdentifier,
+        value=aki,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare BasicConstraints Extension")
 def prepare_basic_constraints_extension(  # noqa D417 undocumented-param
-    ca: bool = False, path_length: Optional[Strint] = None, critical: bool = True
+    ca: bool = False,
+    path_length: Optional[Strint] = None,
+    critical: bool = True,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare BasicConstraints extension.
 
@@ -500,6 +517,7 @@ def prepare_basic_constraints_extension(  # noqa D417 undocumented-param
         - `ca`: A boolean indicating if the certificate is a CA. Defaults to `False`.
         - `path_length`: The path length, which is allowed to be followed. Defaults to `None`.
         - `critical`: Whether the extension should be marked as critical. Defaults to `True`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -520,11 +538,12 @@ def prepare_basic_constraints_extension(  # noqa D417 undocumented-param
     if path_length is not None:
         basic_constraints["pathLenConstraint"] = int(path_length)
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_basicConstraints
-    extension["critical"] = critical
-    extension["extnValue"] = encoder.encode(basic_constraints)
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_basicConstraints,
+        value=basic_constraints,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare SubjectAltName Extension")
@@ -532,6 +551,7 @@ def prepare_subject_alt_name_extension(  # noqa D417 undocumented-param
     dns_names: Optional[str] = None,
     gen_names: Optional[Union[Sequence[rfc5280.GeneralName], rfc5280.GeneralName]] = None,
     critical: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare a `SubjectAltName` extension for a certificate.
 
@@ -543,6 +563,7 @@ def prepare_subject_alt_name_extension(  # noqa D417 undocumented-param
         (e.g., `"example.com,www.example.com,pki.example.com"`).
         - `gen_names`: A single or a list of `GeneralName` objects to include in the extension. Defaults to `None`.
         - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -575,13 +596,12 @@ def prepare_subject_alt_name_extension(  # noqa D417 undocumented-param
             names.extend(gen_names)
 
     san.extend(names)
-    der_data = encoder.encode(san)
-
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_subjectAltName
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(der_data)
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_subjectAltName,
+        value=san,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare IssuerAltName Extension")
@@ -589,6 +609,7 @@ def prepare_issuer_alt_name_extension(  # noqa D417 undocumented-param
     dns_name: Optional[str] = None,
     gen_names: Optional[Union[Sequence[rfc5280.GeneralName], rfc5280.GeneralName]] = None,
     critical: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare an `IssuerAltName` extension for a certificate.
 
@@ -600,6 +621,7 @@ def prepare_issuer_alt_name_extension(  # noqa D417 undocumented-param
         (e.g., `"example.com,www.example.com,pki.example.com"`). Defaults to `None`.
         - `gen_names`: A single or a list of `GeneralName` objects to include in the extension. Defaults to `None`.
         - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -631,23 +653,26 @@ def prepare_issuer_alt_name_extension(  # noqa D417 undocumented-param
     elif gen_names is not None:
         entries.extend(gen_names)
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_issuerAltName
-    extension["critical"] = critical
-    extension["extnValue"] = encoder.encode(entries)
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_issuerAltName,
+        value=entries,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 def _prepare_policy_constraints_extension(
     require_explicit_policy: Optional[int] = None,
     inhibit_policy_mapping: Optional[int] = None,
     critical: bool = True,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare a `PolicyConstraints` extension for a certificate.
 
     :param require_explicit_policy: The maximum number of additional certificates that may be issued.
     :param inhibit_policy_mapping: The maximum number of additional certificates that may be issued.
     :param critical: Whether the extension should be marked as critical. Defaults to `True`.
+    :param add_trailing_data: Whether to add trailing data to the extension value. Defaults to `False`.
     :return: The populated `pyasn1` `Extension` structure.
     """
     policy_constraints = rfc5280.PolicyConstraints()
@@ -658,16 +683,20 @@ def _prepare_policy_constraints_extension(
     if inhibit_policy_mapping is not None:
         policy_constraints["inhibitPolicyMapping"] = inhibit_policy_mapping
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_policyConstraints
-    extension["critical"] = critical
-    extension["extnValue"] = encoder.encode(policy_constraints)
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_policyConstraints,
+        value=policy_constraints,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare KeyUsage Extension")
 def prepare_key_usage_extension(  # noqa D417 undocumented-param
-    key_usage: str, critical: bool = True, invalid_data: bool = False
+    key_usage: str,
+    critical: bool = True,
+    invalid_data: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare a `KeyUsage` extension for a `CMPCertificate`, `CSR` or `CertTemplate`.
 
@@ -677,6 +706,7 @@ def prepare_key_usage_extension(  # noqa D417 undocumented-param
           describes the intended purpose of the key (e.g., "digitalSignature", "keyEncipherment").
         - `critical`: Whether the extension should be marked as critical. Defaults to `True`.
         - `invalid_data`: Whether to prepare an invalid key usage value. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -699,15 +729,49 @@ def prepare_key_usage_extension(  # noqa D417 undocumented-param
                 f"Invalid key usage value: `{key_usage}`. Allowed are: {list(rfc5280.KeyUsage.namedValues.keys())}."
             ) from e
         der_key_usage = encoder.encode(usage)
-        data = univ.OctetString(der_key_usage)
+        data = der_key_usage
     else:
-        data = univ.OctetString(os.urandom(16))
+        data = os.urandom(16)
 
-    key_usage_ext = rfc5280.Extension()
-    key_usage_ext["extnID"] = rfc5280.id_ce_keyUsage
-    key_usage_ext["critical"] = critical
-    key_usage_ext["extnValue"] = data
-    return key_usage_ext
+    return prepare_extension_structure(
+        EXTENSION_NAME_2_OID["key_usage"],
+        value=data,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
+
+
+@not_keyword
+def prepare_extension_structure(
+    extension_oid: univ.ObjectIdentifier,
+    value: Union[bytes, str, base.Asn1Item],
+    critical: bool = False,
+    add_rand_data: bool = False,
+) -> rfc5280.Extension:
+    """Prepare a `pyasn1` Extension structure.
+
+    :param extension_oid: The OID of the extension to prepare.
+    :param value: The value of the extension. Defaults to `None`.
+    :param critical: Whether the extension should be marked as critical. Defaults to `False`.
+    :param add_rand_data: Whether to add random data to the extension value. Defaults to `False`.
+    :return: The populated `Extension` structure.
+    """
+    if isinstance(value, (bytes, str)):
+        extension_value = str_to_bytes(value)
+    elif isinstance(value, base.Asn1Item):
+        extension_value = encoder.encode(value)
+    else:
+        raise TypeError(f"`value` must be either bytes or a pyasn1 base.Asn1Item.Got: {type(value)}")
+
+    ext = rfc5280.Extension()
+    ext["extnID"] = extension_oid
+    ext["critical"] = critical
+
+    if add_rand_data:
+        extension_value += os.urandom(16)
+
+    ext["extnValue"] = univ.OctetString(extension_value)
+    return ext
 
 
 def prepare_extensions(  # noqa D417 undocumented-param
@@ -2119,16 +2183,17 @@ def prepare_tbs_certificate(
 @keyword(name="Prepare OCSPNoCheck Extension")
 def prepare_ocsp_nocheck_extension(  # noqa D417 undocumented-param
     critical: bool = False,
-    add_rand_val: bool = False,
+    invalid_data: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare an OCSP No Check extension for a certificate.
 
     Arguments:
     ---------
         - `critical`: Whether the extension is marked as critical or not. Defaults to `False`.
-        - `add_rand_val`: Whether to add a random value to the extension, to create a invalid \
-        extension (**MUST** be NULL). Defaults to `False`.
-
+        - `invalid_data`: Whether to modify the value for the extension, the value **MUST** be NULL.
+        Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -2137,14 +2202,20 @@ def prepare_ocsp_nocheck_extension(  # noqa D417 undocumented-param
     Examples:
     --------
     | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | True |
-    | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | critical=True | add_rand_val=True |
+    | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | critical=True | True |
+    | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | critical=True | add_trailing_data=True |
 
     """
-    return _prepare_extension(
-        oid=rfc8954.id_pkix_ocsp_nocheck,
+    value = asn1utils.encode_to_der(univ.Null(""))
+
+    if invalid_data:
+        value = utils.manipulate_first_byte(value)
+
+    return prepare_extension_structure(
+        extension_oid=rfc8954.id_pkix_ocsp_nocheck,
+        value=value,
         critical=critical,
-        value=univ.Null(""),
-        add_rand_val=add_rand_val,
+        add_rand_data=add_trailing_data,
     )
 
 
@@ -2152,6 +2223,7 @@ def prepare_ocsp_nocheck_extension(  # noqa D417 undocumented-param
 def prepare_ocsp_extension(  # noqa D417 undocumented-param
     ocsp_url: Optional[str],
     critical: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare an OCSP extension for a certificate.
 
@@ -2159,9 +2231,11 @@ def prepare_ocsp_extension(  # noqa D417 undocumented-param
     ---------
         - `ocsp_url`: The URL of the OCSP responder. Defaults to `None`.
         - `critical`: Whether the extension is marked as critical or not. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension. Defaults to `False`.
+
+    -------
 
     Returns:
-    -------
         - The populated `Extension` object.
 
     Examples:
@@ -2176,44 +2250,12 @@ def prepare_ocsp_extension(  # noqa D417 undocumented-param
         access_des["accessLocation"] = prepareutils.prepare_general_name(name_type="uri", name_str=ocsp_url)
         authority_info_access.append(access_des)
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_pe_authorityInfoAccess
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(encoder.encode(authority_info_access))
-    return extension
-
-
-def _prepare_extension(
-    oid: univ.ObjectIdentifier,
-    critical: bool = False,
-    value: Optional[Union[bytes, Asn1Item]] = None,
-    add_rand_val: bool = False,
-) -> rfc5280.Extension:
-    """Prepare an extension with the given OID.
-
-    :param oid: The OID of the extension.
-    :param critical: Whether the extension is marked as critical or not. Defaults to `False`.
-    :param value: The value of the extension. Defaults to `None`.
-    :param add_rand_val: Whether to add a random value to the extension. Defaults to `False`.
-    """
-    if not add_rand_val and value is None:
-        raise ValueError("Either a value or the add_rand_val flag must be set.")
-
-    if value is None:
-        data = b""
-    elif isinstance(value, Asn1Item):
-        data = encoder.encode(value)
-    else:
-        data = value
-
-    if add_rand_val:
-        data += os.urandom(16)
-
-    extension = rfc5280.Extension()
-    extension["extnID"] = oid
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(data)
-    return extension
+    return prepare_extension_structure(
+        extension_oid=rfc5280.id_pe_authorityInfoAccess,
+        value=authority_info_access,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 def _prepare_crl_distribution_points(
@@ -2259,18 +2301,18 @@ def prepare_crl_distribution_point_extension(  # noqa: D417 undocumented-param
     full_name: Optional[CRLFullNameType] = None,
     relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
     critical: bool = False,
-    add_rand_val: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare a CRL Distribution Point extension.
 
     Arguments:
     ---------
-        - distribution_points: A single or list of DistributionPoint objects.
-        - crl_issuers: CRL issuer name.
-        - full_name: List of GeneralName objects for the full name.
-        - relative_name: A RelativeDistinguishedName objects for the relative name.
-        - critical: Whether the extension is critical. Defaults to `False`.
-        - add_rand_val: Whether to add a random value to the `extnValue` field. Defaults to `False`.
+        - `distribution_points`: A single or list of DistributionPoint objects.
+        - `crl_issuers`: CRL issuer name.
+        - `full_name`: List of GeneralName objects for the full name.
+        - `relative_name`: A RelativeDistinguishedName objects for the relative name.
+        - `critical`: Whether the extension is critical. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -2295,11 +2337,11 @@ def prepare_crl_distribution_point_extension(  # noqa: D417 undocumented-param
         relative_name=relative_name,
     )
 
-    return _prepare_extension(
-        oid=rfc5280.id_ce_cRLDistributionPoints,
+    return prepare_extension_structure(
+        extension_oid=EXTENSION_NAME_2_OID["crl"],
         critical=critical,
         value=crl_distribution_point,
-        add_rand_val=add_rand_val,
+        add_rand_data=add_trailing_data,
     )
 
 
@@ -3175,18 +3217,18 @@ def prepare_issuing_distribution_point_extension(  # noqa: D417 undocumented-par
     iss_dis_point: Optional[rfc5280.IssuingDistributionPoint] = None,
     dis_point_name: Optional[rfc5280.DistributionPointName] = None,
     full_name: Optional[CRLFullNameType] = None,
-    add_rand_val: bool = False,
+    add_trailing_data: bool = False,
     critical: bool = False,
 ) -> rfc5280.Extension:
     """Prepare an Issuing Distribution Point extension.
 
     Arguments:
     ---------
-        - iss_dis_point: The Issuing Distribution Point to prepare. Defaults to `None`.
-        - dis_point_name: The distribution point name to parse. Defaults to `None`.
-        - full_name: A single or list of GeneralName objects for the full name. Defaults to `None`.
-        - add_rand_val: Whether to add a random value to the `extnValue` field. Defaults to `False`.
-        - critical: Whether the extension is critical. Defaults to `False`.
+        - `iss_dis_point`: The Issuing Distribution Point to prepare. Defaults to `None`.
+        - `dis_point_name`: The distribution point name to parse. Defaults to `None`.
+        - `full_name`: A single or list of GeneralName objects for the full name. Defaults to `None`.
+        - `add_trailing_data`: Whether trailing data is added to the extension value. Defaults to `False`.
+        - `critical`: Whether the extension is critical. Defaults to `False`.
 
     Returns:
     -------
@@ -3216,9 +3258,10 @@ def prepare_issuing_distribution_point_extension(  # noqa: D417 undocumented-par
             full_name=full_name,
         )
 
-    return _prepare_extension(
-        oid=rfc5280.id_ce_issuingDistributionPoint,
+    return prepare_extension_structure(
+        extension_oid=rfc5280.id_ce_issuingDistributionPoint,
         critical=critical,
         value=iss_dis_point,
-        add_rand_val=add_rand_val,
+        add_rand_data=add_trailing_data,
+    )
     )
