@@ -399,10 +399,7 @@ def prepare_ski_extension(  # noqa D417 undocumented-param
     | ${extension}= | Prepare SubjectKeyIdentifier Extension | key=${private_key} | invalid_ski=True |
 
     """
-    if isinstance(key, typingutils.PrivateKey):
-        key = key.public_key()
-    ski: bytes = x509.SubjectKeyIdentifier.from_public_key(key).key_identifier  # type: ignore
-
+    ski = _compute_ski(key)
     if invalid_ski:
         ski = utils.manipulate_first_byte(ski)
 
@@ -3265,3 +3262,14 @@ def prepare_issuing_distribution_point_extension(  # noqa: D417 undocumented-par
         add_rand_data=add_trailing_data,
     )
     )
+def _compute_ski(key: Union[PublicKey, PrivateKey]) -> bytes:
+    """Compute the Subject Key Identifier (SKI) for a given public key.
+
+    :param key: The public key to compute the SKI for.
+    :return: The computed SKI as bytes.
+    """
+    if isinstance(key, PrivateKey):
+        key = key.public_key()
+    return x509.SubjectKeyIdentifier.from_public_key(key).digest  # type: ignore
+
+
