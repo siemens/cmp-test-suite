@@ -313,7 +313,7 @@ def prepare_delta_cert_req(
 
     if delta_common_name:
         name = rfc5280.Name().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0))
-        parsed_name = prepare_name(delta_common_name, target=name)
+        parsed_name = prepareutils.prepare_name(delta_common_name, target=name)
         delta_req["subject"] = parsed_name
 
     delta_req["subjectPKInfo"] = subject_public_key_info_from_pubkey(signing_key.public_key())
@@ -528,7 +528,7 @@ def verify_paired_csr_signature(  # noqa: D417 Missing argument description in t
     """
     csr_tmp = copy_csr(csr)
 
-    resources.certutils.verify_csr_signature(csr=csr_tmp)
+    certutils.verify_csr_signature(csr=csr_tmp)
     attributes, delta_req, delta_sig = extract_chameleon_attributes(csr=csr_tmp)
 
     if delta_req is None:
