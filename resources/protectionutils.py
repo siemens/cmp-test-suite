@@ -573,8 +573,8 @@ def _compute_symmetric_protection(
     prot_params = alg_id["parameters"]
 
     if protection_type_oid in HMAC_OID_2_NAME:
-        hash_alg = HMAC_OID_2_NAME[protection_type_oid].split("-")[1]
-        return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=hash_alg)
+        mac_hash_alg = HMAC_OID_2_NAME[protection_type_oid].split("-")[1]
+        return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=mac_hash_alg)
 
     if protection_type_oid in KMAC_OID_2_NAME:
         return cryptoutils.compute_kmac_from_alg_id(alg_id=alg_id, data=encoded, key=password)
@@ -601,11 +601,17 @@ def _compute_symmetric_protection(
 
         hash_alg_owf = get_hash_from_oid(prot_params["owf"]["algorithm"])
 
-        hash_alg = HMAC_OID_2_NAME[prot_params["mac"]["algorithm"]].split("-")[1]
+        if hash_alg_owf is None:
+            raise ValueError(
+                f"Unsupported hash algorithm in `owf`: {prot_params['owf']['algorithm']}"
+                f"{may_return_oid_to_name(prot_params['owf']['algorithm'])}"
+            )
 
-        if hash_alg != hash_alg_owf and enforce_lwcmp:
+        mac_hash_alg = HMAC_OID_2_NAME[prot_params["mac"]["algorithm"]].split("-")[1]
+
+        if mac_hash_alg != hash_alg_owf and enforce_lwcmp:
             raise LwCMPViolation(
-                f"The hash algorithm in `owf` and `mac` must be the same. Got {hash_alg_owf} and {hash_alg}."
+                f"The hash algorithm in `owf` and `mac` must be the same. Got {hash_alg_owf} and {mac_hash_alg}."
             )
 
         return cryptoutils.compute_password_based_mac(
@@ -614,7 +620,7 @@ def _compute_symmetric_protection(
             iterations=iterations,
             salt=salt,
             hash_alg=hash_alg_owf,
-            mac_hash_alg=hash_alg,
+            mac_hash_alg=mac_hash_alg,
         )
 
     if protection_type_oid in AES_GMAC_OID_2_NAME:
