@@ -79,7 +79,9 @@ class ProtectionHandlerConfig(ConfigVal):
         prot_alt_key: The alternative signing key to use for hybrid signatures. Defaults to `None`.
         include_alt_sig_key: Whether to include the alternative signing key in the PKIMessage. Defaults to `True`.
         kari_certs: The KARI certificates and keys to use for `DHBasedMac` protection. Defaults to `None`.
-        mock_ca_trusted_dir: The directory containing the trusted CA certificates. Defaults to "data/mock_ca/trustanchors".
+        mock_ca_trusted_dir: The directory containing the trusted CA certificates.
+        Defaults to "data/mock_ca/trustanchors".
+        enforce_lwcmp: Whether to enforce the use of LwCMP algorithm profile RFC9483. Defaults to `False`.
 
     """
 
@@ -90,6 +92,7 @@ class ProtectionHandlerConfig(ConfigVal):
     include_alt_sig_key: bool = True
     kari_certs: Optional[KARICertsAndKeys] = None
     mock_ca_trusted_dir: str = "data/mock_ca/trustanchors"
+    enforce_lwcmp: bool = False
 
     def to_dict(self) -> dict:
         """Convert the configuration to a dictionary."""
@@ -101,4 +104,5 @@ class ProtectionHandlerConfig(ConfigVal):
             "include_alt_sig_key": self.include_alt_sig_key,
             "kari_certs": self.kari_certs,
             "mock_ca_trusted_dir": self.mock_ca_trusted_dir,
+            "enforce_lwcmp": self.enforce_lwcmp,
         }
