@@ -13,8 +13,7 @@ import pyasn1.error
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import tag, univ, useful
-from pyasn1.type.base import Asn1Item, Asn1Type
+from pyasn1.type import base, tag, univ, useful
 from pyasn1.type.base import Asn1Type
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc6664, rfc8954, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2459 import AttributeValue
@@ -41,13 +40,14 @@ from resources import (
     utils,
 )
 from resources.asn1utils import get_all_asn1_named_value_names, get_set_bitstring_names
-from resources.convertutils import subject_public_key_info_from_pubkey
+from resources.convertutils import pyasn1_time_obj_to_py_datetime, str_to_bytes, subject_public_key_info_from_pubkey
 from resources.copyasn1utils import copy_name
 from resources.exceptions import BadAsn1Data, BadCertTemplate
 from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
+    EXTENSION_NAME_2_OID,
     EXTENSION_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
 )
@@ -3371,6 +3371,140 @@ def _check_extn_present(
             )
 
     return extn
+
+
+
+
+@keyword(name="Prepare PrivateKeyUsagePeriod Extension")
+def prepare_private_key_usage_period(  # noqa: D417 undocumented-param
+    not_before: Optional[Union[str, datetime]] = None,
+    not_after: Optional[Union[str, datetime]] = None,
+    critical: bool = False,
+    add_trailing_data: bool = False,
+) -> rfc5280.Extension:
+    """Prepare the PrivateKeyUsagePeriod extension.
+
+    The extension must either have the `notBefore` or `notAfter` date set,
+    but this is not enforced but will be logged as a debug message.
+
+    Arguments:
+    ---------
+        - `not_before`: The start time of the period. Defaults to `None`.
+        - `not_after`: The end time of the period. Defaults to `None`.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `add_trailing_data`: Whether trailing data is added to the extension value. Defaults to `False`.
+
+    Returns:
+    -------
+        - `The prepared `PrivateKeyUsagePeriod` extension.
+
+    Examples:
+    --------
+    | ${extn} | Prepare PrivateKeyUsagePeriod Extension | 2023-01-01T00:00:00Z | 2023-12-31T23:59:59Z |
+
+    """
+    private_key_usage_period = rfc5280.PrivateKeyUsagePeriod()
+    if not_before is not None:
+        private_key_usage_period["notBefore"] = prepare_generalized_time(not_before).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+        )
+    if not_after is not None:
+        private_key_usage_period["notAfter"] = prepare_generalized_time(not_after).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)
+        )
+
+    if not_after is None and not_before is None:
+        logging.debug("PrivateKeyUsagePeriod was empty prepared.")
+
+    return prepare_extension_structure(
+        extension_oid=rfc5280.id_ce_privateKeyUsagePeriod,
+        critical=critical,
+        value=private_key_usage_period,
+        add_rand_data=add_trailing_data,
+    )
+
+
+@keyword(name="Validate PrivateKeyUsagePeriod Extension")
+def validate_private_key_usage_period(
+    extns: rfc5280.Extensions,
+    must_be_present: bool = False,
+    must_be_crit: Optional[bool] = None,
+    validity: Optional[rfc5280.Validity] = None,
+) -> Tuple[Optional[rfc5280.Extension], bool]:
+    """Validate the PrivateKeyUsagePeriod extension.
+
+    Validates the `notBefore` and `notAfter` dates of the extension.
+    Additionally, checks if the key usage period is within the validity period of the certificate.
+
+    :param extns: The extensions to validate.
+    :param must_be_present: Whether the extension must be present. Defaults to `False`.
+    :param must_be_crit: Whether the extension must be true, if `None`, it will be ignored.
+    Defaults to `None`.
+    :param validity: The validity period to check against. Defaults to `None`.
+    :return: The corrected extension and whether the extension was modified.
+    """
+    modified = False
+
+    extn = get_extension(extns, rfc5280.id_ce_privateKeyUsagePeriod)  # type: ignore
+    if not must_be_present and extn is None:
+        return None, modified
+
+    if must_be_present and extn is None:
+        raise ValueError("PrivateKeyUsagePeriod extension is missing.")
+
+    extn: rfc5280.Extension
+
+    der_data = extn["extnValue"].asOctets()
+    private_key_usage_period, rest = try_decode_pyasn1(der_data, rfc5280.PrivateKeyUsagePeriod())  # type: ignore
+    private_key_usage_period: rfc5280.PrivateKeyUsagePeriod
+
+    if rest:
+        raise BadAsn1Data("PrivateKeyUsagePeriod")
+
+    if not private_key_usage_period["notBefore"].isValue and not private_key_usage_period["notAfter"].isValue:
+        raise BadAsn1Data("The PrivateKeyUsagePeriod extension is empty.", overwrite=True)
+
+    not_before = private_key_usage_period["notBefore"]
+    not_after = private_key_usage_period["notAfter"]
+
+    if not_after.isValue and not_before.isValue:
+        if not_before > not_after:
+            raise BadAsn1Data(
+                "The PrivateKeyUsagePeriod extension is invalid.The notBefore date is after the notAfter date.",
+                overwrite=True,
+            )
+        if not_before == not_after:
+            raise BadAsn1Data(
+                "The PrivateKeyUsagePeriod extension is invalid.The `notBefore` date is equal to the `notAfter` date.",
+                overwrite=True,
+            )
+
+    if validity is not None:
+        val_not_before = pyasn1_time_obj_to_py_datetime(validity["notBefore"])
+        val_not_after = pyasn1_time_obj_to_py_datetime(validity["notAfter"])
+
+        if not_before.isValue and not_before.asDateTime < val_not_before:
+            raise BadCertTemplate(
+                "The PrivateKeyUsagePeriod extension is invalidThe notBefore date is before the validity period.",
+            )
+
+        if not_after.isValue and not_after.asDateTime > val_not_after:
+            raise BadCertTemplate(
+                "The PrivateKeyUsagePeriod extension is invalidThe `notAfter` date is after the validity period.",
+            )
+
+    if must_be_crit is not None:
+        modified = extn["critical"] != must_be_crit
+        critical = must_be_crit
+    else:
+        critical = extn["critical"]
+
+    return prepare_extension_structure(
+        extension_oid=rfc5280.id_ce_privateKeyUsagePeriod,
+        critical=critical,
+        value=private_key_usage_period,
+        add_rand_data=False,
+    ), modified
 
 
 def _compute_ski(key: Union[PublicKey, PrivateKey]) -> bytes:
