@@ -2438,10 +2438,15 @@ def _check_x_ecc_key_usage(key_usages: Set[str], name: str):
         raise BadCertTemplate(f"The {name} `KeyUsage` can only be: encipherOnly or decipherOnly")
 
 
-def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
+def _verify_key_usage(cert_template: CertRelatedType) -> Optional[rfc5280.Extension]:
     """Verify the key usage."""
+    extensions, spki = parse_extension_and_public_key(cert_template)
+
+    if extensions is None:
+        return None
+
     key_usage = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
+        extensions=extensions,
         extn_name="key_usage",
         name="KeyUsage",
     )
@@ -2499,9 +2504,16 @@ def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.E
 
 
 def _verify_authority_key_identifier(
-    cert_template: rfc9480.CertTemplate, ca_public_key: VerifyKey, ca_cert: Optional[rfc9480.CMPCertificate] = None
+    cert_template: CertRequestType, ca_public_key: VerifyKey, ca_cert: Optional[rfc9480.CMPCertificate] = None
 ) -> Optional[rfc5280.Extension]:
     """Verify the authority key identifier."""
+    extensions, _ = parse_extension_and_public_key(cert_template)
+    if extensions is None:
+        return prepare_authority_key_identifier_extension(
+            ca_key=ca_public_key,
+            critical=False,
+        )
+
     aki = _try_decode_extension_val(  # type: ignore
         extensions=cert_template["extensions"],
         extn_name="aki",
