@@ -444,7 +444,7 @@ class CAHandler:
         config: Optional[dict] = None,
         pre_shared_secret: bytes = b"SiemensIT",
         ca_alt_key: Optional[PQSignaturePrivateKey] = None,
-        state: Optional[MockCAState] = None,
+        mock_ca_state: Optional[MockCAState] = None,
         port: int = 5000,
         use_openssl: bool = False,
         base_url: str = "http://127.0.0.1",
@@ -1224,7 +1224,7 @@ class CAHandler:
 app = Flask(__name__)
 state = MockCAState()
 
-handler = CAHandler(ca_cert=None, ca_key=None, config={}, state=state)
+handler = CAHandler(ca_cert=None, ca_key=None, config={}, mock_ca_state=state)
 
 
 def _build_response(
