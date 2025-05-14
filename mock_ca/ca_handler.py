@@ -617,6 +617,31 @@ class CAHandler:
         )
 
     def verify_protection(self, request: PKIMessageTMP, must_be_protected: bool = True) -> None:
+    def build_error_from_exception(
+        self, e: CMPTestSuiteError, request_msg: Optional[PKIMessageTMP] = None
+    ) -> PKIMessageTMP:
+        """Build an error response from an exception.
+
+        :param e: The exception.
+        :param request_msg: The PKIMessage request.
+        :return: The protected error response.
+        """
+        response = _build_error_from_exception(e, request_msg)
+
+        if request_msg is None:
+            request_msg = PKIMessageTMP()
+            request_msg["header"]["protectionAlg"]["algorithm"] = self.default_algorithms
+
+        if not request_msg["header"]["protectionAlg"].isValue:
+            request_msg["header"]["protectionAlg"]["algorithm"] = self.default_algorithms
+
+        try:
+            # checks for an unknown OID, to replace it with the default one.
+            ProtectedType.get_protection_type(request_msg)
+        except UnknownOID:
+            request_msg["header"]["protectionAlg"]["algorithm"] = self.default_algorithms
+
+        return self.protection_handler.protect_pkimessage(response=response, request=request_msg)
         """Verify the protection of the request."""
         if request["header"]["protectionAlg"].isValue:
             oid = request["header"]["protectionAlg"]["algorithm"]
@@ -746,7 +771,7 @@ class CAHandler:
             response = self.cert_req_handler.process_cert_request(pki_message)
         except CMPTestSuiteError as e:
             logging.info(f"An error occurred: {str(e.message)}")
-            return _build_error_from_exception(e)
+            return self.build_error_from_exception(e, pki_message)
         return self.sign_response(response=response, request_msg=pki_message)
 
     def process_normal_request(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
@@ -810,21 +835,22 @@ class CAHandler:
                 )
         except CMPTestSuiteError as e:
             logging.info(f"An error occurred: {str(e.message)}")
-            return _build_error_from_exception(e)
+            return self.build_error_from_exception(e, request_msg=pki_message)
 
         except (InvalidSignature, InvalidAltSignature):
             e = BadMessageCheck(message="Invalid signature protection.")
-            return _build_error_from_exception(e)
+            return self.build_error_from_exception(e, request_msg=pki_message)
 
         except Exception as e:
             logging.info(f"An error occurred while processing the request: {str(e)}")
             logging.exception("An error occurred")
             logging.warning("An error occurred", exc_info=True)
             app.logger.error(e, exc_info=True)
-            return _build_error_from_exception(
+            return self.build_error_from_exception(
                 CMPTestSuiteError(
                     f"An error occurred while processing the request: {type(e)} {str(e)}", failinfo="systemFailure"
-                )
+                ),
+                request_msg=pki_message,
             )
         self.state.kem_mac_based.may_update_state(request=pki_message)
         return self.sign_response(response=response, request_msg=pki_message)
@@ -974,14 +1000,15 @@ class CAHandler:
                 )
             except CMPTestSuiteError as e:
                 logging.info(f"An error occurred: {str(e.message)}")
-                return _build_error_from_exception(e)
+                return self.build_error_from_exception(e)
             except Exception as e:
                 logging.info(f"An error occurred: {str(e)}")
-                return _build_error_from_exception(
+                return self.build_error_from_exception(
                     CMPTestSuiteError(
                         f"An error occurred while processing the request: {type(e)} {str(e)}",
                         failinfo="systemFailure",
-                    )
+                    ),
+                    request_msg=pki_message,
                 )
 
         raise NotImplementedError(
@@ -1331,7 +1358,7 @@ def handle_issuing() -> Response:
         pki_message = parse_pkimessage(data)
     except ValueError:
         e = BadAsn1Data("Error: Could not decode the request", overwrite=True)
-        pki_message = _build_error_from_exception(e)
+        pki_message = handler.build_error_from_exception(e)
         return _build_response(pki_message, status=400)
 
     try:
