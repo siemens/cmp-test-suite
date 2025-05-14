@@ -459,8 +459,8 @@ class CAHandler:
         :param port: The port for the CA, used for the Extensions preparation. Defaults to `5000`.
         :param use_openssl: If OpenSSL should be used for verification. Defaults to `False`.
         :param config: The configuration for the CA Handler.
-        :param base_url: The base URL for the CA ONLY used to prepare the extensions. Defaults to `http://localhost:5000`.
-        (CRL-DP, OCSP, IDP, Sun-Hybrid)
+        :param base_url: The base URL for the CA ONLY used to prepare the extensions (CRL-DP, OCSP, IDP, Sun-Hybrid).
+        Defaults to `http://localhost:5000`.
         :raises BadConfig: If the CA certificate and key are not provided.
         """
         if ca_cert is None and ca_key is None:
