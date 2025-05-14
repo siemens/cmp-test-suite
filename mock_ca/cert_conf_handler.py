@@ -178,10 +178,55 @@ class CertConfState:
 class CertConfHandler:
     """Certificate Confirmation handler for the Mock CA."""
 
-    def __init__(self, state_db):
+    def __init__(self, state_db, config_vars: Optional[CertConfConfigVars] = None):
         """Initialize the handler with the state database."""
         self.conf_state = CertConfState()
         self.state_db = state_db
+        self.sender = "CN=Mock CA"
+        self.config_vars = config_vars or CertConfConfigVars(
+            enforce_same_alg=True,
+            must_be_protected=True,
+            allow_auto_ed=True,
+            must_be_fresh_nonce=True,
+        )
+
+    def set_config_vars(self, config_vars: Union[CertConfConfigVars, dict]) -> None:
+        """Set the configuration variables."""
+        if isinstance(config_vars, dict):
+            config_vars = CertConfConfigVars(**config_vars)
+        elif not isinstance(config_vars, CertConfConfigVars):
+            raise TypeError("config_vars must be a CertConfConfigVars instance or a dictionary.")
+
+        self.config_vars = config_vars
+
+    @classmethod
+    def from_config_vars(cls, **kwargs):
+        """Create a new instance of the handler with the given configuration variables."""
+        if "cert_conf_handler" in kwargs:
+            return cls.from_config_vars(**kwargs["cert_conf_handler"])
+
+        if "config_vars" in kwargs:
+            config_vars = kwargs.pop("config_vars")
+            if not isinstance(config_vars, CertConfConfigVars):
+                config_vars = CertConfConfigVars(**config_vars)
+        else:
+            if all(k in kwargs for k in fields(CertConfConfigVars)):
+                config_vars = CertConfConfigVars(**kwargs)
+            elif any(k in kwargs for k in fields(CertConfConfigVars)):
+                config_vars = CertConfConfigVars(
+                    enforce_same_alg=kwargs.get("enforce_same_alg", True),
+                    must_be_protected=kwargs.get("must_be_protected", True),
+                    allow_auto_ed=kwargs.get("allow_auto_ed", True),
+                    must_be_fresh_nonce=kwargs.get("must_be_fresh_nonce", True),
+                )
+            else:
+                config_vars = None
+
+        return cls(state_db=kwargs["conf_state"], config_vars=config_vars)
+
+    def details(self) -> Dict[str, Union[CertConfConfigVars, CertConfState]]:
+        """Return the details of the certificate confirmation handler."""
+        return {"config_vars": self.config_vars, "conf_state": self.conf_state}
 
     def add_confirmed_certs(self, request: PKIMessageTMP, certs: List[rfc9480.CMPCertificate]) -> None:
         """Add the confirmed certificate to the state."""
@@ -270,6 +315,7 @@ class CertConfHandler:
         response = build_pki_conf_from_cert_conf(
             request=pki_message,
             issued_certs=issued_certs,
+            allow_auto_ed=self.config_vars.allow_auto_ed,
         )
 
         self.conf_state.remove_request(pki_message)
