@@ -934,6 +934,7 @@ def build_chameleon_cert_from_paired_csr(
     alt_key: Optional[SignKey] = None,
     use_rsa_pss: bool = False,
     hash_alg: str = "sha256",
+    **kwargs,
 ) -> Tuple[rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
     """Build a Paired Certificate from a paired CSR.
 
@@ -960,8 +961,31 @@ def build_chameleon_cert_from_paired_csr(
         delta_key=delta_key,
     )
 
-    cert = certbuildutils.build_cert_from_csr(
-        csr=csr, ca_key=ca_key, ca_cert=ca_cert, alt_sign_key=alt_key, use_rsa_pss=use_rsa_pss
+    base_extensions, delta_extensions = process_extensions_for_chameleon(
+        csr=csr,
+        delta_req_value=delta_req,
+        include_ski=kwargs.get("include_ski"),
+        additional_extensions=kwargs.get("extensions"),
+        ski_critical=kwargs.get("ski_critical", False),
+        strict=kwargs.get("strict", False),
+        issue_same_extensions=kwargs.get("issue_same_extensions", True),
+    )
+
+    logging.debug("Base Extensions before cert building: %s", base_extensions.prettyPrint())
+    logging.debug("Delta Extensions before cert building: %s", delta_extensions.prettyPrint())
+
+    validity = kwargs.get("validity") or certbuildutils.default_validity(days=kwargs.get("days", 30))
+
+    base_cert = certbuildutils.build_cert_from_csr(
+        csr=csr,
+        ca_key=ca_key,
+        ca_cert=ca_cert,
+        alt_sign_key=alt_key,
+        use_rsa_pss=use_rsa_pss,
+        include_ski=False,
+        validity=validity,
+        extensions=base_extensions,  # type: ignore
+        include_csr_extensions=False,
     )
 
     delta_cert = build_delta_cert(
@@ -972,14 +996,30 @@ def build_chameleon_cert_from_paired_csr(
         alt_sign_key=alt_key,
         use_rsa_pss=use_rsa_pss,
         hash_alg=hash_alg,
+        include_ski=False,
+        validity=validity,
+        extensions=delta_extensions,
+        include_csr_extensions=False,
+        include_delta_extensions=False,
+    )
+
+    logging.debug(
+        "Delta Certificate extensions after cert building: %s", delta_cert["tbsCertificate"]["extensions"].prettyPrint()
+    )
+    logging.debug(
+        "Base Certificate extensions after cert building: %s", base_cert["tbsCertificate"]["extensions"].prettyPrint()
     )
 
     paired_cert = build_chameleon_base_certificate(
         delta_cert=delta_cert,
-        base_tbs_cert=cert["tbsCertificate"],
+        base_tbs_cert=base_cert["tbsCertificate"],
         ca_key=ca_key,
         use_rsa_pss=use_rsa_pss,
         hash_alg=None,  # only supposed to be used for negative testing.
+    )
+    logging.debug(
+        "Delta Certificate extensions after after cert building: %s",
+        delta_cert["tbsCertificate"]["extensions"].prettyPrint(),
     )
 
     return paired_cert, delta_cert
