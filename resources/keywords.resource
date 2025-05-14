@@ -982,3 +982,15 @@ Exchange PKIMessage PQ
     ${url}=   Get PQ Issuing URL
     ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
     RETURN   ${response}
+
+Prepare Related Cert URL
+    [Documentation]    Prepare the URL for the related certificate, by adding the serial number to the URL.
+    [Arguments]    ${cert}
+    ${ser_num}=   Get Asn1 Value As Number    ${cert}   tbsCertificate.serialNumber  False
+    ${url}=   Add URL Suffix    ${URI_RELATED_CERT}   ${ser_num}
+    RETURN  ${url}
+
+Get Related Cert URL
+    [Documentation]    Get the URL for the related certificate issuing endpoint, to send the request to.
+    ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${RELATED_CERT_SUFFIX}
+    RETURN  ${url}
