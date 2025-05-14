@@ -455,6 +455,39 @@ class ProtectionHandler:
             self.validate_signature_protection(pki_message)
 
     @staticmethod
+    def check_signer_extensions(pki_message: PKIMessageTMP) -> None:
+        """Check if the signer extensions are present.
+
+        :param pki_message: The PKI message to check.
+        :return: True if the signer extensions are present, False otherwise.
+        """
+        # Verify that the CMP-protection certificate is authorized to sign the message.
+        # Allows the CMP protection certificate to have an unset key usage.
+
+        ee_cert = pki_message["extraCerts"][0]
+
+        cert_chain = build_cmp_chain_from_pkimessage(
+            pki_message=pki_message,
+            ee_cert=ee_cert,
+        )
+        try:
+            validate_key_usage(cert_chain[0], key_usages="digitalSignature", strictness="LAX")
+        except ValueError as e:
+            raise NotAuthorized("The CMP protection certificate is not authorized to sign the message.") from e
+        except BadAsn1Data:
+            raise SignerNotTrusted("The CMP protection certificate did not contain a valid KeyUsage extension.")  # pylint: disable=raise-missing-from
+
+        try:
+            validity = cert_chain[0]["tbsCertificate"]["validity"]
+            extns = cert_chain[0]["tbsCertificate"]["extensions"]
+            validate_private_key_usage_period(extns=extns, validity=validity, must_be_present=False)
+        except BadAsn1Data as e:
+            raise NotAuthorized(
+                "The CMP protection certificate did not contain a valid `PrivateKeyUsagePeriod` extension.",
+                error_details=[e.message] + e.error_details,
+            ) from e
+
+    @staticmethod
     def check_signer(pki_message: PKIMessageTMP) -> None:
         """Check if the signer is trusted."""
         if not pki_message["extraCerts"].isValue:
