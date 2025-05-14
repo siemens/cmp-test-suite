@@ -682,6 +682,11 @@ Issue New Cert For Testing
     [Documentation]    Issue a new certificate to be used in tests. It ensures that a valid certificate
     ...    is available for testing.
     ...
+    ...    Arguments:
+    ...    ---------
+    ...    - `url`: The URL of the CA to send the request to. Defaults to `${CA_CMP_URL}`.
+    ...    - `key`: The key to use for the certificate request. If not provided, a new default key will be generated.
+    ...
     ...    Returns:
     ...    - `cert`: The issued certificate.
     ...    - `key`: The key used to generate the certificate request.
