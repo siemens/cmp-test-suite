@@ -28,6 +28,7 @@ from resources.certutils import (
     validate_key_usage,
 )
 from resources.checkutils import check_if_response_contains_encrypted_cert, check_if_response_contains_private_key
+from resources.cmputils import get_cmp_message_type, patch_sender, patch_senderkid
 from resources.cryptoutils import perform_ecdh
 from resources.exceptions import (
     BadAlg,
@@ -90,6 +91,13 @@ class ProtectionHandler:
             mock_ca_trusted_dir=mock_ca_trusted_dir,
             enforce_lwcmp=False,
         )
+
+    def patch_for_mac(self, response: PKIMessageTMP) -> PKIMessageTMP:
+        """Patch a PKIMessage for MAC protection, by modifying the sender and senderKid fields."""
+        response = patch_sender(response, sender_name=self.sender)
+        response = patch_senderkid(response, self.sender.encode("utf-8"))
+        return response
+
     def get_details(self) -> dict:
         """Get the details of the ProtectionHandler."""
         return {
