@@ -455,7 +455,7 @@ class CAHandler:
         :param ca_key: The CA issuer key.  Defaults to `load_ca_cert_and_key()`.
         :param ca_alt_key: The CA alternative catalyst sign key. Defaults to `None`.
         :param pre_shared_secret: The pre-shared secret for the CA. Defaults to b"SiemensIT".
-        :param state: The state of the CA, creates a fresh state if not provided. Defaults to `None`.
+        :param mock_ca_state: The state of the CA, creates a fresh state if not provided. Defaults to `None`.
         :param port: The port for the CA, used for the Extensions preparation. Defaults to `5000`.
         :param use_openssl: If OpenSSL should be used for verification. Defaults to `False`.
         :param config: The configuration for the CA Handler.
@@ -509,7 +509,7 @@ class CAHandler:
         self.sender = "CN=Mock CA"
 
         self.ca_alt_key = ca_alt_key
-        self.state = state or MockCAState()
+        self.state = mock_ca_state or MockCAState()
         self.pre_shared_secret = pre_shared_secret
         self.cert_chain = [self.ca_cert, self.comp_cert, self.sun_hybrid_cert, cert1]
 
@@ -1213,12 +1213,19 @@ class CAHandler:
 
         if options is None:
             return data
-        else:
-            out = {key: data[key] for key in options.split(",") if key in data}
-            if out:
-                return out
+
+        out = {key: data[key] for key in options.split(",") if key in data}
+        if out:
+            return out
 
         return "Supported keys are: " + ", ".join(data.keys())
+
+    def set_config_vars(self, cert_conf_handler: Union[dict, CertConfConfigVars]) -> None:
+        """Set the configuration variables.
+
+        :param cert_conf_handler: The configuration variables.
+        """
+        self.cert_conf_handler.set_config_vars(cert_conf_handler)
 
 
 app = Flask(__name__)
