@@ -153,7 +153,7 @@ class MockCAState:
         loaded_pub_key = load_public_key_from_cert(cert)
         if isinstance(pub_key, HybridPublicKey):
             if not isinstance(loaded_pub_key, HybridPublicKey):
-                return pub_key.trad_key == loaded_pub_key or pub_key.pq_key == loaded_pub_key
+                return loaded_pub_key in [pub_key.trad_key, pub_key.pq_key]
 
             if pub_key == loaded_pub_key:
                 return True
@@ -284,9 +284,9 @@ class MockCAState:
         """
         self.issued_certs.extend(certs)
 
-    def check_request_for_compromised_key(self, request: PKIMessageTMP) -> bool:
+    def check_request_for_compromised_key(self, request_msg: PKIMessageTMP) -> bool:
         """Check the request for a compromised key."""
-        return self.cert_state_db.check_request_for_compromised_key(request)
+        return self.cert_state_db.check_request_for_compromised_key(request_msg)
 
     def add_updated_cert(self, cert: rfc9480.CMPCertificate):
         """Add an updated certificate to the state."""
@@ -369,26 +369,6 @@ def _contains_challenge(request_msg: PKIMessageTMP) -> bool:
             return True
 
     return False
-
-
-@dataclass
-class VerifyState:
-    """A simple class to store the verification state.
-
-    Attributes:
-        allow_only_authorized_certs: If only authorized certificates are allowed. Defaults to `False`.
-        use_openssl: If OpenSSL should be used for verification. Defaults to `False`.
-        algorithms: The algorithms to use. Defaults to "ecc+,rsa, pq, hybrid".
-        curves: The curves to use. Defaults to "all".
-        hash_alg: The hash algorithm to use. Defaults to "all".
-
-    """
-
-    allow_only_authorized_certs: bool = False
-    use_openssl: bool = False
-    algorithms: str = "ecc+,rsa, pq, hybrid"
-    curves: str = "all"
-    hash_alg: str = "all"
 
 
 class CAHandler:
@@ -820,7 +800,7 @@ class CAHandler:
         try:
             response = self.cert_req_handler.process_cert_request(pki_message)
         except CMPTestSuiteError as e:
-            logging.info(f"An error occurred: {str(e.message)}")
+            logging.info("An error occurred: %s", str(e.message))
             return self.build_error_from_exception(e, pki_message)
         return self.sign_response(response=response, request_msg=pki_message)
 
@@ -831,8 +811,6 @@ class CAHandler:
         """
         logging.debug("Processing request with body: %s", pki_message["body"].getName())
         try:
-            # self._check_is_not_confirmed(pki_message)
-
             if pki_message["extraCerts"].isValue:
                 self.rev_handler.is_not_allowed_to_request(
                     pki_message,
@@ -884,15 +862,15 @@ class CAHandler:
                     f"Method not implemented, to handle the provided message: {pki_message['body'].getName()}."
                 )
         except CMPTestSuiteError as e:
-            logging.info(f"An error occurred: {str(e.message)}")
+            logging.info("An error occurred: %s", str(e.message))
             return self.build_error_from_exception(e, request_msg=pki_message)
 
         except (InvalidSignature, InvalidAltSignature):
             e = BadMessageCheck(message="Invalid signature protection.")
             return self.build_error_from_exception(e, request_msg=pki_message)
 
-        except Exception as e:
-            logging.info(f"An error occurred while processing the request: {str(e)}")
+        except Exception as e:  # pylint: disable=broad-except
+            logging.info("An error occurred while processing the request: %s", str(e))
             logging.exception("An error occurred")
             logging.warning("An error occurred", exc_info=True)
             app.logger.error(e, exc_info=True)
@@ -920,16 +898,16 @@ class CAHandler:
             )
             self.state.add_kem_mac_shared_secret(pki_message=pki_message, shared_secret=ss)
             return genp  # type: ignore
-        else:
-            return self.genm_handler.process_general_msg(pki_message)
 
-    def process_nested_request(self, request: PKIMessageTMP) -> PKIMessageTMP:
+        return self.genm_handler.process_general_msg(pki_message)
+
+    def process_nested_request(self, request_msg: PKIMessageTMP) -> PKIMessageTMP:
         """Process the nested request.
 
-        :param request: The nested request.
+        :param request_msg: The nested request.
         :return: The PKI message containing the response.
         """
-        return self.nested_handler.process_nested_request(request)
+        return self.nested_handler.process_nested_request(request_msg)
 
     def process_rr(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Process the RR message.
@@ -1049,10 +1027,10 @@ class CAHandler:
                     secondary_cert=delta_cert,
                 )
             except CMPTestSuiteError as e:
-                logging.info(f"An error occurred: {str(e.message)}")
+                logging.info("An error occurred: %s", str(e.message))
                 return self.build_error_from_exception(e)
             except Exception as e:
-                logging.info(f"An error occurred: {str(e)}")
+                logging.info("An error occurred: %s", str(e))
                 return self.build_error_from_exception(
                     CMPTestSuiteError(
                         f"An error occurred while processing the request: {type(e)} {str(e)}",
@@ -1552,7 +1530,7 @@ def handle_issuing() -> Response:
     try:
         # Access the raw data from the request body
         response = handler.process_normal_request(pki_message)
-        return _build_response(response)
+        return _build_response(response, for_msg=True)
     except Exception as e:  # pylint: disable=broad-except
         # Handle any errors gracefully
         return Response(f"Error: {str(e)}", status=500, content_type="text/plain")

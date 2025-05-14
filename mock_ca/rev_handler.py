@@ -13,7 +13,6 @@ from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from pyasn1_alt_modules import rfc9480
-from pyasn1_alt_modules.rfc9480 import id_DHBasedMac
 
 from mock_ca.mock_fun import CertRevStateDB, RevokedEntry
 from pq_logic.keys.abstract_wrapper_keys import HybridPublicKey
@@ -34,13 +33,13 @@ from resources.exceptions import (
     AddInfoNotAvailable,
     BadCertId,
     BadMessageCheck,
+    BadRequest,
     CertRevoked,
     CMPTestSuiteError,
     NotAuthorized,
-    WrongIntegrity, BadRequest,
+    WrongIntegrity,
 )
 from resources.oid_mapping import compute_hash
-from resources.oidutils import id_KemBasedMac
 from resources.protectionutils import (
     verify_kem_based_mac_protection,
     verify_pkimessage_protection,
@@ -372,7 +371,6 @@ class RevocationHandler:
 
         if not pki_message["header"]["protectionAlg"].isValue:
             raise BadMessageCheck("Protection algorithm not provided for revocation request.")
-
 
         prot_type = ProtectedType.get_protection_type(pki_message)
 

@@ -221,7 +221,7 @@ class ProtectionHandler:
                 return self.kari_data["x25519_cert"]
             if isinstance(public_key, X448PublicKey):
                 return self.kari_data["x448_cert"]
-            elif isinstance(public_key, EllipticCurvePublicKey):
+            if isinstance(public_key, EllipticCurvePublicKey):
                 return self.kari_data["ecc_cert"]
 
         return None
@@ -255,7 +255,7 @@ class ProtectionHandler:
         cert = request["extraCerts"][0]
         public_key = load_public_key_from_cert(cert)
         # The other types are supposed to be used with DH-based-MAC.
-        logging.warning("Public key type:", type(public_key))
+        logging.warning("Public key type: %s", str(type(public_key)))
         return isinstance(public_key, EllipticCurvePublicKey)
 
     def protect_pkimessage(
@@ -339,7 +339,7 @@ class ProtectionHandler:
 
             return protected_pki_message
 
-        elif self.is_kga_kari_request(request, response):
+        if self.is_kga_kari_request(request, response):
             protected_pki_message = protect_pkimessage(
                 pki_message=response,
                 protection="signature",
@@ -589,7 +589,7 @@ class ProtectionHandler:
                 )
                 logging.debug("Certificate chain is trusted")
             except FileNotFoundError:
-                raise CMPTestSuiteError("Please do not modify the `certutils.py` file,while running the tests.")
+                raise CMPTestSuiteError("Please do not modify the `certutils.py` file,while running the tests.")  # pylint: disable=raise-missing-from
             except ValueError as e:
                 raise NotAuthorized(
                     "The certificate `KeyUsage` indicates that the certificate,"
