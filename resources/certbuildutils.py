@@ -44,6 +44,7 @@ from resources.asn1utils import get_all_asn1_named_value_names, get_set_bitstrin
 from resources.convertutils import subject_public_key_info_from_pubkey
 from resources.copyasn1utils import copy_name
 from resources.exceptions import BadAsn1Data, BadCertTemplate
+from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
@@ -51,8 +52,18 @@ from resources.oidutils import (
     PQ_SIG_PRE_HASH_OID_2_NAME,
 )
 from resources.prepare_alg_ids import prepare_alg_id, prepare_sig_alg_id  # noqa: F401
-from resources.prepareutils import _GeneralNamesType, parse_to_general_names
-from resources.typingutils import CRLFullNameType, ExtensionsType, PrivateKey, PublicKey, SignKey, Strint, VerifyKey
+from resources.prepareutils import _GeneralNamesType, parse_to_general_names, prepare_generalized_time
+from resources.typingutils import (
+    CertRelatedType,
+    CertRequestType,
+    CRLFullNameType,
+    ExtensionsParseType,
+    PrivateKey,
+    PublicKey,
+    SignKey,
+    Strint,
+    VerifyKey,
+)
 
 
 # TODO verify if `utcTime` is allowed for CertTemplate, because is not allowed
@@ -3265,6 +3276,54 @@ def prepare_issuing_distribution_point_extension(  # noqa: D417 undocumented-par
         value=iss_dis_point,
         add_rand_data=add_trailing_data,
     )
+
+
+@not_keyword
+def parse_extension_and_public_key(
+    cert: CertRelatedType,
+) -> Tuple[Optional[rfc9480.Extensions], rfc5280.SubjectPublicKeyInfo]:
+    """Parse the extension and public key from the certificate.
+
+    Note: The `CertTemplate` `SubjectPublicKeyInfo` structure is not checked inside this function.
+
+    :param cert: A certificate related structure to parse.
+    :return: A tuple containing the extension and `SubjectPublicKeyInfo` structure.
+    """
+    if isinstance(cert, rfc9480.CMPCertificate):
+        extns = cert["tbsCertificate"]["extensions"]
+        spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
+
+    elif isinstance(cert, rfc6402.CertificationRequest):
+        spki = cert["certificationRequestInfo"]["subjectPublicKeyInfo"]
+        if not cert["certificationRequestInfo"]["attributes"].isValue:
+            return None, spki
+        extns = certextractutils.extract_extensions_from_csr(csr=cert) or rfc9480.Extensions()
+
+    elif isinstance(cert, DeltaCertificateRequestValue):
+        extns = rfc9480.Extensions()
+        extns.extend(cert["extensions"])
+        spki = cert["subjectPKInfo"]
+
+    elif isinstance(cert, rfc9480.CertTemplate):
+        extns = rfc9480.Extensions()
+        extns.extend(cert["extensions"])
+        spki = copyasn1utils.copy_subject_public_key_info(
+            target=rfc5280.SubjectPublicKeyInfo(), filled_sub_pubkey_info=cert["publicKey"]
+        )
+
+    elif isinstance(cert, DeltaCertificateDescriptor):
+        extns = cert["extensions"]
+        spki = cert["subjectPublicKeyInfo"]
+
+    else:
+        raise TypeError(f"Unsupported certificate type. Got: {type(cert)}")
+
+    if not extns.isValue:
+        return None, spki
+
+    return extns, spki
+
+
 def _check_extn_present(
     oid: univ.ObjectIdentifier,
     name: str,
