@@ -237,10 +237,9 @@ class ProtectionHandler:
         :return: The protected PKI message.
         """
         # Implement the protection logic here
-        prot_type = get_protection_type_from_pkimessage(request)
+        prot_type = ProtectedType.get_protection_type(request)
 
-        alg_name = may_return_oid_to_name(request["header"]["protectionAlg"]["algorithm"])
-        if alg_name == "dh_based_mac":
+        if prot_type == ProtectedType.DH:
             cert, ss = self.get_dh_cert_and_ss(cert=request["extraCerts"][0])
             protected_pki_message = protect_pkimessage(
                 shared_secret=ss,
@@ -402,15 +401,17 @@ class ProtectionHandler:
 
         alg_oid = pki_message["header"]["protectionAlg"]["algorithm"]
 
-        if alg_oid == rfc9480.id_DHBasedMac:
+        prot_type = ProtectedType.get_protection_type(alg_oid)
+
+        if prot_type == ProtectedType.DH:
             # Validate DH-based MAC protection
             self.verify_dh_based_mac_protection(pki_message)
 
-        elif alg_oid == id_KemBasedMac:
+        elif prot_type == ProtectedType.KEM:
             # Validate KEM-based MAC protection
             self.verify_kem_based_mac_protection(pki_message)
 
-        elif get_protection_type_from_pkimessage(pki_message) == "mac":
+        elif prot_type == ProtectedType.MAC:
             # Validate MAC protection
             self.validate_mac_protection(pki_message)
         else:
@@ -453,8 +454,8 @@ class ProtectionHandler:
 
         # Temporary fix to avoid errors for Composite signatures and PQ signatures.
 
-        prot_type = get_protection_type_from_pkimessage(pki_message)
-        result = prot_type == "pq-sig" or prot_type == "composite-sig"
+        prot_type = ProtectedType.get_protection_type(pki_message)
+        result = prot_type in [ProtectedType.COMPOSITE_SIG, ProtectedType.PQ_SIG]
 
         if result:
             logging.debug(

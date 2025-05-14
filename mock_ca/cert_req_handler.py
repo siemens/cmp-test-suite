@@ -298,12 +298,11 @@ class CertReqHandler:
     def check_signer_is_a_issued_cert(self, pki_message: PKIMessageTMP) -> None:
         """Check if the signer of the CR message known to the CA, by being an issued certificate."""
         if pki_message["header"]["protectionAlg"].isValue:
-            prot_type = get_protection_type_from_pkimessage(pki_message)
-            alg_name = get_protection_alg_name(pki_message)
+            prot_type = ProtectedType.get_protection_type(pki_message)
 
-            if alg_name == "dh_based_mac" or alg_name == "kem_based_mac":
+            if prot_type in [ProtectedType.DH, ProtectedType.KEM]:
                 result = True
-            elif prot_type == "mac":
+            elif prot_type == ProtectedType.MAC:
                 result = False
             else:
                 result = True
