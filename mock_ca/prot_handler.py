@@ -147,8 +147,11 @@ class ProtectionHandler:
                 pki_message,
                 shared_secret=ss,
             )
+
         except ValueError as e:
             raise BadMessageCheck("The DH-based MAC protection is invalid.") from e
+
+        self.check_signer_is_trusted(pki_message, for_dh=True)
 
     def get_dh_cert_and_ss(self, cert: rfc9480.CMPCertificate) -> Tuple[rfc9480.CMPCertificate, bytes]:
         """Get the ECDH certificate and shared secret.
@@ -423,7 +426,7 @@ class ProtectionHandler:
             raise BadMessageCheck(message="Invalid signature protection.") from e
 
         # Implement the signature validation logic here
-        self.check_signer_is_trusted(pki_message)
+        self.check_signer_is_trusted(pki_message, for_dh=False)
 
     def validate_protection(self, pki_message: PKIMessageTMP):
         """Validate the protection of the PKI message.
