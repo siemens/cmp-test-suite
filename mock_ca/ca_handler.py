@@ -673,48 +673,39 @@ class CAHandler:
             request_msg["header"]["protectionAlg"]["algorithm"] = self.default_algorithms
 
         return self.protection_handler.protect_pkimessage(response=response, request=request_msg)
+
+    def verify_protection(self, request_msg: PKIMessageTMP, must_be_protected: bool = True) -> None:
         """Verify the protection of the request."""
-        if request["header"]["protectionAlg"].isValue:
-            oid = request["header"]["protectionAlg"]["algorithm"]
-            if oid not in MSG_SIG_ALG and oid not in SUPPORTED_MAC_OID_2_NAME:
+        if request_msg["header"]["protectionAlg"].isValue:
+            oid = request_msg["header"]["protectionAlg"]["algorithm"]
+            if oid not in self.alg_profile:
                 _name = may_return_oid_to_name(oid)
                 raise BadAlg(f"The parsed protection algorithm is not supported Got: {str(_name)}")
 
-        if not check_is_protection_present(request, must_be_protected=must_be_protected):
+        if not check_is_protection_present(request_msg, must_be_protected=must_be_protected):
             return
 
-        if not request["protection"].isValue:
+        if not request_msg["protection"].isValue:
             raise BadMessageCheck("Protection not provided for request.")
 
-        if not request["header"]["protectionAlg"].isValue:
+        if not request_msg["header"]["protectionAlg"].isValue:
             raise BadMessageCheck("Protection algorithm not provided for request.")
 
-        if request["header"]["protectionAlg"]["algorithm"] == id_KemBasedMac:
+        prot_type = ProtectedType.get_protection_type(request_msg)
+
+        if prot_type == ProtectedType.KEM:
             logging.debug("KEM-based MAC protection is present.")
-            self.state.kem_mac_based.verify_pkimessage_protection(request=request)
+            self.state.kem_mac_based.verify_pkimessage_protection(request=request_msg)
             return
 
-        if request["header"]["protectionAlg"]["algorithm"] == rfc9480.id_DHBasedMac:
-            self.protection_handler.verify_dh_based_mac_protection(
-                pki_message=request,
-            )
-            return
-
-        prot_type = get_protection_type_from_pkimessage(request)
-        try:
-            if prot_type == "mac":
-                verify_pkimessage_protection(pki_message=request, password=self.pre_shared_secret)
-            else:
-                verify_hybrid_pkimessage_protection(pki_message=request)
-        except (InvalidSignature, InvalidAltSignature, ValueError):
-            raise BadMessageCheck(message="Invalid signature protection.")
+        self.protection_handler.validate_protection(request_msg)
 
     def _sign_nested_response(self, response: PKIMessageTMP, request_msg: PKIMessageTMP) -> PKIMessageTMP:
         """Sign the nested response."""
         if response["body"].getName() != "nested":
             if request_msg["header"]["protectionAlg"].isValue:
-                prot_type = get_protection_type_from_pkimessage(request_msg)
-                if prot_type == "mac":
+                prot_type = ProtectedType.get_protection_type(request_msg)
+                if prot_type == ProtectedType.MAC:
                     prot_type = self.protection_handler.get_same_mac_protection(
                         request_msg["header"]["protectionAlg"],
                     )
@@ -723,6 +714,34 @@ class CAHandler:
                         password=self.pre_shared_secret,
                         protection=prot_type,
                     )
+
+                if prot_type == ProtectedType.KEM:
+                    # KEM-based MAC protection
+                    ss = self.protection_handler.kem_shared_secret.get_shared_secret(request_msg)
+                    if ss is not None:
+                        response = patch_sender(response, sender_name=self.sender)
+                        response = patch_senderkid(response, self.sender.encode("utf-8"))
+                        response = protect_pkimessage_kem_based_mac(
+                            pki_message=response,
+                            shared_secret=self.pre_shared_secret,
+                        )
+                        return response
+                if prot_type == ProtectedType.DH:
+                    # DH-based MAC protection
+                    ca_ecc_cert, ss = self.protection_handler.get_dh_cert_and_ss(request_msg["extraCerts"][0])
+                    cert_chain = [ca_ecc_cert, self.ca_cert, self.ca_cert_chain]
+                    response = protect_pkimessage(
+                        pki_message=response,
+                        shared_secret=ss,
+                        protection="dh",
+                        exclude_certs=True,
+                    )
+                    response = patch_extra_certs(
+                        pki_message=response,
+                        certs=cert_chain,
+                    )
+                    return response
+
         return protect_hybrid_pkimessage(
             pki_message=response,
             private_key=self.protection_handler.protection_key,
@@ -774,8 +793,8 @@ class CAHandler:
         if not pki_message["header"]["protectionAlg"].isValue:
             return
 
-        prot_type = get_protection_type_from_pkimessage(pki_message)
-        if prot_type == "mac":
+        prot_type = ProtectedType.get_protection_type(pki_message)
+        if prot_type == ProtectedType.MAC:
             return
 
         body_name = pki_message["body"].getName()
