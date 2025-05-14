@@ -2054,6 +2054,13 @@ def build_cp_from_p10cr(  # noqa: D417 Missing argument descriptions in the docs
         - `ca_cert`: The CA certificate matching the CA key. Defaults to `None`.
         - `kwargs`: Additional values to set for the header.
 
+    **kwargs:
+    --------
+        - `hash_alg` (str): The hash algorithm to use for signing the certificate. Defaults to "sha256".
+        - `extensions` (ExtensionParseType): Additional certificate extensions (e.g., OCSP, CRL). Defaults to `None`.
+        - `include_ski` (bool): Whether to include the Subject Key Identifier in the certificate. Defaults to `True`.
+        - `include_csr_extensions` (bool): Whether to include the CSR extensions in the certificate. Defaults to `True`.
+
     Returns:
     -------
         - The built PKIMessage.
@@ -2086,6 +2093,8 @@ def build_cp_from_p10cr(  # noqa: D417 Missing argument descriptions in the docs
         ca_cert=ca_cert,  # type: ignore
         hash_alg=kwargs.get("hash_alg", "sha256"),
         extensions=kwargs.get("extensions"),
+        include_ski=kwargs.get("include_ski", True),
+        include_csr_extensions=kwargs.get("include_csr_extensions", True),
     )
     responses = prepare_cert_response(cert=cert, cert_req_id=cert_req_id)
     body = prepare_ca_body(body_name="cp", responses=responses, ca_pubs=ca_pubs)
