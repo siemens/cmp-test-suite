@@ -470,6 +470,64 @@ CA SHOULD Send certConfirmed When Valid certConf Is Sent Again
     PKIMessage Body Type Must Be    ${pki_conf2}    error
     PKIStatusInfo Failinfo Bit Must Be   ${pki_conf2}    failinfo=certConfirmed   exclusive=True
 
+# PKI confirmation message validation
+
+CA pkiconf MUST Response with a Fresh senderNonce
+    [Documentation]    According to RFC 9483, Section 3.1, the `senderNonce` must be fresh for each message
+    ...    in a transaction. We send a valid `certConf` message and expect the CA to respond with a
+    ...    `pkiconf` message containing a new `senderNonce`.
+    [Tags]    rfc9483-header   minimal   senderNonce  security
+    ${response}=    Generate Default IR And Exchange For Cert Conf
+    ${cert_conf}=    Build Cert Conf From Resp
+    ...    ${response}
+    ...    recipient=${RECIPIENT}
+    ...    exclude_fields=senderKID,sender
+    ${protected_cert_conf}=    Default Protect PKIMessage   ${cert_conf}
+    ${pki_conf}=   Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    ${sender_nonce_pki_conf}=    Get Asn1 Value As Bytes    ${pki_conf}    header.senderNonce
+    ${sender_nonce_response}=    Get Asn1 Value As Bytes    ${cert_conf}    header.senderNonce
+    Should Not Be Equal    ${sender_nonce_pki_conf}    ${sender_nonce_response}
+
+CA pkiconf MUST Use the MAC Protection
+    [Documentation]    According to RFC 9483, Section 3.2 the protection must use the same credentials as the
+    ...    during the exchange. We send a valid MAC-protected `certConf` message and expect the CA to respond with a
+    ...    `pkiconf` message protected with the same credentials as used in the `ip` message.
+    [Tags]    rfc9483-header   minimal   mac
+    Skip If    not ${ALLOW_MAC_PROTECTION}    Skipped test because MAC protection is disabled.
+    ${cert_template}    ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key   ${key}    cert_template=${cert_template}    sender=${SENDER}
+    ...    recipient=${RECIPIENT}    for_mac=True
+    ${protected_ir}=    Default Protect With MAC   ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    ${cert_conf}=    Build Cert Conf From Resp   ${response}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...    for_mac=True
+    ${protected_cert_conf}=    Default Protect With MAC   ${cert_conf}
+    ${pki_conf}=   Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    MAC Protection Algorithms Must Match    ${ir}   ${pki_conf}    ${protected_cert_conf}   strict=${LWCMP}
+
+CA pkiconf MUST Use the Same Signature Protection
+    [Documentation]    According to RFC 9483, Section 3.2, the protection must use the same credentials as during
+    ...    the exchange. We send a valid `certConf` message and expect the CA to respond with a
+    ...    `pkiconf` message protected with the same certificate and key pair as the one used in the `ip` message.
+    [Tags]    rfc9483-header   minimal   sig
+    ${cert_template}    ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key   ${key}   cert_template=${cert_template}    recipient=${RECIPIENT}
+    ...       exclude_fields=sender,senderKID
+    ${protected_ir}=    Protect PKIMessage    ${ir}    signature    private_key=${ISSUED_KEY}
+    ...       cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert_conf}=    Build Cert Conf From Resp   ${response}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...              exclude_fields=sender,senderKID
+    ${protected_cert_conf}=    Protect PKIMessage   ${cert_conf}   signature  private_key=${ISSUED_KEY}
+    ...              cert=${ISSUED_CERT}
+    ${pki_conf}=   Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    Signature Protection Must Match     ${response}    ${pki_conf}
+    
 
 *** Keywords ***
 Generate Default IR And Exchange For Cert Conf
