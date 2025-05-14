@@ -209,10 +209,10 @@ class ProtectedType(enum.Enum):
             raise ValueError(
                 f"'{value}' is not a valid protection type. Available values are: {', '.join(cls.__dict__.values())}."
             )
-        elif isinstance(value, rfc9480.AlgorithmIdentifier):
+        if isinstance(value, rfc9480.AlgorithmIdentifier):
             return cls.get_protection_type(value["algorithm"])
 
-        elif isinstance(value, univ.ObjectIdentifier):
+        if isinstance(value, univ.ObjectIdentifier):
             oid = value
             if oid == id_KemBasedMac:
                 return cls.KEM
@@ -228,9 +228,9 @@ class ProtectedType(enum.Enum):
                 return cls.COMPOSITE_SIG
             raise UnknownOID(oid, "The OID is not supported, to retrieve the protection type from.")
 
-        elif isinstance(value, PKIMessageTMP):
+        if isinstance(value, PKIMessageTMP):
             if not value["header"]["protectionAlg"].isValue:
                 raise ValueError("The `protectedAlg` field is not set in the PKIMessage.")
             return cls.get_protection_type(value["header"]["protectionAlg"]["algorithm"])
-        else:
-            raise TypeError(f"Unsupported type: {type(value)}")
+
+        raise TypeError(f"Unsupported type: {type(value)}")

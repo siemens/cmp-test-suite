@@ -321,7 +321,8 @@ def compute_pbmac1(
     :param key: Key to use for the HMAC.
     :param salt: Salt value for PBKDF2.
     :param hash_alg: Optional name of the hash algorithm to use.
-    :param mac_hash_alg: Optional name of the hash algorithm to use for the `HMAC` algorithm. Defaults to the same as `hash_alg`.
+    :param mac_hash_alg: Optional name of the hash algorithm to use for the `HMAC` algorithm.
+    Defaults to the same as `hash_alg`.
     :return: The HMAC signature.
     """
     hash_alg_instance = hash_name_to_instance(hash_alg)
@@ -363,7 +364,8 @@ def compute_password_based_mac(
     :param iterations: The number of times to do the hash iterations
     :param salt: The salt to use; if not given, a random 16-byte salt will be generated
     :param hash_alg: The name of the hash algorithm to use, e.g., 'sha256'
-    :param mac_hash_alg: The name of the hash algorithm to use for the `HMAC` algorithm. Defaults to the same as `hash_alg`.
+    :param mac_hash_alg: The name of the hash algorithm to use for the `HMAC` algorithm.
+    Defaults to the same as `hash_alg`.
     :returns: The HMAC signature
     """
     salt = salt or os.urandom(16)

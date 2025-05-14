@@ -132,6 +132,7 @@ def _prepare_date_time_object(
         return datetime.now(timezone.utc)
     if isinstance(date, str):
         new_time_obj = DateTime.convert_date(date, result_format="datetime")  # type: ignore
+        new_time_obj: datetime
     elif isinstance(date, float):
         new_time_obj = datetime.fromtimestamp(date)
 
@@ -242,18 +243,18 @@ def parse_to_general_names(
     if isinstance(name, rfc9480.GeneralNames):
         return name
 
-    elif isinstance(name, rfc9480.GeneralName):
+    if isinstance(name, rfc9480.GeneralName):
         gen_names = rfc9480.GeneralNames()
         gen_names.append(name)
         return gen_names
 
-    elif isinstance(name, (rfc9480.Name, str, rfc9480.CMPCertificate)):
+    if isinstance(name, (rfc9480.Name, str, rfc9480.CMPCertificate)):
         gen_name = parse_to_general_name(name, gen_type=gen_type)
         gen_names = rfc9480.GeneralNames()
         gen_names.append(gen_name)
         return gen_names
-    else:
-        raise NotImplementedError(
-            f"GeneralName name_type is Unsupported: {type(name)}. Supported types are: "
-            f"str, Name, GeneralName, GeneralNames."
-        )
+
+    raise NotImplementedError(
+        f"GeneralName name_type is Unsupported: {type(name)}. Supported types are: "
+        f"str, Name, GeneralName, GeneralNames."
+    )

@@ -210,6 +210,7 @@ class BadAsn1Data(CMPTestSuiteError):
         remainder: Optional[bytes] = None,
         overwrite: bool = False,
         error_details: Optional[Union[List[str], str]] = None,
+        *,
         failinfo: str = "badDataFormat",
     ):
         """Initialize the exception with the message.

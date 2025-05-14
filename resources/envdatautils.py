@@ -2255,6 +2255,7 @@ def perform_sender_ecdh_one_pass_mqv(
     ephemeral_key: Optional[EllipticCurvePrivateKey] = None,
     key_wrap_oid: univ.ObjectIdentifier = rfc9481.id_aes256_wrap,
     ukm: Optional[bytes] = None,
+    *,
     hash_alg: str = "sha256",
 ) -> Tuple[bytes, bytes]:
     """Perform the ECDH MQV key agreement and wrap the content encryption key (CEK).
