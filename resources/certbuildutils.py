@@ -1090,8 +1090,8 @@ def build_certificate(  # noqa D417 undocumented-param
         - `hash_alg`: The hash algorithm for signing, Defaults to `sha256`. If the key is (ed25519 or ed448),
                       it will be ignored.
         - `ski`: If `True`, includes the SubjectKeyIdentifier (ski) extension in the certificate. Defaults to `False`.
-        - `signing_key`: A optional private key used to sign the certificate.
-        - `issuer_cert`: The issuer’s certificate. If not provided, the certificate is self-signed.
+        - `ca_key`: A optional private key used to sign the certificate.
+        - `ca_cert`: The issuer’s certificate. If not provided, the certificate is self-signed.
 
     **params (Additional optional parameters for customization):
     -----------------------------------------------------------
