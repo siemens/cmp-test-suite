@@ -234,3 +234,65 @@ class ProtectedType(enum.Enum):
             return cls.get_protection_type(value["header"]["protectionAlg"]["algorithm"])
 
         raise TypeError(f"Unsupported type: {type(value)}")
+
+
+class KeySaveType(enum.Enum):
+    """Defines the key save type to be either by seed or by key or first the seed and then the key."""
+
+    SEED = "seed"
+    RAW = "raw"
+    SEED_AND_RAW = "seed_and_raw"
+
+    @staticmethod
+    def get(value: Union[str, "KeySaveType"]) -> "KeySaveType":
+        """Return the KeySaveType enum member that matches the provided value (case-insensitive).
+
+        :param value: The name of the enum member to get.
+        :return: The corresponding enum member.
+        :raises ValueError: If the value does not match any enum member.
+        """
+        if isinstance(value, KeySaveType):
+            return value
+
+        value = value.replace("-", "_").lower()
+
+        try:
+            return KeySaveType(value)
+        except KeyError as err:
+            _options = [item.value for item in KeySaveType]
+            raise ValueError(
+                f"'{value}' is not a valid KeySaveType. Available values are: {', '.join(_options)}."
+            ) from err
+
+
+class InvalidOneAsymKeyType(enum.Enum):
+    """Defines the invalid key types for the OneAsymKey for KGA tests."""
+
+    INVALID_PRIVATE_KEY_SIZE = "invalid_private_key_size"  # Invalid private key size.
+    INVALID_PUBLIC_KEY_SIZE = "invalid_public_key_size"  # Invalid public key size.
+    INVALID_KEY_PAIR = "invalid_key_pair"  # Invalid key pair.
+    INVALID_KEY_PAIR_CERT = "invalid_key_pair_cert"  # Valid key pair, but the public key inside the certificate is
+    # different.
+    INVALID_VERSION_V1 = "invalid_version_v1"  # Version set to 1, but the public key is present.
+    INVALID_VERSION = "invalid_version"  # Invalid version number 4.
+
+    @staticmethod
+    def get(value: Union[str, "InvalidOneAsymKeyType"]) -> "InvalidOneAsymKeyType":
+        """Return the InvalidOneAsymKeyType enum member that matches the provided value (case-insensitive).
+
+        :param value: The name of the enum member to get.
+        :return: The corresponding enum member.
+        :raises ValueError: If the value does not match any enum member.
+        """
+        if isinstance(value, InvalidOneAsymKeyType):
+            return value
+
+        value = value.replace("-", "_").lower()
+
+        try:
+            return InvalidOneAsymKeyType(value)
+        except KeyError as err:
+            _options = [item.value for item in InvalidOneAsymKeyType]
+            raise ValueError(
+                f"'{value}' is not a valid InvalidOneAsymKeyType. Available values are: {', '.join(_options)}."
+            ) from err

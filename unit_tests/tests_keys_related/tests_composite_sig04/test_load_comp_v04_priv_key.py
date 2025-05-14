@@ -41,7 +41,7 @@ class TestLoadCompSig04(unittest.TestCase):
             encoding=Encoding.DER,
             format=PrivateFormat.PKCS8
         )
-        private_key = CombinedKeyFactory.load_key_from_one_asym_key(der_data)
+        private_key = CombinedKeyFactory.load_private_key_from_one_asym_key(der_data)
         self.assertEqual(private_key.public_key(), self.comp_rsa_key.public_key())
 
 
@@ -55,7 +55,7 @@ class TestLoadCompSig04(unittest.TestCase):
             encoding=Encoding.DER,
             format=PrivateFormat.PKCS8
         )
-        private_key = CombinedKeyFactory.load_key_from_one_asym_key(der_data)
+        private_key = CombinedKeyFactory.load_private_key_from_one_asym_key(der_data)
         self.assertEqual(private_key.public_key(), self.comp_ed_key.public_key())
 
     def test_export_and_load_pub_key_ecc(self):
@@ -68,7 +68,7 @@ class TestLoadCompSig04(unittest.TestCase):
             encoding=Encoding.DER,
             format=PrivateFormat.PKCS8
         )
-        private_key = CombinedKeyFactory.load_key_from_one_asym_key(der_data)
+        private_key = CombinedKeyFactory.load_private_key_from_one_asym_key(der_data)
         self.assertEqual(private_key.public_key(), self.comp_ecc_key.public_key())
 
 
@@ -90,5 +90,5 @@ class TestLoadCompSig04(unittest.TestCase):
             format=PrivateFormat.PKCS8
         )
 
-        out_key = CombinedKeyFactory.load_key_from_one_asym_key(der_data)
+        out_key = CombinedKeyFactory.load_private_key_from_one_asym_key(der_data)
         self.assertNotEqual(out_key.public_key(), other_key.public_key())

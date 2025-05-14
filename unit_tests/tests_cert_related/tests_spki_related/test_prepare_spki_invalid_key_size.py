@@ -5,17 +5,17 @@
 import unittest
 
 from resources.ca_ra_utils import validate_cert_template_public_key
-from resources.certbuildutils import prepare_cert_template, prepare_subject_public_key_info
+from resources.certbuildutils import prepare_cert_template
 from resources.exceptions import BadCertTemplate
-from resources.keyutils import load_private_key_from_file
+from resources.keyutils import load_private_key_from_file, prepare_subject_public_key_info
 
 
 class TestPrepareSPKIInvalidKeySize(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rsa_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
-        cls.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
-        cls.comp_key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
+        cls.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
+        cls.comp_key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem")
 
     @staticmethod
     def _prepare_cert_template(key):

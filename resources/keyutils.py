@@ -9,9 +9,11 @@ Designed to facilitate key management by offering simple methods to create new k
 store them and retrieve them when needed.
 """
 
+import os
 import re
 import textwrap
-from typing import List, Optional, Union
+import warnings
+from typing import List, Optional, Tuple, Union
 
 import pyasn1.error
 from cryptography.hazmat.primitives import serialization
@@ -25,18 +27,20 @@ from cryptography.hazmat.primitives.asymmetric import (
     x448,
     x25519,
 )
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from pyasn1.codec.der import decoder
-from pyasn1.type import univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc6402, rfc6664, rfc9480
+from pyasn1.type import tag, univ
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5958, rfc6402, rfc6664, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey, HybridPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
@@ -44,9 +48,10 @@ from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
-from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME
+from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME, id_rsa_kem_spki
 from resources import oid_mapping, typingutils, utils
-from resources.convertutils import str_to_bytes
+from resources.asn1utils import try_decode_pyasn1
+from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
 from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, UnknownOID
 from resources.oid_mapping import KEY_CLASS_MAPPING, get_curve_instance, get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import (
@@ -58,10 +63,17 @@ from resources.oidutils import (
     TRAD_SIG_NAME_2_OID,
     TRAD_STR_OID_TO_KEY_NAME,
 )
-from resources.typingutils import PrivateKey, PublicKey, SignKey, TradSignKey, TradVerifyKey, VerifyKey
+from resources.suiteenums import KeySaveType
+from resources.typingutils import PrivateKey, PublicKey, SignKey, TradPrivateKey, TradSignKey, TradVerifyKey, VerifyKey
 
 
-def save_key(key: PrivateKey, path: str, password: Union[None, str] = "11111"):  # noqa: D417 for RF docs
+def save_key(  # noqa: D417 undocumented-params
+    key: PrivateKey,
+    path: str,
+    password: Optional[str] = "11111",
+    save_type: str = "seed",
+    save_old: bool = False,
+):
     """Save a private key to a file, optionally encrypting it with a passphrase.
 
     Arguments:
@@ -69,11 +81,9 @@ def save_key(key: PrivateKey, path: str, password: Union[None, str] = "11111"): 
         - `key`: The private key object to save.
         - `path`: The file path where the key will be saved.
         - `passphrase`: Optional passphrase to encrypt the key. If None, save without encryption. Defaults to "11111".
-
-    Notes:
-    -----
-        - `DHPrivateKey`: Serialized in PKCS8 format.
-        - `X448PrivateKey` and `X25519PrivateKey` and ed versions: (cannot be encrypted).
+        - `save_type`: How to save the pq-key. Can be "seed", "raw" or "seed_and_raw". Defaults to "seed".
+        - `save_old`: If True, save the ML-KEM or ML-DSA key as raw bytes \
+        (Otherwise uses the new `Choice` structure.) Defaults to `False`.
 
     Raises:
     ------
@@ -92,11 +102,36 @@ def save_key(key: PrivateKey, path: str, password: Union[None, str] = "11111"): 
     if passphrase is not None:
         encrypt_algo = serialization.BestAvailableEncryption(passphrase)
 
-    data = key.private_bytes(
-        encoding=encoding_,
-        format=format_,
-        encryption_algorithm=encrypt_algo,  # type: ignore
-    )
+    if isinstance(key, TradPrivateKey):
+        data = key.private_bytes(
+            encoding=encoding_,
+            format=format_,
+            encryption_algorithm=encrypt_algo,  # type: ignore
+        )
+
+    elif isinstance(key, (MLKEMPrivateKey, MLDSAPrivateKey, HybridPublicKey)) and save_old:
+        warnings.warn(
+            "'old_param=True' is deprecated and will be removed in a future version. "
+            "Please update your code so that you can support the ne export for ML-KEM and ML-DSA keys."
+            "Hybrid keys will be supported until the next release, of the corresponding drafts.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        # Save the key as raw bytes (old format)
+        data = key.private_bytes(
+            encoding=encoding_,
+            format=format_,
+            encryption_algorithm=encrypt_algo,
+        )
+
+    else:
+        data = CombinedKeyFactory.save_private_key_one_asym_key(
+            private_key=key,
+            save_type=save_type,
+            password=password,
+            version=1,
+            encoding=encoding_,
+        )
 
     with open(path, "wb") as f:
         f.write(data)
@@ -415,7 +450,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
             else:
                 out = utils.decode_pem_string(out)
 
-            return CombinedKeyFactory.load_key_from_one_asym_key(data=out)
+            return CombinedKeyFactory.load_private_key_from_one_asym_key(data=out)
 
     pem_data = utils.load_and_decode_pem_file(filepath)
 
@@ -443,7 +478,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
         if password is not None:
             pem_data = load_enc_key(password=password, data=pem_data2)
 
-        return CombinedKeyFactory.load_key_from_one_asym_key(data=pem_data)
+        return CombinedKeyFactory.load_private_key_from_one_asym_key(data=pem_data)
 
     if password is not None:
         password = str_to_bytes(password)  # type: ignore
@@ -456,7 +491,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
     return private_key
 
 
-def load_public_key_from_file(filepath: str, key_type: Optional[str] = None) -> PublicKey:  # noqa: D417 for RF docs
+def load_public_key_from_file(filepath: str) -> PublicKey:  # noqa: D417 for RF docs
     """Load a public key from a file.
 
     Load a cryptographic public key from a PEM-encoded file.
@@ -464,8 +499,6 @@ def load_public_key_from_file(filepath: str, key_type: Optional[str] = None) -> 
     Arguments:
     ---------
         - `filepath`: the path to the file containing the key data.
-        - `key_type`: the type of the key, needed for x448 and x25519 (also ed-versions).
-
 
     Returns:
     -------
@@ -483,23 +516,14 @@ def load_public_key_from_file(filepath: str, key_type: Optional[str] = None) -> 
     | ${x25519_key}= | Load Public Key From File | /path/to/ed25519_public_key.pem | key_type=ed25519 |
 
     """
-    if key_type in ["x448", "x25519", "ed448", "ed25519"]:
-        pem_data = utils.load_and_decode_pem_file(filepath)
-    else:
-        with open(filepath, "rb") as pem_file:
-            pem_data = pem_file.read()
+    der_data = utils.load_and_decode_pem_file(filepath)
 
-    if key_type == "x448":
-        return x448.X448PublicKey.from_public_bytes(data=pem_data)
-    if key_type == "x25519":
-        return x25519.X25519PublicKey.from_public_bytes(data=pem_data)
+    spki, rest = try_decode_pyasn1(der_data, rfc5280.SubjectPublicKeyInfo())  # type: ignore
+    spki: rfc5280.SubjectPublicKeyInfo
+    if rest != b"":
+        raise BadAsn1Data("SubjectPublicKeyInfo")
 
-    if key_type == "ed448":
-        return ed448.Ed448PublicKey.from_public_bytes(data=pem_data)
-    if key_type == "ed25519":
-        return ed25519.Ed25519PublicKey.from_public_bytes(data=pem_data)
-
-    return serialization.load_pem_public_key(pem_data)
+    return CombinedKeyFactory.load_public_key_from_spki(spki)
 
 
 def load_public_key_from_spki(data: Union[bytes, rfc5280.SubjectPublicKeyInfo]) -> PublicKey:  # noqa: D417 for RF docs
@@ -840,3 +864,310 @@ def generate_different_public_key(  # noqa D417 undocumented-param
         raise ValueError("Failed to generate a different public key.")
 
     return pub_key
+
+
+def _get_version_and_tmp_version(version: Union[int, str]) -> Tuple[int, int]:
+    """Get the version and temporary version for the `OneAsymmetricKey` structure.
+
+    :param version: The version of the structure. Can be an integer or a string.
+    :return: A tuple containing the version and temporary version.
+    :raises ValueError: If the string version is not valid.
+    """
+    if isinstance(version, int):
+        tmp_version = 1 if version >= 1 else 0
+    elif isinstance(version, str) and not version.isdigit():
+        if version not in ["v1", "v2"]:
+            raise ValueError("Invalid version only supports 'v1', 'v2'")
+        version = 1 if version == "v2" else 0
+        tmp_version = version
+    else:
+        version = int(version)
+        tmp_version = 1 if version >= 1 else 0
+
+    return version, tmp_version
+
+
+def _prepare_one_asym_key(
+    private_key_bytes: bytes,
+    public_key_bytes: Optional[bytes],
+    version: int,
+    alg_id: rfc5280.AlgorithmIdentifier,
+) -> rfc5958.OneAsymmetricKey:
+    """Parse the `OneAsymmetricKey` structure from the given bytes.
+
+    :param private_key_bytes: The private key bytes.
+    :param public_key_bytes: The public key bytes, if available.
+    :param version: The version of the structure.
+    :param alg_id: The algorithm identifier.
+    :return: The parsed `OneAsymmetricKey` structure.
+    """
+    one_asym_key = rfc5958.OneAsymmetricKey()
+    one_asym_key["version"] = univ.Integer(version)
+    one_asym_key["privateKeyAlgorithm"] = alg_id
+    one_asym_key["privateKey"] = univ.OctetString(private_key_bytes)
+    if public_key_bytes is not None:
+        public_key_bit_str = (
+            rfc5958.PublicKey()
+            .fromOctetString(public_key_bytes)
+            .subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1))
+        )
+        one_asym_key["publicKey"] = public_key_bit_str
+    return one_asym_key
+
+
+@keyword(name="Prepare OneAsymmetricKey")
+def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
+    private_key: PrivateKey,
+    public_key: Optional[PublicKey] = None,
+    version: Union[int, str] = "v2",
+    key_save_type: Union[str, KeySaveType] = "seed",
+    invalid_priv_key_size: bool = False,
+    invalid_pub_key_size: bool = False,
+    mis_matching_key: bool = False,
+    invalid_private_key: bool = False,
+    include_public_key: Optional[bool] = None,
+) -> rfc5958.OneAsymmetricKey:
+    """Create a `OneAsymmetricKey` structure for a private key.
+
+    Wraps a private key into the `OneAsymmetricKey` structure,
+    including the algorithm identifier and the public key. It's used when
+    preparing an `AsymmetricKeyPackage`.
+
+    Arguments:
+    ---------
+        - `private_key`: The private key to wrap.
+        - `version`: The version of the structure. Defaults to "v2".
+        - `key_save_type`: The type of key to save. Can be "seed", "raw", or "seed_and_raw". Defaults to "raw".
+        - `invalid_private_key`: If True, the private key is invalid. Only supported for RSA and ECC-keys. \
+        Defaults to `False`.
+        - `invalid_pub_key_size`: If True, the public key size is invalid. Defaults to `False`.
+        - `mis_matching_key`: If True, the public key does not match the private key. Defaults to `False`.
+        - `invalid_priv_key_size`: If True, the private key size is invalid. Defaults to `False`.
+        - `include_public_key`: If True, the public key is included in the structure. If `None`, \
+        it is set to `False` for version 0. Defaults to `None`.
+
+    Returns:
+    -------
+        - The populated `OneAsymmetricKey` structure.
+
+    Raises:
+    ------
+        - `ValueError`: If the private key is not of a supported type or if the version is invalid.
+        - `ValueError`: If the key_save_type is invalid.
+        - `ValueError`: If the string version is not supported.
+        - `ValueError`: If the private key is invalid and the invalid_priv_key option is set.
+
+    Examples:
+    --------
+    | ${one_asym_key}= | Prepare OneAsymmetricKey | ${private_key} | "v2" |
+    | ${one_asym_key}= | Prepare OneAsymmetricKey | ${private_key} | key_save_type="seed" |
+
+    """
+    if not isinstance(private_key, (RSAPrivateKey, EllipticCurvePrivateKey)) and invalid_private_key:
+        raise ValueError("The invalid private key option is only supported for `RSA`- and `ECC`-keys.")
+
+    if mis_matching_key:
+        public_key = generate_different_public_key(key_source=private_key)
+
+    version, tmp_version = _get_version_and_tmp_version(version)
+
+    if include_public_key is None:
+        if version in ["v1", 0]:
+            include_public_key = False
+
+    der_data = CombinedKeyFactory.save_private_key_one_asym_key(
+        private_key=private_key,
+        public_key=public_key,
+        save_type=key_save_type,
+        version=tmp_version,
+        include_public_key=include_public_key,
+        invalid_private_key=invalid_private_key,
+        password=None,
+        unsafe=True,
+    )
+    one_asym_key, _ = decoder.decode(der_data, asn1Spec=rfc5958.OneAsymmetricKey())
+
+    public_key_bytes = None if not one_asym_key["publicKey"].isValue else one_asym_key["publicKey"].asOctets()
+    private_key_bytes = one_asym_key["privateKey"].asOctets()
+
+    if invalid_priv_key_size:
+        private_key_bytes = private_key_bytes + os.urandom(16)
+
+    if invalid_pub_key_size:
+        public_key_bytes = b"" if public_key_bytes is None else public_key_bytes
+        public_key_bytes = public_key_bytes + os.urandom(16)
+
+    return _prepare_one_asym_key(
+        private_key_bytes=private_key_bytes,
+        public_key_bytes=public_key_bytes,
+        version=version,
+        alg_id=one_asym_key["privateKeyAlgorithm"],
+    )
+
+
+@keyword(name="Prepare SubjectPublicKeyInfo")
+def prepare_subject_public_key_info(  # noqa D417 undocumented-param
+    key: Optional[Union[PrivateKey, PublicKey]] = None,
+    for_kga: bool = False,
+    key_name: Optional[str] = None,
+    use_rsa_pss: bool = False,
+    use_pre_hash: bool = False,
+    hash_alg: Optional[str] = None,
+    invalid_key_size: bool = False,
+    add_params_rand_bytes: bool = False,
+    add_null: bool = False,
+) -> rfc5280.SubjectPublicKeyInfo:
+    """Prepare a `SubjectPublicKeyInfo` structure for a `Certificate`, `CSR` or `CertTemplate`.
+
+    For invalid Composite keys must the private key be provided.
+
+    Note: If the key is a CompositeSig key, the `key_name` the private key must be provided,
+    if the RSA key has an invalid key size.
+
+    Arguments:
+    ---------
+        - `key`: The public or private key to use for the `SubjectPublicKeyInfo`.
+        - `for_kga`: A flag indicating whether the key is for a key generation authority (KGA).
+        - `key_name`: The key algorithm name to use for the `SubjectPublicKeyInfo`.
+        (can be set to `rsa_kem`. RFC9690). Defaults to `None`.
+        - `use_rsa_pss`: Whether to use RSA-PSS padding. Defaults to `False`.
+        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+        - `hash_alg`: The pre-hash algorithm to use for the pq signature key. Defaults to `None`.
+        - `invalid_key_size`: A flag indicating whether the key size is invalid. Defaults to `False`.
+        - `add_params_rand_bytes`: A flag indicating whether to add random bytes to the key parameters. \
+        Defaults to `False`.
+        - `add_null`: A flag indicating whether to add a null value to the key parameters. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `SubjectPublicKeyInfo` structure.
+
+    Raises:
+    ------
+        - `ValueError`: If no key is provided and the for_kga flag is not set.
+        - `ValueError`: If both `add_null` and `add_params_rand_bytes` are set.
+
+
+    Examples:
+    --------
+    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | use_rsa_pss=True |
+    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | key_name=rsa-kem |
+    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | for_kga=True |
+    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | add_null=True |
+
+    """
+    if key is None and not for_kga:
+        raise ValueError("Either a key has to be provided or the for_kga flag have to be set.")
+
+    if add_null and add_params_rand_bytes:
+        raise ValueError("Either `add_null` or `add_params_rand_bytes` can be set, not both.")
+
+    if isinstance(key, AbstractCompositePrivateKey):
+        pub_key = key.public_key().public_bytes(encoding=Encoding.DER, format=PublicFormat.Raw)
+        spki = rfc5280.SubjectPublicKeyInfo()
+        pub_key = pub_key if not invalid_key_size else pub_key + b"\x00"
+        spki["subjectPublicKey"] = univ.BitString.fromOctetString(pub_key)
+        if isinstance(key, CompositeSig03PrivateKey):
+            oid = key.get_oid(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
+        else:
+            oid = key.get_oid()
+        spki["algorithm"]["algorithm"] = oid
+
+        if add_null:
+            spki["algorithm"]["parameters"] = univ.Null("")
+
+        if add_params_rand_bytes:
+            spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
+
+        return spki
+
+    if isinstance(key, PrivateKey):
+        key = key.public_key()
+
+    if for_kga:
+        return _prepare_spki_for_kga(
+            key=key,
+            key_name=key_name,
+            use_pss=use_rsa_pss,
+            use_pre_hash=use_pre_hash,
+            add_null=add_null,
+            add_params_rand_bytes=add_params_rand_bytes,
+        )
+
+    if key_name in ["rsa-kem", "rsa_kem"]:
+        key = RSAEncapKey(key)  # type: ignore
+
+    spki = subject_public_key_info_from_pubkey(
+        public_key=key,  # type: ignore
+        use_rsa_pss=use_rsa_pss,
+        use_pre_hash=use_pre_hash,
+        hash_alg=hash_alg,
+    )
+
+    if invalid_key_size:
+        tmp = spki["subjectPublicKey"].asOctets() + b"\x00\x00"
+        spki["subjectPublicKey"] = univ.BitString.fromOctetString(tmp)
+
+    if add_params_rand_bytes:
+        spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
+
+    return spki
+
+
+def _prepare_spki_for_kga(
+    key: Optional[Union[PrivateKey, PublicKey]] = None,
+    key_name: Optional[str] = None,
+    use_pss: bool = False,
+    use_pre_hash: bool = False,
+    add_null: bool = False,
+    *,
+    add_params_rand_bytes: bool = False,
+) -> rfc5280.SubjectPublicKeyInfo:
+    """Prepare a SubjectPublicKeyInfo for KGA usage.
+
+    :param key: A private or public key.
+    :param key_name: An optional key algorithm name.
+    :param use_pss: Whether to use PSS padding for RSA and a RSA-CompositeKey.
+    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+    :param add_null: Whether to add a null value to the key parameters. Defaults to `False`.
+    :param add_params_rand_bytes: Whether to add random bytes to the key parameters. Defaults to `False`.
+    :return: The populated `SubjectPublicKeyInfo` structure.
+    """
+    if add_null and add_params_rand_bytes:
+        raise ValueError("Either `add_null` or `add_params_rand_bytes` can be set, not both.")
+
+    spki = rfc5280.SubjectPublicKeyInfo()
+    spki["subjectPublicKey"] = univ.BitString("")
+
+    if key is not None:
+        if isinstance(key, typingutils.PrivateKey):
+            key = key.public_key()
+
+    if key_name and key_name in ["rsa", "dsa", "ecc", "rsa-kem"]:
+        names_2_oid = {
+            "rsa": univ.ObjectIdentifier("1.2.840.113549.1.1.1"),
+            "dsa": univ.ObjectIdentifier("1.2.840.10040.4.1"),
+            "ecc": univ.ObjectIdentifier("1.2.840.10045.3.1.7"),
+            "rsa-kem": id_rsa_kem_spki,
+        }
+        spki["algorithm"]["algorithm"] = names_2_oid[key_name]
+        if key_name == "ecc":
+            spki["algorithm"]["parameters"] = rfc5480.ECParameters()
+            spki["algorithm"]["parameters"]["namedCurve"] = rfc5480.secp256r1
+
+    if key_name is not None:
+        key = CombinedKeyFactory.generate_key(key_name).public_key()
+        spki_tmp = subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_pss, use_pre_hash=use_pre_hash)
+        spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
+
+    elif key is not None:
+        spki_tmp = subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_pss)
+        spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
+
+    if add_null:
+        spki["algorithm"]["parameters"] = univ.Null("")
+
+    if add_params_rand_bytes:
+        spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
+
+    return spki

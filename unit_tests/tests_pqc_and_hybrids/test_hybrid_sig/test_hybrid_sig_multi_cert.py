@@ -16,7 +16,7 @@ class TestSigVerificationMultiCert:
 
     @classmethod
     def setUpClass(cls):
-        cls.pq_key = load_private_key_from_file("data/keys/private-key-ml-dsa-65.pem")
+        cls.pq_key = load_private_key_from_file("data/keys/private-key-ml-dsa-65-seed.pem")
         cls.cert_a_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.cert_a = parse_certificate(load_and_decode_pem_file("data/unittest/rsa_cert_ski.pem"))
         cls.cert_b = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
@@ -28,7 +28,7 @@ class TestSigVerificationMultiCert:
         WHEN verifying the signature with the related certificate.
         THEN the signature is correctly verified.
         """
-        mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+        mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
         rsa_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         composite_key = CompositeSig03PrivateKey(mldsa_key, rsa_key)
         signature = sign_data(key=composite_key, data=b"Hello World")

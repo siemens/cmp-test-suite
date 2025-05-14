@@ -26,13 +26,13 @@ class TestPrepareEncrCertForRequest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.hybrid_key = load_private_key_from_file("data/keys/private-key-x25519.pem")
-        cls.xwing_key = load_private_key_from_file("data/keys/private-key-xwing.pem")
-        cls.xwing_key_other = load_private_key_from_file("data/keys/private-key-xwing-other.pem")
+        cls.xwing_key = load_private_key_from_file("data/keys/private-key-xwing-seed.pem")
+        cls.xwing_key_other = load_private_key_from_file("data/keys/private-key-xwing-other-seed.pem")
 
         cls.ca_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.ca_cert = parse_certificate(load_and_decode_pem_file("data/unittest/bare_certificate.pem"))
 
-        cls.mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768.pem")
+        cls.mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
 
     def set_up_data(self, client_key: Union[KEMPrivateKey],
                     hybrid_kem_key: Union[ECDHPrivateKey, HybridKEMPrivateKey]) \

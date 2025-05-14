@@ -53,7 +53,7 @@ from resources import (
 from resources.asn1_structures import PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes
-from resources.exceptions import BadAlg, BadAsn1Data
+from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MismatchingKey
 from resources.oid_mapping import (
     compute_hash,
     get_hash_from_oid,
@@ -219,6 +219,7 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
     key_index: Strint = 0,
     trustanchors: str = "data/trustanchors",
     ee_key: Optional[EnvDataPrivateKey] = None,
+    key_save_type: Optional[str] = None,
 ) -> PrivateKey:
     """Validate that the provided PKIMessage is correct, according to Rfc9483 Section 4.1.6.
 
@@ -241,6 +242,8 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
           Defaults to "data/trustanchors".
         - `ee_key`: The private key of the end-entity used for RSA decryption if KTRI is used,
           or EC/X25519/X448 used for key agreement.
+        - `key_save_type`: The type of key export expected for a PQ key (e.g., "seed", "raw", "seed_and_raw").
+        Defaults to `None`.
 
     Returns:
     -------
@@ -256,6 +259,8 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
         - `ValueError`: If the key unwrap fails.
         - `ValueError`: If the KGA certificate is not a trust anchor or does not have the `cmKGA`
           ExtendedKeyUsage extension.
+        - `MismatchingKey`: If the extracted private key does not match the public key or not the public key
+            in the newly issued certificate.
 
     Examples:
     --------
@@ -297,7 +302,11 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
         raise ValueError("The decoding of 'SignedData' structure had a remainder!")
 
     private_key = validate_signed_data_structure(
-        signed_data, expected_size=expected_size, key_index=key_index, trustanchors=trustanchors
+        signed_data,
+        expected_size=expected_size,
+        key_index=key_index,
+        trustanchors=trustanchors,
+        key_save_type=key_save_type,
     )
 
     kga_type = env_data["recipientInfos"][key_index].getName()
@@ -307,7 +316,7 @@ def validate_not_local_key_gen(  # noqa D417 undocumented-param
     issued_cert_pub_key = certutils.load_public_key_from_cert(issued_cert)
 
     if issued_cert_pub_key != private_key.public_key():
-        raise ValueError("The extracted private key does not match the public key in the newly issued certificate.")
+        raise MismatchingKey("The extracted private key does not match the public key in the newly issued certificate.")
 
     return private_key
 
@@ -1199,6 +1208,7 @@ def validate_signed_data_structure(
     expected_size: Strint = 1,
     key_index: Strint = 0,
     trustanchors: str = "data/trustanchors",
+    key_save_type: Optional[str] = None,
 ) -> PrivateKey:
     """Validate the structure and content of a `SignedData` object and extract the private key.
 
@@ -1206,6 +1216,8 @@ def validate_signed_data_structure(
     :param expected_size: The expected number of `DigestAlgorithmIdentifiers`.
     :param key_index: The index of the private key to extract.
     :param trustanchors: The path to the directory where the trust anchors are saved. Defaults to "data/trustanchors".
+    :param key_save_type: The type of key export expected for a PQ key (e.g., "seed", "raw, "seed_and_raw").
+    Defaults to `None`.
     :return: The extracted private key from the `AsymmetricKeyPackage`.
     :raises ValueError: If any validation step fails (e.g., incorrect version, digest mismatch, signature failure).
     """
@@ -1228,7 +1240,10 @@ def validate_signed_data_structure(
         raise ValueError("The decoding of the `AsymmetricKeyPackage` had a remainder!")
 
     new_private_key = validate_asymmetric_key_package(
-        asym_key_package=asym_key_package, expected_size=expected_size, key_index=key_index
+        asym_key_package=asym_key_package,
+        expected_size=expected_size,
+        key_index=key_index,
+        key_save_type=key_save_type,
     )
 
     # MUST contain the certificate for the private key used to sign
@@ -1485,7 +1500,10 @@ def _check_required_attributes(
 
 @not_keyword
 def validate_asymmetric_key_package(
-    asym_key_package: rfc5958.AsymmetricKeyPackage, expected_size: Strint = 1, key_index: Strint = 0
+    asym_key_package: rfc5958.AsymmetricKeyPackage,
+    expected_size: Strint = 1,
+    key_index: Strint = 0,
+    key_save_type: Optional[str] = None,
 ) -> PrivateKey:
     """Validate the structure of an `AsymmetricKeyPackage` and extract the private key.
 
@@ -1493,6 +1511,8 @@ def validate_asymmetric_key_package(
                              and public key information.
     :param expected_size: The expected number of keys that are allowed to be present.
     :param key_index: The index of the key to extract.
+    :param key_save_type: The type of key export expected for a PQ key (e.g., "seed", "raw, "seed_and_raw").
+    Defaults to `None`.
     :return: The validated private key as a `PrivateKey` object.
     :raises ValueError: If the package contains more than one key, if the version is incorrect,
                         or if the private and public keys do not match.
@@ -1505,9 +1525,20 @@ def validate_asymmetric_key_package(
 
     one_asym_key: rfc5958.OneAsymmetricKey = asym_key_package[int(key_index)]
     if int(one_asym_key["version"]) != 1:
-        raise ValueError("The version of the `OneAsymmetricKey` structure must be 1 (indicating v2)!")
+        raise InvalidKeyData(
+            "The version of the `OneAsymmetricKey` structure must be 1 (indicating v2)!. "
+            f"But Got: {int(one_asym_key['version'])}"
+        )
 
-    private_key = CombinedKeyFactory.load_key_from_one_asym_key(one_asym_key, must_be_version_2=True)
+    private_key = CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key, must_be_version_2=True)
+
+    if key_save_type is not None:
+        CombinedKeyFactory.validate_key_export_type(
+            private_key=private_key,  # type: ignore
+            private_key_bytes=one_asym_key["privateKey"].asOctets(),
+            key_save_type=key_save_type,
+        )
+
     return private_key
 
 

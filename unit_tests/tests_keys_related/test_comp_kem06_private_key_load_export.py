@@ -33,7 +33,7 @@ class TestCompositeKem06PrivateLoad(unittest.TestCase):
             serialization.Encoding.DER,
             serialization.PrivateFormat.PKCS8,
         )
-        loaded_key = CombinedKeyFactory.load_key_from_one_asym_key(one_asym_key)
+        loaded_key = CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key)
         self.assertEqual(loaded_key.get_oid(), key.get_oid())
         self.assertEqual(loaded_key.name, key.name)
         self.assertEqual(loaded_key.public_key().pq_key, key.public_key().pq_key)
@@ -51,7 +51,7 @@ class TestCompositeKem06PrivateLoad(unittest.TestCase):
             serialization.Encoding.DER,
             serialization.PrivateFormat.PKCS8,
         )
-        loaded_key = CombinedKeyFactory.load_key_from_one_asym_key(one_asym_key)
+        loaded_key = CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key)
         self.assertEqual(loaded_key.get_oid(), key.get_oid())
         self.assertEqual(loaded_key.name, key.name)
         self.assertEqual(loaded_key.public_key(), key.public_key())
@@ -67,7 +67,7 @@ class TestCompositeKem06PrivateLoad(unittest.TestCase):
             serialization.Encoding.DER,
             serialization.PrivateFormat.PKCS8,
         )
-        loaded_key = CombinedKeyFactory.load_key_from_one_asym_key(one_asym_key)
+        loaded_key = CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key)
         self.assertEqual(loaded_key.get_oid(), key.get_oid())
         self.assertEqual(loaded_key.name, key.name)
         self.assertEqual(loaded_key.public_key(), key.public_key())

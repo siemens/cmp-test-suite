@@ -266,3 +266,128 @@ class AltSignatureAlgorithmExt(rfc5280.AlgorithmIdentifier):
 
 class AltSignatureValueExt(univ.BitString):
     """Extension for alternative signature value."""
+
+
+def _OctetStringFixed(size: int):
+    """Create a fixed-size OctetString with a specific size."""
+    return univ.OctetString().subtype(subtypeSpec=constraint.ValueSizeConstraint(size, size))
+
+
+class BothMLDSA44(univ.Sequence):
+    """ASN.1 Definition of the `BothMLDSA44` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("seed", _OctetStringFixed(32)), namedtype.NamedType("expandedKey", _OctetStringFixed(2560))
+    )
+
+
+class BothMLDSA65(univ.Sequence):
+    """ASN.1 Definition of the `BothMLDSA65` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("seed", _OctetStringFixed(32)), namedtype.NamedType("expandedKey", _OctetStringFixed(4032))
+    )
+
+
+class BothMLDSA87(univ.Sequence):
+    """ASN.1 Definition of the `BothMLDSA87` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("seed", _OctetStringFixed(32)), namedtype.NamedType("expandedKey", _OctetStringFixed(4896))
+    )
+
+
+class MLDSA44PrivateKeyASN1(univ.Choice):
+    """ASN.1 Definition of the `MLDSA44PrivateKey` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType(
+            "seed", _OctetStringFixed(32).subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+        ),
+        namedtype.NamedType("expandedKey", _OctetStringFixed(2560)),
+        namedtype.NamedType("both", BothMLDSA44()),
+    )
+
+
+class MLDSA65PrivateKeyASN1(univ.Choice):
+    """ASN.1 Definition of the `MLDSA65PrivateKey` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType(
+            "seed", _OctetStringFixed(32).subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+        ),
+        namedtype.NamedType("expandedKey", _OctetStringFixed(4032)),
+        namedtype.NamedType("both", BothMLDSA65()),
+    )
+
+
+class MLDSA87PrivateKeyASN1(univ.Choice):
+    """ASN.1 Definition of the `MLDSA87PrivateKey` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType(
+            "seed", _OctetStringFixed(32).subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+        ),
+        namedtype.NamedType("expandedKey", _OctetStringFixed(4896)),
+        namedtype.NamedType("both", BothMLDSA87()),
+    )
+
+
+class BothMLKEM512(univ.Sequence):
+    """ASN.1 Definition of the `BothMLKEM512` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("seed", _OctetStringFixed(64)), namedtype.NamedType("expandedKey", _OctetStringFixed(1632))
+    )
+
+
+class BothMLKEM768(univ.Sequence):
+    """ASN.1 Definition of the `BothMLKEM768` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("seed", _OctetStringFixed(64)), namedtype.NamedType("expandedKey", _OctetStringFixed(2400))
+    )
+
+
+class BothMLKEM1024(univ.Sequence):
+    """ASN.1 Definition of the `BothMLKEM1024` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("seed", _OctetStringFixed(64)), namedtype.NamedType("expandedKey", _OctetStringFixed(3168))
+    )
+
+
+class MLKEM512PrivateKeyASN1(univ.Choice):
+    """ASN.1 Definition of the `MLKEM512PrivateKey` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType(
+            "seed", _OctetStringFixed(64).subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+        ),
+        namedtype.NamedType("expandedKey", _OctetStringFixed(1632)),
+        namedtype.NamedType("both", BothMLKEM512()),
+    )
+
+
+class MLKEM768PrivateKeyASN1(univ.Choice):
+    """ASN.1 Definition of the `MLKEM768PrivateKey` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType(
+            "seed", _OctetStringFixed(64).subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+        ),
+        namedtype.NamedType("expandedKey", _OctetStringFixed(2400)),
+        namedtype.NamedType("both", BothMLKEM768()),
+    )
+
+
+class MLKEM1024PrivateKeyASN1(univ.Choice):
+    """ASN.1 Definition of the `MLKEM1024PrivateKey` structure."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType(
+            "seed", _OctetStringFixed(64).subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+        ),
+        namedtype.NamedType("expandedKey", _OctetStringFixed(3168)),
+        namedtype.NamedType("both", BothMLKEM1024()),
+    )

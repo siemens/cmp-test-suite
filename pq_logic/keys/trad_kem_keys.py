@@ -391,18 +391,23 @@ class DHKEMPublicKey(TradKEMPublicKey):
         :param data: The raw bytes of the public key.
         :return: The DHKEMPublicKey instance.
         """
-        if name not in ["x25519", "x448"]:
-            curve = name.replace("ecdh-", "", 1)
-            curve_inst = get_curve_instance(curve)
-            trad_key = cls._ec_key_from_der(data, curve_inst)
-        elif name == "x25519":
-            trad_key = x25519.X25519PublicKey.from_public_bytes(data)
-        elif name == "x448":
-            trad_key = x448.X448PublicKey.from_public_bytes(data)
-        else:
-            raise ValueError(f"Unsupported key type: {name}. Expected one of 'x25519', 'x448' or 'ecdh-*'.")
+        trad_key = None
+        try:
+            if name not in ["x25519", "x448"]:
+                curve = name.replace("ecdh-", "", 1)
+                curve_inst = get_curve_instance(curve)
+                trad_key = cls._ec_key_from_der(data, curve_inst)
+            elif name == "x25519":
+                trad_key = x25519.X25519PublicKey.from_public_bytes(data)
+            elif name == "x448":
+                trad_key = x448.X448PublicKey.from_public_bytes(data)
+        except ValueError as e:
+            raise InvalidKeyData(f"Invalid public key data for {name}: {e}") from e
 
-        return cls(trad_key)
+        if trad_key is not None:
+            return cls(trad_key)
+
+        raise ValueError(f"Unsupported key type: {name}. Expected one of 'x25519', 'x448' or 'ecdh-*'.")
 
 
 class DHKEMPrivateKey(TradKEMPrivateKey):
