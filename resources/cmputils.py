@@ -53,7 +53,15 @@ from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadDataFormat, BadRequest
 from resources.prepareutils import parse_to_general_name
-from resources.typingutils import CertObjOrPath, ControlsType, ExtensionsType, PrivateKey, PublicKey, SignKey, Strint
+from resources.typingutils import (
+    CertObjOrPath,
+    ControlsType,
+    ExtensionsParseType,
+    PrivateKey,
+    PublicKey,
+    SignKey,
+    Strint,
+)
 
 # When dealing with post-quantum crypto algorithms, we encounter big numbers, which wouldn't be pretty-printed
 # otherwise. This is just for cosmetic convenience.
@@ -595,7 +603,7 @@ def add_controls_to_pkimessage(  # noqa D417 undocumented-param
 @keyword(name="Add Extension To PKIMessage")
 def add_extensions_to_pkimessage(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP,
-    extension: ExtensionsType,
+    extension: ExtensionsParseType,
     cert_req_index: Optional[Strint] = 0,
 ) -> PKIMessageTMP:
     """Add `Extension` objects to a PKIMessage for a specific certificate request.

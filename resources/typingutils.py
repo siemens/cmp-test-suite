@@ -148,7 +148,7 @@ ControlsType = Union[
     rfc9480.AttributeTypeAndValue,
 ]
 
-ExtensionParseType = Union[
+ExtensionsParseType = Union[
     rfc9480.Extensions,
     Sequence[rfc5280.Extension],
     rfc5280.Extension,
