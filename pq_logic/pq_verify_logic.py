@@ -19,8 +19,13 @@ from pyasn1.type import constraint, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 from robot.api.deco import keyword
 
-from pq_logic.hybrid_sig import cert_binding_for_multi_auth, certdiscovery, chameleon_logic, sun_lamps_hybrid_scheme_00
-from pq_logic.hybrid_structures import SubjectAltPublicKeyInfoExt
+from pq_logic.hybrid_sig import (
+    catalyst_logic,
+    cert_binding_for_multi_auth,
+    certdiscovery,
+    chameleon_logic,
+    sun_lamps_hybrid_scheme_00,
+)
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
@@ -33,6 +38,7 @@ from pq_logic.tmp_oids import (
 from resources import certutils, compareutils, convertutils, keyutils, protectionutils, utils
 from resources.asn1_structures import PKIMessageTMP
 from resources.certextractutils import get_extension
+from resources.convertutils import ensure_is_pq_verify_key
 from resources.exceptions import BadAsn1Data, BadMessageCheck, BadSigAlgID, InvalidAltSignature, UnknownOID
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import (
@@ -358,7 +364,7 @@ def build_sun_hybrid_cert_chain(  # noqa D417 undocumented-param
     """
     if isinstance(certs, PKIMessageTMP):
         certs = certs["extraCerts"]
-        if not certs.isValue:
+        if not certs.isValue:  # type: ignore
             raise ValueError("The `PKIMessage` does not contain any extra certificates.")
 
     cert4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(cert, "Form4")
@@ -770,11 +776,11 @@ def may_extract_alt_key_from_cert(  # noqa: D417 Missing argument descriptions i
 
     if extn_alt_spki is not None:
         logging.info("Validate signature with alternative public key.")
-        spki, rest = decoder.decode(extn_alt_spki["extnValue"].asOctets(), SubjectAltPublicKeyInfoExt())
-        if rest:
-            raise BadAsn1Data("The alternative public key extension contains remainder data.", overwrite=True)
-        alt_issuer_key = keyutils.load_public_key_from_spki(spki)
-        return alt_issuer_key  # type: ignore
+
+        extensions = rfc9480.Extensions()
+        extensions.append(extn_alt_spki)
+        loaded_key = catalyst_logic.load_catalyst_public_key(extensions)
+        return ensure_is_pq_verify_key(loaded_key)
 
     if rel_cert_desc is not None:
         logging.info("Validate signature with cert discovery.")
