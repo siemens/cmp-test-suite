@@ -1019,6 +1019,7 @@ def generate_certificate(
     days: int = 365,
     use_rsa_pss: bool = False,
     bad_sig: bool = False,
+    validity: Optional[rfc5280.Validity] = None,
 ) -> rfc9480.CMPCertificate:
     """Generate a complete `CMPCertificate` using specified parameters.
 
@@ -1033,7 +1034,8 @@ def generate_certificate(
     :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
     :param days: The duration in days for which the certificate remains valid. Defaults to 365 days.
     :param bad_sig: Whether to generate a bad signature. Defaults to `False`.
-    :return: `rfc9480.CMPCertificate` object representing the created certificate.
+    :param validity: Optional `Validity` object to specify the certificate's validity period.
+    :return: `CMPCertificate` object representing the created certificate.
     """
     cert = rfc9480.CMPCertificate()
 
@@ -1058,6 +1060,7 @@ def generate_certificate(
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
         days=int(days),
+        validity=validity,
     )
     cert["tbsCertificate"] = tbs_cert
     return sign_cert(
@@ -1094,7 +1097,7 @@ def build_certificate(  # noqa D417 undocumented-param
     -----------------------------------------------------------
         - `serial_number` (int, str): The serial number for the certificate. If omitted, a random number is generated.
         - `days` (int, str): Number of days for certificate validity, starting from `not_valid_before`. Defaults to 365.
-        - `validity` (rfc5280.Validity): Start date of the certificate’s validity. Defaults to now.
+        - `validity` (Validity): Start date of the certificate’s validity. Defaults to now.
         - `is_ca` (bool): Indicates if the certificate is for a CA (Certificate Authority). Defaults to `False`.
         - `path_length` (int): The maximum path length for CA certificates.
         - `key_alg` (str): Algorithm for key generation (e.g., "ecdsa"). Defaults to `ec`.
@@ -1156,6 +1159,7 @@ def build_certificate(  # noqa D417 undocumented-param
         use_rsa_pss=params.get("use_rsa_pss", False),
         days=int(params.get("days", 365)),
         bad_sig=params.get("bad_sig", False),
+        validity=params.get("validity"),
     )
     return certificate, cert_key
 
