@@ -1358,6 +1358,40 @@ CA Must Reject Valid IR With Already Updated Certificate
     PKIStatus Must Be      ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be   ${response}      failinfo=certRevoked   exclusive=True
 
+#### Error Body
+
+CA Should Return A MAC protected Error Message
+    [Documentation]   According to RFC 9483, Section 3 the CA SHOULD return a MAC protected error message
+    ...   when it receives a invalid PKIMessage and the CA is configured to do so. We send a PKIMessage
+    ...   with a missing `senderNonce` field and expect the CA to respond with a MAC protected error message.
+    [Tags]    error    negative  robot: skip-on-failure  mac
+    ${key}=    Generate Default Key
+    ${cm}=    Get Next Common Name
+    ${ir}=    Build Ir From Key  ${key}   ${cm}   for_mac=True  sender=${SENDER}  recipient=${RECIPIENT}
+    ...    exclude_fields=senderNonce
+    ${protected_ir}=    Default Protect With MAC    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    error
+    MAC Protection Algorithms Must Match    ${protected_ir}    ${response}   enforce_lwcmp=${LWCMP}   strict=${STRICT}
+
+CA Should Return A SIG protected Error Message
+    [Documentation]   According to RFC 9483, Section 3 the CA SHOULD return a SIG protected error message
+    ...   when it receives a invalid PKIMessage and the CA is configured to do so. We send a PKIMessage
+    ...   with a missing `senderNonce` field and expect the CA to respond with a SIG protected error message.
+    [Tags]    error    negative  robot: skip-on-failure  sig
+    ${key}=    Generate Default Key
+    ${cm}=    Get Next Common Name
+    ${ir}=    Build Ir From Key  ${key}   ${cm}   recipient=${RECIPIENT}
+    ...    exclude_fields=senderNonce,sender,senderKID
+    ${protected_ir}=    Protect PKIMessage    ${ir}   signature  private_key=${ISSUED_KEY}  cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    error
+    ${alg}=   Get Protection Type From PKIMessage    ${response}   ${LWCMP}
+    Should Contain    pq-sig, composite-sig, sig   ${alg}
+    Verify PKIMessage Protection    ${response}
+
+
+
 ##### Security checks #####
 
 SenderNonces Must Be Cryptographically Secure
