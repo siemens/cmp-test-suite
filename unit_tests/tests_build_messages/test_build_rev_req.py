@@ -95,6 +95,6 @@ class TestBuildCmpRevRequest(unittest.TestCase):
         WHEN the PKIMessage is encoded as DER format and decoded back.
         THEN the message should be successfully decoded without any errors.
         """
-        cert, key = certbuildutils.build_certificate(serial_number=5000977898927223441, ski=True)
+        cert, key = certbuildutils.build_certificate(serial_number=5000977898927223441, include_ski=True)
         pkiM = build_cmp_revoke_request(cert=cert, exclude_fields=None)
         _ = de_and_encode_pkimessage(pkiM)

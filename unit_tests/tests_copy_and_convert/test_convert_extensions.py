@@ -17,7 +17,7 @@ class TestCertificateExtensions(unittest.TestCase):
         with open("data/example-csr.pem", "rb") as csr_file:
             self.csr = x509.load_pem_x509_csr(csr_file.read())
 
-        cert, _ = build_certificate(ski=True, is_ca=True, key_usage="digitalSignature")
+        cert, _ = build_certificate(include_ski=True, is_ca=True, key_usage="digitalSignature")
         self.certificate = convert_to_crypto_lib_cert(cert)
 
     def test_extension_types(self):

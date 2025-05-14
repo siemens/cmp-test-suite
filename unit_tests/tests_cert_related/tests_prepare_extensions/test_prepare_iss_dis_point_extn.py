@@ -58,7 +58,7 @@ class TestPrepareIssDisPointExtn(unittest.TestCase):
 
         iss_dp_extn = prepare_issuing_distribution_point_extension(
             iss_dis_point=iss_dp,
-            add_rand_val=True,
+            add_trailing_data=True,
             critical=False,
         )
         self.assertIsInstance(iss_dp_extn, rfc5280.Extension)

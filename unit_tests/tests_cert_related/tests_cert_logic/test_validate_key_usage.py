@@ -12,11 +12,11 @@ from resources.suiteenums import KeyUsageStrictness
 class TestValidateKeyUsage(unittest.TestCase):
     def setUp(self):
         # Prepare certificates with specific key usages for testing
-        cert_valid, _ = build_certificate(ski=True, key_usage="digitalSignature")
+        cert_valid, _ = build_certificate(include_ski=True, key_usage="digitalSignature")
         self.cert_valid = cert_valid
 
         # Certificate with different key usage
-        self.cert_different_usage, _ = build_certificate(ski=True, key_usage="keyAgreement")
+        self.cert_different_usage, _ = build_certificate(include_ski=True, key_usage="keyAgreement")
 
     def test_validate_correct_usage(self):
         """
@@ -49,7 +49,7 @@ class TestValidateKeyUsage(unittest.TestCase):
         THEN a ValueError should be raised indicating the KeyUsage extension is missing
         """
         # Build a certificate without KeyUsage extension
-        cert_no_usage, _ = build_certificate(ski=True, key_usage=None)
+        cert_no_usage, _ = build_certificate(include_ski=True, key_usage=None)
         with self.assertRaises(ValueError):
             validate_key_usage(
                 cert=cert_no_usage, strictness=KeyUsageStrictness.STRICT.value, key_usages="digitalSignature"

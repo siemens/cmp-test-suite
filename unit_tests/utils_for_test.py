@@ -268,7 +268,7 @@ def _generate_crl()-> None:
         key_usage="cRLSign,keyCertSign",
         is_ca=True,
         path_length=None,
-        ski=True,
+        include_ski=True,
     )
     utils.write_cmp_certificate_to_pem(crl_sign_cert, "data/unittest/crl_sign_cert_ecdsa.pem")
 
@@ -549,14 +549,14 @@ def _build_certs_root_ca_key_update_content():
         common_name="CN=NewRootCA_with_Old",
         ca_cert=old_cert,
         ca_key=old_key,
-        ski=False,
+        include_ski=False,
     )
     old_with_new_cert, _ = build_certificate(
         private_key=old_key,
         common_name="CN=OldRootCA",
         ca_cert=new_with_new_cert,
         ca_key=new_key,
-        ski=False,
+        include_ski=False,
     )
 
     write_cmp_certificate_to_pem(old_cert, "data/unittest/old_root_ca.pem")
@@ -631,7 +631,7 @@ def _build_time_independent_certs():
         common_name="CN=CMP Protection Cert For KARI X25519",
         key_usage="keyAgreement",
         is_ca=True,
-        ski=True,
+        include_ski=True,
         eku="cmKGA,cmcCA",
     )
     write_cmp_certificate_to_pem(kga_cert, "data/unittest/cmp_prot_kari_x25519.pem")
@@ -645,24 +645,24 @@ def _build_pq_certs():
     composite_sig_rsa = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
 
     cert, key = build_certificate(ca_key=mldsa_key, common_name="CN=PQ Root CA",
-                                  is_ca=True, path_length=None, ski=True)
+                                  is_ca=True, path_length=None, include_ski=True)
 
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_root_ca_ml_dsa_65.pem")
     cert, key = build_certificate(private_key=mlkem_key,
                                   ca_key=mldsa_key, common_name="CN=PQ ML-KEM 768",
-                                  is_ca=False, path_length=None, ski=True)
+                                  is_ca=False, path_length=None, include_ski=True)
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_cert_ml_kem_768.pem")
     cert, key = build_certificate(private_key=slh_dsa_key,
                                   ca_key=mldsa_key, common_name="CN=PQ SLH-DSA-SHA2-256f",
-                                  is_ca=False, path_length=None, ski=True)
+                                  is_ca=False, path_length=None, include_ski=True)
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_root_ca_slh_dsa_sha2_256f.pem")
     cert, key = build_certificate(private_key=mcelliece_key,
                                   ca_key=mldsa_key, common_name="CN=PQ McEliece 6960119",
-                                  is_ca=False, path_length=None, ski=True)
+                                  is_ca=False, path_length=None, include_ski=True)
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_cert_mceliece_6960119.pem")
     cert, key = build_certificate(private_key=composite_sig_rsa,
                                   ca_key=mldsa_key, common_name="CN=PQ Composite Signature RSA",
-                                  is_ca=False, path_length=None, ski=True)
+                                  is_ca=False, path_length=None, include_ski=True)
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_root_ca_composite_sig_rsa.pem")
 
 

@@ -51,7 +51,7 @@ class TestValidateSenderKID(unittest.TestCase):
         THEN the check should pass since no SubjectKeyIdentifier is present in the certificate
         """
         # default certificate has no SubjectKeyIdentifier
-        cert, key = build_certificate(ski=False)
+        cert, key = build_certificate(include_ski=False)
         protected_msg = protect_pkimessage(
             pki_message=self.pki_message,
             cert=cert,
@@ -71,7 +71,7 @@ class TestValidateSenderKID(unittest.TestCase):
         WHEN the sender key identifier (senderKID) is checked for CMP protection,
         THEN a ValueError should be raised because the SKI is invalid
         """
-        cert, key = build_certificate(ski=True)
+        cert, key = build_certificate(include_ski=True)
 
         # default certificate has no SubjectKeyIdentifier
         self.pki_message = patch_senderkid(self.pki_message, os.urandom(6))
@@ -97,7 +97,7 @@ class TestValidateSenderKID(unittest.TestCase):
         csr, private_key = generate_signed_csr(common_name="CN=Hans")
         csr = decode_pem_string(csr)
         csr = parse_csr(csr)
-        asn1cert, key = build_certificate(ski=True)
+        asn1cert, key = build_certificate(include_ski=True)
 
         pki_message = build_p10cr_from_csr(csr, sender_kid=get_subject_key_identifier(asn1cert))
 

@@ -1001,7 +1001,7 @@ def build_certificate(  # noqa D417 undocumented-param
     private_key: Optional[Union[str, PrivateKey]] = None,
     common_name: str = "CN=Hans",
     hash_alg: str = "sha256",
-    ski: bool = False,
+    include_ski: bool = False,
     ca_key: Optional[SignKey] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     **params,
@@ -1056,9 +1056,11 @@ def build_certificate(  # noqa D417 undocumented-param
     else:
         cert_key = private_key
 
-    ski_key = cert_key.public_key() if ski else None  # type: ignore
+    ski_key = cert_key.public_key() if include_ski else None  # type: ignore
 
-    ext = params.get("key_usage") or ski or params.get("eku") or params.get("is_ca") or params.get("path_length")
+    ext = (
+        params.get("key_usage") or include_ski or params.get("eku") or params.get("is_ca") or params.get("path_length")
+    )
     extensions = params.get("extensions")
     if ext and extensions is None:
         extensions = prepare_extensions(

@@ -19,7 +19,7 @@ class TestPrepareCertTemplate(unittest.TestCase):
         THEN the returned CertTemplate should have the extensions, issuer, and subject fields populated,
         and DER encoding/decoding should succeed without leftover data.
         """
-        cert, key = build_certificate(ski=True)
+        cert, key = build_certificate(include_ski=True)
         cert_template = prepare_cert_template(cert=cert, exclude_fields="serialNumber,publicKey, validity")
         self.assertTrue(cert_template["extensions"].isValue)
         self.assertTrue(cert_template["issuer"].isValue)
