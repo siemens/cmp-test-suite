@@ -307,24 +307,21 @@ CA MUST Reject CertConf With No senderNonce
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badSenderNonce    exclusive=True
 
-CA MUST Reject CertConf With Different senderNonce
+CA MUST Reject CertConf With same senderNonce
     [Documentation]    According to RFC 9483, Section 3 and 4.1, the `senderNonce` field in each message must match the
     ...    `senderNonce` from the initial message for consistency and replay protection. The `certConf`
-    ...    message must include the same `senderNonce` used throughout the transaction. We send a
-    ...    `certConf` message with a modified `senderNonce`, expecting the CA to detect this mismatch.
+    ...    message must contain a fresh `senderNonce` for every exchange. We send a
+    ...    `certConf` message with the same `senderNonce`, expecting the CA to detect this the same nonce.
     ...    The CA MUST reject the message and may respond with the optional failInfo `badSenderNonce`.
-    [Tags]    negative    rfc9483-header   minimal
+    [Tags]    negative    rfc9483-header   minimal   security  senderNonce
     ${response}=    Generate Default IR And Exchange For Cert Conf
+    ${sender_nonce}=   Get Asn1 Value As Bytes    ${response}    header.recipNonce
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ...    exclude_fields=senderKID,sender,senderNonce,recipNonce
-    ${sender_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
-    ${sender_nonce}=    Manipulate First Byte    ${sender_nonce}
-    ${recip_nonce}=    Get Asn1 Value As Bytes    ${response}    header.senderNonce
-    ${cert_conf}=    Patch SenderNonce    ${cert_conf}    sender_nonce=${sender_nonce}
-    ${cert_conf}=    Patch RecipNonce    ${cert_conf}    recip_nonce=${recip_nonce}
+    ...    exclude_fields=senderKID,sender
+    ...    sender_nonce=${sender_nonce}
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
     ...    protection=signature
@@ -332,7 +329,7 @@ CA MUST Reject CertConf With Different senderNonce
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badSenderNonce    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badSenderNonce    True
 
 CA MUST Reject certConf With No recipNonce
     [Documentation]    According to RFC 9483, Section 3.1, every message in a transaction, except the initial one,
