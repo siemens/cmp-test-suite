@@ -323,8 +323,6 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
         :param is_prehashed: Whether the data is prehashed. Defaults to `False`.
         :return: The computed signature.
         """
-        logging.info("ctx is currently not supported, possible in liboqs version 13.")
-
         if len(ctx) > 255:
             raise ValueError(f"The context length is longer then 255 bytes.Got: {len(ctx)}")
 
