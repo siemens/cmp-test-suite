@@ -2494,41 +2494,6 @@ def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.E
     )
 
 
-def _verify_subject_key_identifier(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
-    """Verify the subject key identifier."""
-    tmp = rfc9480.CMPCertificate()
-    tmp["tbsCertificate"]["extensions"].extend(cert_template["extensions"])
-
-    ski = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
-        extn_name="ski",
-        name="SubjectKeyIdentifier",
-    )
-    ski: bytes
-
-    public_key = keyutils.load_public_key_from_cert_template(cert_template, must_be_present=True)
-    if ski is None:
-        logging.info("Subject key identifier extension was not present in the parsed certificate.")
-        return None
-
-    computed_ski = x509.SubjectKeyIdentifier.from_public_key(public_key)  # type: ignore
-    computed_ski = computed_ski.key_identifier
-
-    if computed_ski != ski:
-        raise BadCertTemplate("The `SubjectKeyIdentifier` value did not match the computed value.")
-
-    if public_key is None:
-        raise ValueError(
-            "The public key could not be extracted from the certificate template."
-            "The `SubjectKeyIdentifier` extension cannot be computed."
-        )
-
-    return prepare_ski_extension(
-        key=public_key,
-        critical=False,
-    )
-
-
 def _verify_authority_key_identifier(
     cert_template: rfc9480.CertTemplate, ca_public_key: VerifyKey, ca_cert: Optional[rfc9480.CMPCertificate] = None
 ) -> Optional[rfc5280.Extension]:
@@ -2896,7 +2861,7 @@ def check_extensions(  # noqa D417 undocumented params
     extns = rfc5280.Extensions()
 
     key_usage = _verify_key_usage(cert_template)
-    ski_extn = _verify_subject_key_identifier(cert_template)
+    ski_extn, _ = validate_subject_key_identifier_extension(cert_template, must_be_present=False, prepare_extn=False)
     aia_extn = _verify_authority_key_identifier(cert_template, ca_public_key, ca_cert=ca_cert)
     eku = _verify_extended_key_usage(cert_template)
     basic_con = verify_ca_basic_constraints(cert_template, allow_non_crit=allow_basic_con_non_crit)
@@ -3373,6 +3338,71 @@ def _check_extn_present(
     return extn
 
 
+@not_keyword
+def validate_subject_key_identifier_extension(
+    cert: CertRelatedType,
+    muss_be_critical: Optional[bool] = None,
+    must_be_present: bool = False,
+    critical: Optional[bool] = None,
+    prepare_extn: bool = True,
+) -> Tuple[Optional[rfc5280.Extension], bool]:
+    """Validate the subject key identifier of a certificate.
+
+    :param cert: The certificate to validate.
+    :param muss_be_critical: Whether the subject key identifier must be critical, If `None`, it will not be checked.
+    Defaults to `None`.
+    :param must_be_present: Whether the subject key identifier must be present. Defaults to `False`.
+    :param critical: Whether to modify the criticality of the subject key identifier extension, if`None`,
+    it will not be modified. Defaults to `None`.
+    :param prepare_extn: Whether to prepare the subject key identifier extension, if not present. Defaults to `True`.
+    :return: A tuple containing the subject key identifier extension and a boolean indicating whether it
+    was modified or not.
+    :return: True if the subject key identifier is valid, False otherwise.
+    :raises BadCertTemplate: If the subject key identifier is not valid.
+    :raises TypeError: If the certificate type is not supported.
+    :raises BadAsn1Data: If the subject key identifier is not valid ASN.1 data.
+    """
+    was_modified = False
+
+    extensions, spki = parse_extension_and_public_key(cert)
+    public_key = keyutils.load_public_key_from_spki(spki)
+
+    def_ski = None
+    if prepare_extn:
+        def_ski = prepare_ski_extension(
+            key=public_key,
+            critical=False if critical is None else critical,
+        )
+
+    extn = _check_extn_present(
+        oid=EXTENSION_NAME_2_OID["ski"],
+        name="SubjectKeyIdentifier",
+        extensions=extensions,
+        must_be_present=must_be_present,
+        muss_be_critical=muss_be_critical,
+    )
+    if extn is None:
+        return def_ski, was_modified
+
+    ski = _try_decode_extension_val(
+        extensions=extensions,  # type: ignore
+        extn_name="ski",
+        name="SubjectKeyIdentifier",
+    )
+
+    digest = _compute_ski(public_key)
+
+    if ski != digest:
+        raise BadCertTemplate("The `SubjectKeyIdentifier` does not match the public key.")
+
+    if critical is not None and extn["critical"] != critical:
+        return def_ski or prepare_extension_structure(
+            extension_oid=EXTENSION_NAME_2_OID["ski"],
+            value=rfc5280.SubjectKeyIdentifier(ski),
+            critical=critical,
+        ), True
+
+    return extn, was_modified
 
 
 @keyword(name="Prepare PrivateKeyUsagePeriod Extension")
