@@ -19,6 +19,7 @@ from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc6
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.hybrid_structures import DeltaCertificateDescriptor, DeltaCertificateRequestValue
 from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
@@ -39,7 +40,8 @@ from resources import (
     typingutils,
     utils,
 )
-from resources.asn1utils import get_all_asn1_named_value_names, get_set_bitstring_names
+from resources.asn1utils import get_all_asn1_named_value_names, get_set_bitstring_names, try_decode_pyasn1
+from resources.certextractutils import get_extension
 from resources.convertutils import pyasn1_time_obj_to_py_datetime, str_to_bytes, subject_public_key_info_from_pubkey
 from resources.copyasn1utils import copy_name
 from resources.exceptions import BadAsn1Data, BadCertTemplate
@@ -1288,7 +1290,7 @@ def prepare_cert_template(  # noqa D417 undocumented-param
     serial_number: Optional[typingutils.Strint] = None,
     version: Optional[typingutils.Strint] = None,
     validity: Optional[rfc5280.Validity] = None,
-    extensions: Optional[ExtensionsType] = None,
+    extensions: Optional[ExtensionsParseType] = None,
     for_kga: bool = False,
     sign_alg: Optional[rfc9480.AlgorithmIdentifier] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
@@ -2037,11 +2039,63 @@ def _sign_cert(
     )
 
 
+def _process_csr_extensions(
+    csr: rfc6402.CertificationRequest,
+    public_key: PublicKey,
+    extensions: Optional[ExtensionsParseType],
+    include_csr_extensions: bool,
+    include_ski: bool = True,
+    **kwargs,
+) -> rfc9480.Extensions:
+    """Process the extension for the CSR with the parsed extensions.
+
+    :param csr: The CSR to process.
+    :param public_key: The public key to use for the `SKI` extensions.
+    :param extensions: The extensions to process.
+    :param include_csr_extensions: Whether to include the CSR extensions.
+    :param include_ski: Whether to include the `SKI` extension. Defaults to `True`.
+    """
+    out_extensions = rfc9480.Extensions()
+    if extensions is None:
+        extensions = rfc9480.Extensions()
+    elif isinstance(extensions, rfc5280.Extension):
+        extensions = [extensions]
+
+    out_extensions.extend(extensions)
+
+    ski_extn = None
+    if include_csr_extensions:
+        ski_extn, _ = validate_subject_key_identifier_extension(
+            cert=csr,
+            critical=kwargs.get("ski_critical", False),
+        )
+
+    if include_csr_extensions:
+        extn = certextractutils.extract_extensions_from_csr(csr=csr)
+        if extn is not None:
+            for x in extn:
+                if x["extnID"] == rfc5280.id_ce_subjectKeyIdentifier:
+                    pass
+                elif not extensions_contains_extn_id(extn_id=x["extnID"], extensions=extensions):
+                    out_extensions.append(x)
+
+    if include_ski and ski_extn is None:
+        ski_extn = prepare_ski_extension(
+            key=public_key,
+            critical=kwargs.get("ski_critical", False),
+        )
+        out_extensions.append(ski_extn)
+    elif ski_extn is not None:
+        out_extensions.append(ski_extn)
+
+    return out_extensions
+
+
 @keyword(name="Build Cert from CSR")
 def build_cert_from_csr(  # noqa D417 undocumented-param
     csr: rfc6402.CertificationRequest,
     ca_key: SignKey,
-    extensions: Optional[Sequence[rfc5280.Extension]] = None,
+    extensions: Optional[ExtensionsParseType] = None,
     validity: Optional[rfc5280.Validity] = None,
     issuer: Optional[rfc9480.Name] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
@@ -2114,13 +2168,18 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
         use_pre_hash=kwargs.get("use_pre_hash", False),
     )
-    if include_csr_extensions:
-        extn = certextractutils.extract_extensions_from_csr(csr=csr)
-        if extensions is not None and extn is not None:
-            tbs_cert["extensions"].extend(extensions)
 
-    if extensions is not None:
-        tbs_cert["extensions"].extend(extensions)
+    public_key = load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+
+    out_extensions = _process_csr_extensions(
+        csr=csr,
+        public_key=public_key,
+        extensions=extensions,
+        include_csr_extensions=include_csr_extensions,
+        **kwargs,
+    )
+    if out_extensions.isValue:
+        tbs_cert["extensions"].extend(out_extensions)
 
     cert = rfc9480.CMPCertificate()
     cert["tbsCertificate"] = tbs_cert
