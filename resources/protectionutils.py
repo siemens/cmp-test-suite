@@ -10,6 +10,8 @@ import os
 from typing import List, Optional, Tuple, Union
 
 import pyasn1.error
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pss
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import dsa, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
@@ -65,6 +67,7 @@ from resources.convertutils import (
     str_to_bytes,
     subject_public_key_info_from_pubkey,
 )
+from resources.data_objects import FixedSHAKE128, FixedSHAKE256
 from resources.exceptions import (
     BadAlg,
     BadDataFormat,
@@ -1729,7 +1732,6 @@ def verify_rsassa_pss_from_alg_id(
     :param alg_id: The parsed `protectionAlg` from the `PKIMessage`
     :raises InvalidSignature: If the signature is invalid.
     """
-    salt_length = None
     if alg_id["algorithm"] == rfc9481.id_RSASSA_PSS:
         if not alg_id["parameters"].isValue:
             raise ValueError("The `AlgorithmIdentifier` must have parameters for RSASSA-PSS set.")
@@ -1761,10 +1763,10 @@ def verify_rsassa_pss_from_alg_id(
         if mgf["algorithm"] != params["hashAlgorithm"]["algorithm"]:
             raise ValueError("Mismatch between the algorithm for MGF1 and hashAlgorithm!")
 
-    elif alg_id["algorithm"] == rfc9481.id_RSASSA_PSS_SHAKE128:
-        hash_algorithm = hash_name_to_instance("shake128")
-    elif alg_id["algorithm"] == rfc9481.id_RSASSA_PSS_SHAKE256:
-        hash_algorithm = hash_name_to_instance("shake256")
+    elif alg_id["algorithm"] in [rfc9481.id_RSASSA_PSS_SHAKE128, rfc9481.id_RSASSA_PSS_SHAKE256]:
+        verify_rsassa_pss_shake(public_key, data, signature, alg_id)
+        return
+
     else:
         raise ValueError("Unknown RSASSA PSS OID")
 
@@ -1776,6 +1778,44 @@ def verify_rsassa_pss_from_alg_id(
         ),
         algorithm=hash_algorithm,
     )
+
+
+@not_keyword
+def verify_rsassa_pss_shake(
+    public_key: rsa.RSAPublicKey,
+    data: bytes,
+    signature: bytes,
+    alg_id: rfc9480.AlgorithmIdentifier,
+    salt_length: Optional[int] = None,
+):
+    """Verify an RSASSA-PSS signature with the `AlgorithmIdentifier`.
+
+    :param public_key: The RSA public key.
+    :param data: The original data that was signed.
+    :param signature: The signature to verify.
+    :param alg_id: The parsed `protectionAlg` from the `PKIMessage`
+    :param salt_length: The length of the salt to use. If not provided, defaults to the hash algorithm's digest size.
+    :raises InvalidSignature: If the signature is invalid.
+    """
+    if alg_id["parameters"].isValue:
+        raise BadDataFormat("The `AlgorithmIdentifier` for RSASSA-PSS with SHAKE must not have parameters set.")
+
+    if alg_id["algorithm"] == rfc9481.id_RSASSA_PSS_SHAKE128:
+        hash_for_verifying = FixedSHAKE128.new(data)
+    else:
+        hash_for_verifying = FixedSHAKE256.new(data)
+
+    n, e = public_key.public_numbers().n, public_key.public_numbers().e
+    pub_key_tmp = RSA.construct((n, e))
+
+    if salt_length is None:
+        salt_length = hash_for_verifying.digest_size
+
+    verifier = pss.new(pub_key_tmp, salt_bytes=salt_length)
+    try:
+        verifier.verify(hash_for_verifying, signature)  # type: ignore
+    except ValueError as err:
+        raise InvalidSignature("Signature verification failed for RSASSA-PSS with SHAKE.") from err
 
 
 @keyword(name="Patch protectionAlg")
