@@ -3384,3 +3384,52 @@ def _compute_ski(key: Union[PublicKey, PrivateKey]) -> bytes:
     return x509.SubjectKeyIdentifier.from_public_key(key).digest  # type: ignore
 
 
+@not_keyword
+def compare_ski_value(
+    value: Union[CertRelatedType, rfc9480.Extensions, rfc5280.Extension], public_key: Union[PublicKey, PrivateKey]
+) -> bool:
+    """Verify the subject key identifier (SKI) extension in a certificate or extensions object.
+
+    :param value: The certificate or extensions object to verify.
+    :param public_key: The public key to compare against the SKI.
+    :raises ValueError: If the SKI is not present or does not match the expected value.
+    """
+    spki = None
+    if isinstance(value, CertRelatedType):
+        extns, spki = parse_extension_and_public_key(
+            cert=value,
+        )
+        if not extns:
+            raise ValueError(f"No extensions found in the {type(value.__class__.__name__)} structure.")
+
+        cert = rfc9480.CMPCertificate()
+        cert["tbsCertificate"]["extensions"].extend(extns)
+
+    elif isinstance(value, (rfc5280.Extension, rfc9480.Extensions)):
+        if public_key is None:
+            raise ValueError("The public key must be provided, if an Extensions or Extension object is provided.")
+
+        if isinstance(value, rfc5280.Extension):
+            extn = rfc9480.Extensions()
+            extn.append(value)
+        else:
+            extn = value
+
+        cert = rfc9480.CMPCertificate()
+        cert["tbsCertificate"]["extensions"].extend(extn)
+
+    else:
+        raise TypeError(f"Unsupported type for value: {type(value)}")
+
+    ski = certextractutils.get_subject_key_identifier(cert)
+    if ski is None:
+        raise ValueError(f"The SKI extension is not present in the {type(value)} structure.")
+
+    if public_key is None:
+        if spki is None or not spki.isValue:
+            raise ValueError(f"The SubjectPublicKeyInfo is not present in the {type(value)} structure.")
+
+        public_key = keyutils.load_public_key_from_spki(spki)
+
+    x509_ski_digest = _compute_ski(public_key)
+    return x509_ski_digest == ski
