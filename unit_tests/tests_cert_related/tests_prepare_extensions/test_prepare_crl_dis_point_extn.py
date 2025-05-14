@@ -40,7 +40,7 @@ class TestPrepareCRLDistributionPointExtn(unittest.TestCase):
             full_name=self.crl_url,
             crl_issuers=self.crl_issuer,
             critical=False,
-            add_rand_val=True,
+            add_trailing_data=True,
         )
         self.assertEqual(crl_distribution_point_extn["extnID"], rfc5280.id_ce_cRLDistributionPoints)
         self.assertFalse(crl_distribution_point_extn["critical"])

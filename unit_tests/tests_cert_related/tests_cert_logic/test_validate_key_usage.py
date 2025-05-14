@@ -6,6 +6,7 @@ import unittest
 
 from resources.certbuildutils import build_certificate
 from resources.certutils import validate_key_usage
+from resources.exceptions import NotAuthorized
 from resources.suiteenums import KeyUsageStrictness
 
 
@@ -37,7 +38,7 @@ class TestValidateKeyUsage(unittest.TestCase):
         WHEN validate_key_usage is called with strictness=LAX and key_usages="digitalSignature"
         THEN a ValueError should be raised indicating the key usage is invalid
         """
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotAuthorized):
             validate_key_usage(
                 cert=self.cert_different_usage, strictness=KeyUsageStrictness.LAX.value, key_usages="digitalSignature"
             )
