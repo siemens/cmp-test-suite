@@ -2787,7 +2787,11 @@ def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional
             raise BadCertTemplate("")
 
 
-def _contains_extn_id(extn_id: univ.ObjectIdentifier, extensions: Sequence[rfc5280.Extension]) -> bool:
+@not_keyword
+def extensions_contains_extn_id(
+    extn_id: univ.ObjectIdentifier,
+    extensions: Union[Sequence[rfc5280.Extension], List[rfc5280.Extension], rfc9480.Extensions],
+) -> bool:
     """Check if the extension ID is present in the extensions.
 
     :param extn_id: The extension ID to check.
@@ -2811,7 +2815,7 @@ def _get_not_included_extensions(
     """
     not_included = []
     for extn in other_extensions:
-        if _contains_extn_id(extn["extnID"], validated_extensions):
+        if extensions_contains_extn_id(extn["extnID"], validated_extensions):
             continue
         not_included.append(extn)
     return not_included
