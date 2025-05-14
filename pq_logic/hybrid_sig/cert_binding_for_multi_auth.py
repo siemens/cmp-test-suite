@@ -214,7 +214,7 @@ def validate_related_cert_extension(  # noqa: D417 Missing argument descriptions
     if not signature:
         raise ValueError("The Certificate did not contain the RelatedCertificate extension.")
 
-    hash_alg = _get_hash_alg(hash_alg, cert_a, must_be_determined=True)
+    hash_alg = _get_hash_alg(hash_alg, cert_a)
 
     cert_hash = cmputils.calculate_cert_hash(cert=related_cert, hash_alg=hash_alg)
 
@@ -253,7 +253,7 @@ def get_related_cert_from_list(  # noqa: D417 Missing argument descriptions in t
     | ${related_cert}= | Get Related Cert From List | ${certs} | ${cert_a} |
 
     """
-    hash_alg = get_hash_from_oid(cert_a["tbsCertificate"]["signature"]["algorithm"], only_hash=True)
+    hash_alg = _get_hash_alg(hash_alg=None, cert_a=cert_a)
     signature = _get_related_cert_sig(cert_a)
     if signature is None:
         raise ValueError("The Certificate did not contain the RelatedCertificate extension.")
@@ -372,7 +372,7 @@ def process_mime_message(mime_data: bytes):
     raise ValueError("No application/pkcs7-mime part found in the message.")
 
 
-def _get_hash_alg(hash_alg: Optional[str], cert_a: rfc9480.CMPCertificate, must_be_determined: bool = False) -> str:
+def _get_hash_alg(hash_alg: Optional[str], cert_a: rfc9480.CMPCertificate) -> str:
     """Get the hash algorithm for the certificate.
 
     :param hash_alg: The hash algorithm to use. If `None`, it will be determined from the certificate.
@@ -657,7 +657,7 @@ def prepare_related_cert_extension(  # noqa: D417 Missing argument descriptions 
 
     # TODO tell the specifier to fix for sig algorithm without hash!
     # ed25519 and ML-DSA.
-    hash_alg = _get_hash_alg(hash_alg, cert_a, must_be_determined=True)
+    hash_alg = _get_hash_alg(hash_alg, cert_a)
 
     if hash_alg is None:
         raise ValueError("The hash algorithm could not be determined.")
