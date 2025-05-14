@@ -1148,21 +1148,100 @@ class CAHandler:
         )
         return self.sign_response(response=response, request_msg=pki_message)
 
+    def validate_p10cr_public_key(
+        self,
+        pki_message: PKIMessageTMP,
+    ) -> None:
+        """Validate the public key in the P10CR request message.
+
+        :param pki_message: The `p10cr` request.
+        """
+        public_key = load_public_key_from_spki(
+            pki_message["body"]["p10cr"]["certificationRequestInfo"]["subjectPublicKeyInfo"]
+        )
+        try:
+            public_key = ensure_is_verify_key(public_key)
+        except ValueError as e:
+            raise BadCertTemplate("The `p10cr` public key is not a valid verify key.") from e
+
+        self.rev_handler.public_key_is_revoked(
+            public_key,
+            pki_message["body"]["p10cr"]["certificationRequestInfo"]["subject"],
+        )
+
+    def _validate_related_cert(
+        self,
+        related_cert: rfc9480.CMPCertificate,
+    ) -> None:
+        """Validate the Related Cert request message.
+
+        :raises BadRequest: If the request is not valid.
+        """
+        if compare_pyasn1_names(
+            related_cert["tbsCertificate"]["issuer"],
+            self.ca_cert["tbsCertificate"]["subject"],
+        ):
+            if self.rev_handler.is_revoked(related_cert):
+                raise CertRevoked("The related certificate is revoked.")
+            if self.rev_handler.is_updated(related_cert):
+                raise CertRevoked("The related certificate is updated.")
+        else:
+            raise NotImplementedError("The related certificate is not issued by the Mock-CA.")
+
     def process_related_cert(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Process the Related Cert request message.
 
         :param pki_message: The Related Cert message.
         :return: The PKI message containing the response.
         """
-        if pki_message["body"].getName() != "p10cr":
-            raise NotImplementedError("Only support p10cr for related cert requests.")
+        body_name = get_cmp_message_type(pki_message)
 
-        cert = build_related_cert_from_csr(
-            csr=pki_message["body"]["p10cr"],
-            request=pki_message,
-            ca_cert=self.ca_cert,
-            ca_key=self.ca_key,
-        )
+        if body_name == "p10cr":
+            pass
+        elif body_name == "certConf":
+            return self.process_cert_conf(pki_message)
+        else:
+            raise NotImplementedError(f"Only support p10cr for related cert requests. Got body: {body_name}")
+
+        result = find_oid_in_general_info(pki_message, str(rfc9480.id_it_implicitConfirm))
+
+        try:
+            self.validate_p10cr_public_key(pki_message)
+            related_cert = validate_multi_auth_binding_csr(
+                pki_message["body"]["p10cr"],
+                trustanchors="data/mock_ca/trustanchors",
+                allow_os_store=True,
+                crl_check=False,
+                max_freshness_seconds=500,
+                do_openssl_check=False,
+            )
+            self._validate_related_cert(related_cert)
+
+            cert = build_related_cert_from_csr(
+                csr=pki_message["body"]["p10cr"],
+                request=pki_message,
+                ca_cert=self.ca_cert,
+                ca_key=self.ca_key,
+                extensions=self.extensions,
+                trustanchors="data/mock_ca/trustanchors",
+                related_cert=related_cert,
+            )
+
+        except IOError as e:
+            tmp = CMPTestSuiteError(
+                "The URL was invalid could not fetch the related certificate.",
+                failinfo="systemFailure,badPOP",
+                error_details=str(e),
+            )
+            return self.build_error_from_exception(tmp, request_msg=pki_message)
+
+        except CMPTestSuiteError as e:
+            return self.build_error_from_exception(e, request_msg=pki_message)
+
+        finally:
+            if os.path.exists("data/mock_ca/tmp_crl.pem"):
+                os.remove("data/mock_ca/tmp_crl.pem")
+
 
         response, _ = build_cp_cmp_message(
             cert=cert,
