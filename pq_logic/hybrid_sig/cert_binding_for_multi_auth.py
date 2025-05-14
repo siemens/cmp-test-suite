@@ -41,7 +41,7 @@ from resources import (
 )
 from resources.asn1utils import get_set_bitstring_names, try_decode_pyasn1
 from resources.convertutils import ensure_is_verify_key, pyasn1_time_obj_to_py_datetime
-from resources.exceptions import BadAsn1Data, BadCertTemplate, BadPOP
+from resources.exceptions import BadAsn1Data, BadCertTemplate, BadPOP, BadTime
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.typingutils import SignKey, Strint
 
@@ -405,6 +405,45 @@ def _get_hash_alg(hash_alg: Optional[str], cert_a: rfc9480.CMPCertificate) -> st
     return hash_alg
 
 
+def _verify_related_cert_pop(
+    cert_a: rfc9480.CMPCertificate,
+    attributes: RequesterCertificate,
+    hash_alg: Optional[str] = None,
+) -> None:
+    """Verify the Proof-of-Possession (PoP) of the related certificate.
+
+    :param cert_a: The related certificate (Cert A).
+    :param hash_alg: The hash algorithm to use for the certificate. Defaults to `None`.
+    """
+    # validate binding
+    public_key = certutils.load_public_key_from_cert(cert_a)
+    hash_alg = _get_hash_alg(hash_alg, cert_a)
+
+    sig_name = may_return_oid_to_name(cert_a["tbsCertificate"]["signature"]["algorithm"])
+    logging.info("Signature algorithm: %s", sig_name)
+
+    if hash_alg is None:
+        raise ValueError(f"The hash algorithm could not be determined. Signature algorithm was: {sig_name}")
+
+    try:
+        verify_key = ensure_is_verify_key(public_key)
+    except ValueError as e:
+        raise BadCertTemplate("The public key is not a valid verify key.") from e
+
+    # extra the bound value to verify the signature
+    data = _prepare_related_data_to_sign(attributes)
+    signature = attributes["signature"].asOctets()
+    try:
+        cryptoutils.verify_signature(
+            data=data,
+            signature=signature,
+            hash_alg=hash_alg,
+            public_key=verify_key,
+        )
+    except InvalidSignature as e:
+        raise BadPOP(f"The signature with the related certificate is invalid.Used hash alg: {hash_alg}") from e
+
+
 @keyword(name="Validate Related Cert PoP")
 def validate_related_cert_pop(  # noqa: D417 Missing argument descriptions in the docstring
     csr: rfc6402.CertificationRequest,
@@ -427,7 +466,10 @@ def validate_related_cert_pop(  # noqa: D417 Missing argument descriptions in th
 
     Raises:
     ------
-        - `ValueError`: If the `BinaryTime` is not fresh.
+        - `BadTime`: If the `BinaryTime` is not fresh.
+        - `ValueError`: If the hash algorithm could not be determined.
+        - `BadCertTemplate`: If the certificate public key is not a valid `VerifyKey`.
+        - `BadPOP`: If the Proof-of-Possession is invalid.
 
     Examples:
     --------
@@ -439,43 +481,20 @@ def validate_related_cert_pop(  # noqa: D417 Missing argument descriptions in th
 
     request_time = int(attributes["requestTime"])
     current_time = int(time.time())
-    if abs(current_time - request_time) > int(max_freshness_seconds):
-        raise ValueError("BinaryTime is not sufficiently fresh.")
+
+    if request_time > current_time:
+        raise BadTime("BinaryTime is in the future.")
+
+    if current_time - request_time > int(max_freshness_seconds):
+        raise BadTime("BinaryTime is too far in the past.")
 
     location_info = attributes["locationInfo"]
-    signature = attributes["signature"].asOctets()
 
     cert_chain = utils.load_certificate_from_uri(location_info, load_chain=load_chain)
     cert_a = cert_chain[0]
-
-    # validate binding
-    public_key = certutils.load_public_key_from_cert(cert_a)
-    hash_alg = _get_hash_alg(hash_alg, cert_a)
-
-    sig_name = may_return_oid_to_name(cert_a["tbsCertificate"]["signature"]["algorithm"])
-    logging.info("Signature algorithm: %s", sig_name)
-
-    if hash_alg is None:
-        raise ValueError(f"The hash algorithm could not be determined. Signature algorithm was: {sig_name}")
-
     ca_kga_logic.validate_issuer_and_serial_number_field(attributes["certID"], cert_a)
-    # extra the bound value to verify the signature
-    data = encoder.encode(attributes["requestTime"]) + encoder.encode(attributes["certID"])
 
-    try:
-        verify_key = ensure_is_verify_key(public_key)
-    except ValueError as e:
-        raise BadCertTemplate("The public key is not a valid verify key.") from e
-
-    try:
-        cryptoutils.verify_signature(
-            data=data,
-            signature=signature,
-            hash_alg=hash_alg,
-            public_key=verify_key,
-        )
-    except InvalidSignature as e:
-        raise BadPOP(f"The signature with the related certificate is invalid.Used hash alg: {hash_alg}") from e
+    _verify_related_cert_pop(cert_a=cert_a, attributes=attributes, hash_alg=hash_alg)
 
     return cert_chain
 
