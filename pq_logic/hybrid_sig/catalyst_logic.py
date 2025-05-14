@@ -484,6 +484,9 @@ def load_catalyst_public_key(  # noqa: D417 Missing a parameter in the Docstring
     if isinstance(extensions, rfc9480.CMPCertificate):
         extensions = extensions["tbsCertificate"]["extensions"]
 
+    if not isinstance(extensions, rfc9480.Extensions):
+        raise TypeError(f"Expected `extensions` to be of type `Extensions`. Got: {type(extensions)}")
+
     extn_alt_spki = certextractutils.get_extension(extensions, id_ce_subjectAltPublicKeyInfo)
     if extn_alt_spki is None:
         raise ValueError("AltPublicKeyInfo extension not found.")

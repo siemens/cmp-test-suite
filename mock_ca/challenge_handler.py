@@ -94,10 +94,9 @@ class ChallengeHandler:
                 raise BadCertTemplate("The keyAgreement is only allowed for ECDH keys.")
             if isinstance(public_key, X448PublicKey):
                 return self.ca_x448_key or self.operation_state.x448_key
-            elif isinstance(public_key, X25519PublicKey):
+            if isinstance(public_key, X25519PublicKey):
                 return self.ca_x25519_key or self.operation_state.x25519_key
-            else:
-                return self.ca_ecc_key or self.operation_state.ecc_key
+            return self.ca_ecc_key or self.operation_state.ecc_key
         return None
 
     def _process_challenge(self, request: PKIMessageTMP) -> Tuple[PKIMessageTMP, Optional[ECDHPrivateKey]]:
@@ -168,9 +167,9 @@ class ChallengeHandler:
         body_name = request["body"].getName()
         if body_name in ["ir", "cr"]:
             return self._process_challenge(request)
-        elif body_name == "popdecr":
+        if body_name == "popdecr":
             return self._process_popdecr(request)
-        else:
-            raise BadRequest(
-                f"The challenge issuing process can only be used with: 'ir' or 'cr' messages, not '{body_name}'."
-            )
+
+        raise BadRequest(
+            f"The challenge issuing process can only be used with: 'ir' or 'cr' messages, not '{body_name}'."
+        )

@@ -101,7 +101,7 @@ class RevocationHandler:
         serial_number = int(cert["tbsCertificate"]["serialNumber"])
         revoked_entry = RevokedEntry(reason=reason, cert=cert)
         self.rev_db.add_rev_entry(revoked_entry)
-        logging.warning(f"Added certificate {serial_number} to revoked list.")
+        logging.warning("Added certificate %d to revoked list.", serial_number)
 
     def get_current_crl(self, ca_key: SignKey, ca_cert: rfc9480.CMPCertificate) -> bytes:
         """Get the current CRL as DER-encoded bytes."""
@@ -121,10 +121,10 @@ class RevocationHandler:
                 if pub_key == public_key:
                     return True
             elif isinstance(pub_key, HybridPublicKey):
-                if pub_key.trad_key == public_key or pub_key.pq_key == public_key:
+                if public_key in [pub_key.trad_key, pub_key.pq_key]:
                     return True
             elif isinstance(public_key, HybridPublicKey):
-                if public_key.trad_key == pub_key or public_key.pq_key == pub_key:
+                if pub_key in [public_key.trad_key, public_key.pq_key]:
                     return True
             else:
                 if pub_key == public_key:
@@ -136,9 +136,9 @@ class RevocationHandler:
         """Check if a certificate is revoked based on its serial number."""
         serial_number = int(cert["tbsCertificate"]["serialNumber"])
         hashed_cert = compute_hash(self.hash_alg, encode_to_der(cert))
-        print("hashed_cert", hashed_cert.hex())
+        logging.info("hashed_cert: %s", hashed_cert.hex())
         result = self.rev_db.is_revoked_by_hash(hashed_cert)
-        logging.info(f"Check if serial {serial_number} is revoked: {result}")
+        logging.info("Check if serial number %d is revoked: %s", serial_number, result)
         return result
 
     def is_updated(self, cert: rfc9480.CMPCertificate) -> bool:
@@ -146,7 +146,7 @@ class RevocationHandler:
         serial_number = int(cert["tbsCertificate"]["serialNumber"])
         hashed_cert = compute_hash(self.hash_alg, encode_to_der(cert))
         result = self.rev_db.is_updated_by_hash(hashed_cert)
-        logging.info(f"Check if serial {serial_number} is updated: {result}")
+        logging.info("Check if serial number %d is updated: %s", serial_number, result)
         return result
 
     def is_not_allowed_to_request(
@@ -178,15 +178,15 @@ class RevocationHandler:
         serial_number = int(cert["tbsCertificate"]["serialNumber"])
         hashed_cert = compute_hash(self.hash_alg, encode_to_der(cert))
         self.rev_db.rev_entry_list.remove_by_hash(hashed_cert)
-        logging.info(f"Removed certificate {serial_number} from revoked list.")
+        logging.info("Removed certificate %d from revoked list.", serial_number)
 
     def mark_as_revoked(self, cert: rfc9480.CMPCertificate, reason: str = "unspecified") -> None:
         """Mark a certificate as revoked and update the state."""
         serial_number = int(cert["tbsCertificate"]["serialNumber"])
         revoked_entry = RevokedEntry(reason=reason, cert=cert)
         self.rev_db.add_rev_entry(revoked_entry)
-        logging.warning(f"Revoked certificate {serial_number} for reason: {reason}.")
-        logging.warning(f"Current revoked certificates: {self.rev_db.rev_entry_list.serial_numbers}")
+        logging.warning("Revoked certificate %d for reason: %s.", serial_number, reason)
+        logging.warning("Current revoked certificates: %s", str(self.rev_db.rev_entry_list.serial_numbers))
 
     def _process_revive_response(
         self, response: PKIMessageTMP, cert_to_revive: List[rfc9480.CMPCertificate]
@@ -197,20 +197,21 @@ class RevocationHandler:
         :param cert_to_revive: The list of certificates to revive.
         """
         certs_revive = []
-        logging.info("Revoked certs before revive request: ", len(self.rev_db.rev_entry_list.serial_numbers))
+        logging.info("Revoked certs before revive request: %d", len(self.rev_db.rev_entry_list.serial_numbers))
         for i, status_info in enumerate(response["body"]["rp"]["status"]):
             if status_info["status"].prettyPrint() == "accepted":
                 self.revive_cert(cert_to_revive[i])
                 logging.info(
-                    f"Revived certificate at index: {i} with serial number: "
-                    f"{int(cert_to_revive[i]['tbsCertificate']['serialNumber'])}"
+                    "Revived certificate at index: %d with serial number: %d",
+                    i,
+                    int(cert_to_revive[i]["tbsCertificate"]["serialNumber"]),
                 )
                 certs_revive.append(cert_to_revive[i])
             else:
                 status = display_pki_status_info(status_info)
-                logging.info("Revive request failed: ", status)
+                logging.info("Revive request failed: %s", status)
 
-        logging.info("Revoked certs after revive request: ", len(self.rev_db.rev_entry_list.serial_numbers))
+        logging.info("Revoked certs after revive request: %d", len(self.rev_db.rev_entry_list.serial_numbers))
         return certs_revive
 
     def _handle_self_revive_request(
@@ -225,7 +226,7 @@ class RevocationHandler:
             raise BadCertId("Certificate not found in the revocation database, certificate cannot be revived.")
 
         logging.info("Process self-revive request.")
-        response, entry = build_rp_from_rr(
+        response, _ = build_rp_from_rr(
             request=pki_message,
             certs=[cert],
             revoked_certs=self.rev_db.revoked_certs,
@@ -305,7 +306,7 @@ class RevocationHandler:
                 )
                 return self._handle_revive_request(pki_message, issued_certs)
 
-            logging.info("length revoked certs: ", len(self.rev_db.revoked_certs))
+            logging.info("length revoked certs: %d", len(self.rev_db.revoked_certs))
             response, entry = build_rp_from_rr(
                 request=pki_message,
                 shared_secret=shared_secret,
@@ -314,7 +315,7 @@ class RevocationHandler:
                 verify=False,
             )
             status_info = get_pkistatusinfo(response)
-            logging.info("Status: ", display_pki_status_info(status_info))
+            logging.info("Status: %s", display_pki_status_info(status_info))
 
             if reason != "removeFromCRL" and status_info["status"].prettyPrint() == "accepted":
                 self.mark_as_revoked(cert, reason)
@@ -329,7 +330,7 @@ class RevocationHandler:
                 # means an error occurred, and the comparison failed.
                 raise ValueError("Unexpected behavior!")
 
-            logging.info("Afterwards length revoked certs: ", len(self.rev_db.revoked_certs))
+            logging.info("Afterwards length revoked certs: %d", len(self.rev_db.revoked_certs))
 
         except CMPTestSuiteError as e:
             return self._build_error_response(pki_message, e), []
@@ -340,15 +341,10 @@ class RevocationHandler:
 
     def _build_error_response(self, request: PKIMessageTMP, exception: CMPTestSuiteError) -> PKIMessageTMP:
         """Build an error response for a failed revocation request."""
+        logging.debug("Revocation request failed: %s", exception.message)
         return _build_rp_error_response(
             request=request,
             exception=exception,
-        )
-        logging.warning(f"Revocation request failed: {exception.message}")
-        return cmputils.prepare_pki_message(
-            **set_ca_header_fields(
-                request, {"status": "rejection", "failinfo": exception.failinfo, "texts": exception.message}
-            )
         )
 
     def _get_ecdh_shared_secret(self, public_key: PublicKey) -> bytes:

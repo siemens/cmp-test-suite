@@ -49,7 +49,15 @@ from resources import (
 )
 from resources.asn1_structures import PKIMessageTMP
 from resources.convertutils import ensure_is_kem_pub_key, ensure_is_verify_key
-from resources.exceptions import BadAsn1Data, BadPOP, BadSigAlgID, CertRevoked, SignerNotTrusted, UnknownOID
+from resources.exceptions import (
+    BadAsn1Data,
+    BadPOP,
+    BadSigAlgID,
+    CertRevoked,
+    NotAuthorized,
+    SignerNotTrusted,
+    UnknownOID,
+)
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
@@ -626,8 +634,8 @@ def validate_key_usage(  # noqa D417 undocumented-param
     Raises:
     ------
         - `ValueError`: If the `KeyUsage` extension is not present in the certificate when \
-         `strictness` is set to `STRICT` or `ABS_STRICT`, or if the actual `KeyUsage` does not match the \
-         expected `key_usages`.
+         `strictness` is set to `STRICT` or `ABS_STRICT`.
+    - `NotAuthorized`: If the `KeyUsage` extension is present but does not match the expected `key_usages`.
 
 
     Examples:
@@ -655,7 +663,7 @@ def validate_key_usage(  # noqa D417 undocumented-param
 
         if not _validate_key_usage(expected_usage=key_usages, given_usage=usage, same_vals=same):  # type: ignore
             names = asn1utils.get_set_bitstring_names(usage)  # type: ignore
-            raise ValueError(f"KeyUsage Extension was expected to be: {key_usages}, but is {names}")
+            raise NotAuthorized(f"KeyUsage Extension was expected to be: {key_usages}, but is {names}")
 
 
 @keyword(name="Must Not Contain KeyUsage")
@@ -808,7 +816,7 @@ def _verify_certificate_chain(command: List[str], cert_chain: List[rfc9480.CMPCe
         # Log full error details from OpenSSL.
         logging.error("OpenSSL verify failed. stdout: %s\nstderr: %s", e.stdout, e.stderr)
         raise SignerNotTrusted(
-            f"Validation of the certificate failed!\nstdout: {e.stdout}\nstderr: {e.stderr}", error_details=str(e)
+            f"Validation of the certificate failed!\nstdout: {e.stdout}\nstderr: {e.stderr}", error_details=[str(e)]
         ) from e
     except subprocess.TimeoutExpired as e:
         logging.error("Reached timeout of %d seconds during certificate validation.", timeout)
@@ -878,7 +886,7 @@ def ensure_is_pem_crl(data: bytes) -> bytes:
         _ = x509.load_pem_x509_crl(data)
         return data
     except ValueError:
-        raise ValueError("Data is neither valid DER nor PEM format.")
+        raise ValueError("Data is neither valid DER nor PEM format.")  # pylint: disable=raise-missing-from
 
 
 def _fetch_crls(crl_urls: List[str]) -> List[str]:
@@ -891,22 +899,22 @@ def _fetch_crls(crl_urls: List[str]) -> List[str]:
 
     for url in crl_urls:
         try:
-            logging.info(f"Fetching CRL from: {url}")
+            logging.info("Fetching CRL from: %s", url)
             response = requests.get(url, timeout=10)
             response.raise_for_status()
 
             # Create a temporary file with a .crl suffix
-            temp_file = tempfile.NamedTemporaryFile(dir="data/tmp_crl", mode="wb", delete=False, suffix=".crl")
-            data = ensure_is_pem_crl(response.content)
-            temp_file.write(data)
-            temp_file.flush()
-            temp_file.close()
+            with tempfile.NamedTemporaryFile(dir="data/tmp_crl", mode="wb", delete=False, suffix=".crl") as temp_file:
+                data = ensure_is_pem_crl(response.content)
+                temp_file.write(data)
+                temp_file.flush()
+                temp_file.close()
 
             downloaded_files.append(temp_file.name)
-            logging.info(f"Saved to temporary file: {temp_file.name}")
+            logging.info("Saved to temporary file: %s", temp_file.name)
 
         except Exception as e:
-            logging.info(f"Failed to fetch CRL from {url}: {e}")
+            logging.info("Failed to fetch CRL from %s: %s", url, str(e))
 
     return downloaded_files
 

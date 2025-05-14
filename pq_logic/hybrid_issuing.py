@@ -728,7 +728,7 @@ def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descr
         popo = cmputils.prepare_sig_popo_structure(
             alg_id=sig_alg,
             signature=sig,
-            signing_key=first_key,
+            signing_key=signing_key,
             bad_pop=bad_pop,
         )
 

@@ -198,16 +198,14 @@ class GeneralMessageHandler:
 
         for entry in pki_message["body"]["genm"]:
             self.process_absent_info_type(entry)
-            out, text = self._process_general_message_entry(
-                entry, pki_message, msg_size=len(pki_message["body"]["genm"])
-            )
+            out, text = self._process_general_message_entry(entry, pki_message)
             processed.append(out)
             if text:
                 texts.append(text)
         return self.prepare_genp_response(pki_message, processed, texts=texts)
 
     def _process_general_message_entry(
-        self, entry: rfc9480.InfoTypeAndValue, pki_message: PKIMessageTMP, msg_size: int
+        self, entry: rfc9480.InfoTypeAndValue, pki_message: PKIMessageTMP
     ) -> Tuple[rfc9480.InfoTypeAndValue, Optional[str]]:
         """Process a general message entry."""
         oid = entry["infoType"]
@@ -400,15 +398,15 @@ class GeneralMessageHandler:
         if len(obj) == 0:
             raise BadRequest("The supported language tags are empty.")
 
-        entries = [entry.prettyPrint() for entry in obj]
-        entries = set(entries)
-        if len(entries) == 0:
+        supp_langs = [x.prettyPrint() for x in obj]
+        supp_langs = set(supp_langs)
+        if len(supp_langs) == 0:
             raise BadRequest("The supported language tags are empty.")
 
         allowed_tags = ["en", "de", "fr"]
-        for entry in entries:
-            if entry not in allowed_tags:
-                raise BadRequest(f"The language tag {entry} is not supported.")
+        for lang in supp_langs:
+            if lang not in allowed_tags:
+                raise BadRequest(f"The language tag {lang} is not supported.")
 
         # We'll pick "en" for demonstration.
         return prepare_supported_language_tags("en"), "Currently is always 'en' returned."
@@ -531,8 +529,8 @@ class GeneralMessageHandler:
         if out_crls:
             data = set(out_crls)
             out = univ.SequenceOf()
-            for entry in data:
-                tmp_list = _try_decode_mock_ca(entry, rfc5280.CertificateList())  # type: ignore
+            for x in data:
+                tmp_list = _try_decode_mock_ca(x, rfc5280.CertificateList())  # type: ignore
                 tmp_list: rfc5280.CertificateList
                 out.append(tmp_list)
 
@@ -611,12 +609,11 @@ class GeneralMessageHandler:
         if not time.isValue:
             return self.rev_handler.get_current_crl(self.root_ca_key, self.root_ca_cert), text
 
-        else:
-            time_obj = pyasn1_time_obj_to_py_datetime(time)
-            if (datetime.now(timezone.utc) - time_obj).total_seconds() > 90000:
-                return self.rev_handler.get_current_crl(self.root_ca_key, self.root_ca_cert), None
-            else:
-                return None, "The CRL is up to date, more than 90000 seconds is old."
+        time_obj = pyasn1_time_obj_to_py_datetime(time)
+        if (datetime.now(timezone.utc) - time_obj).total_seconds() > 90000:
+            return self.rev_handler.get_current_crl(self.root_ca_key, self.root_ca_cert), None
+
+        return None, "The CRL is up to date, more than 90000 seconds is old."
 
     @staticmethod
     def process_preferred_sym_alg(entry: rfc9480.InfoTypeAndValue) -> Tuple[rfc9480.InfoTypeAndValue, str]:

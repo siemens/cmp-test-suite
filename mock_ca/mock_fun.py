@@ -199,21 +199,21 @@ class RevokedEntryList:
         """
         if isinstance(structure_or_key, HybridPublicKey):
             return self._contains(structure_or_key)
-        elif isinstance(structure_or_key, PublicKey):
+        if isinstance(structure_or_key, PublicKey):
             return self._contains(structure_or_key)
 
-        elif isinstance(structure_or_key, rfc9480.CMPCertificate):
+        if isinstance(structure_or_key, rfc9480.CMPCertificate):
             public_key = keyutils.load_public_key_from_spki(structure_or_key["tbsCertificate"]["subjectPublicKeyInfo"])
             return self._contains(public_key)
-        elif isinstance(structure_or_key, rfc9480.CertTemplate):
+        if isinstance(structure_or_key, rfc9480.CertTemplate):
             spki = copy_subject_public_key_info(
                 filled_sub_pubkey_info=structure_or_key["publicKey"],
                 target=rfc5280.SubjectPublicKeyInfo(),
             )
             public_key = keyutils.load_public_key_from_spki(spki)
             return self._contains(public_key)
-        else:
-            raise ValueError(f"Unsupported key type: {type(structure_or_key).__name__}")
+
+        raise ValueError(f"Unsupported key type: {type(structure_or_key).__name__}")
 
     def is_revoked(self, cert: rfc9480.CMPCertificate) -> bool:
         """Check if the certificate is revoked.
@@ -335,7 +335,7 @@ class CertRevStateDB:
             # not authorized to make this query to this server or the server is not
             # capable of responding authoritatively (cf. [RFC5019], Section 2.2.3).
             return ocsp.OCSPResponseBuilder.build_unsuccessful(ocsp.OCSPResponseStatus.UNAUTHORIZED)
-        elif found_cert is None:
+        if found_cert is None:
             raise NotImplementedError("Certificate not found in the list of issued certificates.")
 
         nonce = self._get_nonce(request)
@@ -661,7 +661,7 @@ class KeySecurityChecker:
         loaded_pub_key = load_public_key_from_cert(cert)
         if isinstance(pub_key, HybridPublicKey):
             if not isinstance(loaded_pub_key, HybridPublicKey):
-                return pub_key.trad_key == loaded_pub_key or pub_key.pq_key == loaded_pub_key
+                return loaded_pub_key in [pub_key.trad_key, pub_key.pq_key]
 
             if pub_key == loaded_pub_key:
                 return True

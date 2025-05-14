@@ -1224,7 +1224,7 @@ def get_cert(serial_number):
     """Get the Sun-Hybrid certificate for the specified serial number."""
     serial_number = int(serial_number)
     cert = state.get_cert_by_serial_number(serial_number)
-    return _build_response(cert)  # type: ignore
+    return _build_response(cert)
 
 
 @app.route("/pubkey/<serial_number>", methods=["GET"])
@@ -1277,7 +1277,7 @@ def handle_issuing() -> Response:
         # Access the raw data from the request body
         response = handler.process_normal_request(pki_message)
         return _build_response(response)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         # Handle any errors gracefully
         return Response(f"Error: {str(e)}", status=500, content_type="text/plain")
 

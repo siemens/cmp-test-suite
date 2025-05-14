@@ -497,7 +497,7 @@ def _prepare_recip_info_for_kga(
     cert: Optional[rfc9480.CMPCertificate] = None,
     ec_priv_key: Optional[ECDHPrivateKey] = None,
     hash_alg: Optional[str] = None,
-    **kwargs,
+    **kwargs,  # pylint: disable=unused-argument
 ) -> rfc5652.RecipientInfo:
     """Prepare the recipient info for the key generation action.
 

@@ -10,6 +10,8 @@ from resources.typingutils import SignKey
 
 @dataclass
 class ConfigVal(ABC):
+    """Base class for configuration values."""
+
     def to_dict(self) -> dict:
         """Convert the configuration to a dictionary."""
         out = {}

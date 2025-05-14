@@ -381,10 +381,10 @@ class ProtectionHandler:
             raise BadMessageCheck(
                 message="Invalid algorithm or combination for signature protection.",
                 error_details=[e.message] + e.error_details,
-            )
+            ) from e
 
-        except (InvalidSignature, InvalidAltSignature, ValueError):
-            raise BadMessageCheck(message="Invalid signature protection.")
+        except (InvalidSignature, InvalidAltSignature, ValueError) as e:
+            raise BadMessageCheck(message="Invalid signature protection.") from e
 
         # Implement the signature validation logic here
         self.check_signer_is_trusted(pki_message)
@@ -445,7 +445,7 @@ class ProtectionHandler:
         :raises SignerNotTrusted: If the signer is not trusted.
         :raises NotAuthorized: If the signer is not authorized.
         """
-        logging.debug("Checking if the signer is trusted. use_openssl: %s", self.use_openssl)
+        logging.debug("Checking if the signer is trusted. use_openssl: %s", self._prot_config.use_openssl)
         # Implement the logic to check if the signer is trusted
         cert_chain = build_cmp_chain_from_pkimessage(pki_message, for_issued_cert=False)
         logging.info("Certificate chain length: %s", len(cert_chain))

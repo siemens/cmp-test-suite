@@ -160,8 +160,8 @@ def validate_orig_pkimessage(  # noqa D417 undocumented-param
     for msg in orig_message:
         try:
             _verify_protection(msg, pre_shared_secret=pre_shared_secret)
-        except BadMessageCheck:
-            raise BadMessageCheck("The original `PKIMessage` protection is invalid.")
+        except BadMessageCheck as e:
+            raise BadMessageCheck("The original `PKIMessage` protection is invalid.") from e
 
 
 def validate_added_protection_request(
@@ -254,7 +254,7 @@ def validate_added_protection_request(
                 extensions=extensions,
             )
         except (InvalidSignature, InvalidAltSignature) as e:
-            raise BadMessageCheck(f"The kur request did not have a valid signature: {e}")
+            raise BadMessageCheck(f"The kur request did not have a valid signature: {e}")  # pylint: disable=raise-missing-from
     else:
         raise NotImplementedError(f"Not implemented to handle the body: {body_name} for added protection")
 
@@ -292,13 +292,13 @@ def _verify_protection(
                 shared_secret=shared_secrets,
                 password=pre_shared_secret,
             )
-        except (InvalidSignature, ValueError):
-            raise BadMessageCheck("The protection of the a nested entry was not valid.")
+        except (InvalidSignature, ValueError) as e:
+            raise BadMessageCheck("The protection of the a nested entry was not valid.") from e
     else:
         try:
             verify_hybrid_pkimessage_protection(pki_message=entry)
-        except (InvalidSignature, InvalidAltSignature):
-            raise BadMessageCheck("The protection of the a nested entry was not valid.")
+        except (InvalidSignature, InvalidAltSignature) as e:
+            raise BadMessageCheck("The protection of the a nested entry was not valid.") from e
 
     if failed:
         raise BadMessageCheck("The protection of the a nested entry was not valid.")
