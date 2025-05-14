@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448P
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from pyasn1_alt_modules import rfc9480, rfc9481
 
+from mock_ca.db_config_vars import ProtectionHandlerConfig
 from mock_ca.mock_fun import KEMSharedSecretList
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from resources.asn1_structures import PKIMessageTMP
@@ -56,7 +57,7 @@ class ProtectionHandler:
         self,
         cmp_protection_cert: rfc9480.CMPCertificate,
         cmp_prot_key: SignKey,
-        kem_ss_list: KEMSharedSecretList,
+        kem_ss_list: Optional[KEMSharedSecretList] = None,
         pre_shared_secret: Union[bytes, str] = b"SiemensIT",
         def_mac_alg: str = "password_based_mac",
         use_openssl: bool = True,
@@ -65,20 +66,48 @@ class ProtectionHandler:
         """Initialize the ProtectionHandler with the specified parameters."""
         self.prot_cert = cmp_protection_cert
         self.prot_key = cmp_prot_key
-        self.def_mac_alg = def_mac_alg
-        self.use_openssl = use_openssl
-        self.pre_shared_secret = pre_shared_secret
-        self.prot_alt_key = prot_alt_key
-        self.mock_ca_trusted_dir = "data/mock_ca/trustanchors"
+        mock_ca_trusted_dir = "data/mock_ca/trustanchors"
         self.cmp_cert_chain = build_cert_chain_from_dir(
             ee_cert=self.prot_cert,
             cert_chain_dir="data/unittest",
-            root_dir=self.mock_ca_trusted_dir,
+            root_dir=mock_ca_trusted_dir,
         )
 
         self.kari_data = load_env_data_certs()
+        if kem_ss_list is None:
+            kem_ss_list = KEMSharedSecretList()
         self.kem_shared_secret = kem_ss_list
-        self.enforce_lwcmp = False
+        self.sender = "CN=Mock CA"
+
+        kari_cert = KARICertsAndKeys.from_kwargs(**load_env_data_certs())
+
+        self._prot_config = ProtectionHandlerConfig(
+            pre_shared_secret=pre_shared_secret,
+            def_mac_alg=def_mac_alg,
+            use_openssl=use_openssl,
+            prot_alt_key=prot_alt_key,
+            kari_certs=kari_cert,
+            mock_ca_trusted_dir=mock_ca_trusted_dir,
+            enforce_lwcmp=False,
+        )
+    def get_details(self) -> dict:
+        """Get the details of the ProtectionHandler."""
+        return {
+            "protection_cert": self.prot_cert,
+            "protection_key": self.prot_key,
+            "protection_config": self._prot_config.to_dict(),
+            "cmp_cert_chain": self.cmp_cert_chain,
+            "kem_shared_secret": self.kem_shared_secret,
+        }
+
+    def set_config(self, config: ProtectionHandlerConfig) -> None:
+        """Set the configuration for the ProtectionHandler."""
+        self._prot_config = config
+
+    @property
+    def prot_handler_config(self) -> ProtectionHandlerConfig:
+        """Get the protection configuration."""
+        return self._prot_config
 
     @property
     def protection_cert(self) -> rfc9480.CMPCertificate:
@@ -155,7 +184,7 @@ class ProtectionHandler:
             return "pbmac1" if use_same else "password_based_mac"
         if alg_id["algorithm"] == rfc9481.id_PasswordBasedMac:
             return "password_based_mac" if use_same else "pbmac1"
-        return self.def_mac_alg
+        return self._prot_config.def_mac_alg
 
     def check_if_request_is_for_kari_encr_cert(
         self, request: PKIMessageTMP, response: PKIMessageTMP
@@ -264,7 +293,7 @@ class ProtectionHandler:
                 request["header"]["protectionAlg"], use_same=not bad_protection_type
             )
             protected_pki_message = protect_pkimessage(
-                password=self.pre_shared_secret,
+                password=self._prot_config.pre_shared_secret,
                 pki_message=response,
                 protection=prot_type,
                 bad_message_check=bad_message_check,
@@ -310,7 +339,7 @@ class ProtectionHandler:
                 bad_message_check=bad_message_check,
                 bad_alt_message_check=bad_alt_message_check,
                 exclude_certs=True,
-                alt_signing_key=self.prot_alt_key,
+                alt_signing_key=self._prot_config.prot_alt_key,
             )
             protected_pki_message["extraCerts"].append(self.prot_cert)
             logging.warning("added the X-Certificate for the encrypted certificate challenge.")
@@ -334,7 +363,7 @@ class ProtectionHandler:
                 bad_message_check=bad_message_check,
                 bad_alt_message_check=bad_alt_message_check,
                 exclude_certs=True,
-                alt_signing_key=self.prot_alt_key,
+                alt_signing_key=self._prot_config.prot_alt_key,
             )
 
         protected_pki_message["extraCerts"].append(self.prot_cert)
@@ -463,7 +492,7 @@ class ProtectionHandler:
                 "Will be checked in the Future."
             )
 
-        if self.use_openssl and not result:
+        if self._prot_config.use_openssl and not result:
             try:
                 certificates_must_be_trusted(
                     cert_chain=cert_chain,
@@ -471,7 +500,7 @@ class ProtectionHandler:
                     key_usage_strict=1,
                     key_usages="digitalSignature" if not for_dh else "keyAgreement",
                     crl_check=False,
-                    trustanchors=self.mock_ca_trusted_dir,
+                    trustanchors=self._prot_config.mock_ca_trusted_dir,
                 )
                 logging.debug("Certificate chain is trusted")
             except FileNotFoundError:
@@ -483,4 +512,4 @@ class ProtectionHandler:
                 ) from e
         else:
             # Check if the certificate is trusted.
-            certificates_are_trustanchors(may_trusted_cert, trustanchors=self.mock_ca_trusted_dir)
+            certificates_are_trustanchors(may_trusted_cert, trustanchors=self._prot_config.mock_ca_trusted_dir)
