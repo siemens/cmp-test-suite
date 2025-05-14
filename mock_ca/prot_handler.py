@@ -36,8 +36,10 @@ from resources.exceptions import (
     BadMessageCheck,
     CMPTestSuiteError,
     InvalidAltSignature,
+    LwCMPViolation,
     NotAuthorized,
     SignerNotTrusted,
+    WrongIntegrity,
 )
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import id_KemBasedMac
@@ -394,14 +396,27 @@ class ProtectionHandler:
         :param pki_message: The PKI message to validate.
         :return: True if the MAC protection is valid, False otherwise.
         """
+        if get_cmp_message_type(pki_message) == "rr":
+            raise WrongIntegrity(
+                "A revocation request cannot be protected with a MAC."
+                "Must either be protected by the certificate to be revoked or "
+                "a trusted certificate."
+            )
+
         try:
             verify_pkimessage_protection(
                 pki_message=pki_message,
-                password=self.pre_shared_secret,
-                enforce_lwcmp=self.enforce_lwcmp,
+                password=self._prot_config.pre_shared_secret,
+                enforce_lwcmp=self.prot_handler_config.enforce_lwcmp,
             )
-        except ValueError:
-            raise BadMessageCheck(message="Invalid MAC protection.")
+
+        except LwCMPViolation as e:
+            raise BadMessageCheck(
+                message="The MAC protection is invalid (please check the error details).",
+                error_details=[e.message] + e.error_details,
+            ) from e
+        except ValueError as e:
+            raise BadMessageCheck(message="Invalid MAC protection.") from e
 
     def validate_signature_protection(self, pki_message: PKIMessageTMP):
         """Validate the signature protection of the PKI message.
