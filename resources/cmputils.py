@@ -3158,13 +3158,17 @@ def patch_pkimessage_header_with_other_message(  # noqa D417 undocumented-param
 
 @not_keyword
 def extract_fields_for_exchange(
-    other_msg: PKIMessageTMP, exclude_fields: Optional[str] = None, for_py_functions: bool = True
+    other_msg: PKIMessageTMP,
+    exclude_fields: Optional[str] = None,
+    for_py_functions: bool = True,
+    use_fresh_nonce: bool = False,
 ) -> dict:
     """Extract fields from a `PKIMessage`, to patch another one.
 
     :param other_msg: The `PKIMessage` to extract fields from.
     :param exclude_fields: The fields to exclude.
     :param for_py_functions: Whether to use the extracted fields for python functions.Defaults to `True`.
+    :param use_fresh_nonce: Whether to use a fresh nonce. Defaults to `False`.
     :return: The extracted fields in a dictionary with the field name as key and the value as value.
     """
     to_exclude = exclude_fields or []  # type: ignore
@@ -3181,7 +3185,11 @@ def extract_fields_for_exchange(
         extracted_fields[field_name] = recipient_nonce
 
     if "senderNonce" not in to_exclude:
-        sender_nonce = other_msg["header"]["recipNonce"].asOctets()
+        if not use_fresh_nonce:
+            sender_nonce = other_msg["header"]["recipNonce"].asOctets()
+
+        else:
+            sender_nonce = os.urandom(16)
         field_name = "sender_nonce" if for_py_functions else "senderNonce"
         extracted_fields[field_name] = sender_nonce
 
@@ -3301,6 +3309,8 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
        ( set the sender inside the directoryName choice of the GeneralName structure)
        - `allow_set_hash` (bool): Flag indicating if the hash can be automatically set for EdDSA signatures or
        other algorithms which do not use a direct hash algorithm. Defaults to `True`.
+       - `use_fresh_nonce` (bool): Flag indicating if a fresh nonce should be used for the `senderNonce` or the
+         `recipNonce` from the request. Defaults to `True`.
 
 
     Returns:
@@ -3318,7 +3328,7 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
     | ${cert_conf}= | Build Cert Conf From Resp | ${response} | sender=tests@example.com | transaction_id=${new_id} |
 
     """
-    extracted_fields = extract_fields_for_exchange(ca_message)
+    extracted_fields = extract_fields_for_exchange(ca_message, use_fresh_nonce=params.get("use_fresh_nonce", True))
     for key, value in extracted_fields.items():
         if key not in params:
             params[key] = value

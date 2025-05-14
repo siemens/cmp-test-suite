@@ -2018,6 +2018,10 @@ def set_ca_header_fields(request: PKIMessageTMP, kwargs: dict) -> dict:
     alt_nonce = (
         os.urandom(16) if not request["header"]["recipNonce"].isValue else request["header"]["recipNonce"].asOctets()
     )
+
+    if not kwargs.get("use_fresh_nonce", True):
+        alt_nonce = os.urandom(16)
+
     kwargs["sender_nonce"] = kwargs.get("sender_nonce") or alt_nonce
     kwargs["transaction_id"] = kwargs.get("transaction_id") or request["header"]["transactionID"].asOctets()
     kwargs["recipient"] = kwargs.get("recipient") or request["header"]["sender"]
@@ -2854,6 +2858,13 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
        - `exclude_fields`: The fields to exclude from the PKIConf message. Defaults to `None`.
        - `enforce_lwcmp`: Whether to enforce LwCMP rules. Defaults to `True`.
        - `set_header_fields`: Whether to set the header fields. Defaults to `True`.
+
+    **kwargs:
+    --------
+        - additional values to set for the header.
+        - `hash_alg`: The hash algorithm to use for signing the certificate. Defaults to `sha256`.
+        - `allow_auto_ed`: Whether to allow automatic ED hash algorithm choice. Defaults to `True`.
+        - `use_fresh_nonce`: Whether to use a fresh sender nonce. Defaults to `True`.
 
     Returns:
     -------
