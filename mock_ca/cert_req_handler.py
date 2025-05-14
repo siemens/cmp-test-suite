@@ -309,9 +309,10 @@ class CertReqHandler:
 
             if pki_message["extraCerts"].isValue and result:
                 cert = pki_message["extraCerts"][0]
+                body_name = pki_message["body"].getName()
                 if not self.state.contains_cert(cert):
                     raise NotAuthorized(
-                        "The certificate was not found in the state. CR messages are only "
+                        f"The certificate was not found in the state. {body_name} messages are only "
                         "allowed for known certificates."
                     )
 
@@ -343,6 +344,7 @@ class CertReqHandler:
         self.state.cert_state_db.check_request_for_compromised_key(pki_message)
 
         for_mac = self._get_for_mac(request=pki_message)
+        logging.info("Processing P10CR message")
 
         response, cert = build_cp_from_p10cr(
             request=pki_message,
@@ -354,6 +356,7 @@ class CertReqHandler:
             sender=self.sender,
             for_mac=for_mac,
             include_csr_extensions=False,
+            include_ski=True,
         )
         return self.process_after_request(
             request=pki_message,
