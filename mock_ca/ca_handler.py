@@ -1027,18 +1027,31 @@ class CAHandler:
         """Process the Multi-Auth message.
 
         :param pki_message: The PKIMessage which is hybrid protected.
-        :return:
+        :return: The PKIMessage containing the response.
         """
         try:
-            self.hybrid_handler.is_revoked(request=pki_message, used_both_certs=True)
+            self.hybrid_handler.is_revoked_for_request(request=pki_message, used_both_certs=True)
         except CMPTestSuiteError as e:
-            logging.info(f"An error occurred: {str(e.message)}")
-            return _build_error_from_exception(e, request=pki_message)
+            logging.info("An error occurred: %s", str(e.message))
+            return self.build_error_from_exception(e, request_msg=pki_message)
 
-        verify_hybrid_pkimessage_protection(
-            pki_message=pki_message,
-        )
-        return self.process_normal_request(pki_message)
+        try:
+            verify_hybrid_pkimessage_protection(
+                pki_message=pki_message,
+            )
+            return self.process_normal_request(pki_message)
+
+        except InvalidAltSignature:
+            e = BadMessageCheck(message="Invalid alternative signature protection (catalyst).")
+            return self.build_error_from_exception(e, request_msg=pki_message)
+
+        except InvalidSignature:
+            e = BadMessageCheck(message="Invalid signature protection.")
+            return self.build_error_from_exception(e, request_msg=pki_message)
+
+        except CMPTestSuiteError as e:
+            logging.info("An error occurred: %s", str(e.message), exc_info=True)
+            return self.build_error_from_exception(e, request_msg=pki_message)
 
     def process_cert_discovery(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Process the Cert Discovery request message.
