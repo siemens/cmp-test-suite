@@ -182,3 +182,4 @@ CertRelatedType = Union[
 ]
 
 ExtensionsType = Union[rfc5280.Extensions, Sequence[rfc5280.Extension], List[rfc9480.Extensions]]
+GeneralNamesType = Union[str, rfc9480.GeneralName, Sequence[rfc9480.GeneralName], rfc9480.GeneralNames, rfc9480.Name]
