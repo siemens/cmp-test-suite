@@ -7,6 +7,7 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
+from Crypto.Hash import SHAKE128, SHAKE256
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
@@ -260,9 +261,6 @@ class LwCMPAlgProfile(AlgorithmProfile):
 
     The algorithms are defined in RFC 9481.
     """
-
-
-from Crypto.Hash import SHAKE128, SHAKE256
 
 
 class FixedSHAKE128:

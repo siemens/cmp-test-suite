@@ -52,7 +52,6 @@ from resources.asn1_structures import CertProfileValueAsn1, KemCiphertextInfoAsn
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadDataFormat, BadRequest
-from resources.prepareutils import parse_to_general_name
 from resources.typingutils import (
     CertObjOrPath,
     ControlsType,
@@ -92,10 +91,10 @@ def _prepare_pki_header(
         pki_header["pvno"] = univ.Integer(pvno)  # type: ignore
 
     if "sender" not in exclude_fields:
-        pki_header["sender"] = parse_to_general_name(sender)
+        pki_header["sender"] = prepareutils.parse_to_general_name(sender)
 
     if "recipient" not in exclude_fields:
-        pki_header["recipient"] = parse_to_general_name(recipient)
+        pki_header["recipient"] = prepareutils.parse_to_general_name(recipient)
 
     return pki_header
 
