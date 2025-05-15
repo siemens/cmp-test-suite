@@ -11,19 +11,14 @@ from typing import Any, List, Optional, Sequence, Set, Tuple, Union
 
 import pyasn1.error
 from cryptography import x509
-from cryptography.hazmat.primitives._serialization import PublicFormat
-from cryptography.hazmat.primitives.serialization import Encoding
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import base, tag, univ, useful
 from pyasn1.type.base import Asn1Type
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc6402, rfc6664, rfc8954, rfc9480, rfc9481, rfc9690
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6402, rfc6664, rfc8954, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import DeltaCertificateDescriptor, DeltaCertificateRequestValue
-from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
-from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.pq_utils import is_kem_public_key
 from pq_logic.tmp_oids import COMPOSITE_SIG03_HASH_OID_2_NAME, COMPOSITE_SIG04_HASH_OID_2_NAME
 from resources import (
@@ -43,7 +38,7 @@ from resources import (
 )
 from resources.asn1utils import get_all_asn1_named_value_names, get_set_bitstring_names, try_decode_pyasn1
 from resources.certextractutils import get_extension
-from resources.convertutils import pyasn1_time_obj_to_py_datetime, str_to_bytes, subject_public_key_info_from_pubkey
+from resources.convertutils import pyasn1_time_obj_to_py_datetime, str_to_bytes
 from resources.copyasn1utils import copy_name
 from resources.exceptions import BadAsn1Data, BadCertTemplate
 from resources.keyutils import load_public_key_from_spki
@@ -55,12 +50,13 @@ from resources.oidutils import (
     PQ_SIG_PRE_HASH_OID_2_NAME,
 )
 from resources.prepare_alg_ids import prepare_alg_id, prepare_sig_alg_id  # noqa: F401
-from resources.prepareutils import _GeneralNamesType, parse_to_general_names, prepare_generalized_time
+from resources.prepareutils import validate_relative_name_for_correct_data_types
 from resources.typingutils import (
     CertRelatedType,
     CertRequestType,
     CRLFullNameType,
     ExtensionsParseType,
+    GeneralNamesType,
     PrivateKey,
     PublicKey,
     SignKey,
@@ -1600,175 +1596,6 @@ def prepare_cert_template_from_csr(csr: rfc6402.CertificationRequest) -> rfc4211
     return prepare_cert_template(key=public_key, subject=subject, extensions=extensions)
 
 
-@keyword(name="Prepare SubjectPublicKeyInfo")
-def prepare_subject_public_key_info(  # noqa D417 undocumented-param
-    key: Optional[Union[PrivateKey, PublicKey]] = None,
-    for_kga: bool = False,
-    key_name: Optional[str] = None,
-    use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
-    hash_alg: Optional[str] = None,
-    invalid_key_size: bool = False,
-    add_params_rand_bytes: bool = False,
-    add_null: bool = False,
-) -> rfc5280.SubjectPublicKeyInfo:
-    """Prepare a `SubjectPublicKeyInfo` structure for a `Certificate`, `CSR` or `CertTemplate`.
-
-    For invalid Composite keys must the private key be provided.
-
-    Note: If the key is a CompositeSig key, the `key_name` the private key must be provided,
-    if the RSA key has an invalid key size.
-
-    Arguments:
-    ---------
-        - `key`: The public or private key to use for the `SubjectPublicKeyInfo`.
-        - `for_kga`: A flag indicating whether the key is for a key generation authority (KGA).
-        - `key_name`: The key algorithm name to use for the `SubjectPublicKeyInfo`.
-        (can be set to `rsa_kem`. RFC9690). Defaults to `None`.
-        - `use_rsa_pss`: Whether to use RSA-PSS padding. Defaults to `False`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
-        - `hash_alg`: The pre-hash algorithm to use for the pq signature key. Defaults to `None`.
-        - `invalid_key_size`: A flag indicating whether the key size is invalid. Defaults to `False`.
-        - `add_params_rand_bytes`: A flag indicating whether to add random bytes to the key parameters. \
-        Defaults to `False`.
-        - `add_null`: A flag indicating whether to add a null value to the key parameters. Defaults to `False`.
-
-    Returns:
-    -------
-        - The populated `SubjectPublicKeyInfo` structure.
-
-    Raises:
-    ------
-        - `ValueError`: If no key is provided and the for_kga flag is not set.
-        - `ValueError`: If both `add_null` and `add_params_rand_bytes` are set.
-
-
-    Examples:
-    --------
-    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | use_rsa_pss=True |
-    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | key_name=rsa-kem |
-    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | for_kga=True |
-    | ${spki}= | Prepare SubjectPublicKeyInfo | key=${key} | add_null=True |
-
-    """
-    if key is None and not for_kga:
-        raise ValueError("Either a key has to be provided or the for_kga flag have to be set.")
-
-    if add_null and add_params_rand_bytes:
-        raise ValueError("Either `add_null` or `add_params_rand_bytes` can be set, not both.")
-
-    if isinstance(key, AbstractCompositePrivateKey):
-        pub_key = key.public_key().public_bytes(encoding=Encoding.DER, format=PublicFormat.Raw)
-        spki = rfc5280.SubjectPublicKeyInfo()
-        pub_key = pub_key if not invalid_key_size else pub_key + b"\x00"
-        spki["subjectPublicKey"] = univ.BitString.fromOctetString(pub_key)
-        if isinstance(key, CompositeSig03PrivateKey):
-            oid = key.get_oid(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
-        else:
-            oid = key.get_oid()
-        spki["algorithm"]["algorithm"] = oid
-
-        if add_null:
-            spki["algorithm"]["parameters"] = univ.Null("")
-
-        if add_params_rand_bytes:
-            spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
-
-        return spki
-
-    if isinstance(key, PrivateKey):
-        key = key.public_key()
-
-    if for_kga:
-        return _prepare_spki_for_kga(
-            key=key,
-            key_name=key_name,
-            use_pss=use_rsa_pss,
-            use_pre_hash=use_pre_hash,
-            add_null=add_null,
-            add_params_rand_bytes=add_params_rand_bytes,
-        )
-
-    if key_name in ["rsa-kem", "rsa_kem"]:
-        key = RSAEncapKey(key)  # type: ignore
-
-    spki = subject_public_key_info_from_pubkey(
-        public_key=key,  # type: ignore
-        use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
-        hash_alg=hash_alg,
-    )
-
-    if invalid_key_size:
-        tmp = spki["subjectPublicKey"].asOctets() + b"\x00\x00"
-        spki["subjectPublicKey"] = univ.BitString.fromOctetString(tmp)
-
-    if add_params_rand_bytes:
-        spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
-
-    return spki
-
-
-def _prepare_spki_for_kga(
-    key: Optional[Union[PrivateKey, PublicKey]] = None,
-    key_name: Optional[str] = None,
-    use_pss: bool = False,
-    use_pre_hash: bool = False,
-    add_null: bool = False,
-    add_params_rand_bytes: bool = False,
-) -> rfc5280.SubjectPublicKeyInfo:
-    """Prepare a SubjectPublicKeyInfo for KGA usage.
-
-    :param key: A private or public key.
-    :param key_name: An optional key algorithm name.
-    :param use_pss: Whether to use PSS padding for RSA and a RSA-CompositeKey.
-    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
-    :param add_null: Whether to add a null value to the key parameters. Defaults to `False`.
-    :param add_params_rand_bytes: Whether to add random bytes to the key parameters. Defaults to `False`.
-    :return: The populated `SubjectPublicKeyInfo` structure.
-    """
-    if add_null and add_params_rand_bytes:
-        raise ValueError("Either `add_null` or `add_params_rand_bytes` can be set, not both.")
-
-    spki = rfc5280.SubjectPublicKeyInfo()
-    spki["subjectPublicKey"] = univ.BitString("")
-
-    if key is not None:
-        if isinstance(key, typingutils.PrivateKey):
-            key = key.public_key()
-
-    if key_name and key_name in ["rsa", "dsa", "ecc", "rsa-kem"]:
-        names_2_oid = {
-            "rsa": univ.ObjectIdentifier("1.2.840.113549.1.1.1"),
-            "dsa": univ.ObjectIdentifier("1.2.840.10040.4.1"),
-            "ecc": univ.ObjectIdentifier("1.2.840.10045.3.1.7"),
-            "rsa-kem": rfc9690.id_rsa_kem_spki,
-        }
-        spki["algorithm"]["algorithm"] = names_2_oid[key_name]
-        if key_name == "ecc":
-            spki["algorithm"]["parameters"] = rfc5480.ECParameters()
-            spki["algorithm"]["parameters"]["namedCurve"] = rfc5480.secp256r1
-
-    if key_name is not None:
-        from pq_logic.combined_factory import CombinedKeyFactory
-
-        key = CombinedKeyFactory.generate_key(key_name).public_key()
-        spki_tmp = subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_pss, use_pre_hash=use_pre_hash)
-        spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
-
-    elif key is not None:
-        spki_tmp = subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_pss)
-        spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
-
-    if add_null:
-        spki["algorithm"]["parameters"] = univ.Null("")
-
-    if add_params_rand_bytes:
-        spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
-
-    return spki
-
-
 @not_keyword
 def default_validity(
     days: int = 3650,
@@ -1811,6 +1638,24 @@ def default_validity(
     not_after = not_before + timedelta(days=days)
     return prepare_validity(not_before, not_after)
 
+def _validate_name(
+    name: rfc9480.Name,
+    validate_data_types: bool = True,
+) -> None:
+    """Validate the type of an relative distinguished name (RDN).
+
+    :param name: The RDN to validate.
+    :param validate_data_types: Whether to validate the data types of the RDN components. Defaults to `True`.
+    :raises ValueError: If the RDN is not of the expected type.
+    """
+
+    if not name.isValue:
+        return
+
+    if validate_data_types:
+        for rel_dis_name in name["rdnSequence"]:
+            validate_relative_name_for_correct_data_types(rel_dis_name)
+
 
 @keyword(name="Build Cert From CertTemplate")
 def build_cert_from_cert_template(  # noqa D417 undocumented-param
@@ -1842,6 +1687,7 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
         - `alt_use_rsa_pss`: Whether to use RSA-PSS with the alternative key. Defaults to `False`.
         - `extensions`: Extensions to include in the certificate. Defaults to `None`.
         (as an example for OCSP, CRL or etc.)
+        - `validate_rel_dis_name_data_type`: Whether to validate the relative distinguished name data type. Defaults to `True`.
 
     Returns:
     -------
@@ -1856,6 +1702,9 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
     | ${cert}= | Build Cert From CertTemplate | cert_template=${cert_template} | ca_cert=${ca_cert} | ca_key=${ca_key} |
 
     """
+
+    _validate_name(cert_template["subject"], validate_data_types=kwargs.get("validate_rel_dis_name_data_type", True))
+
     tbs_certs = prepare_tbs_certificate_from_template(
         cert_template=cert_template,
         issuer=ca_cert["tbsCertificate"]["subject"],
@@ -2127,6 +1976,7 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         - `alt_hash_alg`: The hash algorithm to use for the alternative signing key. Defaults to `sha256`.
         - `alt_use_rsa_pss`: Whether to use RSA-PSS for the alternative signing key. Defaults to `False`.
         - `alt_sign_key`: Optional alternative signing key to use. Defaults to `None`.
+        - `validate_rel_dis_name_data_type`: Whether to validate the relative distinguished name data. Defaults to `True`.
 
     Returns:
     -------
@@ -2153,6 +2003,12 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
 
     if issuer is None:
         raise ValueError("The issuer is not set and can not be derived from the CSR.")
+
+
+    _validate_name(
+        csr["certificationRequestInfo"]["subject"],
+        validate_data_types=kwargs.get("validate_rel_dis_name_data_type", True),
+    )
 
     tbs_cert = _prepare_shared_tbs_cert(
         issuer=issuer,
@@ -2332,7 +2188,7 @@ def prepare_ocsp_extension(  # noqa D417 undocumented-param
 
 def _prepare_crl_distribution_points(
     distribution_points: Optional[Union[Sequence[rfc5280.DistributionPoint], rfc5280.DistributionPoint]] = None,
-    crl_issuers: Optional[_GeneralNamesType] = None,
+    crl_issuers: Optional[GeneralNamesType] = None,
     full_name: Optional[CRLFullNameType] = None,
     relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
 ) -> rfc5280.CRLDistributionPoints:
@@ -2369,7 +2225,7 @@ def _prepare_crl_distribution_points(
 @keyword(name="Prepare CRLDistributionPoint Extension")
 def prepare_crl_distribution_point_extension(  # noqa: D417 undocumented-param
     distribution_points: Optional[Union[Sequence[rfc5280.DistributionPoint], rfc5280.DistributionPoint]] = None,
-    crl_issuers: Optional[_GeneralNamesType] = None,
+    crl_issuers: Optional[GeneralNamesType] = None,
     full_name: Optional[CRLFullNameType] = None,
     relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
     critical: bool = False,
@@ -3062,7 +2918,7 @@ def prepare_distribution_point_name(
     distribution_point_name = rfc5280.DistributionPointName()
 
     if full_name:
-        full_names = parse_to_general_names(full_name)
+        full_names = prepareutils.parse_to_general_names(full_name)
         distribution_point_name["fullName"].extend(full_names)
 
     if relative_name:
@@ -3071,7 +2927,7 @@ def prepare_distribution_point_name(
     return distribution_point_name
 
 
-def prepare_relative_distinguished_name(
+def _prepare_relative_distinguished_name(
     name: Optional[Union[str, rfc9480.Name, rfc5280.RelativeDistinguishedName]],
 ) -> Optional[rfc5280.RelativeDistinguishedName]:
     """Prepare a Relative Distinguished Name.
@@ -3080,14 +2936,7 @@ def prepare_relative_distinguished_name(
     :return: The populated `RelativeDistinguishedName` structure.
     """
     if isinstance(name, str):
-        name_obj = rfc5280.RelativeDistinguishedName()
-
-        if "=" not in name:
-            raise ValueError("Invalid name format. Expected 'key=value'.")
-
-        for item in name.split(","):
-            key, value = item.split("=")
-        raise NotImplementedError("This function is not implemented yet.")
+        return prepareutils.prepare_relative_distinguished_name(values=name)
 
     if isinstance(name, rfc9480.Name):
         return name["rdnSequence"][0]
@@ -3098,7 +2947,7 @@ def prepare_relative_distinguished_name(
 @keyword(name="Prepare DistributionPoint")
 def prepare_distribution_point(  # noqa: D417 undocumented-param
     reason_flags: Optional[str] = None,
-    crl_issuers: Optional[_GeneralNamesType] = None,
+    crl_issuers: Optional[GeneralNamesType] = None,
     full_name: Optional[CRLFullNameType] = None,
     relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
 ) -> rfc5280.DistributionPoint:
@@ -3139,7 +2988,7 @@ def prepare_distribution_point(  # noqa: D417 undocumented-param
         distribution_point["reasons"] = flags.subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1))
 
     if crl_issuers is not None:
-        crl_issuers = parse_to_general_names(crl_issuers, gen_type="directoryName")
+        crl_issuers = prepareutils.parse_to_general_names(crl_issuers, gen_type="directoryName")
         distribution_point["cRLIssuer"].extend(crl_issuers)
 
     if full_name or relative_name:
@@ -3511,11 +3360,11 @@ def prepare_private_key_usage_period(  # noqa: D417 undocumented-param
     """
     private_key_usage_period = rfc5280.PrivateKeyUsagePeriod()
     if not_before is not None:
-        private_key_usage_period["notBefore"] = prepare_generalized_time(not_before).subtype(
+        private_key_usage_period["notBefore"] = prepareutils.prepare_generalized_time(not_before).subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
         )
     if not_after is not None:
-        private_key_usage_period["notAfter"] = prepare_generalized_time(not_after).subtype(
+        private_key_usage_period["notAfter"] = prepareutils.prepare_generalized_time(not_after).subtype(
             implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)
         )
 

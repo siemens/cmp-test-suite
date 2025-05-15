@@ -30,7 +30,7 @@ from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig
 from resources import asn1utils, certutils, cmputils, keyutils
 from resources.asn1_structures import PKIMessageTMP
 from resources.exceptions import BadAsn1Data
-from resources.oidutils import PYASN1_CM_NAME_2_OIDS
+from resources.oidutils import PYASN1_CM_OID_2_NAME
 from resources.typingutils import PrivateKey, PublicKey, Strint
 
 
@@ -421,24 +421,24 @@ def get_openssl_name_notation(
     dict_data = {}
 
     if oids is None:
-        oids = PYASN1_CM_NAME_2_OIDS.keys()
+        oids = PYASN1_CM_OID_2_NAME.keys()
 
     for rdn in name["rdnSequence"]:
         attribute: rfc2986.AttributeTypeAndValue
         for attribute in rdn:
             if attribute["type"] in oids:
                 # need to remove asn1 type value.
-                dict_data[PYASN1_CM_NAME_2_OIDS.get(attribute["type"])] = (
+                dict_data[PYASN1_CM_OID_2_NAME.get(attribute["type"])] = (
                     decoder.decode(attribute["value"])[0]
                 ).prettyPrint()
                 if out_name is None:
                     out_name = (
-                        f"{PYASN1_CM_NAME_2_OIDS.get(attribute['type'])}="
+                        f"{PYASN1_CM_OID_2_NAME.get(attribute['type'])}="
                         + (decoder.decode(attribute["value"])[0]).prettyPrint()
                     )
                 else:
                     out_name += (
-                        f",{PYASN1_CM_NAME_2_OIDS.get(attribute['type'])}="
+                        f",{PYASN1_CM_OID_2_NAME.get(attribute['type'])}="
                         + (decoder.decode(attribute["value"])[0]).prettyPrint()
                     )
 

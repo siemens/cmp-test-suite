@@ -7,6 +7,7 @@
 Will be removed as soon as the draft becomes an RFC.
 """
 
+from pkilint.itu.x520_name import ub_business_category, ub_postal_code, ub_street_address
 from pyasn1.type import char, constraint, namedtype, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 
@@ -457,3 +458,79 @@ class CertProfileValueAsn1(univ.SequenceOf):
 
     componentType = char.UTF8String()
     subtypeSpec = constraint.ValueSizeConstraint(1, MAX)
+
+
+# MUST be 2 characters.
+class X520countryNameASN1(char.PrintableString):
+    size_max = 2
+    size_min = 2
+
+
+# To remove the value size constraint, of 1.
+class EmailAddressASN1(char.IA5String):
+    size_min = 1
+    size_max = rfc5280.ub_emailaddress_length
+
+
+# To remove the value size constraint, of 1.
+class X520SerialNumberASN1(char.PrintableString):
+    size_min = 1
+    size_max = rfc5280.ub_serial_number
+
+
+class X520nameASN1(univ.Choice):
+    size_min = 1
+    size_max = rfc5280.ub_name
+
+
+X520nameASN1.componentType = namedtype.NamedTypes(
+    namedtype.NamedType("teletexString", char.TeletexString()),
+    namedtype.NamedType("printableString", char.PrintableString()),
+    namedtype.NamedType("universalString", char.UniversalString()),
+    namedtype.NamedType("utf8String", char.UTF8String()),
+    namedtype.NamedType("bmpString", char.BMPString()),
+)
+
+
+class X520PseudonymASN1(X520nameASN1):
+    size_max = rfc5280.ub_pseudonym
+
+
+class X520TitleASN1(X520nameASN1):
+    size_max = rfc5280.ub_title
+
+
+class X520BusinessCategoryASN1(X520nameASN1):
+    size_max = ub_business_category
+
+
+class X520PostalCodeASN1(X520nameASN1):
+    size_max = ub_postal_code
+
+
+class X520StreetAddressASN1(X520nameASN1):
+    size_max = ub_street_address
+
+
+class X520OrganizationalUnitNameASN1(X520nameASN1):
+    size_max = rfc5280.ub_organizational_unit_name
+
+
+class X520CommonNameASN1(X520nameASN1):
+    size_max = rfc5280.ub_common_name
+
+
+class X520LocalityNameASN1(X520nameASN1):
+    size_max = rfc5280.ub_locality_name
+
+
+class X520StateOrProvinceNameASN1(X520nameASN1):
+    size_max = rfc5280.ub_state_name
+
+
+class X520PseudonymASN1(X520nameASN1):
+    size_max = rfc5280.ub_pseudonym
+
+
+class X520OrganizationNameASN1(X520nameASN1):
+    size_max = rfc5280.ub_organization_name

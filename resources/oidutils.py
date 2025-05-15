@@ -8,7 +8,16 @@ from typing import Dict
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509.oid import NameOID
+from pkilint.itu.x520_name import (
+    X520BusinessCategory,
+    X520OrganizationIdentifier,
+    X520PostalCode,
+    X520StreetAddress,
+    id_at_businessCategory,
+    id_at_organizationIdentifier,
+    id_at_postalCode,
+    id_at_streetAddress,
+)
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
     rfc3370,
@@ -51,6 +60,22 @@ from pq_logic.tmp_oids import (
     id_ce_deltaCertificateDescriptor,
     id_relatedCert,
     id_sntrup761_str,
+)
+from resources.asn1_structures import (
+    EmailAddressASN1,
+    X520BusinessCategoryASN1,
+    X520CommonNameASN1,
+    X520countryNameASN1,
+    X520LocalityNameASN1,
+    X520nameASN1,
+    X520OrganizationalUnitNameASN1,
+    X520OrganizationNameASN1,
+    X520PostalCodeASN1,
+    X520PseudonymASN1,
+    X520SerialNumberASN1,
+    X520StateOrProvinceNameASN1,
+    X520StreetAddressASN1,
+    X520TitleASN1,
 )
 
 # In RFC 9480 Certificate Management Protocol (CMP) Updates
@@ -240,23 +265,6 @@ SYMMETRIC_ENCR_ALG_OID_2_NAME = {}
 SYMMETRIC_ENCR_ALG_OID_2_NAME.update(AES_CBC_OID_2_NAME)
 
 SYMMETRIC_ENCR_ALG_NAME_2_OID = {v: k for k, v in SYMMETRIC_ENCR_ALG_OID_2_NAME.items()}
-
-NAME_MAP = {
-    "C": NameOID.COUNTRY_NAME,
-    "ST": NameOID.STATE_OR_PROVINCE_NAME,
-    "L": NameOID.LOCALITY_NAME,
-    "O": NameOID.ORGANIZATION_NAME,
-    "CN": NameOID.COMMON_NAME,
-}
-OID_CM_NAME_MAP = {
-    "C": rfc5280.id_at_countryName,
-    "ST": rfc5280.id_at_stateOrProvinceName,
-    "L": rfc5280.id_at_localityName,
-    "O": rfc5280.id_at_organizationName,
-    "CN": rfc5280.id_at_commonName,
-    "OU": rfc5280.id_at_organizationalUnitName,
-}
-PYASN1_CM_NAME_2_OIDS = {v: k for k, v in OID_CM_NAME_MAP.items()}
 
 # Used to get the hash instances with their respective names.
 # This is used to make it easier for users to parse and select hash algorithms by name.
@@ -818,3 +826,81 @@ ENC_KEY_AGREEMENT_TYPES_OID_2_NAME = {
 ENC_KEY_AGREEMENT_TYPES_OID_2_NAME.update(CURVE_OID_2_NAME)
 
 ENC_KEY_AGREEMENT_TYPES_NAME_2_OID = {y: x for x, y in ENC_KEY_AGREEMENT_TYPES_OID_2_NAME.items()}
+
+
+OID_CM_NAME_MAP = {
+    "CN": rfc5280.id_at_commonName,
+    "L": rfc5280.id_at_localityName,
+    "ST": rfc5280.id_at_stateOrProvinceName,
+    "O": rfc5280.id_at_organizationName,
+    "OU": rfc5280.id_at_organizationalUnitName,
+    "C": rfc5280.id_at_countryName,
+    "STREET": id_at_streetAddress,
+    "DC": rfc5280.id_domainComponent,
+    "SN": rfc5280.id_at_serialNumber,
+    "T": rfc5280.id_at_title,
+    "GN": rfc5280.id_at_givenName,
+    "S": rfc5280.id_at_surname,
+    "I": rfc5280.id_at_initials,
+    "GQ": rfc5280.id_at_generationQualifier,
+    "DNQ": rfc5280.id_at_dnQualifier,
+    "PSEUDONYM": rfc5280.id_at_pseudonym,
+    "NAME": rfc5280.id_at_name,
+    "EMAIL": rfc5280.id_emailAddress,
+    "businessCategory": id_at_businessCategory,
+    "postalCode": id_at_postalCode,
+    "organizationIdentifier": id_at_organizationIdentifier,
+}
+
+PYASN1_CM_OID_2_NAME = {v: k for k, v in OID_CM_NAME_MAP.items()}
+
+CERT_ATTR_OID_2_STRUCTURE = {
+    # X.520 attributes
+    rfc5280.id_at_name: X520nameASN1(),
+    rfc5280.id_at_surname: X520nameASN1(),
+    rfc5280.id_at_givenName: X520nameASN1(),
+    rfc5280.id_at_initials: X520nameASN1(),
+    rfc5280.id_at_generationQualifier: X520nameASN1(),
+    rfc5280.id_at_commonName: X520CommonNameASN1(),
+    rfc5280.id_at_localityName: X520LocalityNameASN1(),
+    rfc5280.id_at_stateOrProvinceName: X520StateOrProvinceNameASN1(),
+    rfc5280.id_at_organizationName: X520OrganizationNameASN1(),
+    rfc5280.id_at_organizationalUnitName: X520OrganizationalUnitNameASN1(),
+    rfc5280.id_at_title: X520TitleASN1(),
+    rfc5280.id_at_dnQualifier: rfc5280.X520dnQualifier(),
+    rfc5280.id_at_countryName: X520countryNameASN1(),
+    rfc5280.id_at_serialNumber: X520SerialNumberASN1(),
+    rfc5280.id_at_pseudonym: X520PseudonymASN1(),
+    # Other commonly used identifiers
+    rfc5280.id_domainComponent: rfc5280.DomainComponent(),
+    rfc5280.id_emailAddress: EmailAddressASN1(),
+    id_at_businessCategory: X520BusinessCategoryASN1(),
+    id_at_postalCode: X520PostalCodeASN1(),
+    id_at_streetAddress: X520StreetAddressASN1(),
+    id_at_organizationIdentifier: X520OrganizationIdentifier(),
+}
+CERT_ATTR_OID_2_CORRECT_STRUCTURE = {
+    # X.520 attributes
+    rfc5280.id_at_name: rfc5280.X520name(),
+    rfc5280.id_at_surname: rfc5280.X520name(),
+    rfc5280.id_at_givenName: rfc5280.X520name(),
+    rfc5280.id_at_initials: rfc5280.X520name(),
+    rfc5280.id_at_generationQualifier: rfc5280.X520name(),
+    rfc5280.id_at_commonName: rfc5280.X520CommonName(),
+    rfc5280.id_at_localityName: rfc5280.X520LocalityName(),
+    rfc5280.id_at_stateOrProvinceName: rfc5280.X520StateOrProvinceName(),
+    rfc5280.id_at_organizationName: rfc5280.X520OrganizationName(),
+    rfc5280.id_at_organizationalUnitName: rfc5280.X520OrganizationalUnitName(),
+    rfc5280.id_at_title: rfc5280.X520Title(),
+    rfc5280.id_at_dnQualifier: rfc5280.X520dnQualifier(),
+    rfc5280.id_at_countryName: rfc5280.X520countryName(),
+    rfc5280.id_at_serialNumber: rfc5280.X520SerialNumber(),
+    rfc5280.id_at_pseudonym: rfc5280.X520Pseudonym(),
+    # Other commonly used identifiers
+    rfc5280.id_domainComponent: rfc5280.DomainComponent(),
+    rfc5280.id_emailAddress: rfc5280.EmailAddress(),
+    id_at_businessCategory: X520BusinessCategory(),
+    id_at_postalCode: X520PostalCode(),
+    id_at_streetAddress: X520StreetAddress(),
+    id_at_organizationIdentifier: X520OrganizationIdentifier(),
+}
