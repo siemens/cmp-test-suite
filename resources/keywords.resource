@@ -991,6 +991,11 @@ Get PQ Issuing URL
     ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
     RETURN  ${url}
 
+Get Composite Issuing URL
+    [Documentation]    Return the URL for the composite issuing endpoint.
+    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
+    RETURN  ${url}
+
 Exchange PKIMessage PQ
     [Documentation]    Exchange a PKIMessage with the PQ issuing endpoint.
     [Arguments]    ${pki_message}
@@ -1009,3 +1014,62 @@ Get Related Cert URL
     [Documentation]    Get the URL for the related certificate issuing endpoint, to send the request to.
     ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${RELATED_CERT_SUFFIX}
     RETURN  ${url}
+
+Setup PQ Sig Cert
+    [Documentation]    Issue a new PQ signature certificate for the tests.
+    ...                This certificate is used for the signature and used to save the
+    ...                certificate chain for the correct request.
+    ${pq_key}=   Generate Default PQ SIG Key
+    ${cm}=    Get Next Common Name
+    ${extensions}=  Prepare Extensions  digitalSignature
+    IF  ${ALLOW_MAC_PROTECTION}
+        VAR   ${protection}    ${DEFAULT_MAC_ALGORITHM}
+        ${ir}=  Build Ir From Key    ${pq_key}   ${cm}   extensions=${extensions}
+        ...     recipient=${RECIPIENT}   sender=${sender}   for_mac=True
+        ${prot_ir}=    Default Protect With MAC      ${ir}
+    ELSE
+        VAR   ${protection}    signature
+        ${ir}=  Build Ir From Key    ${pq_key}   ${cm}   extensions=${extensions}
+        ...     recipient=${RECIPIENT}   exclude_fields=sender,senderKID
+        ${prot_ir}=    Default Protect PKIMessage    ${ir}
+    END
+    ${response}=    Exchange PKIMessage PQ    ${prot_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${url}=  Get PQ Issuing URL
+    ${pq_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
+    ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${pq_cert}
+    Write Certs To Dir    ${cert_chain}  pq_sig_chain
+    VAR   ${PQ_SIG_CERT}     ${pq_cert}  scope=Global  # robocop: off=VAR04
+    VAR   ${PQ_SIG_KEY}      ${pq_key}  scope=Global  # robocop: off=VAR04
+
+Setup Composite Sig Cert
+    [Documentation]    Issue a new composite signature certificate for the tests.
+    ...                This certificate is used for the signature and used to save the
+    ...                certificate chain for the correct request. Always uses the latest
+    ...                composite signature version.
+    ${comp_key}=   Generate Unique Key    composite-sig
+    ${cm}=    Get Next Common Name
+    ${url}=   Get Composite Issuing URL
+    ${extensions}=  Prepare Extensions  digitalSignature
+    IF  ${ALLOW_MAC_PROTECTION}
+        VAR   ${protection}    ${DEFAULT_MAC_ALGORITHM}
+        ${ir}=  Build Ir From Key    ${comp_key}   ${cm}   extensions=${extensions}
+        ...     recipient=${RECIPIENT}   sender=${sender}   for_mac=True
+        ${prot_ir}=    Default Protect With MAC      ${ir}
+    ELSE
+        VAR   ${protection}    signature
+        ${ir}=  Build Ir From Key    ${comp_key}   ${cm}   extensions=${extensions}
+        ...     recipient=${RECIPIENT}   exclude_fields=sender,senderKID
+        ${prot_ir}=    Default Protect PKIMessage    ${ir}
+    END
+    ${response}=    Exchange PKIMessage PQ    ${prot_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${url}=  Get PQ Issuing URL
+    ${comp_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
+    ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${comp_cert}
+    Write Certs To Dir    ${cert_chain}  composite_sig_chain
+    VAR   ${COMPOSITE_SIG_CERT}     ${comp_cert}  scope=Global  # robocop: off=VAR04
+    VAR   ${COMPOSITE_SIG_KEY}      ${comp_key}  scope=Global  # robocop: off=VAR04
+
