@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 *** Settings ***
-Documentation       Contains test cases which are currently not open source available ore just some ideas.
+Documentation       Contains tests for hybrid signatures which are currently not part of the
+...                of active standards or just some additional hybrid signature draft mechanism test cases.
 
 Resource            ../resources/keywords.resource
 Library             Collections
@@ -333,7 +334,7 @@ CA MUST Issue Sun Hybrid Non-Critical Extensions
     Extension Must Be Non Critical    ${cert}    sun_hybrid_alt_sig
 
 CA MUST Issue a Valid Sun Hybrid Certificate
-    [Documentation]    Accoring to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
+    [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
     ...                to the CA. The CA should process the valid CSR and issue a valid certificate. 
     [Tags]    sun-hybrid   hybrid-sig  
     ${key}=   Generate Unique Key    composite-sig
