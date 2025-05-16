@@ -2240,10 +2240,10 @@ def verify_kem_based_mac_protection(
     :param pki_message: The `PKIMessage` to verify.
     :param private_key: The private key kem used to verify the KEMBasedMac.
     :param shared_secret: The shared secret to use for verification. Defaults to `None`.
-    :raises BadMessageCheck: If the KEMBasedMac verification fails.
+    :raises ValueError: If the KEMBasedMac verification fails.
     ValueError: If neither `private_key` nor `shared_secret` is provided.
     ValueError: If the KEM algorithm OID does not match the private key's OID.
-    BadAsn1Data: If the decoding of the `KemCiphertextInfoValue` had a remainder.
+    ValueError: If the decoding of the `KemCiphertextInfoValue` had a remainder.
     """
     if private_key is None and shared_secret is None:
         raise ValueError("Either `private_key` or `shared_secret` must be provided.")
@@ -2262,12 +2262,12 @@ def verify_kem_based_mac_protection(
                 break
 
         if kem_ct_info is None:
-            raise BadAsn1Data("The `KemCiphertextInfo` field is missing in the `PKIMessage`.")
+            raise ValueError("The `KemCiphertextInfo` field is missing in the `PKIMessage`.")
 
         kem_ct_info_val, rest = decoder.decode(kem_ct_info, asn1Spec=KemCiphertextInfoValue())
 
         if rest:
-            raise BadAsn1Data("The decoding of the `KemCiphertextInfoValue` had a remainder.")
+            raise ValueError("The decoding of the `KemCiphertextInfoValue` had a remainder.")
 
         kem_oid = kem_ct_info_val["kem"]["algorithm"]
 
