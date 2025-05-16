@@ -41,7 +41,6 @@ from resources.certextractutils import get_extension
 from resources.convertutils import pyasn1_time_obj_to_py_datetime, str_to_bytes
 from resources.copyasn1utils import copy_name
 from resources.exceptions import BadAsn1Data, BadCertTemplate
-from resources.keyutils import load_public_key_from_spki
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
@@ -50,7 +49,6 @@ from resources.oidutils import (
     PQ_SIG_PRE_HASH_OID_2_NAME,
 )
 from resources.prepare_alg_ids import prepare_alg_id, prepare_sig_alg_id  # noqa: F401
-from resources.prepareutils import validate_relative_name_for_correct_data_types
 from resources.typingutils import (
     CertRelatedType,
     CertRequestType,
@@ -1654,7 +1652,7 @@ def _validate_name(
 
     if validate_data_types:
         for rel_dis_name in name["rdnSequence"]:
-            validate_relative_name_for_correct_data_types(rel_dis_name)
+            prepareutils.validate_relative_name_for_correct_data_types(rel_dis_name)
 
 
 @keyword(name="Build Cert From CertTemplate")
@@ -2026,7 +2024,7 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         use_pre_hash=kwargs.get("use_pre_hash", False),
     )
 
-    public_key = load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+    public_key = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
 
     out_extensions = _process_csr_extensions(
         csr=csr,

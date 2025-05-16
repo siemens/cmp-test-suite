@@ -31,10 +31,6 @@ from pq_logic.hybrid_sig import (
     chameleon_logic,
     sun_lamps_hybrid_scheme_00,
 )
-from pq_logic.hybrid_sig.cert_binding_for_multi_auth import (
-    prepare_related_cert_extension,
-    validate_multi_auth_binding_csr,
-)
 from pq_logic.hybrid_sig.certdiscovery import prepare_subject_info_access_syntax_extension
 from pq_logic.hybrid_structures import AltSignatureValueExt
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
@@ -1249,7 +1245,7 @@ def build_related_cert_from_csr(  # noqa: D417 Missing argument descriptions in 
 
     """
     if related_cert is None:
-        related_cert = validate_multi_auth_binding_csr(
+        related_cert = cert_binding_for_multi_auth.validate_multi_auth_binding_csr(
             csr,
             load_chain=kwargs.get("load_chain", False),
             trustanchors=kwargs.get("trustanchors", "./data/trustanchors"),
@@ -1258,7 +1254,7 @@ def build_related_cert_from_csr(  # noqa: D417 Missing argument descriptions in 
             max_freshness_seconds=kwargs.get("max_freshness_seconds", 500),
         )
 
-    extn = prepare_related_cert_extension(related_cert, critical=critical)
+    extn = cert_binding_for_multi_auth.prepare_related_cert_extension(related_cert, critical=critical)
 
     extn = [extn]
     if kwargs.get("extensions"):
