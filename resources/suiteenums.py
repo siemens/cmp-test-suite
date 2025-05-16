@@ -191,7 +191,7 @@ class GeneralInfoOID(enum.Enum):  #
 class ProtectedType(enum.Enum):
     """All possible supported types for the `protectedAlg` field in a PKIMessage."""
 
-    TRAD_SIGNATURE = "trad_sig"
+    TRAD_SIGNATURE = "sig"
     KEM = "kem_based_mac"
     DH = "dh_based_mac"
     MAC = "mac"

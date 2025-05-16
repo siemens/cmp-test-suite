@@ -70,7 +70,6 @@ from resources.convertutils import (
 from resources.data_objects import FixedSHAKE128, FixedSHAKE256
 from resources.exceptions import (
     BadAlg,
-    BadAsn1Data,
     BadDataFormat,
     BadMacProtection,
     BadMessageCheck,
@@ -1324,9 +1323,52 @@ def get_protection_alg_name(pki_message: PKIMessageTMP) -> str:  # noqa D417 und
     return may_return_oid_to_name(alg_id)
 
 
+def _enforce_lwcmp_protection_alg(pki_message: PKIMessageTMP, allow_dh: bool = True, allow_kem: bool = True) -> str:
+    """Enforce the lightweight CMP protection algorithm.
+
+    :param pki_message: The PKIMessage to check.
+    :param allow_dh: Whether to allow DHBasedMAC protection. Defaults to `True`.
+    :param allow_kem: Whether to allow KEMBasedMAC protection. Defaults to `True`.
+    """
+    if not pki_message["header"]["protectionAlg"].isValue:
+        raise ValueError("The protectionAlg field is not a value!")
+
+    alg_oid = pki_message["header"]["protectionAlg"]["algorithm"]
+    prot_type = ProtectedType.get_protection_type(alg_oid)
+
+    if prot_type == ProtectedType.KEM and allow_kem:
+        logging.debug("Protection type is `kem_based_mac`.")
+        return prot_type.value
+
+    if prot_type == ProtectedType.DH and allow_dh:
+        logging.debug("Protection type is `dh`.")
+        return prot_type.value
+
+    if prot_type == ProtectedType.MAC:
+        if alg_oid in LWCMP_MAC_OID_2_NAME:
+            return prot_type.value
+
+        raise ValueError(
+            f"Expected 'pbmac1' or 'password_based_mac' protection, but got: {may_return_oid_to_name(alg_oid)}"
+        )
+
+    if prot_type == ProtectedType.TRAD_SIGNATURE:
+        if alg_oid not in MSG_SIG_ALG:
+            raise ValueError(f"Expected to be a `MSG_SIG_ALG` algorithm, but got: {may_return_oid_to_name(alg_oid)}")
+        return prot_type.value
+
+    raise ValueError(
+        f"Expected to be a `MSG_SIG_ALG` or `LWCMP_MAC_OID_2_NAME` algorithm, "
+        f"but got: {may_return_oid_to_name(alg_oid)}"
+    )
+
+
 @keyword(name="Get Protection Type From PKIMessage")
 def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
-    pki_message: PKIMessageTMP, enforce_lwcmp: bool = False
+    pki_message: PKIMessageTMP,
+    enforce_lwcmp: bool = False,
+    allow_dh: bool = True,
+    allow_kem: bool = True,
 ) -> str:
     """Determine the protection type in the PKIMessage (signature-based or MAC-based).
 
@@ -1335,6 +1377,8 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
         - `pki_message`: The PKIMessage object to check.
         - `enforce_lwcmp`: Boolean flag to indicate if the lightweight CMP version is checked. Defaults to `False`.
         Then only "pbmac1" and "password-based-mac" are allowed.
+        - `allow_dh`: whether to allow `DHBasedMac` protection. Defaults to `True`.
+        - `allow_kem`: whether to allow `KEMBasedMac` protection. Defaults to `True`.
 
 
     Returns:
@@ -1358,23 +1402,30 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     if not alg_oid.isValue:
         raise ValueError("The protectionAlg field is not a value!")
 
+    prot_type = ProtectedType.get_protection_type(alg_oid)
+
     if enforce_lwcmp:
-        if alg_oid in LWCMP_MAC_OID_2_NAME:
-            return "mac"
-
-        if alg_oid not in MSG_SIG_ALG:
-            raise ValueError(
-                f"Expected to be a `MSG_SIG_ALG` or `LWCMP_MAC_OID_2_NAME` algorithm, "
-                f"but got: {may_return_oid_to_name(alg_oid)}"
-            )
-
-        raise ValueError(
-            f"Expected 'pbmac1' or 'password_based_mac' protection, but got: {may_return_oid_to_name(alg_oid)}"
+        return _enforce_lwcmp_protection_alg(
+            pki_message=pki_message,
+            allow_dh=allow_dh,
+            allow_kem=allow_kem,
         )
 
-    prot_type = ProtectedType.get_protection_type(alg_oid)
     if prot_type == ProtectedType.KEM:
-        return "kem_based_mac"
+        if not allow_kem:
+            raise ValueError(
+                f"Protection type is `kem_based_mac`, but `allow_kem` is set to False."
+            )
+
+        return prot_type.value
+
+    if prot_type == ProtectedType.DH:
+        if not allow_dh:
+            raise ValueError(
+                f"Protection type is `dh`, but `allow_dh` is set to False."
+            )
+
+        return prot_type.value
 
     if alg_oid in SYMMETRIC_PROT_ALGO:
         return "mac"
