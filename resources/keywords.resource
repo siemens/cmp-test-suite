@@ -508,6 +508,69 @@ Confirm Certificate If Needed
         RETURN    ${cert}
     END
 
+Confirm EncrCert Certificate If Needed
+    [Documentation]    Some Test cases need a valid certificate to work. Because not all CA's might support the
+    ...                implicit confirm extension, this keyword checks if the given `PKIMessage` contains the implicit
+    ...                confirm extension. If it does, the certificate is confirmed and returned. First decrypt the
+    ...                certificate with the given private key. If the implicit confirm extension is present, will a
+    ...                valid certificate confirmation message be sent and the CA's response is checked. If the CA's
+    ...                response is the `PKIMessage` `pkiconf`, then is the certificate confirmed.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                 - `response`: The response message from the CA.
+    ...                 - `ee_key`: The private key to decrypt the certificate.
+    ...                 - `params`: key=value pair to set variables for the protection.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `cert`: The confirmed certificate.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${cert}= | Confirm EncrCert Certificate If Needed | ${response} | ${ee_key} | &{params} |
+    ...
+    [Tags]    confirm   default   cert
+    [Arguments]    ${response}    ${ee_key}    &{params}
+    PKIStatus Must Be    ${response}    accepted
+    ${result}=   PKIMessage Contains ImplicitConfirm Extension    ${response}
+    ${exclude_rid_check}=    Get From Dictionary    ${params}    exclude_rid_check    ${False}
+    ${expected_recip_type}=    Get From Dictionary    ${params}    expected_recip_type    ${None}
+    ${cert}=    Get EncCert From PKIMessage    ${response}   ee_private_key=${ee_key}   exclude_rid_check=${exclude_rid_check}
+    ...          expected_recip_type=${expected_recip_type}
+    IF  ${result}  RETURN   ${cert}
+    ${cert_req_id}=    Get From Dictionary    ${params}    cert_req_id   ${None}
+    ${for_mac}=    Get From Dictionary    ${params}    for_mac   ${False}
+    ${for_kem_based_mac}=    Get From Dictionary    ${params}    for_kem_based_mac   ${False}
+    IF  ${for_mac}
+        VAR   ${exclude_fields}    ${None}
+    ELSE IF   ${for_kem_based_mac}
+        VAR   ${for_mac}    ${True}
+        VAR   ${exclude_fields}    ${None}
+    ELSE
+        VAR   ${exclude_fields}    sender,senderKID
+    END
+    ${cert_conf}=   Build Cert Conf From Resp  ${response}   cert=${cert}   recipient=${recipient}   pvno=3
+    ...             sender=${SENDER}   for_mac=${for_mac}     cert_req_id=${cert_req_id}    exclude_fields=${exclude_fields}
+
+    IF  ${for_kem_based_mac}
+        ${ss}=   Get From Dictionary    ${params}    shared_secret
+                ${protected_cert_conf}=  Protect PKIMessage KEMBasedMAC     ${cert_conf}    shared_secret=${ss}
+    ELSE IF  ${for_mac}
+        ${protected_cert_conf}=  Default Protect With MAC    ${cert_conf}
+    ELSE
+        ${protected_cert_conf}=  Default Protect PKIMessage    ${cert_conf}    &{params}
+    END
+    ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
+    ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
+    ${url}=    Get From Dictionary    ${params}    url    ${None}
+    IF    '${url}' == '${None}'
+        ${url}=    Get From Dictionary    ${params}    url    ${base_url}
+    END
+    ${pki_conf}=   Exchange Migration PKIMessage    ${cert_conf}    ${url}    ${suffix}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    RETURN    ${cert}
+
 Get Next Common Name
     [Documentation]    Return the common name added with the current test index and increment it afterwards.
     ...                There are may some implementation which only allow one sender name, but other ones may allow
