@@ -73,6 +73,7 @@ docs:
     # Test documentation
 	python -m robot.testdoc tests/ doc/test-suites.html
 	python -m robot.testdoc tests_pq_and_hybrid/ doc/test-pq-hybrid-suites.html
+	python -m robot.testdoc tests_mock_ca/ doc/test-mock-ca.html
 
 autoformat:
 	ruff check --fix .
@@ -88,7 +89,7 @@ verifyformat:
 	ruff check .
 
 dryrun:
-	robot --dryrun --pythonpath=./ --variable environment:$(env) tests tests_pq_and_hybrid
+	robot --dryrun --pythonpath=./ --variable environment:$(env) tests tests_pq_and_hybrid  tests_mock_ca
 
 check-sigs:
 	python test_load_pqc.py
@@ -104,5 +105,5 @@ start-mock-ca:
 test-mock-ca:
     # exclude sec-awareness for faster execution.
 	# robot --exclude sec-awareness --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests
-	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests tests_pq_and_hybrid
+	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests tests_pq_and_hybrid tests_mock_ca
 
