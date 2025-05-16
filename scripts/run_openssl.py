@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Example script to generate an RSA private key, create a CSR, and run CMP IR command using OpenSSL.
 
 Can be used to send a certificate request to the Mock-CA.
