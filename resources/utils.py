@@ -648,6 +648,29 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
     return True
 
 
+@not_keyword
+def check_public_key_is_not_unique(first_key: PublicKey, second_key: PublicKey, strict: bool = True) -> bool:
+    """Compare two public keys and check if they are not unique.
+
+    :param first_key: The first public key to compare.
+    :param second_key: The second public key to compare.
+    :param strict: If `True`, means a hybrid keys trad and pq_key are not allowed to be equal.
+    :return: `True` if the keys are not `unique`, `False` otherwise.
+    """
+    if not strict:
+        return first_key != second_key
+
+    if isinstance(first_key, HybridPrivateKey) and isinstance(second_key, HybridPrivateKey):
+        return first_key.trad_key == second_key.trad_key or first_key.pq_key == second_key.pq_key
+
+    if isinstance(first_key, HybridPrivateKey):
+        return second_key in [first_key.trad_key, first_key.pq_key]
+    if isinstance(second_key, HybridPrivateKey):
+        return first_key in [second_key.trad_key, second_key.pq_key]
+
+    return first_key != second_key
+
+
 def check_if_private_key_in_list(  # noqa D417 undocumented-param
     keys: List[PrivateKey], new_key: PrivateKey
 ) -> bool:
@@ -672,7 +695,7 @@ def check_if_private_key_in_list(  # noqa D417 undocumented-param
 
     """
     for key in keys:
-        if key.public_key() == new_key.public_key():
+        if not check_public_key_is_not_unique(key.public_key(), new_key.public_key(), strict=True):
             return True
 
     return False
