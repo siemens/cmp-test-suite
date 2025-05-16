@@ -160,10 +160,10 @@ CA MUST Issue A Chameleon With The Extension Correctly Set
     PKIMessage Body Type Must Be    ${response}    cp
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
-    ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
-    ${delta_extns}=   Get Asn1 Value    ${delta_cert}    tbsCertificate.extensions
+    # To check that the certificate can be correctly build.
+    ${_}=   Build Delta Cert From Paired Cert    ${cert}
     ${base_extns}=   Get Asn1 Value    ${cert}    tbsCertificate.extensions
-    Validate DCD Extension   ${delta_extns}    ${base_extns}
+    Validate DCD Extension   ${cert}    ${base_extns}
 
 CA SHOULD NOT Mark The DCD Extension as Critical
     [Documentation]    According to chameleon-certs-05 section 4, the DCD extension should not be marked as critical.
