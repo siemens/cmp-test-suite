@@ -55,6 +55,7 @@ from resources.exceptions import (
     BadAlg,
     BadCertTemplate,
     BadMessageCheck,
+    BadRequest,
     BadTime,
     CMPTestSuiteError,
     NotAuthorized,
@@ -64,7 +65,6 @@ from resources.exceptions import (
     WrongIntegrity,
 )
 from resources.keyutils import load_public_key_from_cert_template
-from resources.oidutils import id_KemBasedMac
 from resources.protectionutils import (
     get_protection_type_from_pkimessage,
     verify_pkimessage_protection,
@@ -375,29 +375,49 @@ class CertReqHandler:
         if not pki_message["header"]["protectionAlg"].isValue:
             raise BadMessageCheck("Protection algorithm was not set.")
 
-        oid = pki_message["header"]["protectionAlg"]["algorithm"]
-        if get_protection_type_from_pkimessage(pki_message) == "mac":
-            if oid not in [rfc9480.id_DHBasedMac, id_KemBasedMac]:
-                raise WrongIntegrity("The key updated request was MAC protected")
+        prot_type = ProtectedType.get_protection_type(pki_message)
+
+        if prot_type == ProtectedType.MAC:
+            raise WrongIntegrity("The key updated request was MAC protected")
+
+        if prot_type in [ProtectedType.DH, ProtectedType.KEM]:
+            logging.debug("CertReqHandler: Processing KUR message with %s protection", prot_type.value)
 
         self.check_signer_is_a_issued_cert(pki_message)
 
-        try:
-            verify_hybrid_pkimessage_protection(pki_message=pki_message)
-        except ValueError:
+        if prot_type == ProtectedType.KEM:
             verify_pkimessage_protection(
                 pki_message=pki_message,
                 shared_secret=self.state.get_kem_mac_shared_secret(pki_message=pki_message),
-                private_key=self.xwing_key,
-                password=self.pre_shared_secret,
             )
 
-        response, certs = build_kup_from_kur(
-            request=pki_message,
-            implicit_confirm=False,
-            allow_same_key=self.allow_same_key_kur,
-            **self.issuing_params,
-        )
+            if not pki_message["extraCerts"].isValue:
+                raise BadRequest("The extraCerts field MUST be set for `KEM` KUR messages.")
+            response, certs = build_ip_cmp_message(
+                request=pki_message,
+                implicit_confirm=False,
+                verify_ra_verified=False,
+                for_mac=True,
+                **self.issuing_params,
+            )
+
+            # TODO fix for KEM and keyAgreement keys.
+            tmp = PKIMessageTMP()
+            tmp["header"] = response["header"]
+            if response["body"]["ip"]["caPubs"].isValue:
+                tmp["body"]["kup"]["caPubs"] = response["body"]["ip"]["caPubs"]
+            tmp["body"]["kup"]["response"] = response["body"]["ip"]["response"]
+            response = tmp
+
+        else:
+            verify_hybrid_pkimessage_protection(pki_message=pki_message)
+
+            response, certs = build_kup_from_kur(
+                request=pki_message,
+                implicit_confirm=False,
+                allow_same_key=self.allow_same_key_kur,
+                **self.issuing_params,
+            )
 
         return self.process_after_request(
             request=pki_message,

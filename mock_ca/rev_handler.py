@@ -378,6 +378,10 @@ class RevocationHandler:
             if shared_secret is None:
                 raise BadRequest("Shared secret MUST be provided for KEM-based protection.")
             verify_kem_based_mac_protection(pki_message=pki_message, shared_secret=shared_secret)
+
+            if not pki_message["extraCerts"].isValue:
+                raise BadRequest("The extraCerts field MUST be set for `KEM` revocation messages.")
+
             return
 
         if prot_type == ProtectedType.DH:
