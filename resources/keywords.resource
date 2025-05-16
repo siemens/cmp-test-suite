@@ -254,10 +254,22 @@ PKIMessage Body Type Must Be
     END
     Should Be Equal    ${response_type}    ${expected_type}    Response type mismatch
 
+PKIMessage Contains ImplicitConfirm Extension
+    [Documentation]    Checks if the implicitConfirm extension is present in the PKIMessage
+    ...
+    ...                Arguments:
+    ...                - `${pki_message}`: The PKIMessage object to check.
+    ...
+    ...                Returns:
+    ...                - `${result}`: `True` if the implicitConfirm extension is present, `False` otherwise.
+    [Arguments]    ${pki_message}
+    ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
+    RETURN    ${result}
+
 PKIMessage Must Contain ImplicitConfirm Extension
     [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo
     [Arguments]    ${pki_message}
-    ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
+    ${result}=    PKIMessage Contains ImplicitConfirm Extension    ${pki_message}
     Should Be True    ${result}    The implicitConfirm extension was not found in the message
 
 Collect Nonce From PKIMessage
@@ -454,7 +466,7 @@ Confirm Certificate If Needed
     ...
     [Tags]    confirm   default   cert
     [Arguments]    ${response}    &{params}
-    ${result}=   Find OID In GeneralInfo    ${response}   1.3.6.1.5.5.7.4.13
+    ${result}=   PKIMessage Contains ImplicitConfirm Extension    ${response}
     IF    ${result}
         Log    The PKIMessage contains the implicit confirm extension.
         ${cert}=    Get Cert From PKIMessage    ${response}
