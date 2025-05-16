@@ -269,22 +269,6 @@ CA MUST ISSUE A Valid sntrup761 Certificate
 
 
 *** Keywords ***
-Build KEMBasedMAC General Message
-    [Documentation]    Build a KEMBasedMAC General Message.
-    ...
-    ...                Arguments:
-    ...                - ${kem_key}: The KEM key to use for the message.
-    ...                - ${kem_cert}: The KEM certificate to use for the message.
-    ...                - ${random_value}: Optional random value to use for the message, for negative tests.
-    ...                The `infoValue` field **MUST** be absent.
-    [Arguments]    ${kem_key}    ${kem_cert}   ${random_value}=${None}
-    ${info_val}=    Prepare KEMCiphertextInfo   ${kem_key}    ${None}
-    ${genm}=   Build CMP General Message   info_values=${info_val}
-    ...        sender=${SENDER}   recipient=${RECIPIENT}
-    ${cert_chain}=   Build Cert Chain From Dir    ${kem_cert}     cert_chain_dir=./data/cert_logs
-    ${genm}=   Patch ExtraCerts    ${genm}    ${cert_chain}
-    RETURN    ${genm}
-
 Build IR Request KEMBasedMac Protected
     [Documentation]    Build a IR request with KEMBasedMac protected.
     ...

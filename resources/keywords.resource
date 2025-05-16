@@ -21,6 +21,7 @@ Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/extra_issuing_logic.py
+Library             ../resources/general_msg_utils.py
 Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/pq_verify_logic.py
 
@@ -1073,3 +1074,18 @@ Setup Composite Sig Cert
     VAR   ${COMPOSITE_SIG_CERT}     ${comp_cert}  scope=Global  # robocop: off=VAR04
     VAR   ${COMPOSITE_SIG_KEY}      ${comp_key}  scope=Global  # robocop: off=VAR04
 
+Build KEMBasedMAC General Message
+    [Documentation]    Build a KEMBasedMAC General Message.
+    ...
+    ...                Arguments:
+    ...                - ${kem_key}: The KEM key to use for the message.
+    ...                - ${kem_cert}: The KEM certificate to use for the message.
+    ...                - ${random_value}: Optional random value to use for the message, for negative tests.
+    ...                The `infoValue` field **MUST** be absent.
+    [Arguments]    ${kem_key}    ${kem_cert}   ${random_value}=${None}
+    ${info_val}=    Prepare KEMCiphertextInfo   ${kem_key}    ${None}
+    ${genm}=   Build CMP General Message   info_values=${info_val}
+    ...        sender=${SENDER}   recipient=${RECIPIENT}
+    ${cert_chain}=   Build Cert Chain From Dir    ${kem_cert}     cert_chain_dir=./data/cert_logs
+    ${genm}=   Patch ExtraCerts    ${genm}    ${cert_chain}
+    RETURN    ${genm}
