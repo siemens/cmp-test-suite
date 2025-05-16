@@ -2237,7 +2237,7 @@ def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
     temp_files = []
 
     # Determine if inputs are file paths or certificate objects
-    if isinstance(cert, str) and os.path.isfile(cert):
+    if isinstance(cert, str):
         cert_path = cert
         der_data = utils.load_and_decode_pem_file(cert_path)
         cert_obj = parse_certificate(der_data)
@@ -2246,19 +2246,19 @@ def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
         cert_path = _write_temp_cert(cert)
         temp_files.append(cert_path)
 
-    if isinstance(ca_cert, str) and os.path.isfile(ca_cert):
+    if isinstance(ca_cert, str):
         issuer_path = ca_cert
     else:
         issuer_path = _write_temp_cert(ca_cert)
         temp_files.append(issuer_path)
 
-    ocsp_url = ocsp_url or get_ocsp_url_from_cert(cert_obj)
+    ocsp_urls = ocsp_url or get_ocsp_url_from_cert(cert_obj)
 
-    if not ocsp_url:
+    if not ocsp_urls:
         raise ValueError("No OCSP URL found in the certificate.")
 
-    if isinstance(ocsp_url, list):
-        ocsp_url = ocsp_url[0]
+    if isinstance(ocsp_urls, list):
+        ocsp_url = ocsp_urls[0]
 
     cmds = [
         "openssl",

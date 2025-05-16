@@ -37,6 +37,7 @@ from resources import (
     prepareutils,
     utils,
 )
+from resources.asn1utils import try_decode_pyasn1
 from resources.certextractutils import get_extension
 from resources.convertutils import (
     copy_asn1_certificate,
@@ -257,6 +258,7 @@ def validate_dcd_extension(  # noqa: D417 Missing argument descriptions in the d
     Raises:
     ------
         - `ValueError`: If any invalid extension is detected in the DCD.
+        - `BadAsn1Data`: If the DCD is not a valid `DeltaCertificateDescriptor`.
 
     Examples:
     --------
@@ -265,7 +267,8 @@ def validate_dcd_extension(  # noqa: D417 Missing argument descriptions in the d
     """
     if isinstance(dcd_extensions, rfc9480.CMPCertificate):
         tmp_extn = get_extension(dcd_extensions["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
-        data, _ = decoder.decode(tmp_extn["extnValue"], asn1Spec=DeltaCertificateDescriptor())
+        data, _ = try_decode_pyasn1(tmp_extn["extnValue"], DeltaCertificateDescriptor())  # type: ignore
+        data: DeltaCertificateDescriptor
         dcd_extensions = data["extensions"]
 
     base_cert_ext_map = {ext["extnID"]: ext for ext in base_cert_extensions}
