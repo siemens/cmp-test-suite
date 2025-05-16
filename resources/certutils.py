@@ -18,6 +18,7 @@ import requests
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
@@ -2185,3 +2186,133 @@ def verify_csr_signature(  # noqa: D417 Missing argument descriptions in the doc
         )
     except InvalidSignature as e:
         raise BadPOP("The signature verification failed.") from e
+
+
+def _write_temp_cert(cert_to_write: rfc9480.CMPCertificate) -> str:
+    """Write a certificate object to a temporary PEM file.
+
+    :param cert_to_write: The certificate object to write.
+    :return: The path to the temporary PEM file.
+    """
+    der_data = encoder.encode(cert_to_write)
+    cert_obj = x509.load_der_x509_certificate(der_data)
+
+    with tempfile.NamedTemporaryFile(delete=False, mode="wb", suffix=".pem") as tmp_file:
+        tmp_file.write(cert_obj.public_bytes(encoding=Encoding.PEM))
+        return tmp_file.name
+
+
+@keyword(name="Validate OCSP Status OpenSSL")
+def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
+    cert: Union[str, rfc9480.CMPCertificate],
+    ca_cert: Union[str, rfc9480.CMPCertificate],
+    ocsp_url: Optional[str] = None,
+    expected_status: str = "good",
+    unknown_is_success: bool = False,
+    *,
+    use_nonce: bool = True,
+) -> None:
+    """Check the OCSP status of a certificate with OpenSSL.
+
+    Arguments:
+    ---------
+        - `cert`: The certificate to check. Can be a file path or a certificate object.
+        - `ca_cert`: The issuer certificate. Can be a file path or a certificate object.
+        - `ocsp_url`: The OCSP URL. If not provided, it will be extracted from the certificate.
+        - `expected_status`: The expected OCSP status. Can be "good", "revoked", or "unknown".
+        - `unknown_is_success`: If True, treat "unknown" status as a success. Defaults to `False`.
+        - `use_nonce`: If True, include a nonce in the OCSP request. Defaults to `True`.
+
+    Raises:
+    ------
+        - `ValueError`: If the OCSP status does not match the expected status or no OCSP URL is found.
+        - `CertRevoked`: If the certificate is revoked and not expected to be revoked.
+
+    Examples:
+    --------
+    | Validate OCSP Status OpenSSL | ${cert} | ${issuer} | expected_status=revoked |
+    | Validate OCSP Status OpenSSL | ${cert_path} | ${issuer_path} | ${ocsp_url} |
+
+    """
+    temp_files = []
+
+    # Determine if inputs are file paths or certificate objects
+    if isinstance(cert, str) and os.path.isfile(cert):
+        cert_path = cert
+        der_data = utils.load_and_decode_pem_file(cert_path)
+        cert_obj = parse_certificate(der_data)
+    else:
+        cert_obj = cert
+        cert_path = _write_temp_cert(cert)
+        temp_files.append(cert_path)
+
+    if isinstance(ca_cert, str) and os.path.isfile(ca_cert):
+        issuer_path = ca_cert
+    else:
+        issuer_path = _write_temp_cert(ca_cert)
+        temp_files.append(issuer_path)
+
+    ocsp_url = ocsp_url or get_ocsp_url_from_cert(cert_obj)
+
+    if not ocsp_url:
+        raise ValueError("No OCSP URL found in the certificate.")
+
+    if isinstance(ocsp_url, list):
+        ocsp_url = ocsp_url[0]
+
+    cmds = [
+        "openssl",
+        "ocsp",
+        "-issuer",
+        issuer_path,
+        "-cert",
+        cert_path,
+        "-url",
+        ocsp_url,
+        "-CAfile",
+        issuer_path,
+        "-resp_text",
+    ]
+
+    if use_nonce:
+        cmds.extend(["-nonce"])
+
+    result = subprocess.run(
+        cmds,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        logging.error("OCSP check failed.", exc_info=True)
+        raise ValueError(f"OCSP check failed (stdout): {result.stdout}")
+    else:
+        logging.info("OCSP check succeeded.\n: %s", result.stdout)
+        logging.debug(result.stdout)
+        if "Cert Status: revoked" in result.stdout:
+            status = "revoked"
+        elif "Cert Status: good" in result.stdout:
+            status = "good"
+        else:
+            status = "unknown"
+
+    for file_path in temp_files:
+        try:
+            os.remove(file_path)
+        except OSError as e:
+            logging.error(f"Error deleting temporary file {file_path}: {e}")
+
+    if expected_status == status:
+        return
+
+    if "unknown" == status and unknown_is_success:
+        return
+
+    if status == "revoked":
+        raise CertRevoked("Certificate is revoked.")
+
+    if status == "good":
+        raise ValueError("Certificate is good, but expected revoked status.")
+
+    if status == "unknown":
+        raise ValueError(f"Certificate status is unknown, but expected the `{expected_status}` status.")
