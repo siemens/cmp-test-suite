@@ -204,8 +204,8 @@ def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
 
     if cert_sig_alg in PQ_OID_2_NAME:
         raise ValueError(
-            "The certificate contains a post-quantum signature algorithm."
-            "please use traditional signature algorithm"
+            "The certificate contains a post-quantum signature algorithm. "
+            "please use traditional signature algorithm "
             "because the migration should test use case of "
             "having the certificate with traditional signature algorithm."
         )
