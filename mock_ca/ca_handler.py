@@ -896,6 +896,14 @@ class CAHandler:
             ss, genp = build_genp_kem_ct_info_from_genm(
                 genm=pki_message,  # type: ignore
             )
+
+            self._check_is_not_confirmed(pki_message)
+            self.rev_handler.is_not_allowed_to_request(
+                pki_message,
+                issued_certs=self.state.issued_certs,
+            )
+            logging.warning("The certificate was not revoked or for revocation request.")
+
             self.state.add_kem_mac_shared_secret(pki_message=pki_message, shared_secret=ss)
             return genp  # type: ignore
 
