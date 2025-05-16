@@ -1413,17 +1413,13 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
 
     if prot_type == ProtectedType.KEM:
         if not allow_kem:
-            raise ValueError(
-                f"Protection type is `kem_based_mac`, but `allow_kem` is set to False."
-            )
+            raise ValueError("Protection type is `kem_based_mac`, but `allow_kem` is set to False.")
 
         return prot_type.value
 
     if prot_type == ProtectedType.DH:
         if not allow_dh:
-            raise ValueError(
-                f"Protection type is `dh`, but `allow_dh` is set to False."
-            )
+            raise ValueError("Protection type is `dh`, but `allow_dh` is set to False.")
 
         return prot_type.value
 
