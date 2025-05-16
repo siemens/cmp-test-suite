@@ -4641,13 +4641,7 @@ def build_cmp_revoke_request(  # noqa D417 undocumented-param
         sender=sender,
         recipient=recipient,
         exclude_fields=exclude_fields,
-        transaction_id=params.get("transaction_id"),
-        sender_nonce=params.get("sender_nonce"),
-        recip_nonce=params.get("recip_nonce"),
-        recip_kid=params.get("recip_kid"),
-        implicit_confirm=params.get("implicit_confirm", False),
-        sender_kid=params.get("sender_kid"),
-        pvno=int(params.get("pvno", 2)),
+        **params,
     )
     pki_message["body"] = pki_body
     return pki_message
