@@ -484,14 +484,17 @@ Confirm Certificate If Needed
         ${protection}=   Get From Dictionary    ${args}    protection
         IF  '${protection}' == 'signature'
             VAR   ${exclude_fields}    sender,senderKID
+            VAR   ${for_mac}    ${False}
         ELSE
             VAR   ${exclude_fields}    ${None}
+            VAR   ${for_mac}    ${True}
         END
         ${cert_req_id}=    Get From Dictionary    ${args}    cert_req_id   ${None}
         ${cert_conf}=   Build Cert Conf From Resp  ${response}   sender=${sender}
         ...                                         recipient=${recipient}
         ...                                         exclude_fields=${exclude_fields}
         ...                                         cert_req_id=${cert_req_id}
+        ...                                         for_mac=${for_mac}
         ${cert_conf}=   Default Protect PKIMessage    ${cert_conf}    &{params}
         ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
         ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
