@@ -1638,6 +1638,7 @@ def default_validity(
     not_after = not_before + timedelta(days=days)
     return prepare_validity(not_before, not_after)
 
+
 def _validate_name(
     name: rfc9480.Name,
     validate_data_types: bool = True,
@@ -1648,7 +1649,6 @@ def _validate_name(
     :param validate_data_types: Whether to validate the data types of the RDN components. Defaults to `True`.
     :raises ValueError: If the RDN is not of the expected type.
     """
-
     if not name.isValue:
         return
 
@@ -1687,7 +1687,8 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
         - `alt_use_rsa_pss`: Whether to use RSA-PSS with the alternative key. Defaults to `False`.
         - `extensions`: Extensions to include in the certificate. Defaults to `None`.
         (as an example for OCSP, CRL or etc.)
-        - `validate_rel_dis_name_data_type`: Whether to validate the relative distinguished name data type. Defaults to `True`.
+        - `validate_rel_dis_name_data_type`: Whether to validate the relative distinguished name data type.
+        Defaults to `True`.
 
     Returns:
     -------
@@ -1702,7 +1703,6 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
     | ${cert}= | Build Cert From CertTemplate | cert_template=${cert_template} | ca_cert=${ca_cert} | ca_key=${ca_key} |
 
     """
-
     _validate_name(cert_template["subject"], validate_data_types=kwargs.get("validate_rel_dis_name_data_type", True))
 
     tbs_certs = prepare_tbs_certificate_from_template(
@@ -1976,7 +1976,8 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         - `alt_hash_alg`: The hash algorithm to use for the alternative signing key. Defaults to `sha256`.
         - `alt_use_rsa_pss`: Whether to use RSA-PSS for the alternative signing key. Defaults to `False`.
         - `alt_sign_key`: Optional alternative signing key to use. Defaults to `None`.
-        - `validate_rel_dis_name_data_type`: Whether to validate the relative distinguished name data. Defaults to `True`.
+        - `validate_rel_dis_name_data_type`: Whether to validate the relative distinguished name
+        data. Defaults to `True`.
 
     Returns:
     -------
@@ -2003,7 +2004,6 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
 
     if issuer is None:
         raise ValueError("The issuer is not set and can not be derived from the CSR.")
-
 
     _validate_name(
         csr["certificationRequestInfo"]["subject"],

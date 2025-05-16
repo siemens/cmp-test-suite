@@ -395,7 +395,7 @@ def _prepare_attr_and_type_value(
 
 
 @keyword(name="Prepare RelativeDistinguishedName")
-def prepare_relative_distinguished_name(
+def prepare_relative_distinguished_name(  # noqa D417 undocumented-param
     values: str,
     bad_min_size: bool = False,
     bad_max_size: bool = False,

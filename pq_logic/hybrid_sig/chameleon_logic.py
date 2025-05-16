@@ -245,8 +245,7 @@ def build_chameleon_base_certificate(
 
 @keyword(name="Validate DCD Extension")
 def validate_dcd_extension(  # noqa: D417 Missing argument descriptions in the docstring
-    dcd_extensions: Union[rfc5280.Extensions, rfc9480.CMPCertificate],
-    base_cert_extensions: rfc5280.Extensions
+    dcd_extensions: Union[rfc5280.Extensions, rfc9480.CMPCertificate], base_cert_extensions: rfc5280.Extensions
 ) -> None:
     """Validate the DCD extension to ensure it meets the defined constraints.
 
@@ -264,7 +263,6 @@ def validate_dcd_extension(  # noqa: D417 Missing argument descriptions in the d
     | Validate DCD Extension | ${dcd_extensions} | ${base_cert_extensions} |
 
     """
-
     if isinstance(dcd_extensions, rfc9480.CMPCertificate):
         tmp_extn = get_extension(dcd_extensions["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
         data, _ = decoder.decode(tmp_extn["extnValue"], asn1Spec=DeltaCertificateDescriptor())
@@ -278,7 +276,10 @@ def validate_dcd_extension(  # noqa: D417 Missing argument descriptions in the d
         # Step 1: DCD MUST NOT contain the extension if it matches Base Certificate's criticality + value
         if ext_id in base_cert_ext_map:
             base_ext = base_cert_ext_map[ext_id]
-            if dcd_ext["critical"] == base_ext["critical"] and dcd_ext["extnValue"].asOctets() == base_ext["extnValue"].asOctets():
+            if (
+                dcd_ext["critical"] == base_ext["critical"]
+                and dcd_ext["extnValue"].asOctets() == base_ext["extnValue"].asOctets()
+            ):
                 raise ValueError(
                     f"Invalid extension in DCD: Extension with ID {ext_id} is identical to one in the Base Certificate."
                 )
