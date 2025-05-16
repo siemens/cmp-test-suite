@@ -678,7 +678,7 @@ def validate_senderkid_for_cmp_protection(  # noqa D417 undocumented-param
     # Determine the type of protection
     protection_type = ProtectedType.get_protection_type(pki_message)
     sender_kid = pki_message["header"]["senderKID"].asOctets()
-    if ProtectedType.MAC == protection_type:
+    if protection_type in [ProtectedType.MAC, ProtectedType.KEM]:
         _verify_senderkid_for_mac(pki_message=pki_message, allow_mac_failure=allow_mac_failure)
     else:
         # For signature-based protection, the senderKID must match the certificate's SubjectKeyIdentifier
@@ -733,7 +733,7 @@ def check_pkimessage_signature_protection(  # noqa D417 undocumented-param
     prot_alg_id = pki_message["header"]["protectionAlg"]
     protection_type_oid = prot_alg_id["algorithm"]
 
-    encoded: bytes = protectionutils.extract_protected_part(pki_message)
+    encoded: bytes = protectionutils.prepare_protected_part(pki_message)
 
     if protection_type_oid not in MSG_SIG_ALG:
         raise BadAlg("PKIMessage is not signed by a known signature oid!")

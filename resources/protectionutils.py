@@ -569,7 +569,7 @@ def _compute_symmetric_protection(
     Defaults to `False`.
     :return: The computed protection value.
     """
-    encoded = extract_protected_part(pki_message)
+    encoded = prepare_protected_part(pki_message)
 
     alg_id = pki_message["header"]["protectionAlg"]
     protection_type_oid = alg_id["algorithm"]
@@ -709,7 +709,7 @@ def _compute_pkimessage_protection(
         bytes_secret = convertutils.str_to_bytes(password)
         return _compute_symmetric_protection(pki_message=pki_message, password=bytes_secret)
 
-    data = extract_protected_part(pki_message)
+    data = prepare_protected_part(pki_message)
     sign_key = ensure_is_sign_key(private_key)
 
     if protection_type_oid == rfc5480.id_dsa_with_sha256 and isinstance(sign_key, dsa.DSAPrivateKey):
@@ -867,15 +867,6 @@ def _prepare_prot_alg_id(
     return prot_alg_id.subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1), cloneValueFlag=True
     )
-
-
-@not_keyword
-def extract_protected_part(pki_message: PKIMessageTMP) -> bytes:
-    """Extract the protected part of a PKIMessage structure."""
-    protected_part = ProtectedPartTMP()
-    protected_part["header"] = pki_message["header"]
-    protected_part["body"] = pki_message["body"]
-    return encoder.encode(protected_part)
 
 
 @not_keyword
@@ -1271,7 +1262,7 @@ def _verify_pki_message_sig(pki_message: PKIMessageTMP, public_key: Optional[Ver
     prot_alg_id = pki_message["header"]["protectionAlg"]
     protection_type_oid = prot_alg_id["algorithm"]
     protection_value: bytes = pki_message["protection"].asOctets()
-    encoded = extract_protected_part(pki_message)
+    encoded = prepare_protected_part(pki_message)
     if protection_type_oid in RSASSA_PSS_OID_2_NAME:
         pub_key = public_key or certutils.load_public_key_from_cert(pki_message["extraCerts"][0])
         if not isinstance(pub_key, rsa.RSAPublicKey):
@@ -1729,7 +1720,7 @@ def signature_protection_must_match(  # noqa D417 undocumented-param
     try:
         certutils.verify_signature_with_cert(
             asn1cert=first_msg_cert,
-            data=extract_protected_part(response),
+            data=prepare_protected_part(response),
             signature=response["protection"].asOctets(),
             hash_alg=hash_alg,
         )
@@ -1743,7 +1734,7 @@ def signature_protection_must_match(  # noqa D417 undocumented-param
         try:
             certutils.verify_signature_with_cert(
                 asn1cert=first_msg_cert,
-                data=extract_protected_part(pki_conf),
+                data=prepare_protected_part(pki_conf),
                 signature=pki_conf["protection"].asOctets(),
                 hash_alg=hash_alg,
             )
@@ -1758,7 +1749,7 @@ def signature_protection_must_match(  # noqa D417 undocumented-param
         try:
             certutils.verify_signature_with_cert(
                 asn1cert=first_msg_cert,
-                data=extract_protected_part(pki_polling),
+                data=prepare_protected_part(pki_polling),
                 signature=pki_polling["protection"].asOctets(),
                 hash_alg=hash_alg,
             )
@@ -2243,7 +2234,7 @@ def protect_pkimessage_kem_based_mac(  # noqa: D417 Missing argument description
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1), cloneValueFlag=True
     )
 
-    data = extract_protected_part(pki_message)
+    data = prepare_protected_part(pki_message)
     mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=prot_alg_id, ss=shared_secret)
 
     if bad_message_check:
@@ -2332,7 +2323,7 @@ def verify_kem_based_mac_protection(
     if shared_secret is None:
         raise ValueError("Either `private_key` or `shared_secret` must be provided.")
 
-    data = extract_protected_part(pki_message)
+    data = prepare_protected_part(pki_message)
     alg_id = pki_message["header"]["protectionAlg"]
     computed_mac = compute_kem_based_mac_from_alg_id(data, alg_id, shared_secret)
     logging.debug("Computed MAC: %s", computed_mac.hex())
@@ -2548,7 +2539,7 @@ def _compute_and_prepare_pkimessage_sig_protection(
     )
     pki_message["header"]["protectionAlg"] = prot_alg_id
 
-    der_data = _verbose_get_protected_part(pki_message)
+    der_data = prepare_protected_part(pki_message)
     signature = sign_data_with_alg_id(
         alg_id=pki_message["header"]["protectionAlg"],
         data=der_data,
@@ -2560,22 +2551,6 @@ def _compute_and_prepare_pkimessage_sig_protection(
 
     pki_message["protection"] = prepare_pki_protection_field(signature)
     return pki_message
-
-
-def _verbose_get_protected_part(pki_message: PKIMessageTMP) -> bytes:
-    """Get the protected part of the PKIMessage.
-
-    :param pki_message: The PKIMessage.
-    :return: The protected part.
-    """
-    for x in ["sender", "pvno", "recipient"]:
-        if x not in pki_message["header"]:
-            raise ValueError(f"The `{x}` field has no value, can not protect the `PKIMessage`.")
-
-    if not pki_message["body"].isValue:
-        raise ValueError("The `body` field has no value, can not protect the `PKIMessage`.")
-
-    return prepare_protected_part(pki_message)
 
 
 def _patch_extra_certs(
@@ -2731,7 +2706,7 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
     if info_val_type_pub_key is not None:
         pki_message["header"]["generalInfo"].append(info_val_type_pub_key)
 
-    der_data = _verbose_get_protected_part(pki_message)
+    der_data = prepare_protected_part(pki_message)
 
     signature = sign_data_with_alg_id(
         alg_id=alt_prot_alg_id,
@@ -2747,7 +2722,7 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
     info_val_type_sig["infoValue"] = encoder.encode(univ.BitString.fromOctetString(signature))
     pki_message["header"]["generalInfo"].append(info_val_type_sig)
 
-    der_data = _verbose_get_protected_part(pki_message)
+    der_data = prepare_protected_part(pki_message)
 
     signature = sign_data_with_alg_id(
         alg_id=prot_alg_id,
@@ -2759,6 +2734,7 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
     return pki_message
 
 
+@keyword(name="Prepare ProtectedPart")
 def prepare_protected_part(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP,
 ) -> bytes:
@@ -2774,13 +2750,27 @@ def prepare_protected_part(  # noqa D417 undocumented-param
 
     Raises:
     ------
-         - `BadAsn1Data`: If the protected part cannot be encoded.
+         - `ValueError`: If the PKIMessage is missing required fields (sender, pvno, recipient).
+
+    Examples:
+    --------
+    | ${der_data}= | Prepare ProtectedPart | ${pki_message} |
 
     """
-    prot_part = ProtectedPartTMP()
-    prot_part["header"] = pki_message["header"]
-    prot_part["body"] = pki_message["body"]
-    return encoder.encode(prot_part)
+    for x in ["sender", "pvno", "recipient"]:
+        if x not in pki_message["header"]:
+            raise ValueError(f"The `{x}` field has no value, can not protect the `PKIMessage`.")
+
+    if not pki_message["body"].isValue:
+        raise ValueError("The `body` field has no value, can not protect the `PKIMessage`.")
+
+    protected_part = ProtectedPartTMP()
+    protected_part["header"] = pki_message["header"]
+    protected_part["body"] = pki_message["body"]
+    try:
+        return encoder.encode(protected_part)
+    except pyasn1.error.PyAsn1Error as e:
+        raise ValueError("The encoding of the `ProtectedPart` failed.") from e
 
 
 @not_keyword
