@@ -21,7 +21,7 @@ from resources.oidutils import (
     PQ_SIG_OID_2_NAME,
     SYMMETRIC_PROT_ALGO,
     TRAD_SIG_OID_2_NAME,
-    id_KemBasedMac,
+    id_KemBasedMac, AES_GMAC_NAME_2_OID,
 )
 
 
@@ -60,6 +60,9 @@ class ProtectionAlgorithm(enum.Enum):
 
         """
         value_upper = value.replace("-", "_").upper()
+
+        if value in AES_GMAC_NAME_2_OID:
+            return ProtectionAlgorithm.AES_GMAC
 
         try:
             return ProtectionAlgorithm[value_upper]
