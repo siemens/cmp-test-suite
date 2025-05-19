@@ -628,6 +628,11 @@ def _compute_symmetric_protection(
         )
 
     if protection_type_oid in AES_GMAC_OID_2_NAME:
+        if not isinstance(prot_params, rfc9044.GCMParameters):
+            prot_params, rest = decoder.decode(prot_params, rfc9044.GCMParameters())
+            if rest != b"" and not unsafe_decoding:
+                raise ValueError("The decoding of `GCMParameters` structure had a remainder!")
+
         nonce = prot_params["nonce"].asOctets()
         return cryptoutils.compute_gmac(data=encoded, key=password, iv=nonce)
 
