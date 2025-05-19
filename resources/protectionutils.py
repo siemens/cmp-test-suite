@@ -389,7 +389,7 @@ def _compute_pbmac1_from_param(
         )
 
     hash_alg = HMAC_OID_2_NAME[prot_params["messageAuthScheme"]["algorithm"]].split("-")[1]  # type: ignore
-    pbkdf2_hash_alg = get_hash_from_oid(pbkdf2_param["prf"]["algorithm"])
+    pbkdf2_hash_alg = get_hash_from_oid(pbkdf2_param["prf"]["algorithm"]).split("-")[1]  # type: ignore
     if pbkdf2_hash_alg != hash_alg and enforce_lwcmp:
         raise LwCMPViolation(
             "The `owf` and `mac` fields in `PBMAC1Parameters` must be the same hash algorithm."
@@ -1225,10 +1225,13 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
 
     Raises:
     ------
-        - InvalidSignature: If the signature-based protection verification fails due to a mismatched signature.
-        - ValueError: If the protection algorithm is unsupported.
-        - ValueError: If the computed protection value does not match the expected value, indicating tampering \
-        or data corruption.
+        - `InvalidSignature`: If the signature-based protection verification fails due to a mismatched signature.
+        - `BadMacProtection`: If the computed protection value does not match the expected value.
+        - `BadAlg`: If the `enforce_lwcmp` is set to `True` and the protection algorithm is not recognized.
+        - `LwCMPViolation`: If the hash algorithms are different and `enforce_lwcmp` is `True`.
+        - `ValueError`: If the protection algorithm/type is unsupported.
+        - `BadMessageCheck`: If the protection value for DH and KEM based MAC does not match the expected value.
+
 
 
     Examples:
@@ -1243,7 +1246,7 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
     protection_type_oid = pki_message["header"]["protectionAlg"]["algorithm"]
 
     if enforce_lwcmp:
-        protection_type_oid = get_protection_type_from_pkimessage(pki_message, enforce_lwcmp=True)
+        _ = get_protection_type_from_pkimessage(pki_message, enforce_lwcmp=True)
 
     if protection_type_oid == id_KemBasedMac:
         verify_kem_based_mac_protection(
@@ -2070,6 +2073,10 @@ def compute_kdf_from_alg_id(kdf_alg_id: rfc9480.AlgorithmIdentifier, ss: bytes, 
             pbkdf2_params = decoder.decode(kdf_alg_id["parameters"], asn1Spec=rfc9480.AlgorithmIdentifier())[0]
         else:
             pbkdf2_params = kdf_alg_id["parameters"]
+
+        if pbkdf2_params["prf"]["algorithm"] not in HMAC_OID_2_NAME:
+            _name = may_return_oid_to_name(pbkdf2_params["prf"]["algorithm"])
+            raise BadAlg(f"Unsupported PRF algorithm: {_name}. Only HMAC is supported.")
 
         return cryptoutils.compute_pbkdf2_from_parameter(key=ss, parameters=pbkdf2_params)
 
