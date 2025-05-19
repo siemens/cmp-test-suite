@@ -278,7 +278,7 @@ CA MUST Reject PKIMessage With Different MAC Protection Algorithm Than MSG_MAC_A
     ...    by a MAC algorithm not listed in `MSG_MAC_ALG`, such as `hmac`. The CA MUST reject the request, and
     ...    the response may include the failinfo `badMessageCheck`, as specified in Section 3.5.
     [Tags]    mac    negative    protectionAlg    rfc9483-header   minimal
-    Skip If    not ${LWCMP}    This test is only for LwCMP.
+    Skip If    not ${ENFORCE_RFC9481}    This test is only for LwCMP.
     ${p10cr}=    Build P10cr From CSR    ${EXP_CSR}    sender=${SENDER}    recipient=${RECIPIENT}   for_mac=True
     ${protected_p10cr}=    Protect PKIMessage    ${p10cr}  hmac   password=${PRESHARED_SECRET}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}

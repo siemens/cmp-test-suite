@@ -23,6 +23,14 @@ ${INITIAL_KEY_PATH}    ${None}
 ${INITIAL_CERT_PATH}   ${None}
 ${INITIAL_KEY_PASSWORD}   ${None}
 
+# Test the LWCMP version.
+${LWCMP}   ${True}
+# Whether to enforce the algorithm to be set in the
+# Algorithm Profile RFC9481.
+# Does not affect the PQ signature algorithms.
+# Only MAC and traditional signatures.
+${ENFORCE_RFC9481}   ${True}
+
 
 # Root certificates that we trust when verifying the identity of the server, this applies when sending CMP-over-HTTP
 # requests

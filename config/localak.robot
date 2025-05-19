@@ -19,6 +19,15 @@ ${INITIAL_KEY_PATH}    ${None}
 ${INITIAL_CERT_PATH}   ${None}
 ${INITIAL_KEY_PASSWORD}   ${None}
 
+# Test the LWCMP version.
+${LWCMP}   ${True}
+# Whether to enforce the algorithm to be set in the
+# Algorithm Profile RFC9481.
+# Does not affect the PQ signature algorithms.
+# Only MAC and traditional signatures.
+${ENFORCE_RFC9481}   ${True}
+
+
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CloudCA-Integration-Test-User
 ${RECIPIENT}           CloudPKI-Integration-Test

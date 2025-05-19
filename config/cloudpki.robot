@@ -73,6 +73,11 @@ ${KEY_USAGE_STRICTNESS}   LAX
 ${STRICT}   ${False}
 # Test the LWCMP version.
 ${LWCMP}   ${True}
+# Whether to enforce the algorithm to be set in the
+# Algorithm Profile RFC9481.
+# Does not affect the PQ signature algorithms.
+# Only MAC and traditional signatures.
+${ENFORCE_RFC9481}   ${True}
 
 
 # IF legacy systems are used, it might be allowed to use,
