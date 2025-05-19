@@ -18,10 +18,11 @@ from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_
 from resources.asn1_structures import PKIMessageTMP
 from resources.exceptions import UnknownOID
 from resources.oidutils import (
+    AES_GMAC_NAME_2_OID,
     PQ_SIG_OID_2_NAME,
     SYMMETRIC_PROT_ALGO,
     TRAD_SIG_OID_2_NAME,
-    id_KemBasedMac, AES_GMAC_NAME_2_OID,
+    id_KemBasedMac,
 )
 
 
