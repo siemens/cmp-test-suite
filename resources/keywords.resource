@@ -823,11 +823,11 @@ PKIStatusInfo failinfo Bit Must Be
     ${result}=    Is Bit Set    ${status["failInfo"]}    ${failinfo}    ${exclusive}
     IF    not ${result}
         IF    ${FAILINFO_MUST_BE_CORRECT}
-            Log Asn1    ${status}
+            ${_}=   Display PKIStatusInfo   ${status}
             Fail   The failInfo bit was not set correctly.
         ELSE
             LOG   The failInfo bit was not set correctly.
-            Log Asn1    ${status}
+            ${_}=   Display PKIStatusInfo   ${status}
         END
     END
 
@@ -842,7 +842,7 @@ PKIStatus Must Be
     [Arguments]    ${pki_message}  ${status}   ${index}=0
     ${pki_status}=    Get Status From PKIMessage      ${pki_message}    ${index}
     IF  not '${pki_status}' == '${status}'
-        ${pki_status_info}=   Display Pki Status Info    ${pki_message}    ${index}   # robocop: off=VAR02
+        ${pki_status_info}=   Display PKIStatusInfo    ${pki_message}    ${index}   # robocop: off=VAR02
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
 

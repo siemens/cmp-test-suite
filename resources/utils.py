@@ -969,6 +969,7 @@ def get_cert_chain_names(certs: List[rfc9480.CMPCertificate]) -> str:
     return "\n".join(names)
 
 
+@keyword(name="Display PKIStatusInfo")
 def display_pki_status_info(  # noqa D417 undocumented-param
     pki_status_info: Union[PKIMessageTMP, rfc9480.PKIStatusInfo],
     index: Strint = 0,
