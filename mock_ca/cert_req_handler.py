@@ -128,6 +128,7 @@ class CertReqHandler:
         self.kga_key = kga_key
         self.kga_cert_chain = kga_cert_chain
         self.issuing_db = issuing_db
+        self.enforce_lwcmp_alg_profile = False
 
         self.issuing_params = load_env_data_certs()
 
@@ -513,8 +514,11 @@ class CertReqHandler:
                 logging.debug("CertReqHandler: Processing KEM/DH protection")
 
             else:
-                if oid not in [rfc9480.id_PasswordBasedMac, rfc9481.id_PBMAC1]:
-                    raise BadAlg("For LwCMP is only `PasswordBasedMac` and `PBMAC1` as protection algorithm allowed.")
+                if self.enforce_lwcmp_alg_profile:
+                    if oid not in [rfc9480.id_PasswordBasedMac, rfc9481.id_PBMAC1]:
+                        raise BadAlg(
+                            "For LwCMP is only `PasswordBasedMac` and `PBMAC1` as protection algorithm allowed."
+                        )
 
     def _build_cert_resp_error_response(self, e: CMPTestSuiteError, request: PKIMessageTMP) -> PKIMessageTMP:
         """Build an error response for an IR message.
