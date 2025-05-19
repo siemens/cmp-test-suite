@@ -28,7 +28,7 @@ from resources.oidutils import (
     PQ_SIG_OID_2_NAME,
     PROT_SYM_ALG,
     RSA_SHA3_OID_2_NAME,
-    RSA_SHA_OID_2_NAME,
+    RSA_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
     SHA3_OID_2_NAME,
     SHA_OID_2_NAME,
@@ -218,7 +218,7 @@ class AllAlgorithmProfile(AlgorithmProfile):
     msg_sig_alg = {
         **ECDSA_SHA3_OID_2_NAME,
         **ECDSA_SHA_OID_2_NAME,
-        **RSA_SHA_OID_2_NAME,
+        **RSA_OID_2_NAME,
         **RSASSA_PSS_OID_2_NAME,
         **RSA_SHA3_OID_2_NAME,
         **PQ_SIG_OID_2_NAME,
