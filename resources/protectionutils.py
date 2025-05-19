@@ -1321,11 +1321,13 @@ def get_protection_alg_name(pki_message: PKIMessageTMP) -> str:  # noqa D417 und
 
 
 def _enforce_lwcmp_protection_alg(pki_message: PKIMessageTMP, allow_dh: bool = True, allow_kem: bool = True) -> str:
-    """Enforce the lightweight CMP protection algorithm.
+    """Enforce the lightweight CMP protection algorithm, specified in RFC 9481.
 
     :param pki_message: The PKIMessage to check.
     :param allow_dh: Whether to allow DHBasedMAC protection. Defaults to `True`.
     :param allow_kem: Whether to allow KEMBasedMAC protection. Defaults to `True`.
+    :raises ValueError: If the protection algorithm is not a value.
+    :raises BadAlg: If the protection algorithm is not allowed as specified in RFC 9481.
     """
     if not pki_message["header"]["protectionAlg"].isValue:
         raise ValueError("The protectionAlg field is not a value!")
@@ -1345,16 +1347,16 @@ def _enforce_lwcmp_protection_alg(pki_message: PKIMessageTMP, allow_dh: bool = T
         if alg_oid in LWCMP_MAC_OID_2_NAME:
             return prot_type.value
 
-        raise ValueError(
+        raise BadAlg(
             f"Expected 'pbmac1' or 'password_based_mac' protection, but got: {may_return_oid_to_name(alg_oid)}"
         )
 
     if prot_type == ProtectedType.TRAD_SIGNATURE:
         if alg_oid not in MSG_SIG_ALG:
-            raise ValueError(f"Expected to be a `MSG_SIG_ALG` algorithm, but got: {may_return_oid_to_name(alg_oid)}")
+            raise BadAlg(f"Expected to be a `MSG_SIG_ALG` algorithm, but got: {may_return_oid_to_name(alg_oid)}")
         return prot_type.value
 
-    raise ValueError(
+    raise BadAlg(
         f"Expected to be a `MSG_SIG_ALG` or `LWCMP_MAC_OID_2_NAME` algorithm, "
         f"but got: {may_return_oid_to_name(alg_oid)}"
     )
@@ -1373,7 +1375,7 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     ---------
         - `pki_message`: The PKIMessage object to check.
         - `enforce_lwcmp`: Boolean flag to indicate if the lightweight CMP version is checked. Defaults to `False`.
-        Then only "pbmac1" and "password-based-mac" are allowed.
+        Then only "pbmac1" and "password-based-mac" are allowed (RFC 9481).
         - `allow_dh`: whether to allow `DHBasedMac` protection. Defaults to `True`.
         - `allow_kem`: whether to allow `KEMBasedMac` protection. Defaults to `True`.
 
@@ -1386,7 +1388,7 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     ------
         - `UnknownOID`: If the OID is not valid, unsupported or not allowed.
         - `ValueError`: If the protection algorithm is not a value.
-        - `ValueError`: If the protection algorithm is not allowed as in RFC 9483 specified (for `enforce_lwcmp`).
+        - `BadAlg`: If the protection algorithm is not allowed as in RFC 9481 specified (for `enforce_lwcmp`).
 
     Examples:
     --------
@@ -1410,13 +1412,13 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
 
     if prot_type == ProtectedType.KEM:
         if not allow_kem:
-            raise ValueError("Protection type is `kem_based_mac`, but `allow_kem` is set to False.")
+            raise BadAlg("Protection type is `kem_based_mac`, but `allow_kem` is set to False.")
 
         return prot_type.value
 
     if prot_type == ProtectedType.DH:
         if not allow_dh:
-            raise ValueError("Protection type is `dh`, but `allow_dh` is set to False.")
+            raise BadAlg("Protection type is `dh`, but `allow_dh` is set to False.")
 
         return prot_type.value
 
