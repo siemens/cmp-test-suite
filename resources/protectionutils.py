@@ -70,6 +70,7 @@ from resources.convertutils import (
 from resources.data_objects import FixedSHAKE128, FixedSHAKE256
 from resources.exceptions import (
     BadAlg,
+    BadAsn1Data,
     BadDataFormat,
     BadMacProtection,
     BadMessageCheck,
@@ -363,17 +364,29 @@ def _compute_pbmac1_from_param(
     if not isinstance(prot_params, rfc8018.PBMAC1_params):
         prot_params, rest = decoder.decode(prot_params, rfc8018.PBMAC1_params())
         if rest != b"" and not unsafe_decoding:
-            raise ValueError("The decoding of `PBMAC1_params` structure had a remainder!")
+            raise BadAsn1Data("PBMAC1_params")
 
     prot_params: rfc8018.PBMAC1_params
+
+    if not unsafe_decoding and prot_params["keyDerivationFunc"]["algorithm"] != rfc8018.id_PBKDF2:
+        raise BadAlg(
+            "The `keyDerivationFunc` algorithm MUST be PBKDF2, "
+            f"{may_return_oid_to_name(prot_params['keyDerivationFunc']['algorithm'])} is not supported."
+        )
 
     if not isinstance(prot_params["keyDerivationFunc"]["parameters"], rfc8018.PBKDF2_params):
         pbkdf2_param, rest = decoder.decode(prot_params["keyDerivationFunc"]["parameters"], rfc8018.PBKDF2_params())
         if rest != b"" and not unsafe_decoding:
-            raise ValueError("The decoding of `PBKDF2_params` structure had a remainder!")
+            raise BadAsn1Data("PBKDF2_params")
 
     else:
         pbkdf2_param = prot_params["keyDerivationFunc"]["parameters"]  # type: ignore
+
+    if prot_params["messageAuthScheme"]["algorithm"] not in HMAC_OID_2_NAME:
+        raise BadAlg(
+            "The `PBMAC1_params` MAC algorithm MUST be HAMC, "
+            f"{may_return_oid_to_name(prot_params['messageAuthScheme']['algorithm'])} is not supported."
+        )
 
     hash_alg = HMAC_OID_2_NAME[prot_params["messageAuthScheme"]["algorithm"]].split("-")[1]  # type: ignore
     pbkdf2_hash_alg = get_hash_from_oid(pbkdf2_param["prf"]["algorithm"])
@@ -451,13 +464,13 @@ def compute_dh_based_mac_from_alg_id(
     if not isinstance(alg_id["parameters"], rfc9480.DHBMParameter):
         params, rest = decoder.decode(alg_id["parameters"], rfc9480.DHBMParameter())
         if rest != b"":
-            raise ValueError("The decoding of `DHBMParameter` structure had a remainder!")
+            raise BadAsn1Data("DHBMParameter")
     else:
         params = alg_id["parameters"]
 
     owf_oid = params["owf"]
     if owf_oid["parameters"].isValue and ignore_parameters:
-        raise ValueError("The `owf` field must not have parameters.")
+        raise BadDataFormat("The `owf` field must not have parameters.")
 
     owf = SHA_OID_2_NAME[owf_oid["algorithm"]]
     derived_key = oid_mapping.compute_hash(alg_name=owf, data=shared_secret)
@@ -469,7 +482,6 @@ def compute_dh_based_mac_from_alg_id(
         mac = cryptoutils.compute_hmac(key=derived_key, data=data, hash_alg=mac_alg)
     elif mac_alg_oid in AES_GMAC_OID_2_NAME:
         length = _get_aes_length(AES_GMAC_OID_2_NAME[mac_alg_oid])
-
         derived_key = dh_based_mac_derive_key(basekey=shared_secret, desired_length=length, owf=owf)
         if not isinstance(params["mac"]["parameters"], rfc9044.GCMParameters):
             gmac_params, rest = decoder.decode(params["mac"]["parameters"], rfc9044.GCMParameters())
@@ -483,7 +495,7 @@ def compute_dh_based_mac_from_alg_id(
         derived_key = dh_based_mac_derive_key(basekey=shared_secret, desired_length=32, owf=owf)
         mac = cryptoutils.compute_kmac_from_alg_id(alg_id=params["mac"], data=data, key=derived_key)
     else:
-        raise ValueError(f"Unsupported MAC algorithm for DHBasedMAC: {may_return_oid_to_name(mac_alg_oid)}")
+        raise BadAlg(f"Unsupported MAC algorithm for DHBasedMAC: {may_return_oid_to_name(mac_alg_oid)}")
 
     logging.info("Derived Key: %s", derived_key.hex())
     logging.info("Computed DHBasedMAC: %s", mac.hex())
@@ -539,7 +551,7 @@ def compute_mac_from_alg_id(key: bytes, alg_id: rfc9480.AlgorithmIdentifier, dat
         if not isinstance(prot_params, rfc9480.PBMParameter):
             prot_params, rest = decoder.decode(prot_params, rfc9480.PBMParameter())
             if rest != b"":
-                raise ValueError("The decoding of `PBMParameter` structure had a remainder!")
+                raise BadAsn1Data("PBMParameter`")
 
         salt = prot_params["salt"].asOctets()
         iterations = int(prot_params["iterationCount"])
@@ -555,7 +567,7 @@ def compute_mac_from_alg_id(key: bytes, alg_id: rfc9480.AlgorithmIdentifier, dat
     if protection_type_oid == rfc9480.id_DHBasedMac:
         return compute_dh_based_mac_from_alg_id(shared_secret=key, alg_id=alg_id, data=data)
 
-    raise ValueError(f"Unsupported Symmetric MAC Protection: {protection_type_oid}")
+    raise BadAlg(f"Unsupported Symmetric MAC Protection: {may_return_oid_to_name(protection_type_oid)}")
 
 
 def _compute_symmetric_protection(
@@ -641,7 +653,7 @@ def _compute_symmetric_protection(
         if not isinstance(prot_params, rfc9044.GCMParameters):
             prot_params, rest = decoder.decode(prot_params, rfc9044.GCMParameters())
             if rest != b"" and not unsafe_decoding:
-                raise ValueError("The decoding of `GCMParameters` structure had a remainder!")
+                raise BadAsn1Data("GCMParameters")
 
         nonce = prot_params["nonce"].asOctets()
         return cryptoutils.compute_gmac(data=encoded, key=password, iv=nonce)
@@ -649,7 +661,7 @@ def _compute_symmetric_protection(
     if protection_type_oid == rfc9480.id_DHBasedMac:
         return compute_dh_based_mac_from_alg_id(shared_secret=password, alg_id=alg_id, data=encoded)
 
-    raise ValueError(f"Unsupported Symmetric MAC Protection: {protection_type_oid}")
+    raise BadAlg(f"Unsupported Symmetric MAC Protection: {may_return_oid_to_name(protection_type_oid)}")
 
 
 @not_keyword
@@ -735,7 +747,7 @@ def _compute_pkimessage_protection(
         return sign_data_with_alg_id(alg_id=alg_id, data=data, key=sign_key)
 
     protection_type_oid = may_return_oid_to_name(protection_type_oid)
-    raise ValueError(f"Cannot compute the `PKIMessage` protection. Unknown OID/algorithm: {protection_type_oid}")
+    raise BadAlg(f"Cannot compute the `PKIMessage` protection. Unknown OID/algorithm: {protection_type_oid}")
 
 
 def _prepare_signature_prot_alg_id(
@@ -2043,7 +2055,7 @@ def compute_kdf_from_alg_id(kdf_alg_id: rfc9480.AlgorithmIdentifier, ss: bytes, 
         hash_alg = get_hash_from_oid(sha_alg_id["algorithm"])
         if hash_alg is None:
             _name = may_return_oid_to_name(sha_alg_id["algorithm"])
-            raise ValueError(f"Unsupported hash algorithm: {_name}")
+            raise BadAlg(f"Unsupported hash algorithm: {_name}")
 
         return cryptoutils.compute_ansi_x9_63_kdf(
             shared_secret=ss,
@@ -2366,7 +2378,7 @@ def get_rsa_oaep_padding(param: rfc4055.RSAES_OAEP_params) -> padding.OAEP:
     data = param["maskGenFunc"]["parameters"]
     oid, rest = decoder.decode(data, univ.ObjectIdentifier())
     if rest != b"":
-        raise ValueError("Error decoding MGF parameters")
+        raise BadAsn1Data("MGF1 parameters")
 
     mgf_hash_alg = hash_name_to_instance(get_hash_from_oid(oid))  # type: ignore
 
