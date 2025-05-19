@@ -1013,8 +1013,13 @@ def display_pki_status_info(  # noqa D417 undocumented-param
     return "\n".join(data)
 
 
-def expand_string_to_length(s: bytes, length: int) -> bytes:
-    """Expand a string to a specific length by repeating it."""
+@not_keyword
+def expand_string_to_length(s: Union[str, bytes], length: int) -> Union[str, bytes]:
+    """Expand a string to a specific length by repeating it.
+
+    :param s: The string to expand.
+    :param length: The desired length of the output string.
+    """
     if not s:
         raise ValueError("Input string must not be empty.")
     if length < 0:
@@ -1064,5 +1069,4 @@ def get_password_in_size(
     else:
         return str_to_bytes(password), protection
 
-    password = str_to_bytes(password)
-    return expand_string_to_length(password, size), protection
+    return str_to_bytes(expand_string_to_length(password, size)), protection
