@@ -97,8 +97,7 @@ AES_GMAC_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
     rfc9481.id_aes192_GMAC: "aes192_gmac",
     rfc9481.id_aes256_GMAC: "aes256_gmac",
 }
-RSA_SHA_OID_2_NAME = {
-    rfc8017.sha1WithRSAEncryption: "rsa-sha1",
+RSA_SHA2_OID_2_NAME = {
     rfc9481.sha224WithRSAEncryption: "rsa-sha224",
     rfc9481.sha256WithRSAEncryption: "rsa-sha256",
     rfc9481.sha384WithRSAEncryption: "rsa-sha384",
@@ -112,6 +111,8 @@ ECDSA_SHA_OID_2_NAME = {
     rfc9481.id_ecdsa_with_shake128: "ecdsa-shake128",
     rfc9481.id_ecdsa_with_shake256: "ecdsa-shake256",
 }
+
+
 RSASSA_PSS_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
     rfc9481.id_RSASSA_PSS: "rsassa_pss-sha256",
     rfc9481.id_RSASSA_PSS_SHAKE128: "rsassa_pss-shake128",
@@ -123,7 +124,6 @@ RSASSA_PSS_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
 # used for MAC (Message Authentication Code) protection algorithms for the PKIMessage.
 
 HMAC_SHA_OID_2_NAME = {
-    rfc3370.hMAC_SHA1: "hmac-sha1",
     rfc9481.id_hmacWithSHA224: "hmac-sha224",
     rfc9481.id_hmacWithSHA256: "hmac-sha256",
     rfc9481.id_hmacWithSHA384: "hmac-sha384",
@@ -140,9 +140,10 @@ HMAC_SHA3_OID_2_NAME = {
 HMAC_SHA_NAME_2_OID = {v: k for k, v in HMAC_SHA_OID_2_NAME.items()}
 HMAC_SHA3_NAME_2_OID = {v: k for k, v in HMAC_SHA3_OID_2_NAME.items()}
 
-HMAC_OID_2_NAME = {}
+HMAC_OID_2_NAME = {rfc3370.hMAC_SHA1: "hmac-sha1"}
 HMAC_OID_2_NAME.update(HMAC_SHA_OID_2_NAME)
 HMAC_OID_2_NAME.update(HMAC_SHA3_OID_2_NAME)
+HMAC_NAME_2_OID = {v: k for k, v in HMAC_OID_2_NAME.items()}
 
 # These mappings facilitate the identification of the specific KMAC-SHA algorithm
 # used for protecting PKIMessages with KMAC (Keccak Message Authentication Code.
@@ -150,13 +151,20 @@ KMAC_OID_2_NAME = {rfc9481.id_KMACWithSHAKE128: "kmac-shake128", rfc9481.id_KMAC
 
 
 # Used for preparing Signature Protection of the PKIMessage.
+SHA2_OID_2_NAME = {
+    rfc8017.id_sha224: "sha224",
+    rfc8017.id_sha256: "sha256",
+    rfc8017.id_sha384: "sha384",
+    rfc8017.id_sha512: "sha512",
+}
+
+SHA2_NAME_2_OID = {v: k for k, v in SHA2_OID_2_NAME.items()}
+
 SHA_OID_2_NAME = {
     rfc5480.id_sha1: "sha1",
-    rfc5480.id_sha224: "sha224",
-    rfc5480.id_sha256: "sha256",
-    rfc5480.id_sha384: "sha384",
-    rfc5480.id_sha512: "sha512",
 }
+SHA_OID_2_NAME.update(SHA2_OID_2_NAME)
+
 
 id_hash_algs = "2.16.840.1.101.3.4.2"  # pylint: disable=invalid-name
 
@@ -185,6 +193,15 @@ RSA_SHA3_OID_2_NAME = {
     rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_512: "rsa-sha3_512",
 }
 
+RSA_OID_2_NAME = {
+    rfc8017.sha1WithRSAEncryption: "rsa-sha1",
+}
+RSA_OID_2_NAME.update(RSA_SHA2_OID_2_NAME)
+RSA_OID_2_NAME.update(RSA_SHA3_OID_2_NAME)
+
+ECDSA_OID_2_NAME = {}
+ECDSA_OID_2_NAME.update(ECDSA_SHA_OID_2_NAME)
+ECDSA_OID_2_NAME.update(ECDSA_SHA3_OID_2_NAME)
 
 AES_CBC_NAME_2_OID = {
     "aes128_cbc": rfc9481.id_aes128_CBC,
@@ -208,8 +225,7 @@ AES_GCM_OID_2_NAME = {v: k for k, v in AES_GCM_NAME_2_OID.items()}
 # certConfirm messages, since it must contain the hash of the certificate,
 # computed with the same algorithm as the one in the signature
 OID_HASH_MAP: Dict[univ.ObjectIdentifier, str] = {}
-OID_HASH_MAP.update(RSA_SHA_OID_2_NAME)
-OID_HASH_MAP.update(RSA_SHA3_OID_2_NAME)
+OID_HASH_MAP.update(RSA_OID_2_NAME)
 OID_HASH_MAP.update(RSASSA_PSS_OID_2_NAME)
 OID_HASH_MAP.update(ECDSA_SHA_OID_2_NAME)
 OID_HASH_MAP.update(ECDSA_SHA3_OID_2_NAME)
@@ -222,15 +238,15 @@ OID_HASH_NAME_2_OID = {v: k for k, v in OID_HASH_MAP.items()}
 # Updating the main dictionary with RSA and ECDSA OIDs
 # to check quickly if a given OID is supported by the Test-Suite
 MSG_SIG_ALG = {rfc9481.id_Ed25519: "ed25519", rfc9481.id_Ed448: "ed448"}
-MSG_SIG_ALG.update(RSA_SHA_OID_2_NAME)
+MSG_SIG_ALG.update(RSA_SHA2_OID_2_NAME)
 MSG_SIG_ALG.update(RSASSA_PSS_OID_2_NAME)
 MSG_SIG_ALG.update(ECDSA_SHA_OID_2_NAME)
 
 # Add additional OIDs specified in RFC9688.
 TRAD_SIG_OID_2_NAME = {}
 TRAD_SIG_OID_2_NAME.update(MSG_SIG_ALG)
-TRAD_SIG_OID_2_NAME.update(RSA_SHA3_OID_2_NAME)
-TRAD_SIG_OID_2_NAME.update(ECDSA_SHA3_OID_2_NAME)
+TRAD_SIG_OID_2_NAME.update(RSA_OID_2_NAME)
+TRAD_SIG_OID_2_NAME.update(ECDSA_OID_2_NAME)
 
 TRAD_SIG_NAME_2_OID = {v: k for k, v in TRAD_SIG_OID_2_NAME.items()}
 
@@ -470,6 +486,7 @@ RFC9481_OID_2_NAME.update(RSASSA_PSS_OID_2_NAME)
 ALL_KNOWN_OIDS_2_NAME = {}
 ALL_KNOWN_OIDS_2_NAME.update({rfc6664.id_ecPublicKey: "ecPublicKey"})
 ALL_KNOWN_OIDS_2_NAME.update(RFC9481_OID_2_NAME)
+ALL_KNOWN_OIDS_2_NAME.update(HMAC_NAME_2_OID)
 
 
 ###########################
@@ -811,9 +828,7 @@ EXTENSION_OID_2_SPECS = {
 }
 
 ALL_SIG_ALG_OID_2_NAME = {}
-ALL_SIG_ALG_OID_2_NAME.update(MSG_SIG_ALG)
-ALL_SIG_ALG_OID_2_NAME.update(RSA_SHA3_OID_2_NAME)
-ALL_SIG_ALG_OID_2_NAME.update(ECDSA_SHA3_OID_2_NAME)
+ALL_SIG_ALG_OID_2_NAME.update(TRAD_SIG_OID_2_NAME)
 ALL_SIG_ALG_OID_2_NAME.update(PQ_SIG_OID_2_NAME)
 ALL_SIG_ALG_OID_2_NAME.update(STATEFUL_HASH_SIGNATURE_NAME_2_OID)
 ALL_SIG_ALG_OID_2_NAME.update(HYBRID_SIG_OID_2_NAME)
@@ -825,6 +840,7 @@ EXTENSION_OID_2_NAME = {y: x for x, y in EXTENSION_NAME_2_OID.items()}
 ALL_KNOWN_OIDS_2_NAME["id_ecPublicKey"] = rfc6664.id_ecPublicKey
 ALL_KNOWN_OIDS_2_NAME["id_ecDH"] = rfc6664.id_ecDH
 ALL_KNOWN_OIDS_2_NAME["id_ecMQV"] = rfc6664.id_ecMQV
+ALL_KNOWN_OIDS_2_NAME.update(ALL_SIG_ALG_OID_2_NAME)
 ALL_KNOWN_OIDS_2_NAME.update(EXTENSION_OID_2_NAME)
 ALL_KNOWN_OIDS_2_NAME.update(COMPOSITE_KEM06_OID_2_NAME)
 ALL_KNOWN_NAMES_2_OID = {y: x for x, y in ALL_KNOWN_OIDS_2_NAME.items()}

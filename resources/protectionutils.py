@@ -95,6 +95,7 @@ from resources.oidutils import (
     PQ_OID_2_NAME,
     PQ_SIG_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
+    SHA2_NAME_2_OID,
     SHA_OID_2_NAME,
     SUPPORTED_MAC_OID_2_NAME,
     SYMMETRIC_PROT_ALGO,
@@ -381,6 +382,8 @@ def _compute_pbmac1_from_param(
             "The `owf` and `mac` fields in `PBMAC1Parameters` must be the same hash algorithm."
             f"MAC: {hash_alg}, PBKDF2: {pbkdf2_hash_alg}"
         )
+    if enforce_lwcmp and hash_alg not in SHA2_NAME_2_OID:
+        raise BadAlg("The `PBMAC1Parameters` must use SHA-2 (`enforce_lwcmp` is True).")
 
     derived_key = cryptoutils.compute_pbkdf2_from_parameter(pbkdf2_param, key=password)
 
@@ -598,7 +601,7 @@ def _compute_symmetric_protection(
         if not isinstance(prot_params, rfc9480.PBMParameter):
             prot_params, rest = decoder.decode(prot_params, rfc9480.PBMParameter())
             if rest != b"" and not unsafe_decoding:
-                raise ValueError("The decoding of `PBMParameter` structure had a remainder!")
+                raise BadAsn1Data("PBMParameter")
 
         salt = prot_params["salt"].asOctets()
         iterations = int(prot_params["iterationCount"])
@@ -606,9 +609,14 @@ def _compute_symmetric_protection(
         hash_alg_owf = get_hash_from_oid(prot_params["owf"]["algorithm"])
 
         if hash_alg_owf is None:
-            raise ValueError(
+            raise BadAlg(
                 f"Unsupported hash algorithm in `owf`: {prot_params['owf']['algorithm']}"
                 f"{may_return_oid_to_name(prot_params['owf']['algorithm'])}"
+            )
+        if prot_params["mac"]["algorithm"] not in HMAC_OID_2_NAME:
+            raise BadAlg(
+                "The `PBMParameter` must use HMAC. Other MAC algorithms are not supported. "
+                f"Got: {may_return_oid_to_name(prot_params['mac']['algorithm'])}"
             )
 
         mac_hash_alg = HMAC_OID_2_NAME[prot_params["mac"]["algorithm"]].split("-")[1]
@@ -617,6 +625,8 @@ def _compute_symmetric_protection(
             raise LwCMPViolation(
                 f"The hash algorithm in `owf` and `mac` must be the same. Got {hash_alg_owf} and {mac_hash_alg}."
             )
+        if enforce_lwcmp and mac_hash_alg not in SHA2_NAME_2_OID:
+            raise BadAlg("The `PBMAC1Parameters` must use SHA-2 (`enforce_lwcmp` is True).")
 
         return cryptoutils.compute_password_based_mac(
             data=encoded,
