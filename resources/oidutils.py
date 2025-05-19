@@ -122,7 +122,7 @@ RSASSA_PSS_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
 # These mappings facilitate the identification of the specific HMAC-SHA algorithm
 # used for MAC (Message Authentication Code) protection algorithms for the PKIMessage.
 
-HMAC_OID_2_NAME = {
+HMAC_SHA_OID_2_NAME = {
     rfc3370.hMAC_SHA1: "hmac-sha1",
     rfc9481.id_hmacWithSHA224: "hmac-sha224",
     rfc9481.id_hmacWithSHA256: "hmac-sha256",
@@ -130,6 +130,19 @@ HMAC_OID_2_NAME = {
     rfc9481.id_hmacWithSHA512: "hmac-sha512",
 }
 
+HMAC_SHA3_OID_2_NAME = {
+    rfc9688.id_hmacWithSHA3_224: "hmac-sha3_224",
+    rfc9688.id_hmacWithSHA3_256: "hmac-sha3_256",
+    rfc9688.id_hmacWithSHA3_384: "hmac-sha3_384",
+    rfc9688.id_hmacWithSHA3_512: "hmac-sha3_512",
+}
+
+HMAC_SHA_NAME_2_OID = {v: k for k, v in HMAC_SHA_OID_2_NAME.items()}
+HMAC_SHA3_NAME_2_OID = {v: k for k, v in HMAC_SHA3_OID_2_NAME.items()}
+
+HMAC_OID_2_NAME = {}
+HMAC_OID_2_NAME.update(HMAC_SHA_OID_2_NAME)
+HMAC_OID_2_NAME.update(HMAC_SHA3_OID_2_NAME)
 
 # These mappings facilitate the identification of the specific KMAC-SHA algorithm
 # used for protecting PKIMessages with KMAC (Keccak Message Authentication Code.
@@ -149,10 +162,10 @@ id_hash_algs = "2.16.840.1.101.3.4.2"  # pylint: disable=invalid-name
 
 
 SHA3_OID_2_NAME = {
-    univ.ObjectIdentifier(f"{id_hash_algs}.7"): "sha3-224",
-    univ.ObjectIdentifier(f"{id_hash_algs}.8"): "sha3-256",
-    univ.ObjectIdentifier(f"{id_hash_algs}.9"): "sha3-384",
-    univ.ObjectIdentifier(f"{id_hash_algs}.10"): "sha3-512",
+    univ.ObjectIdentifier(f"{id_hash_algs}.7"): "sha3_224",
+    univ.ObjectIdentifier(f"{id_hash_algs}.8"): "sha3_256",
+    univ.ObjectIdentifier(f"{id_hash_algs}.9"): "sha3_384",
+    univ.ObjectIdentifier(f"{id_hash_algs}.10"): "sha3_512",
     univ.ObjectIdentifier(f"{id_hash_algs}.11"): "shake128",
     univ.ObjectIdentifier(f"{id_hash_algs}.12"): "shake256",
 }

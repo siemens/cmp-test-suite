@@ -102,7 +102,7 @@ def sha_alg_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
                       or "hmac-sha256"
     :return: The corresponding `pyasn1` OID.
     """
-    hash_name = hash_name.lower().replace("_", "-").strip()
+    hash_name = hash_name.lower().strip()
 
     if hash_name in OID_HASH_MAP.values():
         for key, value in OID_HASH_MAP.items():

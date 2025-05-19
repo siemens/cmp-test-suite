@@ -96,6 +96,7 @@ from resources.oidutils import (
     PQ_SIG_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
     SHA_OID_2_NAME,
+    SUPPORTED_MAC_OID_2_NAME,
     SYMMETRIC_PROT_ALGO,
     TRAD_SIG_OID_2_NAME,
     id_ce_altSignatureAlgorithm,
@@ -576,7 +577,7 @@ def _compute_symmetric_protection(
     prot_params = alg_id["parameters"]
 
     if protection_type_oid in HMAC_OID_2_NAME:
-        mac_hash_alg = HMAC_OID_2_NAME[protection_type_oid].split("-")[1]
+        mac_hash_alg = SUPPORTED_MAC_OID_2_NAME[protection_type_oid].split("-")[1]
         return cryptoutils.compute_hmac(data=encoded, key=password, hash_alg=mac_hash_alg)
 
     if protection_type_oid in KMAC_OID_2_NAME:
