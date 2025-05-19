@@ -16,8 +16,7 @@ from pyasn1_alt_modules import rfc9480, rfc9481
 
 from resources.oidutils import (
     AES_GMAC_OID_2_NAME,
-    ECDSA_SHA3_OID_2_NAME,
-    ECDSA_SHA_OID_2_NAME,
+    ECDSA_OID_2_NAME,
     HMAC_OID_2_NAME,
     HYBRID_SIG_OID_2_NAME,
     KDF_OID_2_NAME,
@@ -27,7 +26,6 @@ from resources.oidutils import (
     KMAC_OID_2_NAME,
     PQ_SIG_OID_2_NAME,
     PROT_SYM_ALG,
-    RSA_SHA3_OID_2_NAME,
     RSA_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
     SHA3_OID_2_NAME,
@@ -216,11 +214,9 @@ class AllAlgorithmProfile(AlgorithmProfile):
 
     # The allowed PKIMessage signature algorithms. Section 3 RFC 9481.
     msg_sig_alg = {
-        **ECDSA_SHA3_OID_2_NAME,
-        **ECDSA_SHA_OID_2_NAME,
+        **ECDSA_OID_2_NAME,
         **RSA_OID_2_NAME,
         **RSASSA_PSS_OID_2_NAME,
-        **RSA_SHA3_OID_2_NAME,
         **PQ_SIG_OID_2_NAME,
         **HYBRID_SIG_OID_2_NAME,
         **{rfc9480.id_DHBasedMac: "dh_based_mac", id_KemBasedMac: "kem_based_mac"},
