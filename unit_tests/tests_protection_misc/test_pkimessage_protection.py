@@ -9,6 +9,7 @@ from cryptography.exceptions import InvalidSignature
 from resources.certbuildutils import generate_certificate
 from resources.exceptions import BadMacProtection
 from resources.keyutils import load_private_key_from_file
+from resources.oid_mapping import may_return_oid_to_name
 from resources.protectionutils import protect_pkimessage, verify_pkimessage_protection
 
 from unit_tests.utils_for_test import build_pkimessage, de_and_encode_pkimessage
@@ -155,6 +156,29 @@ class TestPKIMessageProtection(unittest.TestCase):
         )
         # verifies with self-signed certificate, generated inside if not provided.
         verify_pkimessage_protection(pki_message=protected_msg, private_key=private_key)
+
+    def test_sig_rsa_sha1(self):
+        """
+        GIVEN a PKIMessage, an RSA private key, and a corresponding certificate.
+        WHEN the PKIMessage is protected using an RSA signature with SHA1,
+        THEN the RSA signature verification should succeed without any exceptions.
+        """
+        private_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
+        certificate = generate_certificate(private_key=private_key, common_name="CN=Hans", hash_alg="sha256")
+        protected_msg = protect_pkimessage(
+            pki_message=self.pki_message,
+            cert=certificate,
+            private_key=private_key,
+            protection="signature",
+            password=None,
+            hash_alg="sha1",
+        )
+
+        alg_name = may_return_oid_to_name(protected_msg["header"]["protectionAlg"]["algorithm"])
+        self.assertEqual(alg_name, "rsa-sha1")
+        # verifies with self-signed certificate, generated inside if not provided.
+        verify_pkimessage_protection(pki_message=protected_msg, enforce_lwcmp=False,
+                                     public_key=private_key.public_key())
 
     def test_sig_ed25519(self):
         """
