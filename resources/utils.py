@@ -29,8 +29,11 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from resources import asn1utils, certutils, cmputils, keyutils
 from resources.asn1_structures import PKIMessageTMP
+from resources.convertutils import str_to_bytes
 from resources.exceptions import BadAsn1Data
-from resources.oidutils import PYASN1_CM_OID_2_NAME
+from resources.oidutils import (
+    PYASN1_CM_OID_2_NAME,
+)
 from resources.typingutils import PrivateKey, PublicKey, Strint
 
 
@@ -1008,3 +1011,58 @@ def display_pki_status_info(  # noqa D417 undocumented-param
         data.append(f"  failInfo: {names}")
 
     return "\n".join(data)
+
+
+def expand_string_to_length(s: bytes, length: int) -> bytes:
+    """Expand a string to a specific length by repeating it."""
+    if not s:
+        raise ValueError("Input string must not be empty.")
+    if length < 0:
+        raise ValueError("Parsed length must be non-negative.")
+
+    # Repeat the string enough times and then trim it to the exact length
+    repeated = (s * ((length // len(s)) + 1))[:length]
+    return repeated
+
+
+def get_password_in_size(
+    protection: str,
+    password: Union[str, bytes],
+    hash_alg: Optional[str] = None,
+) -> Tuple[bytes, str]:
+    """Get a password in the given size.
+
+    Arguments:
+    ---------
+        - `password`: The password to be used. If not provided, a random password will be generated.
+        - `alg_name`: The MAC algorithm name, to expand the password to the needed size.
+        - `hash_alg`: The hash algorithm to be used to expand the password, if needed. Defaults to "None".
+
+    Returns:
+    -------
+        - The password in the correct size, if needed.
+        - The MAC algorithm name.
+
+    Raises:
+        - `ValueError`: If the algorithm name is not recognized.
+
+    """
+    if protection == "kmac":
+        if hash_alg == "shake128":
+            size = 16
+        else:
+            size = 32
+    elif "gmac" in protection:
+        if "128" in protection:
+            size = 16
+        elif "192" in protection:
+            size = 24
+        elif "256" in protection:
+            size = 32
+        else:
+            raise ValueError(f"Unknown algorithm name: {protection}")
+    else:
+        return str_to_bytes(password), protection
+
+    password = str_to_bytes(password)
+    return expand_string_to_length(password, size), protection

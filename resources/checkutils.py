@@ -51,7 +51,7 @@ from resources.oid_mapping import (
 from resources.oidutils import (
     ECDSA_SHA_OID_2_NAME,
     MSG_SIG_ALG,
-    RSA_SHA_OID_2_NAME,
+    RSA_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
     id_KemBasedMac,
 )
@@ -918,10 +918,13 @@ def check_protection_alg_conform_to_spki(
         return prot_alg_id["algorithm"] in {rfc9481.id_Ed25519, rfc9481.id_Ed448}
 
     if cert_alg_id["algorithm"] == rsaEncryption:
-        return prot_alg_id["algorithm"] in RSA_SHA_OID_2_NAME or prot_alg_id["algorithm"] in RSASSA_PSS_OID_2_NAME
+        return prot_alg_id["algorithm"] in RSA_OID_2_NAME or prot_alg_id["algorithm"] in RSASSA_PSS_OID_2_NAME
 
-    if prot_alg_id["algorithm"] in RSA_SHA_OID_2_NAME:
-        return cert_alg_id["algorithm"] in RSA_SHA_OID_2_NAME
+    # TODO verify if that is allowed?
+    if prot_alg_id["algorithm"] in RSA_OID_2_NAME:
+        return cert_alg_id["algorithm"] in RSA_OID_2_NAME
+    if prot_alg_id["algorithm"] in RSASSA_PSS_OID_2_NAME:
+        return cert_alg_id["algorithm"] == prot_alg_id["algorithm"]
 
     try:
         return prot_alg_id == cert_alg_id
