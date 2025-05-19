@@ -33,7 +33,6 @@ from resources.cmputils import get_cmp_message_type, patch_sender, patch_senderk
 from resources.cryptoutils import perform_ecdh
 from resources.data_objects import KARICertsAndKeys
 from resources.exceptions import (
-    BadAlg,
     BadAsn1Data,
     BadConfig,
     BadMessageCheck,
@@ -455,7 +454,7 @@ class ProtectionHandler:
                 error_details=[e.message] + e.error_details,
             ) from e
         except ValueError as e:
-            raise BadMessageCheck(message="Invalid MAC protection.") from e
+            raise BadMessageCheck(message=f"Invalid MAC protection. {e}") from e
 
     def validate_signature_protection(self, pki_message: PKIMessageTMP):
         """Validate the signature protection of the PKI message.
@@ -467,19 +466,21 @@ class ProtectionHandler:
             raise BadMessageCheck("No extra certificates in PKI message. Cannot validate signature.")
 
         try:
-            verify_hybrid_pkimessage_protection(
-                pki_message=pki_message,
-            )
+            prot_type = ProtectedType.get_protection_type(pki_message)
+            if prot_type == ProtectedType.TRAD_SIGNATURE:
+                # Validate traditional signature protection
+                verify_pkimessage_protection(
+                    pki_message=pki_message,
+                    enforce_lwcmp=self.prot_handler_config.enforce_lwcmp,
+                )
+            else:
+                verify_hybrid_pkimessage_protection(
+                    pki_message=pki_message,
+                )
 
         except BadSigAlgID as e:
             raise BadMessageCheck(
                 message="Invalid signature algorithm and public key type.",
-                error_details=[e.message] + e.error_details,
-            ) from e
-
-        except BadAlg as e:
-            raise BadMessageCheck(
-                message="Invalid algorithm or combination for signature protection.",
                 error_details=[e.message] + e.error_details,
             ) from e
 
@@ -515,6 +516,7 @@ class ProtectionHandler:
         elif prot_type == ProtectedType.MAC:
             # Validate MAC protection
             self.validate_mac_protection(pki_message)
+
         else:
             self.validate_signature_protection(pki_message)
 
