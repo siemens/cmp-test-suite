@@ -45,6 +45,7 @@ from resources.exceptions import (
     SignerNotTrusted,
     WrongIntegrity,
 )
+from resources.oid_mapping import may_return_oid_to_name
 from resources.protectionutils import (
     protect_hybrid_pkimessage,
     protect_pkimessage,
@@ -53,6 +54,7 @@ from resources.protectionutils import (
 )
 from resources.suiteenums import ProtectedType
 from resources.typingutils import SignKey
+from resources.utils import get_password_in_size
 from unit_tests.utils_for_test import load_env_data_certs
 
 
@@ -410,6 +412,22 @@ class ProtectionHandler:
 
         return protected_pki_message
 
+    def _may_expand_password(self, alg_id: rfc9480.AlgorithmIdentifier) -> bytes:
+        """Expand the password to the required size.
+
+        :param alg_id: The protection algorithm identifier.
+        :return: The expanded password.
+        """
+        name = may_return_oid_to_name(alg_id["algorithm"])
+
+        if "kmac" in name:
+            pwd, _ = get_password_in_size("kmac", self._prot_config.pre_shared_secret, name.replace("kmac-", ""))
+        else:
+            print("Using the default password.", name)
+            pwd, _ = get_password_in_size(name, self._prot_config.pre_shared_secret)
+
+        return pwd
+
     def validate_mac_protection(self, pki_message: PKIMessageTMP):
         """Validate the MAC protection of the PKI message.
 
@@ -422,11 +440,12 @@ class ProtectionHandler:
                 "Must either be protected by the certificate to be revoked or "
                 "a trusted certificate."
             )
+        pwd = self._may_expand_password(pki_message["header"]["protectionAlg"])
 
         try:
             verify_pkimessage_protection(
                 pki_message=pki_message,
-                password=self._prot_config.pre_shared_secret,
+                password=pwd,
                 enforce_lwcmp=self.prot_handler_config.enforce_lwcmp,
             )
 
