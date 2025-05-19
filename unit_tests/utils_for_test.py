@@ -702,7 +702,6 @@ def setup_test_data():
     load_or_generate_cert_chain()
     cert = parse_certificate(utils.load_and_decode_pem_file("data/unittest/root_cert_ed25519.pem"))
     write_cmp_certificate_to_pem(cert, "data/mock_ca/root_cert_ed25519.pem")
-    _generate_pq_certs()
     _build_time_independent_certs()
     _generate_other_trusted_ca_and_device_certs()
     _generate_mock_ca_certs()
