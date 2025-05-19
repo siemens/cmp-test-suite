@@ -183,7 +183,10 @@ Request With Trad Sig Key
     ...                hash_alg=${hash_alg}
     ...                bad_message_check=${bad}
     ${response}=   Exchange PKIMessage    ${protected_ir}
-    IF  ${bad}
+    IF    ${ENFORCE_RFC9481} and ("sha1" == '${hash_alg}' or ("sha3" in '${hash_alg}' and '${hash_alg}' != "sha384"))
+         PKIStatus Must Be    ${response}    rejection
+         PKIStatusInfo Failinfo Bit Must Be    ${response}    badAlg
+    ELSE IF    ${bad}
         # Validate the error response
         PKIStatus Must Be    ${response}    rejection
         PKIStatusInfo Failinfo Bit Must Be    ${response}    badMessageCheck
