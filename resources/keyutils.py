@@ -374,19 +374,6 @@ def _extract_and_format_key(pem_file_path: str) -> bytes:
     raise ValueError("No valid private key found in the file.")
 
 
-def _clean_data(data: bytes) -> bytes:
-    """Remove comments and newlines from the data.
-
-    :param data: The data to clean.
-    :return: The cleaned data.
-    """
-    out = b""
-    for line in data.split(b"\n"):
-        if not line.startswith(b"#") and line:
-            out += line + b"\n"
-    return out
-
-
 def _extract_pem_private_key_block(data: bytes) -> bytes:
     """Extract the full PEM block (BEGIN ... PRIVATE KEY ... END) from raw byte data.
 
@@ -456,10 +443,9 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
 
     try:
         # try to load the key with the password.
-        _pem_data = _clean_data(pem_data)
         if password is not None:
             password = str_to_bytes(password)  # type: ignore
-        return serialization.load_der_private_key(data=_pem_data, password=password)  # type: ignore
+        return serialization.load_der_private_key(data=pem_data, password=password)  # type: ignore
     except ValueError:
         pass
 
@@ -483,8 +469,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
     if password is not None:
         password = str_to_bytes(password)  # type: ignore
 
-    pem_data = _clean_data(pem_data)
-    private_key = serialization.load_pem_private_key(
+    private_key = serialization.load_der_private_key(
         pem_data,
         password=password,  # type: ignore
     )
