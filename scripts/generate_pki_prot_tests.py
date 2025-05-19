@@ -3,6 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Generate PKIProtection Tests for Robot Framework."""
 
+import sys
+
+sys.path.append(".")
+
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -15,8 +19,8 @@ from resources.oidutils import (
     MSG_SIG_ALG_NAME_2_OID,
     PQ_SIG_NAME_2_OID,
     PQ_SIG_PRE_HASH_NAME_2_OID,
+    RSA_SHA2_OID_2_NAME,
     RSA_SHA3_OID_2_NAME,
-    RSA_SHA_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
     SLH_DSA_NAME_2_OID,
 )
@@ -100,24 +104,27 @@ def _get_name_and_tags(name: str) -> ReturnValue:
         hash_alg = name.split("-")[1]
         return ReturnValue(name="rsa", tags=["rsa", "sha3", "rfc9688-validation"], hash_alg=hash_alg)
 
-    if name in RSA_SHA_OID_2_NAME.values():
+    if name in RSA_SHA2_OID_2_NAME.values():
         hash_alg = name.split("-")[1]
-        return ReturnValue(name="rsa", tags=["rsa", "rfc9483-validation"], hash_alg=hash_alg)
+        return ReturnValue(name="rsa", tags=["rsa", "rfc9481-validation"], hash_alg=hash_alg)
+
+    if name == "rsa-sha1":
+        return ReturnValue(name="rsa", tags=["rsa", "rfc9481-validation", "deprecated"], hash_alg="sha1")
 
     if name in ECDSA_SHA_OID_2_NAME.values():
         hash_alg = name.split("-")[1]
-        return ReturnValue(name="ecdsa", tags=["ecdsa", "rfc9483-validation"], hash_alg=hash_alg)
+        return ReturnValue(name="ecdsa", tags=["ecdsa", "rfc9481-validation"], hash_alg=hash_alg)
     if name == "ed25519" or name == "ed448":
-        return ReturnValue(name=name, tags=[name, "rfc9483-validation"], hash_alg=None)
+        return ReturnValue(name=name, tags=[name, "rfc9481-validation"], hash_alg=None)
     if name in RSASSA_PSS_OID_2_NAME.values():
         hash_alg = name.split("-")[1]
 
         if hash_alg == "sha256":
-            tags = ["rsa-pss", "rsa", "rfc9483-validation"]
+            tags = ["rsa-pss", "rsa", "rfc9481-validation"]
         else:
             # Not all `OpenSSL` builds support `shake128` and `shake256`.
             # As an example, the default version of `WSL2.0` does not support it.
-            tags = ["rsa-pss", "rsa", "robot:skip-on-failure", "rfc9483-validation"]
+            tags = ["rsa-pss", "rsa", "robot:skip-on-failure", "rfc9481-validation"]
 
         return ReturnValue(
             name="rsa-pss",
@@ -174,7 +181,10 @@ def generate_trad_sig_tests() -> List[Entry]:
     entries = []
 
     values = (
-        list(MSG_SIG_ALG_NAME_2_OID.keys()) + list(RSA_SHA3_OID_2_NAME.values()) + list(ECDSA_SHA3_OID_2_NAME.values())
+        list(MSG_SIG_ALG_NAME_2_OID.keys()) +
+        ["rsa-sha1"]
+        + list(RSA_SHA3_OID_2_NAME.values())
+        + list(ECDSA_SHA3_OID_2_NAME.values())
     )
 
     for x in values:
