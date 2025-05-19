@@ -181,8 +181,8 @@ def generate_trad_sig_tests() -> List[Entry]:
     entries = []
 
     values = (
-        list(MSG_SIG_ALG_NAME_2_OID.keys()) +
-        ["rsa-sha1"]
+        list(MSG_SIG_ALG_NAME_2_OID.keys())
+        + ["rsa-sha1"]
         + list(RSA_SHA3_OID_2_NAME.values())
         + list(ECDSA_SHA3_OID_2_NAME.values())
     )

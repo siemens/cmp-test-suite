@@ -1030,7 +1030,7 @@ def expand_string_to_length(s: Union[str, bytes], length: int) -> Union[str, byt
     return repeated
 
 
-def get_password_in_size(
+def get_password_in_size(  # noqa D417 undocumented-param
     protection: str,
     password: Union[str, bytes],
     hash_alg: Optional[str] = None,
