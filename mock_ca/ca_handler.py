@@ -439,6 +439,7 @@ class CAHandler:
         port: int = 5000,
         use_openssl: bool = False,
         base_url: str = "http://127.0.0.1",
+        enforce_rfc9481: bool = False,
     ):
         """Initialize the CA Handler.
 
@@ -452,6 +453,8 @@ class CAHandler:
         :param config: The configuration for the CA Handler.
         :param base_url: The base URL for the CA ONLY used to prepare the extensions (CRL-DP, OCSP, IDP, Sun-Hybrid).
         Defaults to `http://localhost:5000`.
+        :param enforce_rfc9481: Whether to enforce the RFC 9481 algorithm profile,
+        for MAC and traditional protected PKIMessages. Defaults to `False`.
         :raises BadConfig: If the CA certificate and key are not provided.
         """
         if ca_cert is None and ca_key is None:
@@ -558,6 +561,7 @@ class CAHandler:
             pre_shared_secret=self.pre_shared_secret,
             use_openssl=True,
             def_mac_alg="password_based_mac",
+            enforce_rfc9481=enforce_rfc9481,
         )
 
         self.cert_req_handler = CertReqHandler(

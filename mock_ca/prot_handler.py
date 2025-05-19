@@ -68,6 +68,7 @@ class ProtectionHandler:
         def_mac_alg: str = "password_based_mac",
         use_openssl: bool = True,
         prot_alt_key: Optional[SignKey] = None,
+        enforce_rfc9481: bool = False,
     ) -> None:
         """Initialize the ProtectionHandler with the specified parameters."""
         self.prot_cert = cmp_protection_cert
@@ -94,7 +95,7 @@ class ProtectionHandler:
             prot_alt_key=prot_alt_key,
             kari_certs=kari_cert,
             mock_ca_trusted_dir=mock_ca_trusted_dir,
-            enforce_lwcmp=False,
+            enforce_lwcmp=enforce_rfc9481,
         )
 
     def patch_for_mac(self, response: PKIMessageTMP) -> PKIMessageTMP:
