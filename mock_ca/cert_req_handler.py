@@ -571,7 +571,8 @@ class CertReqHandler:
                 response = self.process_p10cr(pki_message)
             elif msg_type == "kur":
                 response = self.process_kur(pki_message)
-                self.state.add_updated_cert(pki_message["extraCerts"][0])
+                if find_oid_in_general_info(pki_message, str(rfc9480.id_it_implicitConfirm)):
+                    self.state.add_updated_cert(pki_message["extraCerts"][0])
             elif msg_type == "ccr":
                 response = self.handle_cross_cert_req(pki_message)
             else:
