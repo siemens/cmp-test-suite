@@ -98,7 +98,7 @@ def try_encode_pyasn1(data, exclude_pretty_print: bool = False) -> bytes:
         return encoder.encode(data)
     except Exception:
         data = data.prettyPrint() if not exclude_pretty_print else str(type(data))
-        raise BadAsn1Data(f"Error encoding data: {data}", overwrite=True)
+        raise BadAsn1Data(f"Error encoding data: \n{data}", overwrite=True)
 
 
 def de_and_encode_pkimessage(pki_message: PKIMessageTMP) -> PKIMessageTMP:
