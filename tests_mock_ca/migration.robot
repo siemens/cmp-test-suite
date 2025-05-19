@@ -43,8 +43,8 @@ ${COMPOSITE_SIG_CERT}=   ${None}
 
 ${REVOKED_COMP_KEY}=   ${None}
 ${REVOKED_COMP_CERT}=   ${None}
-${UPDATED_COMP_KEY}=   ${None}
-${UPDATED_COMP_CERT}=   ${None}
+${UPDATED_COMP_SIG_KEY}=   ${None}
+${UPDATED_COMP_SIG_CERT}=   ${None}
 
 ${CHAMELEON_CERT}=   ${None}
 ${CHAMELEON_KEY}=   ${None}
@@ -877,23 +877,46 @@ CA MUST Reject A Revoked Composite Sig Key
     PKIStatus Must Be    ${response}    status=rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
+CA MUST Accept A Valid Composite Sig Update Request
+    [Documentation]    The CA should accept a valid composite-sig key update request.
+    ...                We send a composite-sig certificate request, which contains a new key,
+    ...                the CA should accept the request and issue a valid certificate.
+    [Tags]    composite-sig
+    ${key}=  Generate Unique Key    composite-sig
+    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
+    ${cert}  ${_}=   Issue New Cert For Testing    ${url}   ${key}
+    ${key_up}=  Generate Unique Key   composite-sig
+    ${cm}=   Get Next Common Name
+    ${kur}=   Build Key Update Request    ${key_up}    ${cert}   exclude_fields=senderKID,sender
+    ...           common_name=${cm}
+    ${protected_kur}=    Protect PKIMessage    ${kur}   signature   private_key=${key}   cert=${cert}
+    ${response}=   Exchange PKIMessage    ${protected_kur}   ${url}
+    PKIMessage Body Type Must Be    ${response}    kup
+    PKIStatus Must Be    ${response}    accepted
+    ${_}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=signature
+    ...        private_key=${key}    cert=${cert}
+    Wait Until Server Updated Cert
+    VAR   ${UPDATED_COMP_SIG_CERT}    ${cert}   scope=Global
+    VAR   ${UPDATED_COMP_SIG_KEY}    ${key}   scope=Global
+
 CA MUST Reject A Update Composite Sig Key
     [Documentation]    According to composite-sig-cms03 the keys should not be used inside another certificate.
     ...                We send a composite-sig certificate request, which contains a already updated key.
     ...                The CA MUST reject the request and MAY respond with the optional failInfo `badCertTemplate`.
     [Tags]    composite-sig
-    ${result}=  Is Certificate And Key Set    ${UPDATED_COMP_CERT}   ${UPDATED_COMP_KEY}
+    ${result}=  Is Certificate And Key Set    ${UPDATED_COMP_SIG_CERT}   ${UPDATED_COMP_SIG_KEY}
     SKIP IF    not ${result}    The Updated Composite Certificate and Key are not set.
     ${key}=  Generate Default Key
-    ${ir}=   Build Ir From Key    ${UPDATED_COMP_KEY}   exclude_fields=senderKID,sender
+    ${cert_template}=   Prepare CertTemplate  ${UPDATED_COMP_SIG_KEY}  cert=${UPDATED_COMP_SIG_CERT}   include_fields=subject,publicKey
+    ${ir}=   Build Ir From Key    ${UPDATED_COMP_SIG_KEY}   cert_template=${cert_template}    exclude_fields=senderKID,sender
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=   Exchange Migration PKIMessage    ${protected_ir}   ${CA_BASE_URL}  ${COMPOSITE_URL_PREFIX}
-    PKIMessage Body Type Must Be    ${response}    error
-    PKIStatus Must Be    ${response}    status=rejection
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
 CA MUST Reject A Revoked Composite KEM Key
@@ -1199,7 +1222,6 @@ Setup Composite KEM Certs
     Setup Revoke Composite KEM Cert
     Setup Update Composite KEM Cert
 
-
 Establish New Composite KEM SS
     [Documentation]    Establish a new composite KEM shared secret.
     ...                The PKIMessage is protected with the composite KEM signature and exchanged with the CA.
@@ -1293,4 +1315,3 @@ Issue New Composite Certs
     VAR   ${REVOKED_COMP_CERT}   ${rr_comp_cert}   scope=Global   # robocop: off=VAR04
     VAR   ${REVOKED_COMP_KEY}   ${rr_comp_key}   scope=Global     # robocop: off=VAR04
     Setup Composite KEM Certs
-
