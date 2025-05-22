@@ -50,6 +50,7 @@ from resources.protectionutils import (
     protect_hybrid_pkimessage,
     protect_pkimessage,
     protect_pkimessage_kem_based_mac,
+    validate_orig_pkimessage,
     verify_pkimessage_protection,
 )
 from resources.suiteenums import ProtectedType
@@ -768,3 +769,29 @@ class ProtectionHandler:
                     failinfo=e.get_failinfo(),
                 )
 
+    def verify_nested_protection(self, pki_message: PKIMessageTMP) -> None:
+        """Verify the nested protection of the PKIMessage
+
+        :param pki_message: The PKIMessage to verify.
+        """
+        prot_type = ProtectedType.get_protection_type(pki_message)
+        if prot_type == ProtectedType.MAC:
+            raise WrongIntegrity("The protection type of the nested PKIMessage is not allowed to be MAC.")
+
+        if not pki_message["extraCerts"].isValue:
+            raise BadMessageCheck("The extraCerts field was not set, in the nested PKIMessage.")
+
+        if not pki_message["header"]["protectionAlg"].isValue:
+            raise BadMessageCheck("The protection algorithm is not set, in the nested PKIMessage.")
+
+        try:
+            certificates_are_trustanchors(
+                pki_message["extraCerts"][0], self._prot_config.trusted_ras_dir or self._prot_config.mock_ca_trusted_dir
+            )
+        except SignerNotTrusted:
+            raise NotAuthorized("The signer of the nested PKIMessage is not trusted.")
+
+        self.validate_signature_protection(pki_message)
+
+        if len(pki_message["body"]["nested"]) == 0:
+            raise BadRequest("The nested field was not set, in the nested PKIMessage.")
