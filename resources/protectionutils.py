@@ -56,6 +56,7 @@ from resources.asn1_structures import (
     KemCiphertextInfoAsn1,
     KemCiphertextInfoValue,
     KemOtherInfoAsn1,
+    PKIMessagesTMP,
     PKIMessageTMP,
     ProtectedPartTMP,
 )
@@ -74,6 +75,8 @@ from resources.exceptions import (
     BadDataFormat,
     BadMacProtection,
     BadMessageCheck,
+    BadRequest,
+    BadSigAlgID,
     InvalidKeyCombination,
     LwCMPViolation,
     UnknownOID,
@@ -2854,3 +2857,65 @@ def verify_composite_signature_with_keys(
         data=data,
         signature=signature,
     )
+
+
+@keyword(name="Validate Original PKIMessage")
+def validate_orig_pkimessage(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP,
+    must_be_present: bool = False,
+    password: Optional[Union[bytes, str]] = None,
+) -> None:
+    """Validate the original PKIMessage.
+
+    If an intermediate RA or PKI entity receives a PKIMessage and modifies it, it can include
+    the original PKIMessage in the `generalInfo` field.
+
+    Arguments:
+    ---------
+        - `pki_message`: The PKIMessage to validate.
+        - `must_be_present`: If the original PKIMessage must be present. Defaults to `False`.
+        - `password`: The password to verify the original MAC protection. Defaults to `None`.
+
+    Raises:
+    ------
+        - `BadRequest`: If the generalInfo is not set or the original PKIMessage is not found.
+        - `BadMessageCheck`: If the original PKIMessage has an invalid signature.
+        - `pre_shared_secret`: The shared secret for MAC protection. Defaults to `None`.
+
+    Examples:
+    --------
+    | Validate Original PKIMessage | ${pki_message} |
+    | Validate Original PKIMessage | ${pki_message} | must_be_present=True |
+
+    """
+    if not pki_message["header"]["generalInfo"].isValue:
+        if must_be_present:
+            raise BadRequest("The generalInfo was not set. Could not verify the original `PKIMessage`.")
+        return
+
+    result = cmputils.find_oid_in_general_info(pki_message, str(rfc9480.id_it_origPKIMessage))
+    if not must_be_present and not result:
+        logging.info("Added protection request, did not contain the original `PKIMessage`.")
+        return
+
+    if not result:
+        raise BadRequest("The original PKIMessage was not found in the `generalInfo` field.")
+
+    val = cmputils.get_value_from_seq_of_info_value_field(
+        pki_message["header"]["generalInfo"],
+        rfc9480.id_it_origPKIMessage,
+    )
+
+    if val is None:
+        raise BadRequest("The original PKIMessage was not found in the `generalInfo` field.")
+
+    orig_message, rest = try_decode_pyasn1(val, PKIMessagesTMP())  # type: ignore
+    orig_message: PKIMessagesTMP
+    if rest:
+        raise BadMessageCheck("Original PKIMessage")
+
+    for msg in orig_message:
+        try:
+            verify_pkimessage_protection(msg, password=password)
+        except (BadMessageCheck, InvalidSignature, BadSigAlgID) as e:
+            raise BadMessageCheck("The original `PKIMessage` protection is invalid.") from e
