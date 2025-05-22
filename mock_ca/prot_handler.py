@@ -524,7 +524,6 @@ class ProtectionHandler:
         except (InvalidSignature, InvalidAltSignature, ValueError) as e:
             raise BadMessageCheck(message="Invalid signature protection.") from e
 
-        # Implement the signature validation logic here
         self.check_signer_is_trusted(pki_message, for_dh=False)
 
     def validate_protection(self, pki_message: PKIMessageTMP):
@@ -532,9 +531,11 @@ class ProtectionHandler:
 
         :param pki_message: The PKI message to validate.
         :return: True if the protection is valid, False otherwise.
+        :raises BadMessageCheck: If the message is invalid.
+        :raises BadMacProtection: If the MAC protection is invalid.
+        :raises SignerNotTrusted: If the signer is not trusted.
+        :raises NotAuthorized: If the signer is not authorized, to perform the operation.
         """
-        # Implement the validation logic here
-
         if not pki_message["header"]["protectionAlg"].isValue:
             raise BadMessageCheck("The protection algorithm is not set.")
 
