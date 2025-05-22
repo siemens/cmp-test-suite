@@ -262,6 +262,45 @@ class ProtectionHandler:
         logging.warning("Public key type: %s", str(type(public_key)))
         return isinstance(public_key, EllipticCurvePublicKey)
 
+    def _sign_response(
+        self,
+        response: PKIMessageTMP,
+        secondary_cert: Optional[rfc9480.CMPCertificate] = None,
+        add_certs: Optional[List[rfc9480.CMPCertificate]] = None,
+        bad_message_check: bool = False,
+        bad_alt_message_check: bool = False,
+    ) -> PKIMessageTMP:
+        """Sign the PKI message with the specified protection method.
+
+        :param response: The PKI message to sign.
+        :param secondary_cert: The secondary certificate to add, either the extra Chameleon cert or
+        the Sun-hybrid cert in form 1.
+        :param add_certs: Additional certificates to add to the PKIMessage.
+        :param bad_message_check: Whether to invalidate the protection. Defaults to `False`.
+        :param bad_alt_message_check: Whether to invalidate the alternative protection. Defaults to `False`.
+        :return: The signed PKI message.
+        """
+        response = self.patch_for_mac(response)
+        protected_pki_message = protect_hybrid_pkimessage(
+            pki_message=response,
+            cert=self.prot_cert,
+            private_key=self.prot_key,
+            exclude_certs=True,
+            alt_signing_key=self._prot_config.prot_alt_key,
+            bad_message_check=bad_message_check,
+            bad_alt_message_check=bad_alt_message_check,
+        )
+        protected_pki_message["extraCerts"].append(self.prot_cert)
+
+        if secondary_cert is not None:
+            protected_pki_message["extraCerts"].append(secondary_cert)
+
+        protected_pki_message["extraCerts"].extend(self.cmp_cert_chain[1:])
+
+        if add_certs is not None:
+            protected_pki_message["extraCerts"].extend(add_certs)
+
+        return protected_pki_message
     def protect_pkimessage(
         self,
         response: PKIMessageTMP,
@@ -285,7 +324,15 @@ class ProtectionHandler:
         :param bad_alt_message_check: Whether to invalidate the alternative protection. Defaults to `False`.
         :return: The protected PKI message.
         """
-        # Implement the protection logic here
+        if not request["header"]["protectionAlg"].isValue:
+            return self._sign_response(
+                response=response,
+                secondary_cert=secondary_cert,
+                add_certs=add_certs,
+                bad_message_check=bad_message_check,
+                bad_alt_message_check=bad_alt_message_check,
+            )
+
         prot_type = ProtectedType.get_protection_type(request)
 
         if prot_type == ProtectedType.DH:
@@ -391,27 +438,13 @@ class ProtectionHandler:
 
             return protected_pki_message
 
-        else:
-            protected_pki_message = protect_hybrid_pkimessage(
-                pki_message=response,
-                cert=self.prot_cert,
-                private_key=self.prot_key,
-                bad_message_check=bad_message_check,
-                bad_alt_message_check=bad_alt_message_check,
-                exclude_certs=True,
-                alt_signing_key=self._prot_config.prot_alt_key,
-            )
-
-        protected_pki_message["extraCerts"].append(self.prot_cert)
-        if secondary_cert is not None:
-            protected_pki_message["extraCerts"].append(secondary_cert)
-
-        protected_pki_message["extraCerts"].extend(self.cmp_cert_chain[1:])
-
-        if add_certs is not None:
-            protected_pki_message["extraCerts"].extend(add_certs)
-
-        return protected_pki_message
+        return self._sign_response(
+            response=response,
+            secondary_cert=secondary_cert,
+            add_certs=add_certs,
+            bad_message_check=bad_message_check,
+            bad_alt_message_check=bad_alt_message_check,
+        )
 
     def _may_expand_password(self, alg_id: rfc9480.AlgorithmIdentifier) -> bytes:
         """Expand the password to the required size.
