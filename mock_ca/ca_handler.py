@@ -440,6 +440,7 @@ class CAHandler:
         use_openssl: bool = False,
         base_url: str = "http://127.0.0.1",
         enforce_rfc9481: bool = False,
+        trusted_ras_dir: str = "./data/trusted_ras",
     ):
         """Initialize the CA Handler.
 
@@ -455,6 +456,7 @@ class CAHandler:
         Defaults to `http://localhost:5000`.
         :param enforce_rfc9481: Whether to enforce the RFC 9481 algorithm profile,
         for MAC and traditional protected PKIMessages. Defaults to `False`.
+        :param trusted_ras_dir: The directory for the trusted RAs. Defaults to `./data/trusted_ras`.
         :raises BadConfig: If the CA certificate and key are not provided.
         """
         if ca_cert is None and ca_key is None:
@@ -575,6 +577,7 @@ class CAHandler:
             use_openssl=True,
             def_mac_alg="password_based_mac",
             enforce_rfc9481=enforce_rfc9481,
+            trusted_ras_dir=trusted_ras_dir,
         )
 
         self.cert_req_handler = CertReqHandler(

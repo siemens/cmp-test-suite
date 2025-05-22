@@ -86,6 +86,7 @@ class ProtectionHandlerConfig(ConfigVal):
         mock_ca_trusted_dir: The directory containing the trusted CA certificates.
         Defaults to "data/mock_ca/trustanchors".
         enforce_lwcmp: Whether to enforce the use of LwCMP algorithm profile RFC9483. Defaults to `False`.
+        trusted_ras_dir: The directory containing the trusted RA certificates. Defaults to `None`.
 
     """
 
@@ -97,6 +98,7 @@ class ProtectionHandlerConfig(ConfigVal):
     kari_certs: Optional[KARICertsAndKeys] = None
     mock_ca_trusted_dir: str = "data/mock_ca/trustanchors"
     enforce_lwcmp: bool = False
+    trusted_ras_dir: Optional[str] = None
 
     def to_dict(self) -> dict:
         """Convert the configuration to a dictionary."""
@@ -109,4 +111,5 @@ class ProtectionHandlerConfig(ConfigVal):
             "kari_certs": self.kari_certs,
             "mock_ca_trusted_dir": self.mock_ca_trusted_dir,
             "enforce_lwcmp": self.enforce_lwcmp,
+            "trusted_ras_dir": self.trusted_ras_dir,
         }
