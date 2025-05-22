@@ -15,6 +15,7 @@ from mock_ca.db_config_vars import CertConfConfigVars
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import build_pki_conf_from_cert_conf
 from resources.checkutils import validate_pkimessage_header
+from resources.cmputils import get_cmp_message_type
 from resources.exceptions import (
     BadDataFormat,
     BadMessageCheck,
@@ -137,6 +138,7 @@ class CertConfState:
             raise BadDataFormat("The transaction ID is not set.")
 
         tx_id = pki_message["header"]["transactionID"].asOctets()
+        print("GET REQUEST is: ", get_cmp_message_type(self.requests[tx_id]))
         return self.requests[tx_id]
 
     def validate_tx_id(self, cert_conf: PKIMessageTMP) -> None:
@@ -317,7 +319,7 @@ class CertConfHandler:
                         f"expected: {get_protection_alg_name(request)}."
                     )
 
-    def process_cert_conf(self, pki_message: PKIMessageTMP):
+    def process_cert_conf(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Process the certificate confirmation message.
 
         :param pki_message: The CertConf message.
@@ -333,6 +335,7 @@ class CertConfHandler:
         logging.info("Passed verification of the protection.")
 
         response = self.conf_state.get_ca_response(pki_message)
+        response_type = get_cmp_message_type(response)
 
         validate_pkimessage_header(
             pki_message,
@@ -351,6 +354,13 @@ class CertConfHandler:
             issued_certs=issued_certs,
             allow_auto_ed=self.config_vars.allow_auto_ed,
         )
+
+        request = self.conf_state.get_request(pki_message)
+        if response_type == "kup":
+            self.state_db.update_cert_state.update_state(
+                request["extraCerts"][0],
+                was_confirmed=True,
+            )
 
         self.conf_state.remove_request(pki_message)
         self.state_db.add_certs(issued_certs)
