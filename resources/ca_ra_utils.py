@@ -2739,14 +2739,14 @@ def prepare_certified_key_pair(
 
 @keyword(name="Prepare CertResponse")
 def prepare_cert_response(
-    cert_req_id: Union[str, int] = 0,
+    cert_req_id: Strint = 0,
     status: str = "accepted",
     text: Union[List[str], str, None] = None,
     failinfo: Optional[str] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
     enc_cert: Optional[rfc9480.EnvelopedData] = None,
     private_key: Optional[rfc9480.EnvelopedData] = None,
-    rsp_info: Optional[bytes] = None,
+    **kwargs,
 ) -> CertResponseTMP:
     """Prepare a CertResponse structure for responding to a certificate request.
 
@@ -2757,18 +2757,24 @@ def prepare_cert_response(
     :param cert: An optional certificate object.
     :param enc_cert: Optional encrypted certificate as EnvelopedData.
     :param private_key: A private key inside the `EnvelopedData` structure
-    :param rsp_info: Optional response information. Defaults to `None`.
-    :return: A populated CertResponse structure.
+    :keyword rsp_info (str, bytes): Optional response information. Defaults to `None`.
+    :keyword pki_status_info: The PKIStatusInfo structure to include in the response. Defaults to `None`.
+    :return: The populated `CertResponse` structure.
     """
     cert_response = CertResponseTMP()
     cert_response["certReqId"] = univ.Integer(int(cert_req_id))
-    cert_response["status"] = cmputils.prepare_pkistatusinfo(texts=text, status=status, failinfo=failinfo)
+
+    pki_status_info = kwargs.get("pki_status_info")
+    if pki_status_info is None:
+        pki_status_info = cmputils.prepare_pkistatusinfo(texts=text, status=status, failinfo=failinfo)
+
+    cert_response["status"] = pki_status_info
 
     if cert or enc_cert or private_key:
         cert_response["certifiedKeyPair"] = prepare_certified_key_pair(cert, enc_cert, private_key)
 
-    if rsp_info is not None:
-        cert_response["rspInfo"] = univ.OctetString(rsp_info)
+    if kwargs.get("rsp_info") is not None:
+        cert_response["rspInfo"] = univ.OctetString(str_to_bytes(kwargs["rsp_info"]))
 
     return cert_response
 
