@@ -185,6 +185,12 @@ ${DEVICE_KEY}  ${None}
 # Other trusted PKI and Key (None means not provided, so test are skipped).
 ${OTHER_TRUSTED_PKI_KEY}    ${None}
 ${OTHER_TRUSTED_PKI_CERT}    ${None}
+# Whether to allow unprotected inner messages, inside a nested PKIMessage.
+${ALLOW_UNPROTECTED_INNER_MESSAGE}    ${None}
+# The directory containing the certificates to build the trusted RA certificate chain.
+${RA_CERT_CHAIN_DIR}    ${None}
+# saves the entire certificate chain of the RA.
+${RA_CERT_CHAIN_PATH}   ${None}
 
 # A certificate used to verify, if it is supported
 # that another trusted PKI Management Entity can revoke a certificate.

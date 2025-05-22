@@ -20,15 +20,10 @@ Library             ../resources/ca_kga_logic.py
 Suite Setup    Set UP
 
 
-*** Variables ***
-${ALLOW_UNPROTECTED_INNER_MESSAGE}    True
-${RA_CERT_CHAIN_DIR}    ./data/unittest
-
-
 *** Keywords ***
 Set UP
     [Documentation]    Set up the test environment
-    [Tags]    setup
+    [Tags]    setup  trust
     ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${OTHER_TRUSTED_PKI_KEY}
     IF  ${is_file}
         ${der_cert}=    Load And Decode PEM File    ${OTHER_TRUSTED_PKI_CERT}
@@ -40,12 +35,19 @@ Set UP
     Set Up Test Suite
     VAR   ${INNER_CERT}    ${ISSUED_CERT}    scope=Global
     VAR   ${INNER_KEY}    ${ISSUED_KEY}    scope=Global
+    
+    IF  '${RA_CERT_CHAIN_PATH}' == '${None}'
+        ${cert_chain}=   Build Cert Chain From Dir    ${OTHER_TRUSTED_PKI_CERT}   ${RA_CERT_CHAIN_DIR}
+    ELSE
+        ${cert_chain}=   Load Certificate Chain     ${RA_CERT_CHAIN_PATH}
+    END
+    VAR   ${RA_CERT_CHAIN}    ${cert_chain}    scope=Global
 
 Default Protect With Trusted Cert
     [Documentation]    Protect a PKIMessage with the default signature protection
     [Arguments]    ${pki_message}
-    ${protected}=    Protect PKIMessage    ${pki_message}    signature
-    ...              private_key=${OTHER_TRUSTED_PKI_KEY}    cert=${OTHER_TRUSTED_PKI_CERT}
+    ${protected}=    Protect PKIMessage    ${pki_message}    signature   private_key=${OTHER_TRUSTED_PKI_KEY}
+    ...              cert_chain=${RA_CERT_CHAIN}
     RETURN    ${protected}
 
 Default Build Inner IR Message
