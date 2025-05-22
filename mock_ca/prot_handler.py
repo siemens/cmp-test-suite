@@ -606,7 +606,11 @@ class ProtectionHandler:
         if not check_is_cert_signer(cert_chain[-1], cert_chain[-1]):
             raise SignerNotTrusted("The last certificate in the chain was not a signer.")
 
-    def check_signer_is_trusted(self, pki_message: PKIMessageTMP, for_dh: bool = False) -> None:
+    def check_signer_is_trusted(
+        self,
+        pki_message: PKIMessageTMP,
+        for_dh: bool = False,
+    ) -> None:
         """Check if the signer is trusted.
 
         Verify the certificate chain and check if the last certificate is trusted.
