@@ -419,6 +419,11 @@ def check_sender_cmp_protection(  # noqa D417 undocumented-param
     sender_name = asn1utils.get_asn1_value(pki_message, query="header.sender")  # type: ignore
     sender_name: rfc9480.GeneralName
     check_is_protection_present(pki_message=pki_message, must_be_protected=must_be_protected)
+
+    if not pki_message["header"]["protectionAlg"].isValue:
+        logging.info("The `protectionAlg` field is not set, and must not be set. Skipping sender check.")
+        return
+
     protection_type = ProtectedType.get_protection_type(pki_message)
 
     if protection_type in [ProtectedType.MAC, ProtectedType.KEM]:
