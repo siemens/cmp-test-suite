@@ -23,8 +23,7 @@ from resources.ca_ra_utils import (
     build_cp_from_p10cr,
     build_ip_cmp_message,
     build_kup_from_kur,
-    prepare_ca_body,
-    prepare_cert_response,
+    build_unsuccessful_ca_cert_response,
     set_ca_header_fields,
 )
 from resources.certbuildutils import prepare_extensions
@@ -46,6 +45,7 @@ from resources.checkutils import (
 from resources.cmputils import (
     build_cmp_error_message,
     find_oid_in_general_info,
+    get_cmp_message_type,
     patch_generalinfo,
 )
 from resources.convertutils import ensure_is_verify_key
@@ -526,19 +526,13 @@ class CertReqHandler:
         :param e: The exception that caused the error.
         :return: The error response.
         """
-        cert_response = prepare_cert_response(
-            status="rejection", failinfo=e.failinfo, text=[e.message] + e.get_error_details()
+        return build_unsuccessful_ca_cert_response(
+            sender=self.sender,
+            request=request,
+            failinfo=e.failinfo,
+            text=[e.message] + e.get_error_details(),
         )
 
-        body_name = request["body"].getName()
-
-        body_to_out_name = {"ir": "ip", "cr": "cp", "p10cr": "cp", "kur": "kup", "ccr": "ccp"}
-        out_name = body_to_out_name[body_name]
-        kwargs = set_ca_header_fields(request, {})
-        body = prepare_ca_body(out_name, responses=cert_response, ca_pubs=None)
-        pki_message = cmputils.prepare_pki_message(sender=self.sender, **kwargs)
-        pki_message["body"] = body
-        return pki_message
 
     def error_body(self, e: CMPTestSuiteError, request: PKIMessageTMP) -> PKIMessageTMP:
         """Build an error response for an IR message."""

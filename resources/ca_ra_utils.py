@@ -4598,3 +4598,82 @@ def build_cmp_krp_message(  # noqa D417 undocumented-params
     pki_message = cmputils.prepare_pki_message(**kwargs)
     pki_message["body"]["krp"] = krp_con
     return pki_message
+
+
+@keyword(name="Build Unsuccessful CA Response")
+def build_unsuccessful_ca_cert_response(  # noqa D417 undocumented-param
+    body_name: Optional[str] = None,
+    request: Optional[PKIMessageTMP] = None,
+    failinfo: Optional[str] = None,
+    text: Optional[Union[str, List[str]]] = None,
+    sender: str = "CN=Mock CA",
+    **kwargs,
+) -> PKIMessageTMP:
+    """Build an unsuccessful CA response message.
+
+    Arguments:
+    ---------
+        - `body_name`: The name of the body to use for the response. Defaults to `None`.
+        - `request`: The PKIMessage request to respond to. Defaults to `None`.
+        - `failinfo`: The failure information. Defaults to `None`.
+        - `text`: The text to include in the `PKIStatusInfo`. Defaults to `None`.
+        - `sender`: The sender of the response. Defaults to "CN=Mock CA".
+
+    **kwargs:
+    --------
+        - `cert_req_id` (str, int): The certificate request ID. Defaults to `None`.
+        - `status` (str): The status of the response. Defaults to "rejection".
+        - `pki_status_info` (PKISatusInfo): The PKI status information. Defaults to `None`.
+        - Additional keyword arguments for the `PKIHeader`.
+
+    Returns:
+    -------
+        - The PKIMessage that contains the unsuccessful CA response.
+
+    Raises:
+    ------
+        - `ValueError`: If neither `body_name` nor `request` is provided.
+        - `ValueError`: If the body name is invalid or if the request is not a valid PKIMessage.
+
+    Examples:
+    --------
+    | ${response} = | Build Unsuccessful CA Response | body_name=cr | request=${request} | status=rejection |
+    | ${response} = | Build Unsuccessful CA Response | request=${request} | status=accepted | failinfo=badCert |
+
+    """
+    if body_name is None and request is None:
+        raise ValueError("Either `body_name` or `request` must be provided.")
+
+    if request is not None:
+        kwargs = set_ca_header_fields(request, kwargs)
+
+    if body_name is None:
+        body_name = request["body"].getName()  # type: ignore
+
+    if kwargs.get("cert_req_id") is None:
+        if body_name == "p10cr":
+            cert_req_id = -1
+        else:
+            cert_req_id = 0
+    else:
+        cert_req_id = int(kwargs["cert_req_id"])
+
+    if kwargs.get("pki_status_info") is None:
+        kwargs["pki_status_info"] = cmputils.prepare_pkistatusinfo(
+            status=kwargs.get("status", "rejection"),
+            failinfo=failinfo,
+            texts=text,
+        )
+
+    cert_response = prepare_cert_response(cert_req_id=cert_req_id, pki_status_info=kwargs["pki_status_info"])
+
+    body_to_out_name = {"ir": "ip", "cr": "cp", "p10cr": "cp", "kur": "kup", "ccr": "ccp"}
+
+    if body_name not in body_to_out_name:
+        raise ValueError(f"Invalid body name: {body_name}. Must be one of {list(body_to_out_name.keys())}.")
+
+    out_name = body_to_out_name[body_name]
+    body = prepare_ca_body(out_name, responses=cert_response, ca_pubs=None)
+    pki_message = cmputils.prepare_pki_message(sender=sender, **kwargs)
+    pki_message["body"] = body
+    return pki_message
