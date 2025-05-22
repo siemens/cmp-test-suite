@@ -679,3 +679,35 @@ class ProtectionHandler:
             password=self._prot_config.pre_shared_secret,
         )
 
+    @staticmethod
+    def check_correct_prot_type(
+        pki_message: PKIMessageTMP,
+        must_be_protected: bool = False,
+    ) -> None:
+        """Check if the protection type is correct.
+
+        Validate if the protection type is allowed, to be MAC,
+        for better error handling.
+
+        :param pki_message: The PKIMessage to check.
+        :param must_be_protected: If the PKIMessage must be protected. Defaults to `False`.
+        :raises WrongIntegrity: If the protection type is MAC for `rr`, `kur`, or `ccr` messages.
+        """
+        body_name = get_cmp_message_type(pki_message)
+
+        is_protected = pki_message["header"]["protectionAlg"].isValue
+
+        if not must_be_protected and body_name not in ["rr", "kur", "ccr"] and not is_protected:
+            return
+
+        if not is_protected and must_be_protected:
+            raise BadMessageCheck("The inner added protected PKIMessage protection algorithm is not set.")
+
+        prot_type = ProtectedType.get_protection_type(pki_message)
+        alg_name = may_return_oid_to_name(pki_message["header"]["protectionAlg"]["algorithm"])
+        if prot_type == ProtectedType.MAC and body_name in ["rr", "kur", "ccr"]:
+            raise WrongIntegrity(
+                "The inner added PKIMessage protection type is MAC, which is not allowed."
+                f"Got Body: {get_cmp_message_type(pki_message)} and Protection alg: {alg_name}"
+            )
+
