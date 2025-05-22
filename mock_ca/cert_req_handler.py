@@ -267,12 +267,15 @@ class CertReqHandler:
     def process_ir(
         self,
         pki_message: PKIMessageTMP,
-        must_be_protected: bool = True,
         verify_ra_verified: bool = True,
     ) -> "PKIMessageTMP":
-        """Process an initialization request (IR) message."""
-        logging.debug("CertReqHandler: Processing IR message")
+        """Process an initialization request (IR) message.
 
+        :param pki_message: The received `PKIMessage`.
+        :param verify_ra_verified: If the `raVerified` fields should be validated. Defaults to `True`.
+        :return: The response `PKIMessage`.
+        """
+        logging.debug("CertReqHandler: Processing IR message")
         logging.warning("Verify RA verified: %s", verify_ra_verified)
 
         if not pki_message["header"]["protectionAlg"].isValue and must_be_protected:
@@ -317,8 +320,13 @@ class CertReqHandler:
                         "allowed for known certificates."
                     )
 
-    def process_cr(self, pki_message: PKIMessageTMP):
-        """Process a certificate request (CR) message."""
+    def process_cr(self, pki_message: PKIMessageTMP, verify_ra_verified: bool = True):
+        """Process a certificate request (CR) message.
+
+        :param pki_message: The received `PKIMessage`.
+        :param verify_ra_verified: If the `raVerified` fields should be validated. Defaults to `True`.
+        :return: The response `PKIMessage`.
+        """
         logging.debug("CertReqHandler: Processing CR message")
         for_mac = self._get_for_mac(request=pki_message)
         self.check_signer_is_a_issued_cert(pki_message)
@@ -331,6 +339,7 @@ class CertReqHandler:
             extensions=self.extensions,
             sender=self.sender,
             for_mac=for_mac,
+            verify_ra_verified=verify_ra_verified,
         )
 
         return self.process_after_request(
@@ -339,8 +348,13 @@ class CertReqHandler:
             certs=certs,
         )
 
-    def process_p10cr(self, pki_message: PKIMessageTMP):
-        """Process a `P10CR` message."""
+    def process_p10cr(self, pki_message: PKIMessageTMP, verify_ra_verified: bool = True):
+        """Process a `P10CR` message.
+
+        :param pki_message: The received `PKIMessage`.
+        :param verify_ra_verified: If the `raVerified` fields should be validated. Defaults to `True`
+        :return: The response `PKIMessage`.
+        """
         logging.debug("CertReqHandler: Processing P10CR message")
         self.state.cert_state_db.check_request_for_compromised_key(pki_message)
 
@@ -358,6 +372,7 @@ class CertReqHandler:
             for_mac=for_mac,
             include_csr_extensions=False,
             include_ski=True,
+            verify_ra_verified=verify_ra_verified,
         )
         return self.process_after_request(
             request=pki_message,
@@ -543,9 +558,18 @@ class CertReqHandler:
         return pki_message
 
     def process_cert_request(self, pki_message: PKIMessageTMP) -> "PKIMessageTMP":
+    def process_cert_request(
+        self,
+        pki_message: PKIMessageTMP,
+        verify_ra_verified: bool = True,
+        must_be_protected: Optional[bool] = None,
+    ) -> "PKIMessageTMP":
         """Process a certificate request message.
 
         :param pki_message: The incoming PKI message.
+        :param verify_ra_verified: If the RA verified the request.
+        :param must_be_protected: If the message must be protected (only needed for `nested` messages). Defaults to `None`.
+        (uses the `must_be_protected` attribute of the class if `None`).
         :return: The processed PKI response.
         :raises NotImplementedError: If the message type is unsupported.
         """
@@ -558,15 +582,20 @@ class CertReqHandler:
         try:
             self.check_same_key_cert_request(pki_message=pki_message)
             if msg_type == "ir":
-                response = self.process_ir(pki_message)
+                response = self.process_ir(pki_message, verify_ra_verified=verify_ra_verified)
             elif msg_type == "cr":
-                response = self.process_cr(pki_message)
+                response = self.process_cr(pki_message, verify_ra_verified=verify_ra_verified)
             elif msg_type == "p10cr":
-                response = self.process_p10cr(pki_message)
+                response = self.process_p10cr(pki_message, verify_ra_verified=verify_ra_verified)
             elif msg_type == "kur":
                 response = self.process_kur(pki_message)
-                if find_oid_in_general_info(pki_message, str(rfc9480.id_it_implicitConfirm)):
-                    self.state.add_updated_cert(pki_message["extraCerts"][0])
+                result = find_oid_in_general_info(response, str(rfc9480.id_it_implicitConfirm))
+                self.state.add_may_update_cert(
+                    cert=pki_message["extraCerts"][0],
+                    update_cert=pki_message["body"]["kup"]["response"][0],
+                    was_confirmed=result,
+                )
+
             elif msg_type == "ccr":
                 response = self.handle_cross_cert_req(pki_message)
             else:
