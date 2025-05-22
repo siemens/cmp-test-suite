@@ -74,7 +74,19 @@ class ProtectionHandler:
         enforce_rfc9481: bool = False,
         trusted_ras_dir: Optional[str] = None,
     ) -> None:
-        """Initialize the ProtectionHandler with the specified parameters."""
+        """Initialize the ProtectionHandler with the specified parameters.
+
+        :param cmp_protection_cert: The CMP protection certificate.
+        :param cmp_prot_key: The CMP protection key.
+        :param kem_ss_list: The KEM shared secret list. Defaults to `None`.
+        :param pre_shared_secret: The pre-shared secret for MAC protection. Defaults to `b"SiemensIT"`.
+        :param def_mac_alg: The default MAC algorithm. Defaults to `"password_based_mac"`.
+        :param use_openssl: Whether to use OpenSSL for verification. Defaults to `True`.
+        :param prot_alt_key: The alternative signing key to use for hybrid signatures. Defaults to `None`.
+        :param enforce_rfc9481: Whether to enforce the use of LwCMP algorithm profile RFC9483. Defaults to `False`.
+        :param trusted_ras_dir: The directory containing the trusted RA certificates. Defaults to `None`.
+
+        """
         self.prot_cert = cmp_protection_cert
         self.prot_key = cmp_prot_key
         mock_ca_trusted_dir = "data/mock_ca/trustanchors"
@@ -303,6 +315,7 @@ class ProtectionHandler:
             protected_pki_message["extraCerts"].extend(add_certs)
 
         return protected_pki_message
+
     def protect_pkimessage(
         self,
         response: PKIMessageTMP,
