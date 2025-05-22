@@ -554,6 +554,19 @@ class CAHandler:
         self.kga_cert = kga_cert
         self.kga_key = ensure_is_sign_key(kga_key)
 
+        # Just to save all the certificates which are used by the Mock-CA,
+        # to issued certs.
+        self.add_cert_to_issued_certs(
+            [
+                self.ca_cert,
+                self.kga_cert,
+                self.comp_cert,
+                self.sun_hybrid_cert,
+            ]
+        )
+        if self.xwing_cert is not None:
+            self.add_cert_to_issued_certs(self.xwing_cert)
+
         self.protection_handler = ProtectionHandler(
             cmp_protection_cert=self.ca_cert,
             cmp_prot_key=self.ca_key,
@@ -631,6 +644,16 @@ class CAHandler:
 
         # The default algorithm for the CA, just to correctly build the error message.
         self.default_algorithms = rfc9481.ecdsa_with_SHA512
+
+    def add_cert_to_issued_certs(self, cert: Union[rfc9480.CMPCertificate, List[rfc9480.CMPCertificate]]) -> None:
+        """Add a certificate to the issued certificates.
+
+        :param cert: The certificate(s) to add.
+        """
+        if isinstance(cert, rfc9480.CMPCertificate):
+            cert = [cert]
+
+        self.state.issued_certs.extend(cert)
 
     def build_error_from_exception(
         self, e: CMPTestSuiteError, request_msg: Optional[PKIMessageTMP] = None
