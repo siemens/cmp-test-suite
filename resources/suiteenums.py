@@ -26,13 +26,14 @@ from resources.oidutils import (
 )
 
 
+@enum.unique
 class ProtectionAlgorithm(enum.Enum):
     """Identifiers for ProtectionAlgorithm options used in a PKIMessage."""
 
     HMAC = enum.auto()  # default sha256
     PBMAC1 = enum.auto()
     PASSWORD_BASED_MAC = enum.auto()
-    AES_GMAC = enum.auto()  # default sha256
+    AES_GMAC = enum.auto()  # default to AES-256
     SIGNATURE = enum.auto()
     DH = enum.auto()
     RSASSA_PSS = enum.auto()  # default sha256
@@ -74,6 +75,7 @@ class ProtectionAlgorithm(enum.Enum):
             ) from err
 
 
+@enum.unique
 class KeyUsageStrictness(enum.Enum):
     """Strictness for the validation for a x509.Certificate."""
 
@@ -131,6 +133,7 @@ class NegCertConfTypes(enum.Enum):
     IMPLICIT_CONFIRM = "implicit_confirm"
 
 
+@enum.unique
 class NameCompareTypes(enum.Enum):
     """Identifiers the mode to compare two `pyasn1` names."""
 
@@ -140,6 +143,7 @@ class NameCompareTypes(enum.Enum):
     CONTAINS_SEQ = "contains_seq"
 
 
+@enum.unique
 class GeneralInfoOID(enum.Enum):  #
     """Defines the Support OIDs general messages for the PKIMessage."""
 
@@ -192,6 +196,7 @@ class GeneralInfoOID(enum.Enum):  #
         raise ValueError(f"Unknown ObjectIdentifier: {oid}")
 
 
+@enum.unique
 class ProtectedType(enum.Enum):
     """All possible supported types for the `protectedAlg` field in a PKIMessage."""
 
@@ -240,6 +245,7 @@ class ProtectedType(enum.Enum):
         raise TypeError(f"Unsupported type: {type(value)}")
 
 
+@enum.unique
 class KeySaveType(enum.Enum):
     """Defines the key save type to be either by seed or by key or first the seed and then the key."""
 
@@ -269,6 +275,7 @@ class KeySaveType(enum.Enum):
             ) from err
 
 
+@enum.unique
 class InvalidOneAsymKeyType(enum.Enum):
     """Defines the invalid key types for the OneAsymKey for KGA tests."""
 
