@@ -655,3 +655,27 @@ class ProtectionHandler:
         else:
             # Check if the certificate is trusted.
             certificates_are_trustanchors(may_trusted_cert, trustanchors=self._prot_config.mock_ca_trusted_dir)
+
+    def verify_added_protection(
+        self,
+        pki_message: PKIMessageTMP,
+        must_be_protected: bool = False,
+    ) -> None:
+        """Verify the added protection of the PKIMessage
+
+        :param pki_message: The inner PKIMessage to verify.
+        :param must_be_protected: If the PKIMessage must be protected. Defaults to `False`.
+        """
+        inner_msg = pki_message["body"]["nested"][0]
+        self.check_correct_prot_type(inner_msg, must_be_protected=must_be_protected)
+
+        body_name = get_cmp_message_type(inner_msg)
+        if body_name in ["rr", "kur", "ccr"]:
+            self.validate_protection(inner_msg)
+
+        validate_orig_pkimessage(
+            pki_message,
+            must_be_present=False,
+            password=self._prot_config.pre_shared_secret,
+        )
+
