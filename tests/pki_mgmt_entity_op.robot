@@ -218,7 +218,8 @@ CA MUST Respond with MAC To Added Protection For MAC Inner Request
     ...    transaction_id=${transaction_id}
     ${prot_nested}=    Default Protect With Trusted Cert    ${nested}
     ${response}=    Exchange PKIMessage    ${prot_nested}
-    PKIStatus Must Be   ${response}    status=accepted
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be   ${response}    accepted
     ${protection_type}=    Get Protection Type From PKIMessage    ${response}    lwcmp=${LWCMP}
     IF    '${protection_type}' != 'mac'
         Fail    The response to the wrapped protected message was not MAC-based protected.
