@@ -506,19 +506,20 @@ class CertReqHandler:
         # Allows the CMP protection certificate to have an unset key usage.
         validate_key_usage(cert_chain[0], key_usages="digitalSignature", strictness="LAX")
 
-    def validate_header(self, pki_message: PKIMessageTMP) -> None:
+    def validate_header(self, pki_message: PKIMessageTMP, must_be_protected: Optional[bool] = None) -> None:
         """Validate the header of a PKIMessage."""
         if int(pki_message["header"]["pvno"]) not in [2, 3]:
             raise UnsupportedVersion("The protocol version number was not 2 or 3.")
 
+        if must_be_protected is None:
+            must_be_protected = self.must_be_protected
+
         validate_request_message_nonces_and_tx_id(request=pki_message)
         self.validate_general_info(pki_message=pki_message)
         self.check_message_time(pki_message=pki_message)
-        check_is_protection_present(pki_message, must_be_protected=self.must_be_protected)
-        check_sender_cmp_protection(pki_message, must_be_protected=self.must_be_protected, allow_failure=False)
-        validate_senderkid_for_cmp_protection(
-            pki_message, must_be_protected=self.must_be_protected, allow_mac_failure=False
-        )
+        check_is_protection_present(pki_message, must_be_protected=must_be_protected)
+        check_sender_cmp_protection(pki_message, must_be_protected=must_be_protected, allow_failure=False)
+        validate_senderkid_for_cmp_protection(pki_message, must_be_protected=must_be_protected, allow_mac_failure=False)
         oid = pki_message["header"]["protectionAlg"]["algorithm"]
         if pki_message["header"]["protectionAlg"].isValue:
             prot_type2 = ProtectedType.get_protection_type(pki_message)
@@ -574,7 +575,7 @@ class CertReqHandler:
         :raises NotImplementedError: If the message type is unsupported.
         """
         # raise exception for the error body.
-        self.validate_header(pki_message)
+        self.validate_header(pki_message, must_be_protected=must_be_protected)
 
         msg_type = pki_message["body"].getName()
         if msg_type not in ["ir", "cr", "p10cr", "kur", "ccr"]:
