@@ -36,6 +36,7 @@ from resources.exceptions import (
     BadAsn1Data,
     BadConfig,
     BadMessageCheck,
+    BadRequest,
     BadSigAlgID,
     CMPTestSuiteError,
     InvalidAltSignature,
@@ -710,4 +711,60 @@ class ProtectionHandler:
                 "The inner added PKIMessage protection type is MAC, which is not allowed."
                 f"Got Body: {get_cmp_message_type(pki_message)} and Protection alg: {alg_name}"
             )
+
+    def verify_inner_batch_pkimessage(
+        self,
+        pki_message: PKIMessageTMP,
+        index: Optional[int] = None,
+        must_be_protected: bool = False,
+    ) -> None:
+        """Verify the inner batch PKIMessage
+
+        :param pki_message: The inner PKIMessage to verify.
+        :param index: The index of the inner PKIMessage in the batch. Defaults to `None`.
+        :param must_be_protected: If the PKIMessage must be protected. Defaults to `False`.
+        :raises WrongIntegrity: If the inner batch PKIMessage is MAC protected, which is not allowed,
+        for `rr`, `kur`, or `ccr` messages.
+        :raises BadMessageCheck: If the inner batch PKIMessage protection is invalid.
+        """
+        body_name = get_cmp_message_type(pki_message)
+        try:
+            self.check_correct_prot_type(pki_message, must_be_protected=must_be_protected)
+        except BadMessageCheck as e:
+            raise BadMessageCheck(
+                f"The inner batch PKIMessage protection is not set.But MUST be present: {body_name}"
+            ) from e
+
+        except WrongIntegrity as e:
+            if index:
+                msg = (
+                    f"The inner batch PKIMessage, at {index} is MAC protected, which is not allowed."
+                    f"Got body type: {body_name}."
+                )
+            else:
+                msg = f"The inner batch PKIMessage is MAC protected, which is not allowed.Got body type: {body_name}."
+
+            raise WrongIntegrity(
+                message=msg,
+                error_details=[e.message] + e.error_details,
+            ) from e
+        if pki_message["header"]["protectionAlg"].isValue:
+            try:
+                self.validate_protection(pki_message=pki_message)
+            except BadMessageCheck as e:
+                if index is None:
+                    msg = "Invalid inner batch PKIMessage protection."
+                else:
+                    msg = f"Invalid inner batch PKIMessage protection at index {index}."
+
+                raise BadMessageCheck(
+                    message=msg,
+                    error_details=[e.message] + e.error_details,
+                ) from e
+            except CMPTestSuiteError as e:
+                raise CMPTestSuiteError(
+                    message=e.message + " At index: " + str(index),
+                    error_details=[e.message] + e.error_details,
+                    failinfo=e.get_failinfo(),
+                )
 
