@@ -283,7 +283,7 @@ def _generate_crl() -> None:
         crl_file.write(crl.public_bytes(Encoding.PEM))
 
 
-def load_or_generate_cert_chain() -> Tuple[List[Union[rfc9480.CMPCertificate, x509.Certificate]], List[SignKey]]:
+def load_or_generate_cert_chain() -> Tuple[List[rfc9480.CMPCertificate], List[SignKey]]:
     """Load an existing certificate chain of size six, for testing.
 
     Filepath: "data/unittest/test_cert_chain_len6.pem".
@@ -705,6 +705,7 @@ def setup_test_data():
     _build_time_independent_certs()
     _generate_other_trusted_ca_and_device_certs()
     _generate_mock_ca_certs()
+    _generate_other_trusted_pki_certs()
 
 
 def _gen_and_save_keys():
@@ -1201,9 +1202,23 @@ def build_crl_crypto_lib(
 
 
 def _generate_other_trusted_pki_certs():
-    """Generate and save certificates for other trusted PKIs."""
-    root_key = load_private_key_from_file("data/keys/private-key-ed25519.pem")
-    root_cert = parse_certificate(load_and_decode_pem_file("data/unittest/root_cert_ed25519.pem"))
+    """Generate and save certificates for other trusted PKIs.
+
+    Generates other trusted RA certificates for testing purposes.
+    Also used by the Mock-CA to test the LwCMP Section 5 test cases.
+
+    Uses:
+    ----
+    - `load_ca_cert_and_key()` as issuer cert and key.
+
+    Generated files:
+    ---------------
+    - data/unittest/ra_kga_cert_ecdsa.pem
+    - data/unittest/ra_cms_cert_ecdsa.pem
+
+    """
+
+    root_cert, root_key = load_ca_cert_and_key()
     kga_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
 
     pub_key = load_public_key_from_cert(root_cert)
