@@ -631,7 +631,7 @@ def _verify_spki_alg_id(
             )
 
 
-def validate_certificate_public_Key(  # noqa D417 # undocumented-param
+def validate_certificate_public_key(  # noqa D417 # undocumented-param
     cert: rfc9480.CMPCertificate,
     key: Union[PrivateKey, PublicKey, rfc5280.SubjectPublicKeyInfo],
     key_name: Optional[str] = None,

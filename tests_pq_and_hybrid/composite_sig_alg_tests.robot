@@ -521,7 +521,7 @@ Exchange Composite Sig Request
 
 Validate BadPOP Or Cert
     [Documentation]    Validate the response for a bad POP or certificate.
-    [Arguments]    ${response}   ${bad_pop}
+    [Arguments]    ${response}   ${bad_pop}   ${alg_name}
     IF   ${bad_pop}
         PKIStatus Must Be    ${response}    rejection
         PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP
@@ -544,4 +544,4 @@ Request With Composite Sig
     ${ir}=   Build Ir From Key    ${comp_key}   cert_request=${cert_request}  popo=${popo}
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
     ${response}=   Exchange Composite Sig Request  ${protected_ir}
-    Validate BadPOP Or Cert  ${response}   ${bad_pop}
+    Validate BadPOP Or Cert  ${response}   ${bad_pop}   ${alg_name}

@@ -22,7 +22,7 @@ class TestBuildChameleonCert(unittest.TestCase):
     def setUp(self):
         self.ec_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
         # TODO verify if this is a bad key!
-        self.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44.pem")
+        self.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
         self.common_name = "CN=Hans the Tester"
         self.ca_cert = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
 

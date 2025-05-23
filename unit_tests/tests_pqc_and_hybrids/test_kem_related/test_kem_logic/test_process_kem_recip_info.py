@@ -92,8 +92,8 @@ class TestProcessKEMInfo(unittest.TestCase):
         WHEN processing the KEM recipient info,
         THEN the derived content encryption key is equal to the original content encryption key.
         """
-        client_key = load_private_key_from_file("data/keys/private-key-xwing.pem")
-        server_key = load_private_key_from_file("data/keys/private-key-xwing-other.pem")
+        client_key = load_private_key_from_file("data/keys/private-key-xwing-seed.pem")
+        server_key = load_private_key_from_file("data/keys/private-key-xwing-other-seed.pem")
         server_cert = parse_certificate(load_and_decode_pem_file("data/unittest/hybrid_cert_xwing_other.pem"))
         kem_recip_info = prepare_kem_recip_info(
             recip_cert=server_cert,
