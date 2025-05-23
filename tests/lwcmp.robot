@@ -401,7 +401,8 @@ FailInfo Bit Must Be badDataFormat For Missing transactionID
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badDataFormat    exclusive=True
 
 CA MUST Reject PKIMessage If transactionId Is Already In Use
-    [Documentation]    According to RFC 9483 Section 3.5, the CA must validate the uniqueness of the `transactionID`
+#copied to PKIStatusInfo_ErrorMessages
+    [Documentation]    According to RFC 9483 Section 3.6.4, the CA must validate the uniqueness of the `transactionID`
     ...    for each new transaction. If a `transactionID` that is already in use is detected, the CA MUST
     ...    terminate the operation and reject the request. The response may include the failinfo
     ...    `transactionIdInUse`. We send two PKIMessages with the same `transactionID`, expecting the CA
@@ -609,6 +610,8 @@ CA MUST Reject PKIMessage With ImplicitConfirm And ConfirmWaitTime
 
 #### Section 3.2 General Description of the CMP Message Protection
 
+-----
+
 CA MUST Reject PKIMessage With Invalid Signature Protection Value
     [Documentation]    According to RFC 9483 Section 3.2, when using signature-based protection, PKIMessages must
     ...    include a valid protection value that corresponds to the `protectionAlg` field. We send a `p10cr` PKIMessage
@@ -791,6 +794,7 @@ CA Must Validate The Received PKI Message
 # TODO fix doc
 
 CA MUST Reject IR With More Than One CertReqMsg Inside The IR
+#moved to Enrolling EndEntity
     [Documentation]    According to RFC 9483 Section 4.1.1, an Initialization Request (IR) must contain exactly one
     ...    `CertReqMsg` to be valid. Including more than one `CertReqMsg` in an IR violates protocol
     ...    requirements. We send an IR containing two `CertReqMsg` entries, expecting the CA to reject

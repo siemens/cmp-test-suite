@@ -34,6 +34,8 @@ CA Must Reject Malformed Request
     ...    a client-side error in the supplied input data. Ref: RFC 6712 "3.3. General Form", "All applicable
     ...    "Client Error 4xx" or "Server Error 5xx" status codes MAY be used to inform the client
     ...    about errors."
+    #What is the reference to the RFC 9483?
+    #Why is this the minimal tag?
     [Tags]    negative    rfc6712    robot:skip-on-failure    status    minimal
     ${response}=    Exchange Data With CA    this dummy input is not a valid PKIMessage
     Should Be Equal
@@ -46,6 +48,8 @@ CA MUST Reject Requests That Feature Unknown Signature Algorithms
     ...    signature algorithm MUST be rejected by the CA. We send a valid p10cr PKIMessage with an unknown
     ...    signature algorithm. The CA MUST reject the request, potentially responding with the failInfo
     ...    `badAlg` for the unsupported algorithm or `systemFailure`.
+    #Where does it say that in the RFC 9483 Section 3? - What are unrecognized or unsupported signature algorithms?
+    #Does that work for all unrecognized or unsupported signatures? 
     [Tags]    crypto    negative    p10cr  minimal
     ${data}=    Get Binary File    data/req-p10cr-prot_none-pop_sig-dilithium.pkimessage
     Log Base64    ${data}
@@ -60,6 +64,7 @@ CA Must Issue A Certificate When We Send A Valid P10cr Request
     [Documentation]    According to RFC 9483 Section 4.1.4, when a valid CSR is sent inside a p10cr PKIMessage, the CA
     ...    MUST respond with a valid certificate. We send a correctly formatted p10cr request and
     ...    verify that the CA issues a valid certificate in response.
+    #Why is this minimal? 4.1.4 is not a must, so other criteria 
     [Tags]    csr    p10cr    positive   minimal
     ${der_pkimessage}=    Load And Decode Pem File    data/example-rufus-01-p10cr.pem
     ${request_pki_message}=    Parse PKIMessage    ${der_pkimessage}
@@ -83,6 +88,7 @@ CA Must Reject Request When The CSR Signature Is Invalid
     [Documentation]    According to RFC 9483 Section 4.1.4, the signature inside the CSR serves as proof-of-possession
     ...    to demonstrate that the End-Entity owns the private key. We send a CSR with a invalid signature.
     ...    The CA MUST reject the request and may respond with the optional failInfo `badPOP`.
+    #Why is this not minimal but above the section 4.1.4 is tagged minimal?
     [Tags]    crypto    csr    negative
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
@@ -134,6 +140,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid MAC-Protected CR
     ...    Response, issuing a valid certificate. If implicit confirmation is enabled, the PKIMessage MUST
     ...    contain the `implicitConfirm` extension. Otherwise, the `implicitConfirm` extension MUST NOT be
     ...    present in the `generalInfo` field.
+    #Not sure if implicitConfirm->implicit Confirm and NOTimplicitConfirms->NOTimplicitConfirm is completly true
     [Tags]    cr    implicit_confirm    mac    positive
     Skip If    not ${ALLOW_MAC_PROTECTION}    Skipped test because MAC protection is disabled.
     Skip If    not ${ALLOW_CR_MAC_BASED}    Skipped test because cr MAC protected is disabled.
@@ -166,6 +173,7 @@ CA MUST Reject An Valid MAC Protected Key Update Request
     ...    to process it. We send a valid Key Update Request that is MAC-protected. The CA MUST
     ...    reject the request to ensure integrity and compliance with the PKI policies, potentially
     ...    responding with the failInfo `wrongIntegrity`.
+    #I don´t understand where this comes from
     [Tags]    kur    mac    negative   minimal
     ${cert}   ${_}=    Issue New Cert For Testing
     ${new_private_key}=    Generate Default Key
@@ -188,6 +196,8 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid MAC-Protected P10CR
     ...    `Certification Response`, issuing a valid certificate. If implicit confirmation is enabled,
     ...    the PKIMessage MUST contain the `implicitConfirm` extension. Otherwise, it SHOULD NOT
     ...    be present in the `generalInfo` field.
+    #Not sure if implicitConfirm->implicit Confirm and NOTimplicitConfirms->NOTimplicitConfirm is completly true
+    #Check out some more
     [Tags]    implicit_confirm    mac    p10cr    positive
     Skip If    not ${ALLOW_MAC_PROTECTION}    Skipped test because MAC based protection is disabled.
     Skip If    not ${ALLOW_P10CR_MAC_BASED}    Skipped test because P10cr MAC based protection is disabled.
@@ -243,6 +253,7 @@ CA MUST Send A Valid CP After Receiving valid CR
     [Documentation]    According to RFC 9483 Section 4, when a valid Certification Request is received, the CA MUST
     ...    process the request and respond with a valid Certification Response. The response MUST
     ...    contain the issued certificate if the request meets all requirements.
+    #Can we get this more concret?
     [Tags]    cp    cr    PKIBody    positive   minimal
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
     ${cr}=    Build Cr From Key
@@ -455,6 +466,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid P10cr SIG-Protected
     Certificate Must Be Valid    ${cert}
 
 #### Basic `CertTemplate` tests (extensions, validity)
+#What is meant with Basic Constraint (Extension)?
 
 # Does not include the 'ir' tag because body-independent checks are performed.
 # However, as per Section 7.1, 'ir' MUST be implemented, so 'ir' is chosen as the body type.
