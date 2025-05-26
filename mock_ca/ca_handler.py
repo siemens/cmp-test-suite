@@ -317,7 +317,6 @@ class CAHandler:
         )
 
         self.sender = "CN=Mock CA"
-
         self.ca_alt_key = ca_alt_key
         self.state = mock_ca_state or MockCAState()
         self.pre_shared_secret = pre_shared_secret
@@ -352,7 +351,7 @@ class CAHandler:
                 )
 
         # Handler classes
-        self.rev_handler = RevocationHandler(self.state.cert_state_db)
+        self.rev_handler = RevocationHandler(self.state.certificate_db)
         self.cert_conf_handler = CertConfHandler(self.state)
 
         extensions = self.extensions
@@ -473,7 +472,7 @@ class CAHandler:
         if isinstance(cert, rfc9480.CMPCertificate):
             cert = [cert]
 
-        self.state.issued_certs.extend(cert)
+        self.state.add_certs(cert, was_confirmed=True)
 
     def build_error_from_exception(
         self, e: CMPTestSuiteError, request_msg: Optional[PKIMessageTMP] = None
@@ -796,14 +795,11 @@ class CAHandler:
         :param pki_message: The RR message.
         :return: The PKI message containing the response.
         """
-        response, certs_to_revive = self.rev_handler.process_revocation_request(
+        response, _ = self.rev_handler.process_revocation_request(
             pki_message=pki_message,
             issued_certs=self.state.issued_certs,
             shared_secret=self.state.get_kem_mac_shared_secret(pki_message=pki_message),
         )
-
-        if certs_to_revive:
-            self.state.add_certs(certs=certs_to_revive)
         return response
 
     def process_cert_conf(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
@@ -902,6 +898,9 @@ class CAHandler:
                     pki_message=pki_message,
                     certs=[paired_cert, delta_cert],
                 )
+                result = find_oid_in_general_info(pki_message, str(rfc9480.id_it_implicitConfirm))
+                self.state.add_certs(certs=[paired_cert, delta_cert], was_confirmed=result)
+
                 return self.sign_response(
                     response=response,
                     request_msg=pki_message,
@@ -949,12 +948,12 @@ class CAHandler:
         :param certs: The list of certificates.
         """
         if not confirmed:
+            self.state.add_certs(certs=certs, was_confirmed=False)
             self.state.store_transaction_certificate(
                 pki_message=request_msg,
                 certs=certs,
             )
-            self.cert_conf_handler.add_request(pki_message=request_msg)
-            self.cert_conf_handler.add_response(pki_message=response, certs=certs)
+            self.cert_req_handler.add_request_for_cert_conf(request=request_msg, response=response, certs=certs)
         else:
             self.state.add_certs(certs=certs)
 
@@ -1255,11 +1254,10 @@ class CAHandler:
             ocsp_response = ocsp.OCSPResponseBuilder.build_unsuccessful(ocsp.OCSPResponseStatus.MALFORMED_REQUEST)
             return ocsp_response.public_bytes(encoding=Encoding.DER)
 
-        response = self.state.cert_state_db.get_ocsp_response(
+        response = self.state.certificate_db.get_ocsp_response(
             request=ocsp_request,
             ca_cert=self.ca_cert,
             sign_key=self.ca_key,
-            issued_certs=self.state.issued_certs,
         )
 
         return response.public_bytes(encoding=Encoding.DER)
