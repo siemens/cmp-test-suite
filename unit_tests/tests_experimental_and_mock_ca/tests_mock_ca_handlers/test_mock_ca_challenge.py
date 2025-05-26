@@ -73,10 +73,9 @@ class TestMockCAChallengeHandler(unittest.TestCase):
         WHEN processing the request and response with the ChallengeHandler.
         THEN the certificate is successfully issued.
         """
-        return
         tx_id = os.urandom(16)
         sender_nonce = os.urandom(16)
-        key = load_private_key_from_file("data/keys/private-key-ml-kem-512.pem")
+        key = load_private_key_from_file("data/keys/private-key-ml-kem-512-seed.pem")
         popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=False, use_key_enc=True)
         ir = build_ir_from_key(
             key,
@@ -112,10 +111,9 @@ class TestMockCAChallengeHandler(unittest.TestCase):
         WHEN processing the request and response with the CAHandler.
         THEN the certificate is successfully issued.
         """
-        return
         tx_id = os.urandom(16)
         sender_nonce = os.urandom(16)
-        key = load_private_key_from_file("data/keys/private-key-ml-kem-512.pem")
+        key = load_private_key_from_file("data/keys/private-key-ml-kem-512-seed.pem")
         popo = prepare_popo_challenge_for_non_signing_key(use_encr_cert=False, use_key_enc=True)
 
         ir = build_ir_from_key(
@@ -148,6 +146,11 @@ class TestMockCAChallengeHandler(unittest.TestCase):
         self.assertEqual(ip["body"].getName(), "ip", ip["body"].prettyPrint())
 
     def test_challenge_mock_ca_ecc_key(self):
+        """
+        GIVEN a PKIMessage Challenge Exchange with an ECC key.
+        WHEN processing the request and response with the CAHandler.
+        THEN the certificate is successfully issued with the ECC key.
+        """
         tx_id = os.urandom(16)
         sender_nonce = os.urandom(16)
         key = generate_key("x25519")
