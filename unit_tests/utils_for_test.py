@@ -29,7 +29,7 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from resources import certutils, cmputils, utils
 from resources.asn1_structures import PKIMessageTMP
-from resources.asn1utils import try_decode_pyasn1
+from resources.asn1utils import try_decode_pyasn1, encode_to_der
 from resources.certbuildutils import build_certificate, build_csr, prepare_extensions, \
     prepare_basic_constraints_extension, prepare_ski_extension, prepare_authority_key_identifier_extension, \
     prepare_key_usage_extension
@@ -1727,3 +1727,53 @@ def _safety_pq_cert_check():
         loaded_mlkem768 = load_private_key_from_file(f"{key_dir}/{key_path}")
         if mlkem768_pub_key != loaded_mlkem768.public_key():
             raise MismatchingKey("ML-KEM-768 private key file does not match the public key in the certificate.")
+
+
+def _neither_val_is_set(val1: univ.Sequence, val2: univ.Sequence, field_name: str) -> Tuple[int, str]:
+    """Check if neither value is set."""
+    if not val1[field_name].isValue and not val2[field_name].isValue:
+        return 0, f"Field '{field_name}' is not set in neither objects set."
+
+    if not val1[field_name].isValue and val2[field_name].isValue:
+        return -1, f"Field '{field_name}' has only set a value in object 2: {val2[field_name].prettyPrint()}"
+
+    if val1[field_name].isValue and not val2[field_name].isValue:
+        return -1, f"Field '{field_name}' has only set a value in object 1: {val1[field_name].prettyPrint()}"
+
+    return 1, "Both values are set"
+
+
+def verbose_pyasn1_compare(obj1: univ.Sequence, obj2: univ.Sequence, exclude_fields: List[str] = None) -> Tuple[list, list]:
+    """Compare two pyasn1 objects and print their differences.
+
+    :param obj1: The first object to compare.
+    :param obj2: The second object to compare.
+    :param exclude_fields: A list of field names to exclude from the comparison.
+    """
+    eq_fields = []
+    non_eq_fields = []
+
+    field_names = list(obj1.keys())
+    exclude_fields = exclude_fields or []
+
+    for field_name in field_names:
+
+        if field_name in exclude_fields:
+            continue
+
+        val, msg = _neither_val_is_set(obj1, obj2, field_name)
+        if val == 0:
+            eq_fields.append(msg)
+            continue
+        elif val == -1:
+            non_eq_fields.append(msg)
+            continue
+
+        if encode_to_der(obj1[field_name]) == encode_to_der(obj2[field_name]):
+            eq_fields.append(field_name)
+            continue
+        else:
+            msg = f"Field '{field_name}' is not equal: {obj1[field_name].prettyPrint()} vs {obj2[field_name].prettyPrint()}"
+            non_eq_fields.append(msg)
+
+    return eq_fields, non_eq_fields
