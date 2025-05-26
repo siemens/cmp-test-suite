@@ -2090,11 +2090,19 @@ def validate_add_protection_tx_id_and_nonces(  # noqa D417 undocumented-param
         raise BadDataFormat("The `transactionID` is not set for the outer request.")
 
     outer_tx_id = header["transactionID"].asOctets()
+
+    if not inner_body["header"]["transactionID"].isValue:
+        raise BadDataFormat("The `transactionID` is not set for the inner request.")
+
     inner_tx_id = inner_body["header"]["transactionID"].asOctets()
     if inner_tx_id != outer_tx_id:
         raise BadRequest("The `transactionID` does not match the inner request")
 
     outer_sender_nonce = header["senderNonce"].asOctets()
+
+    if not inner_body["header"]["senderNonce"].isValue:
+        raise BadSenderNonce("The `senderNonce` is not set for the inner request.")
+
     inner_sender_nonce = inner_body["header"]["senderNonce"].asOctets()
     if inner_sender_nonce != outer_sender_nonce:
         raise BadSenderNonce("The `senderNonce` does not match the inner request")
