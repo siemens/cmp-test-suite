@@ -5,6 +5,7 @@
 import unittest
 
 from mock_ca.ca_handler import CAHandler
+from resources.certutils import cert_in_list
 
 from resources.cmputils import (
     build_cmp_revoke_request,
@@ -45,6 +46,9 @@ class TestMockCaRevokedRevive(unittest.TestCase):
         self.assertEqual(str(status["status"]), "accepted", status.prettyPrint())
 
         cert = get_cert_from_pkimessage(response)
+
+        der_data = try_encode_pyasn1(cert)
+        self.assertTrue(cert_in_list(cert, self.ca_handler.get_details("issued_certs")), "Expected cert in issued_certs")
 
         # Revocation
         rr = build_cmp_revoke_request(cert=cert, reason="keyCompromise")
