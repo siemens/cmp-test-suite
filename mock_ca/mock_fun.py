@@ -968,3 +968,358 @@ class UpdateCertDB:
         return cls(certs=only_valid_entries, hash_alg=hash_alg, timeout=timeout)
 
 
+@dataclass
+class CertificateDB:
+    """A certificate database.
+
+    Attributes
+    ----------
+        - `certs`: The list of certificates.
+        - `hash_alg`: The hash algorithm to use for hashing the certificates. Defaults to "sha1".
+        - `save_date_time`: Whether to save the datetime, when the certificate was issued. Defaults to `False`.
+        - `save_revoked_date_time`: Whether to save the datetime, when the certificate was revoked. Defaults to `False`.
+        - `treat_update_as_revoked`: Whether to treat the update certificates as revoked. Defaults to `True`.
+        - `updated_cert_timeout`: The timeout for the updated certificates in seconds. Defaults to 10 seconds.
+
+    """
+
+    _certs: List[CertDBEntry] = field(default_factory=list)
+    save_date_time: bool = False
+    save_revoked_date_time: bool = False
+    treat_update_as_revoked: bool = True
+    hash_alg: str = "sha1"
+    updated_cert_timeout: int = 10  # seconds
+    _crl_number: int = 1
+
+    def get_details(self) -> dict:
+        """Get the details of the certificate database."""
+        return {
+            "issued_certs": self.issued_certs,
+            "revoked_certs": self.revoked_certs,
+            "updated_certs": self.updated_certs,
+            "crl_number": self._crl_number,
+            "cert_db_hash_alg": self.hash_alg,
+        }
+
+    @property
+    def update_state(self) -> UpdateCertDB:
+        """Return the update state of the certificate database."""
+        return UpdateCertDB.build_from_entries(
+            entries=self._certs, hash_alg=self.hash_alg, timeout=self.updated_cert_timeout
+        )
+
+    @property
+    def issued_certs(self) -> List[rfc9480.CMPCertificate]:
+        """Return all issued certificates (revoked, update and so on)."""
+        issued_certs = []
+        for entry in self._certs:
+            if entry.cert_state not in [
+                CertStateEnum.NOT_CONFIRMED,
+                CertStateEnum.UPDATED_BUT_NOT_CONFIRMED,
+            ]:
+                issued_certs.append(entry.cert)
+
+        return issued_certs
+
+    @property
+    def not_confirmed_certs(self) -> List[rfc9480.CMPCertificate]:
+        """Return all not confirmed certificates."""
+        return self._get_certs_by_state(cert_state=CertStateEnum.NOT_CONFIRMED)
+
+    def check_is_updated(self, cert: rfc9480.CMPCertificate, allow_timeout: bool = False) -> bool:
+        """Check if the certificate is an update.
+
+        :param cert: The certificate to check.
+        :param allow_timeout: Whether to check the strictness of the update.
+        :return: `True` if the certificate is an update, otherwise `False`.
+        """
+        update_obj = UpdateCertDB.build_from_entries(
+            entries=self._certs, hash_alg=self.hash_alg, timeout=self.updated_cert_timeout
+        )
+        return update_obj.is_updated(cert=cert, allow_timeout=allow_timeout)
+
+    def _get_certs_by_state(
+        self,
+        cert_state: CertStateEnum,
+    ) -> List[rfc9480.CMPCertificate]:
+        """Get the certificates by their state."""
+        return [entry.cert for entry in self._certs if entry.cert_state == cert_state]
+
+    @property
+    def revoked_certs(self) -> List[rfc9480.CMPCertificate]:
+        """Return the revoked certificates."""
+        return self._get_certs_by_state(cert_state=CertStateEnum.REVOKED)
+
+    @property
+    def updated_certs(self) -> List[rfc9480.CMPCertificate]:
+        """Return the updated certificates."""
+        return self._get_certs_by_state(cert_state=CertStateEnum.UPDATED) + self._get_certs_by_state(
+            cert_state=CertStateEnum.UPDATED_BUT_NOT_CONFIRMED
+        )
+
+    def add_cert(self, cert: rfc9480.CMPCertificate, cert_state: CertStateEnum) -> None:
+        """Add a certificate to the database.
+
+        :param cert: The certificate to add.
+        :param cert_state: The state of the certificate (either NOT_CONFIRMED or CONFIRMED).
+        :raises ValueError: If the certificate state is not valid.
+
+        """
+        if cert_state not in [CertStateEnum.NOT_CONFIRMED, CertStateEnum.CONFIRMED]:
+            raise ValueError(
+                "The certificate state must be either NOT_CONFIRMED or CONFIRMED."
+                "To be added otherwise use the `change_cert_state` method."
+            )
+
+        tmp_cert = copy_asn1_certificate(cert)
+        cert_digest = compute_hash(self.hash_alg, encoder.encode(tmp_cert))
+
+        self._certs.append(
+            CertDBEntry(
+                cert=tmp_cert,
+                cert_state=cert_state,
+                cert_digest=cert_digest,
+                issue_date=datetime.now(timezone.utc) if self.save_date_time else None,
+            )
+        )
+
+    def _process_rev_cert(
+        self,
+        entry: CertDBEntry,
+        cert_digest: bytes,
+        revoke_entry: Optional[Union[RevokedEntry, dict]] = None,
+    ) -> None:
+        """Process the revoked certificate.
+
+        :param cert_digest: The digest of the certificate.
+        :param revoke_entry: The revoked entry to add to the certificate.
+        """
+        if revoke_entry is None:
+            RevokedEntry(
+                reason="unspecified",
+                cert=entry.cert,
+                hashed_cert=cert_digest,
+                revoked_date=datetime.now(timezone.utc) if self.save_revoked_date_time else None,
+            )
+        elif isinstance(revoke_entry, dict):
+            revoke_entry = RevokedEntry(**revoke_entry)
+        entry.revoked_entry = revoke_entry
+
+    def _process_update_cert(
+        self,
+        entry: CertDBEntry,
+        cert_state: CertStateEnum,
+        updated_cert: Optional[rfc9480.CMPCertificate] = None,
+    ) -> None:
+        """Process the updated certificate.
+
+        :param entry: The certificate entry.
+        :param cert_state: The new state of the certificate.
+        :param updated_cert: The updated certificate (the new certificate).
+        """
+        print("State before:", entry.cert_state)
+        if cert_state == CertStateEnum.UPDATED and entry.cert_state == CertStateEnum.UPDATED_BUT_NOT_CONFIRMED:
+            if entry.update_cert_digest is None:
+                if updated_cert is None:
+                    raise ValueError("The updated certificate must be provided, if the state is UPDATED.")
+                entry.update_cert_digest = compute_hash(self.hash_alg, encoder.encode(updated_cert))
+
+        elif cert_state in [CertStateEnum.UPDATED, CertStateEnum.UPDATED_BUT_NOT_CONFIRMED]:
+            if not isinstance(updated_cert, rfc9480.CMPCertificate):
+                raise TypeError(
+                    f"The updated certificate must be of type `CMPCertificate`.Got: {type(updated_cert).__name__}"
+                )
+            entry.update_cert_digest = compute_hash(self.hash_alg, encoder.encode(updated_cert))
+            entry.updated_date = datetime.now(timezone.utc).replace(microsecond=0)
+        else:
+            raise ValueError(
+                f"The certificate state must be either UPDATED or UPDATED_BUT_NOT_CONFIRMED.Got: {cert_state}."
+            )
+
+        entry.cert_state = cert_state
+
+    def change_cert_state(
+        self,
+        cert: rfc9480.CMPCertificate,
+        new_state: CertStateEnum,
+        revoke_entry: Optional[Union[RevokedEntry, dict]] = None,
+        updated_cert: Optional[rfc9480.CMPCertificate] = None,
+        error_suffix: Optional[str] = None,
+    ) -> None:
+        """Update the state of the certificate in the database.
+
+        :param cert: The certificate to update.
+        :param new_state: The new state of the certificate.
+        :param revoke_entry: The revoked entry to add to the certificate. Defaults to `None`.
+        :param updated_cert: The updated certificate (the new certificate). Defaults to `None`.
+        :param error_suffix: The error suffix to add to the exception message. Defaults to `None`.
+        :raises ValueError: If the certificate is not in the database or the state is not valid.
+        :raises TypeError: If the updated certificate is not of type `CMPCertificate` or not provided.
+        """
+        if new_state not in [
+            CertStateEnum.CONFIRMED,
+            CertStateEnum.UPDATED,
+            CertStateEnum.REVOKED,
+            CertStateEnum.REVIVED,
+            CertStateEnum.UPDATED_BUT_NOT_CONFIRMED,
+        ]:
+            raise ValueError(
+                f"The certificate state must be either CONFIRMED, UPDATED, REVOKED or REVIVED. But got: {new_state}."
+            )
+
+        if not isinstance(cert, rfc9480.CMPCertificate):
+            raise TypeError(f"The certificate must be of type `rfc9480.CMPCertificate`.Got: {type(cert).__name__}")
+
+        cert_digest = compute_hash(self.hash_alg, encoder.encode(cert))
+        print("Cert digest:", cert_digest.hex())
+        print("Called with new state:", new_state)
+        for entry in self._certs:
+            if cert_digest == entry.cert_digest:
+                if new_state == CertStateEnum.REVOKED:
+                    if entry.cert_state not in [CertStateEnum.REVIVED, CertStateEnum.CONFIRMED]:
+                        raise ValueError(
+                            f"The certificate state must be either REVIVED or CONFIRMED, to change it to REVOKED."
+                            f" Got: {entry.cert_state}. {error_suffix}"
+                        )
+
+                    self._process_rev_cert(entry, cert_digest, revoke_entry)
+                    entry.cert_state = new_state
+
+                elif new_state == CertStateEnum.REVIVED:
+                    if entry.cert_state != CertStateEnum.REVOKED:
+                        raise ValueError(
+                            f"The certificate state must be REVOKED, to change it to REVIVED."
+                            f" Got: {entry.cert_state}. {error_suffix}"
+                        )
+                    entry.cert_state = new_state
+                    entry.revoked_entry = None
+                elif new_state in [CertStateEnum.UPDATED, CertStateEnum.UPDATED_BUT_NOT_CONFIRMED]:
+                    self._process_update_cert(entry=entry, cert_state=new_state, updated_cert=updated_cert)
+                elif new_state == CertStateEnum.CONFIRMED:
+                    if entry.cert_state == CertStateEnum.NOT_CONFIRMED:
+                        entry.cert_state = new_state
+                    else:
+                        raise ValueError(
+                            f"The certificate state must be NOT_CONFIRMED, to change it to CONFIRMED."
+                            f" Got: {new_state}. {error_suffix}"
+                        )
+                else:
+                    raise ValueError(
+                        f"The certificate state must be either REVIVED, REVOKED, UPDATED or UPDATED_BUT_NOT_CONFIRMED."
+                        f"Got: {new_state}. {error_suffix}"
+                    )
+
+                return
+
+        to_add = "" if error_suffix is None else f" {error_suffix}"
+        raise ValueError(f"The certificate is not in the database.{to_add}")
+
+    def get_cert_state(self, cert: rfc9480.CMPCertificate) -> CertStateEnum:
+        """Get the state of the certificate in the database.
+
+        :param cert: The certificate to get the state for.
+        :return: The state of the certificate or `UNKNOWN` if not found.
+        """
+        cert_digest = compute_hash(self.hash_alg, encoder.encode(cert))
+        for entry in self._certs:
+            if cert_digest == entry.cert_digest:
+                return entry.cert_state
+        return CertStateEnum.UNKNOWN
+
+    def get_cert(self, cert: rfc9480.CMPCertificate) -> Optional[CertDBEntry]:
+        """Get the certificate from the database.
+
+        :param cert: The certificate to get.
+        :return: The certificate entry or `None` if not found.
+        """
+        cert_digest = compute_hash(self.hash_alg, encoder.encode(cert))
+        return self._get_cert_by_digest(cert_digest)
+
+    def _get_cert_by_digest(self, cert_digest: bytes) -> Optional[CertDBEntry]:
+        """Get the certificate by its digest.
+
+        :param cert_digest: The digest of the certificate.
+        :return: The certificate entry or `None` if not found.
+        """
+        for entry in self._certs:
+            if cert_digest == entry.cert_digest:
+                return entry
+        return None
+
+    def get_updated_history(
+        self,
+        cert: rfc9480.CMPCertificate,
+    ) -> Optional[List[rfc9480.CMPCertificate]]:
+        """Get the update history of the certificate.
+
+        :param cert: The certificate to get the update history for.
+        :return: A list of updated certificates, or `None` if the certificate is not found.
+        """
+        entry = self.get_cert(cert)
+        if entry is None:
+            return None
+
+        history = [cert]
+        for x in range(10):
+            entry = self._get_cert_by_digest(entry.update_cert_digest)
+            if entry is None:
+                break
+            history.append(entry.cert)
+
+        return history
+
+    def get_current_crl(
+        self,
+        ca_key: SignKey,
+        ca_cert: rfc9480.CMPCertificate,
+        hash_alg: Optional[str] = "sha256",
+    ) -> CertificateRevocationList:
+        """Get the current CRL for the database.
+
+        :param ca_key: The private key to sign the CRL.
+        :param ca_cert: The CRL signer certificate.
+        :param hash_alg: The hash algorithm to use for signing. Defaults to `sha256`.
+        :return: The current CRL DER-encoded.
+        """
+        rev_db = CertRevStateDB.build(
+            hash_alg=self.hash_alg,
+            revoked_certs=self.revoked_certs,
+            updated_certs=self.updated_certs,
+            crl_number=self._crl_number,
+        )
+        return rev_db.get_crl_response(
+            sign_key=ca_key,
+            ca_cert=ca_cert,
+            hash_alg=hash_alg,
+        )
+
+    def get_ocsp_response(
+        self,
+        request: ocsp.OCSPRequest,
+        sign_key: SignKey,
+        ca_cert: rfc9480.CMPCertificate,
+        responder_cert: Optional[rfc9480.CMPCertificate] = None,
+    ) -> ocsp.OCSPResponse:
+        """Get the OCSP response for the database.
+
+        :param request: The OCSP request.
+        :param sign_key: The private key to sign the OCSP response.
+        :param ca_cert: The CA certificate.
+        :param responder_cert: The responder certificate. Defaults to `ca_cert`.
+        :return: The OCSP response.
+        """
+        rev_db = CertRevStateDB.build(
+            hash_alg=self.hash_alg,
+            revoked_certs=self.revoked_certs,
+            updated_certs=self.updated_certs,
+            crl_number=self._crl_number,
+        )
+        return rev_db.get_ocsp_response(
+            request=request,
+            sign_key=sign_key,
+            ca_cert=ca_cert,
+            issued_certs=self.issued_certs,
+            responder_cert=responder_cert,
+        )
+
+
