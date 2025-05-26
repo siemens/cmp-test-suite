@@ -923,7 +923,7 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         - `private_key`: The private key to wrap.
         - `version`: The version of the structure. Defaults to "v2".
         - `key_save_type`: The type of key to save. Can be "seed", "raw", or "seed_and_raw". Defaults to "raw".
-        - `invalid_private_key`: If True, the private key is invalid. Only supported for RSA and ECC-keys. \
+        - `invalid_private_key`: If True, the private key is invalid. Only supported for RSA, ECC, ML-DSA and ML-KEM keys. \
         Defaults to `False`.
         - `invalid_pub_key_size`: If True, the public key size is invalid. Defaults to `False`.
         - `mis_matching_key`: If True, the public key does not match the private key. Defaults to `False`.
@@ -948,8 +948,8 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     | ${one_asym_key}= | Prepare OneAsymmetricKey | ${private_key} | key_save_type="seed" |
 
     """
-    if not isinstance(private_key, (RSAPrivateKey, EllipticCurvePrivateKey)) and invalid_private_key:
-        raise ValueError("The invalid private key option is only supported for `RSA`- and `ECC`-keys.")
+    if not isinstance(private_key, (RSAPrivateKey, EllipticCurvePrivateKey, MLDSAPrivateKey, MLKEMPrivateKey)) and invalid_private_key:
+        raise ValueError("The invalid private key option is only supported for `RSA`, `ECC`, `ML-DSA` and `ML-KEM` keys.")
 
     if mis_matching_key:
         public_key = generate_different_public_key(key_source=private_key)
