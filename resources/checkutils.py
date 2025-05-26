@@ -2279,3 +2279,120 @@ def validate_request_message_nonces_and_tx_id(  # noqa D417 undocumented-param
         raise BadRequest("The transaction ID was not 16 bytes long.")
     if len(sender_nonce) != 16:
         raise BadSenderNonce("The sender nonce was not 16 bytes long.")
+
+
+def _validate_body_types_nested(
+    response: PKIMessageTMP,
+    request: PKIMessageTMP,
+    error: Optional[bool] = None,
+) -> None:
+    """Validate the body types of a nested PKIMessage response and request.
+
+    :param response: The PKIMessage response to validate.
+    :param request: The PKIMessage request to validate.
+    :param error: If `False`, the function checks for expected body types. If `True`, it checks for unexpected body types.
+        Defaults to `None` (allows error and the correct body types).
+    :raises ValueError: If the response body type is not `nested` or does not match the request body type.
+    :raise BadValueBehavior: If the response does not contain the expected number of nested messages.
+    """
+    resp_body_name = cmputils.get_cmp_message_type(response)
+
+    length = len(request["body"]["nested"])
+    if length == 1 and resp_body_name == "nested":
+        raise ValueError(
+            "The request was a added protection message, but the response was a nested message."
+            "The CA MUST respond with the correct body type, not a nested message."
+        )
+    if length == 1:
+        inner_req = cmputils.get_inner_pkimessage(request, 0)
+        validate_cmp_body_types(response, inner_req, error)
+        return
+
+    if resp_body_name == "error" and error is False:
+        raise ValueError("The response body type was 'error', for the batched request.")
+
+    if resp_body_name == "error":
+        return
+
+    if resp_body_name != "nested":
+        raise ValueError(
+            f"Expected a nested response, got: {resp_body_name}. "
+            "The CA MUST respond with a nested message if the request contains multiple messages."
+        )
+
+    if len(response["body"]["nested"]) != length:
+        raise BadValueBehavior(
+            f"Expected the response to contain {length} nested messages, got: {len(response['body']['nested'])}."
+        )
+
+    for i, msg in enumerate(request["body"]["nested"]):
+        inner_req = cmputils.get_inner_pkimessage(request, i)
+        inner_resp = cmputils.get_inner_pkimessage(response, i)
+        validate_cmp_body_types(inner_resp, inner_req, error)
+
+
+def validate_cmp_body_types(
+    response: PKIMessageTMP,
+    request: PKIMessageTMP,
+    error: Optional[bool] = None,
+) -> None:
+    """Validate the body types of a CMP response and request.
+
+    Ensures that the body types of the response and request match expected values.
+    The response must be one of the CA message types (`ip`, `cp`, `rp`, `kup`), and the request must be
+    one of the request message types (`cr`, `ir`, `kur`).
+
+    Supported request types are:
+    ---------------------------
+       - `ir, cr, kur, p10cr, genm, ccr, rr, nested`
+
+    Arguments:
+    ---------
+        - `response`: The PKIMessage response to validate.
+        - `request`: The PKIMessage request to validate.
+        - `error`: If `True`, the function checks for expected body types. If `False`, it checks for unexpected body types.
+          Defaults to `None` (allows error and the correct body types).
+
+    Raises:
+    ------
+        - `ValueError`: If the response or request body type does not match the expected values.
+        - `ValueError`: If the request body type is not one of the expected request types.
+
+    Examples:
+    --------
+    | Validate CMP Body Types | ${response} | ${request} |
+
+    """
+    resp_body_name = cmputils.get_cmp_message_type(response)
+    req_body_name = cmputils.get_cmp_message_type(request)
+
+    correct_body_types = {
+        "ir": "ip",
+        "cr": "cp",
+        "kur": "kup",
+        "p10cr": "cp",
+        "genm": "genp",
+        "ccr": "ccp",
+        "rr": "rp",
+        "nested": "nested",
+    }
+
+    if req_body_name not in correct_body_types:
+        raise ValueError(f"Expected a request message of type: {correct_body_types.keys()}, got: {req_body_name}")
+
+    if req_body_name == "nested":
+        _validate_body_types_nested(response, request, error)
+        return
+
+    expected_resp_body = correct_body_types[req_body_name]
+    if error is None:
+        if resp_body_name != expected_resp_body and resp_body_name != "error":
+            raise ValueError(
+                f"Expected a response message of type: {expected_resp_body} or 'error', got: {resp_body_name}"
+            )
+    elif not error:
+        if resp_body_name != expected_resp_body:
+            raise ValueError(f"Expected a response message of type: {expected_resp_body}, got: {resp_body_name}")
+    else:
+        if resp_body_name != "error":
+            raise ValueError(f"Expected a response message of type: 'error', got: {resp_body_name}")
