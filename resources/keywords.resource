@@ -257,6 +257,117 @@ Build Composite Signature Request
 
 # TODO maybe Update to create a unique key.
 # because some implementations only allow new keys, if for ir or cr is the same key send.
+Default Protect PKIMessage
+    [Documentation]    Protect a PKIMessage with the default protection algorithm, set inside the config
+    ...                and the default parameters.
+    ...
+    ...                Note:
+    ...                ----
+    ...                - The protection algorithm is set to `signature` by default.
+    ...
+    ...                Examples:
+    ...                | ${prot_pkimessage}=    Default Protect PKIMessage    | ${pki_message} |
+    ...
+    [Tags]    protection
+    [Arguments]    ${pki_message}    &{params}
+    ${length}=   Get Length   ${params}
+    IF  not ${length}
+        ${args}=    Copy Dictionary    ${DEFAULT_PROTECTION_VALS}
+    ELSE
+        ${args}=    May Patch Params    ${params}    &{DEFAULT_PROTECTION_VALS}
+    END
+    ${protection}=   Get From Dictionary    ${args}    protection
+    IF  '${protection}' == 'signature'
+        ${prot_pkimessage}=    Protect Hybrid PKIMessage    ${pki_message}  &{args}
+    ELSE IF  '${protection}' == 'mac'
+        ${args}=    Set To Dictionary    ${args}   protection=${DEFAULT_MAC_ALGORITHM}
+        ${prot_pkimessage}=    Protect PKIMessage    ${pki_message}    &{args}
+    ELSE
+        ${prot_pkimessage}=    Protect PKIMessage    ${pki_message}    &{args}
+    END
+    RETURN    ${prot_pkimessage}
+
+
+# @Suggested:
+# TODO verify, if this function should be introduced.
+# TODO update return, if kept to return the key as well, so that both pairs can be
+# saved and used to test revocation request with a new certificate so ensure that the test cases
+# do not fail, because test cases before failed.
+# TODo fix doc
+
+Default Protect With MAC
+    [Documentation]    Protect a PKIMessage with the default protection algorithm, set inside the config
+    ...                and the default parameters.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message`: The PKIMessage to be protected.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The protected PKIMessage.
+    [Tags]    protection
+    [Arguments]    ${pki_message}
+    ${protected_pki_message}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
+    ...                          password=${PRESHARED_SECRET}
+    ...                          for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
+    RETURN    ${protected_pki_message}
+
+Generate Default MAC Protected PKIMessage
+    [Documentation]    Build a PKIMessage used for MAC based protection, based on the config file
+    ...                which are allowed to be used.
+    ...
+    ...                According to RFC 9483 Section 7.1. PKI Management Operations, is the ir body the only
+    ...                one which needs to be implemented by the CA and End Entity. The PKIHeader implicit confirm
+    ...                is automatically set, so this message should only be used if all config variables are allowed
+    ...                to be used. As an example to test the certificate confirmation message validation.
+    ...                The Body is decided, based on the following config variables:
+    ...                - (`${ALLOW_IR_MAC_BASED}`)
+    ...                - (`${ALLOW_CR_MAC_BASED}`)
+    ...
+    ...                Arguments:
+    ...                - `mac_alg`: The protection algorithm to use. Defaults to the algorithm specified in the config.
+    ...                If `False` is parsed, an unprotected message is returned.
+    [Arguments]    ${mac_alg}=${DEFAULT_MAC_ALGORITHM}   ${allow_implicit_confirm}=${ALLOW_IMPLICIT_CONFIRM}
+    VAR    ${for_mac}    ${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
+    IF    ${ALLOW_IR_MAC_BASED}
+        # Generate the necessary certificate template and key for IR protection
+        ${cert_template}    ${key}=    Generate CertTemplate For Testing
+        ${pki_message}=    Build Ir From Key
+        ...                ${key}
+        ...                cert_template=${cert_template}
+        ...                sender=${SENDER}
+        ...                recipient=${RECIPIENT}
+        ...                implicit_confirm=${allow_implicit_confirm}
+        ...                for_mac=${for_mac}
+    ELSE IF    ${ALLOW_CR_MAC_BASED}
+        ${cert_template}    ${key}=    Generate CertTemplate For Testing
+        ${pki_message}=    Build Cr From Key
+        ...                ${key}
+        ...                cert_template=${cert_template}
+        ...                sender=${SENDER}
+        ...                recipient=${RECIPIENT}
+        ...                implicit_confirm=${allow_implicit_confirm}
+        ...                for_mac=${for_mac}
+    ELSE
+        ${csr}    ${_}=    Generate CSR For Testing
+        ${pki_message}=    Build P10cr From CSR
+        ...                ${csr}
+        ...                sender=${SENDER}
+        ...                recipient=${RECIPIENT}
+        ...                implicit_confirm=${allow_implicit_confirm}
+        ...                for_mac=${for_mac}
+    END
+    IF   '${mac_alg}' != 'None'
+        ${pki_message}=    Protect PKIMessage
+        ...                      ${pki_message}
+        ...                      password=${PRESHARED_SECRET}
+        ...                      protection=${mac_alg}
+    ELSE
+        ${pki_message}=   Default Protect With MAC   ${pki_message}
+    END
+    RETURN    ${pki_message}
+
 
 # Transportation Keywords
 Exchange Data With CA
@@ -322,40 +433,7 @@ Load And Refresh PKIMessage From File
 
 ## Certificate amd Key Management Keywords
 
-## PKIMessage Validation Keywords
-
-# Nonce Validation
-Sender And Recipient Nonces Must Match
-    [Documentation]    Ensure that the recipient nonce in the response matches the sender nonce in the request
-    [Arguments]    ${request}    ${response}
-    ${request_nonce}=    Get Asn1 Value As Bytes    ${request}    header.senderNonce
-    ${response_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
-    Should Be Equal    ${request_nonce}    ${response_nonce}
-
-SenderNonce Must Be At Least 128 Bits Long
-    [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
-    ...    Ref: 3.1. General Description of the CMP Message Header
-    [Tags]    crypto
-    [Arguments]    ${pki_message}
-    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
-    # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
-    # Buffer length must be at least    ${sender_nonce}    32
-    # 16 bytes is 128 bits
-    Buffer Length Must Be At Least    ${sender_nonce}    16
-
-Response Time Must Be Fresh
-    [Documentation]    Ensure that the response time is not far off from the time of our request
-    ...    The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
-    [Arguments]    ${request}    ${response}    ${tolerance}=${120}
-    ${request_time}=    Get Asn1 Value As Datetime    ${request}    header.messageTime
-    ${response_time}=    Get Asn1 Value As Datetime    ${response}    header.messageTime
-
-    ${delta_verbose}=    Subtract Date From Date    ${response_time}    ${request_time}    verbose
-    ${delta}=    Subtract Date From Date    ${response_time}    ${request_time}
-    Should Be True    ${delta} < ${tolerance}    Time between request and response exceeds tolerance
-
-
-
+# Certificate Validation and Confirmation
 Certificate Must Be Valid
     [Documentation]    Verify if a certificate is valid and passes sanity checks. The certificate is passed as a
     ...    DER-encoded byte buffer. These checks are done by trying to parse the certificate with
@@ -448,6 +526,56 @@ Confirm Certificate If Needed
     END
 
 
+
+## PKIMessage Validation Keywords
+
+# Nonce Validation
+Sender And Recipient Nonces Must Match
+    [Documentation]    Ensure that the recipient nonce in the response matches the sender nonce in the request
+    [Arguments]    ${request}    ${response}
+    ${request_nonce}=    Get Asn1 Value As Bytes    ${request}    header.senderNonce
+    ${response_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
+    Should Be Equal    ${request_nonce}    ${response_nonce}
+
+SenderNonce Must Be At Least 128 Bits Long
+    [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
+    ...    Ref: 3.1. General Description of the CMP Message Header
+    [Tags]    crypto
+    [Arguments]    ${pki_message}
+    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
+    # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
+    # Buffer length must be at least    ${sender_nonce}    32
+    # 16 bytes is 128 bits
+    Buffer Length Must Be At Least    ${sender_nonce}    16
+
+Collect Nonce From PKIMessage
+    [Documentation]    Extract the senderNonce from a PKIMessage and append it to a list, which will be used later
+    ...    in a test that checks for nonces to be cryptographically strong.
+    [Arguments]    ${pki_message}
+    ${body_type}=    Get Cmp Message Type    ${pki_message}
+    Log   ${GATHER_NONCES_FROM_MSG_BODIES}
+    Log   ${body_type}
+    ${is_present}=  Evaluate  '${body_type}' in '${GATHER_NONCES_FROM_MSG_BODIES}'
+    IF    ${is_present}
+        ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
+        Append To List    ${COLLECTED_NONCES}    ${sender_nonce}
+        Log    ${COLLECTED_NONCES}
+    END
+
+
+# Response Time Validation
+Response Time Must Be Fresh
+    [Documentation]    Ensure that the response time is not far off from the time of our request
+    ...    The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
+    [Arguments]    ${request}    ${response}    ${tolerance}=${120}
+    ${request_time}=    Get Asn1 Value As Datetime    ${request}    header.messageTime
+    ${response_time}=    Get Asn1 Value As Datetime    ${response}    header.messageTime
+
+    ${delta_verbose}=    Subtract Date From Date    ${response_time}    ${request_time}    verbose
+    ${delta}=    Subtract Date From Date    ${response_time}    ${request_time}
+    Should Be True    ${delta} < ${tolerance}    Time between request and response exceeds tolerance
+
+
 # Check PKImessage Body Variables
 PKIMessage Body Type Must Be
     [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
@@ -465,19 +593,6 @@ PKIMessage Must Contain ImplicitConfirm Extension
     ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
     Should Be True    ${result}    The implicitConfirm extension was not found in the message
 
-Collect Nonce From PKIMessage
-    [Documentation]    Extract the senderNonce from a PKIMessage and append it to a list, which will be used later
-    ...    in a test that checks for nonces to be cryptographically strong.
-    [Arguments]    ${pki_message}
-    ${body_type}=    Get Cmp Message Type    ${pki_message}
-    Log   ${GATHER_NONCES_FROM_MSG_BODIES}
-    Log   ${body_type}
-    ${is_present}=  Evaluate  '${body_type}' in '${GATHER_NONCES_FROM_MSG_BODIES}'
-    IF    ${is_present}
-        ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
-        Append To List    ${COLLECTED_NONCES}    ${sender_nonce}
-        Log    ${COLLECTED_NONCES}
-    END
 
 
 # Key Keywords
@@ -598,119 +713,9 @@ Generate Default Composite Sig Key
     RETURN     ${key}
 
 
-Default Protect PKIMessage
-    [Documentation]    Protect a PKIMessage with the default protection algorithm, set inside the config
-    ...                and the default parameters.
-    ...
-    ...                Note:
-    ...                ----
-    ...                - The protection algorithm is set to `signature` by default.
-    ...
-    ...                Examples:
-    ...                | ${prot_pkimessage}=    Default Protect PKIMessage    | ${pki_message} |
-    ...
-    [Tags]    protection
-    [Arguments]    ${pki_message}    &{params}
-    ${length}=   Get Length   ${params}
-    IF  not ${length}
-        ${args}=    Copy Dictionary    ${DEFAULT_PROTECTION_VALS}
-    ELSE
-        ${args}=    May Patch Params    ${params}    &{DEFAULT_PROTECTION_VALS}
-    END
-    ${protection}=   Get From Dictionary    ${args}    protection
-    IF  '${protection}' == 'signature'
-        ${prot_pkimessage}=    Protect Hybrid PKIMessage    ${pki_message}  &{args}
-    ELSE IF  '${protection}' == 'mac'
-        ${args}=    Set To Dictionary    ${args}   protection=${DEFAULT_MAC_ALGORITHM}
-        ${prot_pkimessage}=    Protect PKIMessage    ${pki_message}    &{args}
-    ELSE
-        ${prot_pkimessage}=    Protect PKIMessage    ${pki_message}    &{args}
-    END
-    RETURN    ${prot_pkimessage}
 
 
-# @Suggested:
-# TODO verify, if this function should be introduced.
-# TODO update return, if kept to return the key as well, so that both pairs can be
-# saved and used to test revocation request with a new certificate so ensure that the test cases
-# do not fail, because test cases before failed.
-# TODo fix doc
-
-Default Protect With MAC
-    [Documentation]    Protect a PKIMessage with the default protection algorithm, set inside the config
-    ...                and the default parameters.
-    ...
-    ...                Arguments:
-    ...                ---------
-    ...                - `pki_message`: The PKIMessage to be protected.
-    ...
-    ...                Returns:
-    ...                -------
-    ...                - The protected PKIMessage.
-    [Tags]    protection
-    [Arguments]    ${pki_message}
-    ${protected_pki_message}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
-    ...                          password=${PRESHARED_SECRET}
-    ...                          for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
-    RETURN    ${protected_pki_message}
-
-Generate Default MAC Protected PKIMessage
-    [Documentation]    Build a PKIMessage used for MAC based protection, based on the config file
-    ...                which are allowed to be used.
-    ...
-    ...                According to RFC 9483 Section 7.1. PKI Management Operations, is the ir body the only
-    ...                one which needs to be implemented by the CA and End Entity. The PKIHeader implicit confirm
-    ...                is automatically set, so this message should only be used if all config variables are allowed
-    ...                to be used. As an example to test the certificate confirmation message validation.
-    ...                The Body is decided, based on the following config variables:
-    ...                - (`${ALLOW_IR_MAC_BASED}`)
-    ...                - (`${ALLOW_CR_MAC_BASED}`)
-    ...
-    ...                Arguments:
-    ...                - `mac_alg`: The protection algorithm to use. Defaults to the algorithm specified in the config.
-    ...                If `False` is parsed, an unprotected message is returned.
-    [Arguments]    ${mac_alg}=${DEFAULT_MAC_ALGORITHM}   ${allow_implicit_confirm}=${ALLOW_IMPLICIT_CONFIRM}
-    VAR    ${for_mac}    ${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
-    IF    ${ALLOW_IR_MAC_BASED}
-        # Generate the necessary certificate template and key for IR protection
-        ${cert_template}    ${key}=    Generate CertTemplate For Testing
-        ${pki_message}=    Build Ir From Key
-        ...                ${key}
-        ...                cert_template=${cert_template}
-        ...                sender=${SENDER}
-        ...                recipient=${RECIPIENT}
-        ...                implicit_confirm=${allow_implicit_confirm}
-        ...                for_mac=${for_mac}
-    ELSE IF    ${ALLOW_CR_MAC_BASED}
-        ${cert_template}    ${key}=    Generate CertTemplate For Testing
-        ${pki_message}=    Build Cr From Key
-        ...                ${key}
-        ...                cert_template=${cert_template}
-        ...                sender=${SENDER}
-        ...                recipient=${RECIPIENT}
-        ...                implicit_confirm=${allow_implicit_confirm}
-        ...                for_mac=${for_mac}
-    ELSE
-        ${csr}    ${_}=    Generate CSR For Testing
-        ${pki_message}=    Build P10cr From CSR
-        ...                ${csr}
-        ...                sender=${SENDER}
-        ...                recipient=${RECIPIENT}
-        ...                implicit_confirm=${allow_implicit_confirm}
-        ...                for_mac=${for_mac}
-    END
-    IF   '${mac_alg}' != 'None'
-        ${pki_message}=    Protect PKIMessage
-        ...                      ${pki_message}
-        ...                      password=${PRESHARED_SECRET}
-        ...                      protection=${mac_alg}
-    ELSE
-        ${pki_message}=   Default Protect With MAC   ${pki_message}
-    END
-    RETURN    ${pki_message}
-
-
-# PKIMessage Validation Keywords
+# PKIMessage Status Validation Keywords
 PKIStatusInfo failinfo Bit Must Be
     [Documentation]       Validates that the given PKIMessage contains the expected `failinfo` bit(s) in the
     ...                   `PKIStatusInfo` field, to ensure that the CA/RA responds with the correct error.
