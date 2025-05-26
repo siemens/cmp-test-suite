@@ -44,12 +44,12 @@ from pq_logic.hybrid_issuing import (
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import validate_multi_auth_binding_csr
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import extract_sun_hybrid_alt_sig, sun_cert_template_to_cert
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
-from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridPublicKey
+from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
-from resources import asn1utils, certutils
+from resources import asn1utils
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import (
     build_cp_cmp_message,
@@ -84,7 +84,6 @@ from resources.convertutils import ensure_is_sign_key, ensure_is_verify_key
 from resources.exceptions import (
     BadAlg,
     BadAsn1Data,
-    BadCertId,
     BadCertTemplate,
     BadConfig,
     BadMessageCheck,
@@ -93,12 +92,11 @@ from resources.exceptions import (
     CMPTestSuiteError,
     InvalidAltSignature,
     NotAuthorized,
-    TransactionIdInUse,
-    UnknownOID,
+    UnknownOID, BadKeyUsage,
 )
 from resources.general_msg_utils import build_genp_kem_ct_info_from_genm
 from resources.keyutils import generate_key, load_private_key_from_file, load_public_key_from_spki
-from resources.oid_mapping import compute_hash, may_return_oid_to_name
+from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     HYBRID_SIG_OID_2_NAME,
     PQ_SIG_OID_2_NAME,
@@ -590,10 +588,6 @@ class CAHandler:
         :param secondary_cert: An optional secondary certificate to include in the response. Defaults to `None`.
         :return: The signed PKI message.
         """
-        if response["body"].getName() == "genp":
-            # quick fix for KEMBasedMAC.
-            return response
-
         if request_msg["body"].getName() == "nested":
             return self._sign_nested_response(response, request_msg)
 
@@ -701,8 +695,12 @@ class CAHandler:
             elif pki_message["body"].getName() == "certConf":
                 response = self.process_cert_conf(pki_message)
             elif pki_message["body"].getName() == "genm":
-                response = self.process_genm(pki_message)
-                response = self.sign_response(response=response, request_msg=pki_message)
+                self.cert_req_handler.validate_header(pki_message, must_be_protected=False)
+                response, should_protect = self.process_genm(pki_message)
+                if should_protect:
+                    # Whether the PKIMessage should be protected, must not
+                    # be protected for KEMCiphertextInfo.
+                    response = self.sign_response(response=response, request_msg=pki_message)
                 return self.genm_handler.patch_genp_message_for_extra_certs(pki_message=response)
 
             else:
@@ -731,7 +729,21 @@ class CAHandler:
         self.state.kem_mac_based.may_update_state(request=pki_message)
         return self.sign_response(response=response, request_msg=pki_message)
 
-    def process_genm(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
+    def _is_allowed_to_make_a_request(
+        self,
+        pki_message: PKIMessageTMP,
+    ) -> None:
+        """Check if the request is allowed to be made.
+
+        :param pki_message: The PKIMessage request.
+        :raises NotAuthorized: If the request is not allowed.
+        """
+        self.rev_handler.is_not_allowed_to_request(
+            pki_message,
+            issued_certs=self.state.issued_certs,
+        )
+
+    def process_genm(self, pki_message: PKIMessageTMP) -> Tuple[PKIMessageTMP, bool]:
         """Process the GenM message.
 
         :param pki_message: The GenM message.
@@ -740,22 +752,29 @@ class CAHandler:
         if len(pki_message["body"]["genm"]) == 0:
             raise BadRequest("The general message does not contain any messages.")
 
+        if pki_message["header"]["protectionAlg"].isValue:
+            self.protection_handler.validate_protection(pki_message)
+
         if pki_message["body"]["genm"][0]["infoType"] == id_it_KemCiphertextInfo:
+            if pki_message["header"]["protectionAlg"].isValue:
+                raise BadRequest("Protection algorithm was set for KEMCiphertextInfo.")
+
+            if not pki_message["extraCerts"].isValue:
+                raise BadRequest("The extraCerts field was not set for KEMCiphertextInfo.")
+
             ss, genp = build_genp_kem_ct_info_from_genm(
-                genm=pki_message,  # type: ignore
+                genm=pki_message,
             )
 
             self._check_is_not_confirmed(pki_message)
-            self.rev_handler.is_not_allowed_to_request(
-                pki_message,
-                issued_certs=self.state.issued_certs,
-            )
+            self._is_allowed_to_make_a_request(pki_message)
+
             logging.warning("The certificate was not revoked or for revocation request.")
 
             self.state.add_kem_mac_shared_secret(pki_message=pki_message, shared_secret=ss)
-            return genp  # type: ignore
+            return genp, False
 
-        return self.genm_handler.process_general_msg(pki_message)
+        return self.genm_handler.process_general_msg(pki_message), True
 
     def process_nested_request(self, request_msg: PKIMessageTMP) -> PKIMessageTMP:
         """Process the nested request.
