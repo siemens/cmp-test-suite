@@ -40,7 +40,7 @@ class CertConfState:
     requests: Dict[bytes, PKIMessageTMP] = field(default_factory=dict)
     already_confirmed_certs: List[bytes] = field(default_factory=list)
 
-    def add_confirmed_cert(self, request: PKIMessageTMP, cert: rfc9480.CMPCertificate) -> None:
+    def add_confirmed_cert(self, request: PKIMessageTMP) -> None:
         """Add the confirmed certificate to the state."""
         if not request["header"]["transactionID"].isValue:
             raise BadRequest("The transaction ID is not set.")
@@ -139,7 +139,7 @@ class CertConfState:
             raise BadDataFormat("The transaction ID is not set.")
 
         tx_id = pki_message["header"]["transactionID"].asOctets()
-        logging.debug("GET REQUEST is: ", get_cmp_message_type(self.requests[tx_id]))
+        logging.debug("GET REQUEST is: %s", get_cmp_message_type(self.requests[tx_id]))
         return self.requests[tx_id]
 
     def validate_tx_id(self, cert_conf: PKIMessageTMP) -> None:
@@ -244,10 +244,9 @@ class CertConfHandler:
 
         return cls(state_db=kwargs["conf_state"], config_vars=config_vars)
 
-    def add_confirmed_certs(self, request: PKIMessageTMP, certs: List[rfc9480.CMPCertificate]) -> None:
+    def add_confirmed_certs(self, request: PKIMessageTMP) -> None:
         """Add the confirmed certificate to the state."""
-        for cert in certs:
-            self.conf_state.add_confirmed_cert(request, cert)
+        self.conf_state.add_confirmed_cert(request)
 
     def add_request(self, pki_message: PKIMessageTMP):
         """Add the certificate confirmation request to the state."""

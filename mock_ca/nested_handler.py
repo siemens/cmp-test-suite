@@ -192,13 +192,12 @@ class NestedHandler:
         # self._check_nonces_depth(request)
         names = [get_cmp_message_type(entry) for entry in request["body"]["nested"]]
         if "certConf" in names:
-            if set(names) == {"certConf"}:
-                pass
-            raise BadRequest(
-                "THe `nested` body must only contain `certConf` messages, "
-                "or only requests of type `ir`, `cr`, `kur`, `p10cr`, `rr`."
-                f" Got: {names}."
-            )
+            if set(names) != {"certConf"}:
+                raise BadRequest(
+                    "THe `nested` body must only contain `certConf` messages, "
+                    "or only requests of type `ir`, `cr`, `kur`, `p10cr`, `rr`."
+                    f" Got: {names}."
+                )
         elif request["header"]["recipNonce"].isValue:
             raise BadRecipientNonce(
                 "The recipient nonce must not be set in the outer message of a batched request."

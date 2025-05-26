@@ -464,7 +464,7 @@ def validate_relative_name_for_correct_data_types(
         structure = CERT_ATTR_OID_2_CORRECT_STRUCTURE[name_type].clone()
 
         try:
-            dec_val, rest = asn1utils.try_decode_pyasn1(x["value"], structure)
+            _, rest = asn1utils.try_decode_pyasn1(x["value"], structure)
             if rest:
                 failed.append(f"Remainder in value for: {PYASN1_CM_OID_2_NAME[name_type]}. Remainder: {rest}")
         except BadAsn1Data as e:

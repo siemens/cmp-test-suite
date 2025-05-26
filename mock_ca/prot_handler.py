@@ -164,7 +164,7 @@ class ProtectionHandler:
         :param pki_message: The PKI message to verify.
         :return: True if the MAC protection is valid, False otherwise.
         """
-        cert, ss = self.get_dh_cert_and_ss(pki_message["extraCerts"][0])
+        _, ss = self.get_dh_cert_and_ss(pki_message["extraCerts"][0])
         try:
             verify_pkimessage_protection(
                 pki_message,
@@ -788,7 +788,7 @@ class ProtectionHandler:
                     message=e.message + " At index: " + str(index),
                     error_details=[e.message] + e.error_details,
                     failinfo=e.get_failinfo(),
-                )
+                ) from e
 
     def verify_nested_protection(self, pki_message: PKIMessageTMP) -> None:
         """Verify the nested protection of the PKIMessage
@@ -809,8 +809,8 @@ class ProtectionHandler:
             certificates_are_trustanchors(
                 pki_message["extraCerts"][0], self._prot_config.trusted_ras_dir or self._prot_config.mock_ca_trusted_dir
             )
-        except SignerNotTrusted:
-            raise NotAuthorized("The signer of the nested PKIMessage is not trusted.")
+        except SignerNotTrusted as e:
+            raise NotAuthorized("The signer of the nested PKIMessage is not trusted.") from e
 
         self.validate_signature_protection(pki_message)
 

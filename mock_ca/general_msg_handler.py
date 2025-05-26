@@ -522,7 +522,7 @@ class GeneralMessageHandler:
 
         crl_status_list: List[CRLStatusAsn1]
         for i, crl_status in enumerate(crl_status_list):
-            data, text = self._process_crl_status(crl_status, i)
+            data, _ = self._process_crl_status(crl_status, i)
             if data:
                 out_crls.append(data)
 

@@ -21,6 +21,7 @@ from mock_ca.mock_fun import (
     KeySecurityChecker,
     RevokedEntry,
 )
+from mock_ca.prot_handler import ProtectionHandler
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from resources import certutils, cmputils
 from resources.asn1_structures import PKIMessageTMP
@@ -352,7 +353,7 @@ class RevocationHandler:
                 return self._handle_revive_request(pki_message, issued_certs)
 
             logging.debug("length revoked certs: %d", len(self.rev_db.revoked_certs))
-            logging.debug("Length of issued certs: ", len(issued_certs))
+            logging.debug("Length of issued certs: %d", len(issued_certs))
             response, entry = build_rp_from_rr(
                 request=pki_message,
                 shared_secret=shared_secret,

@@ -1139,7 +1139,7 @@ class CAHandler:
         )
         if status == "revoked":
             raise CertRevoked("The public key is revoked.")
-        elif status == "updated":
+        if status == "updated":
             raise CertRevoked("The public key is updated.")
 
     def _validate_related_cert(

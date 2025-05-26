@@ -923,8 +923,8 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         - `private_key`: The private key to wrap.
         - `version`: The version of the structure. Defaults to "v2".
         - `key_save_type`: The type of key to save. Can be "seed", "raw", or "seed_and_raw". Defaults to "raw".
-        - `invalid_private_key`: If True, the private key is invalid. Only supported for RSA, ECC, ML-DSA and ML-KEM keys. \
-        Defaults to `False`.
+        - `invalid_private_key`: If True, the private key is invalid. Only supported for RSA, ECC,
+        ML-DSA and ML-KEM keys. Defaults to `False`.
         - `invalid_pub_key_size`: If True, the public key size is invalid. Defaults to `False`.
         - `mis_matching_key`: If True, the public key does not match the private key. Defaults to `False`.
         - `invalid_priv_key_size`: If True, the private key size is invalid. Defaults to `False`.

@@ -279,7 +279,7 @@ class CertReqHandler:
             )
         if confirm_:
             self.state.add_certs(certs=certs)
-            self.cert_conf_handler.add_confirmed_certs(request, certs=certs)
+            self.cert_conf_handler.add_confirmed_certs(request)
         else:
             self.state.add_certs(certs=certs, was_confirmed=False)
             self.add_request_for_cert_conf(request=request, response=response, certs=certs)
