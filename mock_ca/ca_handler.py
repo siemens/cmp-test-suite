@@ -108,6 +108,7 @@ from resources.protectionutils import (
     protect_hybrid_pkimessage,
     protect_pkimessage,
     protect_pkimessage_kem_based_mac,
+    validate_orig_pkimessage,
 )
 from resources.suiteenums import ProtectedType
 from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PublicKey, SignKey, VerifyKey
@@ -1114,10 +1115,33 @@ class CAHandler:
         except ValueError as e:
             raise BadCertTemplate("The `p10cr` public key is not a valid verify key.") from e
 
-        self.rev_handler.public_key_is_revoked(
-            public_key,
-            pki_message["body"]["p10cr"]["certificationRequestInfo"]["subject"],
+        self._public_key_is_revoked(
+            public_key=public_key,
+            subject=pki_message["body"]["p10cr"]["certificationRequestInfo"]["subject"],
         )
+
+    def _public_key_is_revoked(
+        self,
+        public_key: PublicKey,
+        subject: rfc9480.Name,
+    ) -> None:
+        """Check if the public key is revoked.
+
+        :param public_key: The public key.
+        :param subject: The subject of the certificate.
+        :raises CertRevoked: If the public key is revoked.
+        """
+        status = KeySecurityChecker(
+            revoked_certs=self.rev_handler.rev_db.revoked_certs,
+            updated_certs=self.state.certificate_db.updated_certs,
+        ).check_cert_status(
+            pub_key=public_key,
+            sender=subject,
+        )
+        if status == "revoked":
+            raise CertRevoked("The public key is revoked.")
+        elif status == "updated":
+            raise CertRevoked("The public key is updated.")
 
     def _validate_related_cert(
         self,
