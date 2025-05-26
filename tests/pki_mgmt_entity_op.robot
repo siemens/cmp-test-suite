@@ -112,7 +112,7 @@ CA MUST Reject Added Protection PKIMessage Without Copied senderNonce
     ...    original message into the header of the nested message. We send a nested PKIMessage where the
     ...    `senderNonce` is not copied but the `transactionID` is. The CA MUST detect the invalid
     ...    `senderNonce` and reject the request, possibly responding with the failinfo `badSenderNonce`.
-    [Tags]    adding-protection    header    negative    nested
+    [Tags]    adding-protection    header    negative    nested   added-protection
     Skip If Cert Or Key Not Set
     ${protected_ir}=    Default Build Inner IR Message
     ${transaction_id}=    Get Asn1 Value As Bytes    ${protected_ir}    header.transactionID
@@ -137,7 +137,7 @@ CA MUST Reject Added Protection PKIMessage Without Copied transactionID
     ...    original message into the header of the nested message. We send a nested PKIMessage where the
     ...    `transactionID` is not copied but the `senderNonce` is. The CA MUST detect the invalid
     ...    `transactionID` and reject the request, possibly responding with the failinfo `badSenderNonce`.
-    [Tags]    adding-protection    header    negative    nested
+    [Tags]    adding-protection    header    negative    nested   added-protection
     Skip If Cert Or Key Not Set
     ${protected_ir}=    Default Build Inner IR Message
     ${transaction_id}=    Get Asn1 Value As Bytes    ${protected_ir}    header.transactionID
@@ -184,7 +184,7 @@ CA MUST Accept Valid Added Protection To PKIMessage
     ...    header and use signature-based protection. We send a nested PKIMessage that correctly copies
     ...    both `senderNonce` and `transactionID` and applies signature-based protection. The CA MUST
     ...    process the request and issue a certificate.
-    [Tags]    adding-protection    nested    positive
+    [Tags]    adding-protection    nested    positive   added-protection
     Skip If Cert Or Key Not Set
     ${protected_ir}=    Default Build Inner IR Message
     ${transaction_id}=    Get Asn1 Value As Bytes    ${protected_ir}    header.transactionID
@@ -206,7 +206,7 @@ CA MUST Respond with MAC To Added Protection For MAC Inner Request
     ...    CA MUST also respond with MAC-based protection. We send a nested PKIMessage that correctly
     ...    copies both `senderNonce` and `transactionID` and applies MAC-based protection. The CA MUST
     ...    process the request and issue a certificate.
-    [Tags]    adding-protection    mac    nested    positive
+    [Tags]    adding-protection    mac    nested    positive   added-protection
     Skip If Cert Or Key Not Set
     ${pki_message}=    Generate Default MAC Protected PKIMessage
     ${transaction_id}=    Get Asn1 Value As Bytes    ${pki_message}    header.transactionID
@@ -233,7 +233,7 @@ CA MUST Accept Valid Nested Batch Message
     ...    with unique `senderNonce`s and `transactionID`s for each request. If batch processing is allowed,
     ...    the CA MUST process the batch and respond appropriately. Otherwise, the CA MUST reject the
     ...    request, possibly responding with `badSenderNonce` or `badRequest`.
-    [Tags]    batching    nested    positive   trust
+    [Tags]    batching    nested    positive   trust  batch
     Skip If Cert Or Key Not Set
     ${nonces}=    Generate Unique Byte Values    length=4
     ${ids}=    Generate Unique Byte Values    length=4
@@ -248,7 +248,7 @@ CA MUST Check If The Nested Batch Message Has A Unique transactionID
     ...    use a fresh`transactionID` and `senderNonce` in the header. We send a nested batch message
     ...    where the `transactionID` of the third request is duplicated. The CA MUST reject the request,
     ...    potentially responding with the `failinfo` `transactionIdInUse` or `badRequest`.
-    [Tags]    batching    header    negative    nested
+    [Tags]    batching    header    negative    nested   batch
     Skip If Cert Or Key Not Set
     ${ids}=    Generate Unique Byte Values    length=3
     VAR    ${ids_dup}    ${ids}[0]    ${ids}[1]    ${ids}[2]    ${ids}[1]
@@ -264,7 +264,7 @@ CA MUST Check If The Nested Batch Message Has A Unique senderNonce
     ...    use fresh a `transactionID` and `senderNonce` in the header. We send a nested batch message
     ...    where the `senderNonce` of the third request is duplicated. The CA MUST reject the request,
     ...    potentially responding with the `failinfo` `badSenderNonce` or `badRequest`.
-    [Tags]    batching    header    negative    nested
+    [Tags]    batching    header    negative    nested   batch
     Skip If Cert Or Key Not Set
     ${nonces}=    Generate Unique Byte Values    length=3
     VAR    ${nonces_dup}   ${nonces}[0]    ${nonces}[1]    ${nonces}[2]    ${nonces}[1]
@@ -280,7 +280,7 @@ CA MUST Check The Protection Of All Inner Messages
     ...    verification or approval of the bundled PKI requests. We send a nested message with three
     ...    requests, where the third request has an incorrect protection value. The CA MUST reject
     ...    the request, potentially responding with the `failinfo` `badMessageCheck`.
-    [Tags]    batching    negative    nested    protection
+    [Tags]    batching    negative    nested    protection   batch
     Skip If Cert Or Key Not Set
     ${nonces}=    Generate Unique Byte Values    length=5
     ${ids}=    Generate Unique Byte Values    length=5
@@ -339,22 +339,23 @@ CA MUST Accept IR From Trusted PKI With raVerified
     ...    recipient=${RECIPIENT}
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
-    ...    protection=signature
+    ...    signature
     ...    private_key=${OTHER_TRUSTED_PKI_KEY}
     ...    cert=${OTHER_TRUSTED_PKI_CERT}
     ...    certs_dir=${RA_CERT_CHAIN_DIR}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
+    PKIStatus Must Be    ${response}    accepted
 
-CA MUST Accept Nested IR From Trusted PKI With raVerified
+CA MUST Reject Added Protected IR From Trusted PKI With raVerified
     [Documentation]    According to RFC 9483 Section 5.2.3.2, if a PKI management entity modifies the certificate
     ...    template inside the initialization request (e.g., by adding, modifying, or removing fields),
     ...    it MUST verify the proof-of-possession (pop) using the original public key. If successful, it
-    ...    sets the pop to `raVerified`. We send a valid added protection nested initialization request
-    ...    message without the popo field set to `raVerified`. The CA MUST trust the PKI entity and
-    ...    The CA MUST trust the PKI entity and issue a valid certificate.
-    [Tags]    ir    positive    raVerified    trust   nested
+    ...    sets the pop to `raVerified`. We send a valid added protection, which preserves the nested
+    ...    ir protection, which means that the `raVerified` was set by the EE, which is not allowed.
+    ...    The CA MUST not trust the EE and reject the request, possibly responding with the
+    ...    failinfo `notAuthorized`.
+    [Tags]    ir    negative    raVerified    trust   nested  added-prot
     Skip If Cert Or Key Not Set
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
     ${ir}=    Build Ir From Key
@@ -369,7 +370,8 @@ CA MUST Accept Nested IR From Trusted PKI With raVerified
     ${prot_nested}=   Default Protect With Trusted Cert    ${nested}
     ${response}=    Exchange PKIMessage    ${prot_nested}
     PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    notAuthorized   True
 
 CA MUST Check Orig Message Inside GeneralInfo
     [Documentation]     According to RFC 9483 Section 5.2.3 the PKI Entity May include the original PKIMessage
