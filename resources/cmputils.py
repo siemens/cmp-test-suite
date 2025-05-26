@@ -384,6 +384,75 @@ def _prepare_pki_free_text(
     return target
 
 
+@keyword(name="Build P10cr From Key")
+def build_p10cr_from_key(  # noqa D417 undocumented-param
+    key: SignKey,
+    sender: str = "tests@example.com",
+    recipient: str = "testr@example.com",
+    exclude_fields: Optional[str] = None,
+    **params,
+) -> PKIMessageTMP:
+    """Create a `p10cr` (PKCS#10 Certificate Request) `PKIMessage` from a private key.
+
+    Builds a PKIMessage of type `p10cr` by embedding the provided private key and setting up
+    the necessary PKIHeader fields. The message can be customized with additional parameters
+    for transaction and nonce handling.
+
+    Arguments:
+    ---------
+        - `csr`: The `pyasn1` PKCS#10 CSR used to populate the `p10cr` body.
+        - `sender`: The sender of the request. Defaults to "test-cmp-cli@example.com".
+        - `recipient`: The recipient of the request. Defaults to "test-cmp-srv@example.com".
+        - `exclude_fields`: Comma-separated list of fields to omit from the PKIHeader. Defaults to `None`.
+        `**params`: Additional parameters setting the `PKIHeader`
+
+    **params:
+    --------
+       - `spki` (SubjectPublicKeyInfo): The SPKI structure to use instead of generating it from the key. Defaults to `None`.
+       - `common_name` (str): The common name to use for the CSR subject. Defaults to `CN=Hans Mustermann`.
+       - `hash_alg` (str): The hash algorithm to use for the SPKI and CSR signing. Defaults to "sha256".
+       - `use_rsa_pss` (bool): If `True`, uses RSA-PSS for the signature and SPKI. Defaults to `False`.
+       - `use_pre_hash` (bool): If `True`, uses pre-hashed version for composite-sig keys. Defaults to `False`.
+       - `bad_pop` (bool): If True, prepares a bad proof-of-possession for the CSR. Defaults to `False`.
+
+    Returns:
+    -------
+        - The constructed PKIMessage with the `p10cr` body type.
+
+    Examples:
+    --------
+    | ${pki_message}= | Build P10cr From Key | ${key} |
+    | ${pki_message}= | Build P10cr From Key | ${key} | ${sender}="CN=Hans Mustermann" |
+    | ${pki_message}= | Build P10cr From Key | ${key} | exclude_fields=messageTime,senderNonce |
+
+    """
+    spki = params.get("spki", None)
+    if spki is None:
+        spki = keyutils.prepare_subject_public_key_info(
+            key=key,
+            hash_alg=params.get("hash_alg", "sha256"),
+            use_rsa_pss=params.get("use_rsa_pss", False),
+            use_pre_hash=params.get("use_pre_hash", False),
+        )
+
+    csr = certbuildutils.build_csr(
+        signing_key=key,
+        common_name=params.get("common_name", "CN=Hans Mustermann"),
+        bad_pop=params.get("bad_pop", False),
+        spki=spki,
+        hash_alg=params.get("hash_alg", "sha256"),
+        use_rsa_pss=params.get("use_rsa_pss", False),
+        use_pre_hash=params.get("use_pre_hash", False),
+    )
+    return build_p10cr_from_csr(
+        csr=csr,
+        sender=sender,
+        recipient=recipient,
+        exclude_fields=exclude_fields,
+        **params,
+    )
+
+
 @keyword(name="Build P10cr From CSR")
 def build_p10cr_from_csr(  # noqa D417 undocumented-param
     csr: rfc6402.CertificationRequest,
