@@ -123,6 +123,7 @@ CA MUST Reject IR With More Than One CertReqMsg Inside The IR
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badRequest,systemFailure
+
 CA MUST Reject IR Request With Untrusted Anchor
     [Documentation]    According to RFC 9483 Section 4.1.1, when an End Entity (EE) requests a certificate, it must
     ...    either use MAC-based protection or prove, using a valid certificate and the corresponding
@@ -848,6 +849,246 @@ CA MUST Reject An Valid MAC Protected Key Update Request
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=wrongIntegrity
+
+# General CertReqMsg
+CA MUST Reject IR With BadPOP For Signature POPO
+    [Documentation]    According to RFC 9483 Section 4.1.3, when an Initialization Request (IR) is sent for a key
+    ...    capable of signing data, the Proof-of-Possession (POPO) structure must include a valid signature of the
+    ...    `CertRequest` to prove that the private key is owned by the End-Entity. We send an IR message
+    ...    with a key that can sign data, but invalidate the signature value in the `CertRequest`. The CA MUST
+    ...    reject the request, and the response may include the optional failinfo `badPOP`.
+    [Tags]    ir    negative    popo  sig-popo   minimal
+    ${cm}=    Get Next Common Name
+    ${key}=    Generate Default Key
+    ${cert_req_msg}=    Prepare CertReqMsg   ${key}   ${cm}  hash_alg=sha256  bad_pop=True
+    ${pki_message}=    Build IR From Key  ${key}
+    ...    cert_req_msg=${cert_req_msg}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${pki_message}=    Protect PKIMessage
+    ...    ${pki_message}
+    ...    signature
+    ...    private_key=${ISSUED_KEY}
+    ...    cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${pki_message}
+    PKIMessage Body Type Must Be     ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP   exclusive=True
+
+CA MUST Reject IR With Missing POPO Structure For Key Allowed For Signing
+    [Documentation]    According to RFC 9483, Section 4.1.3, when an initialization request (ir) is received for a key
+    ...    that can be used to sign data, the request must the Proof-of-Possession (POPO) structure, with
+    ...    a valid signature of the `CertRequest` structure, to proof, that the private key is owned by the
+    ...    End-Entity. We send a ir message with a key capable of signing but without `POPO` structure. The
+    ...    CA MUST reject the request. The CA and may respond with the optional failinfo "badPOP".
+    [Tags]    negative    popo   minimal
+    ${cm}=    Get Next Common Name
+    ${key}=    Generate Key    rsa
+    ${cert_req_msg}=    Prepare CertReqMsg    ${key}    common_name=${cm}    exclude_popo=True
+    ${pki_message}=    Build IR From Key
+    ...    ${key}
+    ...    cert_req_msg=${cert_req_msg}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${pki_message}=    Protect PKIMessage
+    ...    ${pki_message}
+    ...    protection=signature
+    ...    private_key=${ISSUED_KEY}
+    ...    cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${pki_message}
+    PKIMessage Body Type Must Be     ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP
+
+CA MUST Reject IR With Mismatched SignatureAlgorithm And PublicKey In CertTemplate
+    [Documentation]    According to RFC 9483, Section 4.1.3, when an initialization request (ir) is submitted, the CA
+    ...    expects consistency between the signature algorithm and public key specified in the CertTemplate.
+    ...    We send an IR where the signature algorithm does not match the provided public key, and
+    ...    expects the CA to reject the request. The CA should respond with failinfo codes `badPOP` and
+    ...    `badCertTemplate` to indicate the detected inconsistency.
+    [Tags]    certTemplate    negative    popo   minimal
+    ${cm}=    Get Next Common Name
+    ${key1}=    Generate Key    rsa
+    ${key2}=    Generate Key    ecc
+    ${cert_req}=    Prepare CertRequest    ${key2}    ${cm}
+    ${popo}=    Prepare Signature POPO    ${key1}  ${cert_req}   hash_alg=sha256
+    ${ir}=    Build IR From Key   ${key2}
+    ...    popo=${popo}
+    ...    cert_request=${cert_req}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${prot_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badPOP,badCertTemplate
+
+CA MUST Reject IR With Valid Proof-of-Possession And raVerified From EE
+    [Documentation]    According to RFC 9483, Section 4.1.3, when an End Entity (EE) includes a valid
+    ...    Proof-of-Possession (POPO) in a certificate request but sets `raVerified` on its own, the CA must reject
+    ...    the request as unauthorized. We send a Initialization request without POPO but with `raVerified` set by
+    ...    the EE, expecting the CA to respond with a failinfo indicating `notAuthorized`.
+    [Tags]    negative    popo   minimal
+    ${cm}=    Get Next Common Name
+    ${new_key}=    Generate Default Key
+    ${pki_message}=    Build IR From Key
+    ...    common_name=${cm}
+    ...    ra_verified=True
+    ...    signing_key=${new_key}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${pki_message}=    Protect PKIMessage
+    ...    ${pki_message}
+    ...    protection=signature
+    ...    private_key=${ISSUED_KEY}
+    ...    cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${pki_message}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=notAuthorized
+
+CA MUST Reject IR With Invalid CertReqId
+    [Documentation]    According to RFC 9483, Section 4.1.3, the `certReqId` field in an initialization request (ir)
+    ...    must be set to 0 to indicate a valid request. We send an IR with an invalid `certReqId`
+    ...    value of -1, expecting the CA to reject the request. The CA should respond with a failinfo code
+    ...    of `badDataFormat` or `badRequest` to signal the invalid format or content of the `certReqId`.
+    [Tags]    certReqID    ir    negative  minimal
+    ${cm}=    Get Next Common Name
+    ${new_key}=    Generate Default Key
+    ${ir}=    Build IR From Key
+    ...    common_name=${cm}
+    ...    cert_req_id=-1
+    ...    signing_key=${new_key}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${protected_ir}=    Protect PKIMessage
+    ...    ${ir}
+    ...    protection=signature
+    ...    private_key=${ISSUED_KEY}
+    ...    cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
+
+# CertTemplate structure
+
+CA MUST Reject IR With Missing Subject In CertTemplate
+    [Documentation]    According to RFC 9483, Section 4.1.3, the `subject` field is mandatory in the CertTemplate for
+    ...    a Initialization request. We send a IR with a CertTemplate that omits the `subject`
+    ...    field, expecting the CA to reject the request. The CA should respond with a failinfo of
+    ...    `badCertTemplate` to indicate the missing required field.
+    [Tags]    certTemplate    ir    negative   minimal
+    ${cm}=    Get Next Common Name
+    ${new_key}=    Generate Default Key
+    ${cert_template}=    Prepare CertTemplate    include_fields=publicKey    key=${new_key}
+    ${pki_message}=    Build IR From Key
+    ...    common_name=${cm}
+    ...    signing_key=${new_key}
+    ...    cert_template=${cert_template}
+    ...    common_name=${SENDER}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${pki_message}=    Protect PKIMessage
+    ...    ${pki_message}
+    ...    protection=signature
+    ...    private_key=${ISSUED_KEY}
+    ...    cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${pki_message}
+    PKIMessage Body Type Must Be        ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badCertTemplate
+
+# Key Related
+
+CA MUST Issue A ECC Certificate With A Valid IR
+    [Documentation]    According to RFC 9483, Section 4.1.3, when the CA receives a valid initialization request (ir)
+    ...    containing an Elliptic Curve Cryptography (ECC) key, it should issue an ECC certificate if the
+    ...    algorithm is allowed by CA policy. We send an IR with an ECC key. The CA issues a
+    ...    certificate when the request meets all requirements. If ECC is unsupported, the CA should
+    ...    respond with a failinfo of `badCertTemplate` or `badAlg`.
+    [Tags]    ir    key    positive   robot:skip-on-failure  minimal
+    Should Contain    ${ALLOWED_ALGORITHM}    ecc
+    ${ecc_key}=    Generate Key    ecc    curve=${DEFAULT_ECC_CURVE}
+    ${extensions}=    Prepare Extensions    key_usage=keyAgreement,digitalSignature
+    ${pki_message}=    Build IR From Key
+    ...    extensions=${extensions}
+    ...    signing_key=${ecc_key}
+    ...    common_name=${SENDER}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${pki_message}=    Protect PKIMessage
+    ...    ${pki_message}
+    ...    signature
+    ...    private_key=${ISSUED_KEY}
+    ...    cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${pki_message}
+    PKIMessage Body Type Must Be        ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=    Get Cert From PKIMessage    ${response}
+    IF    not ${ALLOW_IMPLICIT_CONFIRM}
+        ${cert_conf}=    Build Cert Conf From Resp
+        ...    ${response}
+        ...    exclude_fields=sender,senderKID
+        ...    recipient=${RECIPIENT}
+        ${protected_cert_conf}=    Protect PKIMessage
+        ...    pki_message=${cert_conf}
+        ...    protection=signature
+        ...    private_key=${ISSUED_KEY}
+        ...    cert=${ISSUED_CERTIFICATE}
+        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
+        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    END
+    VAR    ${ECDSA_CERT}    ${cert}    scope=Global
+    VAR    ${ECDSA_KEY}    ${ecc_key}    scope=Global
+
+CA MAY Issue A Ed25519 Certificate With A Valid IR
+    [Documentation]    According to RFC 9483, Section 4.1.3, the CA may issue a certificate for a valid initialization
+    ...    request (ir) containing an Ed25519 key if its policy allows this algorithm. We send an ir
+    ...    message with an Ed25519 key and expects the CA to issue a certificate if Ed25519 is supported.
+    ...    If not, the CA should respond with the failinfo set to `badCertTemplate` or `badAlg`.
+    [Tags]    key    positive   robot:skip-on-failure  minimal
+    Should Contain    ${ALLOWED_ALGORITHM}    ed25519
+    ${ecc_key}=    Load Private Key From File    ./data/keys/private-key-ed25519.pem
+    ${extensions}=    Prepare Extensions    key_usage=digitalSignature
+    ${pki_message}=    Build Ir From Key
+    ...    signing_key=${ecc_key}
+    ...    extensions=${extensions}
+    ...    common_name=${SENDER}
+    ...    extensions=${extensions}
+    ...    recipient=${RECIPIENT}
+    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...    exclude_fields=sender,senderKID
+    ${pki_message}=    Protect PKIMessage
+    ...    pki_message=${pki_message}
+    ...    protection=signature
+    ...    private_key=${ISSUED_KEY}
+    ...    cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${pki_message}
+    PKIMessage Body Type Must Be        ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=    Get Cert From PKIMessage    ${response}
+    IF    not ${ALLOW_IMPLICIT_CONFIRM}
+        ${cert_conf}=    Build Cert Conf From Resp
+        ...    ${response}
+        ...    exclude_fields=sender,senderKID
+        ...    recipient=${RECIPIENT}
+        ${protected_cert_conf}=    Protect PKIMessage
+        ...    pki_message=${cert_conf}
+        ...    protection=signature
+        ...    private_key=${ISSUED_KEY}
+        ...    cert=${ISSUED_CERTIFICATE}
+        ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
+        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    END
+    VAR    ${Ed25519_CERT}    ${cert}    scope=Global     # robocop: off=VAR07
+    VAR    ${Ed25519_KEY}    ${ecc_key}    scope=Global   # robocop: off=VAR07
 
 
 # RFC4849 Section 4.1.4 Enrolling an End Entity using a PKCS10 request

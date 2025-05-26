@@ -6,8 +6,14 @@
 ### Prerequisites
 "The certificate of the EE MUST have been enrolled by an external PKI, e.g., a 
 manufacturer-issued device certificate."
+- Input: EE sends certificate from not external source -> Output: pki rejects
+
+"The PKI management entity MUST have the trust anchor of the external PKI."
 - Input: EE sends certificate from untrusted source -> Output: pki rejects
-(vielleicht später)
+
+"When using the generalInfo field certProfile, the EE MUST know the identifier 
+needed to indicate the requested certificate profile."
+- Input: EE sends ir false identifier -> Output: pki sends rejection
 
 ...
 
@@ -17,7 +23,7 @@ manufacturer-issued device certificate."
 "For this PKI management operation, the EE MUST include a sequence of one CertReqMsg in the ir. If more certificates are required, further requests MUST be sent using separate PKI management operations."
 
 - Input: EE sends more than one sequence of CertReqMsg in the ir -> Output: correct reaction of the PKI
-- Input: EE sends one sequence of CertReqMsg in the ir -> Output: correct reaction of the PKI
+- Input: EE sends one sequence of CertReqMsg in the ir -> Output: valid ip message
 
 
 
