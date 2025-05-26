@@ -154,8 +154,9 @@ ${ALLOW_KGA_RAW_KEYS}   ${False}
 ${REVOCATION_STRICT_CHECK}    ${False}
 # The time to wait, until a certificate is revoked, so that
 # the test cases can be run.
-${REVOKED_WAIT_TIME}   5
-${UPDATE_WAIT_TIME}   3
+${REVOKED_WAIT_TIME}   5s
+${UPDATE_WAIT_TIME}   3s
+${WAIT_UNTIL_UPDATED_CONFIRMATION_IS_EXPIRED}   15s
 
 # Section 4.3
 # Whether a Support message can be used with a pre-shared-Secret.

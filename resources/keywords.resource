@@ -1050,6 +1050,14 @@ Wait Until Server Revived Cert
     [Documentation]    Wait time until the server revived a certificate so that testing can be begin.
     Sleep    ${REVOKED_WAIT_TIME}
 
+Wait Until Server Deletes Update Request
+    [Documentation]    Wait time until the server deleted a update request, which was not confirmed.
+    ...                Needed to raise awareness that the request was not confirmed and how the implementation
+    ...                handles the request. Should raise awareness that if a requests was not confirmed,
+    ...                that the request handles it as a revoked certificate or successfully does not
+    ...                marks it as a revoked certificate.
+    Sleep    ${WAIT_UNTIL_UPDATED_CONFIRMATION_IS_EXPIRED}
+
 Get PQ Issuing URL
     [Documentation]    Return the URL for the PQ issuing endpoint.
     ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
