@@ -771,3 +771,200 @@ class CertDBEntry:
     revoked_entry: Optional[RevokedEntry] = None
 
 
+@dataclass
+class UpdateCertDB:
+    """A database for update certificates.
+
+    Attributes
+    ----------
+        - `certs`: The list of certificates.
+        - `hash_alg`: The hash algorithm to use for hashing the certificates. Defaults to "sha1".
+
+    """
+
+    certs: List[CertDBEntry] = field(default_factory=list)
+    hash_alg: str = "sha1"
+    timeout: int = 10  # seconds
+
+    def get_cert_by_digest(self, digest: bytes) -> Optional[CertDBEntry]:
+        """Get a certificate by its digest."""
+        for entry in self.certs:
+            if entry.cert_digest == digest:
+                return entry
+        return None
+
+    def get_entry(self, cert: rfc9480.CMPCertificate) -> Optional[CertDBEntry]:
+        """Get a certificate entry by its certificate."""
+        digest = compute_hash(self.hash_alg, encoder.encode(cert))
+        return self.get_cert_by_digest(digest)
+
+    def is_updated(self, cert: rfc9480.CMPCertificate, allow_timeout: bool) -> bool:
+        """Check if the certificate is an update.
+
+        :param cert: The certificate to check.
+        :param allow_timeout: Whether to check the strictness of the update.
+        :return: `True` if the certificate was updated, otherwise `False`.
+        """
+        time_now = datetime.now(timezone.utc).replace(microsecond=0)
+        cert_entry = self.get_entry(cert)
+        if cert_entry is None:
+            return False
+
+        if cert_entry.updated_date is None or cert_entry.cert_state == CertStateEnum.UPDATED:
+            return True
+
+        time_diff = (time_now - cert_entry.updated_date).total_seconds()
+        if time_diff > self.timeout and not allow_timeout:
+            return False
+        return True
+
+    def _for_cert_conf(self, entry: CertDBEntry, strict: bool = True) -> None:
+        """Check if the entry is for a certificate confirmation.
+
+        :param entry: The certificate entry to check.
+        :param strict: Whether to check the strictness of the update timeout. Defaults to `True`.
+        :raises CertConfirmed: If the certificate is already confirmed.
+        :raises BadRequest: If the certificate timeout is exceeded and strict is `True`.
+        """
+        time_now = datetime.now(timezone.utc).replace(microsecond=0)
+        time_diff = (time_now - entry.updated_date).total_seconds() if entry.updated_date else None
+
+        if entry.cert_state == CertStateEnum.UPDATED:
+            raise CertConfirmed("Certificate already updated and confirmed.")
+
+        if time_diff is not None and time_diff > self.timeout and strict:
+            raise BadRequest(
+                "The certificate timeout is exceeded, cannot confirm the certificate."
+                "Please start a new request to update the certificate."
+            )
+
+        if time_diff is not None and time_diff > self.timeout and not strict:
+            logging.debug("The certificate timeout is exceeded, but the certificate can still be confirmed.")
+
+    def _for_kur(self, entry: CertDBEntry) -> None:
+        """Check if the entry is for a KUR (Key Update Request).
+
+        :param entry: The certificate entry to check.
+        :raises BadRequest: If the certificate is not confirmed or updated.
+        """
+        if entry.cert_state == CertStateEnum.UPDATED:
+            raise CertRevoked("Certificate already updated and confirmed, cannot send a KUR.")
+
+        time_now = datetime.now(timezone.utc).replace(microsecond=0)
+
+        if entry.updated_date is None:
+            raise TypeError("The certificate entry does not have an updated date, cannot verify the timeout.")
+
+        time_diff = (time_now - entry.updated_date).total_seconds()
+        if entry.cert_state == CertStateEnum.UPDATED_BUT_NOT_CONFIRMED:
+            if time_diff < self.timeout:
+                msg = (
+                    "Either confirm the certificate or wait for the timeout to expire."
+                    f"Timeout: {self.timeout} seconds. Time diff.: {int(time_diff)}"
+                )
+                raise BadRequest(
+                    "The certificate is updated but not confirmed, cannot send a KUR. "
+                    f"Please confirm the other request first. {msg}"
+                )
+        else:
+            raise TypeError(
+                f"Unexpected certificate state for KUR: {entry.cert_state}. "
+                "Expected UPDATED_BUT_NOT_CONFIRMED or UPDATED."
+            )
+
+    def _for_rr(self, entry: CertDBEntry, allow_timeout: bool) -> None:
+        """Check if the entry is for a RR (Revocation Request).
+
+        :param entry: The certificate entry to check.
+        :param allow_timeout: Whether to allow the certificate to be used after the timeout.
+        :raises BadRequest: If the certificate is not confirmed or updated.
+        """
+        if entry.cert_state == CertStateEnum.UPDATED:
+            raise CertRevoked("Certificate already updated and confirmed, cannot send a RR.")
+
+        time_now = datetime.now(timezone.utc).replace(microsecond=0)
+
+        if entry.updated_date is None:
+            raise TypeError("The certificate entry does not have an updated date, cannot verify the timeout.")
+
+        time_diff = (time_now - entry.updated_date).total_seconds()
+
+        if entry.cert_state == CertStateEnum.UPDATED:
+            raise CertRevoked("Certificate already updated and confirmed, cannot be revoked.")
+
+        if time_diff < self.timeout and allow_timeout:
+            logging.debug("The certificate is updated, but the timeout is not exceeded, so it can still be revoked.")
+            return
+
+        raise BadRequest(
+            "The certificate is updated but not confirmed, cannot send a RR. Please confirm the other request first."
+        )
+
+    def validate_is_updated(
+        self,
+        body_name: str,
+        cert: rfc9480.CMPCertificate,
+        allow_timeout: bool = False,
+    ) -> None:
+        """Validate if a certificate is updated.
+
+        :param body_name: The name of the body to check against.
+        :param cert: The certificate to check.
+        :param allow_timeout: Whether to allow the certificate to be used after the timeout,
+        `True` no and `False` means yes. Defaults to `False`.
+        :raises CertRevoked: If the certificate is updated.
+        """
+        cert_entry = self.get_entry(cert)
+        if cert_entry is None:
+            return
+
+        cert_state = cert_entry.cert_state
+        serial_number = int(cert["tbsCertificate"]["serialNumber"])
+        if cert_state == CertStateEnum.UPDATED and body_name != "kur":
+            raise CertRevoked(f"Certificate already updated. Serial number: {serial_number}")
+
+        if body_name == "certConf":
+            self._for_cert_conf(entry=cert_entry)
+            return
+
+        if body_name == "kur":
+            self._for_kur(entry=cert_entry)
+            return
+
+        if body_name == "rr":
+            self._for_rr(entry=cert_entry, allow_timeout=allow_timeout)
+            return
+
+        if body_name in ["ir", "cr", "p10cr"] and cert_state == CertStateEnum.UPDATED_BUT_NOT_CONFIRMED:
+            raise BadRequest(
+                "The certificate is updated but not confirmed, cannot request IR/CR/P10CR."
+                "Please confirm the other request first.",
+                failinfo="badRequest,certRevoked",
+            )
+
+        if self.is_updated(cert, allow_timeout=allow_timeout):
+            raise CertRevoked(f"Certificate already updated. Serial number: {serial_number}")
+
+    @classmethod
+    def build_from_entries(
+        cls,
+        entries: List[CertDBEntry],
+        hash_alg: Optional[str] = None,
+        timeout: int = 10,
+    ) -> "UpdateCertDB":
+        """Build the update certificate database from entries.
+
+        :param entries: The list of certificate database entries.
+        :param hash_alg: The hash algorithm to use for hashing the certificates. Defaults to "sha1".
+        :param timeout: The timeout for the update certificates in seconds. Defaults to 10 seconds.
+        """
+        hash_alg = hash_alg or "sha1"
+
+        only_valid_entries = []
+        for entry in entries:
+            if entry.cert_state in [CertStateEnum.UPDATED, CertStateEnum.UPDATED_BUT_NOT_CONFIRMED]:
+                only_valid_entries.append(entry)
+
+        return cls(certs=only_valid_entries, hash_alg=hash_alg, timeout=timeout)
+
+
