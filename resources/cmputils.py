@@ -52,7 +52,6 @@ from resources.asn1_structures import CertProfileValueAsn1, KemCiphertextInfoAsn
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadDataFormat, BadRequest
-from resources.prepareutils import convert_to_generalized_time
 from resources.typingutils import (
     CertObjOrPath,
     ControlsType,
@@ -213,7 +212,7 @@ def prepare_pki_message(
             date_time = datetime.now(timezone.utc) - timedelta(seconds=3)
             message_time = useful.GeneralizedTime().fromDateTime(date_time)
 
-        msg_time_obj = convert_to_generalized_time(
+        msg_time_obj = prepareutils.convert_to_generalized_time(
             message_time,
         )
 
