@@ -5,10 +5,11 @@
 import unittest
 
 from cryptography.hazmat.primitives.asymmetric import ec
-from mock_ca.mock_fun import CertRevStateDB
+from mock_ca.mock_fun import CertificateDB, CertStateEnum
 from mock_ca.rev_handler import RevocationHandler
 
 from resources.certbuildutils import build_certificate
+from resources.certutils import cert_in_list
 from resources.cmputils import build_cmp_revoke_request, get_pkistatusinfo
 from resources.keyutils import generate_key
 from resources.protectionutils import protect_hybrid_pkimessage
@@ -27,11 +28,12 @@ class TestRevocationHandler(unittest.TestCase):
             ca_cert=cls.ca_cert,
             ca_key=cls.ca_key,
         )
-        rev_db = CertRevStateDB()
+        rev_db = CertificateDB()
+        rev_db.add_cert(cls.client_cert, cert_state=CertStateEnum.CONFIRMED)
         # Initialize RevocationHandler
         cls.rev_handler = RevocationHandler(rev_db=rev_db)
 
-    def _build_request(self, reason: str):
+    def _build_revoke_request(self, reason: str):
         rr_message = build_cmp_revoke_request(cert=self.client_cert, reason=reason)
         rr_message = protect_hybrid_pkimessage(
             rr_message,
@@ -41,26 +43,56 @@ class TestRevocationHandler(unittest.TestCase):
         )
         return rr_message
 
-    def test_revocation(self):
+    def test_revocation_with_rev_handler(self):
         """
         GIVEN a certificate.
         WHEN a revocation request is processed.
         THEN the certificate is revoked.
         """
-        rr_message = self._build_request(reason="keyCompromise")
+        db = CertificateDB()
+        db.add_cert(
+            self.client_cert,
+            cert_state=CertStateEnum.CONFIRMED,
+        )
+        rev_handler = RevocationHandler(
+            rev_db=db,
+        )
+
+        rr_message = self._build_revoke_request(reason="keyCompromise")
+
+        response, _ = rev_handler.process_revocation_request(
+            pki_message=rr_message,
+            issued_certs=rev_handler.rev_db.issued_certs,
+        )
+        status = get_pkistatusinfo(response)
+        self.assertEqual(str(status["status"]), "accepted", status.prettyPrint())
+
+        self.assertFalse(rev_handler.is_revoked(self.ca_cert))
+        self.assertEqual(len(rev_handler.rev_db.revoked_certs), 1)
+        self.assertTrue(rev_handler.is_revoked(self.client_cert))
+        self.assertTrue(cert_in_list(self.client_cert, rev_handler.details()["revoked_certs"]))
+
+    def test_revocation_with_rev_handler_with_db(self):
+        """
+        GIVEN a certificate.
+        WHEN a revocation request is processed.
+        THEN the certificate is revoked.
+        """
+        rr_message = self._build_revoke_request(reason="keyCompromise")
 
         response, _ = self.rev_handler.process_revocation_request(
             pki_message=rr_message,
-            issued_certs=[self.client_cert],
+            issued_certs=self.rev_handler.rev_db.issued_certs,
         )
         status = get_pkistatusinfo(response)
         self.assertEqual(str(status["status"]), "accepted", status.prettyPrint())
 
         self.assertFalse(self.rev_handler.is_revoked(self.ca_cert))
-        self.assertEqual(len(self.rev_handler.rev_db.rev_entry_list), 1)
+        self.assertEqual(len(self.rev_handler.rev_db.revoked_certs), 1)
         self.assertTrue(self.rev_handler.is_revoked(self.client_cert))
+        self.assertTrue(cert_in_list(self.client_cert, self.rev_handler.details()["revoked_certs"]))
 
-    def test_revive_request(self):
+    def test_revive_request_with_rev_handler(self):
         """
         GIVEN a revoked certificate.
         WHEN a revive request is processed.
@@ -80,7 +112,11 @@ class TestRevocationHandler(unittest.TestCase):
             certs_path="data/unittest/",
         )
 
-        rev_handler = RevocationHandler()
+        rev_db = CertificateDB()
+        rev_db.add_cert(client_cert, cert_state=CertStateEnum.CONFIRMED)
+        rev_handler = RevocationHandler(
+            rev_db=rev_db,
+        )
 
         response, revived_cert = rev_handler.process_revocation_request(
             pki_message=rr_message,
@@ -105,9 +141,10 @@ class TestRevocationHandler(unittest.TestCase):
         status = get_pkistatusinfo(response)
         self.assertEqual(str(status["status"]), "accepted", status.prettyPrint())
         self.assertFalse(rev_handler.is_revoked(client_cert))
-        self.assertEqual(len(rev_handler.rev_db.rev_entry_list), 0)
+        self.assertEqual(len(rev_handler.rev_db.revoked_certs), 0)
         self.assertFalse(rev_handler.is_revoked(self.ca_cert))
         self.assertEqual(len(revived_cert), 1)
+        self.assertTrue(cert_in_list(client_cert, revived_cert), "Revived cert not in revived cert list")
 
     def test_revoked_request(self):
         """
@@ -115,7 +152,7 @@ class TestRevocationHandler(unittest.TestCase):
         WHEN a revocation request is processed, with a revoked certificate,
         THEN is the request rejected.
         """
-        rr_message = self._build_request(reason="keyCompromise")
+        rr_message = self._build_revoke_request(reason="keyCompromise")
         response, revived_certs = self.rev_handler.process_revocation_request(
             pki_message=rr_message,
             issued_certs=[self.client_cert],
