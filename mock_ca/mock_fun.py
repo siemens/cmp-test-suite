@@ -262,25 +262,6 @@ class CertRevStateDB:
             hash_alg=hash_alg,
         )
 
-    def patch_update_certs(self, certs: List[rfc9480.CMPCertificate]) -> None:
-        """Patch the updated certificates."""
-        self.update_entry_list = RevokedEntryList.build(hash_alg=self.hash_alg, entries=certs)
-
-    @property
-    def revoked_certs(self) -> List[rfc9480.CMPCertificate]:
-        """Return the revoked certificates."""
-        return self.rev_entry_list.certs or []
-
-    @property
-    def updated_certs(self) -> List[rfc9480.CMPCertificate]:
-        """Return the updated certificates."""
-        return self.update_entry_list.certs or []
-
-    @property
-    def len_revoked_certs(self) -> int:
-        """Return the number of revoked certificates."""
-        return len(self.rev_entry_list)
-
     @staticmethod
     def _get_nonce(ocsp_request: ocsp.OCSPRequest) -> Optional[bytes]:
         """Get the OCSP nonce from the request."""
@@ -1266,6 +1247,8 @@ class CertificateDB:
             if entry is None:
                 break
             history.append(entry.cert)
+            if entry.update_cert_digest is None:
+                break
 
         return history
 
@@ -1300,6 +1283,7 @@ class CertificateDB:
         sign_key: SignKey,
         ca_cert: rfc9480.CMPCertificate,
         responder_cert: Optional[rfc9480.CMPCertificate] = None,
+        add_certs: Optional[List[rfc9480.CMPCertificate]] = None,
     ) -> ocsp.OCSPResponse:
         """Get the OCSP response for the database.
 
@@ -1307,8 +1291,11 @@ class CertificateDB:
         :param sign_key: The private key to sign the OCSP response.
         :param ca_cert: The CA certificate.
         :param responder_cert: The responder certificate. Defaults to `ca_cert`.
+        :param add_certs: Additional certificates to include in the response. Defaults to `None`.
         :return: The OCSP response.
         """
+        add_certs = add_certs or []
+
         rev_db = CertRevStateDB.build(
             hash_alg=self.hash_alg,
             revoked_certs=self.revoked_certs,
@@ -1319,7 +1306,7 @@ class CertificateDB:
             request=request,
             sign_key=sign_key,
             ca_cert=ca_cert,
-            issued_certs=self.issued_certs,
+            issued_certs=self.issued_certs + add_certs,
             responder_cert=responder_cert,
         )
 

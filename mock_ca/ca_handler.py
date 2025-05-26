@@ -371,16 +371,15 @@ class CAHandler:
 
         # Just to save all the certificates which are used by the Mock-CA,
         # to issued certs.
-        self.add_cert_to_issued_certs(
-            [
-                self.ca_cert,
-                self.kga_cert,
-                self.comp_cert,
-                self.sun_hybrid_cert,
-            ]
-        )
+        self.own_certs = [
+            self.ca_cert,
+            self.kga_cert,
+            self.comp_cert,
+            self.sun_hybrid_cert,
+        ]
+
         if self.xwing_cert is not None:
-            self.add_cert_to_issued_certs(self.xwing_cert)
+            self.own_certs.append(self.xwing_cert)
 
         self.protection_handler = ProtectionHandler(
             cmp_protection_cert=self.ca_cert,
@@ -1279,9 +1278,7 @@ class CAHandler:
             return ocsp_response.public_bytes(encoding=Encoding.DER)
 
         response = self.state.certificate_db.get_ocsp_response(
-            request=ocsp_request,
-            ca_cert=self.ca_cert,
-            sign_key=self.ca_key,
+            request=ocsp_request, ca_cert=self.ca_cert, sign_key=self.ca_key, add_certs=self.own_certs
         )
 
         return response.public_bytes(encoding=Encoding.DER)
