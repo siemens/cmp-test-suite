@@ -67,6 +67,7 @@ from resources.exceptions import (
 from resources.keyutils import load_public_key_from_cert_template
 from resources.protectionutils import (
     get_protection_type_from_pkimessage,
+    validate_orig_pkimessage,
     verify_pkimessage_protection,
 )
 from resources.suiteenums import ProtectedType
@@ -263,6 +264,10 @@ class CertReqHandler:
             self._add_successful_request(request=request, response=response, certs=certs)
 
         return response
+
+    def _validate_orig_req(self, pki_message: PKIMessageTMP) -> None:
+        """Validate the original message and the protection."""
+        validate_orig_pkimessage(pki_message, must_be_present=False, password=self.pre_shared_secret)
 
     def process_ir(
         self,
@@ -582,6 +587,9 @@ class CertReqHandler:
             raise NotImplementedError(f"Message type '{msg_type}' is not supported by CertReqHandler.")
         try:
             self.check_same_key_cert_request(pki_message=pki_message)
+            self.check_cert_is_updated(pki_message=pki_message)
+            self._validate_orig_req(pki_message=pki_message)
+
             if msg_type == "ir":
                 response = self.process_ir(pki_message, verify_ra_verified=verify_ra_verified)
             elif msg_type == "cr":
@@ -590,26 +598,19 @@ class CertReqHandler:
                 response = self.process_p10cr(pki_message, verify_ra_verified=verify_ra_verified)
             elif msg_type == "kur":
                 response = self.process_kur(pki_message)
-                result = find_oid_in_general_info(response, str(rfc9480.id_it_implicitConfirm))
-                self.state.add_may_update_cert(
-                    cert=pki_message["extraCerts"][0],
-                    update_cert=pki_message["body"]["kup"]["response"][0],
-                    was_confirmed=result,
-                )
-
             elif msg_type == "ccr":
                 response = self.handle_cross_cert_req(pki_message)
             else:
                 raise NotImplementedError(f"Message type '{msg_type}' is not supported by CertReqHandler.")
 
         except TransactionIdInUse as e:
-            if "Transaction ID" in e.message and "already exists" in e.message:
-                return self.error_body(e, request=pki_message)
+            logging.error("Transaction ID in use: %s", e, exc_info=True)
+            return self.error_body(e, request=pki_message)
 
         except CMPTestSuiteError as e:
             return self._build_cert_resp_error_response(e, pki_message)
 
-        return response  # type: ignore
+        return response
 
     def handle_cross_cert_req(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Handle cross-certification requests."""
