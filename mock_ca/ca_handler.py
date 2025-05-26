@@ -8,8 +8,7 @@ import argparse
 import logging
 import os
 import sys
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -21,7 +20,6 @@ from cryptography.x509 import ocsp
 sys.path.append(".")
 from cryptography import x509
 from flask import Flask, Response, request
-from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc5280, rfc9480, rfc9481
 
 from mock_ca.cert_conf_handler import CertConfHandler
@@ -30,10 +28,9 @@ from mock_ca.challenge_handler import ChallengeHandler
 from mock_ca.db_config_vars import CertConfConfigVars, VerifyState
 from mock_ca.general_msg_handler import GeneralMessageHandler
 from mock_ca.hybrid_handler import HybridIssuingHandler, SunHybridHandler
-from mock_ca.mock_fun import CertRevStateDB, KEMSharedSecretList, KeySecurityChecker
+from mock_ca.mock_fun import KeySecurityChecker, MockCAState
 from mock_ca.nested_handler import NestedHandler
-from mock_ca.nestedutils import validate_orig_pkimessage
-from mock_ca.operation_dbs import MockCAOPCertsAndKeys, SunHybridState
+from mock_ca.operation_dbs import MockCAOPCertsAndKeys
 from mock_ca.prot_handler import ProtectionHandler
 from mock_ca.rev_handler import RevocationHandler
 from pq_logic.hybrid_issuing import (
@@ -117,189 +114,6 @@ from resources.suiteenums import ProtectedType
 from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PublicKey, SignKey, VerifyKey
 from resources.utils import load_and_decode_pem_file
 from unit_tests.utils_for_test import load_ca_cert_and_key, load_env_data_certs
-
-
-@dataclass
-class MockCAState:
-    """A simple class to store the state of the MockCAHandler.
-
-    Attributes:
-        currently_used_ids: The currently used IDs.
-        issued_certs: The issued certificates.
-        kem_mac_based: The KEM-MAC-based shared secrets.
-        to_be_confirmed_certs: The certificates to be confirmed.
-        challenge_rand_int: The challenge random integers.
-        sun_hybrid_state: The state of the Sun Hybrid handler.
-
-    """
-
-    cert_state_db: CertRevStateDB = field(default_factory=CertRevStateDB)
-    currently_used_ids: Set[bytes] = field(default_factory=set)
-    issued_certs: List[rfc9480.CMPCertificate] = field(default_factory=list)
-    # stores the transaction id mapped to the shared secret.
-    kem_mac_based: KEMSharedSecretList = field(default_factory=KEMSharedSecretList)
-    # stores the (txid, sender_raw) mapped to the certificate.
-    to_be_confirmed_certs: Dict[Tuple[bytes, bytes], List[rfc9480.CMPCertificate]] = field(default_factory=dict)
-    challenge_rand_int: Dict[bytes, int] = field(default_factory=dict)
-    sun_hybrid_state: SunHybridState = field(default_factory=SunHybridState)
-
-    def _compare_pub_keys(self, pub_key: PublicKey, cert: rfc9480.CMPCertificate) -> bool:
-        """Compare the public key with the certificate.
-
-        :param pub_key: The public key to compare.
-        :param cert: The certificate to compare with.
-        :return: `True` if the public key matches the certificate, otherwise `False`.
-        """
-        loaded_pub_key = load_public_key_from_cert(cert)
-        if isinstance(pub_key, HybridPublicKey):
-            if not isinstance(loaded_pub_key, HybridPublicKey):
-                return loaded_pub_key in [pub_key.trad_key, pub_key.pq_key]
-
-            if pub_key == loaded_pub_key:
-                return True
-
-            if pub_key.trad_key == loaded_pub_key.trad_key:
-                return True
-            if pub_key.pq_key == loaded_pub_key.pq_key:
-                return True
-
-            if pub_key.pq_key == loaded_pub_key.trad_key:
-                return True
-
-            return False
-
-        if isinstance(loaded_pub_key, HybridPublicKey):
-            if pub_key == loaded_pub_key.trad_key:
-                return True
-            if pub_key == loaded_pub_key.pq_key:
-                return True
-            return False
-
-        return pub_key == loaded_pub_key
-
-    def contains_pub_key(self, pub_key: PublicKey, sender: rfc9480.Name) -> bool:
-        """Check if the public key is already in use.
-
-        :param pub_key: The public key to check.
-        :param sender: The sender of the request.
-        :return: `True` if the public key is already in use, otherwise `False`.
-        """
-        key_sec_check = KeySecurityChecker(
-            issued_certs=self.issued_certs,
-            revoked_certs=self.cert_state_db.revoked_certs,
-            updated_certs=self.cert_state_db.updated_certs,
-        )
-
-        return key_sec_check.contains_pub_key(
-            pub_key=pub_key,
-            sender=sender,
-        )
-
-    def add_tx_id(self, tx_id: bytes) -> None:
-        """Store the transaction ID.
-
-        :param tx_id: The transaction ID to store.
-        """
-        if tx_id in self.currently_used_ids:
-            raise TransactionIdInUse(f"Transaction ID {tx_id.hex()} already exists.")
-        self.currently_used_ids.add(tx_id)
-
-    def remove_tx_id(self, tx_id: bytes) -> None:
-        """Remove the transaction ID.
-
-        :param tx_id: The transaction ID to remove.
-        """
-        self.currently_used_ids.remove(tx_id)
-
-    @property
-    def len_issued_certs(self) -> int:
-        """Get the number of issued certificates."""
-        return len(self.issued_certs)
-
-    @property
-    def len_to_be_confirmed_certs(self) -> int:
-        """Get the number of certificates to be confirmed."""
-        return len(self.to_be_confirmed_certs)
-
-    def store_transaction_certificate(self, pki_message, certs: List[rfc9480.CMPCertificate]) -> None:
-        """Store a transaction certificate.
-
-        :param pki_message: The PKIMessage request.
-        :param certs: A list of certificates to store.
-        :raises TransactionIdInUse: If the transaction ID is already in use.
-        """
-        transaction_id = pki_message["header"]["transactionID"].asOctets()
-        sender = pki_message["header"]["sender"]
-
-        if transaction_id in self.currently_used_ids:
-            raise TransactionIdInUse(f"Transaction ID {transaction_id.hex()} already exists for sender {sender}")
-
-        der_sender = encoder.encode(sender)
-        self.to_be_confirmed_certs[(transaction_id, der_sender)] = certs
-        self.currently_used_ids.add(transaction_id)
-
-    def add_kem_mac_shared_secret(self, pki_message: PKIMessageTMP, shared_secret: bytes) -> None:
-        """Add the shared secret for the KEM-MAC-based protection.
-
-        :param pki_message: The PKIMessage request.
-        :param shared_secret: The shared secret.
-        """
-        self.kem_mac_based.add_shared_secret(request=pki_message, ss=shared_secret)
-
-    def get_kem_mac_shared_secret(self, pki_message: PKIMessageTMP) -> Optional[bytes]:
-        """Retrieve the shared secret for the KEM-MAC-based protection.
-
-        :param pki_message: The PKI message containing the request.
-        :return: The shared secret.
-        """
-        return self.kem_mac_based.get_shared_secret(request=pki_message)
-
-    def get_issued_certs(self, pki_message: PKIMessageTMP) -> List[rfc9480.CMPCertificate]:
-        """Retrieve the issued certificates.
-
-        :param pki_message: The PKI message containing the request.
-        :return: The issued certificates.
-        """
-        transaction_id = pki_message["header"]["transactionID"].asOctets()
-        der_sender = encoder.encode(pki_message["header"]["sender"])
-        return self.to_be_confirmed_certs[(transaction_id, der_sender)]
-
-    def get_cert_by_serial_number(self, serial_number: int) -> rfc9480.CMPCertificate:
-        """Get the Sun-Hybrid certificate for the specified serial number.
-
-        :param serial_number: The serial number of the certificate.
-        :return: The certificate.
-        :raises BadRequest: If the certificate could not be found.
-        """
-        for cert in self.issued_certs:
-            if serial_number == int(cert["tbsCertificate"]["serialNumber"]):
-                return cert
-
-        raise BadCertId(f"Could not find certificate with serial number {serial_number}")
-
-    def add_certs(self, certs: List[rfc9480.CMPCertificate]) -> None:
-        """Add the issued certificates to the state.
-
-        :param certs: The certificates to add.
-        """
-        self.issued_certs.extend(certs)
-
-    def check_request_for_compromised_key(self, request_msg: PKIMessageTMP) -> bool:
-        """Check the request for a compromised key."""
-        return self.cert_state_db.check_request_for_compromised_key(request_msg)
-
-    def add_updated_cert(self, cert: rfc9480.CMPCertificate):
-        """Add an updated certificate to the state."""
-        self.cert_state_db.add_updated_cert(cert)
-
-    def is_updated(self, cert: rfc9480.CMPCertificate) -> bool:
-        """Check if a certificate is updated based on its serial number."""
-        hashed_cert = compute_hash("sha1", encoder.encode(cert))
-        return self.cert_state_db.is_updated_by_hash(hashed_cert)
-
-    def contains_cert(self, cert: rfc9480.CMPCertificate) -> bool:
-        """Check if the certificate is already in use."""
-        return certutils.cert_in_list(cert, self.issued_certs)
 
 
 def _build_error_from_exception(e: CMPTestSuiteError, request_msg: Optional[PKIMessageTMP] = None) -> PKIMessageTMP:
