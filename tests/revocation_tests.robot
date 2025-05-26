@@ -47,6 +47,7 @@ CA MUST Reject Revocation Request With MAC Based Protection
     ...    exclude_fields=${None}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
+    ...    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     ${protected_rr}=    Default Protect With MAC    ${rr}
     ${response}=    Exchange PKIMessage    ${protected_rr}
     PKIMessage Body Type Must Be    ${response}    rp
