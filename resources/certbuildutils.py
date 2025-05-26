@@ -195,6 +195,25 @@ def sign_csr(  # noqa D417 undocumented-param
     return csr
 
 
+def _parse_common_name(
+    common_name: Union[str, rfc9480.Name, rfc9480.CMPCertificate],
+    subject: bool = False,
+) -> rfc9480.Name:
+    """Parse the common name into a `Name` object."""
+    if isinstance(common_name, str):
+        return prepareutils.prepare_name(common_name)
+    elif isinstance(common_name, rfc9480.Name):
+        return common_name
+
+    elif isinstance(common_name, rfc9480.CMPCertificate):
+        # Extract the issuer name from the CMPCertificate
+        field = "subject" if subject else "issuer"
+        return common_name["tbsCertificate"][field]
+
+    else:
+        raise TypeError("common_name must be a string or rfc9480.Name object.")
+
+
 @keyword(name="Build CSR")
 def build_csr(  # noqa D417 undocumented-param
     signing_key: SignKey,
@@ -248,10 +267,7 @@ def build_csr(  # noqa D417 undocumented-param
     csr = rfc6402.CertificationRequest()
 
     csr["certificationRequestInfo"]["version"] = univ.Integer(0)
-    if isinstance(common_name, str):
-        common_name = prepareutils.prepare_name(common_name)
-
-    csr["certificationRequestInfo"]["subject"] = common_name
+    csr["certificationRequestInfo"]["subject"] = _parse_common_name(common_name, subject=True)
 
     use_pre_hash_pub_key = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
     spki = spki or convertutils.subject_public_key_info_from_pubkey(
@@ -1747,17 +1763,9 @@ def _prepare_shared_tbs_cert(
     """
     tbs_cert = rfc5280.TBSCertificate()
 
-    if isinstance(subject, rfc9480.Name):
-        subject = subject["rdnSequence"]
-    else:
-        subject = prepareutils.prepare_name(common_name=subject)["rdnSequence"]
+    tbs_cert["subject"]["rdnSequence"] = _parse_common_name(subject)["rdnSequence"]
+    tbs_cert["issuer"] = _parse_common_name(issuer, subject=True)
 
-    tbs_cert["subject"]["rdnSequence"] = subject
-
-    if isinstance(issuer, rfc9480.CMPCertificate):
-        issuer = issuer["tbsCertificate"]["subject"]
-
-    tbs_cert["issuer"] = issuer
     if serial_number is None:
         serial_number = x509.random_serial_number()
     tbs_cert["serialNumber"] = int(serial_number)
