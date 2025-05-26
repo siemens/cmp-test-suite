@@ -4,10 +4,11 @@
 
 """Necessary dataclasses and functions for the mock CA to operate."""
 
+import enum
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 from cryptography import x509
 from cryptography.x509 import CertificateRevocationList, ExtensionNotFound, ocsp
@@ -729,3 +730,52 @@ class KeySecurityChecker:
             return "updated"
 
         return "good"
+
+
+@enum.unique
+class CertStateEnum(enum.Enum):
+    """The state of the update certificate.
+
+    Attributes
+    ----------
+        - `NOT_CONFIRMED`: The certificate was issued, but is still waiting for the confirmation.
+        - `CONFIRMED`: The certificate issued and confirmed.
+        - `REVOKED`: The certificate was revoked.
+        - `UPDATED`: The certificate was updated, which is confirmed.
+        - `UPDATED_BUT_NOT_CONFIRMED`: The certificate was updated, but not confirmed.
+        - `REVOKED_AND_REVIVED`: The certificate was revoked and was now revived.
+
+    """
+
+    NOT_CONFIRMED = 0  # The certificate was issued, but is still waiting for the confirmation.
+    CONFIRMED = 1  # The certificate was issued and confirmed.
+    REVOKED = 2  # The certificate was revoked.
+    UPDATED = 3  # The certificate was updated, which is confirmed.
+    UPDATED_BUT_NOT_CONFIRMED = 4  # The certificate was updated, but not confirmed.
+    REVIVED = 5  # The certificate was revoked and then revived.
+    UNKNOWN = 6  # The certificate is in an unknown state, which measn it was either not issued by us
+    # or in an earlier state (boot-up).
+
+
+@dataclass
+class CertDBEntry:
+    """A certificate database entry.
+
+    Attributes
+    ----------
+        - `cert`: The certificate.
+        - `cert_state`: The state of the certificate.
+        - `update_cert`: The updated certificate.
+        - `revoked_entry`: The revoked entry.
+
+    """
+
+    cert_state: CertStateEnum
+    cert: rfc9480.CMPCertificate
+    cert_digest: bytes
+    issue_date: Optional[datetime] = None
+    update_cert_digest: Optional[bytes] = None
+    updated_date: Optional[datetime] = None
+    revoked_entry: Optional[RevokedEntry] = None
+
+
