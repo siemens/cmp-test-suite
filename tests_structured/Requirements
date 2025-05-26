@@ -60,7 +60,7 @@ operation MUST be terminated."
 
 
 
-# Any message the EE recieves
+# Tests for any message the EE recieves
 
 ## Section 5.1
 
@@ -93,3 +93,7 @@ requirements from Section 4.1. Possible failInfo bit values used for error repor
 "It verify the presence and value of the proof-of-possession (failInfo bit: 
 badPOP) unless central key generation is requested."
 - TODO many test cases also with the help of Section 3
+
+
+
+

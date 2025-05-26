@@ -41,7 +41,9 @@ ${TEST_INDEX}            ${0}
 
 
 *** Keywords ***
-#Set Up Test Suite
+## Set Up Keywords
+
+#Set Up Test Suite:
 Set Up Test Suite
     [Documentation]    This keyword is used to set up the test suite. It is called at the beginning of the test suite.
     ...                Or a test file to ensure that all prerequisites are met. As an example a first certificate is
@@ -97,7 +99,7 @@ Set Up Test Suite
     VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global  # robocop: off=VAR04
     VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global    # robocop: off=VAR04
 
-# Set Up Test Case
+# Set Up Test Case:
 Increase TestIndex
     [Documentation]    Perform the incrementation of the `TestIndex` to update the sender name inside the PKIMessage,
     ...                for each test case.
@@ -115,29 +117,7 @@ Get Next Common Name
     Increase TestIndex
     RETURN    ${cm}
 
-
-
-Try To Log PKIMessage As ASN1
-    [Documentation]    Tentatively parse a buffer, assuming it is a DER-encoded PKIMessage, and log its contents.
-    ...    If that is not the case, ignore this and keep going. This is for convenience in logging.
-    ...    DEPRECATED in favour of `try_to_log_pkimessage' in Python, which is more concise.
-    [Tags]    robot:flatten
-    [Arguments]    ${payload}
-    ${pki_message}=    Parse PKIMessage    ${payload}
-    Log Asn1    ${pki_message}
-
-Load And Refresh PKIMessage From File
-    [Documentation]    Load a PKIMessage from a PEM file, update its transactionId and messageTime, and return it
-    ...    as a pyasn1 object. This is useful when sending previously sent messages, the CA will reject
-    ...    them if the time is not fresh or if the transactionId is not unique.
-    [Arguments]    ${path}    ${transaction_id}=${NONE}    ${message_time}=${NONE}
-    ${raw}=    Load And Decode Pem File    ${path}
-    ${pki_message}=    Parse PKIMessage    ${raw}
-    Log Asn1    ${pki_message}
-    ${pki_message}=    Patch TransactionID    ${pki_message}    ${transaction_id}
-    ${pki_message}=    Patch MessageTime    ${pki_message}    ${message_time}
-    RETURN    ${pki_message}
-
+# Certificate and Key Initialization:
 Issue New Cert For Testing
     [Documentation]    Issue a new certificate to be used in tests. It ensures that a valid certificate
     ...    is available for testing.
@@ -178,69 +158,6 @@ Issue And Revoke A Fresh Cert
     PKIMessage Body Type Must Be   ${response}   rp
     PKIStatus Must Be   ${response}   accepted
     RETURN   ${cert}    ${key}
-
-
-# Certificate Signing Request Generation Keywords
-Generate CSR With RSA2048 And A Predefined Common Name
-    [Documentation]    Produce a generic, valid CSR that has a correct signature
-    ${key}=    Generate Key    rsa    length=2048
-    ${csr}=    Build CSR    ${DEFAULT_X509NAME}    exclude_signature=True
-    ${csr_signed}=    Sign CSR    ${csr}    ${key}
-    Log    ${csr_signed}
-    RETURN    ${csr_signed}
-
-Load And Parse Example CSR
-    [Documentation]    Load a CSR from a PEM file, and return it as a pyasn1 object. This is for convenience, to remove
-    ...    the need to generate a new keypair.
-    ${csr}=    Load And Decode Pem File    data/example-csr.pem
-    ${parsed_csr}=    Parse Csr    ${csr}
-    RETURN    ${parsed_csr}
-
-Generate Key And CSR
-    [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the
-    ...                DER-formatted data and the key.
-    ...
-    ...    Arguments:
-    ...    ---------
-    ...    - `key_algo_name`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
-    ...    - `key_params`:The index or indices of the bits to check within the `failInfo` field
-    ...    - `CN`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be
-    ...    permitted. However, if multiple indices are provided, only one of them can be set.
-    ...
-    ...    Examples:
-    ...    --------
-    ...    | ${data}    ${key}=    | Generate Key and CSR    | ${key_algo_name}    |    ${CN}    |    ${key_params} |
-    ...
-    [Arguments]    ${key_algo_name}    ${CN}    ${key_params}
-    ${key}=    Generate Key    ${key_algo_name}    ${key_params}
-    ${csr_signed}    ${key}=    Generate Signed CSR    ${CN}    ${key}
-    ${data}=    Decode Pem String    ${csr_signed}
-    RETURN    ${data}    ${key}
-
-Build Composite Signature Request
-    [Documentation]    Build a ir composite signature request and returns the protected ir request.
-    [Tags]    composite-sig    positive   ir
-    [Arguments]    ${comp_key}=${False}   &{params}
-    IF   ${comp_key}
-        Log    Using the given composite signature key.
-    ELSE
-        ${comp_key}=   Generate Default Composite Sig Key
-    END
-    ${protection}=   Get From Dictionary    ${DEFAULT_PROTECTION_VALS}    protection   signature
-    IF  '${protection}' == 'signature'
-        VAR   ${exclude_fields}    sender,senderKID
-    ELSE
-        VAR   ${exclude_fields}    ${None}
-    END
-    ${cm}=    Get Next Common Name
-    ${ir}=   Build Ir From Key    ${comp_key}  common_name=${cm}  sender=${SENDER}
-    ...                           recipient=${RECIPIENT}   implicit_confirm=${True}
-    ...                           exclude_fields=${exclude_fields}
-    ${protected_ir}=    Default Protect PKIMessage    ${ir}    &{params}
-    RETURN    ${protected_ir}
-
-# TODO maybe Update to create a unique key.
-# because some implementations only allow new keys, if for ir or cr is the same key send.
 
 Generate CSR For Testing
     [Documentation]    Generates a certificate signing request for testing purposes, using default parameters
@@ -313,6 +230,34 @@ Generate Default IR Sig Protected
     RETURN    ${protected_ir}
 
 
+## PKIMessage Handling Keywords
+
+# PKIMessage Creation
+Build Composite Signature Request
+    [Documentation]    Build a ir composite signature request and returns the protected ir request.
+    [Tags]    composite-sig    positive   ir
+    [Arguments]    ${comp_key}=${False}   &{params}
+    IF   ${comp_key}
+        Log    Using the given composite signature key.
+    ELSE
+        ${comp_key}=   Generate Default Composite Sig Key
+    END
+    ${protection}=   Get From Dictionary    ${DEFAULT_PROTECTION_VALS}    protection   signature
+    IF  '${protection}' == 'signature'
+        VAR   ${exclude_fields}    sender,senderKID
+    ELSE
+        VAR   ${exclude_fields}    ${None}
+    END
+    ${cm}=    Get Next Common Name
+    ${ir}=   Build Ir From Key    ${comp_key}  common_name=${cm}  sender=${SENDER}
+    ...                           recipient=${RECIPIENT}   implicit_confirm=${True}
+    ...                           exclude_fields=${exclude_fields}
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}    &{params}
+    RETURN    ${protected_ir}
+
+# TODO maybe Update to create a unique key.
+# because some implementations only allow new keys, if for ir or cr is the same key send.
+
 # Transportation Keywords
 Exchange Data With CA
     [Documentation]    Send a HTTP POST request to a server, and return the response.
@@ -352,13 +297,51 @@ Exchange Migration PKIMessage
     RETURN    ${response}
 
 
-# Check Keywords
+
+# PKIMessage Parsing and Logging Keywords
+Try To Log PKIMessage As ASN1
+    [Documentation]    Tentatively parse a buffer, assuming it is a DER-encoded PKIMessage, and log its contents.
+    ...    If that is not the case, ignore this and keep going. This is for convenience in logging.
+    ...    DEPRECATED in favour of `try_to_log_pkimessage' in Python, which is more concise.
+    [Tags]    robot:flatten
+    [Arguments]    ${payload}
+    ${pki_message}=    Parse PKIMessage    ${payload}
+    Log Asn1    ${pki_message}
+
+Load And Refresh PKIMessage From File
+    [Documentation]    Load a PKIMessage from a PEM file, update its transactionId and messageTime, and return it
+    ...    as a pyasn1 object. This is useful when sending previously sent messages, the CA will reject
+    ...    them if the time is not fresh or if the transactionId is not unique.
+    [Arguments]    ${path}    ${transaction_id}=${NONE}    ${message_time}=${NONE}
+    ${raw}=    Load And Decode Pem File    ${path}
+    ${pki_message}=    Parse PKIMessage    ${raw}
+    Log Asn1    ${pki_message}
+    ${pki_message}=    Patch TransactionID    ${pki_message}    ${transaction_id}
+    ${pki_message}=    Patch MessageTime    ${pki_message}    ${message_time}
+    RETURN    ${pki_message}
+
+## Certificate amd Key Management Keywords
+
+## PKIMessage Validation Keywords
+
+# Nonce Validation
 Sender And Recipient Nonces Must Match
     [Documentation]    Ensure that the recipient nonce in the response matches the sender nonce in the request
     [Arguments]    ${request}    ${response}
     ${request_nonce}=    Get Asn1 Value As Bytes    ${request}    header.senderNonce
     ${response_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
     Should Be Equal    ${request_nonce}    ${response_nonce}
+
+SenderNonce Must Be At Least 128 Bits Long
+    [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
+    ...    Ref: 3.1. General Description of the CMP Message Header
+    [Tags]    crypto
+    [Arguments]    ${pki_message}
+    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
+    # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
+    # Buffer length must be at least    ${sender_nonce}    32
+    # 16 bytes is 128 bits
+    Buffer Length Must Be At Least    ${sender_nonce}    16
 
 Response Time Must Be Fresh
     [Documentation]    Ensure that the response time is not far off from the time of our request
@@ -371,16 +354,7 @@ Response Time Must Be Fresh
     ${delta}=    Subtract Date From Date    ${response_time}    ${request_time}
     Should Be True    ${delta} < ${tolerance}    Time between request and response exceeds tolerance
 
-SenderNonce Must Be At Least 128 Bits Long
-    [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
-    ...    Ref: 3.1. General Description of the CMP Message Header
-    [Tags]    crypto
-    [Arguments]    ${pki_message}
-    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
-    # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
-    # Buffer length must be at least    ${sender_nonce}    32
-    # 16 bytes is 128 bits
-    Buffer Length Must Be At Least    ${sender_nonce}    16
+
 
 Certificate Must Be Valid
     [Documentation]    Verify if a certificate is valid and passes sanity checks. The certificate is passed as a
@@ -774,6 +748,43 @@ PKIStatus Must Be
         ${pki_status_info}=   Get PKIStatusInfo    ${pki_message}    ${index}   # robocop: off=VAR02
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
+
+## Certificate Signing Request Generation Keywords
+Generate CSR With RSA2048 And A Predefined Common Name
+    [Documentation]    Produce a generic, valid CSR that has a correct signature
+    ${key}=    Generate Key    rsa    length=2048
+    ${csr}=    Build CSR    ${DEFAULT_X509NAME}    exclude_signature=True
+    ${csr_signed}=    Sign CSR    ${csr}    ${key}
+    Log    ${csr_signed}
+    RETURN    ${csr_signed}
+
+Load And Parse Example CSR
+    [Documentation]    Load a CSR from a PEM file, and return it as a pyasn1 object. This is for convenience, to remove
+    ...    the need to generate a new keypair.
+    ${csr}=    Load And Decode Pem File    data/example-csr.pem
+    ${parsed_csr}=    Parse Csr    ${csr}
+    RETURN    ${parsed_csr}
+
+Generate Key And CSR
+    [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the
+    ...                DER-formatted data and the key.
+    ...
+    ...    Arguments:
+    ...    ---------
+    ...    - `key_algo_name`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+    ...    - `key_params`:The index or indices of the bits to check within the `failInfo` field
+    ...    - `CN`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be
+    ...    permitted. However, if multiple indices are provided, only one of them can be set.
+    ...
+    ...    Examples:
+    ...    --------
+    ...    | ${data}    ${key}=    | Generate Key and CSR    | ${key_algo_name}    |    ${CN}    |    ${key_params} |
+    ...
+    [Arguments]    ${key_algo_name}    ${CN}    ${key_params}
+    ${key}=    Generate Key    ${key_algo_name}    ${key_params}
+    ${csr_signed}    ${key}=    Generate Signed CSR    ${CN}    ${key}
+    ${data}=    Decode Pem String    ${csr_signed}
+    RETURN    ${data}    ${key}
 
 
 # Hybrid algorithm keywords
