@@ -2495,7 +2495,7 @@ def _verify_authority_key_identifier(
     )
 
 
-def _verify_extended_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
+def _verify_extended_key_usage(cert_template: CertRequestType) -> Optional[rfc5280.Extension]:
     """Verify the extended key usage.
 
     Checks if the extended key usage is present and if it is validly built.
@@ -2504,19 +2504,23 @@ def _verify_extended_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[
     :return: The `ExtendedKeyUsage` extension if present and valid.
     :raises BadCertTemplate: If the `ExtendedKeyUsage` extension is not valid.
     """
+    extensions, _ = parse_extension_and_public_key(cert_template)
+    if extensions is None:
+        return None
+
     # TODO update to validate the `EKU` OIDs.
     # verifies if the structure is valid.
     _ = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
+        extensions=extensions,
         extn_name="eku",
         name="ExtendedKeyUsage",
     )
 
-    return certextractutils.get_extension(cert_template["extensions"], rfc5280.id_ce_extKeyUsage)
+    return certextractutils.get_extension(extensions, rfc5280.id_ce_extKeyUsage)
 
 
 def verify_ca_basic_constraints(  # noqa D417 undocumented-param
-    cert_template: Union[rfc9480.CertTemplate, rfc9480.Extensions], allow_non_crit: bool = True, set_crit: bool = False
+    cert_template: Union[CertRequestType, rfc9480.Extensions], allow_non_crit: bool = True, set_crit: bool = False
 ) -> Optional[rfc5280.Extension]:
     """Verify the basic constraints for a CA certificate.
 
@@ -2548,8 +2552,17 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
     | ${basic_con}= | Verify CA Basic Constraints | cert_template=${extensions} | allow_non_crit=False |
 
     """
+    if isinstance(cert_template, rfc9480.Extensions):
+        extensions = cert_template
+        spki = None
+    else:
+        extensions, spki = parse_extension_and_public_key(cert_template)
+
+    if extensions is None:
+        return None
+
     basic_con = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"], extn_name="basic_constraints", name="BasicConstraints"
+        extensions=extensions, extn_name="basic_constraints", name="BasicConstraints"
     )
     basic_con: Optional[rfc5280.BasicConstraints]
 
@@ -2576,10 +2589,10 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
         if not is_ca and path_len > 0:
             raise BadCertTemplate("A end entity certificate can not have a path length greater 0 set.")
 
-    if isinstance(cert_template, rfc9480.CertTemplate):
-        if cert_template["publicKey"].isValue:
+    if isinstance(cert_template, CertRelatedType):
+        if spki.isValue:  # type: ignore
             is_ca = bool(basic_con["cA"])
-            oid = cert_template["publicKey"]["algorithm"]["algorithm"]
+            oid = spki["algorithm"]["algorithm"]  # type: ignore
             if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
                 if is_ca:
                     _name = may_return_oid_to_name(oid)
@@ -2594,7 +2607,7 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
                         f"A CA certificate can not have a Composite Signature PreHash algorithm.OID: {_name}"
                     )
     extn = certextractutils.get_extension(
-        cert_template["extensions"],  # type: ignore
+        extensions,  # type: ignore
         rfc5280.id_ce_basicConstraints,
     )
     extn: rfc5280.Extension
@@ -2604,30 +2617,31 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
     if not allow_non_crit and not extn["critical"]:
         raise BadCertTemplate("The `BasicConstraints` extension must be marked as critical.")
 
-    return certextractutils.get_extension(cert_template["extensions"], rfc5280.id_ce_basicConstraints)
+    return certextractutils.get_extension(extensions, rfc5280.id_ce_basicConstraints)
 
 
-def _verify_subject_alt_name(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
-    """
-    Verify the SubjectAltName extension inside a certificate template.
-
-    This function searches for the SubjectAltName extension (identified by the OID
-    rfc5280.id_ce_subjectAltName) within the certificate template's extensions.
-    If found, it decodes its DER-encoded value using Cryptography's x509.load_der_x509_extension,
-    verifies that the extension is a SubjectAlternativeName, and checks that it contains at least
-    one DNSName.
+def _verify_subject_alt_name(cert_template: CertRelatedType) -> Optional[rfc5280.Extension]:
+    """Verify the SubjectAltName extension inside a certificate template.
 
     :param cert_template: The certificate template containing the extensions.
     :return: The validated SubjectAltName extension if present and valid, otherwise None.
     :raises BadCertTemplate: If the extension is present but cannot be decoded or
                              does not contain valid DNSName entries.
     """
+    subject = parse_subject_from_cert_related_type(cert_template)
+    extensions, _ = parse_extension_and_public_key(cert_template)
     result = compareutils.is_null_dn(
-        cert_template["subject"],
+        subject,
     )
 
+    if result and extensions is None:
+        raise BadCertTemplate("The `SubjectAltName` extension must be present, if the subject is set to `Null-DN`.")
+
+    if extensions is None:
+        return None
+
     sub_alt_name = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
+        extensions=extensions,
         extn_name="san",
         name="SubjectAltName",
     )
@@ -2635,7 +2649,7 @@ def _verify_subject_alt_name(cert_template: rfc9480.CertTemplate) -> Optional[rf
 
     if sub_alt_name is None and result:
         raise BadCertTemplate(
-            "The `SubjectAltName` extension is not present in the certificate template"
+            "The `SubjectAltName` extension is not present in the certificate template "
             "and the subject is set to `Null-DN`."
         )
 
@@ -2673,10 +2687,14 @@ def _contains_unknown_extensions(extensions: rfc9480.Extensions) -> bool:
 
 
 @not_keyword
-def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional[bool] = None) -> None:
+def check_logic_extensions(cert_template: CertRequestType, for_ee: Optional[bool] = None) -> None:
     """Validate the extensions with some more logic related checks."""
+    extensions, _ = parse_extension_and_public_key(cert_template)
+    if extensions is None:
+        return
+
     key_usage = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
+        extensions=extensions,
         extn_name="key_usage",
         name="KeyUsage",
     )
@@ -2689,7 +2707,7 @@ def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional
                 raise BadCertTemplate("")
 
         basic_con = _try_decode_extension_val(  # type: ignore
-            extensions=cert_template["extensions"], extn_name="basic_constraints", name="BasicConstraints"
+            extensions=extensions, extn_name="basic_constraints", name="BasicConstraints"
         )
         basic_con: Optional[rfc5280.BasicConstraints]
 
@@ -2699,7 +2717,7 @@ def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional
 
     elif for_ee:
         basic_con = _try_decode_extension_val(  # type: ignore
-            extensions=cert_template["extensions"], extn_name="basic_constraints", name="BasicConstraints"
+            extensions=extensions, extn_name="basic_constraints", name="BasicConstraints"
         )
         basic_con: Optional[rfc5280.BasicConstraints]
 
@@ -2752,7 +2770,7 @@ def _get_not_included_extensions(
 
 
 def check_extensions(  # noqa D417 undocumented params
-    cert_template: rfc4211.CertTemplate,
+    cert_template: CertRequestType,
     ca_public_key: VerifyKey,
     other_extensions: Optional[Union[rfc9480.Extensions, List[rfc5280.Extension]]] = None,
     allow_unknown_extns: bool = False,
@@ -2797,7 +2815,12 @@ def check_extensions(  # noqa D417 undocumented params
     ${other_extensions} |
 
     """
-    if _contains_unknown_extensions(cert_template["extensions"]) and not allow_unknown_extns:
+    extensions, _ = parse_extension_and_public_key(cert_template)
+
+    if extensions is None:
+        extensions = rfc9480.Extensions()
+
+    if _contains_unknown_extensions(extensions) and not allow_unknown_extns:
         raise BadCertTemplate("Unknown extensions found in the certificate template.")
 
     check_logic_extensions(cert_template, for_ee=for_end_entity)
