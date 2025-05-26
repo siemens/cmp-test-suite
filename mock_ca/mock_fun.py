@@ -38,6 +38,7 @@ class RevokedEntry:
     reason: str
     cert: rfc9480.CMPCertificate
     hashed_cert: Optional[bytes] = None
+    revoked_date: Optional[datetime] = None
 
 
 @dataclass
@@ -54,7 +55,7 @@ class RevokedEntryList:
         for entry in entries:
             if isinstance(entry, dict):
                 data.append(RevokedEntry(**entry))
-            else:
+            elif isinstance(entry, rfc9480.CMPCertificate):
                 hashed_cert = compute_hash(hash_alg, encoder.encode(entry))
                 new_entry = RevokedEntry(
                     reason="unspecified",
@@ -62,6 +63,8 @@ class RevokedEntryList:
                     hashed_cert=hashed_cert,
                 )
                 data.append(new_entry)
+            else:
+                raise TypeError(f"Unsupported entry type: {type(entry).__name__}")
 
         return cls(entries=data, hash_alg=hash_alg)
 
