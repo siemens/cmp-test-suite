@@ -2859,7 +2859,7 @@ def build_cr_from_csr(  # noqa D417 undocumented-param
     )
 
 
-@keyword(name="Build Crr From CSR")
+@keyword(name="Build Ccr From CSR")
 def build_ccr_from_csr(  # noqa D417 undocumented-param
     csr: rfc6402.CertificationRequest,
     signing_key: SignKey,
