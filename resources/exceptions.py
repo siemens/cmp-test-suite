@@ -341,3 +341,12 @@ class DuplicateCertReq(CMPTestSuiteError):
 
     failinfo = "duplicateCertReq"
     bit_num = 26
+
+
+######################
+# Additional Errors
+######################
+
+
+class BadKeyUsage(NotAuthorized):
+    """Raised when the key usage is invalid or not allowed."""

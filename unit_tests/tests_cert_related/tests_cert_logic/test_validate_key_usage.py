@@ -6,7 +6,7 @@ import unittest
 
 from resources.certbuildutils import build_certificate
 from resources.certutils import validate_key_usage
-from resources.exceptions import NotAuthorized
+from resources.exceptions import NotAuthorized, BadKeyUsage
 from resources.suiteenums import KeyUsageStrictness
 
 
@@ -51,7 +51,7 @@ class TestValidateKeyUsage(unittest.TestCase):
         """
         # Build a certificate without KeyUsage extension
         cert_no_usage, _ = build_certificate(include_ski=True, key_usage=None)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(BadKeyUsage):
             validate_key_usage(
                 cert=cert_no_usage, strictness=KeyUsageStrictness.STRICT.value, key_usages="digitalSignature"
             )

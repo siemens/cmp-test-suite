@@ -52,10 +52,10 @@ from resources.asn1_structures import PKIMessageTMP
 from resources.convertutils import ensure_is_kem_pub_key, ensure_is_verify_key
 from resources.exceptions import (
     BadAsn1Data,
+    BadKeyUsage,
     BadPOP,
     BadSigAlgID,
     CertRevoked,
-    NotAuthorized,
     SignerNotTrusted,
     UnknownOID,
 )
@@ -655,7 +655,7 @@ def validate_key_usage(  # noqa D417 undocumented-param
 
     if usage is None:
         if val_strict in [KeyUsageStrictness.ABS_STRICT, KeyUsageStrictness.STRICT]:
-            raise ValueError(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
+            raise BadKeyUsage(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
         logging.info("KeyUsage extension was not present")
     else:
         same = False
@@ -664,7 +664,7 @@ def validate_key_usage(  # noqa D417 undocumented-param
 
         if not _validate_key_usage(expected_usage=key_usages, given_usage=usage, same_vals=same):  # type: ignore
             names = asn1utils.get_set_bitstring_names(usage)  # type: ignore
-            raise NotAuthorized(f"KeyUsage Extension was expected to be: {key_usages}, but is {names}")
+            raise BadKeyUsage(f"KeyUsage Extension was expected to be: {key_usages}, but is {names}")
 
 
 @keyword(name="Must Not Contain KeyUsage")
@@ -682,7 +682,7 @@ def must_not_contain_key_usage(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the `KeyUsage` extension is present in the certificate and contains any of the \
+        - `BadKeyUsage`: If the `KeyUsage` extension is present in the certificate and contains any of the \
         specified attributes.
 
     Examples:
@@ -694,13 +694,13 @@ def must_not_contain_key_usage(  # noqa D417 undocumented-param
     usage: Optional[rfc5280.KeyUsage]
     if usage is None:
         if must_be_present:
-            raise ValueError(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
+            raise BadKeyUsage(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
         logging.info("KeyUsage extension was not present")
         return
 
     if _validate_key_usage(expected_usage=key_usages, given_usage=usage, same_vals=False):
         names = asn1utils.get_set_bitstring_names(usage)
-        raise ValueError(f"KeyUsage Extension was expected to not contain: {key_usages}, but is {names}")
+        raise BadKeyUsage(f"KeyUsage Extension was expected to not contain: {key_usages}, but is {names}")
 
 
 @not_keyword
@@ -1158,7 +1158,7 @@ def certificates_must_be_trusted(  # noqa D417 undocumented-param
     ------
         - `SignerNotTrusted`: If the last certificate inside the certificate chain is not trusted.
         - `ValueError`: If the certificate chain validation fails.
-        - `ValueError`: If key usage validation fails on the EE certificate.
+        - `BadKeyUsage`: If key usage validation fails on the EE certificate.
 
     Examples:
     --------
