@@ -1667,7 +1667,7 @@ def _validate_name(
 
     :param name: The RDN to validate.
     :param validate_data_types: Whether to validate the data types of the RDN components. Defaults to `True`.
-    :raises ValueError: If the RDN is not of the expected type.
+    :raises BadAsn1Data: If the RDN is not of the expected data type.
     """
     if not name.isValue:
         return
