@@ -10,12 +10,12 @@ from typing import List, Optional
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc9480, rfc9481
 
-from mock_ca.nestedutils import validate_orig_pkimessage
+from mock_ca.mock_fun import MockCAState
 from mock_ca.operation_dbs import NonSigningKeyCertsAndKeys
 from pq_logic.hybrid_sig.chameleon_logic import load_chameleon_csr_delta_key_and_sender
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
-from resources import cmputils, keyutils
+from resources import keyutils
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import (
     build_ccp_from_ccr,
@@ -88,7 +88,7 @@ class CertReqHandler:
         self,
         ca_cert: rfc9480.CMPCertificate,
         ca_key: SignKey,
-        state,
+        state: MockCAState,
         cert_conf_handler,
         cmp_protection_cert: Optional[rfc9480.CMPCertificate] = None,
         extensions: Optional[rfc9480.Extensions] = None,
@@ -151,6 +151,8 @@ class CertReqHandler:
                 "extra_issuing_data": self.extra_issuing_data,
             }
         )
+
+        self.cert_db = self.state.certificate_db
 
     @staticmethod
     def is_certificate_in_list(cert_template: rfc9480.CertTemplate, cert_list: List[rfc9480.CMPCertificate]) -> bool:
@@ -227,7 +229,7 @@ class CertReqHandler:
 
     def _add_cert_to_state(self, cert: rfc9480.CMPCertificate) -> None:
         """Add a certificate to the state."""
-        self.state.add_cert(cert)
+        self.state.issued_certs.append(cert)
 
     def _add_successful_request(
         self, request: PKIMessageTMP, response: PKIMessageTMP, certs: List[rfc9480.CMPCertificate]
@@ -248,20 +250,38 @@ class CertReqHandler:
         :param response: The response to the request.
         :param certs: The list of certificates.
         """
+        response_body_type = get_cmp_message_type(response)
+        if response_body_type not in ["ip", "cp", "ccp", "kup"]:
+            return response
+
+        status_info = get_pkistatusinfo(response)
+        if status_info["status"].prettyPrint() == "rejection":
+            return response
+
         confirm_ = CertReqHandler.check_if_used(
             request=request,
             response=response,
         )
         self.state.store_transaction_certificate(pki_message=request, certs=certs)
+
         if confirm_:
             response = patch_generalinfo(
                 msg_to_patch=response,
                 implicit_confirm=True,
             )
+
+        if response_body_type == "kup":
+            self.state.add_may_update_cert(
+                old_cert=request["extraCerts"][0],
+                update_cert=certs[0],
+                was_confirmed=confirm_,
+            )
+        if confirm_:
             self.state.add_certs(certs=certs)
             self.cert_conf_handler.add_confirmed_certs(request, certs=certs)
         else:
-            self._add_successful_request(request=request, response=response, certs=certs)
+            self.state.add_certs(certs=certs, was_confirmed=False)
+            self.add_request_for_cert_conf(request=request, response=response, certs=certs)
 
         return response
 
@@ -563,7 +583,19 @@ class CertReqHandler:
         )
         return pki_message
 
-    def process_cert_request(self, pki_message: PKIMessageTMP) -> "PKIMessageTMP":
+    def check_cert_is_updated(self, pki_message: PKIMessageTMP) -> None:
+        """Check if the certificate is updated.
+
+        :param pki_message: The PKIMessage to check.
+        :raises CertRevoked: If the certificate is revoked.
+        """
+        if pki_message["extraCerts"].isValue:
+            body_name = get_cmp_message_type(pki_message)
+            strict = body_name != "kur"
+            self.cert_db.update_state.validate_is_updated(
+                cert=pki_message["extraCerts"][0], body_name=body_name, allow_timeout=strict
+            )
+
     def process_cert_request(
         self,
         pki_message: PKIMessageTMP,
@@ -572,10 +604,12 @@ class CertReqHandler:
     ) -> "PKIMessageTMP":
         """Process a certificate request message.
 
-        :param pki_message: The incoming PKI message.
+        :param pki_message: The incoming PKIMessage.
         :param verify_ra_verified: If the RA verified the request.
-        :param must_be_protected: If the message must be protected (only needed for `nested` messages). Defaults to `None`.
+        :param must_be_protected: If the message must be protected (only needed for
+        `nested` messages). Defaults to `None`.
         (uses the `must_be_protected` attribute of the class if `None`).
+        raise the exception to the nested request handler. Defaults to `False`.
         :return: The processed PKI response.
         :raises NotImplementedError: If the message type is unsupported.
         """
