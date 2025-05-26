@@ -6,22 +6,16 @@
 
 import copy
 import logging
-from typing import Optional
 
-from cryptography.exceptions import InvalidSignature
 from pyasn1.codec.der import encoder
-from pyasn1_alt_modules import rfc9480
 
+from mock_ca.cert_conf_handler import CertConfHandler
 from mock_ca.cert_req_handler import CertReqHandler
-from mock_ca.mock_fun import CAOperationState
-from mock_ca.nestedutils import process_batch_message, validate_added_protection_request
+from mock_ca.prot_handler import ProtectionHandler
 from resources.asn1_structures import PKIMessageTMP
-from resources.ca_ra_utils import get_popo_from_pkimessage
-from resources.certutils import load_certificates_from_dir
 from resources.checkutils import validate_add_protection_tx_id_and_nonces, validate_nested_message_unique_nonces_and_ids
-from resources.cmputils import build_nested_pkimessage, parse_pkimessage
-from resources.exceptions import BadMessageCheck, BadRecipientNonce, BadRequest, InvalidAltSignature, WrongIntegrity
-from resources.protectionutils import get_protection_type_from_pkimessage, protect_hybrid_pkimessage
+from resources.cmputils import build_nested_pkimessage, get_cmp_message_type, parse_pkimessage
+from resources.exceptions import BadRecipientNonce, BadRequest
 
 
 class NestedHandler:
@@ -29,28 +23,20 @@ class NestedHandler:
 
     def __init__(
         self,
-        ca_handler: "CAHandler" = None,  # noqa F821 # type: ignore
-        ca_operation_state: Optional[CAOperationState] = None,
-        extensions: Optional[rfc9480.Extensions] = None,
-        allowed_ras: Optional[str] = None,
+        cert_req_handler: CertReqHandler,
+        cert_conf_handler: CertConfHandler,
         allow_inner_unprotected: bool = True,
     ):
-        """Initialize the handler with the parent."""
-        self.ca_handler = ca_handler
-        self.cert_req_handler: Optional[CertReqHandler] = ca_handler.cert_req_handler if ca_handler else None
-        self.ras = []
-        if allowed_ras:
-            self.ras = load_certificates_from_dir(allowed_ras)
-        self.check_sender = False if not allowed_ras else True
-        self.allow_inner_unprotected = allow_inner_unprotected
-        self.extensions = extensions
+        """Initialize the handler with the parent.
 
-        self.ca_op_state = ca_operation_state or CAOperationState(
-            ca_key=self.ca_handler.ca_key,
-            ca_cert=self.ca_handler.ca_cert,
-            pre_shared_secret=self.ca_handler.pre_shared_secret,
-            extensions=extensions,
-        )
+        :param cert_req_handler: The certificate request handler, to process the requests.
+        :param cert_conf_handler: The certificate confirmation handler, to process confirmation messages.
+        :param allow_inner_unprotected: If inner unprotected messages are allowed. Defaults to `True`.
+        """
+        self.cert_req_handler = cert_req_handler
+        self.cert_conf_handler = cert_conf_handler
+        self.check_sender = False
+        self.allow_inner_unprotected = allow_inner_unprotected
 
     def _check_sender(self, request: PKIMessageTMP) -> None:
         """Check the sender of the request is allowed to forward the request or add protection.
@@ -62,89 +48,67 @@ class NestedHandler:
         raise NotImplementedError("Method not implemented")
 
     @staticmethod
-    def _has_set_ra_verified(inner_req: PKIMessageTMP) -> bool:
-        """Check if the RA is verified.
-
-        :param inner_req: The inner request to check.
-        :raises ValueError: If the body name is not valid, only supports "ir" and "cr".
-        :return: True if the RA is verified, False otherwise.
-        """
-        body_name = inner_req["body"].getName()
-
-        if body_name not in ["ir", "cr"]:
-            raise ValueError(f"The body name is not valid. Got: {body_name}")
-
-        popo = get_popo_from_pkimessage(
-            inner_req,
-        )
-        if not popo.isValue:
-            logging.error("The POPO is not set")
-            return False
-
-        if popo["raVerified"].isValue:
-            return True
-        return False
-
-    def _verify_added_protection(self, request: PKIMessageTMP) -> None:
-        """Verify the added protection request.
-
-        :param request: The request to verify.
-        :raises BadMessageCheck: If the request is not valid.
-        """
-        _inner_body = request["body"]["nested"][0]
-        body_name = _inner_body["body"].getName()
-
-        if self.ca_handler is None:
-            return
-
-        try:
-            self.ca_handler.verify_protection(_inner_body, must_be_protected=not self.allow_inner_unprotected)
-            return
-        except (BadMessageCheck, InvalidAltSignature, InvalidSignature):
-            pass
-
-        if body_name == "kur":
-            raise BadMessageCheck(
-                "The added protection request was a key update request, which is not allowed, to modify the message."
-            )
-
-        if body_name in ["ir", "cr"]:
-            if self._has_set_ra_verified(_inner_body):
-                return
-
-        raise BadMessageCheck("The added protection request was not valid protected.")
-
-    def _process_added_protection_request(self, request: PKIMessageTMP) -> PKIMessageTMP:
-        """Process the added protection request."""
-        validate_add_protection_tx_id_and_nonces(request)
-        self._verify_added_protection(request)
-        inner_response = validate_added_protection_request(
-            request=request,
-            ca_cert=self.ca_op_state.ca_cert,
-            ca_key=self.ca_op_state.ca_key,
-            extensions=self.ca_op_state.extensions,
-            mac_protection=self.ca_op_state.pre_shared_secret,
-        )
-        return inner_response
-
-    def _check_protection(self, request: PKIMessageTMP) -> None:
-        """Check the protection of the request is valid and signature-based.
+    def get_nested_body_name(request: PKIMessageTMP, index: int) -> str:
+        """Get the nested body name.
 
         :param request: The request to check.
-        :raises BadRequest: If the protection is not set.
+        :param index: The index of the nested request.
+        :raises BadRequest: If the request is not valid.
         """
-        if not request["protection"].isValue:
-            raise BadMessageCheck("The protection is not set")
-        if not request["header"]["protectionAlg"].isValue:
-            raise BadMessageCheck("The protection algorithm is not set")
+        if not request["body"].isValue:
+            raise BadRequest("The body is not set")
 
-        prot_type = get_protection_type_from_pkimessage(request)
-        if prot_type == "mac":
-            raise WrongIntegrity("The protection type is MAC-based")
+        if len(request["body"]["nested"]) <= index:
+            raise BadRequest(f"The index {index} is out of range")
 
-    def process_nested_request(self, request: PKIMessageTMP) -> PKIMessageTMP:
-        """Process the nested request."""
+        return get_cmp_message_type(request["body"]["nested"][index])
+
+    def _process_added_protection_request(
+        self, request: PKIMessageTMP, prot_handler: ProtectionHandler
+    ) -> PKIMessageTMP:
+        """Process the added protection request.
+
+        :param request: The request to process.
+        :param prot_handler: The protection handler to use, to validate the protection, of the request.
+        Defaults to `None`.
+        """
+        validate_add_protection_tx_id_and_nonces(request)
+        body_name = NestedHandler.get_nested_body_name(request, 0)
+
+        prot_handler.verify_added_protection(request, must_be_protected=not self.allow_inner_unprotected)
+        inner_msg = request["body"]["nested"][0]
+        if body_name in ["ir", "cr", "p10cr", "kur", "ccr"]:
+            response = self.cert_req_handler.process_cert_request(
+                pki_message=inner_msg,
+                verify_ra_verified=True,
+                must_be_protected=not self.allow_inner_unprotected,
+            )
+
+        elif body_name == "certConf":
+            response = self.cert_conf_handler.process_cert_conf(
+                pki_message=inner_msg,
+            )
+
+        else:
+            raise BadRequest(
+                "The request type is not supported. Only 'ir', 'cr', 'p10cr', 'kur', 'ccr' are supported for added protection requests."
+            )
+
+        return prot_handler.protect_pkimessage(
+            response=response,
+            request=inner_msg,
+        )
+
+    def process_nested_request(self, request: PKIMessageTMP, prot_handler: ProtectionHandler) -> PKIMessageTMP:
+        """Process the nested request.
+
+        :param request: The request to process.
+        :param prot_handler: The protection handler to use, to validate the protection, of the request.
+        :raises BadRequest: If the request is not valid.
+        """
+        prot_handler.verify_nested_protection(pki_message=request)
         len_request = len(request["body"]["nested"])
+        self.cert_req_handler.validate_header(pki_message=request, must_be_protected=True, for_nested=True)
 
         if len_request == 0:
             raise BadRequest("No nested requests found")
@@ -152,12 +116,10 @@ class NestedHandler:
         if self.check_sender:
             self._check_sender(request)
 
-        self._check_protection(request)
-
         if len_request == 1:
-            return self._process_added_protection_request(request)
+            return self._process_added_protection_request(request, prot_handler=prot_handler)
 
-        return self.process_batched_request(request)
+        return self.process_batched_request(request, prot_handler=prot_handler)
 
     @staticmethod
     def check_recip_nonce_is_absent(request: PKIMessageTMP) -> None:
@@ -227,27 +189,27 @@ class NestedHandler:
             request, check_transaction_id=True, check_sender_nonce=True, check_recip_nonce=False, check_length=True
         )
         # self._check_nonces_depth(request)
+        names = [get_cmp_message_type(entry) for entry in request["body"]["nested"]]
+        if "certConf" in names:
+            if set(names) == {"certConf"}:
+                pass
+            raise BadRequest(
+                "THe `nested` body must only contain `certConf` messages, "
+                "or only requests of type `ir`, `cr`, `kur`, `p10cr`, `rr`."
+                f" Got: {names}."
+            )
+        elif request["header"]["recipNonce"].isValue:
+            raise BadRecipientNonce(
+                "The recipient nonce must not be set in the outer message of a batched request."
+                "Which contains requests of type `ir`, `cr`, `kur`, `p10cr`, `rr`."
+            )
 
-    def validate_batch_request(self, request: PKIMessageTMP) -> None:
-        """Validate the batched request."""
-        self._check_nonces(request)
-        pki_message, certs = process_batch_message(
-            request=request,
-            ca_cert=self.ca_op_state.ca_cert,
-            ca_key=self.ca_op_state.ca_key,
-            extensions=self.ca_op_state.extensions,
-            mac_protection=self.ca_op_state.pre_shared_secret,
-            must_be_protected=not self.allow_inner_unprotected,
-        )
-
-        return pki_message
-
-    def process_batched_request(self, request: PKIMessageTMP) -> PKIMessageTMP:
+    def process_batched_request(self, request: PKIMessageTMP, prot_handler: ProtectionHandler) -> PKIMessageTMP:
         """Process the batched request."""
         out = []
         self._check_nonces(request)
 
-        for entry in request["body"]["nested"]:
+        for i, entry in enumerate(request["body"]["nested"]):
             if not entry["body"].isValue:
                 raise BadRequest("The body is not set")
 
@@ -258,16 +220,48 @@ class NestedHandler:
                         ", but allows a added protection request. "
                         f"Got length: {len(entry['body']['nested'])}."
                     )
-                response = self._process_added_protection_request(entry)
+                response = self._process_added_protection_request(entry, prot_handler=prot_handler)
                 out.append(response)
+
+            elif entry["body"].getName() == "certConf":
+                response = self.cert_conf_handler.process_cert_conf(
+                    pki_message=entry,
+                )
+                response = prot_handler.protect_pkimessage(
+                    response=response,
+                    request=entry,
+                )
+                out.append(response)
+
             else:
-                if self.ca_handler is not None:
-                    self.ca_handler.verify_protection(entry, must_be_protected=False)
-                if entry["body"].getName() == "ir":
-                    response = self.cert_req_handler.process_ir(  # type: ignore
-                        entry, must_be_protected=False, verify_ra_verified=False
+                prot_handler.verify_inner_batch_pkimessage(
+                    pki_message=entry,
+                    must_be_protected=not self.allow_inner_unprotected,
+                    index=i,
+                )
+                if entry["body"].getName() in ["cr", "ir", "p10cr"]:
+                    response = self.cert_req_handler.process_cert_request(
+                        entry,
+                        must_be_protected=not self.allow_inner_unprotected,
+                        verify_ra_verified=True,
+                    )
+                    response = prot_handler.protect_pkimessage(
+                        response=response,
+                        request=entry,
                     )
                     out.append(response)
+                elif entry["body"].getName() in ["kur", "ccr"]:
+                    response = self.cert_req_handler.process_cert_request(
+                        pki_message=entry,
+                        must_be_protected=not self.allow_inner_unprotected,
+                        verify_ra_verified=True,
+                    )
+                    response = prot_handler.protect_pkimessage(
+                        response=response,
+                        request=entry,
+                    )
+                    out.append(response)
+
                 else:
                     raise NotImplementedError(
                         f"Not implemented to handle the body: {entry['body'].getName()} for batched requests,"
@@ -278,11 +272,7 @@ class NestedHandler:
             other_messages=out,
             transaction_id=request["header"]["transactionID"].asOctets(),
             recip_nonce=request["header"]["senderNonce"].asOctets(),
-            sender=request["header"]["recipient"],
+            sender=prot_handler.sender,
             recipient=request["header"]["sender"],
         )
-        return protect_hybrid_pkimessage(
-            pki_message=pki_message,
-            private_key=self.ca_op_state.ca_key,
-            cert=self.ca_op_state.ca_cert,
-        )
+        return prot_handler.protect_pkimessage(response=pki_message, request=request)

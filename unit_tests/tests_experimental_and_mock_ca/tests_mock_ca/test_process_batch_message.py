@@ -4,13 +4,14 @@
 
 import unittest
 
-from mock_ca.nestedutils import process_batch_message
+from mock_ca.ca_handler import CAHandler
 from pyasn1_alt_modules import rfc9481
 
 from resources.asn1_structures import PKIMessageTMP
+from resources.asn1utils import is_bit_set
 from resources.certutils import parse_certificate
-from resources.cmputils import build_ir_from_key, build_nested_pkimessage, generate_unique_byte_values
-from resources.exceptions import BadMessageCheck, BadMacProtection
+from resources.cmputils import build_ir_from_key, build_nested_pkimessage, generate_unique_byte_values, \
+    get_cmp_message_type, get_pkistatusinfo
 from resources.keyutils import load_private_key_from_file
 from resources.protectionutils import protect_pkimessage
 from resources.utils import load_and_decode_pem_file
@@ -24,7 +25,11 @@ class TestProcessBatchMessage(unittest.TestCase):
         cls.ra_key = cls.key
         cls.ra_cert = parse_certificate(load_and_decode_pem_file("data/trusted_ras/ra_cms_cert_ecdsa.pem"))
         cls.cm = "CN=Hans the Tester"
-        cls.password = b"password"
+        cls.password = b"SiemensIT"
+        cls.ca_handler = CAHandler(
+            trusted_ras_dir="data/trusted_ras",
+            pre_shared_secret=cls.password,
+        )
 
     def _generate_nested_message(
         self,
@@ -45,17 +50,21 @@ class TestProcessBatchMessage(unittest.TestCase):
         ir2 = build_ir_from_key(
             self.key,
             cm=self.cm,
+            sender=self.cm,
             transaction_id=trans_id[0],
             sender_nonce=sender_nonce[0],
             recip_nonce=recip_nonce[0] if include_recip_nonce else None,
+            for_mac=True,
         )
 
         ir = build_ir_from_key(
             self.key,
             cm=self.cm + "1",
+            sender=self.cm + "1",
             transaction_id=trans_id[1],
             sender_nonce=sender_nonce[1],
             recip_nonce=recip_nonce[1] if include_recip_nonce else None,
+            for_mac=True,
         )
 
         ir = protect_pkimessage(
@@ -88,14 +97,7 @@ class TestProcessBatchMessage(unittest.TestCase):
         self.assertEqual(len(nested["body"]["nested"]), 2)
         self.assertEqual(nested["body"]["nested"][0]["body"].getName(), "ir")
 
-        response = process_batch_message(
-            request=nested,
-            ca_cert=self.ra_cert,
-            ca_key=self.ra_key,
-            extensions=None,
-            mac_protection=self.password,
-            must_be_protected=False,
-        )
+        response = self.ca_handler.process_normal_request(nested)
         self.assertEqual(response["body"].getName(), "nested")
         self.assertEqual(len(response["body"]["nested"]), 2)
         self.assertEqual(response["body"]["nested"][0]["body"].getName(), "ip")
@@ -107,15 +109,12 @@ class TestProcessBatchMessage(unittest.TestCase):
     def test_process_batch_message_bad_message_check(self):
         """Test processing a batch message with bad message check."""
         nested = self._generate_nested_message(True, False)
+        response = self.ca_handler.process_normal_request(nested)
+        self.assertEqual(get_cmp_message_type(response), "error")
+        pki_status_info = get_pkistatusinfo(response)
+        result = is_bit_set(pki_status_info["failInfo"], "badMessageCheck")
+        self.assertTrue(result)
 
-        with self.assertRaises(BadMacProtection) as cm:
-            process_batch_message(
-                request=nested,
-                ca_cert=self.ra_cert,
-                ca_key=self.ra_key,
-                extensions=None,
-                mac_protection=self.password,
-                must_be_protected=True,
-                shared_secret=self.password,
-            )
-        self.assertIn("PKIMessage Protection should be: ", str(cm.exception))
+        texts = [x.prettyPrint() for x in pki_status_info["statusString"]]
+
+        self.assertIn("Invalid inner batch PKIMessage protection at index 1.", texts)
