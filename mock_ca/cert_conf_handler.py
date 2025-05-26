@@ -12,6 +12,7 @@ from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc9480
 
 from mock_ca.db_config_vars import CertConfConfigVars
+from mock_ca.mock_fun import CertStateEnum, MockCAState
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import build_pki_conf_from_cert_conf
 from resources.checkutils import validate_pkimessage_header
@@ -197,7 +198,7 @@ class CertConfState:
 class CertConfHandler:
     """Certificate Confirmation handler for the Mock CA."""
 
-    def __init__(self, state_db, config_vars: Optional[CertConfConfigVars] = None):
+    def __init__(self, state_db: MockCAState, config_vars: Optional[CertConfConfigVars] = None):
         """Initialize the handler with the state database."""
         self.conf_state = CertConfState()
         self.state_db = state_db
@@ -242,10 +243,6 @@ class CertConfHandler:
                 config_vars = None
 
         return cls(state_db=kwargs["conf_state"], config_vars=config_vars)
-
-    def details(self) -> Dict[str, Union[CertConfConfigVars, CertConfState]]:
-        """Return the details of the certificate confirmation handler."""
-        return {"config_vars": self.config_vars, "conf_state": self.conf_state}
 
     def add_confirmed_certs(self, request: PKIMessageTMP, certs: List[rfc9480.CMPCertificate]) -> None:
         """Add the confirmed certificate to the state."""
@@ -355,14 +352,30 @@ class CertConfHandler:
             allow_auto_ed=self.config_vars.allow_auto_ed,
         )
 
-        request = self.conf_state.get_request(pki_message)
+        requests = self.conf_state.get_request(pki_message)
+
         if response_type == "kup":
-            self.state_db.update_cert_state.update_state(
-                request["extraCerts"][0],
-                was_confirmed=True,
+            cert = requests["extraCerts"][0]
+            self.state_db.certificate_db.change_cert_state(
+                cert,
+                new_state=CertStateEnum.UPDATED,
+            )
+
+        for cert in issued_certs:
+            self.state_db.certificate_db.change_cert_state(
+                cert,
+                new_state=CertStateEnum.CONFIRMED,
             )
 
         self.conf_state.remove_request(pki_message)
-        self.state_db.add_certs(issued_certs)
 
         return response
+
+    def details(self) -> Dict[str, Union[CertConfConfigVars, CertConfState, List[bytes]]]:
+        """Get the details of the certificate confirmation handler."""
+        data = {
+            "cert_conf_config_vars": self.config_vars,
+            "cert_conf_conf_state": self.conf_state,
+            "cert_conf_tx_ids": list(self.conf_state.requests.keys()),
+        }
+        return data
