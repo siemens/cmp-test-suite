@@ -1002,13 +1002,13 @@ def display_pki_status_info(  # noqa D417 undocumented-param
     status = pki_status_info["status"].prettyPrint()
     data.append(f"  Status: {status}")
 
-    if pki_status_info["statusString"].isValue:
-        status_lines = [str(txt) for txt in pki_status_info["statusString"]]
-        data.append(f"  StatusString: {' | '.join(status_lines)}")
-
     if pki_status_info["failInfo"].isValue:
         names = asn1utils.get_set_bitstring_names(pki_status_info["failInfo"])
         data.append(f"  failInfo: {names}")
+
+    if pki_status_info["statusString"].isValue:
+        status_lines = [str(txt) for txt in pki_status_info["statusString"]]
+        data.append(f"  StatusString: {' | '.join(status_lines)}")
 
     return "\n".join(data)
 
