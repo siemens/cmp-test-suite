@@ -1274,20 +1274,22 @@ def _prepare_extensions_for_cert_template(
     Defaults to False.
     :return: The modified `CertTemplate` object with the `extensions` field populated if `exclude` is False.
     """
-    if cert is not None:
-        if extensions is not None:
-            if include_cert_extensions:
-                extensions.extend(cert["tbsCertificate"]["extensions"])
-        else:
-            extensions = cert["tbsCertificate"]["extensions"]
-
-    if extensions is None or exclude:
+    if exclude:
         return cert_template
 
-    extensions_field = rfc5280.Extensions().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 9))
-    for ext in extensions:
-        extensions_field.append(ext)
-    cert_template.setComponentByName("extensions", extensions_field)
+    if extensions is None:
+        extensions = rfc9480.Extensions()
+
+    if cert is not None and include_cert_extensions:
+        extensions.extend(cert["tbsCertificate"]["extensions"])
+
+    if extensions is None:
+        return cert_template
+
+    if len(extensions) == 0:
+        return cert_template
+
+    cert_template["extensions"].extend(extensions)
     return cert_template
 
 
