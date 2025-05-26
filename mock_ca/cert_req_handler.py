@@ -531,7 +531,12 @@ class CertReqHandler:
         # Allows the CMP protection certificate to have an unset key usage.
         validate_key_usage(cert_chain[0], key_usages="digitalSignature", strictness="LAX")
 
-    def validate_header(self, pki_message: PKIMessageTMP, must_be_protected: Optional[bool] = None) -> None:
+    def validate_header(
+        self,
+        pki_message: PKIMessageTMP,
+        must_be_protected: Optional[bool] = None,
+        for_nested: bool = False,
+    ) -> None:
         """Validate the header of a PKIMessage."""
         if int(pki_message["header"]["pvno"]) not in [2, 3]:
             raise UnsupportedVersion("The protocol version number was not 2 or 3.")
@@ -539,7 +544,8 @@ class CertReqHandler:
         if must_be_protected is None:
             must_be_protected = self.must_be_protected
 
-        validate_request_message_nonces_and_tx_id(request=pki_message)
+        if not for_nested:
+            validate_request_message_nonces_and_tx_id(request=pki_message)
         self.validate_general_info(pki_message=pki_message)
         self.check_message_time(pki_message=pki_message)
         check_is_protection_present(pki_message, must_be_protected=must_be_protected)
