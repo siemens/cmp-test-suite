@@ -5166,12 +5166,21 @@ def build_nested_pkimessage(  # noqa D417 undocumented-param
     if for_added_protection:
         if other_messages is None:
             raise ValueError("For added protection, `other_messages` must be provided.")
-        transaction_id_tmp = other_messages[0]["header"]["transactionID"].asOctets()
-        sender_nonce_tmp = other_messages[0]["header"]["senderNonce"].asOctets()
+
+        transaction_id_tmp = None
+        if other_messages[0]["header"]["transactionID"].isValue:
+            transaction_id_tmp = other_messages[0]["header"]["transactionID"].asOctets()
+
+        sender_nonce_tmp = None
+        if other_messages[0]["header"]["senderNonce"].isValue:
+            sender_nonce_tmp = other_messages[0]["header"]["senderNonce"].asOctets()
+
         sender_nonce = sender_nonce_tmp if sender_nonce is None else sender_nonce
         transaction_id = transaction_id_tmp if transaction_id is None else transaction_id
         if other_messages[0]["body"].getName() == "certConf":
-            recip_nonce_tmp = other_messages[0]["header"]["recipNonce"].asOctets()
+            recip_nonce_tmp = None
+            if other_messages[0]["header"]["recipNonce"].isValue:
+                recip_nonce_tmp = other_messages[0]["header"]["recipNonce"].asOctets()
             params["recip_nonce"] = recip_nonce_tmp if params.get("recip_nonce") is None else params["recip_nonce"]
 
     pki_message = prepare_pki_message(
