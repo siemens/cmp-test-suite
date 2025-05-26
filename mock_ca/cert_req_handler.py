@@ -570,16 +570,20 @@ class CertReqHandler:
         return build_unsuccessful_ca_cert_response(
             sender=self.sender,
             request=request,
-            failinfo=e.failinfo,
+            failinfo=e.get_failinfo(),
             text=[e.message] + e.get_error_details(),
         )
-
 
     def error_body(self, e: CMPTestSuiteError, request: PKIMessageTMP) -> PKIMessageTMP:
         """Build an error response for an IR message."""
         kwargs = set_ca_header_fields(request, {})
         pki_message = build_cmp_error_message(
-            request=request, sender=self.sender, status="rejection", failinfo=e.failinfo, text=[e.message], **kwargs
+            request=request,
+            sender=self.sender,
+            status="rejection",
+            failinfo=e.get_failinfo(),
+            text=[e.message] + e.get_error_details(),
+            **kwargs,
         )
         return pki_message
 
