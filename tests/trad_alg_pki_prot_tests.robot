@@ -19,7 +19,7 @@ Library             ../resources/checkutils.py
 Library             ../resources/certextractutils.py
 
 Test Template     Request With Trad Sig Key
-
+Test Tags    verbose-tests   trad-sig   pki-protection
 
 *** Test Cases ***     PROTECTION    SIGN_KEY    CERT    HASH_ALG    BAD
 CA MUST Accept ED25519 Protected Request    signature    ${ED25519_KEY}    ${ED25519_CERT}    ${None}    False

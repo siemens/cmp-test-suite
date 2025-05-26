@@ -21,7 +21,7 @@ Library             ../resources/checkutils.py
 Library             ../resources/certextractutils.py
 
 Test Template     Request With MAC Algorithm
-Test Tags           mac-alg-test   mac
+Test Tags           mac-alg-test   mac   verbose-tests
 
 
 *** Test Cases ***     PROTECTION    HASH_ALG    BAD    SEC_HASH_ALG
