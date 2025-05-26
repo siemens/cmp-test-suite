@@ -20,6 +20,7 @@ from pyasn1_alt_modules.rfc5652 import Attribute
 from robot.api.deco import not_keyword
 
 from resources import asn1utils
+from resources.asn1utils import try_decode_pyasn1
 from resources.exceptions import BadAsn1Data
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import EXTENSION_NAME_2_OID, EXTENSION_OID_2_SPECS
@@ -174,10 +175,10 @@ def get_authority_key_identifier(cert: rfc9480.CMPCertificate) -> Optional[rfc52
 
 @not_keyword
 def get_extension_decoded_value(
-    cert: rfc9480.CMPCertificate,
+    cert: Union[rfc9480.CMPCertificate, rfc9480.Extensions],
     extension_name: str,
     strict_decode: bool = True,
-) -> Optional[base.Asn1Type]:
+) -> Optional[base.Asn1Item]:
     """Get the decoded value of a specific extension from a certificate.
 
     :param cert: The certificate to extract the extension from.
@@ -189,10 +190,20 @@ def get_extension_decoded_value(
     extn_oid = EXTENSION_NAME_2_OID[extension_name]
     spec_tmp = EXTENSION_OID_2_SPECS[extn_oid]
 
-    extn_val = get_extension(cert["tbsCertificate"]["extensions"], extn_oid)
+    if isinstance(cert, (rfc9480.CMPCertificate, rfc5280.Certificate)):
+        extensions = cert["tbsCertificate"]["extensions"]
+    elif isinstance(cert, rfc9480.Extensions):
+        extensions = cert
+    else:
+        raise TypeError(
+            f"Expected `cert` to be of type `rfc9480.CMPCertificate` or `rfc9480.Extensions`, but got {type(cert)}."
+        )
+
+    extn_val = get_extension(extensions, extn_oid)
     if extn_val is None:
         return None
-    spec, rest = decoder.decode(extn_val["extnValue"].asOctets(), asn1Spec=spec_tmp())
+
+    spec, rest = try_decode_pyasn1(extn_val["extnValue"].asOctets(), spec_tmp())
     if strict_decode and rest:
         raise BadAsn1Data(f"{type(spec_tmp)}: {rest.hex()} left over after decoding `{extension_name}`", overwrite=True)
     return spec
@@ -200,7 +211,7 @@ def get_extension_decoded_value(
 
 def get_field_from_certificate(  # noqa D417 undocumented-param
     cert: rfc9480.CMPCertificate, query: Optional[str] = None, extension: Optional[str] = None
-) -> Union[bytes, None, base.Asn1Type]:
+) -> Union[bytes, None, base.Asn1Item]:
     """Retrieve a value from a `pyasn1` CMPCertificate using a specified query or extension.
 
     Extracts a value from a certificate based on a pyasn1 query or a named certificate

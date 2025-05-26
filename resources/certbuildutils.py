@@ -13,7 +13,6 @@ import pyasn1.error
 from cryptography import x509
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import base, tag, univ, useful
-from pyasn1.type.base import Asn1Type
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6402, rfc6664, rfc8954, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
@@ -2290,7 +2289,7 @@ def _try_decode_extension_val(
     extensions: rfc9480.Extensions,
     extn_name: str,
     name: str,
-) -> Optional[Union[bytes, Asn1Type]]:
+) -> Optional[Union[bytes, base.Asn1Item]]:
     """Try to decode the extension value.
 
     :param extensions: The extensions to extract the value from.
