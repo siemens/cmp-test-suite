@@ -3188,6 +3188,43 @@ def prepare_issuing_distribution_point_extension(  # noqa: D417 undocumented-par
 
 
 @not_keyword
+def parse_subject_from_cert_related_type(
+    cert: CertRelatedType,
+) -> rfc9480.Name:
+    """Parse the subject from a certificate related type.
+
+    :param cert: A certificate related structure to parse.
+    :return: The subject as a `Name` structure.
+    """
+    if isinstance(cert, rfc9480.CMPCertificate):
+        return cert["tbsCertificate"]["subject"]
+
+    elif isinstance(cert, rfc6402.CertificationRequest):
+        return cert["certificationRequestInfo"]["subject"]
+
+    elif isinstance(cert, DeltaCertificateRequestValue):
+        return copy_name(
+            target=rfc9480.Name(),
+            filled_name=cert["subject"],
+        )
+
+    elif isinstance(cert, rfc9480.CertTemplate):
+        return copy_name(
+            target=rfc9480.Name(),
+            filled_name=cert["subject"],
+        )
+
+    elif isinstance(cert, DeltaCertificateDescriptor):
+        return copy_name(
+            target=rfc9480.Name(),
+            filled_name=cert["subject"],
+        )
+
+    else:
+        raise TypeError(f"Unsupported certificate type. Got: {type(cert)}")
+
+
+@not_keyword
 def parse_extension_and_public_key(
     cert: CertRelatedType,
 ) -> Tuple[Optional[rfc9480.Extensions], rfc5280.SubjectPublicKeyInfo]:
