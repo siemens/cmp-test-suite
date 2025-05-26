@@ -2306,8 +2306,8 @@ def _validate_body_types_nested(
 
     :param response: The PKIMessage response to validate.
     :param request: The PKIMessage request to validate.
-    :param error: If `False`, the function checks for expected body types. If `True`, it checks for unexpected body types.
-        Defaults to `None` (allows error and the correct body types).
+    :param error: Whether the `error` body is expected. Defaults to `None`, which allows
+    both error and correct body types.
     :raises ValueError: If the response body type is not `nested` or does not match the request body type.
     :raise BadValueBehavior: If the response does not contain the expected number of nested messages.
     """
@@ -2347,7 +2347,7 @@ def _validate_body_types_nested(
         validate_cmp_body_types(inner_resp, inner_req, error)
 
 
-def validate_cmp_body_types(
+def validate_cmp_body_types(  # noqa D417 undocumented-param
     response: PKIMessageTMP,
     request: PKIMessageTMP,
     error: Optional[bool] = None,
@@ -2366,8 +2366,7 @@ def validate_cmp_body_types(
     ---------
         - `response`: The PKIMessage response to validate.
         - `request`: The PKIMessage request to validate.
-        - `error`: If `True`, the function checks for expected body types. If `False`, it checks for unexpected body types.
-          Defaults to `None` (allows error and the correct body types).
+        - `error`: Whether the `error` body is expected. If `None`, both error and correct body types are allowed.
 
     Raises:
     ------

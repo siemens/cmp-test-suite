@@ -91,7 +91,8 @@ class NestedHandler:
 
         else:
             raise BadRequest(
-                "The request type is not supported. Only 'ir', 'cr', 'p10cr', 'kur', 'ccr' are supported for added protection requests."
+                "The request type is not supported. "
+                "Only 'ir', 'cr', 'p10cr', 'kur', 'ccr' are supported for added protection requests."
             )
 
         return prot_handler.protect_pkimessage(

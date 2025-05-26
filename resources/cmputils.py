@@ -408,7 +408,8 @@ def build_p10cr_from_key(  # noqa D417 undocumented-param
 
     **params:
     --------
-       - `spki` (SubjectPublicKeyInfo): The SPKI structure to use instead of generating it from the key. Defaults to `None`.
+       - `spki` (SubjectPublicKeyInfo): The SPKI structure to use instead of generating it from the key.
+       Defaults to `None`.
        - `common_name` (str): The common name to use for the CSR subject. Defaults to `CN=Hans Mustermann`.
        - `hash_alg` (str): The hash algorithm to use for the SPKI and CSR signing. Defaults to "sha256".
        - `use_rsa_pss` (bool): If `True`, uses RSA-PSS for the signature and SPKI. Defaults to `False`.
