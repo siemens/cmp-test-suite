@@ -101,7 +101,7 @@ class TestCMPKEMBasedMAC(unittest.TestCase):
             genp,
             client_private_key=self.kem_key,
         )
-        data = mock_ca_obj.get_details("kem_ss")["kem_ss"]
+        data = mock_ca_obj.get_details("kem_ss")
         data: KEMSharedSecretList
         self.assertEqual(len(data), 1, "Shared secret exchange failed")
         self.assertEqual(
@@ -306,14 +306,6 @@ class TestCMPKEMBasedMAC(unittest.TestCase):
         )
         response = mock_ca_obj.process_normal_request(prot_cert_conf)
         self.assertEqual(get_cmp_message_type(response), "pkiconf")
-
-
-
-
-
-
-
-
 
 
 if __name__ == "__main__":

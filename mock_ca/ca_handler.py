@@ -1302,12 +1302,22 @@ class CAHandler:
         :return: The details as dictionary, if options is `None`, otherwise the details as string,
         if the options are not found.
         """
+        if options == "issued_certs":
+            return self.state.issued_certs
+
         data = {}
         data.update(self.rev_handler.details())
+        data.update(self.cert_conf_handler.details())
         data["kem_ss"] = self.state.kem_mac_based
 
         if options is None:
             return data
+
+        if len(options.split(",")) == 0:
+            return data
+
+        if len(options.split(",")) == 1 and options in data:
+            return data[options]
 
         out = {key: data[key] for key in options.split(",") if key in data}
         if out:
