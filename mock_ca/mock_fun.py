@@ -1241,15 +1241,18 @@ class CertificateDB:
         if entry is None:
             return None
 
-        history = [cert]
-        for x in range(10):
-            entry = self._get_cert_by_digest(entry.update_cert_digest)
-            if entry is None:
-                break
-            history.append(entry.cert)
+        if entry.update_cert_digest is None:
+            return None
+
+        history = [entry.cert]
+        for _ in range(10):  # Avoid infinite loops
             if entry.update_cert_digest is None:
                 break
-
+            next_entry = self._get_cert_by_digest(entry.update_cert_digest)
+            if next_entry is None:
+                break
+            history.append(next_entry.cert)
+            entry = next_entry
         return history
 
     def get_current_crl(
