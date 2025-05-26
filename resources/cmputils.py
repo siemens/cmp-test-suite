@@ -2281,13 +2281,17 @@ def build_key_update_request(  # noqa D417 undocumented-param
 
     """
     cert_template = params.get("cert_template")
-    if cert_template is not None:
+    if cert_template is None:
         cert_template = certbuildutils.prepare_cert_template(
             key=signing_key,
             cert=cert,
+            subject=common_name,
             exclude_fields="serialNumber,validity",
             for_kga=params.get("for_kga", False),
             extensions=params.get("extensions"),
+            spki=params.get("spki"),
+            # To remove the SKI extension from the cert.
+            include_cert_extensions=params.get("include_cert_extensions", False),
         )
 
     controls = None
@@ -2310,6 +2314,7 @@ def build_key_update_request(  # noqa D417 undocumented-param
         for_kga=params.get("for_kga", False),
         cert_template=cert_template,
         popo_structure=params.get("popo"),
+        bad_pop=params.get("bad_pop", False),
     )
 
     return _prepare_build_cert_req_msgs_pkimessage(
