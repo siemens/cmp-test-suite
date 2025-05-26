@@ -139,7 +139,7 @@ class CertConfState:
             raise BadDataFormat("The transaction ID is not set.")
 
         tx_id = pki_message["header"]["transactionID"].asOctets()
-        print("GET REQUEST is: ", get_cmp_message_type(self.requests[tx_id]))
+        logging.debug("GET REQUEST is: ", get_cmp_message_type(self.requests[tx_id]))
         return self.requests[tx_id]
 
     def validate_tx_id(self, cert_conf: PKIMessageTMP) -> None:

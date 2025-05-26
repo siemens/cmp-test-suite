@@ -214,9 +214,9 @@ class CertReqHandler:
                     raise BadCertTemplate(f"The public key is already defined for the user: {_name}")
 
                 public_key = load_public_key_from_cert_template(cert_template, must_be_present=False)
-
-                if self.state.contains_pub_key(public_key, cert_template["subject"]):
-                    raise BadCertTemplate("The public key is already defined for the user.")
+                if public_key is not None:
+                    if self.state.contains_pub_key(public_key, cert_template["subject"]):
+                        raise BadCertTemplate("The public key is already defined for the user.")
 
     def _get_for_mac(self, request: PKIMessageTMP) -> bool:
         """Determine if the message is for MAC protection."""

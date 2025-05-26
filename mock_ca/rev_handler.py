@@ -364,10 +364,10 @@ class RevocationHandler:
             logging.info("Status: %s", display_pki_status_info(status_info))
 
             if reason != "removeFromCRL" and status_info["status"].prettyPrint() == "accepted":
-                self.mark_as_revoked(entry[0]["cert"], reason)
+                self.mark_as_revoked(entry[0]["cert"], reason)  # type: ignore
 
             elif reason == "removeFromCRL" and status_info["status"].prettyPrint() == "accepted":
-                self.revive_cert(entry[0]["cert"])
+                self.revive_cert(entry[0]["cert"])  # type: ignore
 
             elif status_info["status"].prettyPrint() != "accepted":
                 pass
