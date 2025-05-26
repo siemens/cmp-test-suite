@@ -693,6 +693,9 @@ class ProtectionHandler:
         if body_name in ["rr", "kur", "ccr"]:
             self.validate_protection(inner_msg)
 
+        elif inner_msg["header"]["protectionAlg"].isValue:
+            self.validate_protection(inner_msg)
+
         validate_orig_pkimessage(
             pki_message,
             must_be_present=False,
