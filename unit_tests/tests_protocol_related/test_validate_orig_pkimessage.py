@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import unittest
 
 from resources.cmputils import build_ir_from_key, build_nested_pkimessage, prepare_orig_pki_message, \
