@@ -34,6 +34,7 @@ from pyasn1_alt_modules import (
     rfc8619,
     rfc9480,
     rfc9481,
+    rfc9654,
     rfc9688,
     rfc9690,
     rfc9708,
@@ -810,6 +811,7 @@ EXTENSION_NAME_2_OID = {
     "related_cert": id_relatedCert,
     "private_key_usage_period": rfc5280.id_ce_privateKeyUsagePeriod,
     "cert_policies": rfc5280.id_ce_certificatePolicies,
+    "ocsp_nonce": rfc9654.id_pkix_ocsp_nonce,
 }
 
 EXTENSION_OID_2_SPECS = {
@@ -825,6 +827,7 @@ EXTENSION_OID_2_SPECS = {
     rfc5280.id_pe_authorityInfoAccess: rfc5280.AuthorityInfoAccessSyntax,
     rfc5280.id_ce_privateKeyUsagePeriod: rfc5280.PrivateKeyUsagePeriod,
     rfc5280.id_ce_certificatePolicies: rfc5280.CertificatePolicies,
+    rfc9654.id_pkix_ocsp_nonce: rfc9654.Nonce,
 }
 
 ALL_SIG_ALG_OID_2_NAME = {}
