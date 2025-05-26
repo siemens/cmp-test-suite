@@ -1904,6 +1904,7 @@ def _sign_cert(
 def _process_csr_extensions(
     csr: rfc6402.CertificationRequest,
     public_key: PublicKey,
+    ca_cert: rfc9480.CMPCertificate,
     extensions: Optional[ExtensionsParseType],
     include_csr_extensions: bool,
     include_ski: bool = True,
@@ -1925,29 +1926,28 @@ def _process_csr_extensions(
 
     out_extensions.extend(extensions)
 
-    ski_extn = None
     if include_csr_extensions:
-        ski_extn, _ = validate_subject_key_identifier_extension(
-            cert=csr,
-            critical=kwargs.get("ski_critical", False),
+        if kwargs.get("ca_pub_key") is None:
+            ca_pub_key = keyutils.load_public_key_from_spki(ca_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+            ca_pub_key = convertutils.ensure_is_verify_key(ca_pub_key)
+        else:
+            ca_pub_key = kwargs["ca_pub_key"]
+
+        return check_extensions(
+            cert_template=csr,
+            ca_cert=ca_cert,
+            ca_public_key=ca_pub_key,
+            other_extensions=out_extensions,
+            for_end_entity=kwargs.get("for_end_entity"),
+            allow_unknown_extns=kwargs.get("allow_unknown_extns", False),
+            allow_basic_con_non_crit=kwargs.get("allow_basic_con_non_crit", False),
         )
 
-    if include_csr_extensions:
-        extn = certextractutils.extract_extensions_from_csr(csr=csr)
-        if extn is not None:
-            for x in extn:
-                if x["extnID"] == rfc5280.id_ce_subjectKeyIdentifier:
-                    pass
-                elif not extensions_contains_extn_id(extn_id=x["extnID"], extensions=extensions):
-                    out_extensions.append(x)
-
-    if include_ski and ski_extn is None:
+    if include_ski:
         ski_extn = prepare_ski_extension(
             key=public_key,
             critical=kwargs.get("ski_critical", False),
         )
-        out_extensions.append(ski_extn)
-    elif ski_extn is not None:
         out_extensions.append(ski_extn)
 
     return out_extensions
@@ -2042,6 +2042,7 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
 
     out_extensions = _process_csr_extensions(
         csr=csr,
+        ca_cert=ca_cert,
         public_key=public_key,
         extensions=extensions,
         include_csr_extensions=include_csr_extensions,
