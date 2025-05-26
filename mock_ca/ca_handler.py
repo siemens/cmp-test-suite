@@ -327,10 +327,10 @@ def _build_error_from_exception(e: CMPTestSuiteError, request_msg: Optional[PKIM
         tx_id = None
 
     msg = build_cmp_error_message(
-        failinfo=e.failinfo,
+        failinfo=e.get_failinfo(),
         texts=e.message,
         status="rejection",
-        error_texts=e.error_details,
+        error_texts=e.get_error_details(),
         recip_nonce=recip_nonce,
         transaction_id=tx_id,
         exclude_fields=", ".join(exclude_fields) if exclude_fields else None,
