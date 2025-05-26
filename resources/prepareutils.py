@@ -143,8 +143,8 @@ def _prepare_date_time_object(
     :return: The populated `datetime` object.
     """
     if date is None:
-        return datetime.now(timezone.utc)
-    if isinstance(date, str):
+        new_time_obj = datetime.now(tz=timezone.utc)
+    elif isinstance(date, str):
         new_time_obj = DateTime.convert_date(date, result_format="datetime")  # type: ignore
         new_time_obj: datetime
     elif isinstance(date, float):
@@ -155,7 +155,10 @@ def _prepare_date_time_object(
 
     else:
         raise ValueError(f"Invalid date format: Got {type(date)}")
-    return new_time_obj
+
+    # Ensure the datetime object is in UTC.
+    # Otherwise, it will be incorrectly created.
+    return new_time_obj.replace(microsecond=0)
 
 
 @not_keyword
@@ -167,9 +170,8 @@ def prepare_generalized_time(
     :param date: The date to use. If None, the current date is used.
     :return: The populated `GeneralizedTime` object.
     """
-    target = useful.GeneralizedTime()
     new_time_obj = _prepare_date_time_object(date)
-    return target.fromDateTime(new_time_obj)
+    return useful.GeneralizedTime.fromDateTime(new_time_obj)
 
 
 @not_keyword
@@ -473,3 +475,19 @@ def validate_relative_name_for_correct_data_types(
 
     if failed:
         raise BadAsn1Data(f"Failed to validate relative distinguished name: {failed}")
+
+
+@not_keyword
+def convert_to_generalized_time(
+    date: Union[str, datetime, useful.GeneralizedTime, None],
+) -> useful.GeneralizedTime:
+    """Convert date to GeneralizedTime.
+
+    :param date: The date to convert.
+    :return: The converted `GeneralizedTime` structure.
+    """
+    if isinstance(date, useful.GeneralizedTime):
+        return date
+    return prepare_generalized_time(
+        date=date,
+    )

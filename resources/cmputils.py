@@ -52,6 +52,7 @@ from resources.asn1_structures import CertProfileValueAsn1, KemCiphertextInfoAsn
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadDataFormat, BadRequest
+from resources.prepareutils import convert_to_generalized_time
 from resources.typingutils import (
     CertObjOrPath,
     ControlsType,
@@ -206,15 +207,18 @@ def prepare_pki_message(
 
     # SHOULD NOT be required
     if "messageTime" not in to_exclude:
-        if message_time:
-            pki_header["messageTime"] = message_time
-        else:
+        if message_time is None:
             # the date is not correctly converted, so that it could happen for test cases,
             # that the messageTime is in the future. So a slightly older time is used
             date_time = datetime.now(timezone.utc) - timedelta(seconds=3)
-            msg_time_obj = useful.GeneralizedTime().fromDateTime(date_time)
-            message_time_subtyped = msg_time_obj.subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
-            pki_header["messageTime"] = message_time_subtyped
+            message_time = useful.GeneralizedTime().fromDateTime(date_time)
+
+        msg_time_obj = convert_to_generalized_time(
+            message_time,
+        )
+
+        message_time_subtyped = msg_time_obj.subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 0))
+        pki_header["messageTime"] = message_time_subtyped
 
     if "senderKID" not in to_exclude:
         # Changes the value for MAC-based protection automatically, if the sender is a string.
@@ -426,6 +430,7 @@ def build_p10cr_from_csr(  # noqa D417 undocumented-param
         sender_kid=params.get("sender_kid"),
         pvno=int(params.get("pvno", 2)),
         for_mac=params.get("for_mac", False),
+        message_time=params.get("message_time"),
     )
 
     # Prepare PKIBody of type p10cr
@@ -2295,6 +2300,7 @@ def _prepare_build_cert_req_msgs_pkimessage(
         sender_kid=params.get("sender_kid"),
         pvno=pvno,
         for_mac=params.get("for_mac", False),
+        message_time=params.get("message_time"),
     )
     pki_message["body"] = pki_body
     return pki_message
@@ -5179,6 +5185,7 @@ def build_nested_pkimessage(  # noqa D417 undocumented-param
         implicit_confirm=params.get("implicit_confirm", False),
         sender_kid=params.get("sender_kid"),
         pvno=params.get("pvno"),
+        message_time=params.get("message_time"),
     )
 
     pki_body["nested"] = nested_content
