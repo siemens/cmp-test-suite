@@ -86,13 +86,14 @@ from resources.exceptions import (
     BadAsn1Data,
     BadCertTemplate,
     BadConfig,
+    BadKeyUsage,
     BadMessageCheck,
     BadRequest,
     CertRevoked,
     CMPTestSuiteError,
     InvalidAltSignature,
     NotAuthorized,
-    UnknownOID, BadKeyUsage,
+    UnknownOID,
 )
 from resources.general_msg_utils import build_genp_kem_ct_info_from_genm
 from resources.keyutils import generate_key, load_private_key_from_file, load_public_key_from_spki
@@ -691,7 +692,12 @@ class CAHandler:
                 self.protection_handler.validate_protection(pki_message=pki_message)
                 response = self.cert_req_handler.process_cert_request(pki_message)
             elif pki_message["body"].getName() == "rr":
-                response = self.process_rr(pki_message)
+                try:
+                    self.cert_req_handler.validate_header(pki_message, must_be_protected=True)
+                    response = self.process_rr(pki_message)
+                except (BadMessageCheck, BadKeyUsage) as e:
+                    response = self.rev_handler.build_rp_error_response(request=pki_message, exception=e)
+
             elif pki_message["body"].getName() == "certConf":
                 response = self.process_cert_conf(pki_message)
             elif pki_message["body"].getName() == "genm":
