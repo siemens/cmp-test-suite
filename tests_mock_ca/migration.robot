@@ -873,8 +873,8 @@ CA MUST Reject A Revoked Composite Sig Key
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=   Exchange Migration PKIMessage    ${protected_ir}   ${CA_BASE_URL}  ${COMPOSITE_URL_PREFIX}
-    PKIMessage Body Type Must Be    ${response}    error
-    PKIStatus Must Be    ${response}    status=rejection
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
 CA MUST Accept A Valid Composite Sig Update Request
@@ -934,7 +934,7 @@ CA MUST Reject A Revoked Composite KEM Key
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=   Exchange Migration PKIMessage    ${protected_ir}   ${CA_BASE_URL}  ${COMPOSITE_URL_PREFIX}
-    PKIMessage Body Type Must Be    ${response}    error
+    PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
