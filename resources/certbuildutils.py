@@ -228,6 +228,7 @@ def build_csr(  # noqa D417 undocumented-param
     use_pre_hash: bool = False,
     use_pre_hash_pub_key: Optional[bool] = None,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
+    **kwargs,
 ) -> rfc6402.CertificationRequest:
     """Build a PKCS#10 Certification Request (CSR) with the given parameters.
 
@@ -252,6 +253,10 @@ def build_csr(  # noqa D417 undocumented-param
         Defaults to `use_pre_hash`.
         - `spki`: Optional `SubjectPublicKeyInfo` object to populate the CSR with. Defaults to `None`.
 
+    **kwargs:
+    --------
+        - `version` (str, int): The version of the CSR. Defaults to `0`.
+
     Returns:
     -------
        - The constructed `CertificationRequest` object.
@@ -266,7 +271,7 @@ def build_csr(  # noqa D417 undocumented-param
     """
     csr = rfc6402.CertificationRequest()
 
-    csr["certificationRequestInfo"]["version"] = univ.Integer(0)
+    csr["certificationRequestInfo"]["version"] = int(kwargs.get("version", 0))
     csr["certificationRequestInfo"]["subject"] = _parse_common_name(common_name, subject=True)
 
     use_pre_hash_pub_key = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
