@@ -5,6 +5,7 @@
 """Revocation handler for the Mock CA."""
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from cryptography.exceptions import InvalidSignature
@@ -14,12 +15,15 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from pyasn1_alt_modules import rfc9480
 
-from mock_ca.mock_fun import CertRevStateDB, RevokedEntry
-from pq_logic.keys.abstract_wrapper_keys import HybridPublicKey
+from mock_ca.mock_fun import (
+    CertificateDB,
+    CertStateEnum,
+    KeySecurityChecker,
+    RevokedEntry,
+)
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from resources import certutils, cmputils
 from resources.asn1_structures import PKIMessageTMP
-from resources.asn1utils import encode_to_der
 from resources.ca_ra_utils import build_rp_from_rr, set_ca_header_fields, validate_rr_crl_entry_details_reason
 from resources.certutils import load_public_key_from_cert
 from resources.checkutils import (
@@ -39,7 +43,6 @@ from resources.exceptions import (
     NotAuthorized,
     WrongIntegrity,
 )
-from resources.oid_mapping import compute_hash
 from resources.protectionutils import (
     verify_kem_based_mac_protection,
     verify_pkimessage_protection,
@@ -47,7 +50,6 @@ from resources.protectionutils import (
 from resources.suiteenums import ProtectedType
 from resources.typingutils import ECDHPublicKey, PublicKey, SignKey
 from resources.utils import display_pki_status_info
-from unit_tests.utils_for_test import compare_pyasn1_objects
 
 
 def _build_rp_error_response(
@@ -83,70 +85,80 @@ class RevocationHandler:
 
     def __init__(
         self,
-        rev_db: Optional[CertRevStateDB] = None,
+        rev_db: Optional[CertificateDB] = None,
         x25519_key: Optional[X25519PrivateKey] = None,
         x448_key: Optional[X448PrivateKey] = None,
         ec_key: Optional[EllipticCurvePrivateKey] = None,
     ):
         """Initialize the revocation handler and state."""
-        self.rev_db = rev_db or CertRevStateDB()
+        self.rev_db = rev_db or CertificateDB()
         self.x25519_key = x25519_key
         self.x448_key = x448_key
         self.ec_key = ec_key
-        self.hash_alg = "sha1"
-
-    def add_revoked_cert(self, cert: rfc9480.CMPCertificate, reason: str = "unspecified") -> None:
-        """Add a certificate to the revoked list."""
-        serial_number = int(cert["tbsCertificate"]["serialNumber"])
-        revoked_entry = RevokedEntry(reason=reason, cert=cert)
-        self.rev_db.add_rev_entry(revoked_entry)
-        logging.warning("Added certificate %d to revoked list.", serial_number)
 
     def get_current_crl(self, ca_key: SignKey, ca_cert: rfc9480.CMPCertificate) -> bytes:
         """Get the current CRL as DER-encoded bytes."""
-        return self.rev_db.get_crl_response(
-            sign_key=ca_key,
-            ca_cert=ca_cert,
-        ).public_bytes(serialization.Encoding.DER)
+        return self.rev_db.get_current_crl(ca_key=ca_key, ca_cert=ca_cert).public_bytes(serialization.Encoding.DER)
 
     def public_key_is_revoked(self, public_key: PublicKey, sender: rfc9480.Name) -> bool:
         """Check if a public key is revoked based on its serial number."""
-        for cert in self.rev_db.revoked_certs + self.rev_db.update_entry_list.certs:
-            if not compare_pyasn1_objects(sender, cert["tbsCertificate"]["subject"]):
-                continue
-
-            pub_key = load_public_key_from_cert(cert)
-            if isinstance(pub_key, HybridPublicKey) and isinstance(public_key, HybridPublicKey):
-                if pub_key == public_key:
-                    return True
-            elif isinstance(pub_key, HybridPublicKey):
-                if public_key in [pub_key.trad_key, pub_key.pq_key]:
-                    return True
-            elif isinstance(public_key, HybridPublicKey):
-                if pub_key in [public_key.trad_key, public_key.pq_key]:
-                    return True
-            else:
-                if pub_key == public_key:
-                    return True
-
-        return False
+        status = KeySecurityChecker(
+            revoked_certs=self.rev_db.revoked_certs,
+            updated_certs=self.rev_db.updated_certs,
+        ).check_cert_status(
+            pub_key=public_key,
+            sender=sender,
+        )
+        return status != "good"
 
     def is_revoked(self, cert: rfc9480.CMPCertificate) -> bool:
         """Check if a certificate is revoked based on its serial number."""
+        cert_state = self.rev_db.get_cert_state(cert)
+        result = cert_state == CertStateEnum.REVOKED
         serial_number = int(cert["tbsCertificate"]["serialNumber"])
-        hashed_cert = compute_hash(self.hash_alg, encode_to_der(cert))
-        logging.info("hashed_cert: %s", hashed_cert.hex())
-        result = self.rev_db.is_revoked_by_hash(hashed_cert)
-        logging.info("Check if serial number %d is revoked: %s", serial_number, result)
+        logging.debug("Check if serial number %d is revoked: %s", serial_number, str(cert_state))
         return result
 
-    def is_updated(self, cert: rfc9480.CMPCertificate) -> bool:
-        """Check if a certificate is updated based on its serial number."""
+    def is_updated(self, cert: rfc9480.CMPCertificate, strict: bool = True, body_name: Optional[str] = None) -> bool:
+        """Check if a certificate is updated based on its serial number.
+
+        :param cert: The certificate to check.
+        :param strict: If True, consider 'UPDATED_BUT_NOT_CONFIRMED' as updated.
+        :param body_name: The name of the body to check against, for logging purposes.
+        :return: True if the certificate is updated, False otherwise.
+        """
+        cert_state = self.rev_db.get_cert_state(cert)
+        if cert_state == CertStateEnum.UPDATED:
+            result = True
+        elif strict and cert_state == CertStateEnum.UPDATED_BUT_NOT_CONFIRMED:
+            result = True
+        else:
+            result = False
         serial_number = int(cert["tbsCertificate"]["serialNumber"])
-        hashed_cert = compute_hash(self.hash_alg, encode_to_der(cert))
-        result = self.rev_db.is_updated_by_hash(hashed_cert)
-        logging.info("Check if serial number %d is updated: %s", serial_number, result)
+        logging.warning(
+            "Check if serial number %d is updated: %s. For body: %s",
+            serial_number,
+            cert_state,
+            body_name if body_name else "unknown",
+        )
         return result
+
+    def validate_is_updated(
+        self,
+        body_name: str,
+        cert: rfc9480.CMPCertificate,
+    ) -> None:
+        """Validate if a certificate is updated.
+
+        :param body_name: The name of the body to check against.
+        :param cert: The certificate to check.
+        :raises CertRevoked: If the certificate is updated.
+        """
+        return self.rev_db.update_state.validate_is_updated(
+            body_name=body_name,
+            cert=cert,
+            allow_timeout=False,
+        )
 
     def is_not_allowed_to_request(
         self,
@@ -156,14 +168,24 @@ class RevocationHandler:
     ) -> None:
         """Check if a certificate is not allowed to request revocation."""
         body_name = cmputils.get_cmp_message_type(request)
+        cert = request["extraCerts"][0]
+        cert_state = self.rev_db.get_cert_state(cert)
+
         if body_name != "rr":
-            cert = request["extraCerts"][0]
             if self.is_revoked(cert):
                 raise CertRevoked("The certificate is revoked and cannot be used for new requests.")
 
-            if self.is_updated(cert):
-                raise CertRevoked("The certificate is updated and cannot be used for new requests.")
+            self.validate_is_updated(
+                body_name=body_name,
+                cert=cert,
+            )
         else:
+            if cert_state == CertStateEnum.UPDATED_BUT_NOT_CONFIRMED:
+                raise BadRequest(
+                    "The certificate is updated but not confirmed,"
+                    " cannot revoke it. Please confirm the other request first."
+                )
+
             cert = request["extraCerts"][0]
             if not certutils.cert_in_list(cert, issued_certs) or not self.is_revoked(cert):
                 if trusted_rev_certs is not None:
@@ -175,17 +197,26 @@ class RevocationHandler:
     def revive_cert(self, cert: rfc9480.CMPCertificate):
         """Check if a certificate is revoked based on its serial number."""
         serial_number = int(cert["tbsCertificate"]["serialNumber"])
-        hashed_cert = compute_hash(self.hash_alg, encode_to_der(cert))
-        self.rev_db.rev_entry_list.remove_by_hash(hashed_cert)
+        self.rev_db.change_cert_state(
+            cert=cert,
+            new_state=CertStateEnum.REVIVED,
+            error_suffix="Called from `revive_cert`",
+        )
         logging.info("Removed certificate %d from revoked list.", serial_number)
 
     def mark_as_revoked(self, cert: rfc9480.CMPCertificate, reason: str = "unspecified") -> None:
         """Mark a certificate as revoked and update the state."""
         serial_number = int(cert["tbsCertificate"]["serialNumber"])
-        revoked_entry = RevokedEntry(reason=reason, cert=cert)
-        self.rev_db.add_rev_entry(revoked_entry)
+        revoked_entry = RevokedEntry(reason=reason, cert=cert, revoked_date=datetime.now(timezone.utc))
+        self.rev_db.change_cert_state(
+            cert=cert,
+            new_state=CertStateEnum.REVOKED,
+            revoke_entry=revoked_entry,
+            error_suffix="Called from `mark_as_revoked`",
+        )
+        serial_numbers = [int(x["tbsCertificate"]["serialNumber"]) for x in self.rev_db.revoked_certs]
         logging.warning("Revoked certificate %d for reason: %s.", serial_number, reason)
-        logging.warning("Current revoked certificates: %s", str(self.rev_db.rev_entry_list.serial_numbers))
+        logging.warning("Current revoked certificates: %s", str(serial_numbers))
 
     def _process_revive_response(
         self, response: PKIMessageTMP, cert_to_revive: List[rfc9480.CMPCertificate]
@@ -196,7 +227,7 @@ class RevocationHandler:
         :param cert_to_revive: The list of certificates to revive.
         """
         certs_revive = []
-        logging.info("Revoked certs before revive request: %d", len(self.rev_db.rev_entry_list.serial_numbers))
+        logging.info("Revoked certs before revive request: %d", len(self.rev_db.revoked_certs))
         for i, status_info in enumerate(response["body"]["rp"]["status"]):
             if status_info["status"].prettyPrint() == "accepted":
                 self.revive_cert(cert_to_revive[i])
@@ -210,7 +241,7 @@ class RevocationHandler:
                 status = display_pki_status_info(status_info)
                 logging.info("Revive request failed: %s", status)
 
-        logging.info("Revoked certs after revive request: %d", len(self.rev_db.rev_entry_list.serial_numbers))
+        logging.info("Revoked certs after revive request: %d", len(self.rev_db.revoked_certs))
         return certs_revive
 
     def _handle_self_revive_request(
@@ -218,11 +249,13 @@ class RevocationHandler:
         pki_message: PKIMessageTMP,
     ) -> Tuple[PKIMessageTMP, List[rfc9480.CMPCertificate]]:
         """Handle a revive request for the same certificate."""
-        cert = self.rev_db.get_by_hash(
+        cert_entry = self.rev_db.get_cert(
             pki_message["extraCerts"][0],
         )
-        if cert is None:
+        if cert_entry is None:
             raise BadCertId("Certificate not found in the revocation database, certificate cannot be revived.")
+
+        cert = cert_entry.cert
 
         logging.info("Process self-revive request.")
         response, _ = build_rp_from_rr(
@@ -265,11 +298,25 @@ class RevocationHandler:
             revive_certs = self._process_revive_response(response, certs)
 
         except CMPTestSuiteError as e:
-            return self._build_error_response(pki_message, e), []
+            return self.build_rp_error_response(pki_message, e), []
         except (InvalidSignature, ValueError) as e:
-            return self._build_error_response(pki_message, BadMessageCheck(message=str(e))), []
+            return self.build_rp_error_response(pki_message, BadMessageCheck(message=str(e))), []
 
         return response, revive_certs
+
+    def _check_is_update_request(
+        self,
+        cert: rfc9480.CMPCertificate,
+    ) -> None:
+        """Check if the certificate is an updated or updated but not confirmed.
+
+        :param cert: The certificate to check.
+        """
+        self.rev_db.update_state.validate_is_updated(
+            body_name="rr",
+            cert=cert,
+            allow_timeout=False,
+        )
 
     def process_revocation_request(
         self,
@@ -296,8 +343,7 @@ class RevocationHandler:
             if self.is_revoked(cert) and reason != "removeFromCRL":
                 raise CertRevoked(f"Certificate already revoked. Serial number: {serial_number}")
 
-            if self.is_updated(cert):
-                raise CertRevoked(f"Certificate already updated. Serial number: {serial_number}")
+            self._check_is_update_request(cert)
 
             if reason == "removeFromCRL" and self.is_revoked(cert):
                 logging.info(
@@ -305,7 +351,8 @@ class RevocationHandler:
                 )
                 return self._handle_revive_request(pki_message, issued_certs)
 
-            logging.info("length revoked certs: %d", len(self.rev_db.revoked_certs))
+            logging.debug("length revoked certs: %d", len(self.rev_db.revoked_certs))
+            logging.debug("Length of issued certs: ", len(issued_certs))
             response, entry = build_rp_from_rr(
                 request=pki_message,
                 shared_secret=shared_secret,
@@ -317,10 +364,10 @@ class RevocationHandler:
             logging.info("Status: %s", display_pki_status_info(status_info))
 
             if reason != "removeFromCRL" and status_info["status"].prettyPrint() == "accepted":
-                self.mark_as_revoked(cert, reason)
+                self.mark_as_revoked(entry[0]["cert"], reason)
 
             elif reason == "removeFromCRL" and status_info["status"].prettyPrint() == "accepted":
-                self.revive_cert(cert)
+                self.revive_cert(entry[0]["cert"])
 
             elif status_info["status"].prettyPrint() != "accepted":
                 pass
@@ -332,13 +379,14 @@ class RevocationHandler:
             logging.info("Afterwards length revoked certs: %d", len(self.rev_db.revoked_certs))
 
         except CMPTestSuiteError as e:
-            return self._build_error_response(pki_message, e), []
+            return self.build_rp_error_response(pki_message, e), []
         except (InvalidSignature, ValueError) as e:
-            return self._build_error_response(pki_message, BadMessageCheck(message=str(e))), []
+            return self.build_rp_error_response(pki_message, BadMessageCheck(message=str(e))), []
 
         return response, []
 
-    def _build_error_response(self, request: PKIMessageTMP, exception: CMPTestSuiteError) -> PKIMessageTMP:
+    @staticmethod
+    def build_rp_error_response(request: PKIMessageTMP, exception: CMPTestSuiteError) -> PKIMessageTMP:
         """Build an error response for a failed revocation request."""
         logging.debug("Revocation request failed: %s", exception.message)
         return _build_rp_error_response(
@@ -403,8 +451,4 @@ class RevocationHandler:
 
     def details(self) -> Dict[str, Any]:
         """Return the details of the revocation handler."""
-        return {
-            "revoked_certs": self.rev_db.rev_entry_list.serial_numbers,
-            "updated_certs": self.rev_db.update_entry_list.serial_numbers,
-            "revocation_state": self.rev_db.rev_entry_list,
-        }
+        return self.rev_db.get_details()
