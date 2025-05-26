@@ -43,6 +43,7 @@ from resources.exceptions import (
     BadRequest,
     BadSenderNonce,
     BadTime,
+    BadValueBehavior,
     CMPTestSuiteError,
 )
 from resources.oid_mapping import (
@@ -1990,7 +1991,12 @@ def validate_nested_message_unique_nonces_and_ids(  # noqa D417 undocumented-par
     if pki_message["body"].getName() != "nested":
         raise ValueError("The parsed `PKIMessage` was not a nested message.")
 
-    asn1utils.asn1_must_have_values_set(pki_message, "header.senderNonce, header.transactionID")
+    if not pki_message["header"]["transactionID"].isValue:
+        raise BadDataFormat("The `transactionID` was not set, for the nested `PKIMessage`.")
+
+    if not pki_message["header"]["senderNonce"].isValue:
+        raise BadSenderNonce("The `senderNonce` was not set, for the nested `PKIMessage`.")
+
     sender_nonce = pki_message["header"]["senderNonce"].asOctets()
     id_ = pki_message["header"]["transactionID"].asOctets()
     nested_recip_nonces = []
@@ -2001,7 +2007,9 @@ def validate_nested_message_unique_nonces_and_ids(  # noqa D417 undocumented-par
             recip_nonce = pki_message["header"]["recipNonce"].asOctets()
             nested_recip_nonces.append(recip_nonce)
     else:
-        asn1utils.asn1_must_have_values_set(pki_message, "header.recipNonce")
+        if not pki_message["header"]["recipNonce"].isValue:
+            raise BadRecipientNonce("The `recipNonce` was not set for the nested `PKIMessage`.")
+
         recip_nonce = pki_message["header"]["recipNonce"].asOctets()
         nested_recip_nonces.append(recip_nonce)
 
@@ -2010,7 +2018,7 @@ def validate_nested_message_unique_nonces_and_ids(  # noqa D417 undocumented-par
 
     for i, msg in enumerate(pki_message["body"]["nested"]):
         if not msg["header"]["transactionID"].isValue:
-            raise BadRequest(f"Nested message at index: {i} does not have a transactionID set.")
+            raise BadDataFormat(f"Nested message at index: {i} does not have a transactionID set.")
 
         if not msg["header"]["senderNonce"].isValue:
             raise BadSenderNonce(f"Nested message at index: {i} does not have a senderNonce set.")
