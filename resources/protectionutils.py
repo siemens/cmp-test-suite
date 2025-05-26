@@ -151,7 +151,7 @@ def _compare_alg_id(
 
 
 def _compare_pbm_parameters(
-    param1: rfc9480.PBMParameter, param2: bytes, same_salt: bool = False, allow_null: bool = False
+    param1: rfc9480.PBMParameter, param2: bytes, same_salt: bool = False, allow_null: bool = True
 ) -> bool:
     """Compare the sent and received `rfc9480.PBMParameter` structure.
 
@@ -1551,7 +1551,7 @@ def mac_protection_algorithms_must_match(  # noqa D417 undocumented-param
     response: PKIMessageTMP,
     pkiconf: Optional[PKIMessageTMP] = None,
     same_salt: bool = False,
-    allow_null: bool = False,
+    allow_null: bool = True,
     strict: bool = True,
     enforce_lwcmp: bool = True,
 ) -> None:
@@ -1568,7 +1568,7 @@ def mac_protection_algorithms_must_match(  # noqa D417 undocumented-param
             parameters against the response message. Defaults to `None`.
         - `same_salt`: Indicates whether the salt value has to be the same or different.
             If set to `False`, it must be different. Defaults to `False`.
-        - `allow_null`: Indicates whether `NULL` is accepted instead of absent parameters.
+        - `allow_null`: Indicates whether `NULL` is accepted instead of absent parameters. Defaults to `True`.
         - `strict`: Indicates whether all messages have to be MAC protected. If `False`, only checks
             that both messages use MAC protection, not necessarily the same algorithm. Defaults to `True`.
         - `enforce_lwcmp`: Indicates whether the lightweight CMP version is tested, meaning that only `pbmac1` and
@@ -1959,10 +1959,6 @@ def modify_pkimessage_protection(  # noqa D417 undocumented-param
     Returns:
     -------
         - The `PKIMessage` with an updated `protection` field.
-
-    Raises:
-    ------
-        - `ValueError`: If an invalid `wrong_type` option is provided.
 
     Examples:
     --------
