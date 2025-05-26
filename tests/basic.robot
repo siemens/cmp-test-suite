@@ -656,7 +656,7 @@ CA MAY React To Cert Request With Invalid Is_ca In BasicConstraints False But Ke
     ${ca_response}=    Exchange PKIMessage    ${protected_ir}
     ${body}=    Get CMP Message Type    ${ca_response}
     IF    '${body} == error'
-           PKIStatusInfo Failinfo Bit Must Be    ${ca_response}     failinfo=badCertTemplate
+        PKIStatusInfo Failinfo Bit Must Be    ${ca_response}     badCertTemplate
     ELSE
         ${status}=    Get PKIStatusInfo     ${ca_response}
         IF    '${status["status"]}' != rejection
@@ -1176,7 +1176,6 @@ Initialize Global Variables
     VAR    ${REVOKED_CERT}    ${None}    scope=GLOBAL
     VAR    ${REVOKED_PRIVATE_KEY}    ${None}    scope=GLOBAL
     # Only needed to test LWCMP version, where DSA is not allowed as signing algorithm.
-    
     ${dsa_cert}   ${dsa_key}=    May Load Cert And Key     ${DSA_CERT}   ${DSA_KEY}   ${DSA_KEY_PASSWORD}
     VAR    ${DSA_CERT}    ${dsa_cert}    scope=GLOBAL
     VAR    ${DSA_KEY}    ${dsa_key}    scope=GLOBAL
