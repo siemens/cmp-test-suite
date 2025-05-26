@@ -21,10 +21,10 @@ from resources.asn1_structures import PKIMessageTMP
 from resources.certutils import load_public_key_from_cert
 from resources.cmputils import get_cmp_message_type
 from resources.compareutils import compare_pyasn1_names
-from resources.convertutils import ensure_is_trad_sign_key
+from resources.convertutils import copy_asn1_certificate, ensure_is_trad_sign_key
 from resources.copyasn1utils import copy_subject_public_key_info
 from resources.deprecatedutils import _sign_crl_builder
-from resources.exceptions import BadMessageCheck
+from resources.exceptions import BadCertId, BadMessageCheck, BadRequest, CertConfirmed, CertRevoked, TransactionIdInUse
 from resources.oid_mapping import compute_hash
 from resources.oidutils import id_KemBasedMac
 from resources.protectionutils import verify_kem_based_mac_protection
@@ -247,6 +247,7 @@ class CertRevStateDB:
         hash_alg: Optional[str] = None,
         revoked_certs: Optional[List[rfc9480.CMPCertificate]] = None,
         updated_certs: Optional[List[rfc9480.CMPCertificate]] = None,
+        crl_number: int = 1,
     ) -> "CertRevStateDB":
         """Build the certificate revocation state database."""
         hash_alg = hash_alg or "sha1"
@@ -256,9 +257,13 @@ class CertRevStateDB:
             rev_entry_list=rev_list,
             update_entry_list=update_list,
             _update_eq_rev=True,
-            _crl_number=1,
+            _crl_number=crl_number,
             hash_alg=hash_alg,
         )
+
+    def patch_update_certs(self, certs: List[rfc9480.CMPCertificate]) -> None:
+        """Patch the updated certificates."""
+        self.update_entry_list = RevokedEntryList.build(hash_alg=self.hash_alg, entries=certs)
 
     @property
     def revoked_certs(self) -> List[rfc9480.CMPCertificate]:
@@ -334,6 +339,7 @@ class CertRevStateDB:
         found_cert, status = self._check_ocps_request_cert_status(request, issued_certs)
 
         if found_cert is None and status == "unauthorized":
+            # If the extension is not present:
             # As of RFC 6960, section 2.3
             # The response "unauthorized" is returned in cases where the client is
             # not authorized to make this query to this server or the server is not
@@ -413,10 +419,6 @@ class CertRevStateDB:
         """Add a revoked entry to the list."""
         self.rev_entry_list.add_entry(entry)
 
-    def add_update_entry(self, entry: Union[RevokedEntry, dict, List[dict]]) -> None:
-        """Add an updated entry to the list."""
-        self.update_entry_list.add_entry(entry)
-
     def check_request_for_compromised_key(self, request: PKIMessageTMP) -> bool:
         """Check if the request contains a compromised key.
 
@@ -442,15 +444,6 @@ class CertRevStateDB:
                     return True
 
         return False
-
-    def is_revoked(self, cert: rfc9480.CMPCertificate) -> bool:
-        """Check if the certificate is revoked.
-
-        :param cert: The certificate to check.
-        :return: Whether the certificate is revoked.
-        """
-        hashed_cert = compute_hash(self.hash_alg, encoder.encode(cert))
-        return self.is_revoked_by_hash(hashed_cert) or self.is_updated_by_hash(hashed_cert)
 
     def get_by_hash(self, data: Union[bytes, rfc9480.CMPCertificate]) -> Optional[rfc9480.CMPCertificate]:
         """Get a revoked entry by its hash.
