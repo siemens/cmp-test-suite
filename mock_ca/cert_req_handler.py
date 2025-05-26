@@ -46,6 +46,7 @@ from resources.cmputils import (
     build_cmp_error_message,
     find_oid_in_general_info,
     get_cmp_message_type,
+    get_pkistatusinfo,
     patch_generalinfo,
 )
 from resources.convertutils import ensure_is_verify_key
@@ -198,7 +199,7 @@ class CertReqHandler:
                     raise BadCertTemplate("The public key is already defined for the user.")
 
             try:
-                public_key = load_chameleon_csr_delta_key_and_sender(csr=pki_message["body"]["p10cr"])
+                public_key, _ = load_chameleon_csr_delta_key_and_sender(csr=pki_message["body"]["p10cr"])
                 if self.state.contains_pub_key(public_key, csr["certificationRequestInfo"]["subject"]):
                     raise BadCertTemplate("The chameleon delta public key is already defined for the user.")
             except ValueError:
@@ -231,7 +232,7 @@ class CertReqHandler:
         """Add a certificate to the state."""
         self.state.issued_certs.append(cert)
 
-    def _add_successful_request(
+    def add_request_for_cert_conf(
         self, request: PKIMessageTMP, response: PKIMessageTMP, certs: List[rfc9480.CMPCertificate]
     ) -> None:
         """Add a successful request to the state."""
@@ -301,15 +302,9 @@ class CertReqHandler:
         :return: The response `PKIMessage`.
         """
         logging.debug("CertReqHandler: Processing IR message")
-        logging.warning("Verify RA verified: %s", verify_ra_verified)
-
-        if not pki_message["header"]["protectionAlg"].isValue and must_be_protected:
-            raise BadMessageCheck("Protection algorithm was not set.")
+        logging.debug("Verify RA verified: %s", verify_ra_verified)
 
         for_mac = self._get_for_mac(request=pki_message)
-
-        validate_orig_pkimessage(pki_message, must_be_present=False, pre_shared_secret=self.pre_shared_secret)
-
         response, certs = build_ip_cmp_message(
             request=pki_message,
             implicit_confirm=False,
