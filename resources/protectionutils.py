@@ -949,7 +949,8 @@ def patch_sender_and_sender_kid(
     :param cert: The certificate to use for patching.
     :return: The patched or unpached PKIMessage.
     """
-    if not do_patch:
+    # To fix the incorrect parsing from the RF.
+    if not do_patch or do_patch == "False":
         logging.info("Skipped patch of sender and senderKID, for signature-based protection.")
     elif cert is None:
         logging.info(
@@ -1018,8 +1019,8 @@ def protect_pkimessage(  # noqa: D417
         - `iterations` (int, str): Number of iterations for the KDF function.
         - `length` (int): Length of the derived key for KDF output.
         - `hash_alg` (str): Hashing algorithm name (e.g., "sha256") used for signature or MAC generation.
-        - `no_patch` (bool): Indicate if the sender and senderKID field are patched for signature-based protection,
-            as described by RFC 9483 Section 3.1. Defaults to `False` (so by default they are patched).
+        - `do_patch` (bool): Indicate if the sender and senderKID field are patched for signature-based protection,
+            as described by RFC 9483 Section 3.1. Defaults to `True` (so by default they are patched).
         - `mac_alg` (str): The MAC algorithm to use for DH-based MAC protection. Defaults to "hmac".
         - `cert_chain` (List[CMPCertificates]): The certificate chain to use for the PKIMessage, will be used to patch \
         the sender and senderKID fields, if `cert` is not provided. Defaults to `None`.
