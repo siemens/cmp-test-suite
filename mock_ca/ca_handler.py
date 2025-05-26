@@ -407,7 +407,11 @@ class CAHandler:
             cmp_protection_cert=self.protection_handler.protection_cert,
         )
 
-        self.nested_handler = NestedHandler(ca_handler=self, extensions=extensions)
+        self.nested_handler = NestedHandler(
+            cert_req_handler=self.cert_req_handler,
+            cert_conf_handler=self.cert_conf_handler,
+            allow_inner_unprotected=True,
+        )
         self.challenge_handler = ChallengeHandler(
             ca_key=self.ca_key,
             ca_cert=self.ca_cert,
@@ -527,7 +531,7 @@ class CAHandler:
     def _sign_nested_response(self, response: PKIMessageTMP, request_msg: PKIMessageTMP) -> PKIMessageTMP:
         """Sign the nested response."""
         if response["body"].getName() != "nested":
-            if request_msg["header"]["protectionAlg"].isValue:
+            if request_msg["body"]["nested"][0]["header"]["protectionAlg"].isValue:
                 prot_type = ProtectedType.get_protection_type(request_msg)
                 if prot_type == ProtectedType.MAC:
                     prot_type = self.protection_handler.get_same_mac_protection(
@@ -759,7 +763,7 @@ class CAHandler:
         :param request_msg: The nested request.
         :return: The PKI message containing the response.
         """
-        return self.nested_handler.process_nested_request(request_msg)
+        return self.nested_handler.process_nested_request(request_msg, prot_handler=self.protection_handler)
 
     def process_rr(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Process the RR message.
