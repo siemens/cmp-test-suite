@@ -317,7 +317,9 @@ def compare_cert_template_and_cert(  # noqa D417 undocumented-param
         options=list(rfc4211.CertTemplate().keys()), exclude=exclude_fields, include=include_fields
     )
 
-    if cert_template["serialNumber"].isValue and not "serialNumber" not in exclude:
+    logging.debug("Exclude fields: %s", exclude)
+
+    if cert_template["serialNumber"].isValue and "serialNumber" not in exclude:
         if int(cert_template["serialNumber"]) != int(issued_cert["tbsCertificate"]["serialNumber"]):
             return False
 
