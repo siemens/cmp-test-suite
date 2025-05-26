@@ -372,7 +372,10 @@ CA MUST Accept A Revocation Request From Trusted PKI Management Entity
     ...    private_key=${OTHER_TRUSTED_PKI_KEY}
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
-    PKIStatus Must Be    ${response}   status=accepted
+    PKIStatus Must Be    ${response}   accepted
+    ${cert_chain}=  Build Cert Chain From Dir   ${cert}   ./data/cert_logs
+    Wait Until Server Revoked Cert
+    Validate If Certificate Is Revoked    ${cert}   ${cert_chain}[1]   expected_to_be_revoked=True
 
 # MUST be the last test case to run to ensure the Revive request can be run.
 
