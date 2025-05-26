@@ -687,10 +687,7 @@ class KeySecurityChecker:
         :return: `True` if the public key is already in use, otherwise `False`.
         """
         all_certs = self.issued_certs + self.revoked_certs + self.updated_certs
-        for cert in all_certs:
-            if self._compare_pub_keys(pub_key, cert):
-                return compare_pyasn1_names(sender, cert["tbsCertificate"]["subject"], "without_tag")
-        return False
+        return self._check_contains_pub_key(certs=all_certs, pub_key=pub_key, sender=sender)
 
     def _check_contains_pub_key(
         self,
@@ -700,8 +697,10 @@ class KeySecurityChecker:
     ) -> bool:
         """Check if the public key is already in use."""
         for cert in certs:
+            if not compare_pyasn1_names(sender, cert["tbsCertificate"]["subject"], "without_tag"):
+                continue
             if self._compare_pub_keys(pub_key, cert):
-                return compare_pyasn1_names(sender, cert["tbsCertificate"]["subject"], "without_tag")
+                return True
         return False
 
     def check_cert_status(
@@ -713,14 +712,14 @@ class KeySecurityChecker:
 
         :return: The status of the certificate ("good", "revoked", "updated", "in_use").
         """
-        if self._check_contains_pub_key(certs=self.issued_certs, pub_key=pub_key, sender=sender):
-            return "in_use"
-
         if self._check_contains_pub_key(certs=self.revoked_certs, pub_key=pub_key, sender=sender):
             return "revoked"
 
         if self._check_contains_pub_key(certs=self.updated_certs, pub_key=pub_key, sender=sender):
             return "updated"
+
+        if self._check_contains_pub_key(certs=self.issued_certs, pub_key=pub_key, sender=sender):
+            return "in_use"
 
         return "good"
 
