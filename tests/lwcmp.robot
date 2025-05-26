@@ -1209,7 +1209,7 @@ CA MUST Reject IR With Too Large RSA Key In CertTemplate
     [Documentation]    We send a initialization request (ir) with a certTemplate containing an RSA key that exceeds
     ...    the maximum allowed size and expect the CA to reject the request. The CA should reject any request with an
     ...    RSA key that is too large, marking the request with a badCertTemplate failinfo.
-    [Tags]    certTemplate    config-dependent    ir    key    negative  sec-awareness
+    [Tags]    certTemplate    config-dependent    ir    key    negative  sec-awareness   resource-intensive
     Skip If  not ${LARGE_KEY_SIZE}    The `LARGE_KEY_SIZE` variable is not set, so this test is skipped.
     IF   ${LARGE_KEY_SIZE} < 18000
         ${bad_key}=    Load Private Key From File    ./data/keys/private-key-rsa-size-18000.pem
@@ -1254,7 +1254,6 @@ CA MAY Issue A DSA Certificate
         VAR    ${DSA_KEY}    ${key}    scope=Global
     END
     PKIStatus Must Be    ${response}    rejection
-
 
 CA MUST Reject PKIMessage With Different Protection Algorithm Than MSG_SIG_ALG
     [Documentation]    According to RFC 9483 Section 3.1, the CA must enforce the use of algorithms specified in
@@ -1406,8 +1405,6 @@ CA Should Return A SIG protected Error Message
     ${alg}=   Get Protection Type From PKIMessage    ${response}   ${LWCMP}
     Should Contain    pq-sig, composite-sig, sig   ${alg}
     Verify PKIMessage Protection    ${response}
-
-
 
 ##### Security checks #####
 
