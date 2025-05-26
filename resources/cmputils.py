@@ -5546,3 +5546,44 @@ def add_certs_to_pkimessage(  # noqa D417 Missing argument description in the do
             raise ValueError(f"The `PKIMessage` body type does not support adding CA certificates.Got: {body_name}.")
 
     return pki_message
+
+
+@keyword(name="Get Inner PKIMessage")
+def get_inner_pkimessage(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP, index: Strint = 0
+) -> PKIMessageTMP:
+    """Extract the inner `PKIMessage` from a nested `PKIMessage`.
+
+    Arguments:
+    ---------
+        - `pki_message`: The outer `PKIMessage` containing the nested message.
+        - `index`: The index of the inner message to retrieve. Defaults to `0`.
+
+    Returns:
+    -------
+        - The inner `PKIMessage` at the specified index.
+
+    Raises:
+    ------
+        - `ValueError`: If the body type of the `pki_message` is not "nested".
+        - `ValueError`: If the nested `PKIMessage` does not contain any inner messages.
+        - `IndexError`: If the specified index is out of bounds for the inner messages.
+
+    Examples:
+    --------
+    | ${inner_msg}= | Get Inner PKIMessage | ${pki_message} |
+    | ${inner_msg}= | Get Inner PKIMessage | ${pki_message} | index=1 |
+
+    """
+    body_name = get_cmp_message_type(pki_message)
+    if body_name != "nested":
+        raise ValueError(f"Expected a nested PKIMessage, but got {body_name}.")
+
+    length = len(pki_message["body"]["nested"])
+    if length == 0:
+        raise ValueError("The nested PKIMessage does not contain any inner messages.")
+    index = int(index)
+    if index < 0 or index >= length:
+        raise IndexError(f"Index {index} is out of bounds for the nested PKIMessage with length {length}.")
+
+    return pki_message["body"]["nested"][index]
