@@ -111,7 +111,7 @@ class CertConfState:
 
         tx_id = pki_message["header"]["transactionID"].asOctets()
         if self.to_be_confirmed_certs.get(tx_id) is None:
-            raise BadRequest("The transaction ID is not known.")
+            raise BadRequest("The transaction ID is not known, to get the confirmable certificates.")
         return self.to_be_confirmed_certs[tx_id]
 
     def get_ca_response(self, request: PKIMessageTMP) -> PKIMessageTMP:
@@ -121,7 +121,7 @@ class CertConfState:
 
         tx_id = request["header"]["transactionID"].asOctets()
         if self.ca_responses.get(tx_id) is None:
-            raise BadRequest("The transaction ID is not known.")
+            raise BadRequest("The transaction ID is not known, to get the CA response.")
         return self.ca_responses[tx_id]
 
     def add_request(self, pki_message: PKIMessageTMP):
@@ -148,7 +148,7 @@ class CertConfState:
 
         tx_id = cert_conf["header"]["transactionID"].asOctets()
         if tx_id not in self.requests:
-            raise BadRequest("The transaction ID is not known.")
+            raise BadRequest("The transaction ID is not known by the CertConfHandler.")
 
     def validate_nonces(self, cert_conf: PKIMessageTMP, must_be_new_nonce: bool = False) -> None:
         """Validate the nonces."""
