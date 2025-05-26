@@ -1237,12 +1237,23 @@ class CAHandler:
         :return: The PKI message containing the response.
         """
         try:
+            body_name = get_cmp_message_type(pki_message)
+            if body_name == "certConf":
+                return self.process_cert_conf(pki_message)
+
             response, certs = build_catalyst_signed_cert_from_req(
                 request=pki_message,
                 ca_cert=self.ca_cert,
                 ca_key=self.ca_key,
                 extensions=[self.ocsp_extn, self.crl_extn],
             )
+
+            self.cert_req_handler.process_after_request(
+                request=pki_message,
+                response=response,
+                certs=certs,
+            )
+
             return self.sign_response(response=response, request_msg=pki_message)
         except CMPTestSuiteError as e:
             logging.info("An error occurred: %s", str(e.message))
@@ -1255,11 +1266,21 @@ class CAHandler:
         :return: The PKI message containing the response.
         """
         try:
+
+            body_name = get_cmp_message_type(pki_message)
+            if body_name == "certConf":
+                return self.process_cert_conf(pki_message)
+
             response, cert = build_cert_from_catalyst_request(
                 request=pki_message,
                 ca_cert=self.ca_cert,
                 ca_key=self.ca_key,
                 extensions=[self.ocsp_extn, self.crl_extn],
+            )
+            self.cert_req_handler.process_after_request(
+                request=pki_message,
+                response=response,
+                certs=[cert],
             )
 
         except CMPTestSuiteError as e:
