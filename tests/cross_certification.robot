@@ -66,6 +66,42 @@ CA MUST Accept Valid Cross Certification Request
     PKIStatus Must Be    ${response}   accepted
     Validate Cross Certification Response  ${response}
 
+CA MUST Return A Correct Cross Certificate
+    [Documentation]   According to RFC4210bis-15 Section 5.3.11 and appendix D.6 We send a valid
+    ...               cross certification request and the CA returns a cross certificate.
+    ...               When the CA accepts the request, it MUST return the correct cross certificate.
+    [Tags]      positive
+    ${result}=   Is Certificate And Key Set    ${TRUSTED_CA_CERT}     ${TRUSTED_CA_KEY}
+    Skip If    not ${result}   Skipped because the `TRUSTED_CA_CERT` and `TRUSTED_CA_KEY` are not set.
+    ${cert_template}   ${key}=   Generate CCR CertTemplate For Testing
+    ${ccr}=     Build CCR From Key
+    ...    ${key}
+    ...    cert_template=${cert_template}
+    ...    recipient=${RECIPIENT}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert   ${ccr}
+    ${response}=    Exchange PKIMessage    ${protected_crr}
+    PKIMessage Body Type Must Be    ${response}    ccp
+    PKIStatus Must Be    ${response}   accepted
+    ${cert_chain}=  Build CMP Chain From PKIMessage    ${response}   for_issued_cert=True
+    Validate Certificate Pkilint    ${cert_chain}[0]
+    Validate CA Cross-Signed Certificate    ${cert_chain}[0]   ${cert_template}   ${cert_chain}[1]
+
+CA MUST Reject Cross Certification Request With EE Certificate
+    [Documentation]    According to RFC4210bis-15 Section 5.3.11 the ccr request can only be sent by a CA.
+    ...                We send a valid cross certification request signed with an end-entity certificate.
+    ...                The CA MUST reject this request and may respond with the optional failInfo `notAuthorized`.
+    [Tags]         negative   trust  ee
+    ${cert_template}   ${key}=   Generate CCR CertTemplate For Testing
+    ${ccr}=     Build CCR From Key
+    ...    ${key}
+    ...    cert_template=${cert_template}
+    ...    recipient=${RECIPIENT}
+    ${protected_crr}=     Default Protect PKIMessage    ${ccr}  signature=protection
+    ${response}=    Exchange PKIMessage    ${protected_crr}
+    PKIMessage Body Type Must Be    ${response}    error
+    PKIStatus Must Be    ${response}   rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}  notAuthorized
+
 CA MUST Reject Cross Certification Request with private key
     [Documentation]    According to RFC4210bis-15 Section Section 5.3.11 the private key **MUST** not be
     ...             disclosed to the other CA. We send a PKIMessage with a encrypted private key. The CA
