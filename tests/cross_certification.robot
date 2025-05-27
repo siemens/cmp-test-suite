@@ -56,11 +56,11 @@ CA MUST Accept Valid Cross Certification Request
     ${validity}=   Prepare Validity   ${date}   ${date_after}
     ${cert_template}=  Prepare CertTemplate   ${key}    validity=${validity}   subject=${SENDER}   issuer=${RECIPIENT}
     ...       sign_alg=${sig_alg}    version=v3  include_fields=subject,issuer,validity,publicKey,version,signingAlg
-    ${crr}=     Build CCR From Key
+    ${ccr}=     Build CCR From Key
     ...    ${key}
     ...    cert_template=${cert_template}
     ...    recipient=${RECIPIENT}
-    ${protected_crr}=     Default Protect PKIMessage With Trusted Cert   ${crr}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert   ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIMessage Body Type Must Be    ${response}    ccp
     PKIStatus Must Be    ${response}   accepted
@@ -81,12 +81,12 @@ CA MUST Reject Cross Certification Request with private key
     ${popo}=   Prepare EncryptedKey For POPO    ${enc_key_id}   ${rid}   ${TRUSTED_CA_CERT}   for_agreement=False
     ...        private_key=${TRUSTED_CA_KEY}
     # It is not relevant if the private key is correct, because this behaviour is not allowed.
-    ${crr}=     Build CCR From Key
+    ${ccr}=     Build CCR From Key
     ...    ${key}
     ...    cert_template=${cert_template}
     ...    popo=${popo}
     ...    recipient=${RECIPIENT}
-    ${protected_crr}=     Default Protect PKIMessage With Trusted Cert    ${crr}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIMessage Body Type Must Be    ${response}    ccp
     PKIStatus Must Be    ${response}   rejection
@@ -101,13 +101,13 @@ CA MUST Reject Cross Certification Request without POP
    ${result}=   Is Certificate And Key Set    ${TRUSTED_CA_CERT}     ${TRUSTED_CA_KEY}
    Skip If    not ${result}   Skipped because the `TRUSTED_CA_CERT` and `TRUSTED_CA_KEY` are not set.
    ${cm}=   Get Next Common Name
-   ${crr}=     Build CCR From Key
+   ${ccr}=     Build CCR From Key
    ...    ${None}
    ...    common_name=${cm}
    ...    for_kga=True
    ...    recipient=${RECIPIENT}
    ...    implicit_confirm=${True}
-   ${protected_crr}=     Default Protect PKIMessage With Trusted Cert    ${crr}
+   ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
    ${response}=    Exchange PKIMessage    ${protected_crr}
    PKIMessage Body Type Must Be    ${response}    error
    PKIStatus Must Be    ${response}   rejection
@@ -126,9 +126,9 @@ CA MUST Reject Cross Certification Request With V2
     ${cert_template}=  Prepare CertTemplate   ${key}    validity=${validity}   subject=${SENDER}   issuer=${RECIPIENT}
     ...     version=v2     sign_alg=${sig_alg}
     ...     include_fields=subject,issuer,validity,publicKey,version,signingAlg
-    ${crr}=     Build CCR From Key   ${key}   cert_template=${cert_template}   recipient=${RECIPIENT}
+    ${ccr}=     Build CCR From Key   ${key}   cert_template=${cert_template}   recipient=${RECIPIENT}
     ...     exclude_fields=popo_structure
-    ${protected_crr}=     Default Protect PKIMessage    ${crr}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIStatus Must Be    ${response}   rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -148,8 +148,8 @@ CA MUST Reject Cross Certification Request Missing Version Field
     ${cert_template}=    Prepare CertTemplate    ${key}    validity=${validity}
     ...    subject=${SENDER}    issuer=${RECIPIENT}
     ...    sign_alg=${sig_alg}   version=v3   include_fields=subject,issuer,validity,publicKey,signingAlg
-    ${crr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
-    ${protected_crr}=     Default Protect PKIMessage With Trusted Cert    ${crr}
+    ${ccr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -166,8 +166,8 @@ CA MUST Reject Cross Certification Request Missing Signing Algorithm
     ${cert_template}=    Prepare CertTemplate    ${key}    validity=${validity}
     ...    subject=${SENDER}    issuer=${RECIPIENT}
     ...    version=v3    include_fields=subject,issuer,validity,publicKey,version
-    ${crr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
-    ${protected_crr}=     Default Protect PKIMessage With Trusted Cert    ${crr}
+    ${ccr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -182,8 +182,8 @@ CA MUST Reject Cross Certification Request Missing Validity
     ${cert_template}=    Prepare CertTemplate    ${key}    subject=${SENDER}    issuer=${RECIPIENT}
     ...    sign_alg=${sig_alg}   version=v3
     ...    include_fields=subject,issuer,publicKey,version,signingAlg    exclude_fields=validity
-    ${crr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
-    ${protected_crr}=     Default Protect PKIMessage With Trusted Cert    ${crr}
+    ${ccr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -200,8 +200,8 @@ CA MUST Reject Cross Certification Request Missing Issuer
     ${validity}=    Prepare Validity    ${date}    ${date_after}
     ${cert_template}=    Prepare CertTemplate    ${key}    validity=${validity}    subject=${SENDER}
     ...    sign_alg=${sig_alg}   version=v3   include_fields=subject,validity,publicKey,version,signingAlg
-    ${crr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
-    ${protected_crr}=     Default Protect PKIMessage With Trusted Cert    ${crr}
+    ${ccr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -219,9 +219,9 @@ CA MUST Reject Cross Certification Request Missing PublicKey
     ${cert_template}=    Prepare CertTemplate    ${key}    validity=${validity}
     ...    subject=${SENDER}    issuer=${RECIPIENT}
     ...    sign_alg=${sig_alg}   version=v3   include_fields=subject,issuer,validity,version,signingAlg
-    ${crr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
+    ${ccr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID
-    ${protected_crr}=     Default Protect PKIMessage With Trusted Cert    ${crr}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -240,9 +240,9 @@ CA MUST Reject Cross Certification Request Missing POPOSigningKey
     ...    subject=${SENDER}    issuer=${RECIPIENT}
     ...    sign_alg=${sig_alg}   version=v3   include_fields=subject,issuer,validity,publicKey,version,signingAlg
     ${cert_req_msg}=   Prepare CertReqMsg    ${key}    cert_template=${cert_template}     exclude_popo=True
-    ${crr}=    Build CCR From Key    ${key}    cert_req_msg=${cert_req_msg}    recipient=${RECIPIENT}
+    ${ccr}=    Build CCR From Key    ${key}    cert_req_msg=${cert_req_msg}    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID
-    ${protected_crr}=     Default Protect PKIMessage With Trusted Cert    ${crr}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP
@@ -262,9 +262,9 @@ CA MUST Reject Cross Certification Request Non-Signing Key
     ...    subject=${SENDER}    issuer=${RECIPIENT}
     ...    sign_alg=${sig_alg}   version=v3
     ...    include_fields=subject,issuer,validity,publicKey,version,signingAlg
-    ${crr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
+    ${ccr}=    Build CCR From Key    ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
     ...    exclude_fields=sender,senderKID
-    ${protected_crr}=     Default Protect PKIMessage With Trusted Cert    ${crr}
+    ${protected_crr}=     Default Protect PKIMessage With Trusted CA Cert    ${ccr}
     ${response}=    Exchange PKIMessage    ${protected_crr}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badAlg
