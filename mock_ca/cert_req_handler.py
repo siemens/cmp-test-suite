@@ -562,7 +562,7 @@ class CertReqHandler:
                             "For LwCMP is only `PasswordBasedMac` and `PBMAC1` as protection algorithm allowed."
                         )
 
-    def _build_cert_resp_error_response(self, e: CMPTestSuiteError, request: PKIMessageTMP) -> PKIMessageTMP:
+    def build_cert_resp_error_response(self, e: CMPTestSuiteError, request: PKIMessageTMP) -> PKIMessageTMP:
         """Build an error response for an IR message.
 
         :param e: The exception that caused the error.
@@ -647,7 +647,7 @@ class CertReqHandler:
             return self.error_body(e, request=pki_message)
 
         except CMPTestSuiteError as e:
-            return self._build_cert_resp_error_response(e, pki_message)
+            return self.build_cert_resp_error_response(e, pki_message)
 
         return response
 
