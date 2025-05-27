@@ -29,7 +29,7 @@ from resources.exceptions import BadCertId, BadMessageCheck, BadRequest, CertCon
 from resources.oid_mapping import compute_hash
 from resources.oidutils import id_KemBasedMac
 from resources.protectionutils import verify_kem_based_mac_protection
-from resources.typingutils import PublicKey, SignKey
+from resources.typingutils import ECDHPrivateKey, PrivateKey, PublicKey, SignKey
 from unit_tests.utils_for_test import compare_pyasn1_objects, convert_to_crypto_lib_cert
 
 
@@ -1490,3 +1490,27 @@ class MockCAState:
         """Check if the certificate is already in use."""
         tmp_cert = copy_asn1_certificate(cert)
         return self.certificate_db.get_cert(tmp_cert) is not None
+
+
+# TODO Include this class to support Key Recovery requests in the future.
+
+
+@dataclass
+class IssuingReturnValue:
+    """A class to store the return value of the issuing process.
+
+    Which contains the issued certificates and other interesting information.
+
+    Attributes
+    ----------
+        - `certs`: The list of issued certificates.
+        - `dh_cert`: The EC-Diffie-Hellman certificate, if used.
+        - `dh_key`: The EC-Diffie-Hellman key, if used.
+        - `private_key`: The private key of the Client, if provided or generated.
+
+    """
+
+    certs: List[rfc9480.CMPCertificate]
+    dh_cert: Optional[rfc9480.CMPCertificate] = None
+    dh_key: Optional[ECDHPrivateKey] = None
+    private_key: Optional[PrivateKey] = None
