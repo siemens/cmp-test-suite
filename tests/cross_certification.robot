@@ -45,7 +45,9 @@ Default Protect PKIMessage With Trusted Cert
 
 CA MUST Accept Valid Cross Certification Request
     [Documentation]   According to RFC4210bis-15 Section 5.3.11 and appendix D.6 We send a valid
-    [Tags]      positive   robot:skip-on-failure
+    ...               cross certification request. The CA MUST accept the request adm return a
+    ...               valid cross certificate response.
+    [Tags]      positive
     ${result}=   Is Certificate And Key Set    ${TRUSTED_CA_CERT}     ${TRUSTED_CA_KEY}
     Skip If    not ${result}   Skipped because the `TRUSTED_CA_CERT` and `TRUSTED_CA_KEY` are not set.
     ${key}=   Generate Default Key
