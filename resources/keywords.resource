@@ -641,6 +641,28 @@ Generate CertTemplate For Testing
     ${cert_template}=    Prepare CertTemplate    key=${key}    subject=${cm}
     RETURN    ${cert_template}    ${key}
 
+Generate CCR CertTemplate For Testing
+    [Documentation]    Generates a cross-certificate req. certificate template for testing purposes,
+    ...                using default parameters and an incremented test index.
+    ...
+    ...                Returns:
+    ...                - `cert_template`: The prepared certificate template.
+    ...                - `key`: The generated cryptographic key.
+    ...
+    ...                Examples:
+    ...                | ${cert_template}    ${key}= |    Generate CertTemplate For Testing |
+    ...
+    ${key}=    Generate Default Key
+    ${cm}=    Get Next Common Name
+    ${sig_alg}=   Prepare Signature AlgorithmIdentifier     ${key}   hash_alg=sha256
+    # -1 day
+    ${date}=   Get Current Date   UTC   increment=-86400
+    ${date_after}=   Get Current Date  UTC  increment=10000000
+    ${validity}=   Prepare Validity   ${date}   ${date_after}
+    ${cert_template}=  Prepare CertTemplate   ${key}    validity=${validity}   subject=${cm}   issuer=${SENDER}
+    ...       sign_alg=${sig_alg}    version=v3  include_fields=subject,issuer,validity,publicKey,version,signingAlg
+    RETURN    ${cert_template}    ${key}
+
 Generate Default IR Sig Protected
     [Documentation]    Generates a default initialization request (ir) with signature protection.
     ...
