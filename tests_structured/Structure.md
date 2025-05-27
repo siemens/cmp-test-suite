@@ -1,6 +1,6 @@
 # resources.keywords
 Any possible todos are commeted with the sections or after the respective tests. 
-The keywords are sorted by their functionality. Structural comments are indicated by the suffix "keywords". Overall structure is indicated by two hashtages infront of the comments and an explanation what the keywords for the upcoming sections are for. 
+The keywords are sorted by their functionality. Structural comments are indicated by the suffix "keywords". Overall structure is indicated by 4 hashtages infront of the comments and an explanation what the keywords for the upcoming sections are for. 
 The structure is like this: 
 - Set up keywords
     - Set Up Test Suite
@@ -72,7 +72,15 @@ The structure is like this:
     - Issue POS ECC KARI Cert
 
 # Test Classes
-'pki_mgmg_entity_op' are test cases for Section 5 of the RFC
+## support_messages
+- Section 4.3.1 Get CA Certificates
+- Section 4.3.2 Get Root CA Certificate Update
+- Section 4.3.3 Get Certificate Request Template
+- Section 4.3.4 currentCRL
+- Section 4.3.4. CRL Update Retrieval
+
+## pki_mgmt_entity_op
+'pki_mgmt_entity_op' are test cases for Section 5 of the RFC
 - 5. PKI Management Entity Operations
 - 5.2. Forwarding Messages
 - 5.2.2 Adding Protection and Batching of Messages

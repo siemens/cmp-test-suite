@@ -41,7 +41,7 @@ ${TEST_INDEX}            ${0}
 
 
 *** Keywords ***
-## Set up Keywords
+#### Set up Keywords - These keywords are used to set up the test suite, initialize variables, and prepare the environment for testing.
 Set Up Test Suite
     [Documentation]    This keyword is used to set up the test suite. It is called at the beginning of the test suite.
     ...                Or a test file to ensure that all prerequisites are met. As an example a first certificate is
@@ -123,9 +123,9 @@ Set Up EnvelopedData Certs For Tests
     Issue NEG ECC KARI Cert
     Issue POS ECC KARI Cert
 
-## Certificate and key initialization keywords- These keywords are used for generation, validation, and handling of certificates
-## and keys. 
-# Certificate initialization keywords
+#### Certificate and key initialization keywords- These keywords are used for generation, validation, and handling of certificates
+#### and keys. 
+### Certificate initialization keywords
 Issue New Cert For Testing
     [Documentation]    Issue a new certificate to be used in tests. It ensures that a valid certificate
     ...    is available for testing.
@@ -202,7 +202,7 @@ Generate CertTemplate For Testing
 
 
 
-# Key generation keywords
+### Key generation keywords
 # TODO add function called Get Key, if the same key is allowed returns one of the predefined keys,
 # which are already available in the test suite to save additional resources.
 # Another TODO merge with the idea to build a PKIMessage dataclass, which will be used to make our
@@ -322,7 +322,7 @@ Generate Default Composite Sig Key
 
 
 
-# Certificate validation and confirmation keywords
+### Certificate validation and confirmation keywords
 Certificate Must Be Valid
     [Documentation]    Verify if a certificate is valid and passes sanity checks. The certificate is passed as a
     ...    DER-encoded byte buffer. These checks are done by trying to parse the certificate with
@@ -414,9 +414,9 @@ Confirm Certificate If Needed
     END
 
 
-## PKIMessage handling keywords
+#### PKIMessage handling keywords
 
-# PKIMessage creation keywords
+### PKIMessage creation keywords
 Build Composite Signature Request
     [Documentation]    Build a ir composite signature request and returns the protected ir request.
     [Tags]    composite-sig    positive   ir
@@ -589,7 +589,7 @@ Generate Default IR Sig Protected
     RETURN    ${protected_ir}
 
 
-# Transportation keywords
+### Transportation keywords
 Exchange Data With CA
     [Documentation]    Send a HTTP POST request to a server, and return the response.
     [Arguments]    ${payload}    ${url}=${CA_CMP_URL}
@@ -629,7 +629,7 @@ Exchange Migration PKIMessage
 
 
 
-# PKIMessage Parsing and Logging Keywords
+### PKIMessage Parsing and Logging Keywords
 Try To Log PKIMessage As ASN1
     [Documentation]    Tentatively parse a buffer, assuming it is a DER-encoded PKIMessage, and log its contents.
     ...    If that is not the case, ignore this and keep going. This is for convenience in logging.
@@ -652,10 +652,10 @@ Load And Refresh PKIMessage From File
     RETURN    ${pki_message}
 
 
-## PKIMessage Validation keywords - These are used to validate the PKIMessage structure, contents, and status
-## of PKIMessages. 
+#### PKIMessage Validation keywords - These are used to validate the PKIMessage structure, contents, and status
+#### of PKIMessages. 
 
-# PKImessage body variables keywords
+### PKImessage body variables keywords
 PKIMessage Body Type Must Be
     [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
     [Arguments]    ${pki_message}    ${expected_type}
@@ -672,7 +672,7 @@ PKIMessage Must Contain ImplicitConfirm Extension
     ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
     Should Be True    ${result}    The implicitConfirm extension was not found in the message
 
-# Nonce validation keywords
+### Nonce validation keywords
 Sender And Recipient Nonces Must Match
     [Documentation]    Ensure that the recipient nonce in the response matches the sender nonce in the request
     [Arguments]    ${request}    ${response}
@@ -706,7 +706,7 @@ Collect Nonce From PKIMessage
     END
 
 
-# Response time validation keywords
+### Response time validation keywords
 Response Time Must Be Fresh
     [Documentation]    Ensure that the response time is not far off from the time of our request
     ...    The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
@@ -723,7 +723,7 @@ Response Time Must Be Fresh
 
 
 
-# PKIMessage Status Validation Keywords
+### PKIMessage Status Validation Keywords
 PKIStatusInfo failinfo Bit Must Be
     [Documentation]       Validates that the given PKIMessage contains the expected `failinfo` bit(s) in the
     ...                   `PKIStatusInfo` field, to ensure that the CA/RA responds with the correct error.
@@ -762,8 +762,7 @@ PKIStatus Must Be
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
 
-## Certificate Signing Request keywords - these keywords handle the generation and parsing of CSR 
-## for testing purposes.
+#### Certificate Signing Request keywords - these keywords handle the generation and parsing of CSR for testing purposes.
 Generate CSR With RSA2048 And A Predefined Common Name
     [Documentation]    Produce a generic, valid CSR that has a correct signature
     ${key}=    Generate Key    rsa    length=2048
@@ -801,7 +800,7 @@ Generate Key And CSR
     RETURN    ${data}    ${key}
 
 
-## Hybrid algorithm keywords - These keywords are used to issue certificates for the hybrid algorithm tests.
+#### Hybrid algorithm keywords - These keywords are used to issue certificates for the hybrid algorithm tests.
 Exchange Hybrid PKIMessage
     [Documentation]    Exchange a PKIMessage for a hybrid algorithm certificate.
     ...                Arguments:
@@ -861,7 +860,7 @@ Validate EncrCert For KEM
     RETURN    ${cert}
 
 
-## EnvelopedData keywords - These keywords are used to issue certificates for the EnvelopedData tests.
+#### EnvelopedData keywords - These keywords are used to issue certificates for the EnvelopedData tests.
 Issued NEG RSA KTRI CERT
     [Documentation]    Issue a new RSA negative KTRI certificate for the EnvelopedData tests.
     ...                This certificate is negative, because the keyEncipherment KeyUsage bit is missing.
