@@ -21,7 +21,6 @@ from mock_ca.mock_fun import (
     KeySecurityChecker,
     RevokedEntry,
 )
-from mock_ca.prot_handler import ProtectionHandler
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from resources import certutils, cmputils
 from resources.asn1_structures import PKIMessageTMP
@@ -71,8 +70,8 @@ def _build_rp_error_response(
     body = rfc9480.PKIBody()
     status_info = cmputils.prepare_pkistatusinfo(
         status="rejection",
-        failinfo=exception.failinfo,
-        texts=exception.message,
+        failinfo=exception.get_failinfo(),
+        texts=[exception.message] + exception.get_error_details(),
     )
     body["rp"]["status"].append(status_info)
 
