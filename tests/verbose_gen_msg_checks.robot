@@ -52,6 +52,11 @@ Set Up LWCMP
         ${cert_chain}=   Load Certificate Chain     ${RA_CERT_CHAIN_PATH}
     END
     VAR   ${RA_CERT_CHAIN}    ${cert_chain}    scope=Global
+    TRY
+        Set Up CRR Test Cases
+    EXCEPT
+        Log    Failed to setup the CCR required certificate and signing key.
+    END
 
 Default Build Inner IR Message
     [Documentation]    Build an inner IR message with the default signature protection
@@ -85,6 +90,21 @@ Protect With Trusted PKI
     ...                 &{params}
     RETURN    ${prot_msg}
 
+Protect With Trusted CA
+    [Documentation]    Protect a PKIMessage with a trusted CA.
+    [Arguments]    ${pki_message}   &{params}
+    ${pki_message}=  May Patch Message For Bad SIG Sender or SenderKID  ${pki_message}   ${RA_CERT_CHAIN}[0]   &{params}
+    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
+    IF  ${use_mac}
+        ${prot_msg}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
+        ...                 password=${PRESHARED_SECRET}   bad_message_check=True
+        RETURN    ${prot_msg}
+    END
+    ${prot_msg}=    Protect PKIMessage    ${pki_message}    signature
+    ...                 private_key=${TRUSTED_CA_KEY}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
+    ...                 &{params}
+    RETURN    ${prot_msg}
+
 Build Fresh Inner Body
     [Documentation]    Build a fresh inner body with the default signature protection
     [Arguments]    ${inner_name}   &{params}
@@ -114,7 +134,7 @@ Build Fresh Inner Body
         ${cert_template}   ${key}=    Generate CCR CertTemplate For Testing
         ${ir}=   Build Ccr From Key     ${key}   cert_template=${cert_template}
         ...             recipient=${RECIPIENT}   &{params}
-        ${protected}=    Default Protect For Build Body    ${ir}   &{params}
+        ${protected}=    Protect With Trusted CA     ${ir}   &{params}
     ELSE
         Fail    Unknown inner name: ${inner_name}
     END
@@ -351,13 +371,12 @@ Build Body By Name
         ${body}=   Build Ccr From Key    ${CCR_KEY}   cert_template=${CCR_TEMPLATE}
         ...             exclude_fields=${exclude_fields}   recipient=${RECIPIENT}
         ...             &{params}
-        ${prot_body}=    Default Protect For Build Body    ${body}   &{params}
         IF   ${exclude_protection}
             RETURN    ${body}
         END
-        ${prot_body}=    Protect With Trusted PKI    ${body}  &{params}
+        ${prot_body}=    Protect With Trusted CA    ${body}  &{params}
         IF   ${without_cert_chain}
-            ${body}=  Patch For Without CertChain    ${body}  ${OTHER_TRUSTED_PKI_CERT}
+            ${body}=  Patch For Without CertChain    ${body}  ${TRUSTED_CA_CERT}
         END
     ELSE IF    '${body_name}' == "kur"
          IF   '${RE_USE_KUR}' == '${False}'
