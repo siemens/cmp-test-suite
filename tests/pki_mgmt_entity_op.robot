@@ -444,6 +444,58 @@ CA MUST Reject KUR With Invalid Protection From Trusted PKI
     PKIStatus Must Be    ${response}    status=rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck,badPOP   exclusive=True
 
+### CCR notAuthorized checks
+
+CA MUST Reject Added Prot CRR From EE
+    [Documentation]    According to RFC4210bis-15 Section 5.3.11 the ccr request can only be sent by a CA.
+    ...                We send a valid cross certification request signed with an end-entity certificate and
+    ...                additionally protected by an RA cert. The CA MUST reject this request
+    ...                and may respond with the optional failInfo `notAuthorized`.
+    [Tags]         negative   trust  ee
+    ${cert_template}   ${key}=   Generate CCR CertTemplate For Testing
+    ${ccr}=     Build CCR From Key
+    ...    ${key}
+    ...    cert_template=${cert_template}
+    ...    recipient=${RECIPIENT}
+    ${protected_crr}=     Default Protect PKIMessage     ${ccr}    protection=signature
+    ${nested}=    Build Nested PKIMessage
+    ...    recipient=${RECIPIENT}
+    ...    other_messages=${protected_crr}
+    ...    for_added_protection=True
+    ${prot_nested}=    Default Protect With Trusted Cert    ${nested}
+    ${response}=    Exchange PKIMessage    ${prot_nested}
+    PKIMessage Body Type Must Be    ${response}    error
+    PKIStatus Must Be    ${response}   rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}  notAuthorized  True
+
+CA MUST Reject Batched CRR From EE
+    [Documentation]    According to RFC4210bis-15 Section 5.3.11 the ccr request can only be sent by a CA.
+    ...                We send a valid cross certification request signed with an end-entity certificate and
+    ...                additionally protected by an RA cert. The CA MUST reject this request
+    ...                and may respond with the optional failInfo `notAuthorized`.
+    [Tags]         negative   trust  ee  batch
+    ${nonces}=    Generate Unique Byte Values    length=5
+    ${ids}=    Generate Unique Byte Values    length=5
+    ${cert_template}   ${key}=   Generate CCR CertTemplate For Testing
+    ${ccr}=     Build CCR From Key
+    ...    ${key}
+    ...    cert_template=${cert_template}
+    ...    recipient=${RECIPIENT}
+    ...    sender_nonce=${nonces}[4]
+    ...    transaction_id=${ids}[4]
+    ${protected_crr}=     Default Protect PKIMessage     ${ccr}    protection=signature
+    ${nested}=    Generate Protected Nested PKIMessage   nonces=${nonces}    ids=${ids}
+    Append PKIMessage To Nested Message    ${nested}    ${protected_crr}
+    ${nested}=    Build Nested PKIMessage
+    ...    recipient=${RECIPIENT}
+    ...    other_messages=${protected_crr}
+    ...    for_added_protection=True
+    ${prot_nested}=    Default Protect With Trusted Cert    ${nested}
+    ${response}=    Exchange PKIMessage    ${prot_nested}
+    PKIMessage Body Type Must Be    ${response}   error
+    PKIStatus Must Be   ${response}   rejection
+    PKIStatusInfo Failinfo Bit Must Be   ${response}  notAuthorized  True
+
 ### Section 5.3. Acting on Behalf of Other PKI Entities
 
 ## Section 5.3.1 Requesting a Certificate
