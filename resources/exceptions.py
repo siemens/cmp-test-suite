@@ -9,6 +9,8 @@ from typing import List, Optional, Union
 from cryptography.exceptions import InvalidSignature
 from pyasn1.type import univ
 
+from resources.asn1_structures import PKIMessageTMP
+
 
 class CMPTestSuiteError(Exception):
     """Base class for CMP Test Suite errors."""
@@ -350,3 +352,27 @@ class DuplicateCertReq(CMPTestSuiteError):
 
 class BadKeyUsage(NotAuthorized):
     """Raised when the key usage is invalid or not allowed."""
+
+
+class BodyRelevantError(CMPTestSuiteError):
+    """Raised when a `PKIBody` relevant error is raised."""
+
+    failinfo = "badRelevantError"
+    bit_num = 24
+    pki_message: PKIMessageTMP
+
+    def __init__(
+        self,
+        message: str,
+        failinfo: str,
+        pki_message: PKIMessageTMP,
+        error_details: Optional[Union[List[str], str]] = None,
+    ):
+        """Initialize the exception with the message.
+
+        :param message: The message to display.
+        :param error_details: Additional details about the error.
+        """
+        self.message = message
+        self.pki_message = pki_message
+        super().__init__(message, error_details=error_details, failinfo=failinfo)

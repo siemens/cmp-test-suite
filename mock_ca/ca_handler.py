@@ -89,6 +89,7 @@ from resources.exceptions import (
     BadKeyUsage,
     BadMessageCheck,
     BadRequest,
+    BodyRelevantError,
     CertRevoked,
     CMPTestSuiteError,
     InvalidAltSignature,
@@ -474,6 +475,27 @@ class CAHandler:
 
         self.state.add_certs(cert, was_confirmed=True)
 
+    def _build_body_relevant_error(self, e: BodyRelevantError) -> PKIMessageTMP:
+        """Build a body relevant error from a BadRelevantError exception.
+
+        :param e: The BadRelevantError exception.
+        :return: The relevant error body.
+        """
+        request_msg = e.pki_message
+        body_name = get_cmp_message_type(request_msg)
+
+        if body_name == "rr":
+            response = self.rev_handler.build_rp_error_response(request_msg, e)
+        elif body_name in ["ir", "cr", "kur", "ccr", "p10cr"]:
+            response = self.cert_req_handler.build_cert_resp_error_response(e, request_msg)
+        else:
+            return self.build_error_from_exception(e, request_msg=request_msg)
+
+        return self.protection_handler.protect_pkimessage(
+            response=response,
+            request=request_msg,
+        )
+
     def build_error_from_exception(
         self, e: CMPTestSuiteError, request_msg: Optional[PKIMessageTMP] = None
     ) -> PKIMessageTMP:
@@ -694,7 +716,7 @@ class CAHandler:
                 try:
                     self.cert_req_handler.validate_header(pki_message, must_be_protected=True)
                     response = self.process_rr(pki_message)
-                except (BadMessageCheck, BadKeyUsage) as e:
+                except (BadMessageCheck, BadKeyUsage, BodyRelevantError) as e:
                     response = self.rev_handler.build_rp_error_response(request=pki_message, exception=e)
 
             elif pki_message["body"].getName() == "certConf":
@@ -712,6 +734,11 @@ class CAHandler:
                 raise NotImplementedError(
                     f"Method not implemented, to handle the provided message: {pki_message['body'].getName()}."
                 )
+
+        except BodyRelevantError as e:
+            logging.info("An error occurred: %s", str(e.message), exc_info=True)
+            return self._build_body_relevant_error(e)
+
         except CMPTestSuiteError as e:
             logging.info("An error occurred: %s", str(e.message))
             return self.build_error_from_exception(e, request_msg=pki_message)
@@ -1266,7 +1293,6 @@ class CAHandler:
         :return: The PKI message containing the response.
         """
         try:
-
             body_name = get_cmp_message_type(pki_message)
             if body_name == "certConf":
                 return self.process_cert_conf(pki_message)
