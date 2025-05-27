@@ -13,7 +13,11 @@ from mock_ca.cert_conf_handler import CertConfHandler
 from mock_ca.cert_req_handler import CertReqHandler
 from mock_ca.prot_handler import ProtectionHandler
 from resources.asn1_structures import PKIMessageTMP
-from resources.checkutils import validate_add_protection_tx_id_and_nonces, validate_nested_message_unique_nonces_and_ids
+from resources.checkutils import (
+    check_is_protection_present,
+    validate_add_protection_tx_id_and_nonces,
+    validate_nested_message_unique_nonces_and_ids,
+)
 from resources.cmputils import build_nested_pkimessage, get_cmp_message_type, parse_pkimessage
 from resources.exceptions import BadRecipientNonce, BadRequest
 
@@ -74,9 +78,11 @@ class NestedHandler:
         """
         validate_add_protection_tx_id_and_nonces(request)
         body_name = NestedHandler.get_nested_body_name(request, 0)
-
-        prot_handler.verify_added_protection(request, must_be_protected=not self.allow_inner_unprotected)
         inner_msg = request["body"]["nested"][0]
+
+        check_is_protection_present(inner_msg, must_be_protected=not self.allow_inner_unprotected)
+        prot_handler.verify_added_protection(request, must_be_protected=not self.allow_inner_unprotected)
+
         if body_name in ["ir", "cr", "p10cr", "kur", "ccr"]:
             response = self.cert_req_handler.process_cert_request(
                 pki_message=inner_msg,
@@ -234,6 +240,7 @@ class NestedHandler:
                 out.append(response)
 
             else:
+                check_is_protection_present(entry, must_be_protected=not self.allow_inner_unprotected)
                 prot_handler.verify_inner_batch_pkimessage(
                     pki_message=entry,
                     must_be_protected=not self.allow_inner_unprotected,
