@@ -6,7 +6,7 @@
 
 import logging
 from dataclasses import dataclass, field, fields
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc9480
@@ -315,7 +315,7 @@ class CertConfHandler:
                         f"expected: {get_protection_alg_name(request)}."
                     )
 
-    def process_cert_conf(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
+    def process_cert_conf(self, pki_message: PKIMessageTMP) -> Tuple[PKIMessageTMP, Optional[rfc9480.CMPCertificate]]:
         """Process the certificate confirmation message.
 
         :param pki_message: The CertConf message.
@@ -353,12 +353,16 @@ class CertConfHandler:
 
         requests = self.conf_state.get_request(pki_message)
 
+        ccp_cert = None
+
         if response_type == "kup":
             cert = requests["extraCerts"][0]
             self.state_db.certificate_db.change_cert_state(
                 cert,
                 new_state=CertStateEnum.UPDATED,
             )
+        if response_type == "ccp":
+            ccp_cert = issued_certs[0]
 
         for cert in issued_certs:
             self.state_db.certificate_db.change_cert_state(
@@ -368,7 +372,7 @@ class CertConfHandler:
 
         self.conf_state.remove_request(pki_message)
 
-        return response
+        return response, ccp_cert
 
     def details(self) -> Dict[str, Union[CertConfConfigVars, CertConfState, List[bytes]]]:
         """Get the details of the certificate confirmation handler."""

@@ -465,6 +465,13 @@ class CAHandler:
         # The default algorithm for the CA, just to correctly build the error message.
         self.default_algorithms = rfc9481.ecdsa_with_SHA512
 
+    def get_cc_certs(self) -> List[rfc9480.CMPCertificate]:
+        """Return the issued cross-signed CA certificates.
+
+        :return: The list of CA certificates.
+        """
+        return self.cert_req_handler.get_cross_signed_certs()
+
     def add_cert_to_issued_certs(self, cert: Union[rfc9480.CMPCertificate, List[rfc9480.CMPCertificate]]) -> None:
         """Add a certificate to the issued certificates.
 
@@ -546,7 +553,7 @@ class CAHandler:
             self.state.kem_mac_based.verify_pkimessage_protection(request=request_msg)
             return
 
-        self.protection_handler.validate_protection(request_msg)
+        self.protection_handler.validate_protection(request_msg, cc_certs=self.get_cc_certs())
 
     def _sign_nested_response(self, response: PKIMessageTMP, request_msg: PKIMessageTMP) -> PKIMessageTMP:
         """Sign the nested response."""
@@ -710,7 +717,7 @@ class CAHandler:
             elif pki_message["body"].getName() == "nested":
                 return self.process_nested_request(pki_message)
             elif pki_message["body"].getName() in ["ir", "cr", "p10cr", "kur", "ccr"]:
-                self.protection_handler.validate_protection(pki_message=pki_message)
+                self.protection_handler.validate_protection(pki_message=pki_message, cc_certs=self.get_cc_certs())
                 response = self.cert_req_handler.process_cert_request(pki_message)
             elif pki_message["body"].getName() == "rr":
                 try:
@@ -785,7 +792,7 @@ class CAHandler:
             raise BadRequest("The general message does not contain any messages.")
 
         if pki_message["header"]["protectionAlg"].isValue:
-            self.protection_handler.validate_protection(pki_message)
+            self.protection_handler.validate_protection(pki_message, self.get_cc_certs())
 
         if pki_message["body"]["genm"][0]["infoType"] == id_it_KemCiphertextInfo:
             if pki_message["header"]["protectionAlg"].isValue:
@@ -835,7 +842,10 @@ class CAHandler:
         :param pki_message: The CertConf message.
         :return: The PKIMessage containing the response.
         """
-        return self.cert_conf_handler.process_cert_conf(pki_message)
+        response, ccp_cert = self.cert_conf_handler.process_cert_conf(pki_message)
+        if ccp_cert is not None:
+            self.cert_req_handler.get_cross_signed_certs().append(ccp_cert)
+        return response
 
     def _check_for_compromised_key(self, pki_message: PKIMessageTMP) -> None:
         """Check the request for a compromised key.

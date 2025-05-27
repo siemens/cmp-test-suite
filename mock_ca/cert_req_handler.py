@@ -155,6 +155,11 @@ class CertReqHandler:
         )
 
         self.cert_db = self.state.certificate_db
+        self.cross_signed_certs: List[rfc9480.CMPCertificate] = []
+
+    def get_cross_signed_certs(self) -> List[rfc9480.CMPCertificate]:
+        """Get the list of cross-signed certificates."""
+        return self.cross_signed_certs
 
     @staticmethod
     def is_certificate_in_list(cert_template: rfc9480.CertTemplate, cert_list: List[rfc9480.CMPCertificate]) -> bool:
@@ -271,6 +276,9 @@ class CertReqHandler:
                 msg_to_patch=response,
                 implicit_confirm=True,
             )
+
+        if confirm_ and response_body_type == "ccp":
+            self.cross_signed_certs.extend(certs)
 
         if response_body_type == "kup":
             self.state.add_may_update_cert(

@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448P
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from pyasn1_alt_modules import rfc9480, rfc9481
 
-from mock_ca.db_config_vars import ProtectionHandlerConfig
+from mock_ca.db_config_vars import ProtectionHandlerConfig, TrustConfig
 from mock_ca.mock_fun import KEMSharedSecretList
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from resources.asn1_structures import PKIMessageTMP
@@ -22,6 +22,7 @@ from resources.certbuildutils import validate_private_key_usage_period
 from resources.certutils import (
     build_cert_chain_from_dir,
     build_cmp_chain_from_pkimessage,
+    cert_in_list,
     certificates_are_trustanchors,
     certificates_must_be_trusted,
     check_is_cert_signer,
@@ -519,15 +520,49 @@ class ProtectionHandler:
         except ValueError as e:
             raise BadMessageCheck(message=f"Invalid MAC protection. {e}") from e
 
-    def validate_signature_protection(self, pki_message: PKIMessageTMP):
-        """Validate the signature protection of the PKI message.
+    def validate_signer_for_ccr(
+        self,
+        pki_message: PKIMessageTMP,
+        ccp_certs: List[rfc9480.CMPCertificate],
+    ) -> None:
+        """Validate if the signer is allowed to send a Cross-Certification Request (CCR).
 
         :param pki_message: The PKI message to validate.
-        :return: True if the signature protection is valid, False otherwise.
+        :param ccp_certs: The certificates to check against.
+        :raises BadMessageCheck: If the signer is not trusted or the message is invalid.
         """
         if not pki_message["extraCerts"].isValue:
             raise BadMessageCheck("No extra certificates in PKI message. Cannot validate signature.")
 
+        cert = pki_message["extraCerts"][0]
+        if cert_in_list(cert, ccp_certs):
+            # The signer is in the list of certificates that are allowed to send a CCR.
+            logging.info("The signer is allowed to send a CCR, because we issued the certificate.")
+            return
+        try:
+            certificates_are_trustanchors(
+                cert,
+                allow_os_store=True,
+                trustanchors=self._prot_config.trusted_cas_dir or self._prot_config.mock_ca_trusted_dir,
+            )
+        except SignerNotTrusted as e:
+            raise NotAuthorized(
+                "The signer is not authorized to send a Cross-Certification Request (CCR).",
+                error_details=[e.message] + e.get_error_details(),
+            ) from e
+
+    def validate_signature_protection(self, pki_message: PKIMessageTMP, cc_certs: List[rfc9480.CMPCertificate]):
+        """Validate the signature protection of the PKI message.
+
+        :param pki_message: The PKI message to validate.
+        :param cc_certs: The certificates to check against for Cross-Certification Requests (CCR).
+        :return: True if the signature protection is valid, False otherwise.
+        """
+        if not pki_message["extraCerts"].isValue:
+            raise BadMessageCheck("No extra certificates in PKI message. Cannot validate signature.")
+        if get_cmp_message_type(pki_message) == "ccr":
+            # Validate if the signer is allowed to send a CCR.
+            self.validate_signer_for_ccr(pki_message, cc_certs)
         try:
             prot_type = ProtectedType.get_protection_type(pki_message)
             if prot_type == ProtectedType.TRAD_SIGNATURE:
@@ -552,10 +587,11 @@ class ProtectionHandler:
 
         self.check_signer_is_trusted(pki_message, for_dh=False)
 
-    def validate_protection(self, pki_message: PKIMessageTMP):
+    def validate_protection(self, pki_message: PKIMessageTMP, cc_certs: List[rfc9480.CMPCertificate]) -> None:
         """Validate the protection of the PKI message.
 
         :param pki_message: The PKI message to validate.
+        :param cc_certs: The certificates to check against for Cross-Certification Requests (CCR).
         :return: True if the protection is valid, False otherwise.
         :raises BadMessageCheck: If the message is invalid.
         :raises BadMacProtection: If the MAC protection is invalid.
@@ -583,7 +619,7 @@ class ProtectionHandler:
             self.validate_mac_protection(pki_message)
 
         else:
-            self.validate_signature_protection(pki_message)
+            self.validate_signature_protection(pki_message, cc_certs=cc_certs)
 
     @staticmethod
     def check_signer_extensions(pki_message: PKIMessageTMP) -> None:
@@ -693,11 +729,13 @@ class ProtectionHandler:
     def verify_added_protection(
         self,
         pki_message: PKIMessageTMP,
+        cc_certs: List[rfc9480.CMPCertificate],
         must_be_protected: bool = False,
     ) -> None:
         """Verify the added protection of the PKIMessage
 
         :param pki_message: The inner PKIMessage to verify.
+        :param cc_certs: The cross-certificates to check for CCR messages.
         :param must_be_protected: If the PKIMessage must be protected. Defaults to `False`.
         """
         inner_msg = pki_message["body"]["nested"][0]
@@ -705,10 +743,10 @@ class ProtectionHandler:
 
         body_name = get_cmp_message_type(inner_msg)
         if body_name in ["rr", "kur", "ccr"]:
-            self.validate_protection(inner_msg)
+            self.validate_protection(inner_msg, cc_certs=cc_certs)
 
         elif inner_msg["header"]["protectionAlg"].isValue:
-            self.validate_protection(inner_msg)
+            self.validate_protection(inner_msg, cc_certs=cc_certs)
 
         validate_orig_pkimessage(
             pki_message,
@@ -751,12 +789,14 @@ class ProtectionHandler:
     def verify_inner_batch_pkimessage(
         self,
         pki_message: PKIMessageTMP,
-        index: Optional[int] = None,
+        cc_certs: List[rfc9480.CMPCertificate],
+        index: int,
         must_be_protected: bool = False,
     ) -> None:
         """Verify the inner batch PKIMessage
 
         :param pki_message: The inner PKIMessage to verify.
+        :param cc_certs: The cross-certificates to check for CCR messages.
         :param index: The index of the inner PKIMessage in the batch. Defaults to `None`.
         :param must_be_protected: If the PKIMessage must be protected. Defaults to `False`.
         :raises WrongIntegrity: If the inner batch PKIMessage is MAC protected, which is not allowed,
@@ -786,13 +826,9 @@ class ProtectionHandler:
             ) from e
         if pki_message["header"]["protectionAlg"].isValue:
             try:
-                self.validate_protection(pki_message=pki_message)
+                self.validate_protection(pki_message=pki_message, cc_certs=cc_certs)
             except BadMessageCheck as e:
-                if index is None:
-                    msg = "Invalid inner batch PKIMessage protection."
-                else:
-                    msg = f"Invalid inner batch PKIMessage protection at index {index}."
-
+                msg = f"Invalid inner batch PKIMessage protection at index {index}."
                 raise BadMessageCheck(
                     message=msg,
                     error_details=[e.message] + e.error_details,
@@ -804,10 +840,11 @@ class ProtectionHandler:
                     failinfo=e.get_failinfo(),
                 ) from e
 
-    def verify_nested_protection(self, pki_message: PKIMessageTMP) -> None:
+    def verify_nested_protection(self, pki_message: PKIMessageTMP, cc_certs: List[rfc9480.CMPCertificate]) -> None:
         """Verify the nested protection of the PKIMessage
 
         :param pki_message: The PKIMessage to verify.
+        :param cc_certs: The cross-certificates to check for CCR messages.
         """
         prot_type = ProtectedType.get_protection_type(pki_message)
         if prot_type == ProtectedType.MAC:
@@ -826,7 +863,7 @@ class ProtectionHandler:
         except SignerNotTrusted as e:
             raise NotAuthorized("The signer of the nested PKIMessage is not trusted.") from e
 
-        self.validate_signature_protection(pki_message)
+        self.validate_signature_protection(pki_message, cc_certs=cc_certs)
 
         if len(pki_message["body"]["nested"]) == 0:
             raise BadRequest("The nested field was not set, in the nested PKIMessage.")

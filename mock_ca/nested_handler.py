@@ -81,7 +81,11 @@ class NestedHandler:
         inner_msg = request["body"]["nested"][0]
 
         check_is_protection_present(inner_msg, must_be_protected=not self.allow_inner_unprotected)
-        prot_handler.verify_added_protection(request, must_be_protected=not self.allow_inner_unprotected)
+        prot_handler.verify_added_protection(
+            request,
+            cc_certs=self.cert_req_handler.cross_signed_certs,
+            must_be_protected=not self.allow_inner_unprotected,
+        )
 
         if body_name in ["ir", "cr", "p10cr", "kur", "ccr"]:
             response = self.cert_req_handler.process_cert_request(
@@ -91,9 +95,11 @@ class NestedHandler:
             )
 
         elif body_name == "certConf":
-            response = self.cert_conf_handler.process_cert_conf(
+            response, ccp_cert = self.cert_conf_handler.process_cert_conf(
                 pki_message=inner_msg,
             )
+            if ccp_cert is not None:
+                self.cert_req_handler.get_cross_signed_certs().append(ccp_cert)
 
         else:
             raise BadRequest(
@@ -113,7 +119,7 @@ class NestedHandler:
         :param prot_handler: The protection handler to use, to validate the protection, of the request.
         :raises BadRequest: If the request is not valid.
         """
-        prot_handler.verify_nested_protection(pki_message=request)
+        prot_handler.verify_nested_protection(pki_message=request, cc_certs=self.cert_req_handler.cross_signed_certs)
         len_request = len(request["body"]["nested"])
         self.cert_req_handler.validate_header(pki_message=request, must_be_protected=True, for_nested=True)
 
@@ -230,9 +236,12 @@ class NestedHandler:
                 out.append(response)
 
             elif entry["body"].getName() == "certConf":
-                response = self.cert_conf_handler.process_cert_conf(
+                response, ccp_cert = self.cert_conf_handler.process_cert_conf(
                     pki_message=entry,
                 )
+                if ccp_cert is not None:
+                    self.cert_req_handler.get_cross_signed_certs().append(ccp_cert)
+
                 response = prot_handler.protect_pkimessage(
                     response=response,
                     request=entry,
@@ -243,6 +252,7 @@ class NestedHandler:
                 check_is_protection_present(entry, must_be_protected=not self.allow_inner_unprotected)
                 prot_handler.verify_inner_batch_pkimessage(
                     pki_message=entry,
+                    cc_certs=self.cert_req_handler.get_cross_signed_certs(),
                     must_be_protected=not self.allow_inner_unprotected,
                     index=i,
                 )
