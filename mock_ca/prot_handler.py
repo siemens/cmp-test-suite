@@ -77,8 +77,8 @@ class ProtectionHandler:
         use_openssl: bool = True,
         prot_alt_key: Optional[SignKey] = None,
         enforce_rfc9481: bool = False,
-        trusted_ras_dir: Optional[str] = None,
-        trusted_cas_dir: Optional[str] = None,
+        trusted_ras_dir: Optional[str] = "./data/trusted_ras",
+        trusted_cas_dir: Optional[str] = "./data/trusted_ras",
         config: Optional[ProtectionHandlerConfig] = None,
     ) -> None:
         """Initialize the ProtectionHandler with the specified parameters.
@@ -114,7 +114,7 @@ class ProtectionHandler:
         kari_cert = KARICertsAndKeys.from_kwargs(**load_env_data_certs())
 
         trust_cfg = TrustConfig(
-            mock_ca_trusted_dir=mock_ca_trusted_dir,
+            mock_ca_trusted_dir="data/mock_ca/trustanchors",
             trusted_ras_dir=trusted_ras_dir,
             trusted_cas_dir=trusted_cas_dir,
         )

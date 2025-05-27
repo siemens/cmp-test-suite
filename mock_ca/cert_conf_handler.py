@@ -6,7 +6,7 @@
 
 import logging
 from dataclasses import dataclass, field, fields
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc9480
