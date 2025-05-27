@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 *** Settings ***
-Documentation       Keywords are often used for testing.
+Documentation       Keywords are often used for testing. Keywords are sorted by their functionality. 
 
 Resource            ../config/${environment}.robot
 # Resource    ../config/local.robot
@@ -41,9 +41,7 @@ ${TEST_INDEX}            ${0}
 
 
 *** Keywords ***
-## Set Up Keywords
-
-#Set Up Test Suite:
+## Set up Keywords
 Set Up Test Suite
     [Documentation]    This keyword is used to set up the test suite. It is called at the beginning of the test suite.
     ...                Or a test file to ensure that all prerequisites are met. As an example a first certificate is
@@ -99,7 +97,6 @@ Set Up Test Suite
     VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global  # robocop: off=VAR04
     VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global    # robocop: off=VAR04
 
-# Set Up Test Case:
 Increase TestIndex
     [Documentation]    Perform the incrementation of the `TestIndex` to update the sender name inside the PKIMessage,
     ...                for each test case.
@@ -117,7 +114,18 @@ Get Next Common Name
     Increase TestIndex
     RETURN    ${cm}
 
-# Certificate and Key Initialization:
+Set Up EnvelopedData Certs For Tests
+    [Documentation]    Set up the KGA certs for the tests. This is done by creating a new key and
+    ...               certificate for the KGA. Currently only RSA and ECC are supported.
+    [Tags]    setup   envelopedData   KGA
+    Issued NEG RSA KTRI CERT
+    Issue POS RSA KTRI Cert
+    Issue NEG ECC KARI Cert
+    Issue POS ECC KARI Cert
+
+## Certificate and key initialization keywords- These keywords are used for generation, validation, and handling of certificates
+## and keys. 
+# Certificate initialization keywords
 Issue New Cert For Testing
     [Documentation]    Issue a new certificate to be used in tests. It ensures that a valid certificate
     ...    is available for testing.
@@ -176,7 +184,6 @@ Generate CSR For Testing
     RETURN    ${csr}    ${key}
 
 # TODO maybe change to use serialNumber or both instead for CertTemplate
-
 Generate CertTemplate For Testing
     [Documentation]    Generates a certificate template for testing purposes, using default parameters and an
     ...                incremented test index.
@@ -193,46 +200,223 @@ Generate CertTemplate For Testing
     ${cert_template}=    Prepare CertTemplate    key=${key}    subject=${cm}
     RETURN    ${cert_template}    ${key}
 
-Generate Default IR Sig Protected
-    [Documentation]    Generates a default initialization request (ir) with signature protection.
-    ...
-    ...                According to RFC 9483 Section 7.1. PKI Management Operations, is the ir body the only
-    ...                one which needs to be implemented by the CA and End Entity.
-    ...
-    ...                Arguments:
-    ...                - `transaction_id`:Optional the transaction ID for the IR. Default is `${None}`.
-    ...                - `sender_nonce`: Optional the sender's nonce for the IR. Default is `${None}`.
-    ...
-    ...                Returns:
-    ...                - The signature-protected initialization request (ir)
+
+
+# Key generation keywords
+# TODO add function called Get Key, if the same key is allowed returns one of the predefined keys,
+# which are already available in the test suite to save additional resources.
+# Another TODO merge with the idea to build a PKIMessage dataclass, which will be used to make our
+# lives easier and the code consistence, because none-tag fields are not patch-able.
+# also allows more efficient unit tests.
+# TODO fix
+
+Generate Unique Key
+    [Documentation]    Generates a unique cryptographic key using specified default parameters, set inside the config.
     ...
     ...                Examples:
-    ...                | ${protected_ir}=    |    Generate Default IR Sig Protected    | transaction_id=${tx_id} |    \
-    ...                sender_nonce=${nonce} |
+    ...                | ${private_key}=    Generate Unique Key | rsa | length=2048 |
+    [Tags]    key
+    [Arguments]    ${algorithm}    &{params}
+    ${max_attempts}=  Get From Dictionary    ${params}    max_attempts    ${100}
+    FOR    ${index}    IN RANGE    ${max_attempts}
+        ${key}=    Generate Key    algorithm=${algorithm}    &{params}
+        # privates keys can not be compared so this work-around.
+        ${result}=    Check If Private Key In List    keys=${BURNED_KEYS}    new_key=${key}
+        IF    not ${result}
+            Append To List    ${BURNED_KEYS}    ${key}
+            RETURN    ${key}
+        END
+        Log    Generated key is burned. Regenerating... [Attempt ${index + 1}]
+    END
+    Fail    Unable to generate a unique key after ${max_attempts} attempts.
+
+# TODO decide to maybe allow to set Curve also to X25519 or X448, if the algorithm is set to ECC.
+
+Generate Default Key
+    [Documentation]    Generates a default cryptographic key using specified default parameters, set inside the config.
     ...
-    [Arguments]    ${transaction_id}=${None}    ${sender_nonce}=${None}   &{params}
-    ${cert_template}    ${key}=    Generate CertTemplate For Testing
-    ${ir}=    Build Ir From Key
-    ...       ${key}
-    ...       sender_nonce=${sender_nonce}
-    ...       transaction_id=${transaction_id}
-    ...       cert_template=${cert_template}
-    ...       recipient=${RECIPIENT}
-    ...       implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ...       exclude_fields=sender,senderKID
-    ...       &{params}
-    ${protected_ir}=    Protect PKIMessage
-    ...                 ${ir}
-    ...                 protection=signature
-    ...                 private_key=${ISSUED_KEY}
-    ...                 cert=${ISSUED_CERT}
-    ...                 &{params}
-    RETURN    ${protected_ir}
+    ...                Note:
+    ...                ----
+    ...                 - `DEFAULT_ALGORITHM` defines the algorithm.
+    ...                 - `DEFAULT_KEY_LENGTH` defines the key length for RSA.
+    ...                 - `DEFAULT_ECC_CURVE` defines the curve for ECC. Not relevant for X25519 or X448.
+    ...                 Then must the `DEFAULT_ALGORITHM` be set to `x25519` or `x448`.
+    ...                Examples:
+    ...                | ${private_key}=    Generate Default Key |
+    [Tags]    key
+    VAR     &{params}    length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
+    ${private_key}=    Generate Unique Key    algorithm=${DEFAULT_ALGORITHM}    &{params}
+    RETURN    ${private_key}
+
+Generate Default PQ SIG Key
+    [Documentation]    Generates a default pq signature key. Set by the configuration (``DEFAULT_PQ_SIG_ALGORITHM``).
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${key}= | Generate Default PQ SIG Key |
+    [Tags]    key   pq
+    ${key}=   Generate Key    ${DEFAULT_PQ_SIG_ALGORITHM}
+    RETURN    ${key}
+
+Generate Default PQ KEM Key
+    [Documentation]    Generates a default cryptographic pq key encapsulation mechanism (KEM) key.
+    ...                Set by the configuration (`DEFAULT_PQ_KEM_ALGORITHM`).
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${key}= | Generate Default PQ KEM Key |
+    [Tags]    key   pq  kem
+    ${key}=   Generate Key    ${DEFAULT_PQ_KEM_ALGORITHM}
+    RETURN    ${key}
+
+Generate Default KeyAgreement Key
+    [Documentation]     Generate a default cryptographic key agreement key. Could be
+    ...                 an ECC key (e.g., X25519) or a key on a default curve, set by
+    ...                 the configuration (`DEFAULT_ECC_CURVE`).
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${key}= | Generate Default KeyAgreement Key |
+    [Tags]    keyAgree  key
+    ${key}=   Generate Unique Key    ${DEFAULT_KEY_AGREEMENT_ALG}   curve=${DEFAULT_ECC_CURVE}
+    RETURN   ${key}
+
+Generate Default KeyEncipherment Key
+    [Documentation]     Generate a default cryptographic key encipherment key.
+    ...                Could be RSA or a key encapsulation mechanism (KEM) key.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${key}= | Generate Default KeyEncipherment Key |
+    [Tags]    keyEnc  key
+    ${key}=   Generate Unique Key    ${DEFAULT_KEY_ENCIPHERMENT_ALG}
+    RETURN   ${key}
+
+Generate Default Composite Sig Key
+    [Documentation]    Generates a default composite signature key with the traditional algorithm
+    ...                and the PQ algorithm defined in the configuration.
+    ...
+    ...                Note:
+    ...                ----
+    ...                - `DEFAULT_TRAD_ALG` defines the algorithm.
+    ...                - `DEFAULT_KEY_LENGTH` defines the key length for RSA.
+    ...                - `DEFAULT_PQ_ALG` defines the pq algorithm.
+    ...                - `DEFAULT_ECC_CURVE` defines the curve for ECC.
+    ...
+    ...                Returns:
+    ...                --------
+    ...                - key: The generated key.
+    ...
+    ...               Examples:
+    ...               --------
+    ...               | ${key}= | Generate Default Composite Sig Key |
+    ...
+    [Tags]         composite-sig    key
+    VAR   &{params}  trad_name=${DEFAULT_TRAD_ALG}
+    ...              length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
+    ...              pq_name=${DEFAULT_PQ_SIG_ALG}
+    ${key}=      Generate Key    algorithm=composite-sig    &{params}
+    RETURN     ${key}
 
 
-## PKIMessage Handling Keywords
 
-# PKIMessage Creation
+
+
+# Certificate validation and confirmation keywords
+Certificate Must Be Valid
+    [Documentation]    Verify if a certificate is valid and passes sanity checks. The certificate is passed as a
+    ...    DER-encoded byte buffer. These checks are done by trying to parse the certificate with
+    ...    OpenSSL and PKILint. OpenSSL is relatively forgiving and will accept a certificate that
+    ...    may contain issues, but is good enough for practical applications - failure to load with OpenSSL
+    ...    is treated as an error. PKILint is very picky and will find issues even if a certificate
+    ...    is accepted by OpenSSL. PKILint's findings will be logged and reported as warnings - making
+    ...    it clear that there's something of interest, but not failing the test.
+    [Arguments]    ${der_certificate}
+    Log Base64    ${der_certificate}
+    # If OpenSSL complains, we fail the test
+    Validate Certificate OpenSSL    ${der_certificate}
+    # Use PKILint to check the certificate for issues, https://github.com/digicert/pkilint
+    # If PKILint complains, we log a warning, but keep going
+    Run Keyword And Warn On Failure
+    ...    Validate Certificate PKILint    ${der_certificate}
+
+Validate Certificate Was Issued For Expected Alg
+    [Documentation]    Validate that the certificate was issued for the expected algorithm.
+    ...
+    ...                Arguments:
+    ...                - `${response}`: The PKIMessage response.
+    ...                - `${expected_alg}`: The expected algorithm identifier (e.g., 'ml-dsa-44').
+    ...                - `${index}`: The index of the certificate in the PKIMessage. Defaults to `0`.
+    ...
+    ...                Examples:
+    ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 |
+    ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 | 1 |
+    [Arguments]    ${response}    ${expected_alg}    ${index}=0
+    PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=    Get Cert From PKIMessage    ${response}    ${index}
+    Validate Migration OID In Certificate    ${cert}    ${expected_alg}
+
+Confirm Certificate If Needed
+    [Documentation]    Some Test cases need a valid certificate to work. Because not all CA's might support the
+    ...                implicit confirm extension, this keyword checks if the given `PKIMessage` contains the implicit
+    ...                confirm extension. If it does, the certificate is confirmed and returned. If not, the
+    ...                `PKIMessage` a valid certificate confirmation message is send and the of the CA's response is
+    ...                checked. If the CA's response is the `PKIMessage` `pkiconf`, then is the certificate confirmed.
+    ...                Arguments:
+    ...                ---------
+    ...                 - `response`: The response message from the CA.
+    ...                 - `params`: key=value pair to set variables for the protection.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `cert`: The confirmed certificate.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${cert}= | Confirm Certificate If Needed | ${response} | &{params} |
+    ...
+    [Tags]    confirm   default   cert
+    [Arguments]    ${response}    &{params}
+    ${result}=   Find OID In GeneralInfo    ${response}   1.3.6.1.5.5.7.4.13
+    IF    ${result}
+        Log    The PKIMessage contains the implicit confirm extension.
+        ${cert}=    Get Cert From PKIMessage    ${response}
+        RETURN    ${cert}
+    ELSE
+        Log    The PKIMessage does not contain the implicit confirm extension.
+        ${length}=   Get Length   ${params}
+        IF  not ${length}
+            ${args}=    Copy Dictionary    ${CERT_CONF_DEF_VALS}
+        ELSE
+            ${args}=    May Patch Params   ${params}    &{CERT_CONF_DEF_VALS}
+        END
+        ${params}=    May Patch Params    ${params}    pvno=3   # robocop: off=VAR08
+        ${cert}=    Get Cert From PKIMessage    ${response}
+        ${protection}=   Get From Dictionary    ${args}    protection
+        IF  '${protection}' == 'signature'
+            VAR   ${exclude_fields}    sender,senderKID
+        ELSE
+            VAR   ${exclude_fields}    ${None}
+        END
+        ${cert_conf}=   Build Cert Conf From Resp  ${response}   sender=${sender}
+        ...                                         recipient=${recipient}
+        ...                                         exclude_fields=${exclude_fields}
+        ${cert_conf}=   Default Protect PKIMessage    ${cert_conf}    &{params}
+        ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
+        ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
+        ${url}=    Get From Dictionary    ${params}    url    ${None}
+        IF    '${url}' == '${None}'
+            ${url}=    Get From Dictionary    ${params}    url    ${base_url}
+        END
+        ${pki_conf}=   Exchange Migration PKIMessage    ${cert_conf}    ${url}    ${suffix}
+        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+        RETURN    ${cert}
+    END
+
+
+## PKIMessage handling keywords
+
+# PKIMessage creation keywords
 Build Composite Signature Request
     [Documentation]    Build a ir composite signature request and returns the protected ir request.
     [Tags]    composite-sig    positive   ir
@@ -368,8 +552,44 @@ Generate Default MAC Protected PKIMessage
     END
     RETURN    ${pki_message}
 
+Generate Default IR Sig Protected
+    [Documentation]    Generates a default initialization request (ir) with signature protection.
+    ...
+    ...                According to RFC 9483 Section 7.1. PKI Management Operations, is the ir body the only
+    ...                one which needs to be implemented by the CA and End Entity.
+    ...
+    ...                Arguments:
+    ...                - `transaction_id`:Optional the transaction ID for the IR. Default is `${None}`.
+    ...                - `sender_nonce`: Optional the sender's nonce for the IR. Default is `${None}`.
+    ...
+    ...                Returns:
+    ...                - The signature-protected initialization request (ir)
+    ...
+    ...                Examples:
+    ...                | ${protected_ir}=    |    Generate Default IR Sig Protected    | transaction_id=${tx_id} |    \
+    ...                sender_nonce=${nonce} |
+    ...
+    [Arguments]    ${transaction_id}=${None}    ${sender_nonce}=${None}   &{params}
+    ${cert_template}    ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key
+    ...       ${key}
+    ...       sender_nonce=${sender_nonce}
+    ...       transaction_id=${transaction_id}
+    ...       cert_template=${cert_template}
+    ...       recipient=${RECIPIENT}
+    ...       implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...       exclude_fields=sender,senderKID
+    ...       &{params}
+    ${protected_ir}=    Protect PKIMessage
+    ...                 ${ir}
+    ...                 protection=signature
+    ...                 private_key=${ISSUED_KEY}
+    ...                 cert=${ISSUED_CERT}
+    ...                 &{params}
+    RETURN    ${protected_ir}
 
-# Transportation Keywords
+
+# Transportation keywords
 Exchange Data With CA
     [Documentation]    Send a HTTP POST request to a server, and return the response.
     [Arguments]    ${payload}    ${url}=${CA_CMP_URL}
@@ -431,105 +651,28 @@ Load And Refresh PKIMessage From File
     ${pki_message}=    Patch MessageTime    ${pki_message}    ${message_time}
     RETURN    ${pki_message}
 
-## Certificate amd Key Management Keywords
 
-# Certificate Validation and Confirmation
-Certificate Must Be Valid
-    [Documentation]    Verify if a certificate is valid and passes sanity checks. The certificate is passed as a
-    ...    DER-encoded byte buffer. These checks are done by trying to parse the certificate with
-    ...    OpenSSL and PKILint. OpenSSL is relatively forgiving and will accept a certificate that
-    ...    may contain issues, but is good enough for practical applications - failure to load with OpenSSL
-    ...    is treated as an error. PKILint is very picky and will find issues even if a certificate
-    ...    is accepted by OpenSSL. PKILint's findings will be logged and reported as warnings - making
-    ...    it clear that there's something of interest, but not failing the test.
-    [Arguments]    ${der_certificate}
-    Log Base64    ${der_certificate}
-    # If OpenSSL complains, we fail the test
-    Validate Certificate OpenSSL    ${der_certificate}
-    # Use PKILint to check the certificate for issues, https://github.com/digicert/pkilint
-    # If PKILint complains, we log a warning, but keep going
-    Run Keyword And Warn On Failure
-    ...    Validate Certificate PKILint    ${der_certificate}
+## PKIMessage Validation keywords - These are used to validate the PKIMessage structure, contents, and status
+## of PKIMessages. 
 
-Validate Certificate Was Issued For Expected Alg
-    [Documentation]    Validate that the certificate was issued for the expected algorithm.
-    ...
-    ...                Arguments:
-    ...                - `${response}`: The PKIMessage response.
-    ...                - `${expected_alg}`: The expected algorithm identifier (e.g., 'ml-dsa-44').
-    ...                - `${index}`: The index of the certificate in the PKIMessage. Defaults to `0`.
-    ...
-    ...                Examples:
-    ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 |
-    ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 | 1 |
-    [Arguments]    ${response}    ${expected_alg}    ${index}=0
-    PKIStatus Must Be    ${response}    status=accepted
-    ${cert}=    Get Cert From PKIMessage    ${response}    ${index}
-    Validate Migration OID In Certificate    ${cert}    ${expected_alg}
-
-
-Confirm Certificate If Needed
-    [Documentation]    Some Test cases need a valid certificate to work. Because not all CA's might support the
-    ...                implicit confirm extension, this keyword checks if the given `PKIMessage` contains the implicit
-    ...                confirm extension. If it does, the certificate is confirmed and returned. If not, the
-    ...                `PKIMessage` a valid certificate confirmation message is send and the of the CA's response is
-    ...                checked. If the CA's response is the `PKIMessage` `pkiconf`, then is the certificate confirmed.
-    ...                Arguments:
-    ...                ---------
-    ...                 - `response`: The response message from the CA.
-    ...                 - `params`: key=value pair to set variables for the protection.
-    ...
-    ...                Returns:
-    ...                -------
-    ...                - `cert`: The confirmed certificate.
-    ...
-    ...                Examples:
-    ...                --------
-    ...                | ${cert}= | Confirm Certificate If Needed | ${response} | &{params} |
-    ...
-    [Tags]    confirm   default   cert
-    [Arguments]    ${response}    &{params}
-    ${result}=   Find OID In GeneralInfo    ${response}   1.3.6.1.5.5.7.4.13
-    IF    ${result}
-        Log    The PKIMessage contains the implicit confirm extension.
-        ${cert}=    Get Cert From PKIMessage    ${response}
-        RETURN    ${cert}
-    ELSE
-        Log    The PKIMessage does not contain the implicit confirm extension.
-        ${length}=   Get Length   ${params}
-        IF  not ${length}
-            ${args}=    Copy Dictionary    ${CERT_CONF_DEF_VALS}
-        ELSE
-            ${args}=    May Patch Params   ${params}    &{CERT_CONF_DEF_VALS}
-        END
-        ${params}=    May Patch Params    ${params}    pvno=3   # robocop: off=VAR08
-        ${cert}=    Get Cert From PKIMessage    ${response}
-        ${protection}=   Get From Dictionary    ${args}    protection
-        IF  '${protection}' == 'signature'
-            VAR   ${exclude_fields}    sender,senderKID
-        ELSE
-            VAR   ${exclude_fields}    ${None}
-        END
-        ${cert_conf}=   Build Cert Conf From Resp  ${response}   sender=${sender}
-        ...                                         recipient=${recipient}
-        ...                                         exclude_fields=${exclude_fields}
-        ${cert_conf}=   Default Protect PKIMessage    ${cert_conf}    &{params}
-        ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
-        ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
-        ${url}=    Get From Dictionary    ${params}    url    ${None}
-        IF    '${url}' == '${None}'
-            ${url}=    Get From Dictionary    ${params}    url    ${base_url}
-        END
-        ${pki_conf}=   Exchange Migration PKIMessage    ${cert_conf}    ${url}    ${suffix}
-        PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-        RETURN    ${cert}
+# PKImessage body variables keywords
+PKIMessage Body Type Must Be
+    [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
+    [Arguments]    ${pki_message}    ${expected_type}
+    ${response_type}=    Get CMP Message Type    ${pki_message}
+    IF    '${response_type}' != '${expected_type}'
+        # For better logging.
+        ${pki_status_info}=    Get PKIStatusInfo    ${pki_message}   # robocop: off=VAR02
     END
+    Should Be Equal    ${response_type}    ${expected_type}    Response type mismatch
 
+PKIMessage Must Contain ImplicitConfirm Extension
+    [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo
+    [Arguments]    ${pki_message}
+    ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
+    Should Be True    ${result}    The implicitConfirm extension was not found in the message
 
-
-## PKIMessage Validation Keywords
-
-# Nonce Validation
+# Nonce validation keywords
 Sender And Recipient Nonces Must Match
     [Documentation]    Ensure that the recipient nonce in the response matches the sender nonce in the request
     [Arguments]    ${request}    ${response}
@@ -563,7 +706,7 @@ Collect Nonce From PKIMessage
     END
 
 
-# Response Time Validation
+# Response time validation keywords
 Response Time Must Be Fresh
     [Documentation]    Ensure that the response time is not far off from the time of our request
     ...    The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
@@ -576,141 +719,6 @@ Response Time Must Be Fresh
     Should Be True    ${delta} < ${tolerance}    Time between request and response exceeds tolerance
 
 
-# Check PKImessage Body Variables
-PKIMessage Body Type Must Be
-    [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
-    [Arguments]    ${pki_message}    ${expected_type}
-    ${response_type}=    Get CMP Message Type    ${pki_message}
-    IF    '${response_type}' != '${expected_type}'
-        # For better logging.
-        ${pki_status_info}=    Get PKIStatusInfo    ${pki_message}   # robocop: off=VAR02
-    END
-    Should Be Equal    ${response_type}    ${expected_type}    Response type mismatch
-
-PKIMessage Must Contain ImplicitConfirm Extension
-    [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo
-    [Arguments]    ${pki_message}
-    ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
-    Should Be True    ${result}    The implicitConfirm extension was not found in the message
-
-
-
-# Key Keywords
-
-# TODO add function called Get Key, if the same key is allowed returns one of the predefined keys,
-# which are already available in the test suite to save additional resources.
-# Another TODO merge with the idea to build a PKIMessage dataclass, which will be used to make our
-# lives easier and the code consistence, because none-tag fields are not patch-able.
-# also allows more efficient unit tests.
-# TODO fix
-
-Generate Unique Key
-    [Documentation]    Generates a unique cryptographic key using specified default parameters, set inside the config.
-    ...
-    ...                Examples:
-    ...                | ${private_key}=    Generate Unique Key | rsa | length=2048 |
-    [Tags]    key
-    [Arguments]    ${algorithm}    &{params}
-    ${max_attempts}=  Get From Dictionary    ${params}    max_attempts    ${100}
-    FOR    ${index}    IN RANGE    ${max_attempts}
-        ${key}=    Generate Key    algorithm=${algorithm}    &{params}
-        # privates keys can not be compared so this work-around.
-        ${result}=    Check If Private Key In List    keys=${BURNED_KEYS}    new_key=${key}
-        IF    not ${result}
-            Append To List    ${BURNED_KEYS}    ${key}
-            RETURN    ${key}
-        END
-        Log    Generated key is burned. Regenerating... [Attempt ${index + 1}]
-    END
-    Fail    Unable to generate a unique key after ${max_attempts} attempts.
-
-# TODO decide to maybe allow to set Curve also to X25519 or X448, if the algorithm is set to ECC.
-
-Generate Default Key
-    [Documentation]    Generates a default cryptographic key using specified default parameters, set inside the config.
-    ...
-    ...                Note:
-    ...                ----
-    ...                 - `DEFAULT_ALGORITHM` defines the algorithm.
-    ...                 - `DEFAULT_KEY_LENGTH` defines the key length for RSA.
-    ...                 - `DEFAULT_ECC_CURVE` defines the curve for ECC. Not relevant for X25519 or X448.
-    ...                 Then must the `DEFAULT_ALGORITHM` be set to `x25519` or `x448`.
-    ...                Examples:
-    ...                | ${private_key}=    Generate Default Key |
-    [Tags]    key
-    VAR     &{params}    length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
-    ${private_key}=    Generate Unique Key    algorithm=${DEFAULT_ALGORITHM}    &{params}
-    RETURN    ${private_key}
-
-Generate Default PQ SIG Key
-    [Documentation]    Generates a default pq signature key. Set by the configuration (``DEFAULT_PQ_SIG_ALGORITHM``).
-    ...
-    ...                Examples:
-    ...                --------
-    ...                | ${key}= | Generate Default PQ SIG Key |
-    [Tags]    key   pq
-    ${key}=   Generate Key    ${DEFAULT_PQ_SIG_ALGORITHM}
-    RETURN    ${key}
-
-Generate Default PQ KEM Key
-    [Documentation]    Generates a default cryptographic pq key encapsulation mechanism (KEM) key.
-    ...                Set by the configuration (`DEFAULT_PQ_KEM_ALGORITHM`).
-    ...
-    ...                Examples:
-    ...                --------
-    ...                | ${key}= | Generate Default PQ KEM Key |
-    [Tags]    key   pq  kem
-    ${key}=   Generate Key    ${DEFAULT_PQ_KEM_ALGORITHM}
-    RETURN    ${key}
-
-Generate Default KeyAgreement Key
-    [Documentation]     Generate a default cryptographic key agreement key. Could be
-    ...                 an ECC key (e.g., X25519) or a key on a default curve, set by
-    ...                 the configuration (`DEFAULT_ECC_CURVE`).
-    ...
-    ...                Examples:
-    ...                --------
-    ...                | ${key}= | Generate Default KeyAgreement Key |
-    [Tags]    keyAgree  key
-    ${key}=   Generate Unique Key    ${DEFAULT_KEY_AGREEMENT_ALG}   curve=${DEFAULT_ECC_CURVE}
-    RETURN   ${key}
-
-Generate Default KeyEncipherment Key
-    [Documentation]     Generate a default cryptographic key encipherment key.
-    ...                Could be RSA or a key encapsulation mechanism (KEM) key.
-    ...
-    ...                Examples:
-    ...                --------
-    ...                | ${key}= | Generate Default KeyEncipherment Key |
-    [Tags]    keyEnc  key
-    ${key}=   Generate Unique Key    ${DEFAULT_KEY_ENCIPHERMENT_ALG}
-    RETURN   ${key}
-
-Generate Default Composite Sig Key
-    [Documentation]    Generates a default composite signature key with the traditional algorithm
-    ...                and the PQ algorithm defined in the configuration.
-    ...
-    ...                Note:
-    ...                ----
-    ...                - `DEFAULT_TRAD_ALG` defines the algorithm.
-    ...                - `DEFAULT_KEY_LENGTH` defines the key length for RSA.
-    ...                - `DEFAULT_PQ_ALG` defines the pq algorithm.
-    ...                - `DEFAULT_ECC_CURVE` defines the curve for ECC.
-    ...
-    ...                Returns:
-    ...                --------
-    ...                - key: The generated key.
-    ...
-    ...               Examples:
-    ...               --------
-    ...               | ${key}= | Generate Default Composite Sig Key |
-    ...
-    [Tags]         composite-sig    key
-    VAR   &{params}  trad_name=${DEFAULT_TRAD_ALG}
-    ...              length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
-    ...              pq_name=${DEFAULT_PQ_SIG_ALG}
-    ${key}=      Generate Key    algorithm=composite-sig    &{params}
-    RETURN     ${key}
 
 
 
@@ -754,7 +762,8 @@ PKIStatus Must Be
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
 
-## Certificate Signing Request Generation Keywords
+## Certificate Signing Request keywords - these keywords handle the generation and parsing of CSR 
+## for testing purposes.
 Generate CSR With RSA2048 And A Predefined Common Name
     [Documentation]    Produce a generic, valid CSR that has a correct signature
     ${key}=    Generate Key    rsa    length=2048
@@ -792,7 +801,7 @@ Generate Key And CSR
     RETURN    ${data}    ${key}
 
 
-# Hybrid algorithm keywords
+## Hybrid algorithm keywords - These keywords are used to issue certificates for the hybrid algorithm tests.
 Exchange Hybrid PKIMessage
     [Documentation]    Exchange a PKIMessage for a hybrid algorithm certificate.
     ...                Arguments:
@@ -852,7 +861,7 @@ Validate EncrCert For KEM
     RETURN    ${cert}
 
 
-# EnvelopedData Keywords
+## EnvelopedData keywords - These keywords are used to issue certificates for the EnvelopedData tests.
 Issued NEG RSA KTRI CERT
     [Documentation]    Issue a new RSA negative KTRI certificate for the EnvelopedData tests.
     ...                This certificate is negative, because the keyEncipherment KeyUsage bit is missing.
@@ -969,11 +978,3 @@ Issue POS ECC KARI Cert   # robocop: off=LEN03
     VAR   ${KGA_KARI_CERT}     ${cert}  scope=Global   # robocop: off=VAR04
     VAR   ${KGA_KARI_KEY}      ${key}   scope=Global   # robocop: off=VAR04
 
-Set Up EnvelopedData Certs For Tests
-    [Documentation]    Set up the KGA certs for the tests. This is done by creating a new key and
-    ...               certificate for the KGA. Currently only RSA and ECC are supported.
-    [Tags]    setup   envelopedData   KGA
-    Issued NEG RSA KTRI CERT
-    Issue POS RSA KTRI Cert
-    Issue NEG ECC KARI Cert
-    Issue POS ECC KARI Cert
