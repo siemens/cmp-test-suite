@@ -182,7 +182,10 @@ class GeneralMessageHandler:
         texts: Optional[List[str]] = None,
     ) -> PKIMessageTMP:
         """Prepare a general message response."""
-        for_mac = get_protection_type_from_pkimessage(pki_message) == "mac"
+        for_mac = True
+        if pki_message["header"]["protectionAlg"].isValue:
+            for_mac = get_protection_type_from_pkimessage(pki_message) == "mac"
+
         kwargs = set_ca_header_fields(pki_message, {})
         kwargs["sender"] = self.sender
         response = prepare_pki_message(**kwargs, for_mac=for_mac, pki_free_text=texts)
