@@ -23,23 +23,6 @@ Suite Setup    Set Up CRR Test Cases
 Test Tags           cmp   advanced   crr
 
 
-*** Keywords ***
-Set Up CRR Test Cases
-    [Documentation]    Set up the test cases for the CMP test cases.
-    Set Up Test Suite
-    ${cert}=   May Load Cert   ${TRUSTED_CA_CERT}
-    ${key}=    Load Private Key From File    ${TRUSTED_CA_KEY}   password=${TRUSTED_CA_KEY_PASSWORD}
-    VAR   ${TRUSTED_CA_CERT}    ${cert}  scope=Global
-    VAR   ${TRUSTED_CA_KEY}     ${key}  scope=Global
-
-Default Protect PKIMessage With Trusted Cert
-    [Documentation]    Protects the PKIMessage with the trusted CA certificate.
-    [Arguments]    ${pki_message}
-    ${response}=  Protect PKIMessage    ${pki_message}    signature
-    ...           private_key=${TRUSTED_CA_KEY}    cert=${TRUSTED_CA_CERT}   certs_dir=${TRUSTED_CA_DIR}
-    RETURN    ${response}
-
-
 *** Test Cases ***
 # TODO fix citation if RFC defined!!!
 

@@ -95,6 +95,11 @@ Set Up Test Suite
     ${cert}  ${key}=   May Load Cert And Key    ${OTHER_TRUSTED_PKI_CERT}    ${OTHER_TRUSTED_PKI_KEY}
     VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global  # robocop: off=VAR04
     VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global    # robocop: off=VAR04
+    TRY
+        Set Up CRR Test Cases
+    EXCEPT
+        Log    Failed to setup the CCR required certificate and signing key.
+    END
 
 Initialize PQ Cert And Key Variables
     [Documentation]    Initialize the variables for the PQ certificate and key, to store freshly issued
@@ -103,6 +108,16 @@ Initialize PQ Cert And Key Variables
     # Initialize the newly issued certificates and keys.
     VAR   &{PQ_SIG_CERTS}  scope=Global
     VAR   &{PQ_SIG_KEYS}   scope=Global
+
+Set Up CRR Test Cases
+    [Documentation]    Set up the test cases for the CMP test cases.
+    Set Up Test Suite
+    ${cert}=   May Load Cert   ${TRUSTED_CA_CERT}
+    ${key}=    Load Private Key From File    ${TRUSTED_CA_KEY}   password=${TRUSTED_CA_KEY_PASSWORD}
+    VAR   ${TRUSTED_CA_CERT}    ${cert}  scope=Global
+    VAR   ${TRUSTED_CA_KEY}     ${key}  scope=Global
+    ${cert_chain}=  Build Cert Chain From Dir    ${cert}   ${TRUSTED_CA_DIR}
+    VAR   ${TRUSTED_CA_CERT_CHAIN}   ${cert_chain}   scope=Global
 
 Increase TestIndex
     [Documentation]    Perform the incrementation of the `TestIndex` to update the sender name inside the PKIMessage,
@@ -723,6 +738,13 @@ Default Protect With MAC
     ...                          password=${PRESHARED_SECRET}
     ...                          for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     RETURN    ${protected_pki_message}
+
+Default Protect PKIMessage With Trusted CA Cert
+    [Documentation]    Protects the PKIMessage with the trusted CA certificate.
+    [Arguments]    ${pki_message}
+    ${response}=  Protect PKIMessage    ${pki_message}    signature
+    ...           private_key=${TRUSTED_CA_KEY}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
+    RETURN    ${response}
 
 Generate Default MAC Protected PKIMessage
     [Documentation]    Build a PKIMessage used for MAC based protection, based on the config file
