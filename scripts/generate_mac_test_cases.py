@@ -251,7 +251,7 @@ def _generate_simple_test_cases() -> List[str]:
     for test_case in out_cases:
         data.append(test_case.create_test_case())
 
-    with open("../mac_test_cases.txt", "w") as f:
+    with open("./mac_verbose_tests.txt.txt", "w") as f:
         for test_case in data:
             f.write(test_case)
             f.write("\n")
