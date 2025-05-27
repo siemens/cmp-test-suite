@@ -25,7 +25,6 @@ Library             ../resources/general_msg_utils.py
 Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/pq_verify_logic.py
 
-
 *** Variables ***
 ${environment}          cloudpki
 # ${environment}    local
@@ -114,8 +113,8 @@ Set Up CRR Test Cases
     Set Up Test Suite
     ${cert}=   May Load Cert   ${TRUSTED_CA_CERT}
     ${key}=    Load Private Key From File    ${TRUSTED_CA_KEY}   password=${TRUSTED_CA_KEY_PASSWORD}
-    VAR   ${TRUSTED_CA_CERT}    ${cert}  scope=Global
-    VAR   ${TRUSTED_CA_KEY}     ${key}  scope=Global
+    VAR   ${TRUSTED_CA_CERT_OBJ}    ${cert}  scope=Global
+    VAR   ${TRUSTED_CA_KEY_OBJ}     ${key}  scope=Global
     ${cert_chain}=  Build Cert Chain From Dir    ${cert}   ${TRUSTED_CA_DIR}
     VAR   ${TRUSTED_CA_CERT_CHAIN}   ${cert_chain}   scope=Global
 
@@ -743,7 +742,7 @@ Default Protect PKIMessage With Trusted CA Cert
     [Documentation]    Protects the PKIMessage with the trusted CA certificate.
     [Arguments]    ${pki_message}
     ${response}=  Protect PKIMessage    ${pki_message}    signature
-    ...           private_key=${TRUSTED_CA_KEY}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
+    ...           private_key=${TRUSTED_CA_KEY_OBJ}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
     RETURN    ${response}
 
 Generate Default MAC Protected PKIMessage

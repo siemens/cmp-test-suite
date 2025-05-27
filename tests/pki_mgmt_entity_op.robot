@@ -451,7 +451,7 @@ CA MUST Reject Added Prot CRR From EE
     ...                We send a valid cross certification request signed with an end-entity certificate and
     ...                additionally protected by an RA cert. The CA MUST reject this request
     ...                and may respond with the optional failInfo `notAuthorized`.
-    [Tags]         negative   trust  ee
+    [Tags]         negative   trust  ee  ccr
     ${cert_template}   ${key}=   Generate CCR CertTemplate For Testing
     ${ccr}=     Build CCR From Key
     ...    ${key}
@@ -473,7 +473,7 @@ CA MUST Reject Batched CRR From EE
     ...                We send a valid cross certification request signed with an end-entity certificate and
     ...                additionally protected by an RA cert. The CA MUST reject this request
     ...                and may respond with the optional failInfo `notAuthorized`.
-    [Tags]         negative   trust  ee  batch
+    [Tags]         negative   trust  ee  batch  ccr
     ${nonces}=    Generate Unique Byte Values    length=5
     ${ids}=    Generate Unique Byte Values    length=5
     ${cert_template}   ${key}=   Generate CCR CertTemplate For Testing

@@ -1205,6 +1205,11 @@ Initialize Global Variables
 
     VAR    @{GLOBAL_CERTS}    @{EMPTY}    scope=Global  # robocop: off=VAR04
     VAR    @{GLOBAL_KEYS}    @{EMPTY}    scope=Global   # robocop: off=VAR04
+    TRY
+        Set Up CRR Test Cases
+    EXCEPT
+        Log    Failed to set up CRR test cases. This is not a problem, if the CRR tests are not run.
+    END
 
 Send New Key Update Request
     [Documentation]    Send a new key update request to the CA, which is not confirmed.

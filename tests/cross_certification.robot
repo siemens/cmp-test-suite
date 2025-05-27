@@ -19,8 +19,9 @@ Library             ../resources/envdatautils.py
 Library             ../resources/cryptoutils.py
 Library             ../resources/certbuildutils.py
 
-Suite Setup    Set Up CRR Test Cases
-Test Tags           cmp   advanced   crr
+Suite Setup       Set Up CRR Test Cases
+
+Test Tags           cmp   advanced   ccr
 
 
 *** Test Cases ***
@@ -31,8 +32,6 @@ CA MUST Accept Valid Cross Certification Request
     ...               cross certification request. The CA MUST accept the request adm return a
     ...               valid cross certificate response.
     [Tags]      positive
-    ${result}=   Is Certificate And Key Set    ${TRUSTED_CA_CERT}     ${TRUSTED_CA_KEY}
-    Skip If    not ${result}   Skipped because the `TRUSTED_CA_CERT` and `TRUSTED_CA_KEY` are not set.
     ${key}=   Generate Default Key
     ${sig_alg}=    Prepare Signature AlgorithmIdentifier     ${key}   hash_alg=sha256
     # -1 day
@@ -56,8 +55,6 @@ CA MUST Return A Correct Cross Certificate
     ...               cross certification request and the CA returns a cross certificate.
     ...               When the CA accepts the request, it MUST return the correct cross certificate.
     [Tags]      positive
-    ${result}=   Is Certificate And Key Set    ${TRUSTED_CA_CERT}     ${TRUSTED_CA_KEY}
-    Skip If    not ${result}   Skipped because the `TRUSTED_CA_CERT` and `TRUSTED_CA_KEY` are not set.
     ${cert_template}   ${key}=   Generate CCR CertTemplate For Testing
     ${ccr}=     Build CCR From Key
     ...    ${key}
@@ -92,15 +89,13 @@ CA MUST Reject Cross Certification Request with private key
     ...             disclosed to the other CA. We send a PKIMessage with a encrypted private key. The CA
     ...             **MUST** reject this request and may respond with the optional failInfo `badRequest`,
     ...            `badPOP`.
-    [Tags]         negative  bad-behaviour
-    ${result}=   Is Certificate And Key Set    ${TRUSTED_CA_CERT}     ${TRUSTED_CA_KEY}
-    Skip If    not ${result}   Skipped because the `TRUSTED_CA_CERT` and `TRUSTED_CA_KEY` are not set.
+    [Tags]         negative  bad-behaviour  robot:skip-on-failure
     ${cert_template}    ${key}=  Generate CertTemplate For Testing
     # ${data}=   Prepare Private Key For POP
     ${enc_key_id}=   Prepare EncKeyWithID    ${key}   sender=${SENDER}   use_string=False
-    ${rid}=   Prepare Recipient Identifier    ${TRUSTED_CA_CERT}
-    ${popo}=   Prepare EncryptedKey For POPO    ${enc_key_id}   ${rid}   ${TRUSTED_CA_CERT}   for_agreement=False
-    ...        private_key=${TRUSTED_CA_KEY}
+    ${rid}=   Prepare Recipient Identifier    ${TRUSTED_CA_CERT_CHAIN}[0]
+    ${popo}=   Prepare EncryptedKey For POPO    ${enc_key_id}   ${rid}   ${TRUSTED_CA_CERT_CHAIN}[0]   for_agreement=False
+    ...        private_key=${TRUSTED_CA_KEY_OBJ}
     # It is not relevant if the private key is correct, because this behaviour is not allowed.
     ${ccr}=     Build CCR From Key
     ...    ${key}

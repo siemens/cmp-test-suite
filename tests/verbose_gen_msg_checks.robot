@@ -101,7 +101,7 @@ Protect With Trusted CA
         RETURN    ${prot_msg}
     END
     ${prot_msg}=    Protect PKIMessage    ${pki_message}    signature
-    ...                 private_key=${TRUSTED_CA_KEY}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
+    ...                 private_key=${TRUSTED_CA_KEY_OBJ}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
     ...                 &{params}
     RETURN    ${prot_msg}
 
@@ -376,7 +376,7 @@ Build Body By Name
         END
         ${prot_body}=    Protect With Trusted CA    ${body}  &{params}
         IF   ${without_cert_chain}
-            ${body}=  Patch For Without CertChain    ${body}  ${TRUSTED_CA_CERT}
+            ${body}=  Patch For Without CertChain    ${body}  ${TRUSTED_CA_CERT_CHAIN}[0]
         END
     ELSE IF    '${body_name}' == "kur"
          IF   '${RE_USE_KUR}' == '${False}'
