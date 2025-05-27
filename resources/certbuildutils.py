@@ -1957,10 +1957,10 @@ def _process_csr_extensions(
 def build_cert_from_csr(  # noqa D417 undocumented-param
     csr: rfc6402.CertificationRequest,
     ca_key: SignKey,
+    ca_cert: rfc9480.CMPCertificate,
     extensions: Optional[ExtensionsParseType] = None,
     validity: Optional[rfc5280.Validity] = None,
     issuer: Optional[rfc9480.Name] = None,
-    ca_cert: Optional[rfc9480.CMPCertificate] = None,
     include_csr_extensions: bool = True,
     **kwargs,
 ) -> rfc9480.CMPCertificate:
@@ -1970,10 +1970,10 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
     ---------
         - `csr`: The CSR to build the certificate from.
         - `ca_key`: The CA private key.
+        - `ca_cert`: The CA certificate.
         - `extensions`: Optional extensions to include in the certificate. Defaults to `None`.
         - `validity`: Optional validity period for the certificate. Defaults to `None`.
         - `issuer`: The issuer of the certificate. Defaults to `None`.
-        - `ca_cert`: The CA certificate. Defaults to `None`.
         - `include_extensions`: Whether to include the extensions from the CSR. Defaults to `True`.
 
     **kwargs:

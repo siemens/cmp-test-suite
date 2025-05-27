@@ -2647,11 +2647,14 @@ def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
             certutils.verify_csr_signature(request["body"]["p10cr"])
 
             ca_key = convertutils.ensure_is_sign_key(kwargs.get("ca_key"))
+            ca_cert = kwargs.get("ca_cert")
+            if not isinstance(ca_cert, rfc9480.CMPCertificate):
+                raise TypeError("The `ca_cert` must be a CMPCertificate object.")
 
             cert = certbuildutils.build_cert_from_csr(
                 csr=request["body"]["p10cr"],
                 ca_key=ca_key,
-                ca_cert=kwargs.get("ca_cert"),
+                ca_cert=ca_cert,
                 hash_alg=kwargs.get("hash_alg", "sha256"),
                 extensions=kwargs.get("extensions"),
             )
