@@ -5,7 +5,7 @@
 """Dataclasses for configuration variables used by the MockCA."""
 
 from abc import ABC
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 from typing import Optional, Union
 
 from resources.data_objects import KARICertsAndKeys
@@ -56,8 +56,7 @@ class CertConfConfigVars(ConfigVal):
 class VerifyState(ConfigVal):
     """A simple class to store the verification state.
 
-    Attributes
-    ----------
+    Attributes:
         allow_only_authorized_certs: If only authorized certificates are allowed. Defaults to `False`.
         use_openssl: If OpenSSL should be used for verification. Defaults to `False`.
         algorithms: The algorithms to use. Defaults to "ecc+,rsa, pq, hybrid".
@@ -74,19 +73,35 @@ class VerifyState(ConfigVal):
 
 
 @dataclass
+class TrustConfig(ConfigVal):
+    """Configuration for the trust store.
+
+    Attributes:
+        mock_ca_trusted_dir: The directory containing the trusted CA certificates.
+        Defaults to "data/mock_ca/trustanchors".
+        trusted_ras_dir: The directory containing the trusted RA certificates, for `raVerified`
+        and nested requests. Defaults to `None`.
+        trusted_cas_dir: The directory containing the trusted CA certificates for
+        Cross-Certification. Defaults to `None`.
+
+    """
+
+    mock_ca_trusted_dir: str = "data/mock_ca/trustanchors"
+    trusted_ras_dir: Optional[str] = None
+    trusted_cas_dir: Optional[str] = None
+
+
+@dataclass
 class ProtectionHandlerConfig(ConfigVal):
     """Configuration for the ProtectionHandler.
 
-    Attributes
-    ----------
+    Attributes:
         use_openssl: Whether to use OpenSSL for verification. Defaults to `True`.
         prot_alt_key: The alternative signing key to use for hybrid signatures. Defaults to `None`.
         include_alt_sig_key: Whether to include the alternative signing key in the PKIMessage. Defaults to `True`.
         kari_certs: The KARI certificates and keys to use for `DHBasedMac` protection. Defaults to `None`.
-        mock_ca_trusted_dir: The directory containing the trusted CA certificates.
         Defaults to "data/mock_ca/trustanchors".
         enforce_lwcmp: Whether to enforce the use of LwCMP algorithm profile RFC9483. Defaults to `False`.
-        trusted_ras_dir: The directory containing the trusted RA certificates. Defaults to `None`.
 
     """
 
@@ -96,9 +111,29 @@ class ProtectionHandlerConfig(ConfigVal):
     prot_alt_key: Optional[SignKey] = None
     include_alt_sig_key: bool = True
     kari_certs: Optional[KARICertsAndKeys] = None
-    mock_ca_trusted_dir: str = "data/mock_ca/trustanchors"
     enforce_lwcmp: bool = False
-    trusted_ras_dir: Optional[str] = None
+    trusted_config: TrustConfig = field(default_factory=TrustConfig)
+
+    def __post_init__(self):
+        """Post-initialization to ensure the pre_shared_secret is in bytes."""
+        if isinstance(self.trusted_config, dict):
+            # If a dictionary is passed, convert it to TrustConfig
+            self.trusted_config = TrustConfig(**self.trusted_config)
+
+    @property
+    def mock_ca_trusted_dir(self) -> str:
+        """Get the directory containing the trusted CA certificates."""
+        return self.trusted_config.mock_ca_trusted_dir
+
+    @property
+    def trusted_ras_dir(self) -> Optional[str]:
+        """Get the directory containing the trusted RA certificates."""
+        return self.trusted_config.trusted_ras_dir
+
+    @property
+    def trusted_cas_dir(self) -> Optional[str]:
+        """Get the directory containing the trusted CA certificates for Cross-Certification."""
+        return self.trusted_config.trusted_cas_dir
 
     def to_dict(self) -> dict:
         """Convert the configuration to a dictionary."""
@@ -109,7 +144,6 @@ class ProtectionHandlerConfig(ConfigVal):
             "prot_alt_key": self.prot_alt_key,
             "include_alt_sig_key": self.include_alt_sig_key,
             "kari_certs": self.kari_certs,
-            "mock_ca_trusted_dir": self.mock_ca_trusted_dir,
             "enforce_lwcmp": self.enforce_lwcmp,
-            "trusted_ras_dir": self.trusted_ras_dir,
+            **self.trusted_config.to_dict(),
         }

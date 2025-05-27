@@ -77,6 +77,8 @@ class ProtectionHandler:
         prot_alt_key: Optional[SignKey] = None,
         enforce_rfc9481: bool = False,
         trusted_ras_dir: Optional[str] = None,
+        trusted_cas_dir: Optional[str] = None,
+        config: Optional[ProtectionHandlerConfig] = None,
     ) -> None:
         """Initialize the ProtectionHandler with the specified parameters.
 
@@ -89,7 +91,9 @@ class ProtectionHandler:
         :param prot_alt_key: The alternative signing key to use for hybrid signatures. Defaults to `None`.
         :param enforce_rfc9481: Whether to enforce the use of LwCMP algorithm profile RFC9483. Defaults to `False`.
         :param trusted_ras_dir: The directory containing the trusted RA certificates. Defaults to `None`.
-
+        :param trusted_cas_dir: The directory containing the trusted CA certificates. Defaults to `None`.
+        :param config: Optional configuration for the ProtectionHandler. If not provided, a
+        default configuration is used.
         """
         self.prot_cert = cmp_protection_cert
         self.prot_key = cmp_prot_key
@@ -108,15 +112,20 @@ class ProtectionHandler:
 
         kari_cert = KARICertsAndKeys.from_kwargs(**load_env_data_certs())
 
-        self._prot_config = ProtectionHandlerConfig(
+        trust_cfg = TrustConfig(
+            mock_ca_trusted_dir=mock_ca_trusted_dir,
+            trusted_ras_dir=trusted_ras_dir,
+            trusted_cas_dir=trusted_cas_dir,
+        )
+
+        self._prot_config = config or ProtectionHandlerConfig(
             pre_shared_secret=pre_shared_secret,
             def_mac_alg=def_mac_alg,
             use_openssl=use_openssl,
             prot_alt_key=prot_alt_key,
             kari_certs=kari_cert,
-            mock_ca_trusted_dir=mock_ca_trusted_dir,
+            trusted_config=trust_cfg,
             enforce_lwcmp=enforce_rfc9481,
-            trusted_ras_dir=trusted_ras_dir,
         )
 
     def patch_for_mac(self, response: PKIMessageTMP) -> PKIMessageTMP:
