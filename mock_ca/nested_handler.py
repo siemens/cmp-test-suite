@@ -247,6 +247,10 @@ class NestedHandler:
                     index=i,
                 )
                 if entry["body"].getName() in ["cr", "ir", "p10cr"]:
+                    # Different if cases, if somebody decides that
+                    # `verify_ra_verified` can be set to `False`, because
+                    # the batched sender is trusted.
+                    # But for `kur` and `ccr` MUST be set to `False`.
                     response = self.cert_req_handler.process_cert_request(
                         entry,
                         must_be_protected=not self.allow_inner_unprotected,
