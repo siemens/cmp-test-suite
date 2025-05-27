@@ -92,6 +92,7 @@ from resources.typingutils import (
     ECDHPrivateKey,
     ECDHPublicKey,
     EnvDataPrivateKey,
+    ExtensionsParseType,
     PrivateKey,
     PublicKey,
     SignKey,
@@ -4173,6 +4174,7 @@ def _process_crr_single(
     ca_key: SignKey,
     ca_cert: rfc9480.CMPCertificate,
     bad_sig: bool = False,
+    extensions: Optional[ExtensionsParseType] = None,
 ) -> rfc9480.CMPCertificate:
     """Process a single CRR message.
 
@@ -4232,13 +4234,8 @@ def _process_crr_single(
     cert_template = _ensure_key_usage(cert_template)
     cert_template = _ensure_basic_constraints(cert_template)
     cert = certbuildutils.build_cert_from_cert_template(
-        cert_template=cert_template, for_crr_request=True, bad_sig=bad_sig, ca_key=ca_key, ca_cert=ca_cert
+        cert_template=cert_template, bad_sig=bad_sig, ca_key=ca_key, ca_cert=ca_cert, extensions=extensions
     )
-
-    alg_id = rfc9480.AlgorithmIdentifier()
-    alg_id["algorithm"] = cert_template["signingAlg"]["algorithm"]
-    alg_id["parameters"] = cert_template["signingAlg"]["parameters"]
-    cert["signatureAlgorithm"] = alg_id
     return cert
 
 
@@ -4291,7 +4288,9 @@ def build_ccp_from_ccr(  # noqa D417 undocumented-param
         if ca_cert is None or ca_key is None:
             raise ValueError("Either a certificate or the `ca_key` and `ca_cert` must be provided!")
         # ONLY 1 is allowed, please refer to RFC4210bis-18!
-        cert = _process_crr_single(request, ca_key, ca_cert)
+        cert = _process_crr_single(
+            request, ca_key, ca_cert, extensions=kwargs.get("extensions", None), bad_sig=kwargs.get("bad_sig", False)
+        )
 
     responses = prepare_cert_response(
         cert=cert,

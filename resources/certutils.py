@@ -2316,3 +2316,149 @@ def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
 
     if status == "unknown":
         raise ValueError(f"Certificate status is unknown, but expected the `{expected_status}` status.")
+
+
+@not_keyword
+def is_ca_cert(cert: rfc9480.CMPCertificate) -> Optional[bool]:
+    """Check if the provided certificate is a CA certificate.
+
+    :param cert: The certificate to check.
+    :return: `None` if the certificate is not a CA certificate, `True` if it is a CA certificate, or `False`.
+    :raises BadAsn1Data: If the BasicConstraints extension is malformed.
+    """
+    extn = certextractutils.get_extension(
+        cert["tbsCertificate"]["extensions"],
+        rfc5280.id_ce_basicConstraints,
+    )
+    if extn is None:
+        return None
+
+    basic_constraints, rest = asn1utils.try_decode_pyasn1(  # type: ignore
+        extn["extnValue"],
+        rfc5280.BasicConstraints(),
+    )
+    basic_constraints: rfc5280.BasicConstraints
+    if rest:
+        raise BadAsn1Data("BasicConstraints")
+
+    return basic_constraints["cA"].isValue
+
+
+def _validate_key_identifiers(
+    cross_cert: rfc9480.CMPCertificate,
+    issuer_cert: rfc9480.CMPCertificate,
+) -> None:
+    """Validate the key identifiers of the cross-signed certificate and the issuer certificate.
+
+    :param cross_cert: The cross-signed certificate to validate.
+    :param issuer_cert: The CA Issuer certificate.
+    :raises ValueError: If the SKI or AKI are not present, or if they do not match as expected.
+    """
+    ski_cert = certextractutils.get_field_from_certificate(cross_cert, extension="ski")  # type: ignore
+    ski_cert: Optional[bytes]
+    ski_issuer_cert = certextractutils.get_field_from_certificate(issuer_cert, extension="ski")  # type: ignore
+    ski_issuer_cert: Optional[bytes]
+    aki_cert = certextractutils.get_field_from_certificate(cross_cert, extension="aki")  # type: ignore
+    aki_cert: rfc5280.AuthorityKeyIdentifier
+
+    if ski_cert is None or ski_issuer_cert is None:
+        raise ValueError("The cross-signed certificate or the issuer certificate does not have a SKI.")
+
+    if ski_cert == ski_issuer_cert:
+        raise ValueError("The cross-signed certificate has the same SKI as the issuer certificate.")
+
+    if ski_issuer_cert == aki_cert:
+        raise ValueError("The SKI of the issuer certificate does not match the AKI of the cross-signed certificate.")
+
+
+def _validate_cross_signed_cert(
+    cross_cert: rfc9480.CMPCertificate,
+    issuer_cert: rfc9480.CMPCertificate,
+) -> None:
+    """Validate the values of the cross-signed certificate against the issuer certificate.
+
+    :param cross_cert: The cross-signed certificate to validate.
+    :param issuer_cert: The CA Issuer certificate.
+    :raises ValueError: If the cross-signed certificate is not a CA certificate, or if it has the same Subject
+                        and Issuer as the issuer certificate or the SKI and AKI do not match as expected.
+
+    """
+    out = is_ca_cert(cross_cert)
+    if out is None:
+        raise ValueError("The cross-signed certificate does not have a BasicConstraints extension.")
+
+    if not out:
+        raise ValueError("The cross-signed certificate is not a CA certificate.")
+
+    out = is_ca_cert(issuer_cert)
+    if out is None:
+        raise ValueError("The issuer certificate does not have a BasicConstraints extension.")
+
+    if not out:
+        raise ValueError("The issuer certificate is not a CA certificate.")
+
+    if compareutils.compare_pyasn1_names(
+        cross_cert["tbsCertificate"]["subject"], cross_cert["tbsCertificate"]["issuer"]
+    ):
+        raise ValueError("The cross-signed certificate has the same Subject and Issuer.")
+
+    if compareutils.compare_pyasn1_names(
+        cross_cert["tbsCertificate"]["subject"], issuer_cert["tbsCertificate"]["subject"]
+    ):
+        cert_name = utils.get_openssl_name_notation(cross_cert["tbsCertificate"]["subject"])
+        raise ValueError(f"The Subject of the certificate matches the Subject of the issuer certificate: {cert_name}")
+
+    _validate_key_identifiers(cross_cert=cross_cert, issuer_cert=issuer_cert)
+
+    issuer_key = load_public_key_from_cert(issuer_cert)
+    issuer_key = ensure_is_verify_key(issuer_key)
+
+    verify_cert_signature(
+        cert=cross_cert,
+        issuer_pub_key=issuer_key,
+    )
+
+
+@keyword(name="Validate CA Cross-Signed Certificate")
+def validate_ca_cross_signed_cert(  # noqa: D417 undocumented-param
+    cross_cert: rfc9480.CMPCertificate, template: rfc9480.CertTemplate, ca_cert: rfc9480.CMPCertificate
+) -> None:
+    """Validate the newly issued cross-signed CA certificate against the template and the CA Issuer certificate.
+
+    Note:
+    ----
+      - excludes the signature algorithm check from the template.
+
+    Arguments:
+    ---------
+       - `cross_cert`: The cross-signed certificate to validate.
+       - `template`: The certificate template used for the cross-signed certificate.
+       - `ca_cert`: The CA Issuer certificate.
+
+    Raises:
+    ------
+        - `ValueError`: If the cross-signed certificate does not match the template, or if it is not a valid
+          cross-signed certificate.
+        - `ValueError`: If the cross-signed certificate is not a CA certificate.
+        - `ValueError`: If the cross-signed certificate has the same Subject and Issuer as the issuer certificate,
+          or if it has the same public key as the issuer certificate, or if the BasicConstraints extension is missing.
+
+    Examples:
+    --------
+    | Validate CA Cross-Signed Certificate | cross_cert=${cross_cert} | ${cert_template} | ${ca_cert} |
+
+    """
+    _validate_cross_signed_cert(cross_cert=cross_cert, issuer_cert=ca_cert)
+
+    if not compareutils.compare_cert_template_and_cert(
+        cert_template=template,
+        issued_cert=cross_cert,
+        exclude_fields="extensions,signingAlg,issuer",
+    ):
+        raise ValueError("The cross-signed certificate does not matches the template.")
+
+    logging.debug("Cross-signed certificate extensions comparison is not supported yet.")
+    for oid in template["extensions"]:
+        if oid not in cross_cert["tbsCertificate"]["extensions"]:
+            name_oid = may_return_oid_to_name(oid)
+            raise ValueError(f"The cross-signed certificate does not have the extension {name_oid}.")

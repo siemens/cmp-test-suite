@@ -1683,7 +1683,6 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
     ca_cert: rfc9480.CMPCertificate,
     ca_key: SignKey,
     hash_alg: Optional[str] = "sha256",
-    for_crr_request: bool = False,
     **kwargs,
 ) -> rfc9480.CMPCertificate:
     """Build a certificate from a CertTemplate.
@@ -1733,7 +1732,6 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
         use_pre_hash=kwargs.get("use_pre_hash", False),
         include_extensions=False,
-        for_crr_request=for_crr_request,
     )
 
     pub_key = ca_key.public_key()
@@ -1804,7 +1802,6 @@ def prepare_tbs_certificate_from_template(
     use_pre_hash: bool = False,
     include_extensions: bool = False,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
-    for_crr_request: bool = False,
 ) -> rfc5280.TBSCertificate:
     """Prepare a `TBSCertificate` structure from a `CertTemplate`.
 
@@ -1818,7 +1815,6 @@ def prepare_tbs_certificate_from_template(
     :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :param include_extensions: Whether to include the extensions from the `CertTemplate`. Defaults to `False`.
     :param spki: The `SubjectPublicKeyInfo` object to include in the `TBSCertificate`. Defaults to `None`.
-    :param for_crr_request: : Whether to build the certificate for a cross-certification request. Defaults to `False`.
     :return: The prepared `TBSCertificate` structure.
     """
     if serial_number is None:
@@ -1834,13 +1830,9 @@ def prepare_tbs_certificate_from_template(
         public_key=spki or cert_template["publicKey"],
     )
 
-    if not for_crr_request:
-        tbs_cert["signature"] = prepare_alg_ids.prepare_sig_alg_id(
-            signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
-        )
-    else:
-        tbs_cert["signature"]["algorithm"] = cert_template["signingAlg"]["algorithm"]
-        tbs_cert["signature"]["parameters"] = cert_template["signingAlg"]["parameters"]
+    tbs_cert["signature"] = prepare_alg_ids.prepare_sig_alg_id(
+        signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+    )
 
     if spki is not None:
         public_key = keyutils.load_public_key_from_spki(spki)

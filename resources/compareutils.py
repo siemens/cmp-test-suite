@@ -343,6 +343,11 @@ def compare_cert_template_and_cert(  # noqa D417 undocumented-param
     if not _compare_uids_template_and_cert(cert_template, issued_cert, exclude):
         return False
 
+    if "version" not in exclude and cert_template["version"].isValue:
+        if int(cert_template["version"]) != int(issued_cert["tbsCertificate"]["version"]):
+            logging.debug("The certificate `version` was not the same as requested.")
+            return False
+
     logging.info("Fields `signingAlg, version` are not supported!")
     return True
 
