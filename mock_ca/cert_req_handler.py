@@ -41,6 +41,7 @@ from resources.checkutils import (
     validate_cert_profile_for_ca,
     validate_request_message_nonces_and_tx_id,
     validate_senderkid_for_cmp_protection,
+    validate_wrong_integrity,
 )
 from resources.cmputils import (
     build_cmp_error_message,
@@ -544,6 +545,7 @@ class CertReqHandler:
         self.validate_general_info(pki_message=pki_message)
         self.check_message_time(pki_message=pki_message)
         check_is_protection_present(pki_message, must_be_protected=must_be_protected)
+        validate_wrong_integrity(pki_message)
         check_sender_cmp_protection(pki_message, must_be_protected=must_be_protected, allow_failure=False)
         validate_senderkid_for_cmp_protection(pki_message, must_be_protected=must_be_protected, allow_mac_failure=False)
         oid = pki_message["header"]["protectionAlg"]["algorithm"]
@@ -625,6 +627,9 @@ class CertReqHandler:
         if msg_type not in ["ir", "cr", "p10cr", "kur", "ccr"]:
             raise NotImplementedError(f"Message type '{msg_type}' is not supported by CertReqHandler.")
         try:
+            validate_wrong_integrity(
+                pki_message=pki_message,
+            )
             self.check_same_key_cert_request(pki_message=pki_message)
             self.check_cert_is_updated(pki_message=pki_message)
             self._validate_orig_req(pki_message=pki_message)

@@ -28,7 +28,11 @@ from resources.certutils import (
     load_public_key_from_cert,
     validate_key_usage,
 )
-from resources.checkutils import check_if_response_contains_encrypted_cert, check_if_response_contains_private_key
+from resources.checkutils import (
+    check_if_response_contains_encrypted_cert,
+    check_if_response_contains_private_key,
+    validate_wrong_integrity,
+)
 from resources.cmputils import get_cmp_message_type, patch_sender, patch_senderkid
 from resources.cryptoutils import perform_ecdh
 from resources.data_objects import KARICertsAndKeys
@@ -555,6 +559,7 @@ class ProtectionHandler:
         alg_oid = pki_message["header"]["protectionAlg"]["algorithm"]
 
         prot_type = ProtectedType.get_protection_type(alg_oid)
+        validate_wrong_integrity(pki_message)
 
         if prot_type == ProtectedType.DH:
             # Validate DH-based MAC protection

@@ -44,6 +44,7 @@ from resources.exceptions import (
     BadSenderNonce,
     BadTime,
     BadValueBehavior,
+    BodyRelevantError,
     CMPTestSuiteError,
 )
 from resources.oid_mapping import (
@@ -2411,3 +2412,37 @@ def validate_cmp_body_types(  # noqa D417 undocumented-param
     else:
         if resp_body_name != "error":
             raise ValueError(f"Expected a response message of type: 'error', got: {resp_body_name}")
+
+
+@not_keyword
+def validate_wrong_integrity(
+    pki_message: PKIMessageTMP,
+) -> None:
+    """Validate if the integrity of a CMP message is correct.
+
+    A `ccr`, `kur`, `rr`, or `nested` message must not be MAC protected.
+
+    :param pki_message: The PKIMessage to validate.
+    :raises BodyRelevantError: If the integrity check fails.
+    """
+    body_name = cmputils.get_cmp_message_type(pki_message)
+    if body_name not in ["ccr", "kur", "rr", "nested"]:
+        return
+
+    if not pki_message["header"]["protectionAlg"].isValue:
+        raise BadMessageCheck("The protection algorithm must be set for ccr and kur messages.")
+
+    prot_type = ProtectedType.get_protection_type(pki_message)
+    if prot_type == ProtectedType.MAC:
+        raise BodyRelevantError(
+            f"The {body_name} message was MAC protected, but it MUST not be.",
+            pki_message=pki_message,
+            failinfo="wrongIntegrity",
+        )
+
+    if prot_type in [ProtectedType.DH, ProtectedType.KEM] and body_name == "ccr":
+        raise BodyRelevantError(
+            f"The {body_name} message was KEM/DH protected, but it MUST not be.",
+            pki_message=pki_message,
+            failinfo="wrongIntegrity",
+        )
