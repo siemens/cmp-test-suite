@@ -1,9 +1,13 @@
 
 # Functional test cases 
 
-## Section 4.1.1
+## Enrolling an End Entity to New PKI
 
-### Prerequisites
+### Signatured-based protection and decentral key generation
+Needed sections of the RFC for testing:
+- 4.1.1 
+
+#### Prerequisites
 "The certificate of the EE MUST have been enrolled by an external PKI, e.g., a 
 manufacturer-issued device certificate."
 - Reject Certificate From Non External Source
@@ -22,7 +26,7 @@ needed to indicate the requested certificate profile."
     - Output: pki sends rejection
 
 
-### Message Flow
+#### Message Flow
 For each of these Test Cases requirements from Section 3 should be passed.
 
 "For this PKI management operation, the EE MUST include a sequence of one CertReqMsg in the ir. If more certificates are required, further requests MUST be sent using separate PKI management operations."
@@ -80,11 +84,121 @@ operation MUST be terminated."
     - Input: EE sends certConf message after certificate was rejected
     - Output: pki does not react
 
+### MAC-based protection
+Needed sections of the RFC for testing:
+- 4.1.1
+- 4.1.5
+
+### Central key pair generation
+Needed sections of the RFC for testing:
+- 4.1.1
+- 4.1.6
+
+### MAC-based protection + central key pair generation
+Needed sections of the RFC for testing:
+- 4.1.1 
+- 4.1.5
+- 4.1.6
 
 
-## Section 4.1.2
 
-### Prerequisites 
+## Enrolling an End Entity to a Known PKI
+
+### Signatured-based protection and decentral key generation
+Needed sections of the RFC for testing:
+- 4.1.1
+- 4.1.2 
+
+#### Prerequisites 
+"The certificate used by the EE have been enrolled by the PKI it requests another
+certificate from."
+- 
+    - Input: 
+    - Output: 
+
+"When using the generalInfo field certProfile, the EE MUST know the identifier 
+needed to indicate the requested certificate profile."
+- Reject Invalid CertProfil Identifier
+    - Input: EE sends ir false identifier
+    - Output: pki sends rejection
+
+#### Message Flow
+"The message sequence for this PKI management operation is identical to that given in Section 4.1.1, with the following changes:"
+- test cases above should be tested with cr as message body
+
+"The body of the first request and response be cr and cp. Otherwise, ir and ip
+be used.
+Note: Since the difference between ir/ip and cr/cp is syntactically not essential, an ir/ip may
+be used in this PKI management operation."
+- 
+    - Input: 
+    - Output: 
+
+"The caPubs field in the certificate response message be absent."
+- 
+    - Input: 
+    - Output: 
+
+### MAC-based protection
+Needed sections of the RFC for testing:
+- 4.1.2 
+- 4.1.5
+
+### Central key pair generation
+Needed sections of the RFC for testing:
+- 4.1.2
+- 4.1.6
+
+### MAC-based protection + central key pair generation
+Needed sections of the RFC for testing:
+- 4.1.2
+- 4.1.5
+- 4.1.6
+
+
+## Updating a Valid Certificate
+
+
+### Signatured-based protection and decentral key generation
+Needed sections of the RFC for testing:
+- 4.1.3 
+
+#### Prerequisites 
+
+
+### Central key pair generation
+Needed sections of the RFC for testing:
+- 4.1.3
+- 4.1.6
+
+### MAC-based protection + central key pair generation
+Needed sections of the RFC for testing:
+- 4.1.3
+- 4.1.5
+- 4.1.6 
+
+
+## Enrolling an End Entitiy Using a PKCS#10 Request
+
+### Signatured-based protection and decentral key generation
+Needed sections of the RFC for testing:
+- 4.1.3
+
+### MAC-based protection
+Needed sections of the RFC for testing:
+- 4.1.3
+- 4.1.5
+
+### Central key pair generation
+Needed sections of the RFC for testing:
+- 4.1.3
+- 4.1.6
+
+### MAC-based protection + central key pair generation
+Needed sections of the RFC for testing:
+- 4.1.3
+- 4.1.5
+- 4.1.6
 
 
 
