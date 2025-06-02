@@ -71,18 +71,24 @@ The structure is like this:
     - Issue NEG ECC KARI Cert
     - Issue POS ECC KARI Cert
 
-# Test Classes
-## support_messages
+# Guiliano Test Classes
+## What are in the test clases:
+### support_messages
 - Section 4.3.1 Get CA Certificates
 - Section 4.3.2 Get Root CA Certificate Update
 - Section 4.3.3 Get Certificate Request Template
 - Section 4.3.4 currentCRL
 - Section 4.3.4. CRL Update Retrieval
 
-## pki_mgmt_entity_op
+### pki_mgmt_entity_op
 'pki_mgmt_entity_op' are test cases for Section 5 of the RFC
 - 5. PKI Management Entity Operations
 - 5.2. Forwarding Messages
 - 5.2.2 Adding Protection and Batching of Messages
 - 5.2.2.1 Adding Protection to a Request Message
 
+
+### guiliano tests in new structure
+Classes I have sorted in my "test_structured":
+- basic
+- lwcmp
