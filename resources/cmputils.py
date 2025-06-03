@@ -3776,7 +3776,7 @@ def get_cert_response_from_pkimessage(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the `PKIBody` of the PKIMessage is not of type: `cp`, `kup`, `cpp` or `ip.
+        - `ValueError`: If the `PKIBody` of the PKIMessage is not of type: `cp`, `kup`, `ccp` or `ip.
 
     Examples:
     --------
@@ -3787,7 +3787,7 @@ def get_cert_response_from_pkimessage(  # noqa D417 undocumented-param
     message_type = get_cmp_message_type(pki_message)
 
     if message_type == "error":
-        utils.display_pki_status_info(pki_message, index=response_index)
+        logging.debug(utils.display_pki_status_info(pki_message, index=response_index))
         raise ValueError("The provided `PKIMessage` is an error message, which does not contain a certificate.")
 
     if message_type not in {"cp", "kup", "ip", "ccp"}:
