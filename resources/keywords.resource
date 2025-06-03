@@ -99,6 +99,11 @@ Set Up Test Suite
     EXCEPT
         Log    Failed to setup the CCR required certificate and signing key.
     END
+    TRY
+        Set Up Trusted PKI RA Cert Chain
+    EXCEPT
+        Log    Failed to setup the trusted PKI RA certificate chain.
+    END
 
 Initialize PQ Cert And Key Variables
     [Documentation]    Initialize the variables for the PQ certificate and key, to store freshly issued
@@ -117,6 +122,26 @@ Set Up CRR Test Cases
     VAR   ${TRUSTED_CA_KEY_OBJ}     ${key}  scope=Global
     ${cert_chain}=  Build Cert Chain From Dir    ${cert}   ${TRUSTED_CA_DIR}
     VAR   ${TRUSTED_CA_CERT_CHAIN}   ${cert_chain}   scope=Global
+
+Set UP Trusted PKI RA Cert Chain
+    [Documentation]    Set up the test environment
+    [Tags]    setup  trust
+    ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${OTHER_TRUSTED_PKI_KEY}
+    IF  ${is_file}
+        ${der_cert}=    Load And Decode PEM File    ${OTHER_TRUSTED_PKI_CERT}
+        ${cert}=   Parse Certificate    ${der_cert}
+        ${key}=    Load Private Key From File   ${OTHER_TRUSTED_PKI_KEY}
+        VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global
+        VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global
+    END
+    VAR   ${INNER_CERT}    ${ISSUED_CERT}    scope=Global
+    VAR   ${INNER_KEY}    ${ISSUED_KEY}    scope=Global
+    IF  '${RA_CERT_CHAIN_PATH}' == '${None}'
+        ${cert_chain}=   Build Cert Chain From Dir    ${OTHER_TRUSTED_PKI_CERT}   ${RA_CERT_CHAIN_DIR}
+    ELSE
+        ${cert_chain}=   Load Certificate Chain     ${RA_CERT_CHAIN_PATH}
+    END
+    VAR   ${RA_CERT_CHAIN}    ${cert_chain}    scope=Global
 
 Increase TestIndex
     [Documentation]    Perform the incrementation of the `TestIndex` to update the sender name inside the PKIMessage,
@@ -666,7 +691,10 @@ Generate CCR CertTemplate For Testing
     ...                Examples:
     ...                | ${cert_template}    ${key}= |    Generate CertTemplate For Testing |
     ...
-    ${key}=    Generate Default Key
+    [Arguments]  ${key}=${None}
+    IF  '${key}' == '${None}'
+        ${key}=    Generate Default Key
+    END
     ${cm}=    Get Next Common Name
     ${sig_alg}=   Prepare Signature AlgorithmIdentifier     ${key}   hash_alg=sha256
     # -1 day
@@ -744,6 +772,13 @@ Default Protect PKIMessage With Trusted CA Cert
     ${response}=  Protect PKIMessage    ${pki_message}    signature
     ...           private_key=${TRUSTED_CA_KEY_OBJ}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
     RETURN    ${response}
+
+Default Protect With Trusted Cert
+    [Documentation]    Protect a PKIMessage with the default signature protection.
+    [Arguments]    ${pki_message}
+    ${protected}=    Protect PKIMessage    ${pki_message}    signature   private_key=${OTHER_TRUSTED_PKI_KEY}
+    ...              cert_chain=${RA_CERT_CHAIN}
+    RETURN    ${protected}
 
 Generate Default MAC Protected PKIMessage
     [Documentation]    Build a PKIMessage used for MAC based protection, based on the config file
