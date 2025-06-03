@@ -141,6 +141,9 @@ def _prepare_pvno(pvno: Optional[Strint], for_kga: bool, update_hash: bool, defa
     :param default: The default protocol version number. Defaults to `2`.
     :return: The prepared protocol version number.
     """
+    for_kga = _ensure_is_bool(for_kga)
+    update_hash = _ensure_is_bool(update_hash)
+
     if pvno is not None:
         return int(pvno)
 
@@ -148,6 +151,25 @@ def _prepare_pvno(pvno: Optional[Strint], for_kga: bool, update_hash: bool, defa
         return 3
     # If the message is not for KGA and no hash update is needed, use the default version.
     return default
+
+
+def _ensure_is_bool(data: Union[bool, str]) -> bool:
+    """Ensure that the input is a boolean value.
+
+    :param data: The input data to check.
+    :return: The boolean value of the input.
+    :raises TypeError: If the input is not a boolean or a string that cannot be converted to a boolean.
+    """
+    # To fix invalid parsing from the Robot Framework.
+    if isinstance(data, bool):
+        return data
+    if isinstance(data, str):
+        data = data.strip()
+        if data.lower() == "true":
+            return True
+        elif data.lower() == "false":
+            return False
+    raise TypeError(f"Expected a boolean or a string convertible to boolean, got {data!r}.")
 
 
 @not_keyword
@@ -191,6 +213,9 @@ def prepare_pki_message(
 
     # exclude_fields
     to_exclude = set() if exclude_fields is None else set(exclude_fields.strip(" ").split(","))
+
+    implicit_confirm = _ensure_is_bool(implicit_confirm)
+    for_mac = _ensure_is_bool(kwargs.get("for_mac", False))
 
     pvno = _prepare_pvno(pvno, kwargs.get("for_kga", False), kwargs.get("update_hash", False))
     pki_header = _prepare_pki_header(sender, recipient, pvno, to_exclude)
@@ -239,7 +264,7 @@ def prepare_pki_message(
     pki_message = PKIMessageTMP()
     pki_message["header"] = pki_header
 
-    if kwargs.get("for_mac", False):
+    if for_mac:
         try:
             if not isinstance(sender, str):
                 raise TypeError("Sender must be a string for MAC-based protection.")
