@@ -73,19 +73,56 @@ The structure is like this:
 
 # Guiliano Test Classes
 ## What are in the test clases:
-### support_messages
-- Section 4.3.1 Get CA Certificates
-- Section 4.3.2 Get Root CA Certificate Update
-- Section 4.3.3 Get Certificate Request Template
-- Section 4.3.4 currentCRL
-- Section 4.3.4. CRL Update Retrieval
+### Cross_certification
+- RFC4210bis-18 Appendix D.6
+- RFC4210bis-15 Section Section 5.3.11
+
+### Cert_conf_tests
+- RFC 9483 Section 4.1.1
+- RFC 9483 Section 4.1
+- RFC 9483, Section 3 and 4.1
+- RFC 9483, Section 3.1
+
+### deprecated
+Tests which are deprecated and should be removed in the future.
+
+### extra_issuing 
+- RFC 4210-bis18 5.2.8.4
+- RFC 4210bis-18 Section 5.2.8.3.3
+- RFC 4210bis-18 Section 5.2.8.3.
+- RFC 4211 section-6.1
+- RFC 4211 section-6.2
+- RFC 4211 section-6.3
+- RFC 4211 section-6.4
+- RFC 4211 section-7.1
+- RFC 4211 section-7.2
+
+### kga
+- RFC 9483 Section 4.1.6.1
+- RFC9483 Section 4.1.6
+- RFC 9483 Section 4.1.6.2
 
 ### pki_mgmt_entity_op
 'pki_mgmt_entity_op' are test cases for Section 5 of the RFC
-- 5. PKI Management Entity Operations
-- 5.2. Forwarding Messages
-- 5.2.2 Adding Protection and Batching of Messages
-- 5.2.2.1 Adding Protection to a Request Message
+- RFC 9483 5. PKI Management Entity Operations
+- RFC 9483 5.2. Forwarding Messages
+- RFC 9483 5.2.2 Adding Protection and Batching of Messages
+- RFC 9483 5.2.2.1 Adding Protection to a Request Message
+
+### revocation_tests
+- RFC 9483 Section 4.2
+- RFC 9483 Sections 3
+- RFC 9483 Section 5.3.2,
+- RFC 9483, Section 4.1.1
+- RFC 9483, Section 4.1.3
+
+### support_messages
+- RFC 9483 Section 4.3.1 Get CA Certificates
+- RFC 9483 Section 4.3.2 Get Root CA Certificate Update
+- RFC 9483 Section 4.3.3 Get Certificate Request Template
+- RFC 9483 Section 4.3.4 currentCRL
+- RFC 9483 Section 4.3.4. CRL Update Retrieval
+
 
 
 ### guiliano tests in new structure
