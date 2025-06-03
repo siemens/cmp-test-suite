@@ -13,23 +13,23 @@ different scenarios, including enrollment, certificate updates, revocation, and 
 ### Documentation
 This document provides the overarching context and limitations of the test suite. It provides an overview of the test suite, including its scope, limitations, and important design considerations. It serves as the entry point for understanding the test suite's objectives and constraints.
 
-**Structure_TestSuite**
+#### Structure_TestSuite
 [Structure_TestSuite](Structure_TestSuite.md) outlines the high-level structure of the test suite. It categorizes test cases based on:
 - Authentication methods (e.g., signature-based or MAC-based protection).
 - Key pair generation methods (e.g., decentral or central key generation).
 - Forms of requests (e.g., enrollment, certificate updates, PKCS#10 requests). It provides a roadmap for organizing test cases and links them to relevant sections of RFC 9483. This document complements [About Suite](about_suite.md) by detailing how the test suite is structured and organized.
 
 
-**Requirements**
+#### Requirements
 [Requirements](Requirements.md) provides detailed functional requirements for each test case. It specifies:
 - Prerequisites for each test case.
 - Message flows and expected behaviors.
 - References to RFC sections that define the requirements. It serves as the blueprint for implementing and validating test cases. While [Structure Test Suite](Structure_TestSuite.md) categorizes test cases, [Requirements](Requirements.md) dives deeper into the specifics of each test case, ensuring alignment with RFC standards.
 
-**Test Case Files (*.robot)**
+#### Test Case Files (*.robot)
 These files contain the actual implementation of the test cases described in [Requirements](Requirements.md). Each test case is tagged and documented to align with the categories and requirements outlined in [Structure Test Suite](Structure_TestSuite.md) and [Requirements](Requirements.md).
 
-#### How the Documents Work Together
+### How the documents work together
 [About Suite](about_suite.md) provides the overarching context and limitations of the test suite.
 [Structure Test Suite](Structure_TestSuite.md) organizes the test cases into categories and links them to relevant RFC sections.
 [Requirements](Requirements.md) defines the functional requirements for each test case, ensuring compliance with RFC standards.
