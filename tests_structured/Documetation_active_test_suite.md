@@ -164,4 +164,17 @@ The structure is like this:
     - Issue POS ECC KARI Cert
 
 # General TODOs
-- 
+- same documentation for each test case
+    ** Example: **
+    [Documentation]     "If the requested certificate is available, the PKI management entity respond with a positive
+    ...                    ip/cp/kup message"
+    ...                 Ref.: Section 5.1.1 Responding to a Certificate Request
+    ...                 Input:
+    ...                 Expected Outcome: 
+- explain pyproject and pylint and all that
+- explain Set Up of the Test Suite 
+- explain in clear instructions how the tags should be used 
+- explain how failure and logs should be interpreted 
+- explain how and where to add new test cases or update existing ones
+- explain how to deprecate or remove outdated tests
+- give guidelines for code review of test code 
