@@ -2,6 +2,12 @@
 This document provides detailed functional requirements for the test cases in the CMP test suite. It outlines specific prerequisites, message flows, and expected behaviors for each test case based on RFC 9483. The document serves as a blueprint for implementing and validating test cases.
 
 ## Functional test cases (implicit and explicit)
+Functional test cases always follow the same format:
+RFC {Number} Section {Number} "{Quote from which the test case arises}"
+{as many blocks as needed to explain from which RFC sections the test cases arise}
+- Test Name: {Name of the test case, which is the same as in the implemention in robot files}
+    - Input: {What does the end entity send or what has occured}
+    - Output: {How should the reaction of the PKI managemet operation be}
 
 ### Enrolling an End Entity to New PKI
 
