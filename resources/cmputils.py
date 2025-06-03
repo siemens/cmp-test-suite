@@ -3381,6 +3381,23 @@ def _process_single_cert_conf_cert(
     return cert_status, set_for_ed
 
 
+def _get_cert_req_id(
+    cert_resp: rfc9480.CertResponse,
+    length: int = 0,
+    cert_req_id: Optional[Strint] = None,
+) -> Strint:
+    """Get the certificate request ID from the response message.
+
+    :param cert_resp: The `CertResponse` object from which to extract the ID.
+    :param length: The length of the certificate request ID. Defaults to `0`.
+    :param cert_req_id: The certificate request ID to use. If not provided, it will be extracted from the response.
+    """
+    if length == 1 and cert_req_id is None:
+        # To fix for `p10cr` response were the certReqId is `-1`.
+        return max(int(cert_resp["certReqId"]), 0)
+    return int(cert_req_id) if cert_req_id is not None else int(cert_resp["certReqId"])
+
+
 @keyword(name="Build Cert Conf From Resp")
 def build_cert_conf_from_resp(  # noqa D417 undocumented-param
     ca_message: PKIMessageTMP,
@@ -3446,7 +3463,7 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
             params[key] = value
 
     message_type = ca_message["body"].getName()
-    if message_type not in {"cp", "kup", "ip"}:
+    if message_type not in {"cp", "kup", "ip", "ccp"}:
         raise ValueError(f"The provided `PKIBody` does not contain a certificate. Got: `{message_type}`")
 
     cert_status_list = []
@@ -3471,8 +3488,11 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
         entry: rfc9480.CertResponse
         for i, entry in enumerate(cert_resp_msg):
             # remove the tagging.
-            cert_req_id = cert_req_id or entry["certReqId"]
-            cert_req_id = int(cert_req_id)
+            cert_req_id = _get_cert_req_id(
+                cert_resp=entry,
+                length=len(cert_resp_msg),
+                cert_req_id=cert_req_id,
+            )
 
             tmp_cert = get_cert_from_pkimessage(ca_message, cert_number=i)
 
