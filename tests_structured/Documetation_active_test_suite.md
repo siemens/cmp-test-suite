@@ -169,8 +169,7 @@ The structure is like this:
     [Documentation]     "If the requested certificate is available, the PKI management entity respond with a positive
     ...                    ip/cp/kup message"
     ...                 Ref.: Section 5.1.1 Responding to a Certificate Request
-    ...                 Input:
-    ...                 Expected Outcome: 
+    for reference see: https://code.siemens.com/alexander.railean/cmp-test-suite/-/blob/lcmpp-test-desc/tests/lwcmp.robot?ref_type=heads#L399
 - explain pyproject and pylint and all that
 - explain Set Up of the Test Suite 
 - explain in clear instructions how the tags should be used 
