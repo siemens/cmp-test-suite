@@ -3796,6 +3796,26 @@ def get_cert_response_from_pkimessage(  # noqa D417 undocumented-param
     return pki_message["body"][message_type]["response"][int(response_index)]
 
 
+def _get_cert_from_krp_pkimessage(  # noqa D417 undocumented-param
+    pki_message: PKIMessageTMP,
+) -> rfc9480.CMPCertificate:
+    """Extract a certificate from a KRP `PKIMessage`.
+
+    :param pki_message: The PKIMessage object from which to extract the certificate.
+    :return: The extracted certificate object from the KRP PKIMessage.
+    """
+    if get_cmp_message_type(pki_message) != "krp":
+        raise ValueError("The provided PKIMessage is not a KRP message.")
+
+    new_sig_cert = pki_message["body"]["krp"]["newSigCert"]
+
+    if not new_sig_cert.isValue:
+        raise ValueError("The provided `krp` PKIMessage did not have the `newSigCert` field set.")
+
+    cert = convertutils.copy_asn1_certificate(new_sig_cert)
+    return cert
+
+
 @keyword(name="Get Cert From PKIMessage")
 def get_cert_from_pkimessage(  # noqa D417 undocumented-param
     pki_message: PKIMessageTMP,
@@ -3815,7 +3835,7 @@ def get_cert_from_pkimessage(  # noqa D417 undocumented-param
     Raises:
     ------
         - `ValueError`: If the provided PKIMessage does not contain a valid certificate body type
-          (e.g., `cp`, `kup`, `ip`).
+          (e.g., `cp`, `kup`, `ip`, `krp`).
 
     Examples:
     --------
@@ -3823,6 +3843,9 @@ def get_cert_from_pkimessage(  # noqa D417 undocumented-param
     | ${cert}= | Get Cert From PKIMessage | ${pki_message} | cert_number=1 |
 
     """
+    if get_cmp_message_type(pki_message) == "krp":
+        return _get_cert_from_krp_pkimessage(pki_message)
+
     response = get_cert_response_from_pkimessage(pki_message, response_index=cert_number)
 
     if not response["certifiedKeyPair"].isValue:
