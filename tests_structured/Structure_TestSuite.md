@@ -6,12 +6,14 @@ For each form of request and variant, the document gives a brief dscription and 
 
 Each topic corresponds directly with a test class and section in the file 'requirements.md'. 
 
+
 TODO
 Still needing to be sorted in here:
 - 4.3 Support Messages
 - 4.4 Handling Delay Delivery
 - fullly include Section 5
 - Section 6 CMP Message Transfer Mechanisms (shoudl be included at a later date)
+
 
 ## Enrolling End Entities
 RFC 9483 Section 4.1: "These approaches differ in the way the EE authenticates itself to the PKI, in the form of the
@@ -234,5 +236,7 @@ RFC 9483 Section 4.2 "should be used by an entity to request revocation of a
 certificate. Here, the revocation request is used by an EE to revoke one of its own certificates."
 
 Needed sections of the RFC:
+- 4.2 - Revoking a Certificate
 - 3.4 - for generic aspects of PKI Messages 
+- 5.1.3 - for revocation specific PKI management operation 
 - 5.3.2 - for revocation specific PKI management operation
