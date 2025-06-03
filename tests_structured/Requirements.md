@@ -211,9 +211,42 @@ Needed sections of the RFC for testing:
 
 
 
+### Revoking a Certificate
+Needed sections of the RFC:
+- 4.2 - Revoking a Certificate
+- 3.4 - for generic aspects of PKI Messages 
+- 5.1.3 - for revocation specific PKI management operation 
+- 5.3.2 - for revocation specific PKI management operation
+
+
+RFC 9483 4.2 "The revocation request message MUST be signed using the certificate that is to be revoked to prove the authorization to revoke."
+- Test Name: Reject Revocation request With 
+    - Input: 
+    - Output: 
+
+RFC 9483 4.2 "The revocation request message is signature-protected using this 
+certificate. This requires that the EE still possesses the private key. If 
+this is not the case, the revocation has to be initiated by other means, e.g., 
+revocation by the RA, as specified in Section 5.3.2."
+RFC 9483 5.1.3 "It MUST make sure that the referenced certificate exists 
+(failInfo bit: badCertId), has been issued by the addressed CA, and is not 
+already expired or revoked (failInfo bit: certRevoked). On success, it respond 
+with a positive rp message, as described in Section 4.2."
+- Test Name: 
+    - Input: 
+    - Output: 
+
+
+RFC 9483 4.2 "The revocation request message MUST be signed using the certificate that is to be revoked to prove the authorization to revoke."
+- Test Name: 
+    - Input: 
+    - Output: 
 
 
 ## Tests for any message the EE recieves
+
+### Section 3.4
+
 
 ### Section 5.1
 
@@ -246,6 +279,14 @@ requirements from Section 4.1. Possible failInfo bit values used for error repor
 RFC 9483 5.1.1 "It verify the presence and value of the proof-of-possession (failInfo bit: 
 badPOP) unless central key generation is requested."
 - TODO many test cases also with the help of Section 3
+
+### Section 5.1.2
+
+
+### Section 5.1.4
+
+
+### Section 5.1.5
 
 
 
