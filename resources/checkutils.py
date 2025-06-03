@@ -2352,6 +2352,7 @@ def _validate_body_types_nested(
         validate_cmp_body_types(inner_resp, inner_req, error)
 
 
+@keyword(name="Validate CMP Body Types")
 def validate_cmp_body_types(  # noqa D417 undocumented-param
     response: PKIMessageTMP,
     request: PKIMessageTMP,
