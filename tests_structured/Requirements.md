@@ -6,22 +6,27 @@ This document provides detailed functional requirements for the test cases in th
 ### Enrolling an End Entity to New PKI
 
 #### Signatured-based protection and decentral key generation
-Needed sections of the RFC for testing:
+Needed sections of the RFC:
+- 3.4 - for generic aspects of PKI Messages 
+- 5.1.1 - for PKI management operation responding to a certificate request
+- 5.1.2 - for PKI management operation responding to a confirmation message 
+- 5.1.4 - for PKI management operation responding to a support message (here I´m not sure)
+- 5.1.5 - for PKI management operation initiating delayed delivery 
 - 4.1.1 
 
 ##### Prerequisites
-"The certificate of the EE MUST have been enrolled by an external PKI, e.g., 
+RFC 9483 4.1.1 "The certificate of the EE MUST have been enrolled by an external PKI, e.g., 
 a manufacturer-issued device certificate."
 - Test Name: Reject Certificate From Non External Source
     - Input: EE sends certificate from not external source
     - Output: pki sends rejection
 
-"The PKI management entity MUST have the trust anchor of the external PKI."
+RFC 9483 4.1.1 "The PKI management entity MUST have the trust anchor of the external PKI."
 - Test Name: Reject Certificate From Untrusted Source
     - Input: EE sends certificate from untrusted source
     - Output: pki sends rejection
 
-"When using the generalInfo field certProfile, the EE MUST know the identifier 
+RFC 9483 4.1.1 "When using the generalInfo field certProfile, the EE MUST know the identifier 
 needed to indicate the requested certificate profile."
 - Test Name: Reject Invalid CertProfil Identifier
     - Input: EE sends ir false identifier
@@ -31,7 +36,7 @@ needed to indicate the requested certificate profile."
 ##### Message Flow
 For each of these Test Cases requirements from Section 3 should be passed.
 
-"For this PKI management operation, the EE MUST include a sequence of one CertReqMsg in the ir. If more certificates are required, further requests MUST be sent using separate PKI management operations."
+RFC 9483 4.1.1 "For this PKI management operation, the EE MUST include a sequence of one CertReqMsg in the ir. If more certificates are required, further requests MUST be sent using separate PKI management operations."
 - Test Name: Reject Multiple CertReqMsg In IR
     - Input: EE sends more than one sequence of CertReqMsg in the ir 
     - Output: correct reaction of the PKI
@@ -41,12 +46,12 @@ For each of these Test Cases requirements from Section 3 should be passed.
 
 
 
-"In case the EE included the generalInfo field implicitConfirm in the request 
+RFC 9483 4.1.1 "In case the EE included the generalInfo field implicitConfirm in the request 
 message and the PKI management entity does not need any explicit confirmation 
 from the EE, the PKI management entity MUST include the generalInfo field 
 implicitConfirm in the response message."
-"If the EE did not request implicit confirmation or implicit confirmation was not granted by the PKI management entity, certificate confirmation MUST be performed as follows."
-"If the EE successfully received the certificate, it MUST send a certConf message in due time. On receiving a valid certConf message, the PKI management entity MUST respond with a pkiConf message. If the PKI management entity does not receive the expected certConf message in time, it MUST handle this like a rejection by the EE."
+RFC 9483 4.1.1 "If the EE did not request implicit confirmation or implicit confirmation was not granted by the PKI management entity, certificate confirmation MUST be performed as follows."
+RFC 9483 4.1.1 "If the EE successfully received the certificate, it MUST send a certConf message in due time. On receiving a valid certConf message, the PKI management entity MUST respond with a pkiConf message. If the PKI management entity does not receive the expected certConf message in time, it MUST handle this like a rejection by the EE."
 - Test Name: Include ImplicitConfirm In Response When Requested
     - Input: EE includes the generalInfo field implicitConfirm 
     - Output: ip can include implicitConfirm
@@ -79,7 +84,7 @@ Test Name:
     - Output: pki handles this as rejection
 
 
-"If the certificate request was rejected by the CA, the PKI management entity 
+RFC 9483 4.1.1 "If the certificate request was rejected by the CA, the PKI management entity 
 MUST return an ip message containing the status code "rejection" as described in 
 Section 3.6, and the certifiedKeyPair field SHALL be omitted. The EE MUST NOT 
 react to such an ip message with a certConf message, and the PKI management 
@@ -114,23 +119,23 @@ Needed sections of the RFC for testing:
 - 4.1.2 
 
 ##### Prerequisites 
-"The certificate used by the EE have been enrolled by the PKI it requests another
+RFC 9483 4.1.2 "The certificate used by the EE have been enrolled by the PKI it requests another
 certificate from."
 - Test Name: 
     - Input: 
     - Output: 
 
-"When using the generalInfo field certProfile, the EE MUST know the identifier 
+RFC 9483 4.1.2 "When using the generalInfo field certProfile, the EE MUST know the identifier 
 needed to indicate the requested certificate profile."
 - Test Name: Reject Invalid CertProfil Identifier
     - Input: EE sends ir false identifier
     - Output: pki sends rejection
 
 ##### Message Flow
-"The message sequence for this PKI management operation is identical to that given in Section 4.1.1, with the following changes:"
+RFC 9483 4.1.2 "The message sequence for this PKI management operation is identical to that given in Section 4.1.1, with the following changes:"
 - test cases above should be tested with cr as message body
 
-"The body of the first request and response be cr and cp. Otherwise, ir and ip
+RFC 9483 4.1.2 "The body of the first request and response be cr and cp. Otherwise, ir and ip
 be used.
 Note: Since the difference between ir/ip and cr/cp is syntactically not essential, an ir/ip may
 be used in this PKI management operation."
@@ -138,7 +143,7 @@ be used in this PKI management operation."
     - Input: 
     - Output: 
 
-"The caPubs field in the certificate response message be absent."
+RFC 9483 4.1.2 "The caPubs field in the certificate response message be absent."
 - Test Name: 
     - Input: 
     - Output: 
@@ -212,17 +217,17 @@ Needed sections of the RFC for testing:
 
 ### Section 5.1
 
-"The PKI management entity terminating the PKI management operation at CMP level
+RFC 9483 5.1 "The PKI management entity terminating the PKI management operation at CMP level
 respond to all received requests by returning a related CMP response message or 
 an error."
 - pki has send cmp response message or error 
 
-"In addition to the checks described in Section 3.5, the responding PKI 
+RFC 9483 5.1 "In addition to the checks described in Section 3.5, the responding PKI 
 management entity check that a request that initiates a new PKI management 
 operation does not use a transactionID that is currently in use."
 - transactionID is already in use -> failInfo bit value is transactionIdInUse
 
-"The responding PKI management entity copy the sender field of the request to the 
+RFC 9483 5.1 "The responding PKI management entity copy the sender field of the request to the 
 recipient field of the response, copy the senderNonce of the request to the 
 recipNonce of the response, and use the same transactionID for the response."
 - pki sends response where recipient field of response = sender field of the request
@@ -234,11 +239,11 @@ recipNonce of the response, and use the same transactionID for the response."
 - same things as above with version 'senderfield, transactionID' 'senderfield, senderNonce' 'senderNonce, transactionID'
 
 ### Section 5.1.1
-"The PKI management entity check the message body according to the applicable
+RFC 9483 5.1.1 "The PKI management entity check the message body according to the applicable
 requirements from Section 4.1. Possible failInfo bit values used for error reporting in case a check failed include badCertId and badCertTemplate."
 - TODO the many test cases also with the help of Section 3
 
-"It verify the presence and value of the proof-of-possession (failInfo bit: 
+RFC 9483 5.1.1 "It verify the presence and value of the proof-of-possession (failInfo bit: 
 badPOP) unless central key generation is requested."
 - TODO many test cases also with the help of Section 3
 
