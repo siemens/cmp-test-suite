@@ -7,7 +7,8 @@
 Will be removed as soon as the draft becomes an RFC.
 """
 
-from pyasn1.type import constraint, namedtype, tag, univ
+from pkilint.itu.x520_name import ub_business_category, ub_postal_code, ub_street_address
+from pyasn1.type import char, constraint, namedtype, tag, univ
 from pyasn1_alt_modules import rfc5280, rfc9480
 
 
@@ -450,3 +451,110 @@ class CRLStatusListValueAsn1(univ.SequenceOf):
 
     componentType = CRLStatusAsn1()
     subtypeSpec = constraint.ValueSizeConstraint(1, MAX)
+
+
+class CertProfileValueAsn1(univ.SequenceOf):
+    """Defines the ASN.1 structure for the `CertProfileValue`."""
+
+    componentType = char.UTF8String()
+    subtypeSpec = constraint.ValueSizeConstraint(1, MAX)
+
+
+# MUST be 2 characters.
+class X520countryNameASN1(char.PrintableString):
+    """Defines the ASN.1 structure for the `X520countryName`."""
+
+    size_max = 2
+    size_min = 2
+
+
+# To remove the value size constraint, of 1.
+class EmailAddressASN1(char.IA5String):
+    """Defines the ASN.1 structure for the `EmailAddress`."""
+
+    size_min = 1
+    size_max = rfc5280.ub_emailaddress_length
+
+
+# To remove the value size constraint, of 1.
+class X520SerialNumberASN1(char.PrintableString):
+    """Defines the ASN.1 structure for the `X520SerialNumber`."""
+
+    size_min = 1
+    size_max = rfc5280.ub_serial_number
+
+
+class X520nameASN1(univ.Choice):
+    """Defines the ASN.1 structure for the `X520name`."""
+
+    size_min = 1
+    size_max = rfc5280.ub_name
+
+
+X520nameASN1.componentType = namedtype.NamedTypes(
+    namedtype.NamedType("teletexString", char.TeletexString()),
+    namedtype.NamedType("printableString", char.PrintableString()),
+    namedtype.NamedType("universalString", char.UniversalString()),
+    namedtype.NamedType("utf8String", char.UTF8String()),
+    namedtype.NamedType("bmpString", char.BMPString()),
+)
+
+
+class X520PseudonymASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520Pseudonym`."""
+
+    size_max = rfc5280.ub_pseudonym
+
+
+class X520TitleASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520Title`."""
+
+    size_max = rfc5280.ub_title
+
+
+class X520BusinessCategoryASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520BusinessCategory`."""
+
+    size_max = ub_business_category
+
+
+class X520PostalCodeASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520PostalCode`."""
+
+    size_max = ub_postal_code
+
+
+class X520StreetAddressASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520StreetAddress`."""
+
+    size_max = ub_street_address
+
+
+class X520OrganizationalUnitNameASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520OrganizationalUnitName`."""
+
+    size_max = rfc5280.ub_organizational_unit_name
+
+
+class X520CommonNameASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520CommonName`."""
+
+    size_max = rfc5280.ub_common_name
+
+
+class X520LocalityNameASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520LocalityName`."""
+
+    size_max = rfc5280.ub_locality_name
+
+
+class X520StateOrProvinceNameASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520StateOrProvinceName`."""
+
+    size_max = rfc5280.ub_state_name
+
+
+class X520OrganizationNameASN1(X520nameASN1):
+    """Defines the ASN.1 structure for the `X520OrganizationName`."""
+
+    size_max = rfc5280.ub_organization_name

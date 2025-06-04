@@ -14,14 +14,26 @@ from typing import List, Union
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9480
 
+from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME
+from resources.asn1_structures import PKIMessageTMP
+from resources.exceptions import UnknownOID
+from resources.oidutils import (
+    AES_GMAC_NAME_2_OID,
+    PQ_SIG_OID_2_NAME,
+    SYMMETRIC_PROT_ALGO,
+    TRAD_SIG_OID_2_NAME,
+    id_KemBasedMac,
+)
 
+
+@enum.unique
 class ProtectionAlgorithm(enum.Enum):
     """Identifiers for ProtectionAlgorithm options used in a PKIMessage."""
 
     HMAC = enum.auto()  # default sha256
     PBMAC1 = enum.auto()
     PASSWORD_BASED_MAC = enum.auto()
-    AES_GMAC = enum.auto()  # default sha256
+    AES_GMAC = enum.auto()  # default to AES-256
     SIGNATURE = enum.auto()
     DH = enum.auto()
     RSASSA_PSS = enum.auto()  # default sha256
@@ -51,6 +63,9 @@ class ProtectionAlgorithm(enum.Enum):
         """
         value_upper = value.replace("-", "_").upper()
 
+        if value in AES_GMAC_NAME_2_OID:
+            return ProtectionAlgorithm.AES_GMAC
+
         try:
             return ProtectionAlgorithm[value_upper]
         except KeyError as err:
@@ -60,6 +75,7 @@ class ProtectionAlgorithm(enum.Enum):
             ) from err
 
 
+@enum.unique
 class KeyUsageStrictness(enum.Enum):
     """Strictness for the validation for a x509.Certificate."""
 
@@ -117,6 +133,7 @@ class NegCertConfTypes(enum.Enum):
     IMPLICIT_CONFIRM = "implicit_confirm"
 
 
+@enum.unique
 class NameCompareTypes(enum.Enum):
     """Identifiers the mode to compare two `pyasn1` names."""
 
@@ -126,6 +143,7 @@ class NameCompareTypes(enum.Enum):
     CONTAINS_SEQ = "contains_seq"
 
 
+@enum.unique
 class GeneralInfoOID(enum.Enum):  #
     """Defines the Support OIDs general messages for the PKIMessage."""
 
@@ -178,6 +196,56 @@ class GeneralInfoOID(enum.Enum):  #
         raise ValueError(f"Unknown ObjectIdentifier: {oid}")
 
 
+@enum.unique
+class ProtectedType(enum.Enum):
+    """All possible supported types for the `protectedAlg` field in a PKIMessage."""
+
+    TRAD_SIGNATURE = "sig"
+    KEM = "kem_based_mac"
+    DH = "dh_based_mac"
+    MAC = "mac"
+    PQ_SIG = "pq-sig"
+    COMPOSITE_SIG = "composite-sig"
+
+    @classmethod
+    def get_protection_type(
+        cls, value: Union[str, univ.ObjectIdentifier, rfc9480.AlgorithmIdentifier, PKIMessageTMP]
+    ) -> "ProtectedType":
+        """Retrieve the protection type based on the provided value."""
+        if isinstance(value, str):
+            if value.lower() in cls.__dict__.values():
+                return getattr(cls, value.upper())
+            raise ValueError(
+                f"'{value}' is not a valid protection type. Available values are: {', '.join(cls.__dict__.values())}."
+            )
+        if isinstance(value, rfc9480.AlgorithmIdentifier):
+            return cls.get_protection_type(value["algorithm"])
+
+        if isinstance(value, univ.ObjectIdentifier):
+            oid = value
+            if oid == id_KemBasedMac:
+                return cls.KEM
+            if oid == rfc9480.id_DHBasedMac:
+                return cls.DH
+            if oid in SYMMETRIC_PROT_ALGO:
+                return cls.MAC
+            if oid in TRAD_SIG_OID_2_NAME:
+                return cls.TRAD_SIGNATURE
+            if oid in PQ_SIG_OID_2_NAME:
+                return cls.PQ_SIG
+            if oid in COMPOSITE_SIG04_OID_2_NAME or oid in COMPOSITE_SIG03_OID_2_NAME:
+                return cls.COMPOSITE_SIG
+            raise UnknownOID(oid, "The OID is not supported, to retrieve the protection type from.")
+
+        if isinstance(value, PKIMessageTMP):
+            if not value["header"]["protectionAlg"].isValue:
+                raise ValueError("The `protectedAlg` field is not set in the PKIMessage.")
+            return cls.get_protection_type(value["header"]["protectionAlg"]["algorithm"])
+
+        raise TypeError(f"Unsupported type: {type(value)}")
+
+
+@enum.unique
 class KeySaveType(enum.Enum):
     """Defines the key save type to be either by seed or by key or first the seed and then the key."""
 
@@ -207,6 +275,7 @@ class KeySaveType(enum.Enum):
             ) from err
 
 
+@enum.unique
 class InvalidOneAsymKeyType(enum.Enum):
     """Defines the invalid key types for the OneAsymKey for KGA tests."""
 

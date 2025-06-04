@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448P
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc5958, rfc6664, rfc9480
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc5958, rfc6664, rfc9480, rfc9481
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
@@ -54,6 +54,7 @@ from resources import (
 )
 from resources.asn1_structures import CertResponseTMP, ChallengeASN1, PKIBodyTMP, PKIMessageTMP
 from resources.asn1utils import get_set_bitstring_names, try_decode_pyasn1
+from resources.ca_kga_logic import get_digest_hash_alg_from_alg_id
 from resources.certextractutils import get_extension
 from resources.convertutils import (
     copy_asn1_certificate,
@@ -73,6 +74,7 @@ from resources.exceptions import (
     BadMessageCheck,
     BadPOP,
     BadRequest,
+    BadSigAlgID,
     CertRevoked,
     CMPTestSuiteError,
     InvalidAltSignature,
@@ -90,6 +92,7 @@ from resources.typingutils import (
     ECDHPrivateKey,
     ECDHPublicKey,
     EnvDataPrivateKey,
+    ExtensionsParseType,
     PrivateKey,
     PublicKey,
     SignKey,
@@ -496,7 +499,7 @@ def _prepare_recip_info_for_kga(
     cert: Optional[rfc9480.CMPCertificate] = None,
     ec_priv_key: Optional[ECDHPrivateKey] = None,
     hash_alg: Optional[str] = None,
-    **kwargs,
+    **kwargs,  # pylint: disable=unused-argument
 ) -> rfc5652.RecipientInfo:
     """Prepare the recipient info for the key generation action.
 
@@ -1135,6 +1138,10 @@ def _verify_pop_signature(
             raise BadPOP("Public key is missing in the certificate request.Can not verify the POP signature.")
         try:
             public_key = convertutils.ensure_is_verify_key(public_key)
+
+            if isinstance(public_key, DSAPublicKey):
+                raise BadPOP("The DSA keys are not supported", failinfo="badPOP,badCertTemplate,badAlg")
+
         except ValueError as err:
             raise BadPOP("Public key is not a valid verify key.", failinfo="badPOP,badCertTemplate,badAlg") from err
 
@@ -1147,6 +1154,11 @@ def _verify_pop_signature(
 
         if cert_req_msg["regInfo"].isValue:
             logging.debug("regInfo is present in the CertReqMsg,but server logic is not supported yet.")
+
+    except BadSigAlgID as err:
+        raise BadPOP(
+            "Invalid signature algorithm identifier.", error_details=[err.message] + err.error_details
+        ) from err
 
     except pyasn1.error.PyAsn1Error as err:
         raise BadAsn1Data("Failed to encode the CertRequest.", overwrite=True) from err
@@ -1427,11 +1439,17 @@ def validate_cert_template_public_key(
             )
         try:
             public_key = convertutils.ensure_is_verify_key(public_key)
+            keyutils.check_consistency_sig_alg_id_and_key(sig_popo_alg_id, public_key)
         except ValueError as e:
             raise BadCertTemplate(
                 "The public key was not a valid verify key.", failinfo="badAlg,badCertTemplate"
             ) from e
-        keyutils.check_consistency_sig_alg_id_and_key(sig_popo_alg_id, public_key)
+        except BadSigAlgID as e:
+            raise BadCertTemplate(
+                "The public key and the signature algorithm identifier did not match.",
+                failinfo="badPOP,badCertTemplate",
+                error_details=[e.message] + e.error_details,
+            ) from e
 
     if cert_template["publicKey"].isValue:
         if cert_template["publicKey"]["subjectPublicKey"].asOctets() != b"":
@@ -2026,7 +2044,7 @@ def respond_to_cert_req_msg(  # noqa: D417 Missing argument descriptions in the 
     raise ValueError(f"Invalid POP structure: {name}.")
 
 
-@keyword(name="Verify POP Signature For PKI Request")
+@keyword(name="Verify Signature POP For PKI Request")
 def verify_sig_pop_for_pki_request(  # noqa: D417 Missing argument descriptions in the docstring
     pki_message: PKIMessageTMP, cert_index: Union[int, str] = 0
 ) -> None:
@@ -2044,6 +2062,10 @@ def verify_sig_pop_for_pki_request(  # noqa: D417 Missing argument descriptions 
         - BadAsn1Data: If the ASN.1 data is invalid.
         - BadPOP: If the signature is invalid.
 
+    Examples:
+    --------
+    | Verify Signature POP For PKI Request | ${pki_message} | ${cert_index} |
+
     """
     body_name = pki_message["body"].getName()
     if body_name in {"ir", "cr", "kur", "crr"}:
@@ -2051,13 +2073,23 @@ def verify_sig_pop_for_pki_request(  # noqa: D417 Missing argument descriptions 
         popo: rfc4211.ProofOfPossession = cert_req_msg["popo"]
         if not popo["signature"].isValue:
             raise BadPOP("POP signature is missing in the PKIMessage.")
-
-        _verify_pop_signature(pki_message, request_index=int(cert_index))
+        try:
+            _verify_pop_signature(pki_message, request_index=int(cert_index))
+        except BadSigAlgID as e:
+            raise BadPOP(
+                "POP signature is missing in the PKIMessage.", error_details=[e.message] + e.error_details
+            ) from e
 
     elif pki_message["p10cr"]:
         csr = pki_message["p10cr"]
         try:
             certutils.verify_csr_signature(csr)
+
+        except BadSigAlgID as e:
+            raise BadPOP(
+                "POP signature is missing in the PKIMessage.", error_details=[e.message] + e.error_details
+            ) from e
+
         except InvalidSignature:
             raise BadPOP("POP verification for `p10cr` failed.")  # pylint: disable=raise-missing-from
 
@@ -2113,6 +2145,10 @@ def set_ca_header_fields(request: PKIMessageTMP, kwargs: dict) -> dict:
     alt_nonce = (
         os.urandom(16) if not request["header"]["recipNonce"].isValue else request["header"]["recipNonce"].asOctets()
     )
+
+    if not kwargs.get("use_fresh_nonce", True):
+        alt_nonce = os.urandom(16)
+
     kwargs["sender_nonce"] = kwargs.get("sender_nonce") or alt_nonce
     kwargs["transaction_id"] = kwargs.get("transaction_id") or request["header"]["transactionID"].asOctets()
     kwargs["recipient"] = kwargs.get("recipient") or request["header"]["sender"]
@@ -2144,6 +2180,13 @@ def build_cp_from_p10cr(  # noqa: D417 Missing argument descriptions in the docs
         - `ca_key`: The CA private key to sign the response with. Defaults to `None`.
         - `ca_cert`: The CA certificate matching the CA key. Defaults to `None`.
         - `kwargs`: Additional values to set for the header.
+
+    **kwargs:
+    --------
+        - `hash_alg` (str): The hash algorithm to use for signing the certificate. Defaults to "sha256".
+        - `extensions` (ExtensionParseType): Additional certificate extensions (e.g., OCSP, CRL). Defaults to `None`.
+        - `include_ski` (bool): Whether to include the Subject Key Identifier in the certificate. Defaults to `True`.
+        - `include_csr_extensions` (bool): Whether to include the CSR extensions in the certificate. Defaults to `True`.
 
     Returns:
     -------
@@ -2177,6 +2220,8 @@ def build_cp_from_p10cr(  # noqa: D417 Missing argument descriptions in the docs
         ca_cert=ca_cert,  # type: ignore
         hash_alg=kwargs.get("hash_alg", "sha256"),
         extensions=kwargs.get("extensions"),
+        include_ski=kwargs.get("include_ski", True),
+        include_csr_extensions=kwargs.get("include_csr_extensions", True),
     )
     responses = prepare_cert_response(cert=cert, cert_req_id=cert_req_id)
     body = prepare_ca_body(body_name="cp", responses=responses, ca_pubs=ca_pubs)
@@ -2221,8 +2266,9 @@ def _process_one_cert_request(
                 keyutils.check_consistency_sig_alg_id_and_key(
                     cert_req_msg["popo"]["signature"]["algorithmIdentifier"], public_key
                 )
-            except BadAlg as e:
-                raise BadCertTemplate("The `signature` POP alg id and the public key are of different types.") from e
+
+            except BadSigAlgID as e:
+                raise BadPOP("The `signature` POP alg id and the public key are of different types.") from e
 
     elif not cert_req_msg["popo"].isValue:
         if not check_if_request_is_for_kga(request):
@@ -2602,11 +2648,14 @@ def build_ip_cmp_message(  # noqa: D417 Missing argument descriptions in the doc
             certutils.verify_csr_signature(request["body"]["p10cr"])
 
             ca_key = convertutils.ensure_is_sign_key(kwargs.get("ca_key"))
+            ca_cert = kwargs.get("ca_cert")
+            if not isinstance(ca_cert, rfc9480.CMPCertificate):
+                raise TypeError("The `ca_cert` must be a CMPCertificate object.")
 
             cert = certbuildutils.build_cert_from_csr(
                 csr=request["body"]["p10cr"],
                 ca_key=ca_key,
-                ca_cert=kwargs.get("ca_cert"),
+                ca_cert=ca_cert,
                 hash_alg=kwargs.get("hash_alg", "sha256"),
                 extensions=kwargs.get("extensions"),
             )
@@ -2694,14 +2743,14 @@ def prepare_certified_key_pair(
 
 @keyword(name="Prepare CertResponse")
 def prepare_cert_response(
-    cert_req_id: Union[str, int] = 0,
+    cert_req_id: Strint = 0,
     status: str = "accepted",
     text: Union[List[str], str, None] = None,
     failinfo: Optional[str] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
     enc_cert: Optional[rfc9480.EnvelopedData] = None,
     private_key: Optional[rfc9480.EnvelopedData] = None,
-    rsp_info: Optional[bytes] = None,
+    **kwargs,
 ) -> CertResponseTMP:
     """Prepare a CertResponse structure for responding to a certificate request.
 
@@ -2712,18 +2761,24 @@ def prepare_cert_response(
     :param cert: An optional certificate object.
     :param enc_cert: Optional encrypted certificate as EnvelopedData.
     :param private_key: A private key inside the `EnvelopedData` structure
-    :param rsp_info: Optional response information. Defaults to `None`.
-    :return: A populated CertResponse structure.
+    :keyword rsp_info (str, bytes): Optional response information. Defaults to `None`.
+    :keyword pki_status_info: The PKIStatusInfo structure to include in the response. Defaults to `None`.
+    :return: The populated `CertResponse` structure.
     """
     cert_response = CertResponseTMP()
     cert_response["certReqId"] = univ.Integer(int(cert_req_id))
-    cert_response["status"] = cmputils.prepare_pkistatusinfo(texts=text, status=status, failinfo=failinfo)
+
+    pki_status_info = kwargs.get("pki_status_info")
+    if pki_status_info is None:
+        pki_status_info = cmputils.prepare_pkistatusinfo(texts=text, status=status, failinfo=failinfo)
+
+    cert_response["status"] = pki_status_info
 
     if cert or enc_cert or private_key:
         cert_response["certifiedKeyPair"] = prepare_certified_key_pair(cert, enc_cert, private_key)
 
-    if rsp_info is not None:
-        cert_response["rspInfo"] = univ.OctetString(rsp_info)
+    if kwargs.get("rsp_info") is not None:
+        cert_response["rspInfo"] = univ.OctetString(str_to_bytes(kwargs["rsp_info"]))
 
     return cert_response
 
@@ -2949,6 +3004,13 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
        - `enforce_lwcmp`: Whether to enforce LwCMP rules. Defaults to `True`.
        - `set_header_fields`: Whether to set the header fields. Defaults to `True`.
 
+    **kwargs:
+    --------
+        - additional values to set for the header.
+        - `hash_alg`: The hash algorithm to use for signing the certificate. Defaults to `sha256`.
+        - `allow_auto_ed`: Whether to allow automatic ED hash algorithm choice. Defaults to `True`.
+        - `use_fresh_nonce`: Whether to use a fresh sender nonce. Defaults to `True`.
+
     Returns:
     -------
          - The built PKI Confirmation message.
@@ -2979,9 +3041,10 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
         raise ValueError("Number of CertConf entries does not match the number of issued certificates.")
 
     entry: rfc9480.CertStatus
+    hash_alg = kwargs.get("hash_alg")
     for entry, issued_cert in zip(cert_conf, issued_certs):
         if entry["certReqId"] != 0 and enforce_lwcmp:
-            raise BadRequest("Invalid CertReqId in CertConf message.")
+            raise BadRequest(f"Invalid CertReqId in CertConf message. Got: {int(entry['certReqId'])}Expected: 0.")
 
         if not entry["certHash"].isValue:
             raise BadPOP("Certificate hash is missing in CertConf message.")
@@ -3002,6 +3065,9 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
         else:
             alg_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
             hash_alg = get_hash_from_oid(alg_oid, only_hash=True)
+            if kwargs.get("allow_auto_ed", False):
+                if alg_oid in [rfc9481.id_Ed25519, rfc9481.id_Ed448]:
+                    hash_alg = get_digest_hash_alg_from_alg_id(alg_id=issued_cert["tbsCertificate"]["signature"])
 
         if hash_alg is None:
             raise BadCertId(
@@ -3082,7 +3148,7 @@ def build_ca_message(
     return pki_message
 
 
-def _contains_cert(cert_template, certs: Sequence[rfc9480.CMPCertificate]) -> Optional[rfc9480.CMPCertificate]:
+def _contains_cert_template(cert_template, certs: Sequence[rfc9480.CMPCertificate]) -> Optional[rfc9480.CMPCertificate]:
     """Check if the certificate template is in the list of certificates.
 
     :param cert_template: The certificate template to check.
@@ -3221,9 +3287,8 @@ def _check_cert_for_revoked(
     :raises BadRequest: If the certificate is not revoked.
     """
     if revoked_certs is not None:
-        for revoked_cert in revoked_certs:
-            if encoder.encode(cert) == encoder.encode(revoked_cert):
-                raise CertRevoked("Certificate is already revoked.")
+        if certutils.cert_in_list(cert, revoked_certs):
+            raise CertRevoked("Certificate is already revoked.")
 
 
 def _check_cert_for_revive(
@@ -3236,9 +3301,8 @@ def _check_cert_for_revive(
     :raises BadCertId: If the certificate cannot be revived, because it was not revoked.
     """
     if revoked_certs is not None:
-        for revoked_cert in revoked_certs:
-            if encoder.encode(cert) == encoder.encode(revoked_cert):
-                return
+        if certutils.cert_in_list(cert, revoked_certs):
+            return
     else:
         return
 
@@ -3284,7 +3348,7 @@ def validate_rev_details(  # noqa D417 undocumented-param
     """
     _check_rev_details_mandatory_fields(rev_details["certDetails"])
 
-    cert = _contains_cert(
+    cert = _contains_cert_template(
         cert_template=rev_details["certDetails"],
         certs=issued_certs,
     )
@@ -3406,7 +3470,7 @@ def build_rp_from_rr(  # noqa: D417 missing argument descriptions in the docstri
         body["rp"]["status"].append(status_info)
 
         if not kwargs.get("enforce_lwcmp", True):
-            cert = _contains_cert(
+            cert = _contains_cert_template(
                 cert_template=entry["certDetails"],
                 certs=certs,
             )
@@ -4110,6 +4174,7 @@ def _process_crr_single(
     ca_key: SignKey,
     ca_cert: rfc9480.CMPCertificate,
     bad_sig: bool = False,
+    extensions: Optional[ExtensionsParseType] = None,
 ) -> rfc9480.CMPCertificate:
     """Process a single CRR message.
 
@@ -4169,13 +4234,8 @@ def _process_crr_single(
     cert_template = _ensure_key_usage(cert_template)
     cert_template = _ensure_basic_constraints(cert_template)
     cert = certbuildutils.build_cert_from_cert_template(
-        cert_template=cert_template, for_crr_request=True, bad_sig=bad_sig, ca_key=ca_key, ca_cert=ca_cert
+        cert_template=cert_template, bad_sig=bad_sig, ca_key=ca_key, ca_cert=ca_cert, extensions=extensions
     )
-
-    alg_id = rfc9480.AlgorithmIdentifier()
-    alg_id["algorithm"] = cert_template["signingAlg"]["algorithm"]
-    alg_id["parameters"] = cert_template["signingAlg"]["parameters"]
-    cert["signatureAlgorithm"] = alg_id
     return cert
 
 
@@ -4228,7 +4288,9 @@ def build_ccp_from_ccr(  # noqa D417 undocumented-param
         if ca_cert is None or ca_key is None:
             raise ValueError("Either a certificate or the `ca_key` and `ca_cert` must be provided!")
         # ONLY 1 is allowed, please refer to RFC4210bis-18!
-        cert = _process_crr_single(request, ca_key, ca_cert)
+        cert = _process_crr_single(
+            request, ca_key, ca_cert, extensions=kwargs.get("extensions", None), bad_sig=kwargs.get("bad_sig", False)
+        )
 
     responses = prepare_cert_response(
         cert=cert,
@@ -4537,4 +4599,83 @@ def build_cmp_krp_message(  # noqa D417 undocumented-params
 
     pki_message = cmputils.prepare_pki_message(**kwargs)
     pki_message["body"]["krp"] = krp_con
+    return pki_message
+
+
+@keyword(name="Build Unsuccessful CA Response")
+def build_unsuccessful_ca_cert_response(  # noqa D417 undocumented-param
+    body_name: Optional[str] = None,
+    request: Optional[PKIMessageTMP] = None,
+    failinfo: Optional[str] = None,
+    text: Optional[Union[str, List[str]]] = None,
+    sender: str = "CN=Mock CA",
+    **kwargs,
+) -> PKIMessageTMP:
+    """Build an unsuccessful CA response message.
+
+    Arguments:
+    ---------
+        - `body_name`: The name of the body to use for the response. Defaults to `None`.
+        - `request`: The PKIMessage request to respond to. Defaults to `None`.
+        - `failinfo`: The failure information. Defaults to `None`.
+        - `text`: The text to include in the `PKIStatusInfo`. Defaults to `None`.
+        - `sender`: The sender of the response. Defaults to "CN=Mock CA".
+
+    **kwargs:
+    --------
+        - `cert_req_id` (str, int): The certificate request ID. Defaults to `None`.
+        - `status` (str): The status of the response. Defaults to "rejection".
+        - `pki_status_info` (PKISatusInfo): The PKI status information. Defaults to `None`.
+        - Additional keyword arguments for the `PKIHeader`.
+
+    Returns:
+    -------
+        - The PKIMessage that contains the unsuccessful CA response.
+
+    Raises:
+    ------
+        - `ValueError`: If neither `body_name` nor `request` is provided.
+        - `ValueError`: If the body name is invalid or if the request is not a valid PKIMessage.
+
+    Examples:
+    --------
+    | ${response} = | Build Unsuccessful CA Response | body_name=cr | request=${request} | status=rejection |
+    | ${response} = | Build Unsuccessful CA Response | request=${request} | status=accepted | failinfo=badCert |
+
+    """
+    if body_name is None and request is None:
+        raise ValueError("Either `body_name` or `request` must be provided.")
+
+    if request is not None:
+        kwargs = set_ca_header_fields(request, kwargs)
+
+    if body_name is None:
+        body_name = request["body"].getName()  # type: ignore
+
+    if kwargs.get("cert_req_id") is None:
+        if body_name == "p10cr":
+            cert_req_id = -1
+        else:
+            cert_req_id = 0
+    else:
+        cert_req_id = int(kwargs["cert_req_id"])
+
+    if kwargs.get("pki_status_info") is None:
+        kwargs["pki_status_info"] = cmputils.prepare_pkistatusinfo(
+            status=kwargs.get("status", "rejection"),
+            failinfo=failinfo,
+            texts=text,
+        )
+
+    cert_response = prepare_cert_response(cert_req_id=cert_req_id, pki_status_info=kwargs["pki_status_info"])
+
+    body_to_out_name = {"ir": "ip", "cr": "cp", "p10cr": "cp", "kur": "kup", "ccr": "ccp"}
+
+    if body_name not in body_to_out_name:
+        raise ValueError(f"Invalid body name: {body_name}. Must be one of {list(body_to_out_name.keys())}.")
+
+    out_name = body_to_out_name[body_name]
+    body = prepare_ca_body(out_name, responses=cert_response, ca_pubs=None)
+    pki_message = cmputils.prepare_pki_message(sender=sender, **kwargs)
+    pki_message["body"] = body
     return pki_message

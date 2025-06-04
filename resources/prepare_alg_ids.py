@@ -324,7 +324,12 @@ def prepare_sha_alg_id(
     :raises ValueError: If the provided `hash_alg` is invalid.
     """
     hash_alg_oid = sha_alg_name_to_oid(hash_alg)
-    return prepare_alg_id(str(hash_alg_oid), fill_random_params=add_params_rand_val)
+
+    value = None
+    if not add_params_rand_val:
+        value = encoder.encode(univ.Null(""))
+
+    return prepare_alg_id(str(hash_alg_oid), value=value, fill_random_params=add_params_rand_val)
 
 
 ###############################

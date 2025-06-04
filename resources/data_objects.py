@@ -7,6 +7,7 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
+from Crypto.Hash import SHAKE128, SHAKE256
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448PublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
@@ -15,8 +16,7 @@ from pyasn1_alt_modules import rfc9480, rfc9481
 
 from resources.oidutils import (
     AES_GMAC_OID_2_NAME,
-    ECDSA_SHA3_OID_2_NAME,
-    ECDSA_SHA_OID_2_NAME,
+    ECDSA_OID_2_NAME,
     HMAC_OID_2_NAME,
     HYBRID_SIG_OID_2_NAME,
     KDF_OID_2_NAME,
@@ -26,8 +26,7 @@ from resources.oidutils import (
     KMAC_OID_2_NAME,
     PQ_SIG_OID_2_NAME,
     PROT_SYM_ALG,
-    RSA_SHA3_OID_2_NAME,
-    RSA_SHA_OID_2_NAME,
+    RSA_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
     SHA3_OID_2_NAME,
     SHA_OID_2_NAME,
@@ -215,11 +214,9 @@ class AllAlgorithmProfile(AlgorithmProfile):
 
     # The allowed PKIMessage signature algorithms. Section 3 RFC 9481.
     msg_sig_alg = {
-        **ECDSA_SHA3_OID_2_NAME,
-        **ECDSA_SHA_OID_2_NAME,
-        **RSA_SHA_OID_2_NAME,
+        **ECDSA_OID_2_NAME,
+        **RSA_OID_2_NAME,
         **RSASSA_PSS_OID_2_NAME,
-        **RSA_SHA3_OID_2_NAME,
         **PQ_SIG_OID_2_NAME,
         **HYBRID_SIG_OID_2_NAME,
         **{rfc9480.id_DHBasedMac: "dh_based_mac", id_KemBasedMac: "kem_based_mac"},
@@ -260,3 +257,63 @@ class LwCMPAlgProfile(AlgorithmProfile):
 
     The algorithms are defined in RFC 9481.
     """
+
+
+class FixedSHAKE128:
+    """Wrapper for SHAKE128 to have a digest_size attribute to use RSA-PSS."""
+
+    def __init__(self, data: Optional[bytes] = None):
+        """Initialize the SHAKE with the given name and data."""
+        self._shake = SHAKE128.new(data) if data else SHAKE128.new()
+        self.digest_length = 32
+        self._digest = None
+
+    def update(self, data: bytes) -> None:
+        """Update the SHAKE with the given data."""
+        self._shake.update(data)
+
+    def digest(self) -> bytes:
+        """Return the digest of the data passed to the update() method so far."""
+        if self._digest is None:
+            self._digest = self._shake.read(self.digest_length)
+        return self._digest
+
+    @property
+    def digest_size(self) -> int:
+        """Return the digest size."""
+        return self.digest_length
+
+    @classmethod
+    def new(cls, data: Optional[bytes] = None) -> "FixedSHAKE128":
+        """Create a new instance of FixedSHAKE128."""
+        return cls(data=data)
+
+
+class FixedSHAKE256:
+    """Wrapper for SHAKE256 to have a digest_size attribute to use RSA-PSS."""
+
+    def __init__(self, data: Optional[bytes] = None):
+        """Initialize the SHAKE with the given name and data."""
+        self._shake = SHAKE256.new(data) if data else SHAKE256.new()
+        self.digest_length = 64
+        self._digest = None
+
+    def update(self, data: bytes):
+        """Update the SHAKE with the given data."""
+        self._shake.update(data)
+
+    def digest(self) -> bytes:
+        """Return the digest of the data passed to the update() method so far."""
+        if self._digest is None:
+            self._digest = self._shake.read(self.digest_length)
+        return self._digest
+
+    @property
+    def digest_size(self) -> int:
+        """Return the digest size."""
+        return self.digest_length
+
+    @classmethod
+    def new(cls, data: Optional[bytes] = None) -> "FixedSHAKE256":
+        """Create a new instance of FixedSHAKE256."""
+        return cls(data=data)

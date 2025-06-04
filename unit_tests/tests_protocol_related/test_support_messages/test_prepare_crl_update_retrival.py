@@ -34,7 +34,7 @@ class TestPrepareDistributionPointName(unittest.TestCase):
         THEN it should return an `InfoTypeAndValue` object with the `thisUpdate` field adjusted for negative testing
         """
         info_val = prepare_crl_update_retrieval(
-            ca_crl_url="http://crl.testcompany.com/testcompany.crl", negative=True
+            ca_crl_url="http://crl.testcompany.com/testcompany.crl", bad_this_update=True
         )
         self.assertIsInstance(info_val, rfc9480.InfoTypeAndValue)
         der_data = encoder.encode(info_val)

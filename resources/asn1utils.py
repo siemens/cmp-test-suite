@@ -192,7 +192,9 @@ def get_asn1_value(asn1_obj: base.Asn1Item, query: str) -> base.Asn1Item:  # noq
     return asn1_obj
 
 
-def get_asn1_value_as_string(asn1_obj: base.Asn1Item, query: str, decode: bool = False):  # noqa D417 undocumented-param
+def get_asn1_value_as_string(  # noqa D417 undocumented-param
+    asn1_obj: base.Asn1Item, query: str, decode: bool = False
+):
     """Retrieve a value from a pyasn1 object and return it as a string.
 
     :Arguments:
@@ -225,13 +227,16 @@ def get_asn1_value_as_string(asn1_obj: base.Asn1Item, query: str, decode: bool =
     return result.prettyPrint()  # type: ignore
 
 
-def get_asn1_value_as_number(asn1_obj: base.Asn1Type, query: str) -> int:  # noqa D417 undocumented-param
+def get_asn1_value_as_number(  # noqa D417 undocumented-param
+    asn1_obj: base.Asn1Type, query: str, decode: bool = False
+) -> int:
     """Retrieve a value from a pyasn1 object and return it as an integer.
 
     Arguments:
     ---------
         - `asn1_obj`: The pyasn1 object to query.
         - `query`: The path to the value you want to extract, given as dot-notation.
+        - `decode`: If `True`, the result is decoded before returning. Defaults to `False`.
 
     Returns:
     -------
@@ -248,8 +253,11 @@ def get_asn1_value_as_number(asn1_obj: base.Asn1Type, query: str) -> int:  # noq
 
     """
     result = get_asn1_value(asn1_obj, query)
-    decoded, _rest = decoder.decode(result)
-    return int(decoded)
+    if decode:
+        decoded, _rest = decoder.decode(result)  # type: ignore
+    else:
+        decoded = result  # type: ignore
+    return int(decoded)  # type: ignore
 
 
 def get_asn1_value_as_bytes(asn1_obj: base.Asn1Type, query: str) -> bytes:  # noqa D417 undocumented-param
@@ -438,15 +446,49 @@ def is_bit_set(  # noqa D417 undocumented-param
         # gets the names of as single values.
         values = bit_indices.strip(" ").split(",")
         # gets the indices to the corresponding human-readable-names.
-        names = list(asn1_bitstring.namedValues.keys())
+        names = get_all_asn1_named_value_names(asn1_bitstring, get_keys=True)
+        all_set_names = get_set_bitstring_names(asn1_bitstring).split(", ")
+
         try:
             bit_indices = [names.index(val.strip()) for val in values]  # type: ignore
         except ValueError as err:
             raise ValueError(f"Provided names: {values} but allowed are: {names}") from err
 
+        if all_set_names == values and not exclusive:
+            # to ensure that if all bits are set, it will return True.
+            return True
+
+        if all_set_names == values and exclusive:
+            return True
+
+        if all_set_names == names and exclusive:
+            raise ValueError("All bits are set, so exclusive check is not possible!")
+
         return _is_either_bit_set_in_bitstring(asn1_bitstring, bit_indices, exclusive=exclusive)  # type: ignore
 
     raise ValueError("Expected to get either an int or a string as input, for `bit_indices`!")
+
+
+@not_keyword
+def get_all_asn1_named_value_names(
+    asn1_object: Union[base.Asn1Item, base.Asn1Type], get_keys: bool = True
+) -> List[str]:
+    """Retrieve all named values from a `pyasn1` object.
+
+    :param asn1_object: The `pyasn1` object to extract names from.
+    :param get_keys: If `True`, return the keys of the named values. Default is `True`.
+    :return: A list of names corresponding to the named values in the `pyasn1` object.
+    :raises ValueError: If the provided object does not have named values.
+    """
+    if not hasattr(asn1_object, "namedValues"):
+        raise ValueError(
+            f"The provided object does not have named values. "
+            f"Please provide a valid `pyasn1` object with named values. Type: {type(asn1_object)}"
+        )
+
+    if get_keys:
+        return list(asn1_object.namedValues.keys())  # type: ignore
+    return list(asn1_object.namedValues.values())  # type: ignore
 
 
 @not_keyword
@@ -457,7 +499,7 @@ def get_set_bitstring_names(asn1_bitstring: univ.BitString) -> str:
     :return: A comma-separated string of names corresponding to the set bits.
     """
     binary_string = asn1_bitstring.asBinary()
-    options = list(asn1_bitstring.namedValues.keys())
+    options = get_all_asn1_named_value_names(asn1_bitstring, get_keys=True)
     names = []
     for i, name in enumerate(options):
         if len(binary_string) == i:
@@ -625,24 +667,37 @@ def encode_to_der(  # noqa D417 undocumented-param
 
 
 @not_keyword
-def try_decode_pyasn1(data: bytes, asn1_spec: Asn1Type, for_nested: bool = False) -> Tuple[Asn1Item, bytes]:
+def try_decode_pyasn1(
+    data: Union[bytes, univ.Any, univ.OctetString], asn1_spec: Asn1Type, for_nested: bool = False, verbose: bool = False
+) -> Tuple[Asn1Item, bytes]:
     """Try to decode a DER-encoded data using the provided ASN.1 specification.
 
     :param data: The DER-encoded data to decode.
     :param asn1_spec: The PyASN1 specification to use for decoding.
     :param for_nested: If True, the function will return the decoded data and not the rest of the data.
+    :param verbose: If `True`, the remainder of the data will be included in the error message.
     :return: The decoded PyASN1 object.
     """
     from resources.cmputils import parse_pkimessage  # pylint: disable=import-outside-toplevel
 
+    if isinstance(data, univ.Any):
+        der_data = data.asOctets()
+    elif isinstance(data, univ.OctetString):
+        der_data = data.asOctets()
+    elif isinstance(data, bytes):
+        der_data = data
+    else:
+        raise TypeError(f"Expected bytes, got {type(data)}")
+
     try:
         if for_nested:
-            out = parse_pkimessage(data)
-            _, rest = decoder.decode(data, PKIMessageTMP())
+            out = parse_pkimessage(der_data)
+            _, rest = decoder.decode(der_data, PKIMessageTMP())
             return out, rest
-        return decoder.decode(data, asn1_spec)
+        return decoder.decode(der_data, asn1_spec)
     except Exception:  # pylint: disable=broad-except
+        remainder = f"Remainder: {der_data.hex()}" if verbose else ""
         raise BadAsn1Data(  # pylint: disable=raise-missing-from
-            f"Error decoding data for {type(asn1_spec)}",
+            f"Error decoding data for {type(asn1_spec)}.{remainder}",
             overwrite=True,
         )

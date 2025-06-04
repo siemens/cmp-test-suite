@@ -16,7 +16,11 @@ ${CA_BASE_URL}   https://broker.sdo-qa.siemens.cloud/.well-known/cmp
 # The initial issued certificate and key for running the tests.
 ${ISSUED_KEY}    ${None}
 ${ISSUED_CERT}   ${None}
+# The initial issued certificate and key for running the tests setup.
 ${INIT_SUFFIX}   ${None}
+${INITIAL_KEY_PATH}    ${None}
+${INITIAL_CERT_PATH}   ${None}
+${INITIAL_KEY_PASSWORD}   ${None}
 
 
 ${PRESHARED_SECRET}    SiemensIT
@@ -69,6 +73,11 @@ ${KEY_USAGE_STRICTNESS}   LAX
 ${STRICT}   ${False}
 # Test the LWCMP version.
 ${LWCMP}   ${True}
+# Whether to enforce the algorithm to be set in the
+# Algorithm Profile RFC9481.
+# Does not affect the PQ signature algorithms.
+# Only MAC and traditional signatures.
+${ENFORCE_RFC9481}   ${True}
 
 
 # IF legacy systems are used, it might be allowed to use,
@@ -109,6 +118,16 @@ ${FAILINFO_MUST_BE_CORRECT}=    True
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 
+# DSA is not allowed by RFC9483.
+${DSA_KEY}         ${None}
+${DSA_KEY_PASSWORD}   ${None}
+${DSA_CERT}        ${None}
+
+# Device certificate and key (None means not provided).
+${DEVICE_CERT_CHAIN}   ${None}
+${DEVICE_KEY}  ${None}
+${DEVICE_KEY_PASSWORD}   ${None}
+
 ##### Section 4
 # If ALLOW_P10CR is enabled, all generic test cases will be done
 # using P10CR because Header checks are body-independent and are only done
@@ -128,6 +147,11 @@ ${ALLOW_KGA_RAW_KEYS}   ${False}
 
 # Section 4.2
 ${REVOCATION_STRICT_CHECK}    ${False}
+# The time to wait, until a certificate is revoked, so that
+# the test cases can be run.
+${REVOKED_WAIT_TIME}   10s
+${UPDATE_WAIT_TIME}   3s
+${WAIT_UNTIL_UPDATED_CONFIRMATION_IS_EXPIRED}   15s
 
 
 # Section 4.3
@@ -162,6 +186,12 @@ ${DEVICE_KEY}  ${None}
 # Other trusted PKI and Key (None means not provided, so test are skipped).
 ${OTHER_TRUSTED_PKI_KEY}    ${None}
 ${OTHER_TRUSTED_PKI_CERT}    ${None}
+# Whether to allow unprotected inner messages, inside a nested PKIMessage.
+${ALLOW_UNPROTECTED_INNER_MESSAGE}    ${None}
+# The directory containing the certificates to build the trusted RA certificate chain.
+${RA_CERT_CHAIN_DIR}    ${None}
+# saves the entire certificate chain of the RA.
+${RA_CERT_CHAIN_PATH}   ${None}
 
 # A certificate used to verify, if it is supported
 # that another trusted PKI Management Entity can revoke a certificate.
@@ -176,7 +206,8 @@ ${TRUSTED_CA_DIR}            ${None}
 # Hybrid Endpoints
 
 ${PQ_ISSUING_SUFFIX}    ${None}
-${URI_MULTIPLE_AUTH}   ${None}
+${URI_RELATED_CERT}   ${None}
+${NEG_URI_RELATED_CERT}   ${None}
 ${ISSUING_SUFFIX}    ${None}
 ${COMPOSITE_URL_PREFIX}    ${None}
 ${CATALYST_SIGNATURE}    ${None}

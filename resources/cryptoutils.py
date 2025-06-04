@@ -18,7 +18,9 @@ import math
 import os
 from typing import Optional, Tuple, Union
 
-from cryptography.hazmat.primitives import hashes, hmac
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pss
+from cryptography.hazmat.primitives import hashes, hmac, serialization
 from cryptography.hazmat.primitives import padding as aes_padding
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, padding, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
@@ -44,6 +46,7 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig
 from pq_logic.keys.trad_kem_keys import RSADecapKey, RSAEncapKey
 from resources import convertutils, envdatautils, keyutils, oid_mapping
 from resources.asn1_structures import KemCiphertextInfoAsn1
+from resources.data_objects import FixedSHAKE128, FixedSHAKE256
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import compute_hash, get_hash_from_oid, hash_name_to_instance
 from resources.oidutils import AES_CBC_OID_2_NAME, AES_GCM_OID_2_NAME, CURVE_2_COFACTORS, KM_KW_ALG
@@ -167,11 +170,56 @@ def sign_data_rsa_pss(
     :return: The signature as a byte string.
     :raises ValueError: If the hash algorithm name is not supported.
     """
+    if hash_alg in ["shake128", "shake256"]:
+        return _sign_data_rsa_pss_shake(private_key, data, hash_alg, salt_length)
+
     hash_alg = "sha256" if hash_alg is None else hash_alg
     hash_algorithm = hash_name_to_instance(hash_alg)
     second_hash_algorithm = hash_name_to_instance(second_hash_alg) if second_hash_alg else hash_algorithm
     pss_padding = padding.PSS(mgf=padding.MGF1(hash_algorithm), salt_length=salt_length or hash_algorithm.digest_size)
     return private_key.sign(data=data, padding=pss_padding, algorithm=second_hash_algorithm)
+
+
+def _sign_data_rsa_pss_shake(
+    private_key: rsa.RSAPrivateKey,
+    data: bytes,
+    hash_alg: Optional[str] = None,
+    salt_length: Optional[int] = None,
+) -> bytes:
+    """Sign data using RSASSA-PSS with the specified hash algorithm and salt length.
+
+    :param private_key: The RSA private key used for signing.
+    :param data: The data to be signed.
+    :param hash_alg: The name of the hash algorithm to use for PSS-Padding. Defaults to 'sha256'.
+    :param salt_length: The length of the salt. Defaults to None.
+    :return: The signature as a byte string.
+    :raises ValueError: If the hash algorithm name is not supported.
+    """
+    if hash_alg is None:
+        hash_alg = "shake256"
+
+    if hash_alg not in ["shake128", "shake256"]:
+        raise ValueError(f"Unsupported hash algorithm: {hash_alg}. Only 'shake128' and 'shake256' are supported.")
+
+    if hash_alg == "shake128":
+        hash_for_signing = FixedSHAKE128.new(data)
+    else:
+        hash_for_signing = FixedSHAKE256.new(data)
+
+    pem_data = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+    if salt_length is None:
+        salt_length = hash_for_signing.digest_size
+
+    pycrypto_key = RSA.import_key(pem_data)
+    signer = pss.new(pycrypto_key, salt_bytes=salt_length)
+    signature = signer.sign(hash_for_signing)  # type: ignore
+    logging.info("RSA-PSS-%s Signature: %s", hash_alg, signature.hex())
+    return signature
 
 
 @not_keyword
@@ -310,6 +358,8 @@ def compute_pbmac1(
     salt: Optional[bytes] = None,
     length: int = 32,
     hash_alg: str = "sha256",
+    *,
+    mac_hash_alg: Optional[str] = None,
 ) -> bytes:
     """Compute HMAC for the given data using specified key.
 
@@ -319,6 +369,8 @@ def compute_pbmac1(
     :param key: Key to use for the HMAC.
     :param salt: Salt value for PBKDF2.
     :param hash_alg: Optional name of the hash algorithm to use.
+    :param mac_hash_alg: Optional name of the hash algorithm to use for the `HMAC` algorithm.
+    Defaults to the same as `hash_alg`.
     :return: The HMAC signature.
     """
     hash_alg_instance = hash_name_to_instance(hash_alg)
@@ -338,24 +390,31 @@ def compute_pbmac1(
     derived_key = kdf.derive(key)
     logging.info("Derived key: %s", derived_key.hex())
 
-    signature = compute_hmac(key=derived_key, hash_alg=hash_alg, data=data)
+    signature = compute_hmac(key=derived_key, hash_alg=mac_hash_alg or hash_alg, data=data)
     logging.info("Signature: %s", signature.hex())
     return signature
 
 
 @not_keyword
 def compute_password_based_mac(
-    data: bytes, key: bytes, iterations: int = 1000, salt: Optional[bytes] = None, hash_alg: str = "sha256"
+    data: bytes,
+    key: bytes,
+    iterations: int = 1000,
+    salt: Optional[bytes] = None,
+    hash_alg: str = "sha256",
+    *,
+    mac_hash_alg: Optional[str] = None,
 ):
     """Implement the password-based MAC algorithm defined in RFC 4210 Sec. 5.1.3.1. The MAC is always HMAC_hash_alg.
 
-    :param data: bytes, data to be hashed.
-    :param key: bytes, key to use for the HMAC.
-    :param iterations: optional int, the number of times to do the hash iterations
-    :param salt: optional bytes, salt to use; if not given, a random 16-byte salt will be generated
-    :param hash_alg: optional str, name of the hash algorithm to use, e.g., 'sha256'
-
-    :returns: bytes, the HMAC signature
+    :param data: The data to be hashed.
+    :param key: The key to use for the HMAC.
+    :param iterations: The number of times to do the hash iterations
+    :param salt: The salt to use; if not given, a random 16-byte salt will be generated
+    :param hash_alg: The name of the hash algorithm to use, e.g., 'sha256'
+    :param mac_hash_alg: The name of the hash algorithm to use for the `HMAC` algorithm.
+    Defaults to the same as `hash_alg`.
+    :returns: The HMAC signature
     """
     salt = salt or os.urandom(16)
 
@@ -366,7 +425,7 @@ def compute_password_based_mac(
     for _ in range(iterations):
         initial_input = compute_hash(hash_alg, initial_input)
 
-    signature = compute_hmac(data=data, key=initial_input, hash_alg=hash_alg)
+    signature = compute_hmac(data=data, key=initial_input, hash_alg=mac_hash_alg or hash_alg)
     logging.info("Signature: %s", signature.hex())
     return signature
 

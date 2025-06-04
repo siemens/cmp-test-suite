@@ -37,7 +37,7 @@ class TestValidateEnvelopeData(unittest.TestCase):
         self.kga_certificate, self.key = build_certificate(
             common_name="CN=Hans the Tester",
             key="ec",
-            ski=True,
+            include_ski=True,
             eku="cmKGA",
             ca_cert=self.trusted_root,
             ca_key=self.root_key,

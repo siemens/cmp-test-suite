@@ -9,6 +9,8 @@ from typing import List, Optional, Union
 from cryptography.exceptions import InvalidSignature
 from pyasn1.type import univ
 
+from resources.asn1_structures import PKIMessageTMP
+
 
 class CMPTestSuiteError(Exception):
     """Base class for CMP Test Suite errors."""
@@ -56,6 +58,13 @@ class BadConfig(CMPTestSuiteError):
 ##########################
 
 
+class BadSigAlgID(CMPTestSuiteError):
+    """Raised when the algorithm identifier and the signing key do not match."""
+
+    failinfo = "badDataFormat"
+    bit_num = 0
+
+
 class UnknownOID(CMPTestSuiteError):
     """Raised when an OID is unknown."""
 
@@ -89,6 +98,13 @@ class AlgorithmProfileError(CMPTestSuiteError):
 
 class InvalidAltSignature(InvalidSignature):
     """Raised when the alternative signature is invalid."""
+
+
+class LwCMPViolation(CMPTestSuiteError):
+    """Raised when the LwCMP profile is violated, because of the algorithm population or the message size."""
+
+    failinfo = "badRequest"
+    bit_num = 2
 
 
 #########################
@@ -200,6 +216,7 @@ class BadAsn1Data(CMPTestSuiteError):
         remainder: Optional[bytes] = None,
         overwrite: bool = False,
         error_details: Optional[Union[List[str], str]] = None,
+        *,
         failinfo: str = "badDataFormat",
     ):
         """Initialize the exception with the message.
@@ -326,3 +343,36 @@ class DuplicateCertReq(CMPTestSuiteError):
 
     failinfo = "duplicateCertReq"
     bit_num = 26
+
+
+######################
+# Additional Errors
+######################
+
+
+class BadKeyUsage(NotAuthorized):
+    """Raised when the key usage is invalid or not allowed."""
+
+
+class BodyRelevantError(CMPTestSuiteError):
+    """Raised when a `PKIBody` relevant error is raised."""
+
+    failinfo = "badRelevantError"
+    bit_num = 24
+    pki_message: PKIMessageTMP
+
+    def __init__(
+        self,
+        message: str,
+        failinfo: str,
+        pki_message: PKIMessageTMP,
+        error_details: Optional[Union[List[str], str]] = None,
+    ):
+        """Initialize the exception with the message.
+
+        :param message: The message to display.
+        :param error_details: Additional details about the error.
+        """
+        self.message = message
+        self.pki_message = pki_message
+        super().__init__(message, error_details=error_details, failinfo=failinfo)

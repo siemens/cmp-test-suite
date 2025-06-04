@@ -274,10 +274,11 @@ CA MUST Send A Valid KUP After Receiving valid KUR
     ${response}=    Exchange PKIMessage    ${protected_kur}
     PKIStatus Must Be    ${response}    accepted
     PKIMessage Body Type Must Be    ${response}    kup
-    ${cert}=   Confirm Certificate If Needed   ${response}   protection=signature
+    ${cert}=   Confirm Certificate If Needed   ${response}   protection=signature   url=${CA_CMP_URL}
     Validate Ca Message Body    ${response}
     VAR    ${UPDATED_CERT}    ${cert}    scope=Global
     VAR    ${UPDATED_KEY}    ${kur_key}    scope=Global
+    Wait Until Server Updated Cert
 
 CA MUST Send A Valid CP After Receiving valid P10CR
     [Documentation]    According to RFC 9483 Section 4, when a valid PKCS#10 Certification Request (P10CR) is received,
@@ -366,6 +367,109 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid CR SIG-Protected
         Signature Protection Must Match    response=${response}    pki_conf=${pki_conf}
     END
 
+CA MUST Accept ImplicitConfirm for KUR
+    [Documentation]    According to RFC 9483, Section 4.1.3, the client can send a valid KUR request to the CA
+    ...                with the `implicitConfirm` flag. The CA MUST process the key update request
+    ...                correctly, with the implicit confirmation and issue a new certificate.
+    [Tags]    kur    positive   implicitConfirm
+    ${cert}   ${key}=    Issue New Cert For Testing
+    ${fresh_key}=    Generate Unique Key    ${DEFAULT_ALGORITHM}
+    ${kur}=  Build Key Update Request   ${fresh_key}   cert=${cert}   recipient=${RECIPIENT}
+    ...      exclude_fields=sender,senderKID   implicit_confirm=True
+    ${prot_kur}=  Protect PKIMessage   ${kur}   signature   private_key=${key}   cert=${cert}
+    ${response}=    Exchange PKIMessage    ${prot_kur}
+    PKIMessage Body Type Must Be    ${response}    kup
+    PKIStatus Must Be    ${response}    accepted
+    PKIMessage Must Contain ImplicitConfirm Extension    ${response}
+
+CA MUST Correctly Support KUR confirmation
+    [Documentation]    According to RFC 9483, Section 4.1.3, the client can send a valid KUR request to the CA
+    ...                without the the `implicitConfirm` flag. The CA MUST process the key update request
+    ...                correctly, without the implicit confirmation and issue a new certificate. The client
+    ...                must then send a confirmation message to the CA. The CA MUST process the confirmation
+    ...                message and the CA must respond with the PKI confirmation message.
+    [Tags]    kur    positive  pkiconf   confirm
+    ${response}  ${old_cert}  ${old_key}=   Send New Key Update Request
+    ${result}=   PKIMessage Contains ImplicitConfirm Extension   ${response}
+    Should Be True    not ${result}   The implicitConfirm extension was not expected to be present.
+    ${cert_conf}=    Build Cert Conf From Resp    ${response}   recipient=${RECIPIENT}   exclude_fields=sender,senderKID
+    ${prot_conf}=    Protect PKIMessage   ${cert_conf}   signature   private_key=${old_key}   cert=${old_cert}
+    ${response}=    Exchange PKIMessage    ${prot_conf}
+    PKIMessage Body Type Must Be    ${response}    pkiconf
+
+CA MUST Reject Second KUR Request Unfinished
+    [Documentation]    According to RFC 9483, Section 4.1.3, the client can send a valid KUR request to the CA
+    ...                without the the `implicitConfirm` flag. The CA MUST process the first key update request
+    ...                correctly, without the implicit confirmation. But when the CA receives a second KUR request
+    ...                without the first being completed, the CA MUST reject the second request.
+    [Tags]    kur    negative  sec-awareness
+    ${_}  ${old_cert}  ${old_key}=   Send New Key Update Request
+    ${fresh_key2}=    Generate Unique Key    ${DEFAULT_ALGORITHM}
+    ${second_kur}=   Build Key Update Request   ${fresh_key2}   cert=${old_cert}   recipient=${RECIPIENT}
+    ...           exclude_fields=sender,senderKID   implicit_confirm=True
+    ${prot_sec_kur}=   Protect PKIMessage   ${second_kur}   signature   private_key=${old_key}   cert=${old_cert}
+    ${response}=    Exchange PKIMessage    ${prot_sec_kur}
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badRequest
+
+CA MUST Not Update Cert without Confirmation
+    [Documentation]    According to RFC 9483, Section 4.1.3, the client can send a valid KUR request to the CA
+    ...                without the the `implicitConfirm` flag. The CA MUST process the key update request
+    ...                correctly, without the implicit confirmation. But if the CA never receives the
+    ...                confirmation, the CA, after a timeout, should not update/revoke the certificate.
+    [Tags]    kur    positive  sec-awareness  adv-configuration
+    ${_}  ${old_cert}  ${old_key}=   Send New Key Update Request
+    ${fresh_key2}=    Generate Unique Key    ${DEFAULT_ALGORITHM}
+    Wait Until Server Deletes Update Request
+    ${second_kur}=   Build Key Update Request   ${fresh_key2}   cert=${old_cert}   recipient=${RECIPIENT}
+    ...           exclude_fields=sender,senderKID
+    ${prot_sec_kur}=   Protect PKIMessage   ${second_kur}   signature   private_key=${old_key}   cert=${old_cert}
+    ${response}=    Exchange PKIMessage    ${prot_sec_kur}
+    PKIStatus Must Be    ${response}   accepted
+
+CA MUST Not Allow New Request with not confirm Updated Cert
+    [Documentation]    According to RFC 9483, Section 4.1.3, the client can send a valid KUR request to the CA
+    ...                without the the `implicitConfirm` flag. The CA MUST process the key update request
+    ...                correctly, without the implicit confirmation. But if the CA never receives the
+    ...                a new IR with the updated certificate, the CA MUST reject the new request.
+    [Tags]    kur    negative  sec-awareness
+    ${_}  ${old_cert}  ${old_key}=   Send New Key Update Request
+    ${fresh_key2}=    Generate Unique Key    ${DEFAULT_ALGORITHM}
+    ${ir}=  Build Ir From Key   ${fresh_key2}   cert=${old_cert}   recipient=${RECIPIENT}
+    ...      exclude_fields=sender,senderKID
+    ${prot_ir}=  Protect PKIMessage   ${ir}   signature   private_key=${old_key}   cert=${old_cert}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badRequest,certRevoked
+
+CA Should not allow New Request After Timeout with not confirmed KUR
+    [Documentation]    According to RFC 9483, Section 4.1.3, the client can send a valid KUR request to the CA
+    ...                without the the `implicitConfirm` flag. The CA MUST process the key update request
+    ...                correctly, without the implicit confirmation. But if the CA never receives the
+    ...                confirmation, the CA, after a timeout, the CA should not allow a new request.
+    [Tags]    kur    negative  sec-awareness
+    # TODO maybe set to allow failure, but because sec-awareness is not set yet.
+    ${_}  ${old_cert}  ${old_key}=   Send New Key Update Request
+    Wait Until Server Deletes Update Request
+    ${fresh_key}=    Generate Unique Key    ${DEFAULT_ALGORITHM}
+    ${ir}=  Build Ir From Key   ${fresh_key}   cert=${old_cert}   recipient=${RECIPIENT}   exclude_fields=sender,senderKID
+    ${prot_ir}=  Protect PKIMessage   ${ir}   signature   private_key=${old_key}   cert=${old_cert}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
+    PKIStatus Must Be    ${response}    rejection
+
+CA Should Not Allow A RR For A Not Confirmed KUR
+    [Documentation]    According to RFC 9483, Section 4.1.3, the client can send a valid KUR request to the CA
+    ...                without the the `implicitConfirm` flag. The CA MUST process the key update request
+    ...                correctly, without the implicit confirmation. But if the CA receives a revocation request
+    ...                for the old certificate, the CA should not revoke the old certificate.
+    [Tags]    kur    negative  sec-awareness  revocation
+    ${_}  ${old_cert}  ${old_key}=   Send New Key Update Request
+    ${rr}=   Build CMP Revoke Request    ${old_cert}   recipient=${RECIPIENT}
+    ${prot_rr}=  Protect PKIMessage   ${rr}   signature   private_key=${old_key}   cert=${old_cert}
+    ${response}=    Exchange PKIMessage    ${prot_rr}
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badRequest,certRevoked
+
 CA MUST Issue A Valid Certificate Upon Receiving A Valid KUR
     [Documentation]    According to RFC 9483 Section 4.1.3, when a valid Key Update Request is received with
     ...    signature-based protection, the CA MUST process the request and issue a new certificate.
@@ -407,6 +511,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid KUR
     END
     VAR    ${UPDATED_CERT}    ${cert}    scope=GLOBAL
     VAR    ${UPDATED_KEY}    ${kur_key}    scope=GLOBAL
+    Wait Until Server Updated Cert
     # positioned here so if the Response is incorrect, the certificate is still updated, so that it
     # can be used for other test cases.
     Validate CA Message Body    ${response}    used_p10cr=False
@@ -450,7 +555,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid P10cr SIG-Protected
     ${protected_p10cr}=    Default Protect PKIMessage    ${p10cr}
     ${response}=    Exchange PKIMessage    ${protected_p10cr}
     PKIStatus Must Be    ${response}    status=accepted
-    ${cert}=  Confirm Certificate If Needed    ${response}
+    ${cert}=  Confirm Certificate If Needed    ${response}   url=${CA_CMP_URL}  cert_req_id=0
     Validate CA Message Body    ${response}    used_p10cr=True
     Certificate Must Be Valid    ${cert}
 
@@ -551,7 +656,7 @@ CA MAY React To Cert Request With Invalid Is_ca In BasicConstraints False But Ke
     ${ca_response}=    Exchange PKIMessage    ${protected_ir}
     ${body}=    Get CMP Message Type    ${ca_response}
     IF    '${body} == error'
-           PKIStatusInfo Failinfo Bit Must Be    ${ca_response}     failinfo=badCertTemplate
+        PKIStatusInfo Failinfo Bit Must Be    ${ca_response}     badCertTemplate
     ELSE
         ${status}=    Get PKIStatusInfo     ${ca_response}
         IF    '${status["status"]}' != rejection
@@ -629,7 +734,7 @@ CA MUST Issue ECDSA Cert With KeyUsage
     ${protected_ir}=  Default Protect PKIMessage    ${ir}
     ${ca_response}=    Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be   ${ca_response}    status=accepted
-    ${cert}=  Confirm Certificate If Needed    ${ca_response}   request=${protected_ir}
+    ${cert}=  Confirm Certificate If Needed    ${ca_response}   request=${protected_ir}   url=${CA_CMP_URL}
     Validate KeyUsage   ${cert}    keyAgreement,digitalSignature    strictness=STRICT
     VAR    ${CLIENT_ECC_KEY}    ${new_key}    scope=Global
     VAR    ${CLIENT_ECC_CERT}    ${cert}    scope=Global
@@ -1071,8 +1176,9 @@ Initialize Global Variables
     VAR    ${REVOKED_CERT}    ${None}    scope=GLOBAL
     VAR    ${REVOKED_PRIVATE_KEY}    ${None}    scope=GLOBAL
     # Only needed to test LWCMP version, where DSA is not allowed as signing algorithm.
-    VAR    ${DSA_CERT}    ${None}    scope=GLOBAL
-    VAR    ${DSA_KEY}    ${None}    scope=GLOBAL
+    ${dsa_cert}   ${dsa_key}=    May Load Cert And Key     ${DSA_CERT}   ${DSA_KEY}   ${DSA_KEY_PASSWORD}
+    VAR    ${DSA_CERT}    ${dsa_cert}    scope=GLOBAL
+    VAR    ${DSA_KEY}    ${dsa_key}    scope=GLOBAL
     # To Test with KARI, if allowed.
     VAR    ${X25519_CERT}    ${None}    scope=GLOBAL
     VAR    ${X25519_KEY}    ${None}    scope=GLOBAL
@@ -1099,3 +1205,33 @@ Initialize Global Variables
 
     VAR    @{GLOBAL_CERTS}    @{EMPTY}    scope=Global  # robocop: off=VAR04
     VAR    @{GLOBAL_KEYS}    @{EMPTY}    scope=Global   # robocop: off=VAR04
+    TRY
+        Set Up CRR Test Cases
+    EXCEPT
+        Log    Failed to set up CRR test cases. This is not a problem, if the CRR tests are not run.
+    END
+
+Send New Key Update Request
+    [Documentation]    Send a new key update request to the CA, which is not confirmed.
+    ...
+    ...                First issues a new certificate for testing, then generates a new key and
+    ...                builds a key update request with the new key. The request is protected with
+    ...                the old key and the old certificate. The request is sent to the CA and
+    ...                the response is checked. The response must be a key update request with
+    ...                the status `accepted`.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - ${response}: The PKIMessage response from the CA.
+    ...                - ${old_cert}: The old certificate.
+    ...                - ${old_key}: The old private key.
+    [Tags]    kur
+    ${old_cert}  ${old_key}=  Issue New Cert For Testing
+    ${fresh_key}=  Generate Unique Key    ${DEFAULT_ALGORITHM}
+    ${kur}=  Build Key Update Request   ${fresh_key}   cert=${old_cert}   recipient=${RECIPIENT}
+    ...      exclude_fields=sender,senderKID
+    ${prot_kur}=  Protect PKIMessage   ${kur}   signature   private_key=${old_key}   cert=${old_cert}
+    ${response}=    Exchange PKIMessage    ${prot_kur}
+    PKIMessage Body Type Must Be    ${response}    kup
+    PKIStatus Must Be    ${response}    accepted
+    RETURN   ${response}   ${old_cert}   ${old_key}

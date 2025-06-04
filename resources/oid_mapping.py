@@ -35,6 +35,7 @@ from resources.oidutils import (
     PQ_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
     SUPPORTED_MAC_NAME_2_OID,
+    TRAD_SIG_NAME_2_OID,
 )
 from resources.typingutils import PrivateKey
 
@@ -83,7 +84,14 @@ def get_signing_oid(key, hash_alg: Optional[str], use_pss: bool = False) -> Opti
 
     else:
         name = key_type
-    return oid or OID_HASH_NAME_2_OID.get(name) or SUPPORTED_MAC_NAME_2_OID.get(key_type)
+
+    if oid is not None:
+        return oid
+
+    if key_type in TRAD_SIG_NAME_2_OID:
+        return TRAD_SIG_NAME_2_OID[key_type]
+
+    return OID_HASH_NAME_2_OID.get(name) or SUPPORTED_MAC_NAME_2_OID.get(key_type)
 
 
 @not_keyword
@@ -94,7 +102,7 @@ def sha_alg_name_to_oid(hash_name: str) -> univ.ObjectIdentifier:
                       or "hmac-sha256"
     :return: The corresponding `pyasn1` OID.
     """
-    hash_name = hash_name.lower().replace("_", "-").strip()
+    hash_name = hash_name.lower().strip()
 
     if hash_name in OID_HASH_MAP.values():
         for key, value in OID_HASH_MAP.items():
@@ -122,9 +130,12 @@ def get_curve_instance(curve_name: str) -> ec.EllipticCurve:
 def get_hash_from_oid(oid: univ.ObjectIdentifier, only_hash: bool = False) -> Union[str, None]:
     """Determine the name of a hashing function used in a signature algorithm given by its oid.
 
+    Note: If only a hash name is needed, set `only_hash` to `True`, unless only a hash name is contained in the OID.
+    Then use `only_hash=False`.
+
     :param oid: `pyasn1 univ.ObjectIdentifier`, OID of signing algorithm
     :param only_hash: A flag indicating if only the hash name shall be returned if one is contained.
-    :return: name of hashing algorithm, e.g., 'sha256' or `None`, if the
+    :return: The name of the hashing algorithm, e.g., 'sha256' or `None`, if the
     signature algorithm does not use one.
     """
     if oid in {rfc9481.id_Ed25519, rfc9481.id_Ed448}:

@@ -5,6 +5,7 @@
 """Factory class to generate and load post-quantum keys in various input formats."""
 
 import logging
+import os
 from typing import List, Optional, Tuple, Type, Union
 
 import pyasn1
@@ -564,20 +565,28 @@ class PQKeyFactory:
     def _prepare_ml_private_key(
         private_key: Union[MLKEMPrivateKey, MLDSAPrivateKey],
         save_type: KeySaveType = KeySaveType.SEED,
+        invalid_key: bool = False,
     ) -> bytes:
         """Prepare the private key for ML-DSA or ML-KEM.
 
+        :param private_key: The private key to be saved.
+        :param save_type: The type of key to save. Defaults to `KeySaveType.SEED`.
         :return: The private key in ASN.1 format.
         """
         structure = PQKeyFactory._pq_name_2_ser_structures[private_key.name]()
 
+        to_add = os.urandom(4) if invalid_key else b""
+
         if save_type == KeySaveType.SEED:
-            structure["seed"] = private_key.private_numbers()
+            structure["seed"] = private_key.private_numbers() + to_add
         elif save_type == KeySaveType.SEED_AND_RAW:
             structure["both"]["seed"] = private_key.private_numbers()
-            structure["both"]["expandedKey"] = private_key.private_bytes_raw()
+            if not invalid_key:
+                structure["both"]["expandedKey"] = private_key.private_bytes_raw()
+            else:
+                structure["both"]["expandedKey"] = os.urandom(private_key.key_size)
         elif save_type == KeySaveType.RAW:
-            structure["expandedKey"] = private_key.private_bytes_raw()
+            structure["expandedKey"] = private_key.private_bytes_raw() + to_add
         else:
             raise ValueError(f"Invalid key save type: {save_type}")
 
@@ -587,6 +596,7 @@ class PQKeyFactory:
     def save_keys_with_support_seed(
         private_key: PQPrivateKey,
         key_type: KeySaveType,
+        invalid_key: bool = False,
     ) -> bytes:
         """Save the private key in a format that supports the seed.
 
@@ -595,9 +605,11 @@ class PQKeyFactory:
             - "seed": Save the seed.
             - "raw": Save the private key.
             - "seed_and_raw": Save the seed and the private key.
+        :param invalid_key: If True, the key will be saved in an invalid format.
+        :return: The private key in ASN.1 format.
         """
         if isinstance(private_key, (MLDSAPrivateKey, MLKEMPrivateKey)):
-            return PQKeyFactory._prepare_ml_private_key(private_key, key_type)
+            return PQKeyFactory._prepare_ml_private_key(private_key, key_type, invalid_key)
 
         if isinstance(private_key, SLHDSAPrivateKey):
             if key_type == KeySaveType.SEED:
@@ -650,6 +662,7 @@ class PQKeyFactory:
         save_type: Union[KeySaveType, str] = "seed",
         include_public_key: Optional[bool] = True,
         unsafe: bool = False,
+        invalid_key: bool = False,
     ) -> bytes:
         """Load the private key into a `OneAsymmetricKey` object.
 
@@ -664,6 +677,8 @@ class PQKeyFactory:
             - "seed_and_raw": Save the seed and the private key.
         :param unsafe: The PQ liboqs keys do not allow one to derive the public key from the
         private key, disables the exception call. Defaults to `False`.
+        :param invalid_key: If True, the key will be saved in an invalid for ML-DSA or ML-KEM keys.
+        Defaults to `False`.
         :return: The DER-encoded `OneAsymmetricKey` object.
         :raises NotImplementedError: Version 1 is not supported for `liboqs` keys.
         """
@@ -673,7 +688,7 @@ class PQKeyFactory:
         one_asym_key["version"] = version
         one_asym_key["privateKeyAlgorithm"]["algorithm"] = private_key.get_oid()
 
-        private_key_bytes = PQKeyFactory.save_keys_with_support_seed(private_key, key_type)
+        private_key_bytes = PQKeyFactory.save_keys_with_support_seed(private_key, key_type, invalid_key)
         one_asym_key["privateKey"] = private_key_bytes
 
         public_key_bytes = PQKeyFactory._may_get_pub_key(

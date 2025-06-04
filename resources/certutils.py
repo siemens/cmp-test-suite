@@ -8,7 +8,8 @@ import logging
 import os
 import shutil
 import subprocess
-from datetime import datetime
+import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
@@ -17,7 +18,10 @@ import requests
 from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import ExtensionNotFound, ReasonFlags, ocsp
 from cryptography.x509.oid import AuthorityInformationAccessOID
 from pkilint import loader, report
@@ -46,7 +50,15 @@ from resources import (
 )
 from resources.asn1_structures import PKIMessageTMP
 from resources.convertutils import ensure_is_kem_pub_key, ensure_is_verify_key
-from resources.exceptions import BadAsn1Data, BadPOP, CertRevoked, SignerNotTrusted, UnknownOID
+from resources.exceptions import (
+    BadAsn1Data,
+    BadKeyUsage,
+    BadPOP,
+    BadSigAlgID,
+    CertRevoked,
+    SignerNotTrusted,
+    UnknownOID,
+)
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
@@ -380,7 +392,7 @@ def check_is_cert_signer(cert: rfc9480.CMPCertificate, poss_issuer: rfc9480.CMPC
             )
 
         return True
-    except (ValueError, InvalidSignature) as err:
+    except (ValueError, InvalidSignature, BadSigAlgID) as err:
         logging.info("%s", err)
     return False
 
@@ -623,8 +635,8 @@ def validate_key_usage(  # noqa D417 undocumented-param
     Raises:
     ------
         - `ValueError`: If the `KeyUsage` extension is not present in the certificate when \
-         `strictness` is set to `STRICT` or `ABS_STRICT`, or if the actual `KeyUsage` does not match the \
-         expected `key_usages`.
+         `strictness` is set to `STRICT` or `ABS_STRICT`.
+    - `NotAuthorized`: If the `KeyUsage` extension is present but does not match the expected `key_usages`.
 
 
     Examples:
@@ -643,7 +655,7 @@ def validate_key_usage(  # noqa D417 undocumented-param
 
     if usage is None:
         if val_strict in [KeyUsageStrictness.ABS_STRICT, KeyUsageStrictness.STRICT]:
-            raise ValueError(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
+            raise BadKeyUsage(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
         logging.info("KeyUsage extension was not present")
     else:
         same = False
@@ -652,7 +664,7 @@ def validate_key_usage(  # noqa D417 undocumented-param
 
         if not _validate_key_usage(expected_usage=key_usages, given_usage=usage, same_vals=same):  # type: ignore
             names = asn1utils.get_set_bitstring_names(usage)  # type: ignore
-            raise ValueError(f"KeyUsage Extension was expected to be: {key_usages}, but is {names}")
+            raise BadKeyUsage(f"KeyUsage Extension was expected to be: {key_usages}, but is {names}")
 
 
 @keyword(name="Must Not Contain KeyUsage")
@@ -670,7 +682,7 @@ def must_not_contain_key_usage(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the `KeyUsage` extension is present in the certificate and contains any of the \
+        - `BadKeyUsage`: If the `KeyUsage` extension is present in the certificate and contains any of the \
         specified attributes.
 
     Examples:
@@ -682,16 +694,17 @@ def must_not_contain_key_usage(  # noqa D417 undocumented-param
     usage: Optional[rfc5280.KeyUsage]
     if usage is None:
         if must_be_present:
-            raise ValueError(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
+            raise BadKeyUsage(f"KeyUsage extension was not present in: {cert.prettyPrint()}")
         logging.info("KeyUsage extension was not present")
         return
 
     if _validate_key_usage(expected_usage=key_usages, given_usage=usage, same_vals=False):
         names = asn1utils.get_set_bitstring_names(usage)
-        raise ValueError(f"KeyUsage Extension was expected to not contain: {key_usages}, but is {names}")
+        raise BadKeyUsage(f"KeyUsage Extension was expected to not contain: {key_usages}, but is {names}")
 
 
-def _cert_chain_to_file(cert_chain: List[rfc9480.CMPCertificate], path: str):
+@not_keyword
+def write_cert_chain_to_file(cert_chain: List[rfc9480.CMPCertificate], path: str):
     """Write a certificate chain to a single PEM file, overwriting the file if it already exists.
 
     Used to write a parseable file to the OpenSSL command.
@@ -764,7 +777,7 @@ def _verify_more_certs_than_three(cert_chain: List[rfc9480.CMPCertificate], dir_
     utils.write_cmp_certificate_to_pem(cert_chain[-1], anchor)
 
     ca_path = os.path.join(dir_fpath, "intermediates.pem")
-    _cert_chain_to_file(cert_chain[1:-1], ca_path)
+    write_cert_chain_to_file(cert_chain[1:-1], ca_path)
 
     ee_path = os.path.join(dir_fpath, "ee.pem")
     utils.write_cmp_certificate_to_pem(cert_chain[0], ee_path)
@@ -804,7 +817,7 @@ def _verify_certificate_chain(command: List[str], cert_chain: List[rfc9480.CMPCe
         # Log full error details from OpenSSL.
         logging.error("OpenSSL verify failed. stdout: %s\nstderr: %s", e.stdout, e.stderr)
         raise SignerNotTrusted(
-            f"Validation of the certificate failed!\nstdout: {e.stdout}\nstderr: {e.stderr}", error_details=str(e)
+            f"Validation of the certificate failed!\nstdout: {e.stdout}\nstderr: {e.stderr}", error_details=[str(e)]
         ) from e
     except subprocess.TimeoutExpired as e:
         logging.error("Reached timeout of %d seconds during certificate validation.", timeout)
@@ -813,7 +826,152 @@ def _verify_certificate_chain(command: List[str], cert_chain: List[rfc9480.CMPCe
         logging.error("An unexpected error occurred during certificate validation: %s", err)
         raise SignerNotTrusted(f"Validation of the certificate failed! Error: {err}") from err
     finally:
+        if os.path.exists("data/tmp_crl"):
+            shutil.rmtree("data/tmp_crl")
+
         shutil.rmtree(dir_fpath)
+
+    logging.info("Certificate chain verified successfully.")
+
+
+def _get_crls_from_certs(
+    cert_chain: List[rfc9480.CMPCertificate],
+    crl_path: Optional[str] = None,
+    check_crl_all: bool = False,
+) -> List[str]:
+    """Get the CRLs from the certificates in the chain.
+
+    :param cert_chain: A list of `rfc9480.CMPCertificate` objects representing the certificate chain.
+    :param crl_path: The path to the CRL file to use for verification. Defaults to `None`.
+    :return: A list of DER-encoded CRLs.
+    """
+    if crl_path is not None:
+        return [crl_path]
+
+    if check_crl_all:
+        tmp_cert_chain = cert_chain
+    else:
+        tmp_cert_chain = [cert_chain[0]]
+
+    crl_urls = []
+    for i, cert in enumerate(tmp_cert_chain):
+        urls = _extract_crl_urls_from_cert_pyasn1(cert=cert)
+        crl_urls.extend(urls)
+        # So that the Root CA does not need to have an CRl-DP set.
+        if not urls and check_crl_all and i != len(tmp_cert_chain) - 1:
+            raise ValueError(
+                f"CRL URLs were not found in the certificate: {cert.prettyPrint()}."
+                f"At index {i} of the chain. "
+                f"Please provide a valid CRL path or set `check_crl_all` to `False`."
+            )
+
+    if not crl_urls:
+        raise ValueError("Could not find the CRL URLs in the certificate chain.")
+    return crl_urls
+
+
+def ensure_is_pem_crl(data: bytes) -> bytes:
+    """Ensure that the CRL is PEM encoded and returns it PEM encoded.
+
+    :param data: The CRL data in bytes.
+    :return: The PEM-encoded CRL data.
+    """
+    try:
+        # Attempt to load as DER
+        crl = x509.load_der_x509_crl(data)
+        return crl.public_bytes(serialization.Encoding.PEM)
+    except ValueError:
+        pass
+
+    try:
+        _ = x509.load_pem_x509_crl(data)
+        return data
+    except ValueError:
+        raise ValueError("Data is neither valid DER nor PEM format.")  # pylint: disable=raise-missing-from
+
+
+def _fetch_crls(crl_urls: List[str]) -> List[str]:
+    """Download CRL files from the given list of URLs and saves them as temporary files.
+
+    :param crl_urls: List of CRL URLs to download.
+    :return: List of paths to the downloaded CRL files.
+    """
+    downloaded_files = []
+
+    for url in crl_urls:
+        try:
+            logging.info("Fetching CRL from: %s", url)
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+
+            # Create a temporary file with a .crl suffix
+            with tempfile.NamedTemporaryFile(dir="data/tmp_crl", mode="wb", delete=False, suffix=".crl") as temp_file:
+                data = ensure_is_pem_crl(response.content)
+                temp_file.write(data)
+                temp_file.flush()
+                temp_file.close()
+
+            downloaded_files.append(temp_file.name)
+            logging.info("Saved to temporary file: %s", temp_file.name)
+
+        except Exception as e:
+            logging.info("Failed to fetch CRL from %s: %s", url, str(e))
+
+    return downloaded_files
+
+
+def _concatenate_crls(crl_files: Union[None, str, List[str]], filename: str = "combined_crls.crl") -> None:
+    """Concatenates multiple CRL files into a single temporary PEM file.
+
+    :param crl_files: List or a single path to CRL files to be concatenated.
+    :return: Path to the concatenated temporary CRL file.
+    """
+    if not crl_files:
+        raise ValueError("No CRL files provided for concatenation.")
+
+    if isinstance(crl_files, str):
+        crl_files = [crl_files]
+
+    output_dir = Path("data/tmp_crl")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / filename
+    with open(output_file, "wb") as outfile:
+        for crl_file in crl_files:
+            with open(crl_file, "rb") as infile:
+                data = ensure_is_pem_crl(infile.read())
+                outfile.write(data)
+
+
+def _get_crl_filepath_for_verification(
+    cert_chain: List[rfc9480.CMPCertificate],
+    crl_path: Optional[str] = None,
+    check_crl_all: bool = False,
+) -> None:
+    """Get the CRL file path for verification.
+
+    :param cert_chain: A list of `rfc9480.CMPCertificate` objects representing the certificate chain.
+    :param crl_path: The path to the CRL file to use for verification. Defaults to `None`.
+    :return: The path to the CRL file.
+    :raises ValueError: If the CRL file path is not valid or if the CRL URLs are not found in the certificate chain.
+    """
+    if crl_path is not None:
+        if not os.path.isfile(crl_path):
+            raise ValueError(f"The provided CRL path does not exist: {crl_path}")
+        return
+
+    os.makedirs("data/tmp_crl", exist_ok=True)
+
+    crl_urls = _get_crls_from_certs(crl_path=crl_path, cert_chain=cert_chain, check_crl_all=check_crl_all)
+
+    crl_files = []
+    for uri in set(crl_urls):
+        if uri.startswith("http://") or uri.startswith("https://"):
+            crl_files += _fetch_crls(crl_urls)
+
+    if not crl_files:
+        raise ValueError(f"Could not fetch the CRLs form the uri: {crl_urls}.")
+
+    _concatenate_crls(crl_files=crl_files)
 
 
 @keyword(name="Verify Cert Chain OpenSSL")
@@ -822,10 +980,19 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     crl_check: bool = False,
     verbose: bool = True,
     timeout: typingutils.Strint = 60,
-):
+    crl_path: Optional[str] = None,
+    crl_check_all: bool = False,
+) -> None:
     """Verify a certificate chain using OpenSSL.
 
     The certificate chain has to start from the end-entity certificate and ends with the Root certificate.
+
+    Note:
+    ----
+      - The OpenSSL command will be executed in a temporary directory. data/tmp_cert_check and data/tmp_crl.
+      - The certificates will be written to files in PEM format, as well as the CRL files (For debugging).
+      - If cert_check_all is set to `True`, the CRL check will be performed for all certificates in the chain,
+      but also expects **every certificate** to have a CRL distribution point set, besides the **root certificate**.
 
     Arguments:
     ---------
@@ -835,6 +1002,8 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
         - `verbose`: Whether to use the verbose output flag for the OpenSSL `verify` command.
         Defaults to `True`.
         - `timeout`: The timeout of the verify command in seconds. Defaults to `60`.
+        - `crl_path`: The path to the CRL file to use for verification. Defaults to `None`.
+        - `crl_check_all`: Whether to check all certificates in the chain against the CRL(s).
 
     Raises:
     ------
@@ -855,13 +1024,22 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     if not os.path.isdir("./data/tmp_cert_check"):
         os.mkdir(temp_dir)
 
-    if not crl_check:
+    if not crl_check and not crl_check_all:
         logging.warning("Please Note the CRL check is deactivate!")
 
     command = ["openssl", "verify"]
+
+    if crl_check or crl_check_all:
+        _get_crl_filepath_for_verification(cert_chain=cert_chain, crl_path=crl_path, check_crl_all=crl_check_all)
+        crl_path = crl_path or "data/tmp_crl/combined_crls.crl"
+        command.extend(["-CRLfile", crl_path])
+
+    if crl_check_all:
+        command.append("-crl_check_all")
     if crl_check:
         command.append("-crl_check")
-    else:
+
+    if not crl_check and not crl_check_all:
         command.append("-no-CApath")
 
     if verbose:
@@ -905,7 +1083,7 @@ def certificates_are_trustanchors(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the certificates are not allowed/known trustanchors.
+        - `SignerNotTrusted`: If the certificates are not allowed/known trustanchors.
 
     Examples:
     --------
@@ -932,7 +1110,7 @@ def certificates_are_trustanchors(  # noqa D417 undocumented-param
         if verbose:
             utils.log_certificates(none_anchors)
 
-        raise ValueError("Certificates are not trust anchors!")
+        raise SignerNotTrusted("Certificates are not trust anchors!")
 
 
 def certificates_must_be_trusted(  # noqa D417 undocumented-param
@@ -978,9 +1156,9 @@ def certificates_must_be_trusted(  # noqa D417 undocumented-param
 
     Raises:
     ------
-        - `ValueError`: If the last certificate inside the certificate chain is not trusted.
+        - `SignerNotTrusted`: If the last certificate inside the certificate chain is not trusted.
         - `ValueError`: If the certificate chain validation fails.
-        - `ValueError`: If key usage validation fails on the EE certificate.
+        - `BadKeyUsage`: If key usage validation fails on the EE certificate.
 
     Examples:
     --------
@@ -997,7 +1175,9 @@ def certificates_must_be_trusted(  # noqa D417 undocumented-param
 
     if not trusted:
         subject_name = utils.get_openssl_name_notation(cert_chain[-1]["tbsCertificate"]["subject"])
-        raise ValueError(f"Subject={subject_name} is not a trust anchor!\nCertificate:\n{cert_chain[-1].prettyPrint()}")
+        raise SignerNotTrusted(
+            f"Subject={subject_name} is not a trust anchor!\nCertificate:\n{cert_chain[-1].prettyPrint()}"
+        )
 
     if len(cert_chain) == 1:
         logging.info("`certificates_must_be_trusted` got a single cert.")
@@ -1109,7 +1289,7 @@ def verify_openssl_crl(crl_chain: List, timeout: int = 60):
     tmp = crl_chain[1:]
     tmp.reverse()
 
-    _cert_chain_to_file(tmp, anchor)
+    write_cert_chain_to_file(tmp, anchor)
     command.extend(["-CAfile", anchor, "-verify"])
     try:
         result = subprocess.run(command, capture_output=True, check=True, text=True, timeout=timeout)
@@ -1249,7 +1429,7 @@ def get_ocsp_url_from_cert(
     ocsp_urls = []
     for entry in aia:
         if str(entry["accessMethod"]) == AuthorityInformationAccessOID.OCSP.dotted_string:
-            gen_name = entry["accessLocation"]
+            gen_name: rfc9480.GeneralName = entry["accessLocation"]
             option = gen_name.getName()
             if option == "uniformResourceIdentifier":
                 ocsp_urls.append(str(entry["accessLocation"][option]))
@@ -1337,6 +1517,8 @@ def check_ocsp_response(
         state = "revoked"
     else:
         state = "unknown"
+
+    logging.info("OCSP response status: %s", state)
 
     if state == "unknown" and allow_unknown_status:
         return
@@ -1518,6 +1700,7 @@ def build_ocsp_response(
     responder_cert: Optional[rfc9480.CMPCertificate] = None,
     responder_hash_alg: str = "sha256",
     revocation_time: Optional[datetime] = None,
+    this_update: Optional[datetime] = None,
     build_by_key: bool = True,
     nonce: Optional[bytes] = None,
 ) -> ocsp.OCSPResponse:
@@ -1533,6 +1716,7 @@ def build_ocsp_response(
     :param responder_hash_alg: The hash algorithm to use for the responder. Defaults to "sha256".
     :param revocation_time: The revocation time for the certificate. Defaults to `None`.
     (must be present if the certificate is revoked, but will be set to the current time if not provided).
+    :param this_update: The time of the OCSP response. Defaults to `None` (now).
     :param build_by_key: Whether to build the OCSP response by hash of the key or name. Defaults to `True`.
     :param nonce: The nonce to include in the OCSP response. Defaults to 16 random bytes.
     :return: The OCSP response.
@@ -1548,7 +1732,7 @@ def build_ocsp_response(
 
     if cert_status == ocsp.OCSPCertStatus.REVOKED and revocation_time is None:
         # must be present if the certificate is revoked.
-        revocation_time = datetime.now()
+        revocation_time = datetime.now(timezone.utc) - timedelta(seconds=30)
 
     builder = builder.add_response(
         cert=crypto_cert,
@@ -1556,7 +1740,7 @@ def build_ocsp_response(
         algorithm=resp_hash_inst,
         cert_status=cert_status,
         revocation_reason=reason,
-        this_update=datetime.now(),
+        this_update=this_update or datetime.now(tz=timezone.utc),
         next_update=None,
         revocation_time=revocation_time,
     )
@@ -1571,16 +1755,18 @@ def build_ocsp_response(
 
     builder = builder.responder_id(encoding=_encoding, responder_cert=crypto_responder_cert)
 
-    if nonce is None:
-        # allow range is 1-32 from the RFC 8954.
-        nonce = os.urandom(16)
-
-    builder = builder.add_extension(x509.OCSPNonce(nonce), critical=False)
+    # Allow range is 1-32 from the RFC 8954.
+    if nonce is not None:
+        builder = builder.add_extension(x509.OCSPNonce(nonce), critical=False)
 
     if hash_alg is not None:
         hash_inst = oid_mapping.hash_name_to_instance(hash_alg)
     else:
         hash_inst = None
+
+    if isinstance(responder_key, (Ed25519PrivateKey, Ed448PrivateKey)):
+        # Use the responder key directly for signing.
+        return builder.sign(responder_key, None)
 
     return builder.sign(responder_key, hash_inst)  # type: ignore
 
@@ -1603,7 +1789,7 @@ def _extract_crl_urls_from_cert_pyasn1(cert: rfc9480.CMPCertificate) -> List[str
         if dist_point["distributionPoint"]["fullName"].isValue:
             for full_name in dist_point["distributionPoint"]["fullName"]:
                 if full_name["uniformResourceIdentifier"].isValue:
-                    crl_urls.append(full_name["uniformResourceIdentifier"])
+                    crl_urls.append(full_name["uniformResourceIdentifier"].prettyPrint())
 
     return crl_urls
 
@@ -1729,6 +1915,7 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
     allow_request_failure: bool = False,
     allow_ocsp_unknown: bool = False,
     allow_no_crl_urls: bool = False,
+    expected_to_be_revoked: bool = False,
 ) -> None:
     """Validate if a certificate is revoked via OCSP and CRL checks.
 
@@ -1753,13 +1940,17 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
               disallow request failures.
        - `allow_ocsp_unknown`: Whether to allow OCSP 'unknown' status as non-revoked.
        - `allow_no_crl_urls`: Whether to allow no CRL URLs to be found in the certificate.
+       - `expected_to_be_revoked`: Whether the certificate is expected to be revoked.
 
     Raises:
     ------
+        - `ValueError`: If the the ocsp request fails.
+        - `ValueError`: If `ca_cert` is not provided and `ocsp_url` is given.
         - `CertRevoked`: If the certificate is revoked.
         - `IOError`: If there's an issue loading or parsing the CRL or OCSP data.
         - `ValueError`: If the OCSP request fails.
         - `ValueError`: If the certificate does not contain any CRL URLs and non was provided.
+
 
     Examples:
     --------
@@ -1768,37 +1959,49 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
     | Validate If Certificate Is Revoked | cert=${cert} | crl_url=${crl_url} |
 
     """
-    if ca_cert:
-        try:
-            check_ocsp_response_for_cert(
-                cert=cert,
-                issuer=ca_cert,
-                ocsp_url=ocsp_url,
-                timeout=ocsp_timeout,
-                expected_status="good",
-                allow_request_failure=allow_request_failure,
-                allow_unknown_status=allow_ocsp_unknown,
-            )
-        except ValueError as err:
-            if "`revoked`" in str(err) or "`unknown`" in str(err):
-                raise CertRevoked("Certificate is revoked (by OCSP check).") from err
-            raise
+    if ca_cert is None and ocsp_url is not None:
+        raise ValueError("OCSP URL provided, but no issuer certificate provided. OCSP check cannot be performed.")
 
-    else:
-        logging.debug("No issuer provided; skipping OCSP check and going directly to CRL check.")
+    try:
+        if ca_cert:
+            try:
+                check_ocsp_response_for_cert(
+                    cert=cert,
+                    issuer=ca_cert,
+                    ocsp_url=ocsp_url,
+                    timeout=ocsp_timeout,
+                    expected_status="good",
+                    allow_request_failure=allow_request_failure,
+                    allow_unknown_status=allow_ocsp_unknown,
+                )
+            except ValueError as err:
+                if "`revoked`" in str(err) or "`unknown`" in str(err):
+                    raise CertRevoked("Certificate is revoked (by OCSP check).") from err
+                raise
 
-    # 2. Check CRL
-    check_if_cert_is_revoked_crl(
-        cert=cert,
-        crl_url=crl_url,
-        crl_file_path=crl_file_path,
-        timeout=crl_timeout,
-        allow_no_crl_urls=allow_no_crl_urls,
-    )
+        else:
+            logging.debug("No issuer provided; skipping OCSP check and going directly to CRL check.")
 
-    # 3. If we reach this point, neither the OCSP check nor the CRL check
-    #    confirmed revocation => conclude "not revoked."
-    logging.debug("Certificate does not appear to be revoked by OCSP or CRL.")
+        # 2. Check CRL
+        check_if_cert_is_revoked_crl(
+            cert=cert,
+            crl_url=crl_url,
+            crl_file_path=crl_file_path,
+            timeout=crl_timeout,
+            allow_no_crl_urls=allow_no_crl_urls,
+        )
+
+        # 3. If we reach this point, neither the OCSP check nor the CRL check
+        #    confirmed revocation => conclude "not revoked."
+        logging.debug("Certificate does not appear to be revoked by OCSP or CRL.")
+    except CertRevoked as err:
+        if expected_to_be_revoked:
+            logging.debug("Certificate is revoked as expected.")
+            return
+        raise err
+
+    if expected_to_be_revoked:
+        raise ValueError("Certificate is not revoked as expected.")
 
 
 @keyword(name="Validate Migration Alg ID")
@@ -1983,3 +2186,279 @@ def verify_csr_signature(  # noqa: D417 Missing argument descriptions in the doc
         )
     except InvalidSignature as e:
         raise BadPOP("The signature verification failed.") from e
+
+
+def _write_temp_cert(cert_to_write: rfc9480.CMPCertificate) -> str:
+    """Write a certificate object to a temporary PEM file.
+
+    :param cert_to_write: The certificate object to write.
+    :return: The path to the temporary PEM file.
+    """
+    der_data = encoder.encode(cert_to_write)
+    cert_obj = x509.load_der_x509_certificate(der_data)
+
+    with tempfile.NamedTemporaryFile(delete=False, mode="wb", suffix=".pem") as tmp_file:
+        tmp_file.write(cert_obj.public_bytes(encoding=Encoding.PEM))
+        return tmp_file.name
+
+
+@keyword(name="Validate OCSP Status OpenSSL")
+def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
+    cert: Union[str, rfc9480.CMPCertificate],
+    ca_cert: Union[str, rfc9480.CMPCertificate],
+    ocsp_url: Optional[str] = None,
+    expected_status: str = "good",
+    unknown_is_success: bool = False,
+    *,
+    use_nonce: bool = True,
+) -> None:
+    """Check the OCSP status of a certificate with OpenSSL.
+
+    Arguments:
+    ---------
+        - `cert`: The certificate to check. Can be a file path or a certificate object.
+        - `ca_cert`: The issuer certificate. Can be a file path or a certificate object.
+        - `ocsp_url`: The OCSP URL. If not provided, it will be extracted from the certificate.
+        - `expected_status`: The expected OCSP status. Can be "good", "revoked", or "unknown".
+        - `unknown_is_success`: If True, treat "unknown" status as a success. Defaults to `False`.
+        - `use_nonce`: If True, include a nonce in the OCSP request. Defaults to `True`.
+
+    Raises:
+    ------
+        - `ValueError`: If the OCSP status does not match the expected status or no OCSP URL is found.
+        - `CertRevoked`: If the certificate is revoked and not expected to be revoked.
+
+    Examples:
+    --------
+    | Validate OCSP Status OpenSSL | ${cert} | ${issuer} | expected_status=revoked |
+    | Validate OCSP Status OpenSSL | ${cert_path} | ${issuer_path} | ${ocsp_url} |
+
+    """
+    temp_files = []
+
+    # Determine if inputs are file paths or certificate objects
+    if isinstance(cert, str):
+        cert_path = cert
+        der_data = utils.load_and_decode_pem_file(cert_path)
+        cert_obj = parse_certificate(der_data)
+    else:
+        cert_obj = cert
+        cert_path = _write_temp_cert(cert)
+        temp_files.append(cert_path)
+
+    if isinstance(ca_cert, str):
+        issuer_path = ca_cert
+    else:
+        issuer_path = _write_temp_cert(ca_cert)
+        temp_files.append(issuer_path)
+
+    ocsp_urls = ocsp_url or get_ocsp_url_from_cert(cert_obj)
+
+    if not ocsp_urls:
+        raise ValueError("No OCSP URL found in the certificate.")
+
+    if isinstance(ocsp_urls, list):
+        ocsp_url = ocsp_urls[0]
+
+    cmds = [
+        "openssl",
+        "ocsp",
+        "-issuer",
+        issuer_path,
+        "-cert",
+        cert_path,
+        "-url",
+        ocsp_url,
+        "-CAfile",
+        issuer_path,
+        "-resp_text",
+    ]
+
+    if use_nonce:
+        cmds.extend(["-nonce"])
+
+    result = subprocess.run(
+        cmds,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        logging.error("OCSP check failed.", exc_info=True)
+        raise ValueError(f"OCSP check failed (stdout): {result.stdout}")
+    else:
+        logging.info("OCSP check succeeded.\n: %s", result.stdout)
+        logging.debug(result.stdout)
+        if "Cert Status: revoked" in result.stdout:
+            status = "revoked"
+        elif "Cert Status: good" in result.stdout:
+            status = "good"
+        else:
+            status = "unknown"
+
+    for file_path in temp_files:
+        try:
+            os.remove(file_path)
+        except OSError as e:
+            logging.error(f"Error deleting temporary file {file_path}: {e}")
+
+    if expected_status == status:
+        return
+
+    if "unknown" == status and unknown_is_success:
+        return
+
+    if status == "revoked":
+        raise CertRevoked("Certificate is revoked.")
+
+    if status == "good":
+        raise ValueError("Certificate is good, but expected revoked status.")
+
+    if status == "unknown":
+        raise ValueError(f"Certificate status is unknown, but expected the `{expected_status}` status.")
+
+
+@not_keyword
+def is_ca_cert(cert: rfc9480.CMPCertificate) -> Optional[bool]:
+    """Check if the provided certificate is a CA certificate.
+
+    :param cert: The certificate to check.
+    :return: `None` if the certificate is not a CA certificate, `True` if it is a CA certificate, or `False`.
+    :raises BadAsn1Data: If the BasicConstraints extension is malformed.
+    """
+    extn = certextractutils.get_extension(
+        cert["tbsCertificate"]["extensions"],
+        rfc5280.id_ce_basicConstraints,
+    )
+    if extn is None:
+        return None
+
+    basic_constraints, rest = asn1utils.try_decode_pyasn1(  # type: ignore
+        extn["extnValue"],
+        rfc5280.BasicConstraints(),
+    )
+    basic_constraints: rfc5280.BasicConstraints
+    if rest:
+        raise BadAsn1Data("BasicConstraints")
+
+    return basic_constraints["cA"].isValue
+
+
+def _validate_key_identifiers(
+    cross_cert: rfc9480.CMPCertificate,
+    issuer_cert: rfc9480.CMPCertificate,
+) -> None:
+    """Validate the key identifiers of the cross-signed certificate and the issuer certificate.
+
+    :param cross_cert: The cross-signed certificate to validate.
+    :param issuer_cert: The CA Issuer certificate.
+    :raises ValueError: If the SKI or AKI are not present, or if they do not match as expected.
+    """
+    ski_cert = certextractutils.get_field_from_certificate(cross_cert, extension="ski")  # type: ignore
+    ski_cert: Optional[bytes]
+    ski_issuer_cert = certextractutils.get_field_from_certificate(issuer_cert, extension="ski")  # type: ignore
+    ski_issuer_cert: Optional[bytes]
+    aki_cert = certextractutils.get_field_from_certificate(cross_cert, extension="aki")  # type: ignore
+    aki_cert: rfc5280.AuthorityKeyIdentifier
+
+    if ski_cert is None or ski_issuer_cert is None:
+        raise ValueError("The cross-signed certificate or the issuer certificate does not have a SKI.")
+
+    if ski_cert == ski_issuer_cert:
+        raise ValueError("The cross-signed certificate has the same SKI as the issuer certificate.")
+
+    if ski_issuer_cert == aki_cert:
+        raise ValueError("The SKI of the issuer certificate does not match the AKI of the cross-signed certificate.")
+
+
+def _validate_cross_signed_cert(
+    cross_cert: rfc9480.CMPCertificate,
+    issuer_cert: rfc9480.CMPCertificate,
+) -> None:
+    """Validate the values of the cross-signed certificate against the issuer certificate.
+
+    :param cross_cert: The cross-signed certificate to validate.
+    :param issuer_cert: The CA Issuer certificate.
+    :raises ValueError: If the cross-signed certificate is not a CA certificate, or if it has the same Subject
+                        and Issuer as the issuer certificate or the SKI and AKI do not match as expected.
+
+    """
+    out = is_ca_cert(cross_cert)
+    if out is None:
+        raise ValueError("The cross-signed certificate does not have a BasicConstraints extension.")
+
+    if not out:
+        raise ValueError("The cross-signed certificate is not a CA certificate.")
+
+    out = is_ca_cert(issuer_cert)
+    if out is None:
+        raise ValueError("The issuer certificate does not have a BasicConstraints extension.")
+
+    if not out:
+        raise ValueError("The issuer certificate is not a CA certificate.")
+
+    if compareutils.compare_pyasn1_names(
+        cross_cert["tbsCertificate"]["subject"], cross_cert["tbsCertificate"]["issuer"]
+    ):
+        raise ValueError("The cross-signed certificate has the same Subject and Issuer.")
+
+    if compareutils.compare_pyasn1_names(
+        cross_cert["tbsCertificate"]["subject"], issuer_cert["tbsCertificate"]["subject"]
+    ):
+        cert_name = utils.get_openssl_name_notation(cross_cert["tbsCertificate"]["subject"])
+        raise ValueError(f"The Subject of the certificate matches the Subject of the issuer certificate: {cert_name}")
+
+    _validate_key_identifiers(cross_cert=cross_cert, issuer_cert=issuer_cert)
+
+    issuer_key = load_public_key_from_cert(issuer_cert)
+    issuer_key = ensure_is_verify_key(issuer_key)
+
+    verify_cert_signature(
+        cert=cross_cert,
+        issuer_pub_key=issuer_key,
+    )
+
+
+@keyword(name="Validate CA Cross-Signed Certificate")
+def validate_ca_cross_signed_cert(  # noqa: D417 undocumented-param
+    cross_cert: rfc9480.CMPCertificate, template: rfc9480.CertTemplate, ca_cert: rfc9480.CMPCertificate
+) -> None:
+    """Validate the newly issued cross-signed CA certificate against the template and the CA Issuer certificate.
+
+    Note:
+    ----
+      - excludes the signature algorithm check from the template.
+
+    Arguments:
+    ---------
+       - `cross_cert`: The cross-signed certificate to validate.
+       - `template`: The certificate template used for the cross-signed certificate.
+       - `ca_cert`: The CA Issuer certificate.
+
+    Raises:
+    ------
+        - `ValueError`: If the cross-signed certificate does not match the template, or if it is not a valid
+          cross-signed certificate.
+        - `ValueError`: If the cross-signed certificate is not a CA certificate.
+        - `ValueError`: If the cross-signed certificate has the same Subject and Issuer as the issuer certificate,
+          or if it has the same public key as the issuer certificate, or if the BasicConstraints extension is missing.
+
+    Examples:
+    --------
+    | Validate CA Cross-Signed Certificate | cross_cert=${cross_cert} | ${cert_template} | ${ca_cert} |
+
+    """
+    _validate_cross_signed_cert(cross_cert=cross_cert, issuer_cert=ca_cert)
+
+    if not compareutils.compare_cert_template_and_cert(
+        cert_template=template,
+        issued_cert=cross_cert,
+        exclude_fields="extensions,signingAlg,issuer",
+    ):
+        raise ValueError("The cross-signed certificate does not matches the template.")
+
+    logging.debug("Cross-signed certificate extensions comparison is not supported yet.")
+    for oid in template["extensions"]:
+        if oid not in cross_cert["tbsCertificate"]["extensions"]:
+            name_oid = may_return_oid_to_name(oid)
+            raise ValueError(f"The cross-signed certificate does not have the extension {name_oid}.")

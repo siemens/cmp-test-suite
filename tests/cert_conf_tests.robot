@@ -307,24 +307,21 @@ CA MUST Reject CertConf With No senderNonce
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badSenderNonce    exclusive=True
 
-CA MUST Reject CertConf With Different senderNonce
+CA MUST Reject CertConf With same senderNonce
     [Documentation]    According to RFC 9483, Section 3 and 4.1, the `senderNonce` field in each message must match the
     ...    `senderNonce` from the initial message for consistency and replay protection. The `certConf`
-    ...    message must include the same `senderNonce` used throughout the transaction. We send a
-    ...    `certConf` message with a modified `senderNonce`, expecting the CA to detect this mismatch.
+    ...    message must contain a fresh `senderNonce` for every exchange. We send a
+    ...    `certConf` message with the same `senderNonce`, expecting the CA to detect this the same nonce.
     ...    The CA MUST reject the message and may respond with the optional failInfo `badSenderNonce`.
-    [Tags]    negative    rfc9483-header   minimal
+    [Tags]    negative    rfc9483-header   minimal   security  senderNonce
     ${response}=    Generate Default IR And Exchange For Cert Conf
+    ${sender_nonce}=   Get Asn1 Value As Bytes    ${response}    header.recipNonce
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ...    exclude_fields=senderKID,sender,senderNonce,recipNonce
-    ${sender_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
-    ${sender_nonce}=    Manipulate First Byte    ${sender_nonce}
-    ${recip_nonce}=    Get Asn1 Value As Bytes    ${response}    header.senderNonce
-    ${cert_conf}=    Patch SenderNonce    ${cert_conf}    sender_nonce=${sender_nonce}
-    ${cert_conf}=    Patch RecipNonce    ${cert_conf}    recip_nonce=${recip_nonce}
+    ...    exclude_fields=senderKID,sender
+    ...    sender_nonce=${sender_nonce}
     ${protected_cert_conf}=    Protect PKIMessage
     ...    ${cert_conf}
     ...    protection=signature
@@ -332,7 +329,7 @@ CA MUST Reject CertConf With Different senderNonce
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badSenderNonce    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badSenderNonce    True
 
 CA MUST Reject certConf With No recipNonce
     [Documentation]    According to RFC 9483, Section 3.1, every message in a transaction, except the initial one,
@@ -473,6 +470,64 @@ CA SHOULD Send certConfirmed When Valid certConf Is Sent Again
     PKIMessage Body Type Must Be    ${pki_conf2}    error
     PKIStatusInfo Failinfo Bit Must Be   ${pki_conf2}    failinfo=certConfirmed   exclusive=True
 
+# PKI confirmation message validation
+
+CA pkiconf MUST Response with a Fresh senderNonce
+    [Documentation]    According to RFC 9483, Section 3.1, the `senderNonce` must be fresh for each message
+    ...    in a transaction. We send a valid `certConf` message and expect the CA to respond with a
+    ...    `pkiconf` message containing a new `senderNonce`.
+    [Tags]    rfc9483-header   minimal   senderNonce  security
+    ${response}=    Generate Default IR And Exchange For Cert Conf
+    ${cert_conf}=    Build Cert Conf From Resp
+    ...    ${response}
+    ...    recipient=${RECIPIENT}
+    ...    exclude_fields=senderKID,sender
+    ${protected_cert_conf}=    Default Protect PKIMessage   ${cert_conf}
+    ${pki_conf}=   Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    ${sender_nonce_pki_conf}=    Get Asn1 Value As Bytes    ${pki_conf}    header.senderNonce
+    ${sender_nonce_response}=    Get Asn1 Value As Bytes    ${cert_conf}    header.senderNonce
+    Should Not Be Equal    ${sender_nonce_pki_conf}    ${sender_nonce_response}
+
+CA pkiconf MUST Use the MAC Protection
+    [Documentation]    According to RFC 9483, Section 3.2 the protection must use the same credentials as the
+    ...    during the exchange. We send a valid MAC-protected `certConf` message and expect the CA to respond with a
+    ...    `pkiconf` message protected with the same credentials as used in the `ip` message.
+    [Tags]    rfc9483-header   minimal   mac
+    Skip If    not ${ALLOW_MAC_PROTECTION}    Skipped test because MAC protection is disabled.
+    ${cert_template}    ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key   ${key}    cert_template=${cert_template}    sender=${SENDER}
+    ...    recipient=${RECIPIENT}    for_mac=True
+    ${protected_ir}=    Default Protect With MAC   ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    ${cert_conf}=    Build Cert Conf From Resp   ${response}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...    for_mac=True
+    ${protected_cert_conf}=    Default Protect With MAC   ${cert_conf}
+    ${pki_conf}=   Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    MAC Protection Algorithms Must Match    ${ir}   ${pki_conf}    ${protected_cert_conf}   strict=${LWCMP}
+
+CA pkiconf MUST Use the Same Signature Protection
+    [Documentation]    According to RFC 9483, Section 3.2, the protection must use the same credentials as during
+    ...    the exchange. We send a valid `certConf` message and expect the CA to respond with a
+    ...    `pkiconf` message protected with the same certificate and key pair as the one used in the `ip` message.
+    [Tags]    rfc9483-header   minimal   sig
+    ${cert_template}    ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key   ${key}   cert_template=${cert_template}    recipient=${RECIPIENT}
+    ...       exclude_fields=sender,senderKID
+    ${protected_ir}=    Protect PKIMessage    ${ir}    signature    private_key=${ISSUED_KEY}
+    ...       cert=${ISSUED_CERT}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert_conf}=    Build Cert Conf From Resp   ${response}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...              exclude_fields=sender,senderKID
+    ${protected_cert_conf}=    Protect PKIMessage   ${cert_conf}   signature  private_key=${ISSUED_KEY}
+    ...              cert=${ISSUED_CERT}
+    ${pki_conf}=   Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    Signature Protection Must Match     ${response}    ${pki_conf}
+    
 
 *** Keywords ***
 Generate Default IR And Exchange For Cert Conf

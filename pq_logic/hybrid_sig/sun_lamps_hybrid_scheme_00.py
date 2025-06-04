@@ -1077,7 +1077,7 @@ def contains_sun_hybrid_cert_form_1_or_3(  # noqa: D417 Missing argument descrip
     if found is None:
         raise ValueError("The certificate is not found.")
 
-    tmp_form4 = convert_sun_hybrid_cert_to_target_form(found, "form4")
+    tmp_form4 = convert_sun_hybrid_cert_to_target_form(found, "Form4")
 
     if encoder.encode(cert_form4) != encoder.encode(tmp_form4):
         raise ValueError("The certificate did not match the expected certificate.")

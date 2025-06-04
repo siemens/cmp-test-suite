@@ -97,8 +97,8 @@ MCELIECE_OID_2_NAME = {y: x for x, y in MCELIECE_NAME_2_OID.items()}
 
 id_it_KemCiphertextInfo = rfc9480.id_it + (9999,)
 
-id_CompSig = "2.16.840.1.114027.80.8.1"
-id_CompKEM = "2.16.840.1.114027.80.5.2"
+id_CompSig = "2.16.840.1.114027.80.8.1.1"
+id_CompKEM = "2.16.840.1.114027.80.5.2.1"
 
 id_hash_mldsa44_rsa2048_pss_sha256 = univ.ObjectIdentifier(f"{id_CompSig}.40")
 id_hash_mldsa44_rsa2048_pkcs15_sha256 = univ.ObjectIdentifier(f"{id_CompSig}.41")
