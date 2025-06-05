@@ -1,3 +1,7 @@
+<!--
+Add copywrite
+-->
+
 # Requirements 
 This document provides detailed functional requirements for the test cases in the CMP test suite. It outlines specific prerequisites, message flows, and expected behaviors for each test case based on RFC 9483. The document serves as a blueprint for implementing and validating test cases.
 
