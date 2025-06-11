@@ -18,14 +18,17 @@ class PQHashStatefulSigPublicKey(PQPublicKey, ABC):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the public key."""
-        alg_name = self.name.split("-")[0]
+        if self.name.startswith("xmss-") or self.name.startswith("xmssmt-"):
+            alg_name = self.name.split("-")[0]
+        else:
+            alg_name = self.name.split("_")[0]
         return PQ_NAME_2_OID[alg_name]
 
     @abstractmethod
     def verify(
-            self,
-            data: bytes,
-            signature: bytes,
+        self,
+        data: bytes,
+        signature: bytes,
     ) -> int:
         """Verify a signature of the provided data.
 
@@ -71,7 +74,10 @@ class PQHashStatefulSigPrivateKey(PQPrivateKey, ABC):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the public key."""
-        alg_name = self.name.split("-")[0]
+        if self.name.startswith("xmss-") or self.name.startswith("xmssmt-"):
+            alg_name = self.name.split("-")[0]
+        else:
+            alg_name = self.name.split("_")[0]
         return PQ_NAME_2_OID[alg_name]
 
     @abstractmethod
@@ -110,4 +116,3 @@ class PQHashStatefulSigPrivateKey(PQPrivateKey, ABC):
     @abstractmethod
     def sigs_remaining(self) -> int:
         """Return the number of signatures remaining for this private key."""
-
