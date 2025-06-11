@@ -34,7 +34,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
     WrapperPrivateKey,
     WrapperPublicKey,
 )
-from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from resources.asn1_structures import CertResponseTMP, PKIMessageTMP
 
 # The `ECDHPrivKeyTypes` includes all private key types supported

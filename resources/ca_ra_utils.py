@@ -35,7 +35,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
     KEMPublicKey,
     PQPublicKey,
 )
-from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from resources import (
     ca_kga_logic,

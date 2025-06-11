@@ -638,11 +638,13 @@ SLH_DSA_NAME_2_OID.update(SLH_DSA_PRE_HASH_NAME_2_OID)
 SLH_DSA_OID_2_NAME = {y: x for x, y in SLH_DSA_NAME_2_OID.items()}
 
 
-STATEFUL_HASH_SIGNATURE_OID_2_NAME = {
-    rfc9708.id_alg_hss_lms_hashsig: "hss-lms-hashsig",
+PQ_STATEFUL_HASH_SIG_NAME_2_OID = {
+    "xmss": univ.ObjectIdentifier("1.3.6.1.5.5.7.6.34"),
+    "xmssmt": univ.ObjectIdentifier("1.3.6.1.5.5.7.6.35"),
+    "hss": rfc9708.id_alg_hss_lms_hashsig,
 }
 
-STATEFUL_HASH_SIGNATURE_NAME_2_OID = {y: x for x, y in STATEFUL_HASH_SIGNATURE_OID_2_NAME.items()}
+PQ_STATEFUL_HASH_SIG_OID_2_NAME = {y: x for x, y in PQ_STATEFUL_HASH_SIG_NAME_2_OID.items()}
 
 
 PQ_SIG_NAME_2_OID = {}
@@ -655,6 +657,7 @@ PQ_SIG_OID_2_NAME = {y: x for x, y in PQ_SIG_NAME_2_OID.items()}
 PQ_NAME_2_OID = {}
 PQ_NAME_2_OID.update(PQ_SIG_NAME_2_OID)
 PQ_NAME_2_OID.update(PQ_KEM_NAME_2_OID)
+PQ_NAME_2_OID.update(PQ_STATEFUL_HASH_SIG_NAME_2_OID)
 
 KEY_WRAP_NAME_2_OID = {
     "aes128_wrap": rfc3565.id_aes128_wrap,
@@ -833,7 +836,7 @@ EXTENSION_OID_2_SPECS = {
 ALL_SIG_ALG_OID_2_NAME = {}
 ALL_SIG_ALG_OID_2_NAME.update(TRAD_SIG_OID_2_NAME)
 ALL_SIG_ALG_OID_2_NAME.update(PQ_SIG_OID_2_NAME)
-ALL_SIG_ALG_OID_2_NAME.update(STATEFUL_HASH_SIGNATURE_NAME_2_OID)
+ALL_SIG_ALG_OID_2_NAME.update(PQ_STATEFUL_HASH_SIG_NAME_2_OID)
 ALL_SIG_ALG_OID_2_NAME.update(HYBRID_SIG_OID_2_NAME)
 
 ALL_SIG_ALG_NAME_2_OID = {y: x for x, y in ALL_SIG_ALG_OID_2_NAME.items()}

@@ -34,6 +34,7 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.keys.sig_keys import MLDSAPublicKey
@@ -108,6 +109,7 @@ from resources.oidutils import (
     id_ce_altSignatureValue,
     id_ce_subjectAltPublicKeyInfo,
     id_KemBasedMac,
+    PQ_STATEFUL_HASH_SIG_OID_2_NAME,
 )
 from resources.suiteenums import ProtectedType, ProtectionAlgorithm
 from resources.typingutils import (

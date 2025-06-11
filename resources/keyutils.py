@@ -40,6 +40,7 @@ from robot.api.deco import keyword, not_keyword
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey, HybridPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
@@ -726,6 +727,17 @@ def check_consistency_sig_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, ke
 
         if str(PQ_NAME_2_OID[_name]) != str(oid):
             raise BadSigAlgID("The public key was not of the same type as the,algorithm identifier implied.")
+
+    elif isinstance(key, (PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey)):
+        if key.get_oid() != oid:
+            raise BadSigAlgID(
+                "The public key was not of the same type as the, algorithm identifier implied.",
+                error_details=[
+                    f"OID: {oid}. The Public Key was of type: {type(key).__name__}. "
+                    f"OID-Lookup: {may_return_oid_to_name(oid)}"
+                ],
+            )
+
     elif isinstance(key, (TradSignKey, TradVerifyKey)):
         if isinstance(key, TradSignKey):
             key = key.public_key()
