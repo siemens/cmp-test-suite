@@ -15,6 +15,16 @@ class AbstractKeyFactory(ABC):
     """Abstract factory class for creating keys."""
 
     @staticmethod
+    def _get_alg_family(algs: list, alg: str) -> list:
+        """Get a list of algorithms that start with the specified prefix.
+
+        :param algs: List of all supported algorithms.
+        :param alg: The algorithm prefix to filter by.
+        :return: List of algorithms that start with the specified prefix.
+        """
+        return [a for a in algs if a.startswith(alg)]
+
+    @staticmethod
     @abstractmethod
     def supported_algorithms() -> list:
         """Return a list of supported algorithms.
