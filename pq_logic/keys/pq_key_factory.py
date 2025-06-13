@@ -14,7 +14,6 @@ from pyasn1.error import ValueConstraintError
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5958
 
-import resources.oidutils
 from pq_logic.hybrid_structures import (
     MLDSA44PrivateKeyASN1,
     MLDSA65PrivateKeyASN1,
@@ -23,7 +22,8 @@ from pq_logic.hybrid_structures import (
     MLKEM768PrivateKeyASN1,
     MLKEM1024PrivateKeyASN1,
 )
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey
+from pq_logic.keys.abstract_key_factory import AbstractKeyFactory
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
 from pq_logic.keys.abstract_wrapper_keys import PQPrivateKey, PQPublicKey
 from pq_logic.keys.kem_keys import (
     FrodoKEMPrivateKey,
@@ -49,9 +49,13 @@ from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     FRODOKEM_NAME_2_OID,
     MCELIECE_NAME_2_OID,
+    PQ_KEM_NAME_2_OID,
     PQ_NAME_2_OID,
+    PQ_OID_2_NAME,
+    PQ_SIG_NAME_2_OID,
     PQ_SIG_PRE_HASH_NAME_2_OID,
     PQ_SIG_PRE_HASH_OID_2_NAME,
+    SLH_DSA_NAME_2_OID,
 )
 from resources.suiteenums import KeySaveType
 
@@ -123,8 +127,24 @@ def _load_key_from_one_asym_key(
     return _load_and_validate(class_name, name, private_bytes, public_bytes)
 
 
-class PQKeyFactory:
+class PQKeyFactory(AbstractKeyFactory):
     """Factory class for creating post-quantum keys from various input formats."""
+
+    @staticmethod
+    def generate_key_by_name(algorithm: str) -> PQPrivateKey:
+        """Generate a post-quantum key based on the specified algorithm name.
+
+        :param algorithm: The name of the algorithm to generate a key for (e.g., 'ml-kem-512', 'ml-dsa-44-sha512').
+        """
+        if algorithm in PQ_SIG_PRE_HASH_NAME_2_OID:
+            hash_alg = algorithm.split("-")[-1]
+            algorithm = algorithm.replace(f"-{hash_alg}", "")
+        return PQKeyFactory.generate_pq_key(algorithm)
+
+    @staticmethod
+    def get_supported_keys():
+        """Return a list of supported post-quantum keys."""
+        return PQKeyFactory._prefixes
 
     _prefixes = ["ml-dsa", "ml-kem", "slh-dsa", "sntrup761", "mceliece", "falcon", "frodokem"]
 
@@ -324,7 +344,7 @@ class PQKeyFactory:
         if algorithm.startswith("ml-dsa"):
             return MLDSAPrivateKey(alg_name=algorithm.upper())
 
-        if algorithm == "slh-dsa" or algorithm in resources.oidutils.SLH_DSA_NAME_2_OID:
+        if algorithm == "slh-dsa" or algorithm in SLH_DSA_NAME_2_OID:
             algorithm = "slh-dsa-sha2-256s" if algorithm == "slh-dsa" else algorithm
             return SLHDSAPrivateKey(alg_name=algorithm)
 
@@ -397,6 +417,93 @@ class PQKeyFactory:
         return key, data[key_size:]
 
     @staticmethod
+    def _load_private_kem_key(
+        name: str, private_key_bytes: bytes, public_key_bytes: Optional[bytes] = None
+    ) -> PQKEMPrivateKey:
+        """Load a post-quantum KEM private key from the given bytes.
+
+        :param name: The name of the algorithm.
+        :param private_key_bytes: The private key bytes.
+        :param public_key_bytes: Optional public key bytes. If provided, it will be validated against the private key.
+        :return: The post-quantum KEM private key instance.
+        """
+        if name.startswith("ml-kem-"):
+            private_key = MLKEMPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
+            if public_key_bytes:
+                if private_key_bytes != private_key.public_key().public_bytes_raw():
+                    raise MismatchingKey(f"{name} public key does not match the private key.")
+            return private_key
+        elif name.startswith("sntrup761"):
+            private_key = Sntrup761PrivateKey.from_private_bytes(data=private_key_bytes, name=name)
+        elif name.startswith("mceliece"):
+            private_key = McEliecePrivateKey.from_private_bytes(data=private_key_bytes, name=name)
+        elif name.startswith("frodokem"):
+            private_key = FrodoKEMPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
+        else:
+            raise NotImplementedError(f"Unimplemented algorithm: {name}")
+
+        if public_key_bytes:
+            private_key._public_key_bytes = public_key_bytes  # pylint: disable=protected-access
+        return private_key
+
+    @staticmethod
+    def _load_private_sig_key(
+        name: str, private_key_bytes: bytes, public_key_bytes: Optional[bytes] = None
+    ) -> PQSignaturePrivateKey:
+        """Load a post-quantum signature private key from the given bytes.
+
+        :param name: The name of the algorithm.
+        :param private_key_bytes: The private key bytes.
+        :param public_key_bytes: Optional public key bytes. If provided, it will be validated against the private key.
+        :return: The post-quantum signature private key instance.
+        """
+        if name.startswith("ml-dsa-"):
+            private_key = MLDSAPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
+            if public_key_bytes:
+                if private_key_bytes != private_key.public_key().public_bytes_raw():
+                    raise MismatchingKey(f"{name} public key does not match the private key.")
+        elif name.startswith("slh-dsa"):
+            private_key = SLHDSAPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
+            if public_key_bytes:
+                if private_key_bytes != private_key.public_key().public_bytes_raw():
+                    raise MismatchingKey(f"{name} public key does not match the private key.")
+
+        elif name.startswith("falcon"):
+            _ = FalconPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
+            return FalconPrivateKey(alg_name=name, private_bytes=private_key_bytes, public_key=public_key_bytes)
+        else:
+            raise NotImplementedError(f"Unimplemented algorithm: {name}")
+        return private_key
+
+    @staticmethod
+    def _load_private_key_from_pkcs8(
+        alg_id: rfc5280.AlgorithmIdentifier, private_key_bytes: bytes, public_key_bytes: Optional[bytes] = None
+    ) -> PQPrivateKey:
+        """Load a private key from raw PKCS.
+
+        :param alg_id: The AlgorithmIdentifier containing the algorithm OID.
+        :param private_key_bytes: The raw bytes of the private key.
+        :param public_key_bytes: Optional raw bytes of the public key.
+        """
+        alg_name = PQ_OID_2_NAME.get(alg_id["algorithm"])
+        if alg_name is None:
+            raise BadAlg(f"Unsupported algorithm OID: {alg_id['algorithm']}")
+
+        if alg_name in PQ_KEM_NAME_2_OID:
+            return PQKeyFactory._load_private_kem_key(
+                name=alg_name,
+                private_key_bytes=private_key_bytes,
+                public_key_bytes=public_key_bytes,
+            )
+        if alg_name in PQ_SIG_NAME_2_OID:
+            return PQKeyFactory._load_private_sig_key(
+                name=alg_name,
+                private_key_bytes=private_key_bytes,
+                public_key_bytes=public_key_bytes,
+            )
+        raise NotImplementedError(f"Unrecognized algorithm identifier: {alg_name}")
+
+    @staticmethod
     def from_one_asym_key(
         one_asym_key: Union[rfc5958.OneAsymmetricKey, bytes],  # type: ignore
         must_be_version_2: bool = False,
@@ -435,9 +542,9 @@ class PQKeyFactory:
             public_bytes = None
 
         try:
-            name = resources.oidutils.PQ_OID_2_NAME.get(oid)
+            name = PQ_OID_2_NAME.get(oid)
             if name is None:
-                name = resources.oidutils.PQ_OID_2_NAME[str(oid)]
+                name = PQ_OID_2_NAME[str(oid)]
         except KeyError as err:
             _name = may_return_oid_to_name(oid)
             raise KeyError(f"Unrecognized algorithm identifier: {_name}") from err
@@ -459,20 +566,11 @@ class PQKeyFactory:
         if _check_starts_with(name, ["ml-dsa", "slh-dsa", "ml-kem"]):
             return _load_key_from_one_asym_key(name, private_bytes, public_bytes)
 
-        if name.startswith("falcon"):
-            key = FalconPrivateKey(alg_name=name, private_bytes=private_bytes, public_key=public_bytes)
-
-        elif name == "sntrup761":
-            key = Sntrup761PrivateKey(alg_name=name, private_bytes=private_bytes, public_key=public_bytes)
-
-        elif name.startswith("mceliece"):
-            key = McEliecePrivateKey(alg_name=name, private_bytes=private_bytes, public_key=public_bytes)
-
-        elif name.startswith("frodokem"):
-            key = FrodoKEMPrivateKey(alg_name=name, private_bytes=private_bytes, public_key=public_bytes)
-
-        else:
-            raise NotImplementedError(f"Unimplemented algorithm: {name}")
+        key = PQKeyFactory._load_private_key_from_pkcs8(
+            alg_id=one_asym_key["privateKeyAlgorithm"],
+            private_key_bytes=private_bytes,
+            public_key_bytes=public_bytes,
+        )
 
         return key
 
@@ -517,7 +615,7 @@ class PQKeyFactory:
         public_bytes = spki["subjectPublicKey"].asOctets()
         oid = spki["algorithm"]["algorithm"]
 
-        name = resources.oidutils.PQ_OID_2_NAME.get(oid)
+        name = PQ_OID_2_NAME.get(oid)
 
         if name is None:
             raise BadAlg(f"Unrecognized PQ algorithm identifier: {oid}")
