@@ -1777,3 +1777,54 @@ def verbose_pyasn1_compare(obj1: univ.Sequence, obj2: univ.Sequence, exclude_fie
             non_eq_fields.append(msg)
 
     return eq_fields, non_eq_fields
+
+def generate_all_xmss_xmssmt_keys() -> None:
+    """Generate all XMSS and XMSSMT keys.
+
+    Generates enabled keys for XMSS and XMSSMT algorithms,
+    in the OQS library and saves them to the specified directory.
+    The keys are saved in PEM format with filenames based on the algorithm name.
+    Directory structure:
+    data/keys/xmss_xmssmt_keys/
+        ├── private-key-xmss-sha_10_256.pem
+        ├── private-key-xmssmt_shake_60_layers_12_256.pem
+        └── ...
+    """
+    dir_path = "data/keys/xmss_xmssmt_keys"
+    os.makedirs(dir_path, exist_ok=True)
+
+    for alg_name in oqs.get_enabled_stateful_sig_mechanisms():
+        alg_name = alg_name.lower()
+        if alg_name.startswith("xmss-") or alg_name.startswith("xmssmt-"):
+            print(f"Testing algorithm: {alg_name}")
+            # XMSS (e.g XMSS-SHA_10_256)
+            # XMSSMT (e.g XMSSMT-SHAKE_60/12_256)
+            key_name = alg_name.lower().replace("/", "_layers_", 1)
+            path = os.path.join(dir_path, f"private-key-{key_name}.pem")
+            if os.path.exists(path):
+                print(f"Key already exists at {path}, skipping generation.")
+                continue
+            key = generate_key(alg_name)
+            save_key(key, path)
+
+def get_all_xmss_xmssmt_keys() -> dict[str, str]:
+    """Get all XMSS and XMSSMT keys.
+
+    :return: Dictionary of algorithm names and their key file paths.
+    """
+    dir_path = "./data/keys/xmss_xmssmt_keys"
+    keys = {}
+    # here importing, if not enabled, it will raise an ImportError,
+    # but the file does not exist, so it is safe to import here.
+    import oqs
+    for alg_name in oqs.get_enabled_stateful_sig_mechanisms():
+        alg_name = alg_name.lower()
+        if alg_name.startswith("xmss-") or alg_name.startswith("xmssmt-"):
+            key_name = alg_name.lower().replace("/", "_layers_", 1)
+            path = os.path.join(dir_path, f"private-key-{key_name}.pem")
+            if os.path.exists(path):
+                keys[alg_name] = path
+            else:
+                raise FileNotFoundError(f"Key file for {alg_name} not found at {path}")
+
+    return keys
