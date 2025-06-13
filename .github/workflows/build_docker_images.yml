@@ -15,8 +15,9 @@ name: Build and push base docker images
 on:
   push:
     paths:
-    - 'data/dockerfiles/Dockerfile.*'
-    - 'requirements*.txt'
+      - 'data/dockerfiles/Dockerfile.*'
+      - '.github/workflows/build_docker_images.yml'
+      - 'requirements*.txt'
   workflow_dispatch:
 
 jobs:
@@ -36,28 +37,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Some accounts did not use a lowercase repository owner, so we need to ensure
+      # that the repository owner is always in lowercase to be able to build the images.
+      - name: Set lowercase GitHub owner
+        run: echo "REPO_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
       - name: Build and push base Docker image
         run: |
           docker buildx build \
-            --tag ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
+            --tag ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.base .
 
       - name: Build and push dev Docker image
         run: |
           docker buildx build \
-            --tag ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest \
-            --build-arg BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
+            --tag ghcr.io/${REPO_OWNER_LC}/cmp-test-dev:latest \
+            --build-arg BASE_IMAGE=ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.dev .
 
       - name: Build and push the production test suite Docker image
-      # This one is meant to be directly invoked by end-users who don't want to get into the details
-      # of how the test suite works, they just want to run it to test their CA. For their convenience,
-      # we give it a short name, to be invoked as `docker run --rm -it ghcr.io/siemens/cmp-test`
+        # This one is meant to be directly invoked by end-users who don't want to get into the details
+        # of how the test suite works, they just want to run it to test their CA. For their convenience,
+        # we give it a short name, to be invoked as `docker run --rm -it ghcr.io/siemens/cmp-test`
         run: |
           docker buildx build \
-            --tag ghcr.io/${{ github.repository_owner }}/cmp-test:latest \
-            --build-arg BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
+            --tag ghcr.io/${REPO_OWNER_LC}/cmp-test:latest \
+            --build-arg BASE_IMAGE=ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.tests .
