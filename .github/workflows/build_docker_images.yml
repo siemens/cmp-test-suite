@@ -36,18 +36,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Some contributors have names that contain upper-case characters, but
+      # GHCR requires them to be lower-case, so we apply the change here
+      - name: Set lowercase GitHub owner
+        run: echo "REPO_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
       - name: Build and push base Docker image
         run: |
           docker buildx build \
-            --tag ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
+            --tag ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.base .
 
       - name: Build and push dev Docker image
         run: |
           docker buildx build \
-            --tag ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest \
-            --build-arg BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
+            --tag ghcr.io/${REPO_OWNER_LC}/cmp-test-dev:latest \
+            --build-arg BASE_IMAGE=ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.dev .
 
@@ -57,7 +62,7 @@ jobs:
       # we give it a short name, to be invoked as `docker run --rm -it ghcr.io/siemens/cmp-test`
         run: |
           docker buildx build \
-            --tag ghcr.io/${{ github.repository_owner }}/cmp-test:latest \
-            --build-arg BASE_IMAGE=ghcr.io/${{ github.repository_owner }}/cmp-test-base:latest \
+            --tag ghcr.io/${REPO_OWNER_LC}/cmp-test:latest \
+            --build-arg BASE_IMAGE=ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.tests .
