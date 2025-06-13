@@ -139,7 +139,7 @@ jobs:
   unit_test:
     needs: [ruff_lint, license_check, rf_style_check, spelling_check]
     runs-on: ubuntu-22.04
-      env:
+    env:
         OQS_INSTALL_PATH: "/root/_oqs"
     steps:
       - name: Checkout code
