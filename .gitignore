@@ -5,6 +5,9 @@
 .idea/
 
 ### Python ###
+#Should probably also ignore created test data or should be sorted somewhere
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
