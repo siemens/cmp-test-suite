@@ -31,7 +31,7 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.combined_factory import CombinedKeyFactory
+import pq_logic.combined_factory
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey
@@ -1530,10 +1530,12 @@ def validate_asymmetric_key_package(
             f"But Got: {int(one_asym_key['version'])}"
         )
 
-    private_key = CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key, must_be_version_2=True)
+    private_key = pq_logic.combined_factory.CombinedKeyFactory.load_private_key_from_one_asym_key(
+        one_asym_key, must_be_version_2=True
+    )
 
     if key_save_type is not None:
-        CombinedKeyFactory.validate_key_export_type(
+        pq_logic.combined_factory.CombinedKeyFactory.validate_key_export_type(
             private_key=private_key,  # type: ignore
             private_key_bytes=one_asym_key["privateKey"].asOctets(),
             key_save_type=key_save_type,
