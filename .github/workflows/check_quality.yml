@@ -6,92 +6,78 @@ name: Check code quality
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
-env:
-  REPO_OWNER: ${{ github.repository_owner }}
-  IMAGE_BASE_RAW: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
-
 jobs:
-  # Stage 1: fast and basic checks, we run them in parallel to provide more feedback to the contributor at once,
-  # instead of running them sequentially and giving feedback one piece at a time, requiring more iterations.
-  ensure_repo_lowercase:
+  prepare_env:
     runs-on: ubuntu-22.04
+    outputs:
+      image_lc: ${{ steps.setenv.outputs.image_lc }}
     steps:
-      - name: Check if image base is lowercase
+      - name: Set lowercase image name
+        id: setenv
         run: |
-          IMAGE_LC=$(echo "${IMAGE_BASE_RAW}" | tr '[:upper:]' '[:lower:]')
-          if [ "${IMAGE_BASE_RAW}" != "${IMAGE_LC}" ]; then
-            echo "Repository name or image path must be lowercase. Found: '${IMAGE_BASE_RAW}'"
-            exit 1
-          fi
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_LC="ghcr.io/${OWNER_LC}/cmp-test-dev:latest"
+          echo "image_lc=$IMAGE_LC" >> $GITHUB_OUTPUT
 
   ruff_lint:
-    needs: ensure_repo_lowercase
+    needs: prepare_env
     runs-on: ubuntu-22.04
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Code style (ruff)
-        run: |
-          IMAGE=$(echo "${IMAGE_BASE_RAW}" | tr '[:upper:]' '[:lower:]')
-          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" ruff check
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" ruff check
 
   license_check:
-    needs: ensure_repo_lowercase
+    needs: prepare_env
     runs-on: ubuntu-22.04
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: License check (reuse)
-        run: |
-          IMAGE=$(echo "${IMAGE_BASE_RAW}" | tr '[:upper:]' '[:lower:]')
-          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" reuse lint
-
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" reuse lint
 
   rf_style_check:
-    needs: ensure_repo_lowercase
+    needs: prepare_env
     runs-on: ubuntu-22.04
     continue-on-error: true
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: RobotFramework style check (robocop)
-        run: |
-          IMAGE=$(echo "${IMAGE_BASE_RAW}" | tr '[:upper:]' '[:lower:]')
-          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" robocop check --ignore VAR04
-
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" robocop check --ignore VAR04
 
   spelling_check:
-    needs: ensure_repo_lowercase
+    needs: prepare_env
     runs-on: ubuntu-22.04
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Spelling checker (codespell)
         run: |
-          IMAGE=$(echo "${IMAGE_BASE_RAW}" | tr '[:upper:]' '[:lower:]')
           docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" \
             codespell . --check-filenames --skip "*.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py"
 
-
   dependency_check:
-    needs: ensure_repo_lowercase
+    # See if newer versions of our Python dependencies are available. This does
+    # not enforce anything, and only has an informational character.
+    needs: prepare_env
     runs-on: ubuntu-22.04
     continue-on-error: true
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
       - name: Check for outdated dependencies
         run: |
-          IMAGE=$(echo "${IMAGE_BASE_RAW}" | tr '[:upper:]' '[:lower:]')
           docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" bash -c '
             echo "Checking for outdated packages..."
             OUTDATED=$(pip list --outdated --format=columns)
@@ -104,14 +90,11 @@ jobs:
               exit 1
             fi'
 
-
   version_check:
-    needs: ensure_repo_lowercase
+    needs: prepare_env
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Ensure version is in CHANGELOG.md
         run: |
           VERSION=$(cat VERSION)
@@ -119,48 +102,41 @@ jobs:
             echo "Error: CHANGELOG.md does not contain an entry for version $VERSION."
             exit 1
           fi
-
   # ----------------------------------------------------------------------------
   # Stage 2: these checks are more expensive and do more with the code, e.g., attempt to import dependencies,
   # execute some logic, etc.
   pylint:
-    needs: [ruff_lint, license_check, rf_style_check, spelling_check]
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Pylint check
-        run: |
-          IMAGE=$(echo "${IMAGE_BASE_RAW}" | tr '[:upper:]' '[:lower:]')
-          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" pylint --fail-under=9.4 resources
-
-
-  unit_test:
-    needs: [ruff_lint, license_check, rf_style_check, spelling_check]
+    # needs must include prepare_env, as it is used to set the image name.
+    needs: [prepare_env, ruff_lint, license_check, rf_style_check, spelling_check]
     runs-on: ubuntu-22.04
     env:
-        OQS_INSTALL_PATH: "/root/_oqs"
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Pylint check
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" pylint --fail-under=9.4 resources
 
+  unit_test:
+    # needs must include prepare_env, as it is used to set the image name.
+    needs: [prepare_env, ruff_lint, license_check, rf_style_check, spelling_check]
+    runs-on: ubuntu-22.04
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
+    steps:
+      - uses: actions/checkout@v4
       - name: Run unit tests
         run: |
-          IMAGE=$(echo "${IMAGE_BASE_RAW}" | tr '[:upper:]' '[:lower:]')
           docker run --rm -v "$PWD:/workspace" -w /workspace -e OQS_INSTALL_PATH=/root/_oqs "$IMAGE" \
             python3 -m unittest discover -s unit_tests
 
-
   type_check:
-    needs: ensure_repo_lowercase
+    needs: prepare_env
     runs-on: ubuntu-22.04
+    # not enforced yet, but it is still executed to provide some info.
     continue-on-error: true
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Pyright type check
-        run: |
-          IMAGE=$(echo "${IMAGE_BASE_RAW}" | tr '[:upper:]' '[:lower:]')
-          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" pyright
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" pyright
