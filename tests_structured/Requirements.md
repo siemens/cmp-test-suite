@@ -60,11 +60,14 @@ RFC 9483 4.1.1 "In case the EE included the generalInfo field implicitConfirm in
 message and the PKI management entity does not need any explicit confirmation 
 from the EE, the PKI management entity MUST include the generalInfo field 
 implicitConfirm in the response message."
+
 RFC 9483 4.1.1 "If the EE did not request implicit confirmation or implicit confirmation was not granted by the PKI management entity, certificate confirmation MUST be performed as follows."
+
 RFC 9483 4.1.1 "If the EE successfully received the certificate, it MUST send a certConf message in due time. On receiving a valid certConf message, the PKI management entity MUST respond with a pkiConf message. If the PKI management entity does not receive the expected certConf message in time, it MUST handle this like a rejection by the EE."
 - Test Name: Include ImplicitConfirm In Response When Requested
     - Input: EE includes the generalInfo field implicitConfirm 
     - Output: ip can include implicitConfirm
+
 - Test Name: Not Include ImplicitConfirm In Response When Not Granted
     - Input: EE includes the generalInfo field implicitConfirm 
     - Output: ip can include no implcitConfirm granted 
@@ -73,7 +76,7 @@ RFC 9483 4.1.1 "If the EE successfully received the certificate, it MUST send a 
     - Input: EE includes the generalInfo field implicitConfirm + ip can include no implcitConfirm granted + EE sends valid certConf
     - Output: pki responds with pkiConf message
 
-Test Name: 
+- Test Name: 
     - Input: EE includes the generalInfo field implicitConfirm + ip can include no implcitConfirm granted + EE sends not valid certConf
     - Output: pki responds correctly 
 
@@ -84,7 +87,6 @@ Test Name:
 - Test Name: Responds With PKIConf On Valid CertConf
     - Input: EE does not request implcitConfirm + ip does not include ImplicitConfirm + EE valid correct certConf 
     - Output pki responds with pkiConf message
-
 
 - Test Name: 
     - Input: EE does not request implcitConfirm + ip does not include implicit Confirm + EE sends not valid certConf
