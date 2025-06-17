@@ -888,7 +888,8 @@ class CombinedKeyFactory:
         :param encoding: The encoding format (DER or PEM).
         :param unsafe: The PQ liboqs keys do not allow to derive the public key from the
         private key, disables the exception call. Defaults to `False`.
-        :param invalid_private_key: If True, the private key is invalid, only supported for RSA and ECC keys.
+        :param invalid_private_key: If True, the private key is invalid, only supported for RSA,ECC and
+        ML-KEM and ML-DSA keys.
         Defaults to `False`.
         :return: The DER encoded private key data.
         :raises TypeError: If the key type is not supported.
@@ -913,6 +914,7 @@ class CombinedKeyFactory:
                 save_type=save_type,
                 include_public_key=include_public_key,
                 unsafe=unsafe,
+                invalid_key=invalid_private_key,
             )
         elif isinstance(private_key, (TradPrivateKey, TradKEMPrivateKey)):
             if version is None:

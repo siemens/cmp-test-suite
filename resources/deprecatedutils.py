@@ -661,3 +661,83 @@ def get_ocsp_url_from_cert(cert: Union[x509.Certificate, rfc9480.CMPCertificate]
     ]
 
     return ocsp_urls
+
+
+def _prepare_crypto_lib_reason_flags(
+    reason_flags: Optional[str] = None,
+) -> Optional[frozenset]:
+    """Prepare ReasonFlags.
+
+    :param reason_flags: Reason flags for the CRL.
+    :return: The populated `ReasonFlags` structure, correctly tagged.
+    """
+    if reason_flags is not None:
+        reasons = set()
+        for reason in reason_flags.split(","):
+            options = list(rfc5280.ReasonFlags.namedValues.keys())
+            if reason not in options:
+                raise ValueError(f"Invalid reason: {reason}. Must be one of {x509.ReasonFlags}.")
+
+            reasons.add(x509.ReasonFlags(reason))
+        return frozenset(reasons)
+
+    return None
+
+
+def create_issuing_distribution_point(
+    crl_url: str,
+    only_contains_user_certs: bool = False,
+    only_contains_ca_certs: bool = False,
+    only_some_reasons: Optional[str] = None,
+    indirect_crl: bool = False,
+    only_contains_attribute_certs: bool = False,
+    critical: bool = True,
+) -> x509.Extension:
+    """Create an Issuing Distribution Point extension.
+
+    :param crl_url: URL where the CRL can be accessed.
+    :param only_contains_user_certs: Indicates if the CRL only contains user certificates.
+    :param only_contains_ca_certs: Indicates if the CRL only contains CA certificates.
+    :param only_some_reasons: Specifies the reasons for which the CRL is issued.
+    :param indirect_crl: Indicates if the CRL is an indirect CRL.
+    :param only_contains_attribute_certs: Indicates if the CRL only contains attribute certificates.
+    :param critical: Indicates if the extension is critical.
+    :return: x509.Extension object for Issuing Distribution Point.
+    """
+    reasons = _prepare_crypto_lib_reason_flags(only_some_reasons)
+
+    idp = x509.IssuingDistributionPoint(
+        full_name=[x509.UniformResourceIdentifier(crl_url)],
+        relative_name=None,
+        only_contains_user_certs=only_contains_user_certs,
+        only_contains_ca_certs=only_contains_ca_certs,
+        only_some_reasons=reasons,
+        indirect_crl=indirect_crl,
+        only_contains_attribute_certs=only_contains_attribute_certs,
+    )
+    return x509.Extension(ExtensionOID.ISSUING_DISTRIBUTION_POINT, critical, idp)
+
+
+@not_keyword
+def prepare_crl_distribution_point_extension(
+    crl_url: str,
+    critical: bool = False,
+) -> x509.Extension:
+    """Prepare a CRL distribution point extension.
+
+    :param crl_url: The URL of the CRL distribution point.
+    :param critical: Whether the extension is marked as critical or not. Defaults to `False`.
+    :return: The prepared `CRLDistributionPoints` extension.
+    """
+    crl_dp = x509.CRLDistributionPoints(
+        [
+            x509.DistributionPoint(
+                full_name=[x509.UniformResourceIdentifier(crl_url)],
+                relative_name=None,
+                reasons=None,
+                crl_issuer=None,
+            )
+        ]
+    )
+
+    return x509.Extension(oid=x509.CRLDistributionPoints.oid, critical=critical, value=crl_dp)

@@ -5,6 +5,7 @@
 help:
 	@echo  'Commands:'
 	@echo  '  test         - Run all compliance tests (results will be in reports/)'
+	@echo  '  test-verbose - Run all compliance tests, including verbose tests (results will be in reports/)'
 	@echo  '  teslog       - Run all compliance tests, store results in timestamped subirectories in reports/'
 	@echo  '  docs          - Produce documentation files and store them in doc/'
 	@echo  '  unittest     - Run unit tests for the test suite itself '
@@ -16,6 +17,7 @@ help:
 	@echo  '  invalid-sig   -  Verify all pqc-certificates in data/pqc-certificates/ and show all invalid signatures '
 	@echo  '  start-mock-ca   -  Start the mock CA server, so that it can listens to requests '
 	@echo  '  test-mock-ca   -  Run the test against the mock CA server '
+	@echo  '  test-mock-ca-verbose   -  Run all tests against the mock CA server '
 	@echo  ''
 
 
@@ -23,13 +25,23 @@ help:
 # You can override it, e.g., `make test env=cloudpki`
 env ?= cloudpki
 test: check_ejbca
+    # Run the compliance tests, using the environment specified by the `env` variable.
+    # The results will be stored in the reports/ directory.
+    # Per default will only run the tests that are not marked as verbose-tests.
+	robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable environment:$(env) tests
+
+test-verbose:
+	# Run the compliance tests, using the environment specified by the `env` variable.
+	# The results will be stored in the reports/ directory.
+	# This will run all tests, including those marked as verbose-tests.
+    # To ensure compliance in deepth, you can run this command.
 	robot --pythonpath=./ --outputdir=reports --variable environment:$(env) tests
 
 # As above, but keep the results in timestamped subdirectories, so they keep accumulating. This is useful because you
 # won't overwrite test reports from previous runs, which may contain interesting information about exotic errors you
 # encountered.
 testlog:
-	robot --pythonpath=./ --outputdir=reports/`date +%Y-%m-%d_%H-%M_%B-%d` --variable environment:$(env) tests
+	robot --pythonpath=./ --exclude verbose-tests --outputdir=reports/`date +%Y-%m-%d_%H-%M_%B-%d` --variable environment:$(env) tests
 
 
 DOCKERFILE_UNITTEST = data/dockerfiles/Dockerfile.unittest
@@ -73,6 +85,7 @@ docs:
     # Test documentation
 	python -m robot.testdoc tests/ doc/test-suites.html
 	python -m robot.testdoc tests_pq_and_hybrid/ doc/test-pq-hybrid-suites.html
+	python -m robot.testdoc tests_mock_ca/ doc/test-mock-ca.html
 
 autoformat:
 	ruff check --fix .
@@ -88,7 +101,7 @@ verifyformat:
 	ruff check .
 
 dryrun:
-	robot --dryrun --pythonpath=./ --variable environment:$(env) tests tests_pq_and_hybrid
+	robot --dryrun --pythonpath=./ --variable environment:$(env) tests tests_pq_and_hybrid  tests_mock_ca
 
 check-sigs:
 	python test_load_pqc.py
@@ -96,4 +109,19 @@ check-sigs:
 
 test-pq-hybrid:
     # Start the tests for PQ and Hybrid algorithms/mechanisms.
-	robot --pythonpath=./ --outputdir=reports --variable environment:$(env) tests_pq_and_hybrid
+	robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable environment:$(env) tests_pq_and_hybrid
+
+start-mock-ca:
+	python ./mock_ca/ca_handler.py
+
+test-mock-ca:
+    # exclude resource-intensive for faster execution.
+	# robot --exclude resource-intensive --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests/lwcmp.robot
+	robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable environment:mock_ca tests tests_mock_ca tests_pq_and_hybrid
+
+test-mock-ca-verbose:
+	# Run the compliance tests, using the environment specified by the `env` variable.
+	# The results will be stored in the reports/ directory.
+	# This will run all tests, including those marked as verbose-tests.
+	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests tests_mock_ca tests_pq_and_hybrid
+

@@ -119,7 +119,7 @@ CA MUST Detect Paired Certificate with Weak secondary Key
     ${response}=   Exchange Migration PKIMessage    ${protected_p10cr}   ${CA_BASE_URL}   ${CHAMELEON_SUFFIX}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    status=rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
 CA MUST Reject Paired CSR with Same Key
     [Documentation]    According to chameleon-certs-05 section 4.1, a receiver must check that the
@@ -160,10 +160,10 @@ CA MUST Issue A Chameleon With The Extension Correctly Set
     PKIMessage Body Type Must Be    ${response}    cp
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
-    ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
-    ${delta_extns}=   Get Asn1 Value    ${delta_cert}    tbsCertificate.extensions
+    # To check that the certificate can be correctly build.
+    ${_}=   Build Delta Cert From Paired Cert    ${cert}
     ${base_extns}=   Get Asn1 Value    ${cert}    tbsCertificate.extensions
-    Validate DCD Extension   ${delta_extns}    ${base_extns}
+    Validate DCD Extension   ${cert}    ${base_extns}
 
 CA SHOULD NOT Mark The DCD Extension as Critical
     [Documentation]    According to chameleon-certs-05 section 4, the DCD extension should not be marked as critical.
@@ -191,7 +191,7 @@ CA MUST Revoke a Delta Cert
     [Tags]      positive  rr
     ${result}=  Is Certificate And Key Set    ${CHAMELEON_DELTA_CERT}    ${CHAMELEON_DELTA_KEY}
     Skip If    not ${result}       Delta Certificate and Key are not set.
-    ${ir}=   Build CMP Revoke Request    ${CHAMELEON_DELTA_CERT}
+    ${ir}=   Build CMP Revoke Request    ${CHAMELEON_DELTA_CERT}   reason=keyCompromise
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
     ...    signature
@@ -200,6 +200,7 @@ CA MUST Revoke a Delta Cert
     ${response}=   Exchange Migration PKIMessage    ${protected_ir}   suffix=${issuing_suffix}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}    status=accepted
+    Wait Until Server Revoked Cert
 
 CA MUST Check That The Delta Key Was Not Previously Revoked
     [Documentation]    According to chameleon-certs-05 section 6, a receiver must check that the
@@ -210,8 +211,8 @@ CA MUST Check That The Delta Key Was Not Previously Revoked
     ${result}=  Is Certificate And Key Set    ${CHAMELEON_CERT}    ${CHAMELEON_KEY}
     Skip If    not ${result}       Chameleon Certificate and Key are not set.
     ${key}=   Generate Default Key
-    ${cm}=   Get Next Common Name
-    ${csr}=   Build Paired CSR    ${key}  ${CHAMELEON_DELTA_KEY}   common_name=${cm}
+    ${subject}=    Get Field From Certificate     ${CHAMELEON_CERT}    subject
+    ${csr}=   Build Paired CSR    ${key}  ${CHAMELEON_DELTA_KEY}    ${subject}
     ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}    exclude_fields=sender,senderKID
     ${protected_p10cr}=  Protect PKIMessage    ${p10cr}
     ...                                        protection=signature
@@ -253,6 +254,6 @@ Client MUST Check that the Chameleon Certificate is Valid
     ${response}=   Exchange Migration PKIMessage    ${protected_ir}  ${CA_BASE_URL}  ${multi_auth_suffix}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    status=rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    signerNotTrusted
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    signerNotTrusted,certRevoked
 
 # Client MUST Reject Recursively Built Paired Certificate

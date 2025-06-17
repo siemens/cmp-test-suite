@@ -28,6 +28,20 @@ ${DEFAULT_X509NAME}    CN=CloudCA-Integration-Test-User
 # either signature or an MAC algorithm.
 ${DEFAULT_PROTECTION}   signature
 
+# The initial issued certificate and key for running the tests setup.
+${INIT_SUFFIX}   ${None}
+${INITIAL_KEY_PATH}    ${None}
+${INITIAL_CERT_PATH}   ${None}
+${INITIAL_KEY_PASSWORD}   ${None}
+
+# Test the LWCMP version.
+${LWCMP}   ${True}
+# Whether to enforce the algorithm to be set in the
+# Algorithm Profile RFC9481.
+# Does not affect the PQ signature algorithms.
+# Only MAC and traditional signatures.
+${ENFORCE_RFC9481}   ${False}
+
 ##### About Issuing:
 
 # Implicit confirmation allowed.
@@ -71,9 +85,6 @@ ${EXTENDED_KEY_USAGE_STRICTNESS}   LAX
 ${KEY_USAGE_STRICTNESS}   LAX
 # Configuration for strict mode.
 ${STRICT}   ${True}
-# Test the LWCMP version.
-${LWCMP}   ${True}
-
 
 # IF legacy systems are used, it might be allowed to use,
 # to use NULL instead of absent AlgorithmIdentifier `parameters`
@@ -110,7 +121,17 @@ ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 #Indicating if the PKIFailInfo must be set correctly.
 ${FAILINFO_MUST_BE_CORRECT}   ${True}
 # For messageTime check.
-${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
+${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-501}
+
+# DSA is not allowed by RFC9483.
+${DSA_KEY}         data/keys/private-key-dsa.pem
+${DSA_KEY_PASSWORD}   11111
+${DSA_CERT}        data/unittest/dsa_certificate.pem
+
+# Device certificate and key (None means not provided).
+${DEVICE_CERT_CHAIN}   data/mock_ca/device_cert_ecdsa_cert_chain.pem
+${DEVICE_KEY}  data/keys/private-key-ecdsa.pem
+${DEVICE_KEY_PASSWORD}   11111
 
 ##### Section 4
 # If ALLOW_P10CR is enabled, all generic test cases will be done
@@ -131,21 +152,23 @@ ${ALLOW_KGA_RAW_KEYS}   ${False}
 
 # Section 4.2
 ${REVOCATION_STRICT_CHECK}    ${False}
-
+# The time to wait, until a certificate is revoked, so that
+# the test cases can be run.
+${REVOKED_WAIT_TIME}   5s
+${UPDATE_WAIT_TIME}   3s
+${WAIT_UNTIL_UPDATED_CONFIRMATION_IS_EXPIRED}   15s
 
 # Section 4.3
 # Whether a Support message can be used with a pre-shared-Secret.
 ${ALLOW_MAC_PROTECTED_SUPPORT_MSG}   ${True}
 ${ALLOW_SUPPORT_MESSAGES}   ${True}
 # Can be used to check if the General Message CRL Update Retrieval works with the last CRL.
-${CRL_FILEPATH}    ${None}
-${CRL_CERT_IDP}  ${False}
+${CRL_FILEPATH}    data/mock_ca/current_crl.pem
+${CRL_CERT_IDP}  data/unittest/dsa_certificate.pem
 
 
 ${OLD_ROOT_CERT}   ${None}
-${CERT_PROFILE}    ${None}
-
-
+${CERT_PROFILE}    base
 
 # Sets the allowed time interval between request and response to 300 seconds.
 ${ALLOWED_TIME_INTERVAL}   ${300}
@@ -155,11 +178,6 @@ ${ALLOW_CRL_CHECK}   ${False}
 ${REVOKE_CERT_ON_ERROR}  ${False}
 ${REVOKE_CERT_ON_LATE_CONFIRMATION}  ${False}
 
-# Certificates and Keys to set.
-${INITIAL_KEY_PATH}    ${None}
-${INITIAL_CERT_PATH}   ${None}
-${INITIAL_KEY_PASSWORD}   11111
-
 # Device certificate and key (None means not provided).
 ${DEVICE_CERT}   ${None}
 ${DEVICE_KEY}  ${None}
@@ -168,6 +186,12 @@ ${DEVICE_KEY}  ${None}
 # Other trusted PKI and Key (None means not provided, so test are skipped).
 ${OTHER_TRUSTED_PKI_KEY}    ./data/keys/private-key-ecdsa.pem
 ${OTHER_TRUSTED_PKI_CERT}    ./data/trusted_ras/ra_cms_cert_ecdsa.pem
+# Whether to allow unprotected inner messages, inside a nested PKIMessage.
+${ALLOW_UNPROTECTED_INNER_MESSAGE}    True
+# The directory containing the certificates to build the trusted RA certificate chain.
+${RA_CERT_CHAIN_DIR}    ./data/unittest
+# saves the entire certificate chain of the RA.
+${RA_CERT_CHAIN_PATH}   ${None}
 
 # A certificate used to verify, if it is supported
 # that another trusted PKI Management Entity can revoke a certificate.
@@ -193,17 +217,17 @@ ${DEFAULT_PQ_SIG_ALG}   ml-dsa-44
 
 ${INIT_SUFFIX}   issuing
 ${PQ_ISSUING_SUFFIX}   issuing
-${URI_MULTIPLE_AUTH}   ${None}
+${URI_RELATED_CERT}   http://127.0.0.1:5000/cert
+${NEG_URI_RELATED_CERT}   http://127.0.0.1:5000/cert_neg
 ${ISSUING_SUFFIX}   issuing
 ${COMPOSITE_URL_PREFIX}   issuing
 ${CATALYST_ISSUING}  catalyst-issuing
 ${CATALYST_SIGNATURE}   catalyst-sig
 ${SUN_HYBRID_SUFFIX}   sun-hybrid
 ${CHAMELEON_SUFFIX}   chameleon
-${RELATED_CERT_SUFFIX}   related-Cert
+${RELATED_CERT_SUFFIX}   related-cert
 ${MULTI_AUTH_SUFFIX}   multi-auth
 ${CERT_DISCOVERY_SUFFIX}   cert-discovery
-
 
 # CMP and LwCMP certificates and keys
 ${UPDATED_CERT}    ${None}

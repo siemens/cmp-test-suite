@@ -15,12 +15,15 @@ from pq_logic.hybrid_sig.cert_binding_for_multi_auth import (
 )
 from pq_logic.hybrid_structures import RequesterCertificate
 from pyasn1.codec.der import decoder, encoder
+
+from resources import utils
 from resources.certbuildutils import build_csr, generate_certificate, sign_csr
 from resources.certutils import (
     build_cert_chain_from_dir,
     load_certificates_from_dir,
     parse_certificate,
 )
+from resources.exceptions import BadCertTemplate
 from resources.keyutils import load_private_key_from_file
 from resources.utils import load_and_decode_pem_file
 
@@ -31,12 +34,15 @@ class TestCertBindingMultiAuth(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.ca_cert = parse_certificate(utils.load_and_decode_pem_file("data/unittest/root_cert_ed25519.pem"))
+        cls.ca_key = load_private_key_from_file("data/keys/private-key-ed25519.pem")
+
         cls.cm = "CN=Hans the Tester"
         cls.csr_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.uri = "https://localhost:8080/cmp/cert-bindings-for-multiple-authentication"
         cls.pq_key = load_private_key_from_file("data/keys/private-key-ml-dsa-65-seed.pem")
         cls.cert_a_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
-        cls.cert_a = parse_certificate(load_and_decode_pem_file("data/unittest/ca2_cert_rsa.pem"))
+        cls.cert_a = generate_certificate(cls.cert_a_key, "CN=Test RSA", issuer_cert=cls.ca_cert, signing_key=cls.ca_key)
         cls.cert_b = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
         cls.cert_related = generate_certificate(private_key=cls.cert_a_key, issuer_cert=cls.cert_b, hash_alg="sha256")
 
@@ -50,7 +56,7 @@ class TestCertBindingMultiAuth(unittest.TestCase):
                                                  self.cert_a_key,
                                                  self.uri,
                                                  hash_alg="sha256",
-        request_time=1609459200)
+                                                 request_time=1609459200)
 
         self.assertIsInstance(req_cert, RequesterCertificate)
 
@@ -73,7 +79,7 @@ class TestCertBindingMultiAuth(unittest.TestCase):
         cert = generate_certificate(private_key=self.cert_a_key,
                                     extensions=[extn], hash_alg="sha256")
 
-        certs = load_certificates_from_dir("data/unittest")
+        certs = load_certificates_from_dir("data/unittest") + [self.cert_a]
         related_cert = get_related_cert_from_list(certs, cert)
         self.assertTrue(compare_pyasn1_objects(related_cert, self.cert_a))
 
@@ -96,7 +102,7 @@ class TestCertBindingMultiAuth(unittest.TestCase):
         THEN the CSR is correctly verified, and the cert_A is correctly verified
         and returned.
         """
-        certs = build_cert_chain_from_dir(self.cert_a, "data/unittest")
+        certs = [self.cert_a, self.ca_cert]
         mock_load_cert.return_value = certs
 
         csr = build_csr(signing_key=self.csr_key, common_name=self.cm, hash_alg="sha256")
@@ -104,7 +110,7 @@ class TestCertBindingMultiAuth(unittest.TestCase):
         req_cert = prepare_requester_certificate(self.cert_a,
                                                  self.cert_a_key,
                                                  self.uri,
-                                                 hash_alg="sha256",
+                                                 hash_alg="sha512",
                                                  request_time=None)
 
         csr = add_csr_related_cert_request_attribute(csr, requester_cert=req_cert)
@@ -118,3 +124,29 @@ class TestCertBindingMultiAuth(unittest.TestCase):
 
         self.assertTrue(compare_pyasn1_objects(cert_a, self.cert_a))
 
+    @patch("resources.utils.load_certificate_from_uri")
+    def test_cert_binding_multi_auth_build_csr_with_ca_cert(self, mock_load_cert):
+        """
+        GIVEN a certificate and a private key.
+        WHEN a CSR is built with the certificate and the private key,
+        THEN the CSR is correctly verified, and the cert_A is correctly verified
+        and returned.
+        """
+        certs = build_cert_chain_from_dir(self.ca_cert, "data/unittest")
+        mock_load_cert.return_value = certs
+
+        csr = build_csr(signing_key=self.csr_key, common_name=self.cm, hash_alg="sha256")
+
+        req_cert = prepare_requester_certificate(self.ca_cert,
+                                                 self.ca_key,
+                                                 self.uri,
+                                                 request_time=None)
+
+        csr = add_csr_related_cert_request_attribute(csr, requester_cert=req_cert)
+        csr = sign_csr(csr, self.csr_key, hash_alg="sha256")
+        resources.certutils.verify_csr_signature(csr)
+
+        with self.assertRaises(BadCertTemplate):
+            _ = validate_multi_auth_binding_csr(csr=csr, trustanchors="data/unittest",
+                                                crl_check=False,
+                                                load_chain=True)

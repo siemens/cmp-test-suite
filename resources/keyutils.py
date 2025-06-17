@@ -52,15 +52,15 @@ from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_
 from resources import oid_mapping, typingutils, utils
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
-from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, UnknownOID
+from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, UnknownOID
 from resources.oid_mapping import KEY_CLASS_MAPPING, get_curve_instance, get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import (
     CMS_COMPOSITE03_NAME_2_OID,
     CURVE_OID_2_NAME,
-    MSG_SIG_ALG_NAME_2_OID,
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
+    TRAD_SIG_NAME_2_OID,
     TRAD_STR_OID_TO_KEY_NAME,
 )
 from resources.suiteenums import KeySaveType
@@ -374,19 +374,6 @@ def _extract_and_format_key(pem_file_path: str) -> bytes:
     raise ValueError("No valid private key found in the file.")
 
 
-def _clean_data(data: bytes) -> bytes:
-    """Remove comments and newlines from the data.
-
-    :param data: The data to clean.
-    :return: The cleaned data.
-    """
-    out = b""
-    for line in data.split(b"\n"):
-        if not line.startswith(b"#") and line:
-            out += line + b"\n"
-    return out
-
-
 def _extract_pem_private_key_block(data: bytes) -> bytes:
     """Extract the full PEM block (BEGIN ... PRIVATE KEY ... END) from raw byte data.
 
@@ -456,10 +443,9 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
 
     try:
         # try to load the key with the password.
-        _pem_data = _clean_data(pem_data)
         if password is not None:
             password = str_to_bytes(password)  # type: ignore
-        return serialization.load_der_private_key(data=_pem_data, password=password)  # type: ignore
+        return serialization.load_der_private_key(data=pem_data, password=password)  # type: ignore
     except ValueError:
         pass
 
@@ -483,8 +469,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
     if password is not None:
         password = str_to_bytes(password)  # type: ignore
 
-    pem_data = _clean_data(pem_data)
-    private_key = serialization.load_pem_private_key(
+    private_key = serialization.load_der_private_key(
         pem_data,
         password=password,  # type: ignore
     )
@@ -670,24 +655,24 @@ def get_key_name(key: Union[PrivateKey, PublicKey]) -> str:  # noqa: D417 undocu
 def _check_trad_sig_alg_id(public_key: TradVerifyKey, oid: str, hash_alg: Optional[str]) -> None:
     """Validate if the public key is of the same type as the algorithm identifier."""
     if isinstance(public_key, Ed448PublicKey):
-        if str(MSG_SIG_ALG_NAME_2_OID["ed448"]) == oid:
+        if str(TRAD_SIG_NAME_2_OID["ed448"]) == oid:
             return
     elif isinstance(public_key, Ed25519PublicKey):
-        if str(MSG_SIG_ALG_NAME_2_OID["ed25519"]) == oid:
+        if str(TRAD_SIG_NAME_2_OID["ed25519"]) == oid:
             return
 
     elif isinstance(public_key, EllipticCurvePublicKey):
-        if str(MSG_SIG_ALG_NAME_2_OID[f"ecdsa-{hash_alg}"]) == oid:
+        if str(TRAD_SIG_NAME_2_OID[f"ecdsa-{hash_alg}"]) == oid:
             return
 
     elif isinstance(public_key, RSAPublicKey):
-        if str(MSG_SIG_ALG_NAME_2_OID[f"rsa-{hash_alg}"]) == oid:
+        if str(TRAD_SIG_NAME_2_OID[f"rsa-{hash_alg}"]) == oid:
             return
 
     else:
         raise BadAlg(f"Unknown key type to verify the alg id and the matching key: {type(public_key)}")
 
-    raise BadAlg(
+    raise BadSigAlgID(
         "The public key was not of the same type as the, algorithm identifier implied."
         f"Given OID: {may_return_oid_to_name(univ.ObjectIdentifier(oid))}. Key type: {type(public_key).__name__}"
     )
@@ -717,21 +702,45 @@ def check_consistency_sig_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, ke
         pre_hash = "hash-" in name
 
         if str(key.get_oid(use_pss=use_pss, pre_hash=pre_hash)) != str(oid):  # type: ignore
-            raise BadAlg("The public key was not of the same type as the,algorithm identifier implied.")
+            raise BadSigAlgID("The public key was not of the same type as the,algorithm identifier implied.")
 
         return
 
-    hash_alg = get_hash_from_oid(alg_id["algorithm"], only_hash=True)
+    try:
+        hash_alg = get_hash_from_oid(alg_id["algorithm"], only_hash=True)
+    except ValueError as e:
+        raise BadSigAlgID("The algorithm identifier was not valid, and does not match the key.") from e
 
     if isinstance(key, (PQSignaturePublicKey, PQSignaturePrivateKey)):
         _alg = "" if hash_alg is None else "-" + hash_alg
         _name = key.name + _alg
+
+        if _name not in PQ_NAME_2_OID:
+            raise BadSigAlgID(
+                "The public key was not of the same type as the, algorithm identifier implied.",
+                error_details=[
+                    f"OID: {oid}. The Public Key was of type: {type(key).__name__}. "
+                    f"OID-Lookup: {may_return_oid_to_name(oid)}"
+                ],
+            )
+
         if str(PQ_NAME_2_OID[_name]) != str(oid):
-            raise BadAlg("The public key was not of the same type as the,algorithm identifier implied.")
+            raise BadSigAlgID("The public key was not of the same type as the,algorithm identifier implied.")
     elif isinstance(key, (TradSignKey, TradVerifyKey)):
         if isinstance(key, TradSignKey):
             key = key.public_key()
-        _check_trad_sig_alg_id(key, str(oid), hash_alg=hash_alg)  # type: ignore
+
+        try:
+            _check_trad_sig_alg_id(key, str(oid), hash_alg=hash_alg)  # type: ignore
+        except KeyError as e:
+            raise BadSigAlgID(
+                "The public key was not of the same type as the, algorithm identifier implied.",
+                error_details=[
+                    f"{e}",
+                    f"OID: {oid}. The Public Key was of type: {type(key).__name__}. "
+                    f"OID-Lookup: {may_return_oid_to_name(oid)}",
+                ],
+            ) from e
 
     else:
         raise ValueError(
@@ -914,8 +923,8 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         - `private_key`: The private key to wrap.
         - `version`: The version of the structure. Defaults to "v2".
         - `key_save_type`: The type of key to save. Can be "seed", "raw", or "seed_and_raw". Defaults to "raw".
-        - `invalid_private_key`: If True, the private key is invalid. Only supported for RSA and ECC-keys. \
-        Defaults to `False`.
+        - `invalid_private_key`: If True, the private key is invalid. Only supported for RSA, ECC,
+        ML-DSA and ML-KEM keys. Defaults to `False`.
         - `invalid_pub_key_size`: If True, the public key size is invalid. Defaults to `False`.
         - `mis_matching_key`: If True, the public key does not match the private key. Defaults to `False`.
         - `invalid_priv_key_size`: If True, the private key size is invalid. Defaults to `False`.
@@ -939,8 +948,13 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     | ${one_asym_key}= | Prepare OneAsymmetricKey | ${private_key} | key_save_type="seed" |
 
     """
-    if not isinstance(private_key, (RSAPrivateKey, EllipticCurvePrivateKey)) and invalid_private_key:
-        raise ValueError("The invalid private key option is only supported for `RSA`- and `ECC`-keys.")
+    if (
+        not isinstance(private_key, (RSAPrivateKey, EllipticCurvePrivateKey, MLDSAPrivateKey, MLKEMPrivateKey))
+        and invalid_private_key
+    ):
+        raise ValueError(
+            "The invalid private key option is only supported for `RSA`, `ECC`, `ML-DSA` and `ML-KEM` keys."
+        )
 
     if mis_matching_key:
         public_key = generate_different_public_key(key_source=private_key)

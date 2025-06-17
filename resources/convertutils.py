@@ -7,7 +7,7 @@
 So here are ensure types so not everywhere needs to be typing checks.
 """
 
-import datetime
+from datetime import datetime
 from typing import Any, Optional, Union
 
 from cryptography.hazmat.primitives import serialization
@@ -153,7 +153,7 @@ def subject_public_key_info_from_pubkey(
 
 
 @not_keyword
-def pyasn1_time_obj_to_py_datetime(asn1_time: rfc5280.Time) -> datetime.datetime:
+def pyasn1_time_obj_to_py_datetime(asn1_time: rfc5280.Time) -> datetime:
     """Convert a `pyasn1` `Time` object into a Python `datetime` object.
 
     :param asn1_time: A `pyasn1` `Time` object representing either `UTCTime` or `GeneralizedTime`.

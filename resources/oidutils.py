@@ -8,7 +8,16 @@ from typing import Dict
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.x509.oid import NameOID
+from pkilint.itu.x520_name import (
+    X520BusinessCategory,
+    X520OrganizationIdentifier,
+    X520PostalCode,
+    X520StreetAddress,
+    id_at_businessCategory,
+    id_at_organizationIdentifier,
+    id_at_postalCode,
+    id_at_streetAddress,
+)
 from pyasn1.type import univ
 from pyasn1_alt_modules import (
     rfc3370,
@@ -20,12 +29,12 @@ from pyasn1_alt_modules import (
     rfc5753,
     rfc5990,
     rfc6664,
-    rfc6960,
     rfc8017,
     rfc8018,
     rfc8619,
     rfc9480,
     rfc9481,
+    rfc9654,
     rfc9688,
     rfc9690,
     rfc9708,
@@ -50,7 +59,24 @@ from pq_logic.tmp_oids import (
     id_altSignatureExt,
     id_altSubPubKeyExt,
     id_ce_deltaCertificateDescriptor,
+    id_relatedCert,
     id_sntrup761_str,
+)
+from resources.asn1_structures import (
+    EmailAddressASN1,
+    X520BusinessCategoryASN1,
+    X520CommonNameASN1,
+    X520countryNameASN1,
+    X520LocalityNameASN1,
+    X520nameASN1,
+    X520OrganizationalUnitNameASN1,
+    X520OrganizationNameASN1,
+    X520PostalCodeASN1,
+    X520PseudonymASN1,
+    X520SerialNumberASN1,
+    X520StateOrProvinceNameASN1,
+    X520StreetAddressASN1,
+    X520TitleASN1,
 )
 
 # In RFC 9480 Certificate Management Protocol (CMP) Updates
@@ -72,8 +98,7 @@ AES_GMAC_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
     rfc9481.id_aes192_GMAC: "aes192_gmac",
     rfc9481.id_aes256_GMAC: "aes256_gmac",
 }
-RSA_SHA_OID_2_NAME = {
-    rfc8017.sha1WithRSAEncryption: "rsa-sha1",
+RSA_SHA2_OID_2_NAME = {
     rfc9481.sha224WithRSAEncryption: "rsa-sha224",
     rfc9481.sha256WithRSAEncryption: "rsa-sha256",
     rfc9481.sha384WithRSAEncryption: "rsa-sha384",
@@ -87,6 +112,8 @@ ECDSA_SHA_OID_2_NAME = {
     rfc9481.id_ecdsa_with_shake128: "ecdsa-shake128",
     rfc9481.id_ecdsa_with_shake256: "ecdsa-shake256",
 }
+
+
 RSASSA_PSS_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
     rfc9481.id_RSASSA_PSS: "rsassa_pss-sha256",
     rfc9481.id_RSASSA_PSS_SHAKE128: "rsassa_pss-shake128",
@@ -97,14 +124,27 @@ RSASSA_PSS_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {
 # These mappings facilitate the identification of the specific HMAC-SHA algorithm
 # used for MAC (Message Authentication Code) protection algorithms for the PKIMessage.
 
-HMAC_OID_2_NAME = {
-    rfc3370.hMAC_SHA1: "hmac-sha1",
+HMAC_SHA_OID_2_NAME = {
     rfc9481.id_hmacWithSHA224: "hmac-sha224",
     rfc9481.id_hmacWithSHA256: "hmac-sha256",
     rfc9481.id_hmacWithSHA384: "hmac-sha384",
     rfc9481.id_hmacWithSHA512: "hmac-sha512",
 }
 
+HMAC_SHA3_OID_2_NAME = {
+    rfc9688.id_hmacWithSHA3_224: "hmac-sha3_224",
+    rfc9688.id_hmacWithSHA3_256: "hmac-sha3_256",
+    rfc9688.id_hmacWithSHA3_384: "hmac-sha3_384",
+    rfc9688.id_hmacWithSHA3_512: "hmac-sha3_512",
+}
+
+HMAC_SHA_NAME_2_OID = {v: k for k, v in HMAC_SHA_OID_2_NAME.items()}
+HMAC_SHA3_NAME_2_OID = {v: k for k, v in HMAC_SHA3_OID_2_NAME.items()}
+
+HMAC_OID_2_NAME = {rfc3370.hMAC_SHA1: "hmac-sha1"}
+HMAC_OID_2_NAME.update(HMAC_SHA_OID_2_NAME)
+HMAC_OID_2_NAME.update(HMAC_SHA3_OID_2_NAME)
+HMAC_NAME_2_OID = {v: k for k, v in HMAC_OID_2_NAME.items()}
 
 # These mappings facilitate the identification of the specific KMAC-SHA algorithm
 # used for protecting PKIMessages with KMAC (Keccak Message Authentication Code.
@@ -112,22 +152,29 @@ KMAC_OID_2_NAME = {rfc9481.id_KMACWithSHAKE128: "kmac-shake128", rfc9481.id_KMAC
 
 
 # Used for preparing Signature Protection of the PKIMessage.
+SHA2_OID_2_NAME = {
+    rfc8017.id_sha224: "sha224",
+    rfc8017.id_sha256: "sha256",
+    rfc8017.id_sha384: "sha384",
+    rfc8017.id_sha512: "sha512",
+}
+
+SHA2_NAME_2_OID = {v: k for k, v in SHA2_OID_2_NAME.items()}
+
 SHA_OID_2_NAME = {
     rfc5480.id_sha1: "sha1",
-    rfc5480.id_sha224: "sha224",
-    rfc5480.id_sha256: "sha256",
-    rfc5480.id_sha384: "sha384",
-    rfc5480.id_sha512: "sha512",
 }
+SHA_OID_2_NAME.update(SHA2_OID_2_NAME)
+
 
 id_hash_algs = "2.16.840.1.101.3.4.2"  # pylint: disable=invalid-name
 
 
 SHA3_OID_2_NAME = {
-    univ.ObjectIdentifier(f"{id_hash_algs}.7"): "sha3-224",
-    univ.ObjectIdentifier(f"{id_hash_algs}.8"): "sha3-256",
-    univ.ObjectIdentifier(f"{id_hash_algs}.9"): "sha3-384",
-    univ.ObjectIdentifier(f"{id_hash_algs}.10"): "sha3-512",
+    univ.ObjectIdentifier(f"{id_hash_algs}.7"): "sha3_224",
+    univ.ObjectIdentifier(f"{id_hash_algs}.8"): "sha3_256",
+    univ.ObjectIdentifier(f"{id_hash_algs}.9"): "sha3_384",
+    univ.ObjectIdentifier(f"{id_hash_algs}.10"): "sha3_512",
     univ.ObjectIdentifier(f"{id_hash_algs}.11"): "shake128",
     univ.ObjectIdentifier(f"{id_hash_algs}.12"): "shake256",
 }
@@ -141,12 +188,21 @@ ECDSA_SHA3_OID_2_NAME = {
     rfc9688.id_ecdsa_with_sha3_512: "ecdsa-sha3_512",
 }
 RSA_SHA3_OID_2_NAME = {
-    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_224: "rsassa_pss-sha3_224",
-    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_256: "rsassa_pss-sha3_256",
-    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_384: "rsassa_pss-sha3_384",
-    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_512: "rsassa_pss-sha3_512",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_224: "rsa-sha3_224",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_256: "rsa-sha3_256",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_384: "rsa-sha3_384",
+    rfc9688.id_rsassa_pkcs1_v1_5_with_sha3_512: "rsa-sha3_512",
 }
 
+RSA_OID_2_NAME = {
+    rfc8017.sha1WithRSAEncryption: "rsa-sha1",
+}
+RSA_OID_2_NAME.update(RSA_SHA2_OID_2_NAME)
+RSA_OID_2_NAME.update(RSA_SHA3_OID_2_NAME)
+
+ECDSA_OID_2_NAME = {}
+ECDSA_OID_2_NAME.update(ECDSA_SHA_OID_2_NAME)
+ECDSA_OID_2_NAME.update(ECDSA_SHA3_OID_2_NAME)
 
 AES_CBC_NAME_2_OID = {
     "aes128_cbc": rfc9481.id_aes128_CBC,
@@ -170,9 +226,10 @@ AES_GCM_OID_2_NAME = {v: k for k, v in AES_GCM_NAME_2_OID.items()}
 # certConfirm messages, since it must contain the hash of the certificate,
 # computed with the same algorithm as the one in the signature
 OID_HASH_MAP: Dict[univ.ObjectIdentifier, str] = {}
-OID_HASH_MAP.update(RSA_SHA_OID_2_NAME)
+OID_HASH_MAP.update(RSA_OID_2_NAME)
 OID_HASH_MAP.update(RSASSA_PSS_OID_2_NAME)
 OID_HASH_MAP.update(ECDSA_SHA_OID_2_NAME)
+OID_HASH_MAP.update(ECDSA_SHA3_OID_2_NAME)
 OID_HASH_MAP.update(HMAC_OID_2_NAME)
 OID_HASH_MAP.update(SHA_OID_2_NAME)
 OID_HASH_MAP.update(SHA3_OID_2_NAME)
@@ -182,11 +239,19 @@ OID_HASH_NAME_2_OID = {v: k for k, v in OID_HASH_MAP.items()}
 # Updating the main dictionary with RSA and ECDSA OIDs
 # to check quickly if a given OID is supported by the Test-Suite
 MSG_SIG_ALG = {rfc9481.id_Ed25519: "ed25519", rfc9481.id_Ed448: "ed448"}
-MSG_SIG_ALG.update(RSA_SHA_OID_2_NAME)
+MSG_SIG_ALG.update(RSA_SHA2_OID_2_NAME)
 MSG_SIG_ALG.update(RSASSA_PSS_OID_2_NAME)
 MSG_SIG_ALG.update(ECDSA_SHA_OID_2_NAME)
 
-MSG_SIG_ALG_NAME_2_OID = {y: x for x, y in MSG_SIG_ALG.items()}
+# Add additional OIDs specified in RFC9688.
+TRAD_SIG_OID_2_NAME = {}
+TRAD_SIG_OID_2_NAME.update(MSG_SIG_ALG)
+TRAD_SIG_OID_2_NAME.update(RSA_OID_2_NAME)
+TRAD_SIG_OID_2_NAME.update(ECDSA_OID_2_NAME)
+
+TRAD_SIG_NAME_2_OID = {v: k for k, v in TRAD_SIG_OID_2_NAME.items()}
+
+MSG_SIG_ALG_NAME_2_OID = {v: k for k, v in MSG_SIG_ALG.items()}
 
 LWCMP_MAC_OID_2_NAME = {rfc9480.id_PasswordBasedMac: "password_based_mac", rfc8018.id_PBMAC1: "pbmac1"}
 
@@ -211,7 +276,7 @@ SUPPORTED_MAC_OID_2_NAME.update(SYMMETRIC_PROT_ALGO)
 
 # reverse the dictionary to get OIDs with names
 # to perform lookups for getting PKIMessage Protection AlgorithmIdentifier
-SUPPORTED_MAC_NAME_2_OID = {y: x for x, y in SUPPORTED_MAC_OID_2_NAME.items()}
+SUPPORTED_MAC_NAME_2_OID = {v: k for k, v in SUPPORTED_MAC_OID_2_NAME.items()}
 
 # used for non-local Key generation if the ktri structure is used.
 KM_KT_ALG = {rfc9481.rsaEncryption: "rsa", rfc9481.id_RSAES_OAEP: "rsaes-oaep"}
@@ -230,23 +295,6 @@ SYMMETRIC_ENCR_ALG_OID_2_NAME = {}
 SYMMETRIC_ENCR_ALG_OID_2_NAME.update(AES_CBC_OID_2_NAME)
 
 SYMMETRIC_ENCR_ALG_NAME_2_OID = {v: k for k, v in SYMMETRIC_ENCR_ALG_OID_2_NAME.items()}
-
-NAME_MAP = {
-    "C": NameOID.COUNTRY_NAME,
-    "ST": NameOID.STATE_OR_PROVINCE_NAME,
-    "L": NameOID.LOCALITY_NAME,
-    "O": NameOID.ORGANIZATION_NAME,
-    "CN": NameOID.COMMON_NAME,
-}
-OID_CM_NAME_MAP = {
-    "C": rfc5280.id_at_countryName,
-    "ST": rfc5280.id_at_stateOrProvinceName,
-    "L": rfc5280.id_at_localityName,
-    "O": rfc5280.id_at_organizationName,
-    "CN": rfc5280.id_at_commonName,
-    "OU": rfc5280.id_at_organizationalUnitName,
-}
-PYASN1_CM_NAME_2_OIDS = {v: k for k, v in OID_CM_NAME_MAP.items()}
 
 # Used to get the hash instances with their respective names.
 # This is used to make it easier for users to parse and select hash algorithms by name.
@@ -439,6 +487,7 @@ RFC9481_OID_2_NAME.update(RSASSA_PSS_OID_2_NAME)
 ALL_KNOWN_OIDS_2_NAME = {}
 ALL_KNOWN_OIDS_2_NAME.update({rfc6664.id_ecPublicKey: "ecPublicKey"})
 ALL_KNOWN_OIDS_2_NAME.update(RFC9481_OID_2_NAME)
+ALL_KNOWN_OIDS_2_NAME.update(HMAC_NAME_2_OID)
 
 
 ###########################
@@ -599,15 +648,13 @@ STATEFUL_HASH_SIGNATURE_NAME_2_OID = {y: x for x, y in STATEFUL_HASH_SIGNATURE_O
 PQ_SIG_NAME_2_OID = {}
 PQ_SIG_NAME_2_OID.update(ML_DSA_NAME_2_OID)
 PQ_SIG_NAME_2_OID.update(SLH_DSA_NAME_2_OID)
+PQ_SIG_NAME_2_OID.update(FALCON_NAME_2_OID)
 
 PQ_SIG_OID_2_NAME = {y: x for x, y in PQ_SIG_NAME_2_OID.items()}
-
 
 PQ_NAME_2_OID = {}
 PQ_NAME_2_OID.update(PQ_SIG_NAME_2_OID)
 PQ_NAME_2_OID.update(PQ_KEM_NAME_2_OID)
-
-PQ_NAME_2_OID.update(FALCON_NAME_2_OID)
 
 KEY_WRAP_NAME_2_OID = {
     "aes128_wrap": rfc3565.id_aes128_wrap,
@@ -758,9 +805,13 @@ EXTENSION_NAME_2_OID = {
     "alt_sig_val": id_ce_altSignatureValue,
     "alt_spki": id_ce_subjectAltPublicKeyInfo,
     "crl": rfc5280.id_ce_cRLDistributionPoints,
-    "ocsp": rfc6960.id_pkix_ocsp,
     "sun_hybrid_alt_sig": id_altSignatureExt,
     "sun_hybrid_alt_pubkey": id_altSubPubKeyExt,
+    "idp": rfc5280.id_ce_issuingDistributionPoint,
+    "related_cert": id_relatedCert,
+    "private_key_usage_period": rfc5280.id_ce_privateKeyUsagePeriod,
+    "cert_policies": rfc5280.id_ce_certificatePolicies,
+    "ocsp_nonce": rfc9654.id_pkix_ocsp_nonce,
 }
 
 EXTENSION_OID_2_SPECS = {
@@ -772,13 +823,15 @@ EXTENSION_OID_2_SPECS = {
     rfc5280.id_ce_issuerAltName: rfc5280.IssuerAltName,
     rfc5280.id_ce_subjectKeyIdentifier: rfc5280.SubjectKeyIdentifier,
     rfc5280.id_ce_cRLDistributionPoints: rfc5280.CRLDistributionPoints,
+    rfc5280.id_ce_issuingDistributionPoint: rfc5280.IssuingDistributionPoint,
     rfc5280.id_pe_authorityInfoAccess: rfc5280.AuthorityInfoAccessSyntax,
+    rfc5280.id_ce_privateKeyUsagePeriod: rfc5280.PrivateKeyUsagePeriod,
+    rfc5280.id_ce_certificatePolicies: rfc5280.CertificatePolicies,
+    rfc9654.id_pkix_ocsp_nonce: rfc9654.Nonce,
 }
 
 ALL_SIG_ALG_OID_2_NAME = {}
-ALL_SIG_ALG_OID_2_NAME.update(MSG_SIG_ALG)
-ALL_SIG_ALG_OID_2_NAME.update(RSA_SHA3_OID_2_NAME)
-ALL_SIG_ALG_OID_2_NAME.update(ECDSA_SHA3_OID_2_NAME)
+ALL_SIG_ALG_OID_2_NAME.update(TRAD_SIG_OID_2_NAME)
 ALL_SIG_ALG_OID_2_NAME.update(PQ_SIG_OID_2_NAME)
 ALL_SIG_ALG_OID_2_NAME.update(STATEFUL_HASH_SIGNATURE_NAME_2_OID)
 ALL_SIG_ALG_OID_2_NAME.update(HYBRID_SIG_OID_2_NAME)
@@ -788,6 +841,9 @@ ALL_SIG_ALG_NAME_2_OID = {y: x for x, y in ALL_SIG_ALG_OID_2_NAME.items()}
 EXTENSION_OID_2_NAME = {y: x for x, y in EXTENSION_NAME_2_OID.items()}
 
 ALL_KNOWN_OIDS_2_NAME["id_ecPublicKey"] = rfc6664.id_ecPublicKey
+ALL_KNOWN_OIDS_2_NAME["id_ecDH"] = rfc6664.id_ecDH
+ALL_KNOWN_OIDS_2_NAME["id_ecMQV"] = rfc6664.id_ecMQV
+ALL_KNOWN_OIDS_2_NAME.update(ALL_SIG_ALG_OID_2_NAME)
 ALL_KNOWN_OIDS_2_NAME.update(EXTENSION_OID_2_NAME)
 ALL_KNOWN_OIDS_2_NAME.update(COMPOSITE_KEM06_OID_2_NAME)
 ALL_KNOWN_NAMES_2_OID = {y: x for x, y in ALL_KNOWN_OIDS_2_NAME.items()}
@@ -802,3 +858,81 @@ ENC_KEY_AGREEMENT_TYPES_OID_2_NAME = {
 ENC_KEY_AGREEMENT_TYPES_OID_2_NAME.update(CURVE_OID_2_NAME)
 
 ENC_KEY_AGREEMENT_TYPES_NAME_2_OID = {y: x for x, y in ENC_KEY_AGREEMENT_TYPES_OID_2_NAME.items()}
+
+
+OID_CM_NAME_MAP = {
+    "CN": rfc5280.id_at_commonName,
+    "L": rfc5280.id_at_localityName,
+    "ST": rfc5280.id_at_stateOrProvinceName,
+    "O": rfc5280.id_at_organizationName,
+    "OU": rfc5280.id_at_organizationalUnitName,
+    "C": rfc5280.id_at_countryName,
+    "STREET": id_at_streetAddress,
+    "DC": rfc5280.id_domainComponent,
+    "SN": rfc5280.id_at_serialNumber,
+    "T": rfc5280.id_at_title,
+    "GN": rfc5280.id_at_givenName,
+    "S": rfc5280.id_at_surname,
+    "I": rfc5280.id_at_initials,
+    "GQ": rfc5280.id_at_generationQualifier,
+    "DNQ": rfc5280.id_at_dnQualifier,
+    "PSEUDONYM": rfc5280.id_at_pseudonym,
+    "NAME": rfc5280.id_at_name,
+    "EMAIL": rfc5280.id_emailAddress,
+    "businessCategory": id_at_businessCategory,
+    "postalCode": id_at_postalCode,
+    "organizationIdentifier": id_at_organizationIdentifier,
+}
+
+PYASN1_CM_OID_2_NAME = {v: k for k, v in OID_CM_NAME_MAP.items()}
+
+CERT_ATTR_OID_2_STRUCTURE = {
+    # X.520 attributes
+    rfc5280.id_at_name: X520nameASN1(),
+    rfc5280.id_at_surname: X520nameASN1(),
+    rfc5280.id_at_givenName: X520nameASN1(),
+    rfc5280.id_at_initials: X520nameASN1(),
+    rfc5280.id_at_generationQualifier: X520nameASN1(),
+    rfc5280.id_at_commonName: X520CommonNameASN1(),
+    rfc5280.id_at_localityName: X520LocalityNameASN1(),
+    rfc5280.id_at_stateOrProvinceName: X520StateOrProvinceNameASN1(),
+    rfc5280.id_at_organizationName: X520OrganizationNameASN1(),
+    rfc5280.id_at_organizationalUnitName: X520OrganizationalUnitNameASN1(),
+    rfc5280.id_at_title: X520TitleASN1(),
+    rfc5280.id_at_dnQualifier: rfc5280.X520dnQualifier(),
+    rfc5280.id_at_countryName: X520countryNameASN1(),
+    rfc5280.id_at_serialNumber: X520SerialNumberASN1(),
+    rfc5280.id_at_pseudonym: X520PseudonymASN1(),
+    # Other commonly used identifiers
+    rfc5280.id_domainComponent: rfc5280.DomainComponent(),
+    rfc5280.id_emailAddress: EmailAddressASN1(),
+    id_at_businessCategory: X520BusinessCategoryASN1(),
+    id_at_postalCode: X520PostalCodeASN1(),
+    id_at_streetAddress: X520StreetAddressASN1(),
+    id_at_organizationIdentifier: X520OrganizationIdentifier(),
+}
+CERT_ATTR_OID_2_CORRECT_STRUCTURE = {
+    # X.520 attributes
+    rfc5280.id_at_name: rfc5280.X520name(),
+    rfc5280.id_at_surname: rfc5280.X520name(),
+    rfc5280.id_at_givenName: rfc5280.X520name(),
+    rfc5280.id_at_initials: rfc5280.X520name(),
+    rfc5280.id_at_generationQualifier: rfc5280.X520name(),
+    rfc5280.id_at_commonName: rfc5280.X520CommonName(),
+    rfc5280.id_at_localityName: rfc5280.X520LocalityName(),
+    rfc5280.id_at_stateOrProvinceName: rfc5280.X520StateOrProvinceName(),
+    rfc5280.id_at_organizationName: rfc5280.X520OrganizationName(),
+    rfc5280.id_at_organizationalUnitName: rfc5280.X520OrganizationalUnitName(),
+    rfc5280.id_at_title: rfc5280.X520Title(),
+    rfc5280.id_at_dnQualifier: rfc5280.X520dnQualifier(),
+    rfc5280.id_at_countryName: rfc5280.X520countryName(),
+    rfc5280.id_at_serialNumber: rfc5280.X520SerialNumber(),
+    rfc5280.id_at_pseudonym: rfc5280.X520Pseudonym(),
+    # Other commonly used identifiers
+    rfc5280.id_domainComponent: rfc5280.DomainComponent(),
+    rfc5280.id_emailAddress: rfc5280.EmailAddress(),
+    id_at_businessCategory: X520BusinessCategory(),
+    id_at_postalCode: X520PostalCode(),
+    id_at_streetAddress: X520StreetAddress(),
+    id_at_organizationIdentifier: X520OrganizationIdentifier(),
+}

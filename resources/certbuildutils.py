@@ -12,12 +12,12 @@ from typing import Any, List, Optional, Sequence, Set, Tuple, Union
 import pyasn1.error
 from cryptography import x509
 from pyasn1.codec.der import decoder, encoder
-from pyasn1.type import tag, univ, useful
-from pyasn1.type.base import Asn1Item, Asn1Type
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6402, rfc8954, rfc9480, rfc9481
+from pyasn1.type import base, tag, univ, useful
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5652, rfc6402, rfc6664, rfc8954, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2459 import AttributeValue
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.hybrid_structures import DeltaCertificateDescriptor, DeltaCertificateRequestValue
 from pq_logic.pq_utils import is_kem_public_key
 from pq_logic.tmp_oids import COMPOSITE_SIG03_HASH_OID_2_NAME, COMPOSITE_SIG04_HASH_OID_2_NAME
 from resources import (
@@ -35,17 +35,31 @@ from resources import (
     typingutils,
     utils,
 )
-from resources.asn1utils import get_set_bitstring_names
+from resources.asn1utils import get_all_asn1_named_value_names, get_set_bitstring_names, try_decode_pyasn1
+from resources.certextractutils import get_extension
+from resources.convertutils import pyasn1_time_obj_to_py_datetime, str_to_bytes
 from resources.copyasn1utils import copy_name
 from resources.exceptions import BadAsn1Data, BadCertTemplate
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
+    EXTENSION_NAME_2_OID,
     EXTENSION_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
 )
 from resources.prepare_alg_ids import prepare_alg_id, prepare_sig_alg_id  # noqa: F401
-from resources.typingutils import ExtensionsType, PrivateKey, PublicKey, SignKey, Strint, VerifyKey
+from resources.typingutils import (
+    CertRelatedType,
+    CertRequestType,
+    CRLFullNameType,
+    ExtensionsParseType,
+    GeneralNamesType,
+    PrivateKey,
+    PublicKey,
+    SignKey,
+    Strint,
+    VerifyKey,
+)
 
 
 # TODO verify if `utcTime` is allowed for CertTemplate, because is not allowed
@@ -180,10 +194,29 @@ def sign_csr(  # noqa D417 undocumented-param
     return csr
 
 
+def _parse_common_name(
+    common_name: Union[str, rfc9480.Name, rfc9480.CMPCertificate],
+    subject: bool = False,
+) -> rfc9480.Name:
+    """Parse the common name into a `Name` object."""
+    if isinstance(common_name, str):
+        return prepareutils.prepare_name(common_name)
+    elif isinstance(common_name, rfc9480.Name):
+        return common_name
+
+    elif isinstance(common_name, rfc9480.CMPCertificate):
+        # Extract the issuer name from the CMPCertificate
+        field = "subject" if subject else "issuer"
+        return common_name["tbsCertificate"][field]
+
+    else:
+        raise TypeError("common_name must be a string or rfc9480.Name object.")
+
+
 @keyword(name="Build CSR")
 def build_csr(  # noqa D417 undocumented-param
     signing_key: SignKey,
-    common_name: str = "CN=Hans Mustermann",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     extensions: Optional[rfc9480.Extensions] = None,
     hash_alg: Union[None, str] = "sha256",
     use_rsa_pss: bool = False,
@@ -194,6 +227,7 @@ def build_csr(  # noqa D417 undocumented-param
     use_pre_hash: bool = False,
     use_pre_hash_pub_key: Optional[bool] = None,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
+    **kwargs,
 ) -> rfc6402.CertificationRequest:
     """Build a PKCS#10 Certification Request (CSR) with the given parameters.
 
@@ -218,6 +252,10 @@ def build_csr(  # noqa D417 undocumented-param
         Defaults to `use_pre_hash`.
         - `spki`: Optional `SubjectPublicKeyInfo` object to populate the CSR with. Defaults to `None`.
 
+    **kwargs:
+    --------
+        - `version` (str, int): The version of the CSR. Defaults to `0`.
+
     Returns:
     -------
        - The constructed `CertificationRequest` object.
@@ -232,8 +270,8 @@ def build_csr(  # noqa D417 undocumented-param
     """
     csr = rfc6402.CertificationRequest()
 
-    csr["certificationRequestInfo"]["version"] = univ.Integer(0)
-    csr["certificationRequestInfo"]["subject"] = prepareutils.prepare_name(common_name)
+    csr["certificationRequestInfo"]["version"] = int(kwargs.get("version", 0))
+    csr["certificationRequestInfo"]["subject"] = _parse_common_name(common_name, subject=True)
 
     use_pre_hash_pub_key = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
     spki = spki or convertutils.subject_public_key_info_from_pubkey(
@@ -336,11 +374,16 @@ def generate_signed_csr(  # noqa D417 undocumented-param
     return csr, key  # type: ignore
 
 
-def _prepare_extended_key_usage(oids: List[univ.ObjectIdentifier], critical: bool = True) -> rfc5280.Extension:
+def _prepare_extended_key_usage(
+    oids: List[univ.ObjectIdentifier],
+    critical: bool = True,
+    add_trailing_data: bool = False,
+) -> rfc5280.Extension:
     """Generate pyasn1 `ExtendedKeyUsage` object with the provided list of OIDs.
 
     :param oids: A list of OIDs (strings) representing the allowed usages.
     :param critical: Whether the extension should be marked as critical. Defaults to `True`.
+    :param add_trailing_data: Whether to add trailing data to the extension value. Defaults to `False`.
     :return: Encoded ASN.1 ExtendedKeyUsage object.
     """
     extended_key_usage = rfc5280.ExtKeyUsageSyntax()
@@ -348,17 +391,20 @@ def _prepare_extended_key_usage(oids: List[univ.ObjectIdentifier], critical: boo
     for oid in oids:
         extended_key_usage.append(oid)
 
-    ext = rfc5280.Extension()
-    ext["extnID"] = rfc5280.id_ce_extKeyUsage
-    ext["critical"] = critical
-    ext["extnValue"] = univ.OctetString(encoder.encode(extended_key_usage))
-
-    return ext
+    return prepare_extension_structure(
+        rfc5280.id_ce_extKeyUsage,
+        value=extended_key_usage,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare SubjectKeyIdentifier Extension")
 def prepare_ski_extension(  # noqa D417 undocumented-param
-    key: Union[typingutils.PrivateKey, typingutils.PublicKey], critical: bool = True, invalid_ski: bool = False
+    key: Union[typingutils.PrivateKey, typingutils.PublicKey],
+    critical: bool = True,
+    invalid_ski: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare a SubjectKeyIdentifier (SKI) extension.
 
@@ -369,6 +415,7 @@ def prepare_ski_extension(  # noqa D417 undocumented-param
         - `key`: The public or private key to prepare the extension for.
         - `critical`: Whether the extension should be marked as critical. Defaults to `True`.
         - `invalid_ski`: Whether to prepare an invalid SKI value. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -380,20 +427,18 @@ def prepare_ski_extension(  # noqa D417 undocumented-param
     | ${extension}= | Prepare SubjectKeyIdentifier Extension | key=${private_key} | invalid_ski=True |
 
     """
-    if isinstance(key, typingutils.PrivateKey):
-        key = key.public_key()
-    ski: bytes = x509.SubjectKeyIdentifier.from_public_key(key).key_identifier  # type: ignore
-
+    ski = _compute_ski(key)
     if invalid_ski:
         ski = utils.manipulate_first_byte(ski)
 
     subject_key_identifier = rfc5280.SubjectKeyIdentifier(ski)
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_subjectKeyIdentifier
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(encoder.encode(subject_key_identifier))
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_subjectKeyIdentifier,
+        value=subject_key_identifier,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare AuthorityKeyIdentifier Extension")
@@ -407,6 +452,7 @@ def prepare_authority_key_identifier_extension(  # noqa D417 undocumented-param
     increase_serial: bool = False,
     ca_name: Optional[str] = None,
     general_names: Optional[List[rfc9480.GeneralName]] = None,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare an `AuthorityKeyIdentifier` extension.
 
@@ -424,6 +470,7 @@ def prepare_authority_key_identifier_extension(  # noqa D417 undocumented-param
         - `increase_serial`: Whether to increase the serial number by one. Defaults to `False`.
         - `ca_name`: The name of the CA. Defaults to `None`.
         - `general_names`: The general names to include in the extension. Defaults to `None`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -473,16 +520,20 @@ def prepare_authority_key_identifier_extension(  # noqa D417 undocumented-param
             _num += 1
         aki["authorityCertSerialNumber"] = _num
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_authorityKeyIdentifier
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(encoder.encode(aki))
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_authorityKeyIdentifier,
+        value=aki,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare BasicConstraints Extension")
 def prepare_basic_constraints_extension(  # noqa D417 undocumented-param
-    ca: bool = False, path_length: Optional[Strint] = None, critical: bool = True
+    ca: bool = False,
+    path_length: Optional[Strint] = None,
+    critical: bool = True,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare BasicConstraints extension.
 
@@ -491,6 +542,7 @@ def prepare_basic_constraints_extension(  # noqa D417 undocumented-param
         - `ca`: A boolean indicating if the certificate is a CA. Defaults to `False`.
         - `path_length`: The path length, which is allowed to be followed. Defaults to `None`.
         - `critical`: Whether the extension should be marked as critical. Defaults to `True`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -511,11 +563,12 @@ def prepare_basic_constraints_extension(  # noqa D417 undocumented-param
     if path_length is not None:
         basic_constraints["pathLenConstraint"] = int(path_length)
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_basicConstraints
-    extension["critical"] = critical
-    extension["extnValue"] = encoder.encode(basic_constraints)
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_basicConstraints,
+        value=basic_constraints,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare SubjectAltName Extension")
@@ -523,6 +576,7 @@ def prepare_subject_alt_name_extension(  # noqa D417 undocumented-param
     dns_names: Optional[str] = None,
     gen_names: Optional[Union[Sequence[rfc5280.GeneralName], rfc5280.GeneralName]] = None,
     critical: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare a `SubjectAltName` extension for a certificate.
 
@@ -534,6 +588,7 @@ def prepare_subject_alt_name_extension(  # noqa D417 undocumented-param
         (e.g., `"example.com,www.example.com,pki.example.com"`).
         - `gen_names`: A single or a list of `GeneralName` objects to include in the extension. Defaults to `None`.
         - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -566,13 +621,12 @@ def prepare_subject_alt_name_extension(  # noqa D417 undocumented-param
             names.extend(gen_names)
 
     san.extend(names)
-    der_data = encoder.encode(san)
-
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_subjectAltName
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(der_data)
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_subjectAltName,
+        value=san,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare IssuerAltName Extension")
@@ -580,6 +634,7 @@ def prepare_issuer_alt_name_extension(  # noqa D417 undocumented-param
     dns_name: Optional[str] = None,
     gen_names: Optional[Union[Sequence[rfc5280.GeneralName], rfc5280.GeneralName]] = None,
     critical: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare an `IssuerAltName` extension for a certificate.
 
@@ -591,6 +646,7 @@ def prepare_issuer_alt_name_extension(  # noqa D417 undocumented-param
         (e.g., `"example.com,www.example.com,pki.example.com"`). Defaults to `None`.
         - `gen_names`: A single or a list of `GeneralName` objects to include in the extension. Defaults to `None`.
         - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -622,23 +678,26 @@ def prepare_issuer_alt_name_extension(  # noqa D417 undocumented-param
     elif gen_names is not None:
         entries.extend(gen_names)
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_issuerAltName
-    extension["critical"] = critical
-    extension["extnValue"] = encoder.encode(entries)
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_issuerAltName,
+        value=entries,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 def _prepare_policy_constraints_extension(
     require_explicit_policy: Optional[int] = None,
     inhibit_policy_mapping: Optional[int] = None,
     critical: bool = True,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare a `PolicyConstraints` extension for a certificate.
 
     :param require_explicit_policy: The maximum number of additional certificates that may be issued.
     :param inhibit_policy_mapping: The maximum number of additional certificates that may be issued.
     :param critical: Whether the extension should be marked as critical. Defaults to `True`.
+    :param add_trailing_data: Whether to add trailing data to the extension value. Defaults to `False`.
     :return: The populated `pyasn1` `Extension` structure.
     """
     policy_constraints = rfc5280.PolicyConstraints()
@@ -649,16 +708,20 @@ def _prepare_policy_constraints_extension(
     if inhibit_policy_mapping is not None:
         policy_constraints["inhibitPolicyMapping"] = inhibit_policy_mapping
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_policyConstraints
-    extension["critical"] = critical
-    extension["extnValue"] = encoder.encode(policy_constraints)
-    return extension
+    return prepare_extension_structure(
+        rfc5280.id_ce_policyConstraints,
+        value=policy_constraints,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
 
 
 @keyword(name="Prepare KeyUsage Extension")
 def prepare_key_usage_extension(  # noqa D417 undocumented-param
-    key_usage: str, critical: bool = True, invalid_data: bool = False
+    key_usage: str,
+    critical: bool = True,
+    invalid_data: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare a `KeyUsage` extension for a `CMPCertificate`, `CSR` or `CertTemplate`.
 
@@ -668,6 +731,7 @@ def prepare_key_usage_extension(  # noqa D417 undocumented-param
           describes the intended purpose of the key (e.g., "digitalSignature", "keyEncipherment").
         - `critical`: Whether the extension should be marked as critical. Defaults to `True`.
         - `invalid_data`: Whether to prepare an invalid key usage value. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -690,15 +754,49 @@ def prepare_key_usage_extension(  # noqa D417 undocumented-param
                 f"Invalid key usage value: `{key_usage}`. Allowed are: {list(rfc5280.KeyUsage.namedValues.keys())}."
             ) from e
         der_key_usage = encoder.encode(usage)
-        data = univ.OctetString(der_key_usage)
+        data = der_key_usage
     else:
-        data = univ.OctetString(os.urandom(16))
+        data = os.urandom(16)
 
-    key_usage_ext = rfc5280.Extension()
-    key_usage_ext["extnID"] = rfc5280.id_ce_keyUsage
-    key_usage_ext["critical"] = critical
-    key_usage_ext["extnValue"] = data
-    return key_usage_ext
+    return prepare_extension_structure(
+        EXTENSION_NAME_2_OID["key_usage"],
+        value=data,
+        critical=critical,
+        add_rand_data=add_trailing_data,
+    )
+
+
+@not_keyword
+def prepare_extension_structure(
+    extension_oid: univ.ObjectIdentifier,
+    value: Union[bytes, str, base.Asn1Item],
+    critical: bool = False,
+    add_rand_data: bool = False,
+) -> rfc5280.Extension:
+    """Prepare a `pyasn1` Extension structure.
+
+    :param extension_oid: The OID of the extension to prepare.
+    :param value: The value of the extension. Defaults to `None`.
+    :param critical: Whether the extension should be marked as critical. Defaults to `False`.
+    :param add_rand_data: Whether to add random data to the extension value. Defaults to `False`.
+    :return: The populated `Extension` structure.
+    """
+    if isinstance(value, (bytes, str)):
+        extension_value = str_to_bytes(value)
+    elif isinstance(value, base.Asn1Item):
+        extension_value = encoder.encode(value)
+    else:
+        raise TypeError(f"`value` must be either bytes or a pyasn1 base.Asn1Item.Got: {type(value)}")
+
+    ext = rfc5280.Extension()
+    ext["extnID"] = extension_oid
+    ext["critical"] = critical
+
+    if add_rand_data:
+        extension_value += os.urandom(16)
+
+    ext["extnValue"] = univ.OctetString(extension_value)
+    return ext
 
 
 def prepare_extensions(  # noqa D417 undocumented-param
@@ -938,6 +1036,7 @@ def generate_certificate(
     days: int = 365,
     use_rsa_pss: bool = False,
     bad_sig: bool = False,
+    validity: Optional[rfc5280.Validity] = None,
 ) -> rfc9480.CMPCertificate:
     """Generate a complete `CMPCertificate` using specified parameters.
 
@@ -952,7 +1051,8 @@ def generate_certificate(
     :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
     :param days: The duration in days for which the certificate remains valid. Defaults to 365 days.
     :param bad_sig: Whether to generate a bad signature. Defaults to `False`.
-    :return: `rfc9480.CMPCertificate` object representing the created certificate.
+    :param validity: Optional `Validity` object to specify the certificate's validity period.
+    :return: `CMPCertificate` object representing the created certificate.
     """
     cert = rfc9480.CMPCertificate()
 
@@ -977,6 +1077,7 @@ def generate_certificate(
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
         days=int(days),
+        validity=validity,
     )
     cert["tbsCertificate"] = tbs_cert
     return sign_cert(
@@ -992,7 +1093,7 @@ def build_certificate(  # noqa D417 undocumented-param
     private_key: Optional[Union[str, PrivateKey]] = None,
     common_name: str = "CN=Hans",
     hash_alg: str = "sha256",
-    ski: bool = False,
+    include_ski: bool = False,
     ca_key: Optional[SignKey] = None,
     ca_cert: Optional[rfc9480.CMPCertificate] = None,
     **params,
@@ -1006,14 +1107,14 @@ def build_certificate(  # noqa D417 undocumented-param
         - `hash_alg`: The hash algorithm for signing, Defaults to `sha256`. If the key is (ed25519 or ed448),
                       it will be ignored.
         - `ski`: If `True`, includes the SubjectKeyIdentifier (ski) extension in the certificate. Defaults to `False`.
-        - `signing_key`: A optional private key used to sign the certificate.
-        - `issuer_cert`: The issuer’s certificate. If not provided, the certificate is self-signed.
+        - `ca_key`: A optional private key used to sign the certificate.
+        - `ca_cert`: The issuer’s certificate. If not provided, the certificate is self-signed.
 
     **params (Additional optional parameters for customization):
     -----------------------------------------------------------
         - `serial_number` (int, str): The serial number for the certificate. If omitted, a random number is generated.
         - `days` (int, str): Number of days for certificate validity, starting from `not_valid_before`. Defaults to 365.
-        - `validity` (rfc5280.Validity): Start date of the certificate’s validity. Defaults to now.
+        - `validity` (Validity): Start date of the certificate’s validity. Defaults to now.
         - `is_ca` (bool): Indicates if the certificate is for a CA (Certificate Authority). Defaults to `False`.
         - `path_length` (int): The maximum path length for CA certificates.
         - `key_alg` (str): Algorithm for key generation (e.g., "ecdsa"). Defaults to `ec`.
@@ -1047,9 +1148,11 @@ def build_certificate(  # noqa D417 undocumented-param
     else:
         cert_key = private_key
 
-    ski_key = cert_key.public_key() if ski else None  # type: ignore
+    ski_key = cert_key.public_key() if include_ski else None  # type: ignore
 
-    ext = params.get("key_usage") or ski or params.get("eku") or params.get("is_ca") or params.get("path_length")
+    ext = (
+        params.get("key_usage") or include_ski or params.get("eku") or params.get("is_ca") or params.get("path_length")
+    )
     extensions = params.get("extensions")
     if ext and extensions is None:
         extensions = prepare_extensions(
@@ -1073,6 +1176,7 @@ def build_certificate(  # noqa D417 undocumented-param
         use_rsa_pss=params.get("use_rsa_pss", False),
         days=int(params.get("days", 365)),
         bad_sig=params.get("bad_sig", False),
+        validity=params.get("validity"),
     )
     return certificate, cert_key
 
@@ -1174,20 +1278,22 @@ def _prepare_extensions_for_cert_template(
     Defaults to False.
     :return: The modified `CertTemplate` object with the `extensions` field populated if `exclude` is False.
     """
-    if cert is not None:
-        if extensions is not None:
-            if include_cert_extensions:
-                extensions.extend(cert["tbsCertificate"]["extensions"])
-        else:
-            extensions = cert["tbsCertificate"]["extensions"]
-
-    if extensions is None or exclude:
+    if exclude:
         return cert_template
 
-    extensions_field = rfc5280.Extensions().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 9))
-    for ext in extensions:
-        extensions_field.append(ext)
-    cert_template.setComponentByName("extensions", extensions_field)
+    if extensions is None:
+        extensions = rfc9480.Extensions()
+
+    if cert is not None and include_cert_extensions:
+        extensions.extend(cert["tbsCertificate"]["extensions"])
+
+    if extensions is None:
+        return cert_template
+
+    if len(extensions) == 0:
+        return cert_template
+
+    cert_template["extensions"].extend(extensions)
     return cert_template
 
 
@@ -1201,7 +1307,7 @@ def prepare_cert_template(  # noqa D417 undocumented-param
     serial_number: Optional[typingutils.Strint] = None,
     version: Optional[typingutils.Strint] = None,
     validity: Optional[rfc5280.Validity] = None,
-    extensions: Optional[ExtensionsType] = None,
+    extensions: Optional[ExtensionsParseType] = None,
     for_kga: bool = False,
     sign_alg: Optional[rfc9480.AlgorithmIdentifier] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
@@ -1548,9 +1654,27 @@ def default_validity(
         return prepare_validity(not_before, not_after)
 
     # otherwise will OpenSSL say: "certificate is not yet valid"
-    not_before = datetime.now() - timedelta(days=1)
+    not_before = datetime.now(timezone.utc) - timedelta(days=1)
     not_after = not_before + timedelta(days=days)
     return prepare_validity(not_before, not_after)
+
+
+def _validate_name(
+    name: rfc9480.Name,
+    validate_data_types: bool = True,
+) -> None:
+    """Validate the type of an relative distinguished name (RDN).
+
+    :param name: The RDN to validate.
+    :param validate_data_types: Whether to validate the data types of the RDN components. Defaults to `True`.
+    :raises BadAsn1Data: If the RDN is not of the expected data type.
+    """
+    if not name.isValue:
+        return
+
+    if validate_data_types:
+        for rel_dis_name in name["rdnSequence"]:
+            prepareutils.validate_relative_name_for_correct_data_types(rel_dis_name)
 
 
 @keyword(name="Build Cert From CertTemplate")
@@ -1559,7 +1683,6 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
     ca_cert: rfc9480.CMPCertificate,
     ca_key: SignKey,
     hash_alg: Optional[str] = "sha256",
-    for_crr_request: bool = False,
     **kwargs,
 ) -> rfc9480.CMPCertificate:
     """Build a certificate from a CertTemplate.
@@ -1583,6 +1706,8 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
         - `alt_use_rsa_pss`: Whether to use RSA-PSS with the alternative key. Defaults to `False`.
         - `extensions`: Extensions to include in the certificate. Defaults to `None`.
         (as an example for OCSP, CRL or etc.)
+        - `validate_rel_dis_name_data_type`: Whether to validate the relative distinguished name data type.
+        Defaults to `True`.
 
     Returns:
     -------
@@ -1597,6 +1722,8 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
     | ${cert}= | Build Cert From CertTemplate | cert_template=${cert_template} | ca_cert=${ca_cert} | ca_key=${ca_key} |
 
     """
+    _validate_name(cert_template["subject"], validate_data_types=kwargs.get("validate_rel_dis_name_data_type", True))
+
     tbs_certs = prepare_tbs_certificate_from_template(
         cert_template=cert_template,
         issuer=ca_cert["tbsCertificate"]["subject"],
@@ -1605,7 +1732,6 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
         use_pre_hash=kwargs.get("use_pre_hash", False),
         include_extensions=False,
-        for_crr_request=for_crr_request,
     )
 
     pub_key = ca_key.public_key()
@@ -1641,17 +1767,9 @@ def _prepare_shared_tbs_cert(
     """
     tbs_cert = rfc5280.TBSCertificate()
 
-    if isinstance(subject, rfc9480.Name):
-        subject = subject["rdnSequence"]
-    else:
-        subject = prepareutils.prepare_name(common_name=subject)["rdnSequence"]
+    tbs_cert["subject"]["rdnSequence"] = _parse_common_name(subject)["rdnSequence"]
+    tbs_cert["issuer"] = _parse_common_name(issuer, subject=True)
 
-    tbs_cert["subject"]["rdnSequence"] = subject
-
-    if isinstance(issuer, rfc9480.CMPCertificate):
-        issuer = issuer["tbsCertificate"]["subject"]
-
-    tbs_cert["issuer"] = issuer
     if serial_number is None:
         serial_number = x509.random_serial_number()
     tbs_cert["serialNumber"] = int(serial_number)
@@ -1684,7 +1802,6 @@ def prepare_tbs_certificate_from_template(
     use_pre_hash: bool = False,
     include_extensions: bool = False,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
-    for_crr_request: bool = False,
 ) -> rfc5280.TBSCertificate:
     """Prepare a `TBSCertificate` structure from a `CertTemplate`.
 
@@ -1698,7 +1815,6 @@ def prepare_tbs_certificate_from_template(
     :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :param include_extensions: Whether to include the extensions from the `CertTemplate`. Defaults to `False`.
     :param spki: The `SubjectPublicKeyInfo` object to include in the `TBSCertificate`. Defaults to `None`.
-    :param for_crr_request: : Whether to build the certificate for a cross-certification request. Defaults to `False`.
     :return: The prepared `TBSCertificate` structure.
     """
     if serial_number is None:
@@ -1714,13 +1830,9 @@ def prepare_tbs_certificate_from_template(
         public_key=spki or cert_template["publicKey"],
     )
 
-    if not for_crr_request:
-        tbs_cert["signature"] = prepare_alg_ids.prepare_sig_alg_id(
-            signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
-        )
-    else:
-        tbs_cert["signature"]["algorithm"] = cert_template["signingAlg"]["algorithm"]
-        tbs_cert["signature"]["parameters"] = cert_template["signingAlg"]["parameters"]
+    tbs_cert["signature"] = prepare_alg_ids.prepare_sig_alg_id(
+        signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+    )
 
     if spki is not None:
         public_key = keyutils.load_public_key_from_spki(spki)
@@ -1781,14 +1893,66 @@ def _sign_cert(
     )
 
 
+def _process_csr_extensions(
+    csr: rfc6402.CertificationRequest,
+    public_key: PublicKey,
+    ca_cert: rfc9480.CMPCertificate,
+    extensions: Optional[ExtensionsParseType],
+    include_csr_extensions: bool,
+    include_ski: bool = True,
+    **kwargs,
+) -> rfc9480.Extensions:
+    """Process the extension for the CSR with the parsed extensions.
+
+    :param csr: The CSR to process.
+    :param public_key: The public key to use for the `SKI` extensions.
+    :param extensions: The extensions to process.
+    :param include_csr_extensions: Whether to include the CSR extensions.
+    :param include_ski: Whether to include the `SKI` extension. Defaults to `True`.
+    """
+    out_extensions = rfc9480.Extensions()
+    if extensions is None:
+        extensions = rfc9480.Extensions()
+    elif isinstance(extensions, rfc5280.Extension):
+        extensions = [extensions]
+
+    out_extensions.extend(extensions)
+
+    if include_csr_extensions:
+        if kwargs.get("ca_pub_key") is None:
+            ca_pub_key = keyutils.load_public_key_from_spki(ca_cert["tbsCertificate"]["subjectPublicKeyInfo"])
+            ca_pub_key = convertutils.ensure_is_verify_key(ca_pub_key)
+        else:
+            ca_pub_key = kwargs["ca_pub_key"]
+
+        return check_extensions(
+            cert_template=csr,
+            ca_cert=ca_cert,
+            ca_public_key=ca_pub_key,
+            other_extensions=out_extensions,
+            for_end_entity=kwargs.get("for_end_entity"),
+            allow_unknown_extns=kwargs.get("allow_unknown_extns", False),
+            allow_basic_con_non_crit=kwargs.get("allow_basic_con_non_crit", False),
+        )
+
+    if include_ski:
+        ski_extn = prepare_ski_extension(
+            key=public_key,
+            critical=kwargs.get("ski_critical", False),
+        )
+        out_extensions.append(ski_extn)
+
+    return out_extensions
+
+
 @keyword(name="Build Cert from CSR")
 def build_cert_from_csr(  # noqa D417 undocumented-param
     csr: rfc6402.CertificationRequest,
     ca_key: SignKey,
-    extensions: Optional[Sequence[rfc5280.Extension]] = None,
+    ca_cert: rfc9480.CMPCertificate,
+    extensions: Optional[ExtensionsParseType] = None,
     validity: Optional[rfc5280.Validity] = None,
     issuer: Optional[rfc9480.Name] = None,
-    ca_cert: Optional[rfc9480.CMPCertificate] = None,
     include_csr_extensions: bool = True,
     **kwargs,
 ) -> rfc9480.CMPCertificate:
@@ -1798,10 +1962,10 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
     ---------
         - `csr`: The CSR to build the certificate from.
         - `ca_key`: The CA private key.
+        - `ca_cert`: The CA certificate.
         - `extensions`: Optional extensions to include in the certificate. Defaults to `None`.
         - `validity`: Optional validity period for the certificate. Defaults to `None`.
         - `issuer`: The issuer of the certificate. Defaults to `None`.
-        - `ca_cert`: The CA certificate. Defaults to `None`.
         - `include_extensions`: Whether to include the extensions from the CSR. Defaults to `True`.
 
     **kwargs:
@@ -1816,6 +1980,8 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         - `alt_hash_alg`: The hash algorithm to use for the alternative signing key. Defaults to `sha256`.
         - `alt_use_rsa_pss`: Whether to use RSA-PSS for the alternative signing key. Defaults to `False`.
         - `alt_sign_key`: Optional alternative signing key to use. Defaults to `None`.
+        - `validate_rel_dis_name_data_type`: Whether to validate the relative distinguished name
+        data. Defaults to `True`.
 
     Returns:
     -------
@@ -1843,6 +2009,11 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
     if issuer is None:
         raise ValueError("The issuer is not set and can not be derived from the CSR.")
 
+    _validate_name(
+        csr["certificationRequestInfo"]["subject"],
+        validate_data_types=kwargs.get("validate_rel_dis_name_data_type", True),
+    )
+
     tbs_cert = _prepare_shared_tbs_cert(
         issuer=issuer,
         subject=csr["certificationRequestInfo"]["subject"],
@@ -1858,13 +2029,19 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
         use_pre_hash=kwargs.get("use_pre_hash", False),
     )
-    if include_csr_extensions:
-        extn = certextractutils.extract_extensions_from_csr(csr=csr)
-        if extensions is not None and extn is not None:
-            tbs_cert["extensions"].extend(extensions)
 
-    if extensions is not None:
-        tbs_cert["extensions"].extend(extensions)
+    public_key = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
+
+    out_extensions = _process_csr_extensions(
+        csr=csr,
+        ca_cert=ca_cert,
+        public_key=public_key,
+        extensions=extensions,
+        include_csr_extensions=include_csr_extensions,
+        **kwargs,
+    )
+    if out_extensions.isValue:
+        tbs_cert["extensions"].extend(out_extensions)
 
     cert = rfc9480.CMPCertificate()
     cert["tbsCertificate"] = tbs_cert
@@ -1939,16 +2116,17 @@ def prepare_tbs_certificate(
 @keyword(name="Prepare OCSPNoCheck Extension")
 def prepare_ocsp_nocheck_extension(  # noqa D417 undocumented-param
     critical: bool = False,
-    add_rand_val: bool = False,
+    invalid_data: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare an OCSP No Check extension for a certificate.
 
     Arguments:
     ---------
         - `critical`: Whether the extension is marked as critical or not. Defaults to `False`.
-        - `add_rand_val`: Whether to add a random value to the extension, to create a invalid \
-        extension (**MUST** be NULL). Defaults to `False`.
-
+        - `invalid_data`: Whether to modify the value for the extension, the value **MUST** be NULL.
+        Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
 
     Returns:
     -------
@@ -1957,14 +2135,20 @@ def prepare_ocsp_nocheck_extension(  # noqa D417 undocumented-param
     Examples:
     --------
     | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | True |
-    | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | critical=True | add_rand_val=True |
+    | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | critical=True | True |
+    | ${ocsp_nocheck_ext}= | Prepare OCSPNoCheck Extension | critical=True | add_trailing_data=True |
 
     """
-    return _prepare_extension(
-        oid=rfc8954.id_pkix_ocsp_nocheck,
+    value = asn1utils.encode_to_der(univ.Null(""))
+
+    if invalid_data:
+        value = utils.manipulate_first_byte(value)
+
+    return prepare_extension_structure(
+        extension_oid=rfc8954.id_pkix_ocsp_nocheck,
+        value=value,
         critical=critical,
-        value=univ.Null(""),
-        add_rand_val=add_rand_val,
+        add_rand_data=add_trailing_data,
     )
 
 
@@ -1972,6 +2156,7 @@ def prepare_ocsp_nocheck_extension(  # noqa D417 undocumented-param
 def prepare_ocsp_extension(  # noqa D417 undocumented-param
     ocsp_url: Optional[str],
     critical: bool = False,
+    add_trailing_data: bool = False,
 ) -> rfc5280.Extension:
     """Prepare an OCSP extension for a certificate.
 
@@ -1979,9 +2164,11 @@ def prepare_ocsp_extension(  # noqa D417 undocumented-param
     ---------
         - `ocsp_url`: The URL of the OCSP responder. Defaults to `None`.
         - `critical`: Whether the extension is marked as critical or not. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension. Defaults to `False`.
+
+    -------
 
     Returns:
-    -------
         - The populated `Extension` object.
 
     Examples:
@@ -1996,83 +2183,106 @@ def prepare_ocsp_extension(  # noqa D417 undocumented-param
         access_des["accessLocation"] = prepareutils.prepare_general_name(name_type="uri", name_str=ocsp_url)
         authority_info_access.append(access_des)
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_pe_authorityInfoAccess
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(encoder.encode(authority_info_access))
-    return extension
-
-
-def _prepare_extension(
-    oid: univ.ObjectIdentifier,
-    critical: bool = False,
-    value: Optional[Union[bytes, Asn1Item]] = None,
-    add_rand_val: bool = False,
-) -> rfc5280.Extension:
-    """Prepare an extension with the given OID.
-
-    :param oid: The OID of the extension.
-    :param critical: Whether the extension is marked as critical or not. Defaults to `False`.
-    :param value: The value of the extension. Defaults to `None`.
-    :param add_rand_val: Whether to add a random value to the extension. Defaults to `False`.
-    """
-    if not add_rand_val and value is None:
-        raise ValueError("Either a value or the add_rand_val flag must be set.")
-
-    if value is None:
-        data = b""
-    elif isinstance(value, Asn1Item):
-        data = encoder.encode(value)
-    else:
-        data = value
-
-    if add_rand_val:
-        data += os.urandom(16)
-
-    extension = rfc5280.Extension()
-    extension["extnID"] = oid
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(value)
-    return extension
-
-
-# TODO implement with pyasn1.
-
-
-@not_keyword
-def prepare_crl_distribution_point_extension(
-    crl_url: str,
-    critical: bool = False,
-) -> rfc5280.Extension:
-    """Prepare a CRL distribution point extension.
-
-    :param crl_url: The URL of the CRL distribution point.
-    :param critical: Whether the extension is marked as critical or not. Defaults to `False`.
-    :return: The prepared `CRLDistributionPoints` extension.
-    """
-    crl_dp = x509.CRLDistributionPoints(
-        [
-            x509.DistributionPoint(
-                full_name=[x509.UniformResourceIdentifier(crl_url)],
-                relative_name=None,
-                reasons=None,
-                crl_issuer=None,
-            )
-        ]
+    return prepare_extension_structure(
+        extension_oid=rfc5280.id_pe_authorityInfoAccess,
+        value=authority_info_access,
+        critical=critical,
+        add_rand_data=add_trailing_data,
     )
 
-    extension = rfc5280.Extension()
-    extension["extnID"] = rfc5280.id_ce_cRLDistributionPoints
-    extension["critical"] = critical
-    extension["extnValue"] = univ.OctetString(crl_dp.public_bytes())
-    return extension
+
+def _prepare_crl_distribution_points(
+    distribution_points: Optional[Union[Sequence[rfc5280.DistributionPoint], rfc5280.DistributionPoint]] = None,
+    crl_issuers: Optional[GeneralNamesType] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+) -> rfc5280.CRLDistributionPoints:
+    """Prepare a CRL Distribution Point.
+
+    :param distribution_points: A single or list of DistributionPoint objects.
+    :param crl_issuers: CRL issuer name.
+    :param full_name: List of GeneralName objects for the full name.
+    :param relative_name: List of RelativeDistinguishedName objects for the relative name.
+    :return: The populated `CRLDistributionPoints` structure.
+    """
+    crl_distribution_point = rfc5280.CRLDistributionPoints()
+
+    if distribution_points is None:
+        if crl_issuers is None and full_name is None and relative_name is None:
+            raise ValueError("At least one of `crl_issuers`, `full_name`, or `relative_name` must be provided.")
+
+    if distribution_points is not None:
+        if isinstance(distribution_points, rfc5280.DistributionPoint):
+            distribution_points = [distribution_points]
+
+        for distribution_point in distribution_points:
+            crl_distribution_point.append(distribution_point)
+
+    if crl_issuers is not None or full_name is not None or relative_name is not None:
+        distribution_point = prepare_distribution_point(
+            crl_issuers=crl_issuers, full_name=full_name, relative_name=relative_name
+        )
+        crl_distribution_point.append(distribution_point)
+
+    return crl_distribution_point
+
+
+@keyword(name="Prepare CRLDistributionPoint Extension")
+def prepare_crl_distribution_point_extension(  # noqa: D417 undocumented-param
+    distribution_points: Optional[Union[Sequence[rfc5280.DistributionPoint], rfc5280.DistributionPoint]] = None,
+    crl_issuers: Optional[GeneralNamesType] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+    critical: bool = False,
+    add_trailing_data: bool = False,
+) -> rfc5280.Extension:
+    """Prepare a CRL Distribution Point extension.
+
+    Arguments:
+    ---------
+        - `distribution_points`: A single or list of DistributionPoint objects.
+        - `crl_issuers`: CRL issuer name.
+        - `full_name`: List of GeneralName objects for the full name.
+        - `relative_name`: A RelativeDistinguishedName objects for the relative name.
+        - `critical`: Whether the extension is critical. Defaults to `False`.
+        - `add_trailing_data`: Whether to add trailing data to the extension value. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure for the CRLDistributionPoints.
+
+    Raises:
+    ------
+        - ValueError: If both `full_name` and `relative_name` are provided.
+        - ValueError: If `distribution_points` is not provided and `crl_issuers`, `full_name`, \
+        or `relative_name` are not provided.
+
+    Examples:
+    --------
+    | ${crl_dp_ext} | Prepare CRLDistributionPoint Extension | crl_issuers="CN=Issuer" |
+    | ${crl_dp_ext} | Prepare CRLDistributionPoint Extension | full_name="CN=FullName" |
+
+    """
+    crl_distribution_point = _prepare_crl_distribution_points(
+        distribution_points=distribution_points,
+        crl_issuers=crl_issuers,
+        full_name=full_name,
+        relative_name=relative_name,
+    )
+
+    return prepare_extension_structure(
+        extension_oid=EXTENSION_NAME_2_OID["crl"],
+        critical=critical,
+        value=crl_distribution_point,
+        add_rand_data=add_trailing_data,
+    )
 
 
 def _try_decode_extension_val(
     extensions: rfc9480.Extensions,
     extn_name: str,
     name: str,
-) -> Optional[Union[bytes, Asn1Type]]:
+) -> Optional[Union[bytes, base.Asn1Item]]:
     """Try to decode the extension value.
 
     :param extensions: The extensions to extract the value from.
@@ -2149,10 +2359,15 @@ def _check_x_ecc_key_usage(key_usages: Set[str], name: str):
         raise BadCertTemplate(f"The {name} `KeyUsage` can only be: encipherOnly or decipherOnly")
 
 
-def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
+def _verify_key_usage(cert_template: CertRelatedType) -> Optional[rfc5280.Extension]:
     """Verify the key usage."""
+    extensions, spki = parse_extension_and_public_key(cert_template)
+
+    if extensions is None:
+        return None
+
     key_usage = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
+        extensions=extensions,
         extn_name="key_usage",
         name="KeyUsage",
     )
@@ -2163,13 +2378,21 @@ def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.E
         return None
 
     key_usages = asn1utils.get_set_bitstring_names(key_usage).split(", ")  # type: ignore
-    public_key = keyutils.load_public_key_from_cert_template(cert_template)
 
-    if public_key is None:
+    if not spki.isValue:
         raise ValueError(
             "The public key could not be extracted from the certificate template."
             "The `KeyUsage` extension cannot be verified."
         )
+
+    public_key = keyutils.load_public_key_from_spki(spki)
+
+    if spki["algorithm"]["algorithm"] == rfc6664.id_ecDH:
+        name = "ECDH"
+    elif spki["algorithm"]["algorithm"] == rfc6664.id_ecMQV:
+        name = "ECMQV"
+    else:
+        name = keyutils.get_key_name(public_key)
 
     if hasattr(public_key, "name"):
         _name = public_key.name  # type: ignore
@@ -2181,7 +2404,6 @@ def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.E
         else:
             raise ValueError(f"Unknown key type: {_name}, for verifying the key usage.")
     else:
-        name = keyutils.get_key_name(public_key)
         if name in ["ed448", "ed25519", "dsa"]:
             _check_sig_key(set(key_usages), name)
 
@@ -2190,7 +2412,7 @@ def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.E
 
         elif name in ["rsa"]:
             pass
-        elif name in ["x25519", "x448"]:
+        elif name in ["x25519", "x448", "id_ecMQV", "id_ecDH"]:
             _check_x_ecc_key_usage(set(key_usages), name)
 
         else:
@@ -2202,45 +2424,17 @@ def _verify_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.E
     )
 
 
-def _verify_subject_key_identifier(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
-    """Verify the subject key identifier."""
-    tmp = rfc9480.CMPCertificate()
-    tmp["tbsCertificate"]["extensions"].extend(cert_template["extensions"])
-
-    ski = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
-        extn_name="ski",
-        name="SubjectKeyIdentifier",
-    )
-    ski: bytes
-
-    public_key = keyutils.load_public_key_from_cert_template(cert_template, must_be_present=True)
-    if ski is None:
-        logging.info("Subject key identifier extension was not present in the parsed certificate.")
-        return None
-
-    computed_ski = x509.SubjectKeyIdentifier.from_public_key(public_key)  # type: ignore
-    computed_ski = computed_ski.key_identifier
-
-    if computed_ski != ski:
-        raise BadCertTemplate("The `SubjectKeyIdentifier` value did not match the computed value.")
-
-    if public_key is None:
-        raise ValueError(
-            "The public key could not be extracted from the certificate template."
-            "The `SubjectKeyIdentifier` extension cannot be computed."
-        )
-
-    return prepare_ski_extension(
-        key=public_key,
-        critical=False,
-    )
-
-
 def _verify_authority_key_identifier(
-    cert_template: rfc9480.CertTemplate, ca_public_key: VerifyKey, ca_cert: Optional[rfc9480.CMPCertificate] = None
+    cert_template: CertRequestType, ca_public_key: VerifyKey, ca_cert: Optional[rfc9480.CMPCertificate] = None
 ) -> Optional[rfc5280.Extension]:
     """Verify the authority key identifier."""
+    extensions, _ = parse_extension_and_public_key(cert_template)
+    if extensions is None:
+        return prepare_authority_key_identifier_extension(
+            ca_key=ca_public_key,
+            critical=False,
+        )
+
     aki = _try_decode_extension_val(  # type: ignore
         extensions=cert_template["extensions"],
         extn_name="aki",
@@ -2294,7 +2488,7 @@ def _verify_authority_key_identifier(
     )
 
 
-def _verify_extended_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
+def _verify_extended_key_usage(cert_template: CertRequestType) -> Optional[rfc5280.Extension]:
     """Verify the extended key usage.
 
     Checks if the extended key usage is present and if it is validly built.
@@ -2303,19 +2497,23 @@ def _verify_extended_key_usage(cert_template: rfc9480.CertTemplate) -> Optional[
     :return: The `ExtendedKeyUsage` extension if present and valid.
     :raises BadCertTemplate: If the `ExtendedKeyUsage` extension is not valid.
     """
+    extensions, _ = parse_extension_and_public_key(cert_template)
+    if extensions is None:
+        return None
+
     # TODO update to validate the `EKU` OIDs.
     # verifies if the structure is valid.
     _ = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
+        extensions=extensions,
         extn_name="eku",
         name="ExtendedKeyUsage",
     )
 
-    return certextractutils.get_extension(cert_template["extensions"], rfc5280.id_ce_extKeyUsage)
+    return certextractutils.get_extension(extensions, rfc5280.id_ce_extKeyUsage)
 
 
 def verify_ca_basic_constraints(  # noqa D417 undocumented-param
-    cert_template: Union[rfc9480.CertTemplate, rfc9480.Extensions], allow_non_crit: bool = True, set_crit: bool = False
+    cert_template: Union[CertRequestType, rfc9480.Extensions], allow_non_crit: bool = True, set_crit: bool = False
 ) -> Optional[rfc5280.Extension]:
     """Verify the basic constraints for a CA certificate.
 
@@ -2347,8 +2545,17 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
     | ${basic_con}= | Verify CA Basic Constraints | cert_template=${extensions} | allow_non_crit=False |
 
     """
+    if isinstance(cert_template, rfc9480.Extensions):
+        extensions = cert_template
+        spki = None
+    else:
+        extensions, spki = parse_extension_and_public_key(cert_template)
+
+    if extensions is None:
+        return None
+
     basic_con = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"], extn_name="basic_constraints", name="BasicConstraints"
+        extensions=extensions, extn_name="basic_constraints", name="BasicConstraints"
     )
     basic_con: Optional[rfc5280.BasicConstraints]
 
@@ -2375,10 +2582,10 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
         if not is_ca and path_len > 0:
             raise BadCertTemplate("A end entity certificate can not have a path length greater 0 set.")
 
-    if isinstance(cert_template, rfc9480.CertTemplate):
-        if cert_template["publicKey"].isValue:
+    if isinstance(cert_template, CertRelatedType):
+        if spki.isValue:  # type: ignore
             is_ca = bool(basic_con["cA"])
-            oid = cert_template["publicKey"]["algorithm"]["algorithm"]
+            oid = spki["algorithm"]["algorithm"]  # type: ignore
             if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
                 if is_ca:
                     _name = may_return_oid_to_name(oid)
@@ -2393,7 +2600,7 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
                         f"A CA certificate can not have a Composite Signature PreHash algorithm.OID: {_name}"
                     )
     extn = certextractutils.get_extension(
-        cert_template["extensions"],  # type: ignore
+        extensions,  # type: ignore
         rfc5280.id_ce_basicConstraints,
     )
     extn: rfc5280.Extension
@@ -2403,30 +2610,31 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
     if not allow_non_crit and not extn["critical"]:
         raise BadCertTemplate("The `BasicConstraints` extension must be marked as critical.")
 
-    return certextractutils.get_extension(cert_template["extensions"], rfc5280.id_ce_basicConstraints)
+    return certextractutils.get_extension(extensions, rfc5280.id_ce_basicConstraints)
 
 
-def _verify_subject_alt_name(cert_template: rfc9480.CertTemplate) -> Optional[rfc5280.Extension]:
-    """
-    Verify the SubjectAltName extension inside a certificate template.
-
-    This function searches for the SubjectAltName extension (identified by the OID
-    rfc5280.id_ce_subjectAltName) within the certificate template's extensions.
-    If found, it decodes its DER-encoded value using Cryptography's x509.load_der_x509_extension,
-    verifies that the extension is a SubjectAlternativeName, and checks that it contains at least
-    one DNSName.
+def _verify_subject_alt_name(cert_template: CertRelatedType) -> Optional[rfc5280.Extension]:
+    """Verify the SubjectAltName extension inside a certificate template.
 
     :param cert_template: The certificate template containing the extensions.
     :return: The validated SubjectAltName extension if present and valid, otherwise None.
     :raises BadCertTemplate: If the extension is present but cannot be decoded or
                              does not contain valid DNSName entries.
     """
+    subject = parse_subject_from_cert_related_type(cert_template)
+    extensions, _ = parse_extension_and_public_key(cert_template)
     result = compareutils.is_null_dn(
-        cert_template["subject"],
+        subject,
     )
 
+    if result and extensions is None:
+        raise BadCertTemplate("The `SubjectAltName` extension must be present, if the subject is set to `Null-DN`.")
+
+    if extensions is None:
+        return None
+
     sub_alt_name = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
+        extensions=extensions,
         extn_name="san",
         name="SubjectAltName",
     )
@@ -2434,7 +2642,7 @@ def _verify_subject_alt_name(cert_template: rfc9480.CertTemplate) -> Optional[rf
 
     if sub_alt_name is None and result:
         raise BadCertTemplate(
-            "The `SubjectAltName` extension is not present in the certificate template"
+            "The `SubjectAltName` extension is not present in the certificate template "
             "and the subject is set to `Null-DN`."
         )
 
@@ -2472,10 +2680,14 @@ def _contains_unknown_extensions(extensions: rfc9480.Extensions) -> bool:
 
 
 @not_keyword
-def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional[bool] = None) -> None:
+def check_logic_extensions(cert_template: CertRequestType, for_ee: Optional[bool] = None) -> None:
     """Validate the extensions with some more logic related checks."""
+    extensions, _ = parse_extension_and_public_key(cert_template)
+    if extensions is None:
+        return
+
     key_usage = _try_decode_extension_val(  # type: ignore
-        extensions=cert_template["extensions"],
+        extensions=extensions,
         extn_name="key_usage",
         name="KeyUsage",
     )
@@ -2488,7 +2700,7 @@ def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional
                 raise BadCertTemplate("")
 
         basic_con = _try_decode_extension_val(  # type: ignore
-            extensions=cert_template["extensions"], extn_name="basic_constraints", name="BasicConstraints"
+            extensions=extensions, extn_name="basic_constraints", name="BasicConstraints"
         )
         basic_con: Optional[rfc5280.BasicConstraints]
 
@@ -2498,7 +2710,7 @@ def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional
 
     elif for_ee:
         basic_con = _try_decode_extension_val(  # type: ignore
-            extensions=cert_template["extensions"], extn_name="basic_constraints", name="BasicConstraints"
+            extensions=extensions, extn_name="basic_constraints", name="BasicConstraints"
         )
         basic_con: Optional[rfc5280.BasicConstraints]
 
@@ -2513,11 +2725,45 @@ def check_logic_extensions(cert_template: rfc4211.CertTemplate, for_ee: Optional
             raise BadCertTemplate("")
 
 
+@not_keyword
+def extensions_contains_extn_id(
+    extn_id: univ.ObjectIdentifier,
+    extensions: Union[Sequence[rfc5280.Extension], List[rfc5280.Extension], rfc9480.Extensions],
+) -> bool:
+    """Check if the extension ID is present in the extensions.
+
+    :param extn_id: The extension ID to check.
+    :param extensions: The list of extensions to check against.
+    :return: `True` if the extension ID is present, `False` otherwise.
+    """
+    for extn in extensions:
+        if extn["extnID"] == extn_id:
+            return True
+    return False
+
+
+def _get_not_included_extensions(
+    validated_extensions: List[rfc5280.Extension], other_extensions: rfc9480.Extensions
+) -> List[rfc5280.Extension]:
+    """Get the extensions which are not included in the validated extensions.
+
+    :param validated_extensions: The validated extensions.
+    :param other_extensions: The other extensions to check against.
+    :return: The list of extensions which are not included in the validated extensions.
+    """
+    not_included = []
+    for extn in other_extensions:
+        if extensions_contains_extn_id(extn["extnID"], validated_extensions):
+            continue
+        not_included.append(extn)
+    return not_included
+
+
 # TODO maybe not allow to correct the criticality of the extensions?
 
 
 def check_extensions(  # noqa D417 undocumented params
-    cert_template: rfc4211.CertTemplate,
+    cert_template: CertRequestType,
     ca_public_key: VerifyKey,
     other_extensions: Optional[Union[rfc9480.Extensions, List[rfc5280.Extension]]] = None,
     allow_unknown_extns: bool = False,
@@ -2562,7 +2808,12 @@ def check_extensions(  # noqa D417 undocumented params
     ${other_extensions} |
 
     """
-    if _contains_unknown_extensions(cert_template["extensions"]) and not allow_unknown_extns:
+    extensions, _ = parse_extension_and_public_key(cert_template)
+
+    if extensions is None:
+        extensions = rfc9480.Extensions()
+
+    if _contains_unknown_extensions(extensions) and not allow_unknown_extns:
         raise BadCertTemplate("Unknown extensions found in the certificate template.")
 
     check_logic_extensions(cert_template, for_ee=for_end_entity)
@@ -2570,7 +2821,7 @@ def check_extensions(  # noqa D417 undocumented params
     extns = rfc5280.Extensions()
 
     key_usage = _verify_key_usage(cert_template)
-    ski_extn = _verify_subject_key_identifier(cert_template)
+    ski_extn, _ = validate_subject_key_identifier_extension(cert_template, must_be_present=False, prepare_extn=False)
     aia_extn = _verify_authority_key_identifier(cert_template, ca_public_key, ca_cert=ca_cert)
     eku = _verify_extended_key_usage(cert_template)
     basic_con = verify_ca_basic_constraints(cert_template, allow_non_crit=allow_basic_con_non_crit)
@@ -2605,6 +2856,9 @@ def check_extensions(  # noqa D417 undocumented params
 
             else:
                 validated_extensions.append(ext)
+
+        other = _get_not_included_extensions(validated_extensions, other_extensions)
+        validated_extensions.extend(other)
 
     extns.extend(validated_extensions)
     return extns
@@ -2670,3 +2924,666 @@ def prepare_issuer_and_serial_number(  # noqa D417 undocumented-param
         serial_number = int(serial_number) + 1
     iss_ser_num["serialNumber"] = rfc5280.CertificateSerialNumber(serial_number)
     return iss_ser_num
+
+
+@not_keyword
+def prepare_distribution_point_name(
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+) -> rfc5280.DistributionPointName:
+    """Prepare a Distribution Point Name.
+
+    :param full_name: List of GeneralName objects for the full name.
+    :param relative_name: List of RelativeDistinguishedName objects for the relative name.
+    :return: The populated `DistributionPointName` structure.
+    """
+    if full_name is not None and relative_name is not None:
+        raise ValueError(
+            "Either `full_name` or `relative_name` must be provided, not both."
+            "Can only populate the `DistributionPointName` with one of them."
+        )
+
+    distribution_point_name = rfc5280.DistributionPointName()
+
+    if full_name:
+        full_names = prepareutils.parse_to_general_names(full_name)
+        distribution_point_name["fullName"].extend(full_names)
+
+    if relative_name:
+        distribution_point_name["nameRelativeToCRLIssuer"].extend(relative_name)
+
+    return distribution_point_name
+
+
+def _prepare_relative_distinguished_name(
+    name: Optional[Union[str, rfc9480.Name, rfc5280.RelativeDistinguishedName]],
+) -> Optional[rfc5280.RelativeDistinguishedName]:
+    """Prepare a Relative Distinguished Name.
+
+    :param name: The name to prepare.
+    :return: The populated `RelativeDistinguishedName` structure.
+    """
+    if isinstance(name, str):
+        return prepareutils.prepare_relative_distinguished_name(values=name)
+
+    if isinstance(name, rfc9480.Name):
+        return name["rdnSequence"][0]
+
+    return name
+
+
+@keyword(name="Prepare DistributionPoint")
+def prepare_distribution_point(  # noqa: D417 undocumented-param
+    reason_flags: Optional[str] = None,
+    crl_issuers: Optional[GeneralNamesType] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+) -> rfc5280.DistributionPoint:
+    """Prepare a Distribution Point.
+
+    Arguments:
+    ---------
+        - reason_flags: Reason flags for the CRL.
+        - crl_issuers: CRL issuer name.
+        - crl_issuers: List of CRL issuers names.
+        - full_name: List of GeneralName objects for the full name.
+        - relative_name: List of RelativeDistinguishedName objects for the relative name.
+
+    Returns:
+    -------
+        - The populated DistributionPoint structure.
+
+    Raises:
+    ------
+        - ValueError: If both full_name and relative_name are not `None`.
+
+    Examples:
+    --------
+    | ${dis_point} | Prepare DistributionPoint | reason_flags="keyCompromise" | crl_issuers="CN=Issuer" |
+    | ${dis_point} | Prepare DistributionPoint | full_name="CN=FullName" | relative_name |
+
+    """
+    distribution_point = rfc5280.DistributionPoint()
+
+    dis_point_name = rfc5280.DistributionPointName().subtype(
+        implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 0)
+    )
+
+    distribution_point["distributionPoint"] = dis_point_name
+    if reason_flags:
+        flags = _prepare_reason_flags(reason_flags)  # type: ignore
+        flags: rfc5280.ReasonFlags
+        distribution_point["reasons"] = flags.subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1))
+
+    if crl_issuers is not None:
+        crl_issuers = prepareutils.parse_to_general_names(crl_issuers, gen_type="directoryName")
+        distribution_point["cRLIssuer"].extend(crl_issuers)
+
+    if full_name or relative_name:
+        distribution_point_name = prepare_distribution_point_name(full_name, relative_name)
+        choice_name = distribution_point_name.getName()
+        distribution_point["distributionPoint"][choice_name] = distribution_point_name[choice_name]
+
+    return distribution_point
+
+
+def _prepare_reason_flags(
+    reason_flags: Optional[str] = None,
+) -> Optional[rfc5280.ReasonFlags]:
+    """Prepare ReasonFlags.
+
+    :param reason_flags: Reason flags for the CRL.
+    :return: The populated `ReasonFlags` structure, correctly tagged.
+    """
+    if reason_flags == "all":
+        all_options = asn1utils.get_all_asn1_named_value_names(rfc5280.ReasonFlags(), get_keys=True)
+        reason_flags = ",".join(all_options)
+        return rfc5280.ReasonFlags(reason_flags)
+
+    if reason_flags is not None:
+        options = list(rfc5280.ReasonFlags.namedValues.keys())
+        for entry in reason_flags.split(","):
+            if entry not in options:
+                raise ValueError(f"Invalid `ReasonFlags`: {entry}. Must be one of {options}.")
+
+        return rfc5280.ReasonFlags(reason_flags)
+
+    return None
+
+
+def _prepare_dp_name_for_idp(
+    distribution_point: Optional[rfc5280.DistributionPointName] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+) -> rfc5280.DistributionPointName:
+    """Prepare a Distribution Point for Issuing Distribution Point.
+
+    :param full_name: List of GeneralName objects for the full name.
+    :param relative_name: List of RelativeDistinguishedName objects for the relative name.
+    :return: The populated `DistributionPoint` structure.
+    """
+    if distribution_point is not None and (full_name is not None or relative_name is not None):
+        raise ValueError(
+            "Either `distribution_point` or `full_name` or `relative_name` must be provided, not both."
+            "Can only populate the `DistributionPointName` with one of them."
+        )
+
+    if distribution_point is None:
+        return prepare_distribution_point_name(
+            full_name=full_name,
+            relative_name=relative_name,
+        )
+    return distribution_point
+
+
+@keyword(name="Prepare IssuingDistributionPoint")
+def prepare_issuing_distribution_point(  # noqa: D417 undocumented-param
+    dis_point_name: Optional[rfc5280.DistributionPointName] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    relative_name: Optional[rfc5280.RelativeDistinguishedName] = None,
+    only_contains_user_certs: bool = False,
+    only_contains_ca_certs: bool = False,
+    only_some_reasons: Optional[str] = None,
+    indirect_crl: bool = False,
+    only_contains_attribute_certs: bool = False,
+) -> rfc5280.IssuingDistributionPoint:
+    """Prepare an Issuing Distribution Point.
+
+    This Extension is used to indicate the distribution point for the CRL. It can specify whether the CRL contains \
+    only user certificates, CA certificates, or attribute certificates. It can also specify the reasons for which the \
+    CRL is issued (e.g., key compromise, CA key compromise, etc.).
+
+    Arguments:
+    ---------
+        - dis_point_name: The distribution point name to parse. Defaults to `None`.
+        - full_name: List of GeneralName objects for the full name. Defaults to `None`.
+        - relative_name: List of RelativeDistinguishedName objects for the relative name. Defaults to `None`.
+        - only_contains_user_certs: Indicates if the CRL only contains user certificates. Defaults to `False`.
+        - only_contains_ca_certs: Indicates if the CRL only contains CA certificates. Defaults to `False`.
+        - only_some_reasons: Specifies the `ReasonFlags` for which the CRL is issued (e.g., `keyCompromise`). \
+        Can be `all` or a comma-separated human representation of the `ReasonFlags`. Defaults to `None`.
+        - indirect_crl: Indicates if the CRL is an indirect CRL. Defaults to `False`.
+        - only_contains_attribute_certs: Indicates if the CRL only contains attribute certificates. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `IssuingDistributionPoint` structure.
+
+    Raises:
+    ------
+        - ValueError: If both `dis_point_name` and `full_name` are provided or if neither is provided.
+        - ValueError: If `issuing_distribution_point` is not provided and `dis_point_name` or \
+        `full_name` are not provided.
+        - ValueError: If `only_some_reasons` is not a valid `ReasonFlags` value.
+
+    Examples:
+    --------
+    | ${issuing_dp} | Prepare IssuingDistributionPoint | dis_point_name={dis_point_name} |
+    | ${issuing_dp} | Prepare IssuingDistributionPoint | full_name="CN=FullName" |
+
+    """
+    issuing_distribution_point = rfc5280.IssuingDistributionPoint()
+
+    if dis_point_name is not None or full_name is not None or relative_name is not None:
+        dis_point_name = _prepare_dp_name_for_idp(
+            distribution_point=dis_point_name,
+            full_name=full_name,
+            relative_name=relative_name,
+        )
+        option = dis_point_name.getName()
+        issuing_distribution_point["distributionPoint"][option] = dis_point_name[option]
+
+    issuing_distribution_point["onlyContainsUserCerts"] = only_contains_user_certs
+    issuing_distribution_point["onlyContainsCACerts"] = only_contains_ca_certs
+
+    if only_some_reasons is not None:
+        reason_flags = _prepare_reason_flags(only_some_reasons)
+        names = get_all_asn1_named_value_names(reason_flags)  # type: ignore
+        issuing_distribution_point["onlySomeReasons"] = rfc5280.ReasonFlags(names).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 3)
+        )
+
+    issuing_distribution_point["indirectCRL"] = indirect_crl
+    issuing_distribution_point["onlyContainsAttributeCerts"] = only_contains_attribute_certs
+
+    return issuing_distribution_point
+
+
+@keyword(name="Prepare IssuingDistributionPoint Extension")
+def prepare_issuing_distribution_point_extension(  # noqa: D417 undocumented-param
+    iss_dis_point: Optional[rfc5280.IssuingDistributionPoint] = None,
+    dis_point_name: Optional[rfc5280.DistributionPointName] = None,
+    full_name: Optional[CRLFullNameType] = None,
+    add_trailing_data: bool = False,
+    critical: bool = False,
+) -> rfc5280.Extension:
+    """Prepare an Issuing Distribution Point extension.
+
+    Arguments:
+    ---------
+        - `iss_dis_point`: The Issuing Distribution Point to prepare. Defaults to `None`.
+        - `dis_point_name`: The distribution point name to parse. Defaults to `None`.
+        - `full_name`: A single or list of GeneralName objects for the full name. Defaults to `None`.
+        - `add_trailing_data`: Whether trailing data is added to the extension value. Defaults to `False`.
+        - `critical`: Whether the extension is critical. Defaults to `False`.
+
+    Returns:
+    -------
+        - The populated `Extension` structure for the IssuingDistributionPoint.
+
+    Raises:
+    ------
+        - ValueError: If both `dis_point_name` and `full_name` are provided or if neither is provided.
+        - ValueError: If `iss_dis_point` is not provided and `dis_point_name` or `full_name` are not provided.
+
+    Examples:
+    --------
+    | ${idp_ext} | Prepare IssuingDistributionPoint Extension | full_name="CN=Issuer" |
+    | ${idp_ext} | Prepare IssuingDistributionPoint Extension | dis_point_name={dis_point_name} |
+    | ${idp_ext} | Prepare IssuingDistributionPoint Extension | iss_dis_point={iss_dis_point} |
+
+    """
+    if iss_dis_point is None:
+        if dis_point_name is None and full_name is None:
+            raise ValueError("At least one of `iss_dis_point`, `dis_point_name`, or `full_name` must be provided.")
+
+        if dis_point_name is not None and full_name is not None:
+            raise ValueError("Either `dis_point_name` or `full_name` must be provided, not both.")
+
+        iss_dis_point = prepare_issuing_distribution_point(
+            dis_point_name=dis_point_name,
+            full_name=full_name,
+        )
+
+    return prepare_extension_structure(
+        extension_oid=rfc5280.id_ce_issuingDistributionPoint,
+        critical=critical,
+        value=iss_dis_point,
+        add_rand_data=add_trailing_data,
+    )
+
+
+@not_keyword
+def parse_subject_from_cert_related_type(
+    cert: CertRelatedType,
+) -> rfc9480.Name:
+    """Parse the subject from a certificate related type.
+
+    :param cert: A certificate related structure to parse.
+    :return: The subject as a `Name` structure.
+    """
+    if isinstance(cert, rfc9480.CMPCertificate):
+        return cert["tbsCertificate"]["subject"]
+
+    elif isinstance(cert, rfc6402.CertificationRequest):
+        return cert["certificationRequestInfo"]["subject"]
+
+    elif isinstance(cert, DeltaCertificateRequestValue):
+        return copy_name(
+            target=rfc9480.Name(),
+            filled_name=cert["subject"],
+        )
+
+    elif isinstance(cert, rfc9480.CertTemplate):
+        return copy_name(
+            target=rfc9480.Name(),
+            filled_name=cert["subject"],
+        )
+
+    elif isinstance(cert, DeltaCertificateDescriptor):
+        return copy_name(
+            target=rfc9480.Name(),
+            filled_name=cert["subject"],
+        )
+
+    else:
+        raise TypeError(f"Unsupported certificate type. Got: {type(cert)}")
+
+
+@not_keyword
+def parse_extension_and_public_key(
+    cert: CertRelatedType,
+) -> Tuple[Optional[rfc9480.Extensions], rfc5280.SubjectPublicKeyInfo]:
+    """Parse the extension and public key from the certificate.
+
+    Note: The `CertTemplate` `SubjectPublicKeyInfo` structure is not checked inside this function.
+
+    :param cert: A certificate related structure to parse.
+    :return: A tuple containing the extension and `SubjectPublicKeyInfo` structure.
+    """
+    if isinstance(cert, rfc9480.CMPCertificate):
+        extns = cert["tbsCertificate"]["extensions"]
+        spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
+
+    elif isinstance(cert, rfc6402.CertificationRequest):
+        spki = cert["certificationRequestInfo"]["subjectPublicKeyInfo"]
+        if not cert["certificationRequestInfo"]["attributes"].isValue:
+            return None, spki
+        extns = certextractutils.extract_extensions_from_csr(csr=cert) or rfc9480.Extensions()
+
+    elif isinstance(cert, DeltaCertificateRequestValue):
+        extns = rfc9480.Extensions()
+        extns.extend(cert["extensions"])
+        spki = cert["subjectPKInfo"]
+
+    elif isinstance(cert, rfc9480.CertTemplate):
+        extns = rfc9480.Extensions()
+        extns.extend(cert["extensions"])
+        spki = copyasn1utils.copy_subject_public_key_info(
+            target=rfc5280.SubjectPublicKeyInfo(), filled_sub_pubkey_info=cert["publicKey"]
+        )
+
+    elif isinstance(cert, DeltaCertificateDescriptor):
+        extns = cert["extensions"]
+        spki = cert["subjectPublicKeyInfo"]
+
+    else:
+        raise TypeError(f"Unsupported certificate type. Got: {type(cert)}")
+
+    if not extns.isValue:
+        return None, spki
+
+    return extns, spki
+
+
+def _check_extn_present(
+    oid: univ.ObjectIdentifier,
+    name: str,
+    extensions: Optional[rfc9480.Extensions],
+    must_be_present: bool = False,
+    muss_be_critical: Optional[bool] = None,
+) -> Optional[rfc5280.Extension]:
+    """Check if the extension is present in the extensions.
+
+    :param oid: The OID of the extension to check.
+    :param name: The name of the extension to check, for the error message (e.g. `BasicConstraints`).
+    :param extensions: The extensions to check.
+    :param must_be_present: Whether the extension must be present. Defaults to `False`.
+    :param muss_be_critical: Whether the extension must be critical, if `None`, it will not be checked.
+    Defaults to `None`.
+    :return: The extension if present, `None` otherwise.
+    """
+    if extensions is None and must_be_present:
+        raise ValueError("The Extensions were expected to be present but were not empty.")
+
+    if extensions is None:
+        return None
+
+    extn = certextractutils.get_extension(
+        extensions=extensions,
+        oid=oid,
+    )
+    if extn is None and must_be_present:
+        raise ValueError(f"The `{name}` extension was expected to be present but was not found.")
+
+    if extn is None:
+        return None
+
+    if muss_be_critical is not None:
+        if extn["critical"] != muss_be_critical:
+            raise ValueError(
+                f"The `{name}` was expected to have the critical value: {muss_be_critical}, but was: {extn['critical']}"
+            )
+
+    return extn
+
+
+@not_keyword
+def validate_subject_key_identifier_extension(
+    cert: CertRelatedType,
+    muss_be_critical: Optional[bool] = None,
+    must_be_present: bool = False,
+    critical: Optional[bool] = None,
+    prepare_extn: bool = True,
+) -> Tuple[Optional[rfc5280.Extension], bool]:
+    """Validate the subject key identifier of a certificate.
+
+    :param cert: The certificate to validate.
+    :param muss_be_critical: Whether the subject key identifier must be critical, If `None`, it will not be checked.
+    Defaults to `None`.
+    :param must_be_present: Whether the subject key identifier must be present. Defaults to `False`.
+    :param critical: Whether to modify the criticality of the subject key identifier extension, if`None`,
+    it will not be modified. Defaults to `None`.
+    :param prepare_extn: Whether to prepare the subject key identifier extension, if not present. Defaults to `True`.
+    :return: A tuple containing the subject key identifier extension and a boolean indicating whether it
+    was modified or not.
+    :return: True if the subject key identifier is valid, False otherwise.
+    :raises BadCertTemplate: If the subject key identifier is not valid.
+    :raises TypeError: If the certificate type is not supported.
+    :raises BadAsn1Data: If the subject key identifier is not valid ASN.1 data.
+    """
+    was_modified = False
+
+    extensions, spki = parse_extension_and_public_key(cert)
+    public_key = keyutils.load_public_key_from_spki(spki)
+
+    def_ski = None
+    if prepare_extn:
+        def_ski = prepare_ski_extension(
+            key=public_key,
+            critical=False if critical is None else critical,
+        )
+
+    extn = _check_extn_present(
+        oid=EXTENSION_NAME_2_OID["ski"],
+        name="SubjectKeyIdentifier",
+        extensions=extensions,
+        must_be_present=must_be_present,
+        muss_be_critical=muss_be_critical,
+    )
+    if extn is None:
+        return def_ski, was_modified
+
+    ski = _try_decode_extension_val(
+        extensions=extensions,  # type: ignore
+        extn_name="ski",
+        name="SubjectKeyIdentifier",
+    )
+
+    digest = _compute_ski(public_key)
+
+    if ski != digest:
+        raise BadCertTemplate("The `SubjectKeyIdentifier` does not match the public key.")
+
+    if critical is not None and extn["critical"] != critical:
+        return def_ski or prepare_extension_structure(
+            extension_oid=EXTENSION_NAME_2_OID["ski"],
+            value=rfc5280.SubjectKeyIdentifier(ski),
+            critical=critical,
+        ), True
+
+    return extn, was_modified
+
+
+@keyword(name="Prepare PrivateKeyUsagePeriod Extension")
+def prepare_private_key_usage_period(  # noqa: D417 undocumented-param
+    not_before: Optional[Union[str, datetime]] = None,
+    not_after: Optional[Union[str, datetime]] = None,
+    critical: bool = False,
+    add_trailing_data: bool = False,
+) -> rfc5280.Extension:
+    """Prepare the PrivateKeyUsagePeriod extension.
+
+    The extension must either have the `notBefore` or `notAfter` date set,
+    but this is not enforced but will be logged as a debug message.
+
+    Arguments:
+    ---------
+        - `not_before`: The start time of the period. Defaults to `None`.
+        - `not_after`: The end time of the period. Defaults to `None`.
+        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+        - `add_trailing_data`: Whether trailing data is added to the extension value. Defaults to `False`.
+
+    Returns:
+    -------
+        - `The prepared `PrivateKeyUsagePeriod` extension.
+
+    Examples:
+    --------
+    | ${extn} | Prepare PrivateKeyUsagePeriod Extension | 2023-01-01T00:00:00Z | 2023-12-31T23:59:59Z |
+
+    """
+    private_key_usage_period = rfc5280.PrivateKeyUsagePeriod()
+    if not_before is not None:
+        private_key_usage_period["notBefore"] = prepareutils.prepare_generalized_time(not_before).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+        )
+    if not_after is not None:
+        private_key_usage_period["notAfter"] = prepareutils.prepare_generalized_time(not_after).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 1)
+        )
+
+    if not_after is None and not_before is None:
+        logging.debug("PrivateKeyUsagePeriod was empty prepared.")
+
+    return prepare_extension_structure(
+        extension_oid=rfc5280.id_ce_privateKeyUsagePeriod,
+        critical=critical,
+        value=private_key_usage_period,
+        add_rand_data=add_trailing_data,
+    )
+
+
+@keyword(name="Validate PrivateKeyUsagePeriod Extension")
+def validate_private_key_usage_period(
+    extns: rfc5280.Extensions,
+    must_be_present: bool = False,
+    must_be_crit: Optional[bool] = None,
+    validity: Optional[rfc5280.Validity] = None,
+) -> Tuple[Optional[rfc5280.Extension], bool]:
+    """Validate the PrivateKeyUsagePeriod extension.
+
+    Validates the `notBefore` and `notAfter` dates of the extension.
+    Additionally, checks if the key usage period is within the validity period of the certificate.
+
+    :param extns: The extensions to validate.
+    :param must_be_present: Whether the extension must be present. Defaults to `False`.
+    :param must_be_crit: Whether the extension must be true, if `None`, it will be ignored.
+    Defaults to `None`.
+    :param validity: The validity period to check against. Defaults to `None`.
+    :return: The corrected extension and whether the extension was modified.
+    """
+    modified = False
+
+    extn = get_extension(extns, rfc5280.id_ce_privateKeyUsagePeriod)  # type: ignore
+    if not must_be_present and extn is None:
+        return None, modified
+
+    if must_be_present and extn is None:
+        raise ValueError("PrivateKeyUsagePeriod extension is missing.")
+
+    extn: rfc5280.Extension
+
+    der_data = extn["extnValue"].asOctets()
+    private_key_usage_period, rest = try_decode_pyasn1(der_data, rfc5280.PrivateKeyUsagePeriod())  # type: ignore
+    private_key_usage_period: rfc5280.PrivateKeyUsagePeriod
+
+    if rest:
+        raise BadAsn1Data("PrivateKeyUsagePeriod")
+
+    if not private_key_usage_period["notBefore"].isValue and not private_key_usage_period["notAfter"].isValue:
+        raise BadAsn1Data("The PrivateKeyUsagePeriod extension is empty.", overwrite=True)
+
+    not_before = private_key_usage_period["notBefore"]
+    not_after = private_key_usage_period["notAfter"]
+
+    if not_after.isValue and not_before.isValue:
+        if not_before > not_after:
+            raise BadAsn1Data(
+                "The PrivateKeyUsagePeriod extension is invalid.The notBefore date is after the notAfter date.",
+                overwrite=True,
+            )
+        if not_before == not_after:
+            raise BadAsn1Data(
+                "The PrivateKeyUsagePeriod extension is invalid.The `notBefore` date is equal to the `notAfter` date.",
+                overwrite=True,
+            )
+
+    if validity is not None:
+        val_not_before = pyasn1_time_obj_to_py_datetime(validity["notBefore"])
+        val_not_after = pyasn1_time_obj_to_py_datetime(validity["notAfter"])
+
+        if not_before.isValue and not_before.asDateTime < val_not_before:
+            raise BadCertTemplate(
+                "The PrivateKeyUsagePeriod extension is invalidThe notBefore date is before the validity period.",
+            )
+
+        if not_after.isValue and not_after.asDateTime > val_not_after:
+            raise BadCertTemplate(
+                "The PrivateKeyUsagePeriod extension is invalidThe `notAfter` date is after the validity period.",
+            )
+
+    if must_be_crit is not None:
+        modified = extn["critical"] != must_be_crit
+        critical = must_be_crit
+    else:
+        critical = extn["critical"]
+
+    return prepare_extension_structure(
+        extension_oid=rfc5280.id_ce_privateKeyUsagePeriod,
+        critical=critical,
+        value=private_key_usage_period,
+        add_rand_data=False,
+    ), modified
+
+
+def _compute_ski(key: Union[PublicKey, PrivateKey]) -> bytes:
+    """Compute the Subject Key Identifier (SKI) for a given public key.
+
+    :param key: The public key to compute the SKI for.
+    :return: The computed SKI as bytes.
+    """
+    if isinstance(key, PrivateKey):
+        key = key.public_key()
+    return x509.SubjectKeyIdentifier.from_public_key(key).digest  # type: ignore
+
+
+@not_keyword
+def compare_ski_value(
+    value: Union[CertRelatedType, rfc9480.Extensions, rfc5280.Extension], public_key: Union[PublicKey, PrivateKey]
+) -> bool:
+    """Verify the subject key identifier (SKI) extension in a certificate or extensions object.
+
+    :param value: The certificate or extensions object to verify.
+    :param public_key: The public key to compare against the SKI.
+    :raises ValueError: If the SKI is not present or does not match the expected value.
+    """
+    spki = None
+    if isinstance(value, CertRelatedType):
+        extns, spki = parse_extension_and_public_key(
+            cert=value,
+        )
+        if not extns:
+            raise ValueError(f"No extensions found in the {type(value.__class__.__name__)} structure.")
+
+        cert = rfc9480.CMPCertificate()
+        cert["tbsCertificate"]["extensions"].extend(extns)
+
+    elif isinstance(value, (rfc5280.Extension, rfc9480.Extensions)):
+        if public_key is None:
+            raise ValueError("The public key must be provided, if an Extensions or Extension object is provided.")
+
+        if isinstance(value, rfc5280.Extension):
+            extn = rfc9480.Extensions()
+            extn.append(value)
+        else:
+            extn = value
+
+        cert = rfc9480.CMPCertificate()
+        cert["tbsCertificate"]["extensions"].extend(extn)
+
+    else:
+        raise TypeError(f"Unsupported type for value: {type(value)}")
+
+    ski = certextractutils.get_subject_key_identifier(cert)
+    if ski is None:
+        raise ValueError(f"The SKI extension is not present in the {type(value)} structure.")
+
+    if public_key is None:
+        if spki is None or not spki.isValue:
+            raise ValueError(f"The SubjectPublicKeyInfo is not present in the {type(value)} structure.")
+
+        public_key = keyutils.load_public_key_from_spki(spki)
+
+    x509_ski_digest = _compute_ski(public_key)
+    return x509_ski_digest == ski

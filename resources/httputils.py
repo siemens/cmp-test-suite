@@ -92,6 +92,7 @@ def start_ssl_server(  # noqa: D417 Missing argument descriptions in the docstri
     client_ca: str,
     host: str = "0.0.0.0",
     port: Union[str, int] = 8443,
+    *,
     timeout: Union[str, int] = 20,
     password: Optional[str] = None,
 ) -> Optional[bytes]:
@@ -246,6 +247,7 @@ def ssl_client(
     client_cert: str,
     client_key: str,
     server_ca_cert: str,
+    *,
     message: bytes,
 ) -> None:
     """Connect to a TLS server and sends a message.

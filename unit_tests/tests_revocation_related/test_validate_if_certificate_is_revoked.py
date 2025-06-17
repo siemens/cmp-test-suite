@@ -9,8 +9,11 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import hashes, serialization
 from datetime import datetime, timedelta
 
-from resources.certbuildutils import prepare_ocsp_extension, prepare_crl_distribution_point_extension, \
-    generate_certificate
+from pyasn1.type import univ
+from pyasn1_alt_modules import rfc5280
+
+from resources.certbuildutils import prepare_ocsp_extension, generate_certificate
+from resources.deprecatedutils import prepare_crl_distribution_point_extension
 from resources.certutils import validate_if_certificate_is_revoked,  \
     build_ocsp_response, parse_certificate
 from resources.exceptions import CertRevoked
@@ -45,8 +48,14 @@ class TestValidateIfCertificateIsRevoked(unittest.TestCase):
         cls.cert["tbsCertificate"]["extensions"].append(
             prepare_ocsp_extension(cls.ocsp_url)
         )
+        extn = prepare_crl_distribution_point_extension("http://crl.test.com")
+        extension = rfc5280.Extension()
+        extension["extnID"] = rfc5280.id_ce_cRLDistributionPoints
+        extension["critical"] = False
+        extension["extnValue"] = univ.OctetString(extn.value.public_bytes())
+
         cls.cert["tbsCertificate"]["extensions"].append(
-            prepare_crl_distribution_point_extension("http://crl.test.com")
+            extension
         )
 
 

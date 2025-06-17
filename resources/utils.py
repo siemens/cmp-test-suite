@@ -22,13 +22,18 @@ from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
+from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey
 from pq_logic.keys.composite_kem05 import CompositeKEMPrivateKey, CompositeKEMPublicKey
 from pq_logic.keys.composite_kem06 import CompositeKEM06PrivateKey, CompositeKEM06PublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
-from resources import certutils, keyutils
+from resources import asn1utils, certutils, cmputils, keyutils
+from resources.asn1_structures import PKIMessageTMP
+from resources.convertutils import str_to_bytes
 from resources.exceptions import BadAsn1Data
-from resources.oidutils import PYASN1_CM_NAME_2_OIDS
+from resources.oidutils import (
+    PYASN1_CM_OID_2_NAME,
+)
 from resources.typingutils import PrivateKey, PublicKey, Strint
 
 
@@ -370,7 +375,7 @@ def load_certificate_chain(filepath: str) -> List[rfc9480.CMPCertificate]:
     """Load and decode all certificates from a PEM-encoded certificate chain.
 
     :param filepath: path of the file containing the certificate chain.
-    :return: List of `rfc9480.CMPCertificate` objects.
+    :return: List of `CMPCertificate` objects.
     """
     certificates = []
     certificate = []
@@ -419,24 +424,24 @@ def get_openssl_name_notation(
     dict_data = {}
 
     if oids is None:
-        oids = PYASN1_CM_NAME_2_OIDS.keys()
+        oids = PYASN1_CM_OID_2_NAME.keys()
 
     for rdn in name["rdnSequence"]:
         attribute: rfc2986.AttributeTypeAndValue
         for attribute in rdn:
             if attribute["type"] in oids:
                 # need to remove asn1 type value.
-                dict_data[PYASN1_CM_NAME_2_OIDS.get(attribute["type"])] = (
+                dict_data[PYASN1_CM_OID_2_NAME.get(attribute["type"])] = (
                     decoder.decode(attribute["value"])[0]
                 ).prettyPrint()
                 if out_name is None:
                     out_name = (
-                        f"{PYASN1_CM_NAME_2_OIDS.get(attribute['type'])}="
+                        f"{PYASN1_CM_OID_2_NAME.get(attribute['type'])}="
                         + (decoder.decode(attribute["value"])[0]).prettyPrint()
                     )
                 else:
                     out_name += (
-                        f",{PYASN1_CM_NAME_2_OIDS.get(attribute['type'])}="
+                        f",{PYASN1_CM_OID_2_NAME.get(attribute['type'])}="
                         + (decoder.decode(attribute["value"])[0]).prettyPrint()
                     )
 
@@ -588,7 +593,9 @@ def may_load_cert_and_key(  # noqa D417 undocumented-param
 
 
 def is_certificate_and_key_set(  # noqa D417 undocumented-param
-    cert: Optional[Union[str, rfc9480.CMPCertificate]] = None, key: Optional[Union[PrivateKey, str]] = None
+    cert: Optional[Union[str, rfc9480.CMPCertificate]] = None,
+    key: Optional[Union[PrivateKey, str]] = None,
+    for_sun_hybrid: bool = False,
 ) -> bool:
     """Check if a certificate and its corresponding private key are valid and set.
 
@@ -598,6 +605,7 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
     ---------
         - `cert`: The certificate or path of the certificate to validate. Default is `None`.
         - `key`: The private key to validate against the certificate. Default is `None`.
+        - `for_sun_hybrid`: Whether the certificate is Sun-Hybrid certificate. Default is `False`.
 
     Returns:
     -------
@@ -628,10 +636,42 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
         cert = certutils.parse_certificate(der_cert)
 
     cert_pub_key = certutils.load_public_key_from_cert(cert)  # type: ignore
-    if key.public_key() != cert_pub_key:
-        raise ValueError("The private key and the public key inside the certificate are not a pair!")
+
+    if not for_sun_hybrid:
+        if key.public_key() != cert_pub_key:
+            raise ValueError("The private key and the public key inside the certificate are not a pair!")
+
+    else:
+        if not isinstance(key, HybridPrivateKey):
+            raise ValueError("The Sun-Hybrid private key is not a `HybridPrivateKey`!")
+
+        if key.trad_key.public_key() != cert_pub_key:
+            raise ValueError("The private key and the public key inside the certificate are not a pair!")
 
     return True
+
+
+@not_keyword
+def check_public_key_is_not_unique(first_key: PublicKey, second_key: PublicKey, strict: bool = True) -> bool:
+    """Compare two public keys and check if they are not unique.
+
+    :param first_key: The first public key to compare.
+    :param second_key: The second public key to compare.
+    :param strict: If `True`, means a hybrid keys trad and pq_key are not allowed to be equal.
+    :return: `True` if the keys are not `unique`, `False` otherwise.
+    """
+    if not strict:
+        return first_key != second_key
+
+    if isinstance(first_key, HybridPrivateKey) and isinstance(second_key, HybridPrivateKey):
+        return first_key.trad_key == second_key.trad_key or first_key.pq_key == second_key.pq_key
+
+    if isinstance(first_key, HybridPrivateKey):
+        return second_key in [first_key.trad_key, first_key.pq_key]
+    if isinstance(second_key, HybridPrivateKey):
+        return first_key in [second_key.trad_key, second_key.pq_key]
+
+    return first_key != second_key
 
 
 def check_if_private_key_in_list(  # noqa D417 undocumented-param
@@ -658,7 +698,7 @@ def check_if_private_key_in_list(  # noqa D417 undocumented-param
 
     """
     for key in keys:
-        if key.public_key() == new_key.public_key():
+        if not check_public_key_is_not_unique(key.public_key(), new_key.public_key(), strict=True):
             return True
 
     return False
@@ -930,3 +970,103 @@ def get_cert_chain_names(certs: List[rfc9480.CMPCertificate]) -> str:
         names.append(entry)
 
     return "\n".join(names)
+
+
+@keyword(name="Display PKIStatusInfo")
+def display_pki_status_info(  # noqa D417 undocumented-param
+    pki_status_info: Union[PKIMessageTMP, rfc9480.PKIStatusInfo],
+    index: Strint = 0,
+) -> str:
+    """Display the PKI status information in a human-readable format.
+
+    Converts the provided or extracted PKI status information to a string representation,
+    which will be automatically logged, if called, by the Robot Framework (RF).
+    This function shows the human-readable representation of the PKI status.
+    Additionally, it will show the failInfo bits, which are otherwise not shown in the default logging.
+
+    Arguments:
+    ---------
+        - `pki_status_info`: The PKI status information to be logged.
+        - `index`: The index of the PKI status information, if a PKIMessage is provided.
+
+    Examples:
+    --------
+    | Log PKI Status Info | ${pki_status_info} |
+    | Log PKI Status Info | ${pki_status_info} |
+
+    """
+    if isinstance(pki_status_info, PKIMessageTMP):
+        pki_status_info = cmputils.get_pkistatusinfo(pki_status_info, index)
+
+    data = ["PKIStatusInfo:"]
+    status = pki_status_info["status"].prettyPrint()
+    data.append(f"  Status: {status}")
+
+    if pki_status_info["failInfo"].isValue:
+        names = asn1utils.get_set_bitstring_names(pki_status_info["failInfo"])
+        data.append(f"  failInfo: {names}")
+
+    if pki_status_info["statusString"].isValue:
+        status_lines = [str(txt) for txt in pki_status_info["statusString"]]
+        data.append(f"  StatusString: {' | '.join(status_lines)}")
+
+    return "\n".join(data)
+
+
+@not_keyword
+def expand_string_to_length(s: Union[str, bytes], length: int) -> Union[str, bytes]:
+    """Expand a string to a specific length by repeating it.
+
+    :param s: The string to expand.
+    :param length: The desired length of the output string.
+    """
+    if not s:
+        raise ValueError("Input string must not be empty.")
+    if length < 0:
+        raise ValueError("Parsed length must be non-negative.")
+
+    # Repeat the string enough times and then trim it to the exact length
+    repeated = (s * ((length // len(s)) + 1))[:length]
+    return repeated
+
+
+def get_password_in_size(  # noqa D417 undocumented-param
+    protection: str,
+    password: Union[str, bytes],
+    hash_alg: Optional[str] = None,
+) -> Tuple[bytes, str]:
+    """Get a password in the given size.
+
+    Arguments:
+    ---------
+        - `password`: The password to be used. If not provided, a random password will be generated.
+        - `alg_name`: The MAC algorithm name, to expand the password to the needed size.
+        - `hash_alg`: The hash algorithm to be used to expand the password, if needed. Defaults to "None".
+
+    Returns:
+    -------
+        - The password in the correct size, if needed.
+        - The MAC algorithm name.
+
+    Raises:
+        - `ValueError`: If the algorithm name is not recognized.
+
+    """
+    if protection == "kmac":
+        if hash_alg == "shake128":
+            size = 16
+        else:
+            size = 32
+    elif "gmac" in protection:
+        if "128" in protection:
+            size = 16
+        elif "192" in protection:
+            size = 24
+        elif "256" in protection:
+            size = 32
+        else:
+            raise ValueError(f"Unknown algorithm name: {protection}")
+    else:
+        return str_to_bytes(password), protection
+
+    return str_to_bytes(expand_string_to_length(password, size)), protection

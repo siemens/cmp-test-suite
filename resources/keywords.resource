@@ -21,9 +21,9 @@ Library             ../resources/keyutils.py
 Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/extra_issuing_logic.py
+Library             ../resources/general_msg_utils.py
 Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/pq_verify_logic.py
-
 
 *** Variables ***
 ${environment}          cloudpki
@@ -38,7 +38,6 @@ ${TEST_INDEX}            ${0}
 &{CERT_CONF_DEF_VALS}   sender=${SENDER}    recipient=${RECIPIENT}
 ...        private_key=${ISSUED_KEY}    cert=${ISSUED_CERT}
 ...        password=${PRESHARED_SECRET}    protection=signature
-
 
 *** Keywords ***
 #### Set up Keywords - These keywords are used to set up the test suite, initialize variables, and prepare the environment for testing.
@@ -57,6 +56,7 @@ Set Up Test Suite
     #Where do we take this restriction from? 
     [Tags]    setup
     IF  '${ISSUED_KEY}' == '${None}'
+        Initialize PQ Cert And Key Variables
         ${issued_key}=    Generate Default Key
         IF    ${ALLOW_MAC_PROTECTION}
             ${extensions}=    Prepare Extensions    digitalSignature,keyEncipherment
@@ -96,6 +96,54 @@ Set Up Test Suite
     ${cert}  ${key}=   May Load Cert And Key    ${OTHER_TRUSTED_PKI_CERT}    ${OTHER_TRUSTED_PKI_KEY}
     VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global  # robocop: off=VAR04
     VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global    # robocop: off=VAR04
+    TRY
+        Set Up CRR Test Cases
+    EXCEPT
+        Log    Failed to setup the CCR required certificate and signing key.
+    END
+    TRY
+        Set Up Trusted PKI RA Cert Chain
+    EXCEPT
+        Log    Failed to setup the trusted PKI RA certificate chain.
+    END
+
+Initialize PQ Cert And Key Variables
+    [Documentation]    Initialize the variables for the PQ certificate and key, to store freshly issued
+    ...                certificates and keys. So that those certificates can be used to issue further certificates.
+    ...                Additionally used, to verify if the PKIProtection is working as expected.
+    # Initialize the newly issued certificates and keys.
+    VAR   &{PQ_SIG_CERTS}  scope=Global
+    VAR   &{PQ_SIG_KEYS}   scope=Global
+
+Set Up CRR Test Cases
+    [Documentation]    Set up the test cases for the CMP test cases.
+    Set Up Test Suite
+    ${cert}=   May Load Cert   ${TRUSTED_CA_CERT}
+    ${key}=    Load Private Key From File    ${TRUSTED_CA_KEY}   password=${TRUSTED_CA_KEY_PASSWORD}
+    VAR   ${TRUSTED_CA_CERT_OBJ}    ${cert}  scope=Global
+    VAR   ${TRUSTED_CA_KEY_OBJ}     ${key}  scope=Global
+    ${cert_chain}=  Build Cert Chain From Dir    ${cert}   ${TRUSTED_CA_DIR}
+    VAR   ${TRUSTED_CA_CERT_CHAIN}   ${cert_chain}   scope=Global
+
+Set UP Trusted PKI RA Cert Chain
+    [Documentation]    Set up the test environment
+    [Tags]    setup  trust
+    ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${OTHER_TRUSTED_PKI_KEY}
+    IF  ${is_file}
+        ${der_cert}=    Load And Decode PEM File    ${OTHER_TRUSTED_PKI_CERT}
+        ${cert}=   Parse Certificate    ${der_cert}
+        ${key}=    Load Private Key From File   ${OTHER_TRUSTED_PKI_KEY}
+        VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global
+        VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global
+    END
+    VAR   ${INNER_CERT}    ${ISSUED_CERT}    scope=Global
+    VAR   ${INNER_KEY}    ${ISSUED_KEY}    scope=Global
+    IF  '${RA_CERT_CHAIN_PATH}' == '${None}'
+        ${cert_chain}=   Build Cert Chain From Dir    ${OTHER_TRUSTED_PKI_CERT}   ${RA_CERT_CHAIN_DIR}
+    ELSE
+        ${cert_chain}=   Load Certificate Chain     ${RA_CERT_CHAIN_PATH}
+    END
+    VAR   ${RA_CERT_CHAIN}    ${cert_chain}    scope=Global
 
 Increase TestIndex
     [Documentation]    Perform the incrementation of the `TestIndex` to update the sender name inside the PKIMessage,
@@ -176,33 +224,89 @@ Generate CSR For Testing
     ...                - `key`: The generated cryptographic key.
     ...
     ...                Examples:
-    ...                | ${csr}    ${key}= |    Generate CSR For Testing |
-    [Tags]    setup
-    ${key}=    Generate Default Key
-    ${cm}=    Get Next Common Name
-    ${csr}=    Build CSR    signing_key=${key}    common_name=${cm}
-    RETURN    ${csr}    ${key}
+    ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 |
+    ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 | 1 |
+    [Arguments]    ${response}    ${expected_alg}    ${index}=0
+    PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=    Get Cert From PKIMessage    ${response}    ${index}
+    Validate Migration OID In Certificate    ${cert}    ${expected_alg}
 
-# TODO maybe change to use serialNumber or both instead for CertTemplate
-Generate CertTemplate For Testing
-    [Documentation]    Generates a certificate template for testing purposes, using default parameters and an
-    ...                incremented test index.
+Generate Key And CSR
+    [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the
+    ...                DER-formatted data and the key.
+    ...
+    ...    Arguments:
+    ...    ---------
+    ...    - `key_algo_name`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+    ...    - `key_params`:The index or indices of the bits to check within the `failInfo` field
+    ...    - `CN`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be
+    ...    permitted. However, if multiple indices are provided, only one of them can be set.
+    ...
+    ...    Examples:
+    ...    --------
+    ...    | ${data}    ${key}=    | Generate Key and CSR    | ${key_algo_name}    |    ${CN}    |    ${key_params} |
+    ...
+    [Arguments]    ${key_algo_name}    ${CN}    ${key_params}
+    ${key}=    Generate Key    ${key_algo_name}    ${key_params}
+    ${csr_signed}    ${key}=    Generate Signed CSR    ${CN}    ${key}
+    ${data}=    Decode Pem String    ${csr_signed}
+    RETURN    ${data}    ${key}
+
+PKIMessage Body Type Must Be
+    [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
+    [Arguments]    ${pki_message}    ${expected_type}
+    ${response_type}=    Get CMP Message Type    ${pki_message}
+    IF    '${response_type}' != '${expected_type}'
+        # For better logging.
+        ${pki_status_info}=    Get PKIStatusInfo    ${pki_message}   # robocop: off=VAR02
+    END
+    Should Be Equal    ${response_type}    ${expected_type}    Response type mismatch
+
+PKIMessage Contains ImplicitConfirm Extension
+    [Documentation]    Checks if the implicitConfirm extension is present in the PKIMessage
+    ...
+    ...                Arguments:
+    ...                - `${pki_message}`: The PKIMessage object to check.
     ...
     ...                Returns:
-    ...                - `cert_template`: The prepared certificate template.
-    ...                - `key`: The generated cryptographic key.
-    ...
-    ...                Examples:
-    ...                | ${cert_template}    ${key}= |    Generate CertTemplate For Testing |
-    ...
-    ${key}=    Generate Default Key
-    ${cm}=    Get Next Common Name
-    ${cert_template}=    Prepare CertTemplate    key=${key}    subject=${cm}
-    RETURN    ${cert_template}    ${key}
+    ...                - `${result}`: `True` if the implicitConfirm extension is present, `False` otherwise.
+    [Arguments]    ${pki_message}
+    ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
+    RETURN    ${result}
 
+PKIMessage Must Contain ImplicitConfirm Extension
+    [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo
+    [Arguments]    ${pki_message}
+    ${result}=    PKIMessage Contains ImplicitConfirm Extension    ${pki_message}
+    Should Be True    ${result}    The implicitConfirm extension was not found in the message
 
+Collect Nonce From PKIMessage
+    [Documentation]    Extract the senderNonce from a PKIMessage and append it to a list, which will be used later
+    ...    in a test that checks for nonces to be cryptographically strong.
+    [Arguments]    ${pki_message}
+    ${body_type}=    Get Cmp Message Type    ${pki_message}
+    Log   ${GATHER_NONCES_FROM_MSG_BODIES}
+    Log   ${body_type}
+    ${is_present}=  Evaluate  '${body_type}' in '${GATHER_NONCES_FROM_MSG_BODIES}'
+    IF    ${is_present}
+        ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
+        Append To List    ${COLLECTED_NONCES}    ${sender_nonce}
+        Log    ${COLLECTED_NONCES}
+    END
 
-### Key generation keywords
+Exchange PKIMessage
+    [Documentation]    Send a PKIMessage to the CA or RA Server and then then parse the returned PKIMessage.
+    ...    Expects to get a parse-able PKIMessage.
+    [Tags]    exchange    http
+    [Arguments]    ${request_pki_message}   ${url}=${CA_CMP_URL}
+    ${encoded_request}=    Encode To Der    ${request_pki_message}
+    Log Base64    ${encoded_request}
+    ${response}=    Exchange Data With CA    ${encoded_request}   ${url}
+    Log Base64    ${response.content}
+    ${response_pki_message}=    Parse PKIMessage    ${response.content}
+    Collect Nonce From PKIMessage    ${response_pki_message}
+    RETURN    ${response_pki_message}
+
 # TODO add function called Get Key, if the same key is allowed returns one of the predefined keys,
 # which are already available in the test suite to save additional resources.
 # Another TODO merge with the idea to build a PKIMessage dataclass, which will be used to make our
@@ -315,7 +419,8 @@ Generate Default Composite Sig Key
     VAR   &{params}  trad_name=${DEFAULT_TRAD_ALG}
     ...              length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
     ...              pq_name=${DEFAULT_PQ_SIG_ALG}
-    ${key}=      Generate Key    algorithm=composite-sig    &{params}
+    # Generates always the latest (supported) version of the algorithm.
+    ${key}=      Generate Unique Key    algorithm=composite-sig    &{params}
     RETURN     ${key}
 
 
@@ -377,7 +482,7 @@ Confirm Certificate If Needed
     ...
     [Tags]    confirm   default   cert
     [Arguments]    ${response}    &{params}
-    ${result}=   Find OID In GeneralInfo    ${response}   1.3.6.1.5.5.7.4.13
+    ${result}=   PKIMessage Contains ImplicitConfirm Extension    ${response}
     IF    ${result}
         Log    The PKIMessage contains the implicit confirm extension.
         ${cert}=    Get Cert From PKIMessage    ${response}
@@ -395,12 +500,17 @@ Confirm Certificate If Needed
         ${protection}=   Get From Dictionary    ${args}    protection
         IF  '${protection}' == 'signature'
             VAR   ${exclude_fields}    sender,senderKID
+            VAR   ${for_mac}    ${False}
         ELSE
             VAR   ${exclude_fields}    ${None}
+            VAR   ${for_mac}    ${True}
         END
+        ${cert_req_id}=    Get From Dictionary    ${args}    cert_req_id   ${None}
         ${cert_conf}=   Build Cert Conf From Resp  ${response}   sender=${sender}
         ...                                         recipient=${recipient}
         ...                                         exclude_fields=${exclude_fields}
+        ...                                         cert_req_id=${cert_req_id}
+        ...                                         for_mac=${for_mac}
         ${cert_conf}=   Default Protect PKIMessage    ${cert_conf}    &{params}
         ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
         ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
@@ -413,10 +523,80 @@ Confirm Certificate If Needed
         RETURN    ${cert}
     END
 
+Confirm EncrCert Certificate If Needed
+    [Documentation]    Some Test cases need a valid certificate to work. Because not all CA's might support the
+    ...                implicit confirm extension, this keyword checks if the given `PKIMessage` contains the implicit
+    ...                confirm extension. If it does, the certificate is confirmed and returned. First decrypt the
+    ...                certificate with the given private key. If the implicit confirm extension is present, will a
+    ...                valid certificate confirmation message be sent and the CA's response is checked. If the CA's
+    ...                response is the `PKIMessage` `pkiconf`, then is the certificate confirmed.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                 - `response`: The response message from the CA.
+    ...                 - `ee_key`: The private key to decrypt the certificate.
+    ...                 - `params`: key=value pair to set variables for the protection.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `cert`: The confirmed certificate.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${cert}= | Confirm EncrCert Certificate If Needed | ${response} | ${ee_key} | &{params} |
+    ...
+    [Tags]    confirm   default   cert
+    [Arguments]    ${response}    ${ee_key}    &{params}
+    PKIStatus Must Be    ${response}    accepted
+    ${result}=   PKIMessage Contains ImplicitConfirm Extension    ${response}
+    ${exclude_rid_check}=    Get From Dictionary    ${params}    exclude_rid_check    ${False}
+    ${expected_recip_type}=    Get From Dictionary    ${params}    expected_recip_type    ${None}
+    ${cert}=    Get EncCert From PKIMessage    ${response}   ee_private_key=${ee_key}   exclude_rid_check=${exclude_rid_check}
+    ...          expected_recip_type=${expected_recip_type}
+    IF  ${result}  RETURN   ${cert}
+    ${cert_req_id}=    Get From Dictionary    ${params}    cert_req_id   ${None}
+    ${for_mac}=    Get From Dictionary    ${params}    for_mac   ${False}
+    ${for_kem_based_mac}=    Get From Dictionary    ${params}    for_kem_based_mac   ${False}
+    IF  ${for_mac}
+        VAR   ${exclude_fields}    ${None}
+    ELSE IF   ${for_kem_based_mac}
+        VAR   ${for_mac}    ${True}
+        VAR   ${exclude_fields}    ${None}
+    ELSE
+        VAR   ${exclude_fields}    sender,senderKID
+    END
+    ${cert_conf}=   Build Cert Conf From Resp  ${response}   cert=${cert}   recipient=${recipient}   pvno=3
+    ...             sender=${SENDER}   for_mac=${for_mac}     cert_req_id=${cert_req_id}    exclude_fields=${exclude_fields}
 
-#### PKIMessage handling keywords
+    IF  ${for_kem_based_mac}
+        ${ss}=   Get From Dictionary    ${params}    shared_secret
+                ${protected_cert_conf}=  Protect PKIMessage KEMBasedMAC     ${cert_conf}    shared_secret=${ss}
+    ELSE IF  ${for_mac}
+        ${protected_cert_conf}=  Default Protect With MAC    ${cert_conf}
+    ELSE
+        ${protected_cert_conf}=  Default Protect PKIMessage    ${cert_conf}    &{params}
+    END
+    ${suffix}=    Get From Dictionary    ${params}    suffix    ${None}
+    ${base_url}=    Get From Dictionary    ${params}    base_url    ${CA_BASE_URL}
+    ${url}=    Get From Dictionary    ${params}    url    ${None}
+    IF    '${url}' == '${None}'
+        ${url}=    Get From Dictionary    ${params}    url    ${base_url}
+    END
+    ${pki_conf}=   Exchange Migration PKIMessage    ${cert_conf}    ${url}    ${suffix}
+    PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
+    RETURN    ${cert}
 
-### PKIMessage creation keywords
+Get Next Common Name
+    [Documentation]    Return the common name added with the current test index and increment it afterwards.
+    ...                There are may some implementation which only allow one sender name, but other ones may allow
+    ...                only one allow a single certificate per name, so to have more flexibility the name is added by a
+    ...                number which is incremented after every test case.
+    [Tags]    setup
+    IF    ${ALLOW_ONLY_ONE_SENDER}    RETURN    ${DEFAULT_X509NAME}
+    VAR    ${cm}    ${DEFAULT_X509NAME} ${TEST_INDEX}
+    Increase TestIndex
+    RETURN    ${cm}
+
 Build Composite Signature Request
     [Documentation]    Build a ir composite signature request and returns the protected ir request.
     [Tags]    composite-sig    positive   ir
@@ -450,27 +630,91 @@ Default Protect PKIMessage
     ...                - The protection algorithm is set to `signature` by default.
     ...
     ...                Examples:
-    ...                | ${prot_pkimessage}=    Default Protect PKIMessage    | ${pki_message} |
-    ...
-    [Tags]    protection
-    [Arguments]    ${pki_message}    &{params}
-    ${length}=   Get Length   ${params}
-    IF  not ${length}
-        ${args}=    Copy Dictionary    ${DEFAULT_PROTECTION_VALS}
-    ELSE
-        ${args}=    May Patch Params    ${params}    &{DEFAULT_PROTECTION_VALS}
-    END
-    ${protection}=   Get From Dictionary    ${args}    protection
-    IF  '${protection}' == 'signature'
-        ${prot_pkimessage}=    Protect Hybrid PKIMessage    ${pki_message}  &{args}
-    ELSE IF  '${protection}' == 'mac'
-        ${args}=    Set To Dictionary    ${args}   protection=${DEFAULT_MAC_ALGORITHM}
-        ${prot_pkimessage}=    Protect PKIMessage    ${pki_message}    &{args}
-    ELSE
-        ${prot_pkimessage}=    Protect PKIMessage    ${pki_message}    &{args}
-    END
-    RETURN    ${prot_pkimessage}
+    ...                | ${csr}    ${key}= |    Generate CSR For Testing |
+    [Tags]    setup
+    ${key}=    Generate Default Key
+    ${cm}=    Get Next Common Name
+    ${csr}=    Build CSR    signing_key=${key}    common_name=${cm}
+    RETURN    ${csr}    ${key}
 
+# TODO maybe change to use serialNumber or both instead for CertTemplate
+
+Generate CertTemplate For Testing
+    [Documentation]    Generates a certificate template for testing purposes, using default parameters and an
+    ...                incremented test index.
+    ...
+    ...                Returns:
+    ...                - `cert_template`: The prepared certificate template.
+    ...                - `key`: The generated cryptographic key.
+    ...
+    ...                Examples:
+    ...                | ${cert_template}    ${key}= |    Generate CertTemplate For Testing |
+    ...
+    ${key}=    Generate Default Key
+    ${cm}=    Get Next Common Name
+    ${cert_template}=    Prepare CertTemplate    key=${key}    subject=${cm}
+    RETURN    ${cert_template}    ${key}
+
+Generate CCR CertTemplate For Testing
+    [Documentation]    Generates a cross-certificate req. certificate template for testing purposes,
+    ...                using default parameters and an incremented test index.
+    ...
+    ...                Returns:
+    ...                - `cert_template`: The prepared certificate template.
+    ...                - `key`: The generated cryptographic key.
+    ...
+    ...                Examples:
+    ...                | ${cert_template}    ${key}= |    Generate CertTemplate For Testing |
+    ...
+    [Arguments]  ${key}=${None}
+    IF  '${key}' == '${None}'
+        ${key}=    Generate Default Key
+    END
+    ${cm}=    Get Next Common Name
+    ${sig_alg}=   Prepare Signature AlgorithmIdentifier     ${key}   hash_alg=sha256
+    # -1 day
+    ${date}=   Get Current Date   UTC   increment=-86400
+    ${date_after}=   Get Current Date  UTC  increment=10000000
+    ${validity}=   Prepare Validity   ${date}   ${date_after}
+    ${cert_template}=  Prepare CertTemplate   ${key}    validity=${validity}   subject=${cm}   issuer=${SENDER}
+    ...       sign_alg=${sig_alg}    version=v3  include_fields=subject,issuer,validity,publicKey,version,signingAlg
+    RETURN    ${cert_template}    ${key}
+
+Generate Default IR Sig Protected
+    [Documentation]    Generates a default initialization request (ir) with signature protection.
+    ...
+    ...                According to RFC 9483 Section 7.1. PKI Management Operations, is the ir body the only
+    ...                one which needs to be implemented by the CA and End Entity.
+    ...
+    ...                Arguments:
+    ...                - `transaction_id`:Optional the transaction ID for the IR. Default is `${None}`.
+    ...                - `sender_nonce`: Optional the sender's nonce for the IR. Default is `${None}`.
+    ...
+    ...                Returns:
+    ...                - The signature-protected initialization request (ir)
+    ...
+    ...                Examples:
+    ...                | ${protected_ir}=    |    Generate Default IR Sig Protected    | transaction_id=${tx_id} |    \
+    ...                sender_nonce=${nonce} |
+    ...
+    [Arguments]    ${transaction_id}=${None}    ${sender_nonce}=${None}   &{params}
+    ${cert_template}    ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key
+    ...       ${key}
+    ...       sender_nonce=${sender_nonce}
+    ...       transaction_id=${transaction_id}
+    ...       cert_template=${cert_template}
+    ...       recipient=${RECIPIENT}
+    ...       implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...       exclude_fields=sender,senderKID
+    ...       &{params}
+    ${protected_ir}=    Protect PKIMessage
+    ...                 ${ir}
+    ...                 protection=signature
+    ...                 private_key=${ISSUED_KEY}
+    ...                 cert=${ISSUED_CERT}
+    ...                 &{params}
+    RETURN    ${protected_ir}
 
 # @Suggested:
 # TODO verify, if this function should be introduced.
@@ -496,6 +740,20 @@ Default Protect With MAC
     ...                          password=${PRESHARED_SECRET}
     ...                          for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     RETURN    ${protected_pki_message}
+
+Default Protect PKIMessage With Trusted CA Cert
+    [Documentation]    Protects the PKIMessage with the trusted CA certificate.
+    [Arguments]    ${pki_message}
+    ${response}=  Protect PKIMessage    ${pki_message}    signature
+    ...           private_key=${TRUSTED_CA_KEY_OBJ}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
+    RETURN    ${response}
+
+Default Protect With Trusted Cert
+    [Documentation]    Protect a PKIMessage with the default signature protection.
+    [Arguments]    ${pki_message}
+    ${protected}=    Protect PKIMessage    ${pki_message}    signature   private_key=${OTHER_TRUSTED_PKI_KEY}
+    ...              cert_chain=${RA_CERT_CHAIN}
+    RETURN    ${protected}
 
 Generate Default MAC Protected PKIMessage
     [Documentation]    Build a PKIMessage used for MAC based protection, based on the config file
@@ -552,11 +810,36 @@ Generate Default MAC Protected PKIMessage
     END
     RETURN    ${pki_message}
 
-Generate Default IR Sig Protected
-    [Documentation]    Generates a default initialization request (ir) with signature protection.
+Issue New Cert For Testing
+    [Documentation]    Issue a new certificate to be used in tests. It ensures that a valid certificate
+    ...    is available for testing.
     ...
-    ...                According to RFC 9483 Section 7.1. PKI Management Operations, is the ir body the only
-    ...                one which needs to be implemented by the CA and End Entity.
+    ...    Arguments:
+    ...    ---------
+    ...    - `url`: The URL of the CA to send the request to. Defaults to `${CA_CMP_URL}`.
+    ...    - `key`: The key to use for the certificate request. If not provided, a new default key will be generated.
+    ...
+    ...    Returns:
+    ...    - `cert`: The issued certificate.
+    ...    - `key`: The key used to generate the certificate request.
+    [Tags]    setup
+    [Arguments]    ${url}=${CA_CMP_URL}    ${key}=${None}
+    IF    '${key}' == '${None}'
+        ${cert_template}   ${key}=    Generate CertTemplate For Testing
+    ELSE
+        VAR   ${cert_template}   ${None}
+    END
+    ${ir}=    Build IR From Key   ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
+    ...                  implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}    exclude_fields=sender,senderKID
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}   ${url}
+    PKIStatus Must Be   ${response}   accepted
+    ${cert}=   Confirm Certificate If Needed    ${response}
+    RETURN   ${cert}    ${key}
+
+Issue And Revoke A Fresh Cert
+    [Documentation]    Issue a new certificate and then revoke it. This is useful for testing purposes.
+    ...                The function ensures that a valid certificate is available for testing.
     ...
     ...                Arguments:
     ...                - `transaction_id`:Optional the transaction ID for the IR. Default is `${None}`.
@@ -739,11 +1022,11 @@ PKIStatusInfo failinfo Bit Must Be
     ${result}=    Is Bit Set    ${status["failInfo"]}    ${failinfo}    ${exclusive}
     IF    not ${result}
         IF    ${FAILINFO_MUST_BE_CORRECT}
-            Log Asn1    ${status}
+            ${_}=   Display PKIStatusInfo   ${status}
             Fail   The failInfo bit was not set correctly.
         ELSE
             LOG   The failInfo bit was not set correctly.
-            Log Asn1    ${status}
+            ${_}=   Display PKIStatusInfo   ${status}
         END
     END
 
@@ -758,7 +1041,7 @@ PKIStatus Must Be
     [Arguments]    ${pki_message}  ${status}   ${index}=0
     ${pki_status}=    Get Status From PKIMessage      ${pki_message}    ${index}
     IF  not '${pki_status}' == '${status}'
-        ${pki_status_info}=   Get PKIStatusInfo    ${pki_message}    ${index}   # robocop: off=VAR02
+        ${pki_status_info}=   Display PKIStatusInfo    ${pki_message}    ${index}   # robocop: off=VAR02
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
 
@@ -977,3 +1260,136 @@ Issue POS ECC KARI Cert   # robocop: off=LEN03
     VAR   ${KGA_KARI_CERT}     ${cert}  scope=Global   # robocop: off=VAR04
     VAR   ${KGA_KARI_KEY}      ${key}   scope=Global   # robocop: off=VAR04
 
+Set Up EnvelopedData Certs For Tests
+    [Documentation]    Set up the KGA certs for the tests. This is done by creating a new key and
+    ...               certificate for the KGA. Currently only RSA and ECC are supported.
+    [Tags]    setup   envelopedData   KGA
+    Issued NEG RSA KTRI CERT
+    Issue POS RSA KTRI Cert
+    Issue NEG ECC KARI Cert
+    Issue POS ECC KARI Cert
+
+Wait Until Server Revoked Cert
+    [Documentation]    Wait time until the server revoked a certificate so that testing can be begin.
+    Sleep    ${REVOKED_WAIT_TIME}
+
+Wait Until Server Updated Cert
+    [Documentation]    Wait time until the server updated a certificate so that testing can be begin.
+    ...                Needed in some cases, if a updated certificate is treated as a revoked certificate,
+    ...                so that no new certificates can be issued.
+    Sleep    ${UPDATE_WAIT_TIME}
+
+Wait Until Server Revived Cert
+    [Documentation]    Wait time until the server revived a certificate so that testing can be begin.
+    Sleep    ${REVOKED_WAIT_TIME}
+
+Wait Until Server Deletes Update Request
+    [Documentation]    Wait time until the server deleted a update request, which was not confirmed.
+    ...                Needed to raise awareness that the request was not confirmed and how the implementation
+    ...                handles the request. Should raise awareness that if a requests was not confirmed,
+    ...                that the request handles it as a revoked certificate or successfully does not
+    ...                marks it as a revoked certificate.
+    Sleep    ${WAIT_UNTIL_UPDATED_CONFIRMATION_IS_EXPIRED}
+
+Get PQ Issuing URL
+    [Documentation]    Return the URL for the PQ issuing endpoint.
+    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
+    RETURN  ${url}
+
+Get Composite Issuing URL
+    [Documentation]    Return the URL for the composite issuing endpoint.
+    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
+    RETURN  ${url}
+
+Exchange PKIMessage PQ
+    [Documentation]    Exchange a PKIMessage with the PQ issuing endpoint.
+    [Arguments]    ${pki_message}
+    ${url}=   Get PQ Issuing URL
+    ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
+    RETURN   ${response}
+
+Prepare Related Cert URL
+    [Documentation]    Prepare the URL for the related certificate, by adding the serial number to the URL.
+    [Arguments]    ${cert}
+    ${ser_num}=   Get Asn1 Value As Number    ${cert}   tbsCertificate.serialNumber  False
+    ${url}=   Add URL Suffix    ${URI_RELATED_CERT}   ${ser_num}
+    RETURN  ${url}
+
+Get Related Cert URL
+    [Documentation]    Get the URL for the related certificate issuing endpoint, to send the request to.
+    ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${RELATED_CERT_SUFFIX}
+    RETURN  ${url}
+
+Setup PQ Sig Cert
+    [Documentation]    Issue a new PQ signature certificate for the tests.
+    ...                This certificate is used for the signature and used to save the
+    ...                certificate chain for the correct request.
+    ${pq_key}=   Generate Default PQ SIG Key
+    ${cm}=    Get Next Common Name
+    ${extensions}=  Prepare Extensions  digitalSignature
+    IF  ${ALLOW_MAC_PROTECTION}
+        VAR   ${protection}    ${DEFAULT_MAC_ALGORITHM}
+        ${ir}=  Build Ir From Key    ${pq_key}   ${cm}   extensions=${extensions}
+        ...     recipient=${RECIPIENT}   sender=${sender}   for_mac=True
+        ${prot_ir}=    Default Protect With MAC      ${ir}
+    ELSE
+        VAR   ${protection}    signature
+        ${ir}=  Build Ir From Key    ${pq_key}   ${cm}   extensions=${extensions}
+        ...     recipient=${RECIPIENT}   exclude_fields=sender,senderKID
+        ${prot_ir}=    Default Protect PKIMessage    ${ir}
+    END
+    ${response}=    Exchange PKIMessage PQ    ${prot_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${url}=  Get PQ Issuing URL
+    ${pq_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
+    ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${pq_cert}
+    Write Certs To Dir    ${cert_chain}  pq_sig_chain
+    VAR   ${PQ_SIG_CERT}     ${pq_cert}  scope=Global  # robocop: off=VAR04
+    VAR   ${PQ_SIG_KEY}      ${pq_key}  scope=Global  # robocop: off=VAR04
+
+Setup Composite Sig Cert
+    [Documentation]    Issue a new composite signature certificate for the tests.
+    ...                This certificate is used for the signature and used to save the
+    ...                certificate chain for the correct request. Always uses the latest
+    ...                composite signature version.
+    ${comp_key}=   Generate Unique Key    composite-sig
+    ${cm}=    Get Next Common Name
+    ${url}=   Get Composite Issuing URL
+    ${extensions}=  Prepare Extensions  digitalSignature
+    IF  ${ALLOW_MAC_PROTECTION}
+        VAR   ${protection}    ${DEFAULT_MAC_ALGORITHM}
+        ${ir}=  Build Ir From Key    ${comp_key}   ${cm}   extensions=${extensions}
+        ...     recipient=${RECIPIENT}   sender=${sender}   for_mac=True
+        ${prot_ir}=    Default Protect With MAC      ${ir}
+    ELSE
+        VAR   ${protection}    signature
+        ${ir}=  Build Ir From Key    ${comp_key}   ${cm}   extensions=${extensions}
+        ...     recipient=${RECIPIENT}   exclude_fields=sender,senderKID
+        ${prot_ir}=    Default Protect PKIMessage    ${ir}
+    END
+    ${response}=    Exchange PKIMessage PQ    ${prot_ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${url}=  Get PQ Issuing URL
+    ${comp_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
+    ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${comp_cert}
+    Write Certs To Dir    ${cert_chain}  composite_sig_chain
+    VAR   ${COMPOSITE_SIG_CERT}     ${comp_cert}  scope=Global  # robocop: off=VAR04
+    VAR   ${COMPOSITE_SIG_KEY}      ${comp_key}  scope=Global  # robocop: off=VAR04
+
+Build KEMBasedMAC General Message
+    [Documentation]    Build a KEMBasedMAC General Message.
+    ...
+    ...                Arguments:
+    ...                - ${kem_key}: The KEM key to use for the message.
+    ...                - ${kem_cert}: The KEM certificate to use for the message.
+    ...                - ${random_value}: Optional random value to use for the message, for negative tests.
+    ...                The `infoValue` field **MUST** be absent.
+    [Arguments]    ${kem_key}    ${kem_cert}   ${random_value}=${None}
+    ${info_val}=    Prepare KEMCiphertextInfo   ${kem_key}    ${None}
+    ${genm}=   Build CMP General Message   info_values=${info_val}
+    ...        sender=${SENDER}   recipient=${RECIPIENT}
+    ${cert_chain}=   Build Cert Chain From Dir    ${kem_cert}     cert_chain_dir=./data/cert_logs
+    ${genm}=   Patch ExtraCerts    ${genm}    ${cert_chain}
+    RETURN    ${genm}

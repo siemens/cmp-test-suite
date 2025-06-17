@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-cryptography==44.0.3
+cryptography==45.0.3
 pyasn1==0.6.1
 pyasn1-alt-modules==0.4.6
-robotframework==7.2.2
-pkilint==0.12.9
+robotframework==7.3
+pkilint==0.12.11
 robotframework-requests==0.9.7
-pycryptodome==3.22.0
+pycryptodome==3.23.0
 # relevant for the Mock-CA.
-Flask==3.1.0
+Flask==3.1.1
 tinyec==0.4.0

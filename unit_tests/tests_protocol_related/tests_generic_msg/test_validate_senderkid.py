@@ -14,7 +14,7 @@ from resources.checkutils import validate_senderkid_for_cmp_protection
 from resources.cmputils import (
     build_p10cr_from_csr,
     parse_csr,
-    patch_senderkid,
+    patch_senderkid, parse_pkimessage,
 )
 from resources.prepareutils import prepare_general_name
 from resources.exceptions import BadMessageCheck
@@ -51,7 +51,7 @@ class TestValidateSenderKID(unittest.TestCase):
         THEN the check should pass since no SubjectKeyIdentifier is present in the certificate
         """
         # default certificate has no SubjectKeyIdentifier
-        cert, key = build_certificate(ski=False)
+        cert, key = build_certificate(include_ski=False)
         protected_msg = protect_pkimessage(
             pki_message=self.pki_message,
             cert=cert,
@@ -62,7 +62,7 @@ class TestValidateSenderKID(unittest.TestCase):
         )
         # simulates send over wire.
         der_data = encode_to_der(protected_msg)
-        received_pki_msg, _ = decoder.decode(der_data, asn1Spec=rfc9480.PKIMessage())
+        received_pki_msg = parse_pkimessage(der_data)
         validate_senderkid_for_cmp_protection(pki_message=received_pki_msg)
 
     def test_check_sig_senderKID_with_invalid_ski(self):
@@ -71,7 +71,7 @@ class TestValidateSenderKID(unittest.TestCase):
         WHEN the sender key identifier (senderKID) is checked for CMP protection,
         THEN a ValueError should be raised because the SKI is invalid
         """
-        cert, key = build_certificate(ski=True)
+        cert, key = build_certificate(include_ski=True)
 
         # default certificate has no SubjectKeyIdentifier
         self.pki_message = patch_senderkid(self.pki_message, os.urandom(6))
@@ -97,7 +97,7 @@ class TestValidateSenderKID(unittest.TestCase):
         csr, private_key = generate_signed_csr(common_name="CN=Hans")
         csr = decode_pem_string(csr)
         csr = parse_csr(csr)
-        asn1cert, key = build_certificate(ski=True)
+        asn1cert, key = build_certificate(include_ski=True)
 
         pki_message = build_p10cr_from_csr(csr, sender_kid=get_subject_key_identifier(asn1cert))
 

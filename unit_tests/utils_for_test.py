@@ -29,16 +29,12 @@ from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from resources import certutils, cmputils, utils
 from resources.asn1_structures import PKIMessageTMP
-from resources.asn1utils import try_decode_pyasn1
-from resources.certbuildutils import (
-    build_certificate,
-    build_csr,
-    prepare_authority_key_identifier_extension,
-    prepare_basic_constraints_extension,
-    prepare_extensions,
-    prepare_ski_extension,
-)
-from resources.certutils import build_cert_chain_from_dir, load_public_key_from_cert, parse_certificate
+from resources.asn1utils import try_decode_pyasn1, encode_to_der
+from resources.certbuildutils import build_certificate, build_csr, prepare_extensions, \
+    prepare_basic_constraints_extension, prepare_ski_extension, prepare_authority_key_identifier_extension, \
+    prepare_key_usage_extension
+from resources.certutils import parse_certificate, build_cert_chain_from_dir, \
+    load_public_key_from_cert, write_cert_chain_to_file
 from resources.cmputils import parse_csr
 from resources.convertutils import str_to_bytes
 from resources.cryptoutils import verify_signature
@@ -102,7 +98,7 @@ def try_encode_pyasn1(data, exclude_pretty_print: bool = False) -> bytes:
         return encoder.encode(data)
     except Exception:
         data = data.prettyPrint() if not exclude_pretty_print else str(type(data))
-        raise BadAsn1Data(f"Error encoding data: {data}", overwrite=True)
+        raise BadAsn1Data(f"Error encoding data: \n{data}", overwrite=True)
 
 
 def de_and_encode_pkimessage(pki_message: PKIMessageTMP) -> PKIMessageTMP:
@@ -237,7 +233,7 @@ def _gen_new_certs() -> None:
     ca1_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
     ca2_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
     cert_chain, _ = build_certificate_chain(length=6, keys=[root_key, ca1_key, ca2_key, ca1_key, ca1_key, ca1_key])
-    certutils._cert_chain_to_file(cert_chain=cert_chain, path="data/unittest/test_cert_chain_len6.pem")
+    certutils.write_cert_chain_to_file(cert_chain=cert_chain, path="data/unittest/test_cert_chain_len6.pem")
     utils.write_cmp_certificate_to_pem(cert_chain[0], "data/unittest/root_cert_ed25519.pem")
     utils.write_cmp_certificate_to_pem(cert_chain[1], "data/unittest/ca1_cert_ecdsa.pem")
     utils.write_cmp_certificate_to_pem(cert_chain[2], "data/unittest/ca2_cert_rsa.pem")
@@ -268,7 +264,7 @@ def _generate_crl() -> None:
         key_usage="cRLSign,keyCertSign",
         is_ca=True,
         path_length=None,
-        ski=True,
+        include_ski=True,
     )
     utils.write_cmp_certificate_to_pem(crl_sign_cert, "data/unittest/crl_sign_cert_ecdsa.pem")
 
@@ -287,7 +283,7 @@ def _generate_crl() -> None:
         crl_file.write(crl.public_bytes(Encoding.PEM))
 
 
-def load_or_generate_cert_chain() -> Tuple[List[Union[rfc9480.CMPCertificate, x509.Certificate]], List[SignKey]]:
+def load_or_generate_cert_chain() -> Tuple[List[rfc9480.CMPCertificate], List[SignKey]]:
     """Load an existing certificate chain of size six, for testing.
 
     Filepath: "data/unittest/test_cert_chain_len6.pem".
@@ -541,14 +537,14 @@ def _build_certs_root_ca_key_update_content():
         common_name="CN=NewRootCA_with_Old",
         ca_cert=old_cert,
         ca_key=old_key,
-        ski=False,
+        include_ski=False,
     )
     old_with_new_cert, _ = build_certificate(
         private_key=old_key,
         common_name="CN=OldRootCA",
         ca_cert=new_with_new_cert,
         ca_key=new_key,
-        ski=False,
+        include_ski=False,
     )
 
     write_cmp_certificate_to_pem(old_cert, "data/unittest/old_root_ca.pem")
@@ -621,7 +617,7 @@ def _build_time_independent_certs():
         common_name="CN=CMP Protection Cert For KARI X25519",
         key_usage="keyAgreement",
         is_ca=True,
-        ski=True,
+        include_ski=True,
         eku="cmKGA,cmcCA",
     )
     write_cmp_certificate_to_pem(kga_cert, "data/unittest/cmp_prot_kari_x25519.pem")
@@ -657,7 +653,7 @@ def _build_pq_certs():
         common_name="CN=PQ McEliece 6960119",
         is_ca=False,
         path_length=None,
-        ski=True,
+        include_ski=True,
     )
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_cert_mceliece_6960119.pem")
     cert, key = build_certificate(
@@ -666,7 +662,7 @@ def _build_pq_certs():
         common_name="CN=PQ Composite Signature RSA",
         is_ca=False,
         path_length=None,
-        ski=True,
+        include_ski=True,
     )
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_root_ca_composite_sig_rsa.pem")
 
@@ -702,8 +698,14 @@ def compare_cert_chain(chain1: List[rfc9480.CMPCertificate], chain2: List[rfc948
 def setup_test_data():
     """Prepare test data by generating or loading certificate chains and dependent resources."""
     _generate_update_pq_certs()
+    os.makedirs("data/mock_ca", exist_ok=True)
     load_or_generate_cert_chain()
+    cert = parse_certificate(utils.load_and_decode_pem_file("data/unittest/root_cert_ed25519.pem"))
+    write_cmp_certificate_to_pem(cert, "data/mock_ca/root_cert_ed25519.pem")
     _build_time_independent_certs()
+    _generate_other_trusted_ca_and_device_certs()
+    _generate_mock_ca_certs()
+    _generate_other_trusted_pki_certs()
 
 
 def _gen_and_save_keys():
@@ -1200,9 +1202,23 @@ def build_crl_crypto_lib(
 
 
 def _generate_other_trusted_pki_certs():
-    """Generate and save certificates for other trusted PKIs."""
-    root_key = load_private_key_from_file("data/keys/private-key-ed25519.pem")
-    root_cert = parse_certificate(load_and_decode_pem_file("data/unittest/root_cert_ed25519.pem"))
+    """Generate and save certificates for other trusted PKIs.
+
+    Generates other trusted RA certificates for testing purposes.
+    Also used by the Mock-CA to test the LwCMP Section 5 test cases.
+
+    Uses:
+    ----
+    - `load_ca_cert_and_key()` as issuer cert and key.
+
+    Generated files:
+    ---------------
+    - data/unittest/ra_kga_cert_ecdsa.pem
+    - data/unittest/ra_cms_cert_ecdsa.pem
+
+    """
+
+    root_cert, root_key = load_ca_cert_and_key()
     kga_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
 
     pub_key = load_public_key_from_cert(root_cert)
@@ -1465,6 +1481,80 @@ def _generate_mock_ca_kem_certs():
     write_cmp_certificate_to_pem(cert, "data/unittest/ca_encr_cert_frodokem_976_aes.pem")
     print("Updated FrodoKEM-976-AES CA Encr Cert")
 
+def _generate_other_trusted_ca_and_device_certs():
+    """Build another trusted CA certificate for testing."""
+    os.makedirs("data/mock_ca", exist_ok=True)
+    os.makedirs("data/mock_ca/trustanchors", exist_ok=True)
+    key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
+
+    extensions = _prepare_root_ca_extensions(key)
+
+    root_cert, _ = build_certificate(
+        private_key=key,
+        common_name="CN=Other Trusted Root CA RSA",
+        extensions=extensions,
+        hash_alg="sha512",
+    )
+    write_cmp_certificate_to_pem(root_cert, "data/mock_ca/trustanchors/root_ca_cert_rsa.pem")
+
+    device_cert, _ = build_certificate(
+        private_key=key,
+        common_name="CN=Other Trusted Device",
+        extensions=extensions,
+    )
+
+    device_key = load_private_key_from_file("data/keys/private-key-ecdsa.pem")
+
+    device_extn = _prepare_ca_ra_extensions(
+        issuer_key=key,
+        key=device_key,
+        eku=None,
+        eku_critical=False,
+        key_usage="keyAgreement, digitalSignature",
+        key_usage_critical=False,
+    )
+
+    device_cert, _ = build_certificate(
+        private_key=device_key,
+        ca_cert=root_cert,
+        ca_key=key,
+        common_name="CN=Device Cert ECDSA",
+        extensions=extensions,
+        hash_alg="sha512",
+        device_extn=device_extn,
+    )
+    device_chain = [device_cert, root_cert]
+    write_cert_chain_to_file(device_chain, "data/mock_ca/device_cert_ecdsa_cert_chain.pem")
+    print("Updated Other Trusted Device Cert Chain")
+
+def _generate_mock_ca_issued_dsa_cert():
+    """Generate and save a mock CA-issued DSA certificate for testing purposes.
+
+    This certificate is intended for use in a test that verifies the CA correctly
+    rejects PKIMessages signed with a DSA certificate, as DSA is not supported
+    by Lightweight CMP (LwCMP) according to RFC 9483.
+    """
+    ca_cert, ca_key = load_ca_cert_and_key()
+    dsa_key = load_private_key_from_file("data/keys/private-key-dsa.pem")
+
+    from mock_ca.ca_handler import CAHandler
+    ca_handler = CAHandler()
+    exts = ca_handler._prepare_extensions(
+        ca_cert=ca_cert,
+    )
+
+    key_usage_extn = prepare_key_usage_extension("digitalSignature", critical=False)
+    exts.append(key_usage_extn)
+
+    dsa_cert, _ = build_certificate(
+        private_key=dsa_key,
+        common_name="CN=DSA Certificate",
+        extensions=exts,
+        ca_cert=ca_cert,
+        ca_key=ca_key,
+    )
+    write_cmp_certificate_to_pem(dsa_cert, "data/unittest/dsa_certificate.pem")
+    print("Updated DSA certificate")
 
 def _generate_mock_ca_certs():
     """Generate and save mock CA certificates for testing."""
@@ -1532,6 +1622,9 @@ def _generate_mock_ca_certs():
     print("Updated X448 CA Encr Cert")
 
     _generate_mock_ca_kem_certs()
+    # For DSA test case.
+    _generate_mock_ca_issued_dsa_cert()
+
 
 
 def load_kari_certs() -> Dict:
@@ -1634,3 +1727,53 @@ def _safety_pq_cert_check():
         loaded_mlkem768 = load_private_key_from_file(f"{key_dir}/{key_path}")
         if mlkem768_pub_key != loaded_mlkem768.public_key():
             raise MismatchingKey("ML-KEM-768 private key file does not match the public key in the certificate.")
+
+
+def _neither_val_is_set(val1: univ.Sequence, val2: univ.Sequence, field_name: str) -> Tuple[int, str]:
+    """Check if neither value is set."""
+    if not val1[field_name].isValue and not val2[field_name].isValue:
+        return 0, f"Field '{field_name}' is not set in neither objects set."
+
+    if not val1[field_name].isValue and val2[field_name].isValue:
+        return -1, f"Field '{field_name}' has only set a value in object 2: {val2[field_name].prettyPrint()}"
+
+    if val1[field_name].isValue and not val2[field_name].isValue:
+        return -1, f"Field '{field_name}' has only set a value in object 1: {val1[field_name].prettyPrint()}"
+
+    return 1, "Both values are set"
+
+
+def verbose_pyasn1_compare(obj1: univ.Sequence, obj2: univ.Sequence, exclude_fields: List[str] = None) -> Tuple[list, list]:
+    """Compare two pyasn1 objects and print their differences.
+
+    :param obj1: The first object to compare.
+    :param obj2: The second object to compare.
+    :param exclude_fields: A list of field names to exclude from the comparison.
+    """
+    eq_fields = []
+    non_eq_fields = []
+
+    field_names = list(obj1.keys())
+    exclude_fields = exclude_fields or []
+
+    for field_name in field_names:
+
+        if field_name in exclude_fields:
+            continue
+
+        val, msg = _neither_val_is_set(obj1, obj2, field_name)
+        if val == 0:
+            eq_fields.append(msg)
+            continue
+        elif val == -1:
+            non_eq_fields.append(msg)
+            continue
+
+        if encode_to_der(obj1[field_name]) == encode_to_der(obj2[field_name]):
+            eq_fields.append(field_name)
+            continue
+        else:
+            msg = f"Field '{field_name}' is not equal: {obj1[field_name].prettyPrint()} vs {obj2[field_name].prettyPrint()}"
+            non_eq_fields.append(msg)
+
+    return eq_fields, non_eq_fields

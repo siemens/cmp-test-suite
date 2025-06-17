@@ -24,10 +24,12 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.hybrid_sig import catalyst_logic, cert_binding_for_multi_auth, chameleon_logic, sun_lamps_hybrid_scheme_00
-from pq_logic.hybrid_sig.cert_binding_for_multi_auth import (
-    prepare_related_cert_extension,
-    validate_multi_auth_binding_csr,
+from pq_logic.hybrid_sig import (
+    catalyst_logic,
+    cert_binding_for_multi_auth,
+    certdiscovery,
+    chameleon_logic,
+    sun_lamps_hybrid_scheme_00,
 )
 from pq_logic.hybrid_sig.certdiscovery import prepare_subject_info_access_syntax_extension
 from pq_logic.hybrid_structures import AltSignatureValueExt
@@ -36,10 +38,17 @@ from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPu
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
-from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME
+from pq_logic.tmp_oids import (
+    COMPOSITE_SIG04_OID_2_NAME,
+    id_altSignatureExt,
+    id_ce_deltaCertificateDescriptor,
+    id_relatedCert,
+)
 from resources import (
+    asn1utils,
     ca_ra_utils,
     certbuildutils,
+    certextractutils,
     certutils,
     cmputils,
     keyutils,
@@ -48,21 +57,27 @@ from resources import (
     utils,
 )
 from resources.asn1_structures import PKIMessageTMP
-from resources.ca_ra_utils import build_ca_message
-from resources.certbuildutils import build_cert_from_csr
-from resources.certextractutils import extract_extensions_from_csr, get_extension
 from resources.convertutils import (
     copy_asn1_certificate,
     ensure_is_single_sign_key,
     ensure_is_single_verify_key,
     ensure_is_verify_key,
 )
-from resources.exceptions import BadAlg, BadAsn1Data, InvalidAltSignature, InvalidKeyCombination, UnknownOID
+from resources.exceptions import (
+    BadAlg,
+    BadAltPOP,
+    BadAsn1Data,
+    BadPOP,
+    InvalidAltSignature,
+    InvalidKeyCombination,
+    UnknownOID,
+)
 from resources.oidutils import (
     CMS_COMPOSITE03_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
     id_ce_altSignatureAlgorithm,
     id_ce_altSignatureValue,
+    id_ce_subjectAltPublicKeyInfo,
 )
 from resources.typingutils import (
     CACertResponse,
@@ -144,8 +159,9 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
         pki_message, _ = ca_ra_utils.build_cp_from_p10cr(request=request, cert=cert4, cert_req_id=-1)
 
     elif request["body"].getName() in ["ir", "cr", "kur", "crr"]:
+        body_name = request["body"].getName()
         cert_index = cert_index if cert_index is not None else 0
-        cert_req_msg: rfc4211.CertReqMsg = request["body"]["ir"][cert_index]
+        cert_req_msg: rfc4211.CertReqMsg = request["body"][body_name][cert_index]
         public_key = ca_ra_utils.get_public_key_from_cert_req_msg(cert_req_msg)
         if isinstance(public_key, CompositeSig03PublicKey):
             ca_ra_utils.verify_sig_pop_for_pki_request(request, cert_index)
@@ -161,10 +177,15 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
                 bad_alt_sig=kwargs.get("bad_alt_sig", False),
             )
 
-            pki_message, _ = ca_ra_utils.build_ip_cmp_message(
-                cert=cert4,
-                request=request,
+            cert_response = ca_ra_utils.prepare_cert_response(
                 cert_req_id=int(cert_req_msg["certReq"]["certReqId"]),
+                cert=cert4,
+            )
+
+            pki_message = ca_ra_utils.build_ca_message(
+                request=request,
+                responses=cert_response,
+                **kwargs,
             )
 
         elif isinstance(public_key, HybridKEMPublicKey):
@@ -250,7 +271,7 @@ def build_enc_cert_response(
         text="Issued encrypted certificate please verify with `CertConf`",
     )
 
-    pki_message = build_ca_message(
+    pki_message = ca_ra_utils.build_ca_message(
         request=request,
         responses=[cert_response],
         transaction_id=request["header"]["transactionID"].asOctets(),
@@ -318,9 +339,17 @@ def build_cert_from_catalyst_request(  # noqa: D417 Missing argument description
     cert_template = cert_req_msg["certReq"]["certTemplate"]
     second_key = catalyst_logic.load_catalyst_public_key(cert_template["extensions"])
 
-    verify_sig_popo_catalyst_cert_req_msg(
-        cert_req_msg=cert_req_msg,
-    )
+    try:
+        verify_sig_popo_catalyst_cert_req_msg(
+            cert_req_msg=cert_req_msg,
+        )
+
+    except InvalidAltSignature as e:
+        raise BadAltPOP("The alternative signature POP is invalid.") from e
+
+    except InvalidSignature as e:
+        raise BadPOP("The signature POP is invalid.") from e
+
     tbs_certs = certbuildutils.prepare_tbs_certificate_from_template(
         cert_template=cert_template,
         issuer=ca_cert["tbsCertificate"]["subject"],
@@ -349,6 +378,10 @@ def build_cert_from_catalyst_request(  # noqa: D417 Missing argument description
     if popo.getName() == "keyEncipherment" or isinstance(second_key, PQKEMPublicKey):
         if isinstance(second_key, PQKEMPublicKey):
             public_key = second_key
+            popo = cmputils.prepare_popo_challenge_for_non_signing_key(True, True)
+            cert_req_msg = ca_ra_utils.get_cert_req_msg_from_pkimessage(request)
+            cert_req_msg["popo"] = popo
+
         else:
             public_key = None
 
@@ -488,8 +521,8 @@ def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descri
     """
     cert_template = cert_req_msg["certReq"]["certTemplate"]
     alt_pub_key = catalyst_logic.load_catalyst_public_key(cert_template["extensions"])
-    alt_sig_alg_id = get_extension(cert_template["extensions"], id_ce_altSignatureAlgorithm)
-    alt_sig = get_extension(cert_template["extensions"], id_ce_altSignatureValue)
+    alt_sig_alg_id = certextractutils.get_extension(cert_template["extensions"], id_ce_altSignatureAlgorithm)
+    alt_sig = certextractutils.get_extension(cert_template["extensions"], id_ce_altSignatureValue)
 
     first_key = ca_ra_utils.get_public_key_from_cert_req_msg(cert_req_msg)
 
@@ -646,15 +679,17 @@ def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descr
         data = encoder.encode(cert_req)
         sig_alg = prepare_alg_ids.prepare_sig_alg_id(
             signing_key=comp_key,  # type: ignore
-            use_rsa_pss=True,
+            use_rsa_pss=use_rsa_pss,
             hash_alg=hash_alg,
         )
         sig = protectionutils.sign_data_with_alg_id(key=comp_key, alg_id=sig_alg, data=data)
 
-        if bad_pop:
-            sig = utils.manipulate_bytes_based_on_key(sig, comp_key)
-
-        popo = cmputils.prepare_popo(signature=sig, alg_oid=sig_alg["algorithm"])
+        popo = cmputils.prepare_sig_popo_structure(
+            alg_id=sig_alg,
+            signature=sig,
+            signing_key=comp_key,
+            bad_pop=bad_pop,
+        )
 
     elif isinstance(first_key, PQKEMPrivateKey) and isinstance(alt_key, TradSignKey):
         popo = cmputils.prepare_popo_challenge_for_non_signing_key(use_encr_cert=True)
@@ -682,7 +717,16 @@ def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descr
             signing_key=signing_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg
         )
         sig = protectionutils.sign_data_with_alg_id(key=signing_key, alg_id=sig_alg, data=data)
-        popo = cmputils.prepare_popo(signature=sig, signing_key=signing_key, alg_oid=sig_alg["algorithm"])
+
+        if bad_pop:
+            sig = utils.manipulate_first_byte(sig)
+
+        popo = cmputils.prepare_sig_popo_structure(
+            alg_id=sig_alg,
+            signature=sig,
+            signing_key=signing_key,
+            bad_pop=bad_pop,
+        )
 
     elif isinstance(alt_key, PQKEMPrivateKey) and isinstance(first_key, TradSignKey):
         extn = catalyst_logic.prepare_subject_alt_public_key_info_extn(
@@ -692,14 +736,16 @@ def prepare_catalyst_cert_req_msg_approach(  # noqa: D417 Missing argument descr
         cert_template["extensions"].append(extn)
         cert_req["certTemplate"] = cert_template
 
-        data = encoder.encode(cert_req)
-        sig_alg = prepare_alg_ids.prepare_sig_alg_id(signing_key=first_key, use_rsa_pss=True, hash_alg=hash_alg)
+        data = asn1utils.encode_to_der(cert_req)
+        sig_alg = prepare_alg_ids.prepare_sig_alg_id(signing_key=first_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg)
         sig = protectionutils.sign_data_with_alg_id(key=first_key, alg_id=sig_alg, data=data)
 
-        if bad_pop:
-            sig = utils.manipulate_first_byte(sig)
-
-        popo = cmputils.prepare_popo(signature=sig, signing_key=first_key, alg_oid=sig_alg["algorithm"])
+        popo = cmputils.prepare_sig_popo_structure(
+            alg_id=sig_alg,
+            signature=sig,
+            signing_key=first_key,
+            bad_pop=bad_pop,
+        )
 
     else:
         raise InvalidKeyCombination(
@@ -730,7 +776,7 @@ def _generate_catalyst_alt_sig_key(
     :raises BadAlg: If the algorithm is not supported.
     """
     if extensions is not None:
-        alt_sig_alg = get_extension(extensions, id_ce_altSignatureAlgorithm)
+        alt_sig_alg = certextractutils.get_extension(extensions, id_ce_altSignatureAlgorithm)
 
     pq_hash_alg = None
     if alt_sig_alg is not None and allow_chosen_sig_alg:
@@ -785,11 +831,11 @@ def build_catalyst_signed_cert_from_p10cr(
     :return:
     """
     certutils.verify_csr_signature(csr=request["body"]["p10cr"])
-    crs_extensions = extract_extensions_from_csr(request["body"]["p10cr"])
+    crs_extensions = certextractutils.extract_extensions_from_csr(request["body"]["p10cr"])
 
     alt_sig_alg = None
     if crs_extensions is not None:
-        alt_sig_alg = get_extension(crs_extensions, id_ce_altSignatureAlgorithm)
+        alt_sig_alg = certextractutils.get_extension(crs_extensions, id_ce_altSignatureAlgorithm)
 
     alt_key, pq_hash_alg = _generate_catalyst_alt_sig_key(
         alt_sig_alg=alt_sig_alg, alt_key=alt_key, allow_chosen_sig_alg=allow_chosen_sig_alg
@@ -1034,7 +1080,7 @@ def build_catalyst_signed_cert_from_req(  # noqa: D417 Missing argument descript
             f"Body type needs to be either `p10cr` or `ir` or `cr` or `kur` or `crr`.Got: {request['body'].getName()}"
         )
 
-    pki_message = build_ca_message(request=request, responses=cert_responses)
+    pki_message = ca_ra_utils.build_ca_message(request=request, responses=cert_responses)
     return pki_message, certs
 
 
@@ -1199,7 +1245,7 @@ def build_related_cert_from_csr(  # noqa: D417 Missing argument descriptions in 
 
     """
     if related_cert is None:
-        related_cert = validate_multi_auth_binding_csr(
+        related_cert = cert_binding_for_multi_auth.validate_multi_auth_binding_csr(
             csr,
             load_chain=kwargs.get("load_chain", False),
             trustanchors=kwargs.get("trustanchors", "./data/trustanchors"),
@@ -1208,14 +1254,14 @@ def build_related_cert_from_csr(  # noqa: D417 Missing argument descriptions in 
             max_freshness_seconds=kwargs.get("max_freshness_seconds", 500),
         )
 
-    extn = prepare_related_cert_extension(related_cert, critical=critical)
+    extn = cert_binding_for_multi_auth.prepare_related_cert_extension(related_cert, critical=critical)
 
     extn = [extn]
     if kwargs.get("extensions"):
         extn.extend(kwargs.get("extensions"))  # type: ignore
 
     # build the certificate
-    cert = build_cert_from_csr(
+    cert = certbuildutils.build_cert_from_csr(
         csr=csr,
         ca_key=ca_key,
         ca_cert=ca_cert,
@@ -1223,3 +1269,50 @@ def build_related_cert_from_csr(  # noqa: D417 Missing argument descriptions in 
     )
 
     return cert
+
+
+@not_keyword
+def is_hybrid_cert(cert: rfc9480.CMPCertificate) -> Optional[str]:
+    """Check if the certificate is a hybrid certificate.
+
+    :param cert: The certificate to check.
+    :return: The hybrid key type if the certificate is a hybrid certificate, otherwise `None`.
+    """
+    alg_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+
+    if alg_oid in COMPOSITE_SIG04_OID_2_NAME:
+        return "composite-sig-04"
+    if alg_oid in CMS_COMPOSITE03_OID_2_NAME:
+        return "composite-sig-03"
+
+    dcd = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
+    if dcd is not None:
+        return "chameleon"
+
+    extn = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_altSignatureExt)
+    if extn is not None:
+        return "sun-hybrid"
+
+    extn = certextractutils.get_extension(
+        cert["tbsCertificate"]["extensions"],
+        id_ce_altSignatureValue,
+    )
+
+    extn2 = certextractutils.get_extension(
+        cert["tbsCertificate"]["extensions"],
+        id_ce_subjectAltPublicKeyInfo,
+    )
+
+    if extn is not None or extn2 is not None:
+        return "catalyst"
+
+    if certdiscovery.is_cert_discovery_cert(
+        cert=cert,
+    ):
+        return "cert-discovery"
+
+    extn = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_relatedCert)
+    if extn is not None:
+        return "related-cert"
+
+    return None

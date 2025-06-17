@@ -116,19 +116,44 @@ class TestBuildCertConf(unittest.TestCase):
 
     def test_build_cert_conf_from_resp(self):
         """
-        GIVEN a valid PKIMessage with a certConf body, which is build from a valid CA Response
-        WHEN the PKIMessage is encoded as DER.
-        THEN the PKIMessage should be able to be decoded and have the same values as the CA message.
+        GIVEN a valid PKIMessage with body, which is build from a valid CA Response.
+        WHEN the certConf PKIMessage is built with the same `senderNonce` and recipNonce,
+        THEN should the PKIMessage have the same values as the CA message.
         """
         ca_message = build_ca_pki_message(cert=self.cert)
         ca_message = patch_sendernonce(ca_message, sender_nonce=b"A" * 16)
         ca_message = patch_transaction_id(ca_message, new_id=b"B" * 16)
         ca_message = patch_recipnonce(ca_message, recip_nonce=b"C" * 16)
         pki_message = build_cert_conf_from_resp(ca_message=ca_message,
-                                                sender=self.sender, recipient=self.recipient)
+                                                sender=self.sender,
+                                                recipient=self.recipient,
+                                                use_fresh_nonce=False,
+                                                )
 
         pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "certConf")
         self.assertEqual(pki_message["header"]["senderNonce"].asOctets(), b"C" * 16)
+        self.assertEqual(pki_message["header"]["transactionID"].asOctets(), b"B" * 16)
+        self.assertEqual(pki_message["header"]["recipNonce"].asOctets(), b"A" * 16)
+
+    def test_build_cert_conf_from_resp_fresh_nonce(self):
+        """
+        GIVEN a valid PKIMessage with body, which is build from a valid CA Response.
+        WHEN the certConf PKIMessage is built with a fresh nonce,
+        THEN should the PKIMessage have the same values as the CA message and a fresh nonce.
+        """
+        ca_message = build_ca_pki_message(cert=self.cert)
+        ca_message = patch_sendernonce(ca_message, sender_nonce=b"A" * 16)
+        ca_message = patch_transaction_id(ca_message, new_id=b"B" * 16)
+        ca_message = patch_recipnonce(ca_message, recip_nonce=b"C" * 16)
+        pki_message = build_cert_conf_from_resp(ca_message=ca_message,
+                                                sender=self.sender,
+                                                recipient=self.recipient,
+                                                use_fresh_nonce=True,
+                                                )
+
+        pki_msg = de_and_encode_pkimessage(pki_message)
+        self.assertEqual(get_cmp_message_type(pki_msg), "certConf")
+        self.assertNotEqual(pki_message["header"]["senderNonce"].asOctets(), b"C" * 16)
         self.assertEqual(pki_message["header"]["transactionID"].asOctets(), b"B" * 16)
         self.assertEqual(pki_message["header"]["recipNonce"].asOctets(), b"A" * 16)
