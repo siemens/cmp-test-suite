@@ -1,11 +1,11 @@
-# ADD Copywrite here
+# ADD Copyright here
 
 """Define the compare function to compare tags in the suite with baseline of tags."""
 
 from robot.api import TestSuiteBuilder
 import os
 import sys
-from typing import List, Set
+from typing import Set
 
 
 def get_suite_tags(suite) -> Set[str]:
@@ -62,44 +62,52 @@ def collect_tags(folder_path: str) -> Set[str]:
         print(f"Error walking through directory {folder_path}: {str(e)}")
         return set()
 
-def compare_tags_with_file(collected_tags, reference_file_path):
+
+def compare_tags_with_md(collected_tags, reference_md_path):
     """
-    Compare collected tags with tags in a reference file.
+    Compare collected tags with tags in a reference Markdown file.
 
     Args:
         collected_tags (Set[str]): Tags collected from the test suite.
-        reference_file_path (str): Path to the file containing reference tags.
+        reference_md_path (str): Path to the Markdown file containing reference tags.
 
     Returns:
         int: 0 if no new tags are found, 1 otherwise.
     """
     try:
-        with open(reference_file_path, 'r') as f:
-            reference_tags = set(line.strip() for line in f if line.strip())
+        with open(reference_md_path, 'r') as f:
+            reference_tags = set()
+            for line in f:
+                if line.startswith('|'):
+                    parts = line.split('|')
+                    if len(parts) > 1:
+                        tag = parts[1].strip()
+                        if tag:
+                            reference_tags.add(tag)
     except FileNotFoundError:
-        print(f"Reference file '{reference_file_path}' not found.")
+        print(f"Reference file '{reference_md_path}' not found.")
         return 1
 
     new_tags = collected_tags - reference_tags
 
     if new_tags:
-        print("New tags found:")
+        print("Tags missing in output_tags.md:")
         for tag in sorted(new_tags):
             print(f"- {tag}")
         return 1
     else:
-        print("No new tags found.")
+        print("No missing tags found.")
         return 0
 
 
 def main():
     """Main function to compare collected tags with a baseline and warn if new ones are found."""
     if len(sys.argv) != 3:
-        print("Usage: python get_tags.py <path_to_tests_folder> <baseline_file>")
+        print("Usage: python compare_tags.py <path_to_tests_folder> <output_tags_md>")
         sys.exit(1)
 
     folder_path = sys.argv[1]
-    baseline_file = "output_tags.txt"
+    reference_md_path = sys.argv[2]
 
     if not os.path.exists(folder_path):
         print(f"Error: Input folder '{folder_path}' does not exist")
@@ -112,8 +120,8 @@ def main():
         print("No tags found in the test suite")
         sys.exit(1)
 
-    # Compare with baseline
-    exit_code = compare_tags_with_file(tags, baseline_file)
+    # Compare with Markdown file
+    exit_code = compare_tags_with_md(tags, reference_md_path)
     sys.exit(exit_code)
 
 
