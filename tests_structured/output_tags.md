@@ -3,22 +3,15 @@ Add copywrite
 -->
 
 # Tags
-
-I'll help reorganize this according to the structure you provided. Let me start with the first sections to ensure we're on the right track:
+deleted tags: archive, cmp, config-dependent, field, lwcmp, nested, policy-dependent, reqInf, rfc6712,rfc9483-header, rfc9483-validation, setup, strict, version
+| security | General security feature tests |
+| sec-awareness | Security awareness tests |
+| trust | Trust relationship tests |
+| agreeMAC | MAC-based key agreement tests |
 
 # CMP Test Tags
 
 ## Protocol Core
-### Core Protocol
-| Tag | Description |
-|-----|-------------|
-| cmp | Core Certificate Management Protocol tests |
-| lwcmp | Lightweight CMP protocol variant tests |
-| version | Protocol version compatibility tests |
-| strict | Strict compliance tests |
-| rfc6712 | Tests for RFC 6712 compliance |
-| rfc9483-header | Tests for RFC 9483 header compliance |
-| rfc9483-validation | Tests for RFC 9483 validation compliance |
 
 ### Message Types
 | Tag | Description |
@@ -31,6 +24,7 @@ I'll help reorganize this according to the structure you provided. Let me start 
 | kup | Key Update Response message tests |
 | rr | Revocation Request message tests |
 | crr | Certificate Response message tests |
+| p10cr | PKCS#10 Certificate Request tests |
 | certConf | Tests related to Certificate Confirmation messages |
 | general-message | General message handling tests |
 | support-messages | Supporting message type tests |
@@ -39,17 +33,14 @@ I'll help reorganize this according to the structure you provided. Let me start 
 | Tag | Description |
 |-----|-------------|
 | PKIBody | PKI message body handling tests |
-| header | Tests focusing on PKIMessage header components |
-| field | Field-specific handling tests |
+| header | Tests focusing on PKIMessage header components |--
+| pvno | Tests focusing on the pvno field |
+| sender | Sender field handling tests |
+| senderKID | Sender Key Identifier handling tests |
+| messageTime | MessageTime Field tests |
 | senderNonce | Sender nonce handling tests |
 | recipNonce | Recipient nonce handling tests |
-| transactionId | Transaction ID handling tests |
-| regToken | Registration token tests |
-| senderKID | Sender Key Identifier handling tests |
-| sender | Sender field handling tests |
-| reqInfo | Request information handling tests |
 | implicit_confirm | Tests for implicit confirmation handling |
-| orig-pkimessage | Original PKI message handling tests |
 
 ## Certificate Management
 ### Certificate Operations
@@ -65,7 +56,7 @@ I'll help reorganize this according to the structure you provided. Let me start 
 | status | Certificate status handling tests |
 | ca-certs | CA certificate handling tests |
 | csr | Certificate Signing Request tests |
-| p10cr | PKCS#10 Certificate Request tests |
+
 
 ### Certificate Content
 | Tag | Description |
@@ -77,6 +68,9 @@ I'll help reorganize this according to the structure you provided. Let me start 
 | extraCert | Extra certificate handling tests |
 | validity | Certificate validity handling tests |
 | CRLReason | Certificate Revocation List reason handling tests |
+| transactionId | Transaction ID handling tests |
+| regToken | Registration token tests |
+
 
 ### Certificate Extensions
 | Tag | Description |
@@ -88,18 +82,44 @@ I'll help reorganize this according to the structure you provided. Let me start 
 | san | Subject Alternative Name extension tests |
 
 
+## Error Handling
+| Tag | Description |
+|-----|-------------|
+| badCertId | Reference to an unknown certificate |
+| badPOP | Invalid Proof-of-Possession tests |
+| certRevoked | Revocation of already revoked certificate |
+| badCertTemplate | Invalid certificate template tests |
+| transactionIdInUse | TransaktionID is already in use |
+| notAuthorized | Unauthorized access tests |
+| systemUnavail | Back-end system is currently not available |
+| systemFailure | Back-end system is not functioning correctly |
+| bad-behaviour | Incorrect behavior handling tests |
+| badAlg | Invalid algorithm handling tests |
+| badSenderNonce | 
+| badRecipientNonce | 
+| wrongIntegrity |
+| badMessageCheck | 
+| signerNotTrusted |
+| badDataFormat |
+| unsupportedVersion |
+| badRequest | 
+
+## Certificate Lifecycle
+| Tag | Description |
+|-----|-------------|
+| revocation | Certificate revocation tests |
+| revive | Certificate revival tests |
+| publication | Certificate publication tests |
+| rejection | Request rejection handling tests |
 
 
 ## Security
-### Protection
+### Protection 
 | Tag | Description |
 |-----|-------------|
 | protection | Message protection tests |
 | protectionAlg | Protection algorithm tests |
 | adding-protection | Protection mechanism addition tests |
-| security | General security feature tests |
-| sec-awareness | Security awareness tests |
-| trust | Trust relationship tests |
 | raVerified | RA verification tests |
 
 ### Authentication
@@ -119,6 +139,7 @@ I'll help reorganize this according to the structure you provided. Let me start 
 | encrValue | Encrypted value processing tests |
 | encryptedKey | Encrypted key handling tests |
 
+
 ## Cryptography
 ### Key Operations
 | Tag | Description |
@@ -128,7 +149,6 @@ I'll help reorganize this according to the structure you provided. Let me start 
 | keyEnc | Key encryption operation tests |
 | kga | Key generation and archival tests |
 | non-signing-key | Non-signing key handling tests |
-| agreeMAC | MAC-based key agreement tests |
 | ak | Authorization key handling tests |
 | kari | Key Agreement Recipient Info handling tests |
 | ktri | Key Transport Recipient Info handling tests |
@@ -156,8 +176,7 @@ I'll help reorganize this according to the structure you provided. Let me start 
 | kem | Key Encapsulation Mechanism operations |
 
 
-## Test Management
-### Test Types
+## Test Types
 | Tag | Description |
 |-----|-------------|
 | smoke | Basic functionality tests |
@@ -168,39 +187,23 @@ I'll help reorganize this according to the structure you provided. Let me start 
 | deprecated | Deprecated features tests |
 | robot:skip-on-failure | Tests to skip on failure |
 
-### Error Handling
-| Tag | Description |
-|-----|-------------|
-| bad-behaviour | Incorrect behavior handling tests |
-| badAlg | Invalid algorithm handling tests |
-| badPOP | Invalid Proof-of-Possession tests |
-| badCertTemplate | Invalid certificate template tests |
-| rejection | Request rejection handling tests |
-| notAuthorized | Unauthorized access tests |
-| inconsistency | Inconsistent data handling tests |
-| missing_info | Missing information handling tests |
-| invalid-size | Message size validation tests |
 
-### Configuration
-| Tag | Description |
-|-----|-------------|
-| setup | Environment setup tests |
-| config-dependent | Configuration-dependent tests |
-| policy-dependent | Policy-dependent tests |
-| nested | Nested message handling tests |
-
-
-## Special Features
-### Certificate Lifecycle
-| Tag | Description |
-|-----|-------------|
-| archive | Archival-related tests |
-| revocation | Certificate revocation tests |
-| revive | Certificate revival tests |
-| publication | Certificate publication tests |
-
-### Processing Features
+## Unsorted Tags
 | Tag | Description |
 |-----|-------------|
 | batching | Batch processing tests |
 | time | Timestamp-related tests |
+| inconsistency | Inconsistent data handling tests |
+| missing_info | Missing information handling tests |
+| invalid-size | Message size validation tests |
+| orig-pkimessage | Original PKI message handling tests |
+
+## Transfer Mechanism Tags
+| Tag | Description |
+|-----|-------------|
+| Transfer_HTTP |  |
+| Transfer_CoAP |  |
+| Transfer_File |  |
+| Transfer_Offline |  |
+| Transfer_Batched |  |
+| Transfer_Nested |  |
