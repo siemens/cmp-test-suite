@@ -3,11 +3,6 @@ Add copywrite
 -->
 
 # Tags
-deleted tags: archive, cmp, config-dependent, field, lwcmp, nested, policy-dependent, reqInf, rfc6712,rfc9483-header, rfc9483-validation, setup, strict, version
-| security | General security feature tests |
-| sec-awareness | Security awareness tests |
-| trust | Trust relationship tests |
-| agreeMAC | MAC-based key agreement tests |
 
 # CMP Test Tags
 
