@@ -468,6 +468,7 @@ def build_p10cr_from_key(  # noqa D417 undocumented-param
         hash_alg=params.get("hash_alg", "sha256"),
         use_rsa_pss=params.get("use_rsa_pss", False),
         use_pre_hash=params.get("use_pre_hash", False),
+        version=params.get("version", 0),  # type: ignore
     )
     return build_p10cr_from_csr(
         csr=csr,
