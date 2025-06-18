@@ -129,7 +129,6 @@ Add copywrite
 ### Encryption
 | Tag | Description |
 |-----|-------------|
-| envData | Enveloped data structure tests |
 | envelopedData | CMS EnvelopedData structure tests |
 | encrValue | Encrypted value processing tests |
 | encryptedKey | Encrypted key handling tests |
