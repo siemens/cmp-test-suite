@@ -89,6 +89,7 @@ from resources.suiteenums import InvalidOneAsymKeyType, KeySaveType
 from resources.typingutils import (
     CAResponse,
     CertOrCerts,
+    CertRequestType,
     ECDHPrivateKey,
     ECDHPublicKey,
     EnvDataPrivateKey,
@@ -2156,6 +2157,23 @@ def set_ca_header_fields(request: PKIMessageTMP, kwargs: dict) -> dict:
     return kwargs
 
 
+def _validate_subject_field_for_cert_request(
+    csr_or_template: CertRequestType,
+) -> None:
+    """Validate the subject field in the certificate request.
+
+    :param csr_or_template: The CSR or certificate template to use for validation.
+    :raises BadCertTemplate: If the subject field is invalid.
+    """
+    extensions, _ = certbuildutils.parse_extension_and_public_key(csr_or_template)
+    subject = certbuildutils.parse_subject_from_cert_related_type(csr_or_template)
+    if compareutils.is_null_dn(subject):
+        if extensions is None or get_extension(extensions, rfc5280.id_ce_subjectAltName) is None:
+            raise BadCertTemplate(
+                "The CSR's subject field is set to `Null-DN` and the `subjectAltName` extension is missing."
+            )
+
+
 @keyword(name="Build CP From P10CR")
 def build_cp_from_p10cr(  # noqa: D417 Missing argument descriptions in the docstring
     request: PKIMessageTMP,
@@ -2213,6 +2231,8 @@ def build_cp_from_p10cr(  # noqa: D417 Missing argument descriptions in the docs
     certutils.verify_csr_signature(request["body"]["p10cr"])
     if cert is None and ca_key is None and ca_cert is None:
         raise ValueError("Either `cert` or `ca_key` and `ca_cert` must be provided to build a CA CMP message.")
+
+    _validate_subject_field_for_cert_request(request["body"]["p10cr"])
 
     cert = cert or certbuildutils.build_cert_from_csr(
         csr=request["body"]["p10cr"],
