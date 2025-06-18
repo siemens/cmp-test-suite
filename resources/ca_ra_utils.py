@@ -2395,6 +2395,44 @@ def _build_ca_cert_response_body(
     return pki_message
 
 
+@not_keyword
+def validate_cert_req_id_nums(pki_message: PKIMessageTMP) -> None:
+    """Validate if the certReqId numbers are unique and not negative or the CSR version is `0`.
+
+    Also checks if the numbers are in the range from 0 to len(cert_req_msg) - 1.
+
+    :param pki_message: The PKIMessage containing the certificate requests.
+    :raises BadRequest: If the certReqId numbers are not unique or not in the range from 0 to len(cert_req_msg) - 1.
+    """
+    cert_req_ids = set()
+
+    body_name = pki_message["body"].getName()
+    if body_name == "p10cr":
+        if int(pki_message["body"]["p10cr"]["certificationRequestInfo"]["version"]) != 0:
+            raise BadCertTemplate("The `certificationRequestInfo` version of the P10CR message was not `0`.")
+        return
+
+    cert_req_msg: Sequence[rfc4211.CertReqMsg] = pki_message["body"][body_name]
+
+    if len(cert_req_msg) == 0:
+        raise BadRequest("No certificate requests found in the message. At least one certReq must be present.")
+
+    if len(cert_req_msg) == 1:
+        if int(cert_req_msg[0]["certReq"]["certReqId"]) != 0:
+            raise BadRequest("The certReqId must be set to `0` or greater.")
+        return
+
+    for req in cert_req_msg:
+        cert_req_id = int(req["certReq"]["certReqId"])
+        if cert_req_id in cert_req_ids:
+            raise BadRequest(f"Duplicate certReqId found: {cert_req_id}. All certReqIds must be unique.")
+        cert_req_ids.add(cert_req_id)
+
+    # Must be correctly ordered, from 0 to len(cert_req_msg) - 1.
+    if not all(req_id in cert_req_ids for req_id in range(len(cert_req_msg))):
+        raise BadRequest("The certReqId numbers must be unique and in the range from 0 to the number of requests - 1.")
+
+
 @keyword(name="Build CP CMP Message")
 def build_cp_cmp_message(  # noqa: D417 Missing argument descriptions in the docstring
     request: Optional[PKIMessageTMP] = None,

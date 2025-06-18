@@ -29,6 +29,7 @@ from pq_logic.pq_verify_logic import build_sun_hybrid_cert_chain, verify_hybrid_
 from pq_logic.tmp_oids import id_ce_deltaCertificateDescriptor
 from resources import certextractutils
 from resources.asn1_structures import PKIMessageTMP
+from resources.ca_ra_utils import validate_cert_req_id_nums
 from resources.certutils import load_public_key_from_cert
 from resources.checkutils import check_if_response_contains_encrypted_cert
 from resources.cmputils import add_general_info_values, find_oid_in_general_info
@@ -282,6 +283,7 @@ class SunHybridHandler:
         :param protection_config: The protection configuration. Defaults to `None`.
         :return: The response, the certificate issued and the certificate not confirmed.
         """
+        validate_cert_req_id_nums(request)
         implicit_confirm = find_oid_in_general_info(request, str(rfc9480.id_it_implicitConfirm))
 
         response, cert4, cert1 = build_sun_hybrid_cert_from_request(

@@ -55,6 +55,7 @@ from resources.ca_ra_utils import (
     build_cp_cmp_message,
     build_ip_cmp_message,
     get_popo_from_pkimessage,
+    validate_cert_req_id_nums,
 )
 from resources.certbuildutils import (
     build_certificate,
@@ -925,6 +926,7 @@ class CAHandler:
 
                 self.hybrid_handler.chameleon_handler.is_delta_key_revoked(request=pki_message)
 
+                validate_cert_req_id_nums(pki_message)
                 response, paired_cert, delta_cert = build_chameleon_from_p10cr(
                     request=pki_message,
                     ca_cert=self.ca_cert,
@@ -1216,6 +1218,7 @@ class CAHandler:
         result = find_oid_in_general_info(pki_message, str(rfc9480.id_it_implicitConfirm))
 
         try:
+            validate_cert_req_id_nums(pki_message)
             self.validate_p10cr_public_key(pki_message)
             related_cert = validate_multi_auth_binding_csr(
                 pki_message["body"]["p10cr"],
@@ -1278,6 +1281,8 @@ class CAHandler:
             if body_name == "certConf":
                 return self.process_cert_conf(pki_message)
 
+            validate_cert_req_id_nums(pki_message)
+
             response, certs = build_catalyst_signed_cert_from_req(
                 request=pki_message,
                 ca_cert=self.ca_cert,
@@ -1307,6 +1312,7 @@ class CAHandler:
             if body_name == "certConf":
                 return self.process_cert_conf(pki_message)
 
+            validate_cert_req_id_nums(pki_message)
             response, cert = build_cert_from_catalyst_request(
                 request=pki_message,
                 ca_cert=self.ca_cert,
