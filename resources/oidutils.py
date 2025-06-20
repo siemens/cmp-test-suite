@@ -51,16 +51,14 @@ from pq_logic.tmp_oids import (
     COMPOSITE_SIG04_OID_2_NAME,
     FALCON_NAME_2_OID,
     FRODOKEM_NAME_2_OID,
-    FRODOKEM_OID_2_NAME,
     MCELIECE_NAME_2_OID,
-    MCELIECE_OID_2_NAME,
     PURE_COMPOSITE_SIG03_NAME_TO_OID,
     PURE_OID_TO_HASH,
     id_altSignatureExt,
     id_altSubPubKeyExt,
     id_ce_deltaCertificateDescriptor,
     id_relatedCert,
-    id_sntrup761_str,
+    id_sntrup761,
 )
 from resources.asn1_structures import (
     EmailAddressASN1,
@@ -556,8 +554,6 @@ ML_KEM_NAME_2_OID = {
 PQ_KEM_NAME_2_OID = {}
 PQ_KEM_NAME_2_OID.update(ML_KEM_NAME_2_OID)
 
-PQ_KEM_OID_2_NAME = {y: x for x, y in PQ_KEM_NAME_2_OID.items()}
-
 ALL_KNOWN_OIDS_2_NAME.update(PQ_KEM_NAME_2_OID)
 
 # ###################------
@@ -727,10 +723,11 @@ CMS_COMPOSITE03_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {y: x for x, y in
 
 PQ_SIG_NAME_2_OID.update(FALCON_NAME_2_OID)
 
-PQ_KEM_NAME_2_OID.update({"sntrup761": id_sntrup761_str})
+PQ_KEM_NAME_2_OID.update({"sntrup761": id_sntrup761})
 PQ_KEM_NAME_2_OID.update(MCELIECE_NAME_2_OID)
 PQ_KEM_NAME_2_OID.update(FRODOKEM_NAME_2_OID)
 
+PQ_KEM_OID_2_NAME = {y: x for x, y in PQ_KEM_NAME_2_OID.items()}
 
 PQ_SIG_PRE_HASH_OID_2_NAME = {}
 PQ_SIG_PRE_HASH_OID_2_NAME.update(ML_DSA_PRE_HASH_OID_2_NAME)
@@ -745,8 +742,6 @@ PQ_OID_2_NAME = {y: x for x, y in PQ_NAME_2_OID.items()}
 
 
 KEM_OID_2_NAME = {y: x for x, y in PQ_KEM_NAME_2_OID.items()}
-KEM_OID_2_NAME.update(FRODOKEM_OID_2_NAME)
-KEM_OID_2_NAME.update(MCELIECE_OID_2_NAME)
 KEM_OID_2_NAME.update(CHEMPAT_OID_2_NAME)
 KEM_OID_2_NAME.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
 KEM_OID_2_NAME.update(COMPOSITE_KEM05_OID_2_NAME)

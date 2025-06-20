@@ -68,7 +68,7 @@ FALCON_NAME_2_OID = {
 FALCON_OID_2_NAME = {y: x for x, y in FALCON_NAME_2_OID.items()}
 
 id_ntru = f"{id_kem_test_suite}.1"
-id_sntrup761_str = univ.ObjectIdentifier(f"{id_ntru}.1")
+id_sntrup761 = univ.ObjectIdentifier(f"{id_ntru}.1")
 
 
 id_mceliece = f"{id_kem_test_suite}.2"
