@@ -233,6 +233,17 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
         return {"ml-kem-768": 3, "ml-kem-512": 1, "ml-kem-1024": 5}[self.name]
 
     @staticmethod
+    def _seed_size(name: str) -> int:
+        """Get the size of the seed for the specified ML-KEM algorithm.
+
+        :param name: The algorithm name (e.g., "ml-kem-512").
+        :return: The size of the seed in bytes.
+        """
+        if name not in ML_KEM_NAMES:
+            raise ValueError(f"Invalid ML-KEM algorithm name: {name}. Supported options: {ML_KEM_NAMES}")
+        return 64
+
+    @staticmethod
     def _from_seed(alg_name: str, seed: bytes) -> Tuple[bytes, bytes, bytes]:
         """Generate a new ML-KEM private key from a seed.
 

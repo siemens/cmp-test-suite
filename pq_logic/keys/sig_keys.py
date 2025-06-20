@@ -376,6 +376,16 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
 
         return sig
 
+    @staticmethod
+    def _seed_size(name: str) -> int:
+        """Return the size of the seed used for ML-DSA key generation."""
+        return 32
+
+    @property
+    def seed_size(self) -> int:
+        """Return the size of the seed used for ML-DSA key generation."""
+        return self._seed_size(name=self.name)
+
 
 ##########################
 # SLH-DSA
@@ -656,6 +666,17 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
                 raise ValueError("The provided public key does not match the private key.")
 
         return s_key
+
+    @staticmethod
+    def _seed_size(name: str) -> int:
+        """Return the size of the seed used for SLH-DSA key generation."""
+        _slh_class: SLH_DSA = fips205.SLH_DSA_PARAMS[name.replace("_", "-")]
+        return 3 * _slh_class.n
+
+    @property
+    def seed_size(self) -> int:
+        """Return the size of the seed used for SLH-DSA key generation."""
+        return self._seed_size(name=self.name)
 
 
 ##########################
