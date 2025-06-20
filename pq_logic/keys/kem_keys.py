@@ -404,6 +404,9 @@ class Sntrup761PrivateKey(PQKEMPrivateKey):
 
         :return: An instance of `Sntrup761PublicKey`.
         """
+        if self._public_key_bytes is None:
+            # If the public key is not set, derive it from the private key bytes
+            self._public_key_bytes = self._private_key_bytes[382 : 382 + 1158]
         return Sntrup761PublicKey(public_key=self._public_key_bytes, alg_name="sntrup761")
 
     @classmethod
