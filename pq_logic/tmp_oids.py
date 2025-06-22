@@ -316,17 +316,35 @@ COMP_SIG04_PREHASH_OID_2_HASH = {
 # Composite KEM
 ######################
 
-id_mlkem768_rsa2048 = univ.ObjectIdentifier(f"{id_CompKEM}.21")
-id_mlkem768_rsa3072 = univ.ObjectIdentifier(f"{id_CompKEM}.22")
-id_mlkem768_rsa4096 = univ.ObjectIdentifier(f"{id_CompKEM}.23")
-id_mlkem768_x25519 = univ.ObjectIdentifier(f"{id_CompKEM}.24")
-id_mlkem768_ecdh_p384 = univ.ObjectIdentifier(f"{id_CompKEM}.25")
-id_mlkem768_ecdh_brainpool_p256r1 = univ.ObjectIdentifier(f"{id_CompKEM}.26")
+id_new_compKEM = univ.ObjectIdentifier("2.16.840.1.114027.80.5.2")
+# Composite KEM v07 OIDs
+id_comp_kem07_mlkem768_rsa2048 = univ.ObjectIdentifier(f"{id_new_compKEM}.50")
+id_comp_kem07_mlkem768_rsa3072 = univ.ObjectIdentifier(f"{id_new_compKEM}.51")
+id_comp_kem07_mlkem768_rsa4096 = univ.ObjectIdentifier(f"{id_new_compKEM}.52")
+id_comp_kem07_mlkem768_x25519 = univ.ObjectIdentifier(f"{id_new_compKEM}.53")
+id_comp_kem07_mlkem768_ecdh_p256 = univ.ObjectIdentifier(f"{id_new_compKEM}.54")
+id_comp_kem07_mlkem768_ecdh_p384 = univ.ObjectIdentifier(f"{id_new_compKEM}.55")
+id_comp_kem07_mlkem768_ecdh_brainpool_p256r1 = univ.ObjectIdentifier(f"{id_new_compKEM}.56")
+id_comp_kem07_mlkem1024_ecdh_p384 = univ.ObjectIdentifier(f"{id_new_compKEM}.57")
+id_comp_kem07_mlkem1024_ecdh_brainpool_p384r1 = univ.ObjectIdentifier(f"{id_new_compKEM}.58")
+id_comp_kem07_mlkem1024_x448 = univ.ObjectIdentifier(f"{id_new_compKEM}.59")
+id_comp_kem07_mlkem1024_ecdh_p521 = univ.ObjectIdentifier(f"{id_new_compKEM}.60")
+id_comp_kem07_mlkem1024_rsa3072 = univ.ObjectIdentifier(f"{id_new_compKEM}.61")
 
-id_mlkem1024_ecdh_p384 = univ.ObjectIdentifier(f"{id_CompKEM}.27")
-id_mlkem1024_ecdh_brainpool_p384r1 = univ.ObjectIdentifier(f"{id_CompKEM}.28")
-id_mlkem1024_x448 = univ.ObjectIdentifier(f"{id_CompKEM}.29")
-
+COMPOSITE_KEM07_MLKEM_NAME_2_OID = {
+    "composite-kem07-ml-kem-768-rsa2048": id_comp_kem07_mlkem768_rsa2048,
+    "composite-kem07-ml-kem-768-rsa3072": id_comp_kem07_mlkem768_rsa3072,
+    "composite-kem07-ml-kem-768-rsa4096": id_comp_kem07_mlkem768_rsa4096,
+    "composite-kem07-ml-kem-768-x25519": id_comp_kem07_mlkem768_x25519,
+    "composite-kem07-ml-kem-768-ecdh-secp256r1": id_comp_kem07_mlkem768_ecdh_p256,
+    "composite-kem07-ml-kem-768-ecdh-secp384r1": id_comp_kem07_mlkem768_ecdh_p384,
+    "composite-kem07-ml-kem-768-ecdh-brainpoolP256r1": id_comp_kem07_mlkem768_ecdh_brainpool_p256r1,
+    "composite-kem07-ml-kem-1024-ecdh-secp384r1": id_comp_kem07_mlkem1024_ecdh_p384,
+    "composite-kem07-ml-kem-1024-ecdh-brainpoolP384r1": id_comp_kem07_mlkem1024_ecdh_brainpool_p384r1,
+    "composite-kem07-ml-kem-1024-x448": id_comp_kem07_mlkem1024_x448,
+    "composite-kem07-ml-kem-1024-ecdh-secp521r1": id_comp_kem07_mlkem1024_ecdh_p521,
+    "composite-kem07-ml-kem-1024-rsa3072": id_comp_kem07_mlkem1024_rsa3072,
+}
 
 id_composite_frodokem = f"{id_composite_kem_test_suite}.1"
 id_composite_mlkem_dhkemrfc9180 = f"{id_composite_kem_test_suite}.2"
@@ -358,69 +376,29 @@ id_frodokem_1344_shake_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodoke
 id_frodokem_1344_shake_ecdh_brainpoolP384r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.17")
 id_frodokem_1344_shake_x448 = univ.ObjectIdentifier(f"{id_composite_frodokem}.18")
 
+composite_kem_version = "composite-kem07"
 
-MLKEM_OID_2_KDF_MAPPING = {
-    id_mlkem768_rsa2048: "hkdf-sha256",
-    id_mlkem768_rsa3072: "hkdf-sha256",
-    id_mlkem768_rsa4096: "hkdf-sha256",
-    id_mlkem768_x25519: "sha3-256",
-    id_mlkem768_ecdh_p384: "hkdf-sha256",
-    id_mlkem768_ecdh_brainpool_p256r1: "hkdf-sha256",
-    id_mlkem1024_ecdh_p384: "sha3-256",
-    id_mlkem1024_ecdh_brainpool_p384r1: "sha3-256",
-    id_mlkem1024_x448: "sha3-256",
+# Always added to the last version of the draft.
+COMPOSITE_FRODOKEM_NAME_2_OID = {
+    f"{composite_kem_version}-frodokem-976-aes-rsa2048": id_frodokem_976_aes_rsa2048,
+    f"{composite_kem_version}-frodokem-976-aes-rsa3072": id_frodokem_976_aes_rsa3072,
+    f"{composite_kem_version}-frodokem-976-aes-rsa4096": id_frodokem_976_aes_rsa4096,
+    f"{composite_kem_version}-frodokem-976-aes-x25519": id_frodokem_976_aes_x25519,
+    f"{composite_kem_version}-frodokem-976-aes-ecdh-secp384r1": id_frodokem_976_aes_ecdh_p384,
+    f"{composite_kem_version}-frodokem-976-aes-ecdh-brainpoolP256r1": id_frodokem_976_aes_brainpoolP256r1,
+    f"{composite_kem_version}-frodokem-976-shake-rsa2048": id_frodokem_976_shake_rsa2048,
+    f"{composite_kem_version}-frodokem-976-shake-rsa3072": id_frodokem_976_shake_rsa3072,
+    f"{composite_kem_version}-frodokem-976-shake-rsa4096": id_frodokem_976_shake_rsa4096,
+    f"{composite_kem_version}-frodokem-976-shake-x25519": id_frodokem_976_shake_x25519,
+    f"{composite_kem_version}-frodokem-976-shake-ecdh-secp384r1": id_frodokem_976_shake_ecdh_p384,
+    f"{composite_kem_version}-frodokem-976-shake-ecdh-brainpoolP256r1": id_frodokem_976_shake_brainpoolP256r1,
+    f"{composite_kem_version}-frodokem-1344-aes-ecdh-secp384r1": id_frodokem_1344_aes_ecdh_p384,
+    f"{composite_kem_version}-frodokem-1344-aes-ecdh-brainpoolP384r1": id_frodokem_1344_aes_ecdh_brainpoolP384r1,
+    f"{composite_kem_version}-frodokem-1344-aes-x448": id_frodokem_1344_aes_x448,
+    f"{composite_kem_version}-frodokem-1344-shake-ecdh-secp384r1": id_frodokem_1344_shake_ecdh_p384,
+    f"{composite_kem_version}-frodokem-1344-shake-ecdh-brainpoolP384r1": id_frodokem_1344_shake_ecdh_brainpoolP384r1,
+    f"{composite_kem_version}-frodokem-1344-shake-x448": id_frodokem_1344_shake_x448,
 }
-
-
-FRODOKEM_OID_2_KDF_MAPPING = {
-    id_frodokem_976_aes_rsa2048: "hkdf-sha256",
-    id_frodokem_976_aes_rsa3072: "hkdf-sha256",
-    id_frodokem_976_aes_rsa4096: "hkdf-sha256",
-    id_frodokem_976_aes_x25519: "sha3-256",
-    id_frodokem_976_aes_ecdh_p384: "hkdf-sha256",
-    id_frodokem_976_aes_brainpoolP256r1: "hkdf-sha256",
-    id_frodokem_976_shake_rsa2048: "hkdf-sha256",
-    id_frodokem_976_shake_rsa3072: "hkdf-sha256",
-    id_frodokem_976_shake_rsa4096: "hkdf-sha256",
-    id_frodokem_976_shake_x25519: "sha3-256",
-    id_frodokem_976_shake_ecdh_p384: "hkdf-sha256",
-    id_frodokem_976_shake_brainpoolP256r1: "hkdf-sha256",
-    # NIST claimed level 5
-    id_frodokem_1344_aes_ecdh_p384: "sha3-256",
-    id_frodokem_1344_aes_ecdh_brainpoolP384r1: "sha3-256",
-    id_frodokem_1344_aes_x448: "sha3-256",
-    id_frodokem_1344_shake_ecdh_p384: "sha3-256",
-    id_frodokem_1344_shake_ecdh_brainpoolP384r1: "sha3-256",
-    id_frodokem_1344_shake_x448: "sha3-256",
-}
-
-# Composite KEM v06
-
-# Composite KEM v06 OIDs
-id_comp_kem06_mlkem768_rsa2048 = univ.ObjectIdentifier(f"{id_CompKEM}.30")
-id_comp_kem06_mlkem768_rsa3072 = univ.ObjectIdentifier(f"{id_CompKEM}.31")
-id_comp_kem06_mlkem768_rsa4096 = univ.ObjectIdentifier(f"{id_CompKEM}.32")
-id_comp_kem06_mlkem768_x25519 = univ.ObjectIdentifier(f"{id_CompKEM}.33")
-id_comp_kem06_mlkem768_ecdh_p256 = univ.ObjectIdentifier(f"{id_CompKEM}.34")
-id_comp_kem06_mlkem768_ecdh_p384 = univ.ObjectIdentifier(f"{id_CompKEM}.35")
-id_comp_kem06_mlkem768_ecdh_brainpool_p256r1 = univ.ObjectIdentifier(f"{id_CompKEM}.36")
-id_comp_kem06_mlkem1024_ecdh_p384 = univ.ObjectIdentifier(f"{id_CompKEM}.37")
-id_comp_kem06_mlkem1024_ecdh_brainpool_p384r1 = univ.ObjectIdentifier(f"{id_CompKEM}.38")
-id_comp_kem06_mlkem1024_x448 = univ.ObjectIdentifier(f"{id_CompKEM}.39")
-
-COMPOSITE_KEM06_MLKEM_NAME_2_OID = {
-    "composite-kem-ml-kem-768-rsa2048": id_comp_kem06_mlkem768_rsa2048,
-    "composite-kem-ml-kem-768-rsa3072": id_comp_kem06_mlkem768_rsa3072,
-    "composite-kem-ml-kem-768-rsa4096": id_comp_kem06_mlkem768_rsa4096,
-    "composite-kem-ml-kem-768-x25519": id_comp_kem06_mlkem768_x25519,
-    "composite-kem-ml-kem-768-ecdh-secp256r1": id_comp_kem06_mlkem768_ecdh_p256,
-    "composite-kem-ml-kem-768-ecdh-secp384r1": id_comp_kem06_mlkem768_ecdh_p384,
-    "composite-kem-ml-kem-768-ecdh-brainpoolP256r1": id_comp_kem06_mlkem768_ecdh_brainpool_p256r1,
-    "composite-kem-ml-kem-1024-ecdh-secp384r1": id_comp_kem06_mlkem1024_ecdh_p384,
-    "composite-kem-ml-kem-1024-ecdh-brainpoolP384r1": id_comp_kem06_mlkem1024_ecdh_brainpool_p384r1,
-    "composite-kem-ml-kem-1024-x448": id_comp_kem06_mlkem1024_x448,
-}
-
 
 ##################################
 # Alternative DHKEM RFC9180 OIDs
@@ -516,9 +494,6 @@ id_chempat_brainpoolP512_frodokem_shake_1344 = univ.ObjectIdentifier(f"{id_Chemp
 id_chempat_x448_frodokem_aes_1344 = univ.ObjectIdentifier(f"{id_Chempat}.26")
 id_chempat_x448_frodokem_shake_1344 = univ.ObjectIdentifier(f"{id_Chempat}.27")
 
-# TODO add eFrodoKEM.
-# id_chempat_x25519_efrodokem_aes_640
-
 CHEMPAT_OID_2_NAME = {
     id_chempat_x25519_sntrup761: "chempat-sntrup761-x25519",
     id_chempat_x25519_mceliece348864: "chempat-mceliece-348864-x25519",
@@ -579,53 +554,13 @@ id_altSigValueLocAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.5")
 id_altSubPubKeyExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.6")
 id_altSignatureExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.7")
 
-COMPOSITE_KEM05_MLKEM_NAME_2_OID = {
-    "composite-kem-05-ml-kem-768-rsa2048": id_mlkem768_rsa2048,
-    "composite-kem-05-ml-kem-768-rsa3072": id_mlkem768_rsa3072,
-    "composite-kem-05-ml-kem-768-rsa4096": id_mlkem768_rsa4096,
-    "composite-kem-05-ml-kem-768-ecdh-secp384r1": id_mlkem768_ecdh_p384,
-    "composite-kem-05-ml-kem-768-ecdh-brainpoolP256r1": id_mlkem768_ecdh_brainpool_p256r1,
-    "composite-kem-05-ml-kem-768-x25519": id_mlkem768_x25519,
-    "composite-kem-05-ml-kem-1024-ecdh-secp384r1": id_mlkem1024_ecdh_p384,
-    "composite-kem-05-ml-kem-1024-ecdh-brainpoolP384r1": id_mlkem1024_ecdh_brainpool_p384r1,
-    "composite-kem-05-ml-kem-1024-x448": id_mlkem1024_x448,
-}
-# Always added to the last version of the draft.
-COMPOSITE_FRODOKEM_NAME_2_OID = {
-    "composite-kem-frodokem-976-aes-rsa2048": id_frodokem_976_aes_rsa2048,
-    "composite-kem-frodokem-976-aes-rsa3072": id_frodokem_976_aes_rsa3072,
-    "composite-kem-frodokem-976-aes-rsa4096": id_frodokem_976_aes_rsa4096,
-    "composite-kem-frodokem-976-aes-x25519": id_frodokem_976_aes_x25519,
-    "composite-kem-frodokem-976-aes-ecdh-secp384r1": id_frodokem_976_aes_ecdh_p384,
-    "composite-kem-frodokem-976-aes-ecdh-brainpoolP256r1": id_frodokem_976_aes_brainpoolP256r1,
-    "composite-kem-frodokem-976-shake-rsa2048": id_frodokem_976_shake_rsa2048,
-    "composite-kem-frodokem-976-shake-rsa3072": id_frodokem_976_shake_rsa3072,
-    "composite-kem-frodokem-976-shake-rsa4096": id_frodokem_976_shake_rsa4096,
-    "composite-kem-frodokem-976-shake-x25519": id_frodokem_976_shake_x25519,
-    "composite-kem-frodokem-976-shake-ecdh-secp384r1": id_frodokem_976_shake_ecdh_p384,
-    "composite-kem-frodokem-976-shake-ecdh-brainpoolP256r1": id_frodokem_976_shake_brainpoolP256r1,
-    "composite-kem-frodokem-1344-aes-ecdh-secp384r1": id_frodokem_1344_aes_ecdh_p384,
-    "composite-kem-frodokem-1344-aes-ecdh-brainpoolP384r1": id_frodokem_1344_aes_ecdh_brainpoolP384r1,
-    "composite-kem-frodokem-1344-aes-x448": id_frodokem_1344_aes_x448,
-    "composite-kem-frodokem-1344-shake-ecdh-secp384r1": id_frodokem_1344_shake_ecdh_p384,
-    "composite-kem-frodokem-1344-shake-ecdh-brainpoolP384r1": id_frodokem_1344_shake_ecdh_brainpoolP384r1,
-    "composite-kem-frodokem-1344-shake-x448": id_frodokem_1344_shake_x448,
-}
+# Composite KEM OIDs
+COMPOSITE_KEM07_NAME_2_OID = {}
+COMPOSITE_KEM07_NAME_2_OID.update(COMPOSITE_KEM07_MLKEM_NAME_2_OID)
+COMPOSITE_KEM07_NAME_2_OID.update(COMPOSITE_FRODOKEM_NAME_2_OID)
+COMPOSITE_KEM07_NAME_2_OID.update(COMPOSITE_KEM_DHKEMRFC9180_NAME_2_OID)
 
-COMPOSITE_KEM05_NAME_2_OID = {}
-COMPOSITE_KEM05_NAME_2_OID.update(COMPOSITE_KEM05_MLKEM_NAME_2_OID)
-
-
-COMPOSITE_KEM05_OID_2_NAME = {oid: name for name, oid in COMPOSITE_KEM05_NAME_2_OID.items()}
-
-
-COMPOSITE_KEM06_NAME_2_OID = {}
-COMPOSITE_KEM06_NAME_2_OID.update(COMPOSITE_KEM06_MLKEM_NAME_2_OID)
-COMPOSITE_KEM06_NAME_2_OID.update(COMPOSITE_FRODOKEM_NAME_2_OID)
-COMPOSITE_KEM06_NAME_2_OID.update(COMPOSITE_KEM_DHKEMRFC9180_NAME_2_OID)
-
-COMPOSITE_KEM06_OID_2_NAME = {oid: name for name, oid in COMPOSITE_KEM06_NAME_2_OID.items()}
-
+COMPOSITE_KEM07_OID_2_NAME = {oid: name for name, oid in COMPOSITE_KEM07_NAME_2_OID.items()}
 
 COMPOSITE_SIG03_OID_2_NAME = {}
 COMPOSITE_SIG03_OID_2_NAME.update(PURE_COMPOSITE_SIG03_OID_TO_NAME)
