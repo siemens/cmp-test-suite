@@ -17,12 +17,9 @@ from pyasn1_alt_modules import rfc5280, rfc5958
 from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1
 from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey, HybridPublicKey, PQPrivateKey, TradKEMPrivateKey
 from pq_logic.keys.chempat_key import ChempatPrivateKey, ChempatPublicKey
-from pq_logic.keys.composite_kem05 import (
-    CompositeKEMPrivateKey,
-)
-from pq_logic.keys.composite_kem06 import (
+from pq_logic.keys.composite_kem07 import (
     CompositeDHKEMRFC9180PrivateKey,
-    CompositeKEM06PrivateKey,
+    CompositeKEM07PrivateKey,
 )
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
@@ -91,8 +88,13 @@ ALL_COMPOSITE_KEM05_COMBINATIONS = [
     {"pq_name": "ml-kem-1024", "trad_name": "x448"},
 ]
 
-ALL_COMPOSITE_KEM06_COMBINATIONS = [{"pq_name": "ml-kem-768", "trad_name": "ecdh", "curve": "secp256r1"}]
-ALL_COMPOSITE_KEM06_COMBINATIONS += ALL_COMPOSITE_KEM05_COMBINATIONS
+
+ALL_COMPOSITE_KEM07_COMBINATIONS = [
+    {"pq_name": "ml-kem-768", "trad_name": "ecdh", "curve": "secp256r1"},
+    {"pq_name": "ml-kem-1024", "trad_name": "rsa", "length": "3072"},
+    {"pq_name": "ml-kem-1024", "trad_name": "ecdh", "curve": "secp512r1"},
+]
+ALL_COMPOSITE_KEM07_COMBINATIONS += ALL_COMPOSITE_KEM05_COMBINATIONS
 
 ALL_COMPOSITE_KEM_FRODOKEM_COMBINATIONS = [
     # Claimed NIST level 3
@@ -119,7 +121,7 @@ ALL_COMPOSITE_KEM_FRODOKEM_COMBINATIONS = [
     {"pq_name": "frodokem-1344-shake", "trad_name": "x448"},
 ]
 
-ALL_COMPOSITE_KEM06_COMBINATIONS += ALL_COMPOSITE_KEM_FRODOKEM_COMBINATIONS
+ALL_COMPOSITE_KEM07_COMBINATIONS += ALL_COMPOSITE_KEM_FRODOKEM_COMBINATIONS
 
 
 def _get_trad_key_from_pq_key(
@@ -209,9 +211,9 @@ def _parse_private_keys(hybrid_type: str, pq_key, trad_key) -> HybridPrivateKey:
     key_class_mappings = {
         "sig-04": CompositeSig04PrivateKey,
         "sig-03": CompositeSig03PrivateKey,
-        "kem": CompositeKEM06PrivateKey,  # always the latest version
-        "kem-06": CompositeKEM06PrivateKey,
-        "kem-05": CompositeKEMPrivateKey,
+        "kem": CompositeKEM07PrivateKey,  # always the latest version
+        "kem-07": CompositeKEM07PrivateKey,
+        "kem07": CompositeKEM07PrivateKey,
         "dhkem": CompositeDHKEMRFC9180PrivateKey,  # always the latest version
         "sig": CompositeSig04PrivateKey,  # always the latest version
     }
@@ -227,10 +229,11 @@ class HybridKeyFactory:
         "sig-03": ALL_COMPOSITE_SIG_COMBINATIONS,
         "sig": ALL_COMPOSITE_SIG04_COMBINATIONS,
         "kem-05": ALL_COMPOSITE_KEM05_COMBINATIONS,
-        "kem": ALL_COMPOSITE_KEM06_COMBINATIONS,
-        "kem-06": ALL_COMPOSITE_KEM06_COMBINATIONS,
+        "kem": ALL_COMPOSITE_KEM07_COMBINATIONS,
+        "kem-07": ALL_COMPOSITE_KEM07_COMBINATIONS,
+        "kem07": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "chempat": ALL_CHEMPAT_COMBINATIONS,
-        "dhkem": ALL_COMPOSITE_KEM06_COMBINATIONS,
+        "dhkem": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "xwing": [],
     }
 
@@ -239,8 +242,7 @@ class HybridKeyFactory:
         "sig-04": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "sig-03": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "kem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
-        "kem-05": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
-        "kem-06": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
+        "kem-07": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "chempat": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "dhkem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
     }
@@ -351,10 +353,10 @@ class HybridKeyFactory:
             "composite-sig",
             "composite-sig-03",
             "composite-sig-04",
-            "composite-kem-05",
             "composite-dhkem",
             "composite-kem",
-            "composite-kem-06",
+            "composite-kem-07",
+            "composite-kem07",
             "chempat",
         ]
 
@@ -574,7 +576,17 @@ class HybridKeyFactory:
             key_type=key_type,
         )
 
-        if isinstance(private_key, (CompositeKEM06PrivateKey, CompositeSig04PrivateKey)):
+        if isinstance(private_key, CompositeKEM07PrivateKey):
+            if key_type == KeySaveType.SEED and hasattr(private_key.pq_key, "private_numbers"):
+                pq_key_bytes = private_key.pq_key.private_numbers()
+            elif key_type == KeySaveType.SEED_AND_RAW and hasattr(private_key.pq_key, "private_numbers"):
+                pq_key_bytes = private_key.pq_key.private_numbers() + private_key.private_bytes_raw()
+            else:
+                pq_key_bytes = private_key.pq_key.private_bytes_raw()
+            trad_key_bytes = private_key._export_trad_private_key()
+            return pq_key_bytes + trad_key_bytes
+
+        if isinstance(private_key, CompositeSig04PrivateKey):
             private_key_bytes = PQKeyFactory.save_keys_with_support_seed(
                 private_key=private_key.pq_key,
                 key_type=key_type,
@@ -587,7 +599,7 @@ class HybridKeyFactory:
             _length = len(der_data_pq)
             return _length.to_bytes(4, "little") + der_data_pq + der_data_trad
 
-        if isinstance(private_key, (CompositeKEMPrivateKey, CompositeSig03PrivateKey)):
+        if isinstance(private_key, (CompositeSig03PrivateKey)):
             pq_key_bytes = PQKeyFactory.save_private_key_one_asym_key(
                 private_key=private_key.pq_key,
                 save_type=KeySaveType.get(save_type),
