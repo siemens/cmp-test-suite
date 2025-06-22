@@ -18,21 +18,6 @@ class CompositeKEMPrivateKeyAsn1(univ.SequenceOf):
     sizeSpec = univ.SequenceOf.sizeSpec + constraint.ValueSizeConstraint(2, 2)
 
 
-# Define CompositeKEMPublicKey as a SequenceOf BIT STRING of size 2
-class CompositeKEMPublicKey(univ.SequenceOf):
-    """Define CompositeKEMPublicKey as a SequenceOf BIT STRING of size 2."""
-
-    componentType = univ.BitString()
-    sizeSpec = univ.SequenceOf.sizeSpec + constraint.ValueSizeConstraint(2, 2)
-
-
-class CompositeCiphertextValue(univ.SequenceOf):
-    """Define CompositeCiphertextValue as a SequenceOf OCTET STRING of size 2."""
-
-    componentType = univ.OctetString()
-    subtypeSpec = constraint.ValueSizeConstraint(2, float("inf"))
-
-
 # https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-03.html#name-certificate-conventions
 #  Section 5.1. CompositeSignaturePublicKey
 

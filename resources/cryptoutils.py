@@ -41,7 +41,7 @@ from tinyec.ec import Inf, Point
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractHybridRawPublicKey, KEMPrivateKey, KEMPublicKey
-from pq_logic.keys.composite_kem05 import CompositeKEMPublicKey
+from pq_logic.keys.composite_kem07 import CompositeKEM07PublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey, RSAEncapKey
 from resources import convertutils, envdatautils, keyutils, oid_mapping
@@ -824,7 +824,7 @@ def compute_encapsulation(  # noqa: D417 Missing argument descriptions in the do
         )
     if isinstance(key, AbstractHybridRawPublicKey):
         return key.encaps(private_key=other_key)
-    if isinstance(key, CompositeKEMPublicKey):
+    if isinstance(key, CompositeKEM07PublicKey):
         if isinstance(key.trad_key, RSAEncapKey) and other_key is not None:
             raise InvalidKeyCombination("Composite-KEM RSA can not be encapsulated with ECDH.")
         if isinstance(key.trad_key, RSAEncapKey):

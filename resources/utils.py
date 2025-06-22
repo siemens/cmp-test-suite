@@ -21,10 +21,9 @@ from pyasn1.type import base, char, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.hybrid_structures import CompositeCiphertextValue, CompositeSignatureValue
+from pq_logic.hybrid_structures import CompositeSignatureValue
 from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey
-from pq_logic.keys.composite_kem05 import CompositeKEMPrivateKey, CompositeKEMPublicKey
-from pq_logic.keys.composite_kem06 import CompositeKEM06PrivateKey, CompositeKEM06PublicKey
+from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey, CompositeKEM07PublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from resources import asn1utils, certutils, cmputils, keyutils
@@ -781,12 +780,12 @@ def manipulate_bytes_based_on_key(  # noqa D417 Missing argument description in 
         return manipulate_first_byte(data)
 
     if isinstance(
-        key, (CompositeSig04PublicKey, CompositeSig04PrivateKey, CompositeKEM06PublicKey, CompositeKEM06PrivateKey)
+        key, (CompositeSig04PublicKey, CompositeSig04PrivateKey, CompositeKEM07PublicKey, CompositeKEM07PrivateKey)
     ):
         # contains the length of the signature, afterwards starts the pq signature or kem ct.
         return data[:4] + manipulate_first_byte(data[4:])
-    if isinstance(key, (CompositeKEMPublicKey, CompositeKEMPrivateKey)):
-        return manipulate_composite_kem_ct(data)
+    if isinstance(key, (CompositeKEM07PublicKey, CompositeKEM07PrivateKey)):
+        return manipulate_first_byte(data)
     if isinstance(key, (CompositeSig03PublicKey, CompositeSig03PrivateKey)):
         return manipulate_composite_sig03(data)
     return manipulate_first_byte(data)
@@ -818,49 +817,6 @@ def manipulate_composite_sig03(
 
     out.append(sig1)
     out.append(sig2)
-    return encoder.encode(out)
-
-
-@keyword(name="Manipulate Composite KEM CT")
-def manipulate_composite_kem_ct(  # noqa: D417 Missing argument description in the docstring
-    kem_ct: bytes,
-) -> bytes:
-    """Manipulate the first ct of the `CompositeCiphertextValue`.
-
-    Arguments:
-    ---------
-       - `kem_ct`: The DER-encoded `CompositeCiphertextValue`.
-
-    Returns:
-    -------
-       - The modified `CompositeCiphertextValue` as DER-encoded bytes.
-
-    Raises:
-    ------
-       - `BadAsn1Data`: if the provided `kem_ct` is not a valid `CompositeCiphertextValue`.
-
-    Examples:
-    --------
-    | ${manipulated_kem_ct}= | Manipulate Composite KEM CT | kem_ct=${kem ct} |
-
-    """
-    try:
-        obj, _ = decoder.decode(kem_ct, CompositeCiphertextValue())
-    except pyasn1.error.PyAsn1Error as e:  # type: ignore
-        raise BadAsn1Data(f"Failed to manipulate the data: {e}")  # pylint: disable=raise-missing-from
-
-    kem_ct1 = obj[0].asOctets()
-    kem_ct2 = obj[1].asOctets()
-
-    kem_ct1 = manipulate_first_byte(kem_ct1)
-
-    kem_ct1 = univ.OctetString(kem_ct1)
-    kem_ct2 = univ.OctetString(kem_ct2)
-
-    out = CompositeCiphertextValue()
-
-    out.append(kem_ct1)
-    out.append(kem_ct2)
     return encoder.encode(out)
 
 
