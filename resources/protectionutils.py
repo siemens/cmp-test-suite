@@ -34,6 +34,7 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from pq_logic.keys.sig_keys import MLDSAPublicKey
@@ -2354,7 +2355,11 @@ def verify_kem_based_mac_protection(
             )
 
         kem_ct = kem_ct_info_val["ct"].asOctets()
-        shared_secret = private_key.decaps(kem_ct)
+
+        if isinstance(private_key, CompositeKEM07PrivateKey):
+            shared_secret = private_key.decaps(kem_ct, use_in_cms=False)
+        else:
+            shared_secret = private_key.decaps(kem_ct)
         logging.info("Shared Secret %s", shared_secret.hex())
 
     if shared_secret is None:

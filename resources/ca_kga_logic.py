@@ -34,6 +34,7 @@ from robot.api.deco import keyword, not_keyword
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateKey
+from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, COMPOSITE_SIG_SIGNED_DATA_OID_HASH
@@ -2235,7 +2236,9 @@ def process_kem_recip_info(
         is_sun_hybrid=is_sun_hybrid,
     )
 
-    if not isinstance(private_key, (RSAPrivateKey, RSADecapKey)):
+    if isinstance(private_key, CompositeKEM07PrivateKey):
+        shared_secret = private_key.decaps(validated_info["kemct"], use_in_cms=True)
+    elif not isinstance(private_key, (RSAPrivateKey, RSADecapKey)):
         shared_secret = private_key.decaps(validated_info["kemct"])
     else:
         shared_secret = perform_rsa_kemri(
