@@ -162,7 +162,7 @@ class CompositeKEM07PublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
         logging.info("Traditional KEM encaps ct: %s", ct.hex())
         return ss, ct
 
-    def encaps(self, private_key: Optional[ECDHPrivateKey] = None, use_in_cms: bool = False) -> Tuple[bytes, bytes]:
+    def encaps(self, private_key: Optional[ECDHPrivateKey] = None, use_in_cms: bool = True) -> Tuple[bytes, bytes]:
         """Encapsulate the key encapsulation mechanism.
 
         :param private_key: The ECC private key to use for encapsulation.
@@ -273,7 +273,7 @@ class CompositeKEM07PrivateKey(HybridKEMPrivateKey, AbstractCompositePrivateKey)
         """Encode the traditional part of the key."""
         return self.trad_key.public_key().encode()
 
-    def decaps(self, ct: bytes, use_in_cms: bool = False) -> bytes:
+    def decaps(self, ct: bytes, use_in_cms: bool = True) -> bytes:
         """Decapsulate the key encapsulation mechanism.
 
         :param ct: The ciphertext to decapsulate.
