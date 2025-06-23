@@ -893,6 +893,7 @@ def compute_decapsulation(  # noqa: D417 Missing argument descriptions in the do
     return key.decaps(ct)
 
 
+@not_keyword
 def derive_shared_secret_ec(
     z: bytes,
     key_wrap_oid: univ.ObjectIdentifier,
@@ -1008,6 +1009,7 @@ def compute_sender_ecdh_mqv_one_pass_exchange(
     return z.to_bytes((z.bit_length() + 7) // 8, byteorder="big")
 
 
+@not_keyword
 def convert_private_key_to_tinyec(private_key: EllipticCurvePrivateKey) -> Tuple[int, Point]:
     """Convert a cryptography EC private key to a tinyec private key.
 
@@ -1026,6 +1028,7 @@ def convert_private_key_to_tinyec(private_key: EllipticCurvePrivateKey) -> Tuple
     return private_value, public_point
 
 
+@not_keyword
 def convert_public_key_to_tinyec(public_key: EllipticCurvePublicKey) -> Point:
     """Convert a cryptography EC public key to a tinyec public key.
 
@@ -1080,6 +1083,7 @@ def perform_one_pass_mqv(
     return k
 
 
+@not_keyword
 def compute_recipient_ecdh_mqv_one_pass_exchange(
     recip_key: EllipticCurvePrivateKey,
     static_public_key: EllipticCurvePublicKey,
