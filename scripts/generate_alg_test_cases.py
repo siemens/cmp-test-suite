@@ -10,8 +10,7 @@ sys.path.append(".")
 
 from pq_logic.tmp_oids import (
     CHEMPAT_NAME_2_OID,
-    COMPOSITE_KEM05_NAME_2_OID,
-    COMPOSITE_KEM06_NAME_2_OID,
+    COMPOSITE_KEM07_NAME_2_OID,
     COMPOSITE_SIG03_NAME_2_OID,
     COMPOSITE_SIG04_NAME_2_OID,
 )
@@ -219,8 +218,7 @@ def _generate_hybrid_kem_tests():
     for hybrid_type, name_list in {
         "xwing": {"xwing"},
         "chempat": CHEMPAT_NAME_2_OID,
-        "composite-kem-05": COMPOSITE_KEM05_NAME_2_OID,
-        "composite-kem-06": COMPOSITE_KEM06_NAME_2_OID,
+        "composite-kem07": COMPOSITE_KEM07_NAME_2_OID,
     }.items():
         for name in name_list:
             if "composite-dhkem" in name:
@@ -348,10 +346,11 @@ def _write_hybrid_kem_tests():
     f = open("hybrid_kem_test_cases.txt", "w", encoding="utf-8")
     _spacer = " " * 4  # 4 spaces between columns as per your requirement
     extra = f"ALGORITHM{_spacer}INVALID_KEY_SIZE\n"
-    f.write(f"*** Test Cases *** {_spacer}{extra}\n\n")
+    f.write(f"*** Test Cases *** {_spacer}{extra}")
     for test in test_cases:
         tmp = _write_to_file_pq(test)
         f.write(tmp)
 
 
 _write_comp_sig_to_txt_file()
+_write_hybrid_kem_tests()
