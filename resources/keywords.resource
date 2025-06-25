@@ -53,7 +53,6 @@ Set Up Test Suite
     ...                `ISSUED_KEY` and `ISSUED_CERT` are issued with the **MUST** be set default certificate and key.
     ...                If this behaviour is not wanted, the `ISSUED_KEY` and `ISSUED_CERT` can be set in the
     ...                configuration file, and will then be loaded from there.
-    #Where do we take this restriction from? 
     [Tags]    setup
     IF  '${ISSUED_KEY}' == '${None}'
         Initialize PQ Cert And Key Variables
