@@ -1327,7 +1327,7 @@ def load_ca_cert_and_key() -> Tuple[rfc9480.CMPCertificate, Ed25519PrivateKey]:
 
 
 def build_sun_hybrid_composite_csr(
-    signing_key: Optional[CompositeSig03PrivateKey] = None,
+    signing_key: Optional[CompositeSig06PrivateKey] = None,
     common_name: str = "CN=Hans Mustermann",
     pub_key_hash_alg: Optional[str] = None,
     pub_key_location: Optional[str] = None,
@@ -1346,12 +1346,12 @@ def build_sun_hybrid_composite_csr(
     :param use_rsa_pss: Whether to use RSA-PSS for traditional keys.
     :return: CertificationRequest object with composite signature.
     """
-    csr = build_csr(signing_key, common_name=common_name, exclude_signature=True, use_rsa_pss=use_rsa_pss)
+    csr = build_csr(signing_key, common_name=common_name,
+                    exclude_signature=True, use_rsa_pss=use_rsa_pss)
     sig_alg_id = rfc5280.AlgorithmIdentifier()
 
     domain_oid = signing_key.get_oid(
         use_pss=use_rsa_pss,
-        pre_hash=False,
     )
 
     # Step 4 and 5
@@ -1368,12 +1368,12 @@ def build_sun_hybrid_composite_csr(
 
     csr["certificationRequestInfo"]["attributes"].extend(attributes)
 
-    der_data = encoder.encode(csr["certificationRequestInfo"])
-    signature = sign_data_with_alg_id(key=signing_key, alg_id=sig_alg_id, data=der_data)
-
-    csr["signatureAlgorithm"] = sig_alg_id
-    csr["signature"] = univ.BitString.fromOctetString(signature)
-
+    csr = sign_csr(
+        csr=csr,
+        signing_key=signing_key,
+        sig_alg_id=sig_alg_id,
+        use_rsa_pss=use_rsa_pss,
+    )
     csr, _ = decoder.decode(encoder.encode(csr), rfc6402.CertificationRequest())
     return csr
 
