@@ -2289,8 +2289,8 @@ def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
     for file_path in temp_files:
         try:
             os.remove(file_path)
-        except OSError as e:
-            logging.error(f"Error deleting temporary file %s: ", file_path, exc_info=True)
+        except OSError:
+            logging.error("Error deleting temporary file %s: ", file_path, exc_info=True)
 
     if expected_status == status:
         return
