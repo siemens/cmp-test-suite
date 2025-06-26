@@ -32,7 +32,7 @@ from resources.asn1_structures import PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1, encode_to_der
 from resources.certbuildutils import build_certificate, build_csr, prepare_extensions, \
     prepare_basic_constraints_extension, prepare_ski_extension, prepare_authority_key_identifier_extension, \
-    prepare_key_usage_extension
+    prepare_key_usage_extension, sign_csr
 from resources.certutils import parse_certificate, build_cert_chain_from_dir, \
     load_public_key_from_cert, write_cert_chain_to_file
 from resources.cmputils import parse_csr
@@ -862,6 +862,7 @@ def _generate_update_pq_certs():
     _save_xwing()
     _save_composite_kem()
     _generate_mock_ca_kem_certs()
+    _save_migration_csrs()
 
 
 def _save_composite_sig():
@@ -1103,7 +1104,6 @@ def update_cert_and_keys():
     """
     _gen_new_certs()
     _generate_update_pq_certs()
-    _save_migration_csrs()
 
 
 def _prepare_pbkdf2() -> rfc8018.PBKDF2_params:
