@@ -4,32 +4,30 @@
 
 import unittest
 
-from cryptography.hazmat.primitives._serialization import PrivateFormat
-from cryptography.hazmat.primitives.serialization import PublicFormat, Encoding
-from pyasn1.codec.der import decoder
-from pyasn1_alt_modules import rfc5280
+from cryptography.hazmat.primitives.serialization import PrivateFormat, Encoding
+
 
 from pq_logic.combined_factory import CombinedKeyFactory
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
+from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from resources import keyutils
 from resources.utils import manipulate_first_byte
 
 
-class TestLoadCompSig04(unittest.TestCase):
+class TestLoadCompSig06(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         rsa_key = keyutils.generate_key("rsa", length=2048)
         mldsa_key = keyutils.generate_key("ml-dsa-44")
-        cls.comp_rsa_key = CompositeSig04PrivateKey(mldsa_key, rsa_key)
+        cls.comp_rsa_key = CompositeSig06PrivateKey(mldsa_key, rsa_key)
         ed_key = keyutils.generate_key("ed448")
         mldsa_key = keyutils.generate_key("ml-dsa-87")
-        cls.comp_ed_key = CompositeSig04PrivateKey(mldsa_key, ed_key)
+        cls.comp_ed_key = CompositeSig06PrivateKey(mldsa_key, ed_key)
 
         ecc_key = keyutils.generate_key("ecdsa")
         mldsa_key = keyutils.generate_key("ml-dsa-65")
-        cls.comp_ecc_key = CompositeSig04PrivateKey(mldsa_key, ecc_key)
+        cls.comp_ecc_key = CompositeSig06PrivateKey(mldsa_key, ecc_key)
 
     def test_export_and_load_pub_key_rsa(self):
         """
@@ -81,7 +79,7 @@ class TestLoadCompSig04(unittest.TestCase):
         _seed = manipulate_first_byte(self.comp_rsa_key.pq_key._seed)
         pq_key = MLDSAPrivateKey(seed=self.comp_rsa_key.pq_key._seed,
                                  alg_name=self.comp_rsa_key.pq_key.name)
-        other_key = CompositeSig04PrivateKey(pq_key, trad_key=self.comp_rsa_key.trad_key)
+        other_key = CompositeSig06PrivateKey(pq_key, trad_key=self.comp_rsa_key.trad_key)
 
         other_key.pq_key._seed = _seed
 

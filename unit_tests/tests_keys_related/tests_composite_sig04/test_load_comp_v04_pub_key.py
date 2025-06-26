@@ -8,24 +8,24 @@ from cryptography.hazmat.primitives.serialization import PublicFormat, Encoding
 from pyasn1.codec.der import decoder
 from pyasn1_alt_modules import rfc5280
 
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
+from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
 from resources import keyutils
 
 
-class TestLoadCompSig04(unittest.TestCase):
+class TestLoadCompSig06(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         rsa_key = keyutils.generate_key("rsa", length=2048)
         mldsa_key = keyutils.generate_key("ml-dsa-44")
-        cls.comp_rsa_key = CompositeSig04PrivateKey(mldsa_key, rsa_key)
+        cls.comp_rsa_key = CompositeSig06PrivateKey(mldsa_key, rsa_key)
         ed_key = keyutils.generate_key("ed448")
         mldsa_key = keyutils.generate_key("ml-dsa-87")
-        cls.comp_ed_key = CompositeSig04PrivateKey(mldsa_key, ed_key)
+        cls.comp_ed_key = CompositeSig06PrivateKey(mldsa_key, ed_key)
 
         ecc_key = keyutils.generate_key("ecdsa")
         mldsa_key = keyutils.generate_key("ml-dsa-65")
-        cls.comp_ecc_key = CompositeSig04PrivateKey(mldsa_key, ecc_key)
+        cls.comp_ecc_key = CompositeSig06PrivateKey(mldsa_key, ecc_key)
 
     def test_export_and_load_private_key_rsa(self):
         """

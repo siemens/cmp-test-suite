@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
+from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
 from pq_logic.pq_verify_logic import verify_composite_signature_with_hybrid_cert
 from resources.certbuildutils import generate_certificate
 from resources.certutils import parse_certificate
@@ -30,7 +30,7 @@ class TestSigVerificationMultiCert:
         """
         mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
         rsa_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
-        composite_key = CompositeSig03PrivateKey(mldsa_key, rsa_key)
+        composite_key = CompositeSig06PrivateKey(mldsa_key, rsa_key)
         signature = sign_data(key=composite_key, data=b"Hello World")
 
 

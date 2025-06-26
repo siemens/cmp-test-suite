@@ -16,7 +16,6 @@ from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import (
 from resources.keyutils import generate_key
 from pq_logic.tmp_oids import id_altSubPubKeyExt, id_altSignatureExt
 from pq_logic.hybrid_structures import AltSignatureExt
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
 from resources.certutils import verify_csr_signature
 from pyasn1.codec.der import decoder
 from pyasn1_alt_modules import rfc6402, rfc9480
@@ -45,8 +44,11 @@ class TestSunHybridScheme(unittest.TestCase):
     def setUp(self):
         """Set up keys and other reusable components for testing."""
 
-        self.composite_key = generate_key("composite-sig-ml-dsa-44-rsa2048",
-                                          by_name=True)
+        self.composite_key = generate_key("composite-sig",
+                                          trad_name="rsa",
+                                          length="2048",
+                                          pq_name="ml-dsa-44",
+                                          )
 
         self.issuer_private_key = rsa.generate_private_key(
             public_exponent=65537, key_size=2048
@@ -121,7 +123,7 @@ class TestSunHybridScheme(unittest.TestCase):
         attributes = csr["certificationRequestInfo"]["attributes"]
         self.assertEqual(len(attributes), 4)
 
-    def test_verify_csr_signature(self):
+    def test_verify_csr_signature_rsa(self):
         """
         GIVEN a CSR with a composite key.
         WHEN the CSR signature is verified,
@@ -133,7 +135,27 @@ class TestSunHybridScheme(unittest.TestCase):
             pub_key_hash_alg="sha256",
             pub_key_location="https://example.com/pubkey",
             sig_hash_alg="sha256",
-            sig_value_location="https://example.com/sig"
+            sig_value_location="https://example.com/sig",
+            use_rsa_pss=False
+        )
+
+        verify_csr_signature(csr)
+
+    def test_verify_csr_signature_rsa_pss(self):
+        """
+        GIVEN a CSR with a composite key.
+        WHEN the CSR signature is verified,
+        THEN the signature is correctly verified.
+        """
+        csr = build_sun_hybrid_composite_csr(
+            signing_key=self.composite_key,
+            common_name=self.common_name,
+            pub_key_hash_alg="sha256",
+            pub_key_location="https://example.com/pubkey",
+            sig_hash_alg="sha256",
+            sig_value_location="https://example.com/sig",
+            use_rsa_pss=True,
+
         )
 
         verify_csr_signature(csr)

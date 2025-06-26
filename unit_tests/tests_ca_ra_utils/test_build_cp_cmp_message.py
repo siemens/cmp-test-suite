@@ -19,7 +19,7 @@ class TestBuildCpCmpMessage(unittest.TestCase):
         cls.ca_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
         cls.ca_cert = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
 
-        cls.comp_key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem")
+        cls.comp_key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
         cls.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
         cls.mldsa_key2 = load_private_key_from_file("data/keys/private-key-ml-dsa-65-seed.pem")
         cls.mldsa_key3 = load_private_key_from_file("data/keys/private-key-ml-dsa-87-seed.pem")
