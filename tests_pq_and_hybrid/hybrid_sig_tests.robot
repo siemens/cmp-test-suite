@@ -36,7 +36,7 @@ CA MUST Issue A Valid Composite RSA-PSS Certificate From CSR
     [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid CSR with a POP for the
     ...                composite signature version. The traditional algorithm used is RSA-PSS and ML-DSA-44 as pq
     ...                algorithm. The CA MUST process the valid request and issue a valid certificate.
-    [Tags]             composite-sig   positive   rsa-pss
+    [Tags]             composite-sig   positive   rsa-pss   pre_hash
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${csr}=            Build CSR    ${key}    common_name=${cm}   use_rsa_pss=True
@@ -57,7 +57,7 @@ CA MUST Issue a Valid Composite-Sig RSA Certificate
     [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
     ...                composite signature version. The traditional algorithm used is RSA and ML-DSA-44 as pq algorithm.
     ...                The CA MUST process the valid request and issue a valid certificate.
-    [Tags]             composite-sig   positive   rsa
+    [Tags]             composite-sig   positive   rsa   pre_hash
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${ir}=   Build Ir From Key    ${key}   ${cm}  recipient=${RECIPIENT}  exclude_fields=senderKID,sender
@@ -72,7 +72,7 @@ CA MUST Issue A Valid Composite EC Certificate
     ...                composite signature version. The traditional algorithm used is EC key on the secp256r1 curve
     ...                and ML-DSA-44 as pq algorithm. The CA MUST process the valid request and issue a valid
     ...                certificate.
-    [Tags]             composite-sig   positive   ec
+    [Tags]             composite-sig   positive   ec   pre_hash
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa   curve=secp256r1   pq_name=ml-dsa-44
     ${cm}=             Get Next Common Name
     ${ir}=    Build Ir From Key    ${key}   ${cm}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender
@@ -90,7 +90,7 @@ CA MUST Issue a Valid Composite EC-brainpool Certificate
     ...                composite signature version. The traditional algorithm used is EC key on the brainpoolP256r1
     ...                curve and ML-DSA-65 as pq algorithm. The CA MUST process the valid request and issue a valid
     ...                certificate.
-    [Tags]             composite-sig   positive   ec  brainpool
+    [Tags]             composite-sig   positive   ec  brainpool   pre_hash
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa
     ...                curve=brainpoolP256r1   pq_name=ml-dsa-65
     ${cm}=             Get Next Common Name
@@ -108,7 +108,7 @@ CA MUST Issue a Valid Composite ED25519 Certificate
     [Documentation]   Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
     ...               composite signature version. The traditional algorithm used is ED25519 and ML-DSA-65 as pq
     ...               algorithm. The CA MUST process the valid request and issue a valid certificate.
-    [Tags]            composite-sig   positive   ed25519
+    [Tags]            composite-sig   positive   ed25519   pre_hash
     ${key}=           Generate Key    algorithm=composite-sig  trad_name=ed25519   pq_name=ml-dsa-65
     ${cm}=            Get Next Common Name
     ${ir}=    Build Ir From Key    ${key}   ${cm}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender
@@ -125,7 +125,7 @@ CA MUST Issue a Valid Composite ED448 Certificate
     [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
     ...                composite signature version. The traditional algorithm used is ED448 and ML-DSA-87 as pq
     ...                algorithm. The CA MUST process the valid request and issue a valid certificate.
-    [Tags]             composite-sig   positive   ed448
+    [Tags]             composite-sig   positive   ed448   pre_hash
     ${key}=            Generate Key    algorithm=composite-sig  trad_name=ed448   pq_name=ml-dsa-87
     ${cm}=             Get Next Common Name
     ${ir}=    Build Ir From Key    ${key}   ${cm}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender
@@ -135,103 +135,6 @@ CA MUST Issue a Valid Composite ED448 Certificate
     ...                private_key=${ISSUED_KEY}
     ...                cert=${ISSUED_CERT}
     ${response}=       Exchange PKIMessage    ${protected_csr}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
-
-############################
-## Pre-Hashed Versions
-############################
-
-CA MUST Issue A Valid Composite RSA-Prehashed Certificate
-    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
-    ...                prehashed composite signature version. The traditional algorithm used is RSA and ML-DSA-44 as
-    ...                pq algorithm. The CA MUST process the valid request and issue a valid certificate.
-    [Tags]             composite-sig   positive   rsa  prehashed
-    ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
-    ${cm}=             Get Next Common Name
-    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True  use_rsa_pss=False
-    ${ir}=          Build Ir From Key    ${key}   ${cm}   spki=${spki}  recipient=${RECIPIENT}
-    ...             exclude_fields=senderKID,sender   implicit_confirm=${True}
-    ${protected_ir}=  Default Protect PKIMessage   ${ir}
-    ${response}=       Exchange Composite Request    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
-
-CA MUST Issue A Valid Composite RSA-PSS-Prehashed Certificate
-    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
-    ...                prehashed composite signature version. The traditional algorithm used is RSA-PSS and ML-DSA-44
-    ...                as pq algorithm. The CA MUST process the valid request and issue a valid certificate.
-    [Tags]             composite-sig   positive   rsa-pss  prehashed
-    ${key}=            Generate Key    algorithm=composite-sig  trad_name=rsa   length=2048   pq_name=ml-dsa-44
-    ${cm}=             Get Next Common Name
-    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True   use_rsa_pss=True
-    ${ir}=          Build Ir From Key    ${key}  ${cm}  spki=${spki}   recipient=${RECIPIENT}
-    ...             exclude_fields=senderKID,sender   implicit_confirm=${True}
-    ${protected_ir}=  Default Protect PKIMessage   ${ir}
-    ${response}=       Exchange Composite Request    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
-
-CA MUST Issue A Valid Composite EC-Prehashed Certificate
-    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
-    ...                prehashed composite signature version. The traditional algorithm used is EC key on the secp256r1
-    ...                curve and ML-DSA-44 as pq algorithm. The CA MUST process the valid request and issue a valid
-    ...                certificate.
-    [Tags]             composite-sig   positive   ec  prehashed
-    ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa   curve=secp256r1   pq_name=ml-dsa-44
-    ${cm}=             Get Next Common Name
-    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
-    ${ir}=          Build Ir From Key    ${key}  ${cm}  spki=${spki}   recipient=${RECIPIENT}
-    ...             exclude_fields=senderKID,sender
-    ${protected_ir}=  Default Protect PKIMessage   ${ir}
-    ${response}=       Exchange Composite Request    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
-
-CA MUST Issue A Valid Composite EC-brainpool-Prehashed Certificate
-    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
-    ...                prehashed composite signature version. The traditional algorithm used is EC key on the
-    ...                brainpoolP256r1 curve and ML-DSA-65 as pq algorithm. The CA MUST process the valid request
-    ...                and issue a valid certificate.
-    [Tags]             composite-sig   positive   ec  prehashed  brainpool
-    ${key}=            Generate Key    algorithm=composite-sig  trad_name=ecdsa
-    ...                curve=brainpoolP256r1   pq_name=ml-dsa-65
-    ${cm}=             Get Next Common Name
-    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
-    ${ir}=          Build Ir From Key    ${key}  ${cm}  spki=${spki}
-    ...             recipient=${RECIPIENT}   exclude_fields=senderKID,sender
-    ${protected_ir}=  Default Protect PKIMessage   ${ir}
-    ${response}=       Exchange Composite Request    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
-
-CA MUST Issue A Valid Composite ED25519-Prehashed Certificate
-    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
-    ...                prehashed composite signature version. The traditional algorithm used is ED25519 and ML-DSA-65
-    ...                as pq algorithm. The CA MUST process the valid request and issue a valid certificate.
-    [Tags]             composite-sig   positive   ed25519   prehashed
-    ${key}=            Generate Key    algorithm=composite-sig  trad_name=ed25519   pq_name=ml-dsa-65
-    ${cm}=             Get Next Common Name
-    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
-    ${ir}=          Build Ir From Key    ${key}  ${cm}  spki=${spki}   recipient=${RECIPIENT}
-    ...             exclude_fields=senderKID,sender
-    ${protected_ir}=  Default Protect PKIMessage   ${ir}
-    ${response}=       Exchange Composite Request    ${protected_ir}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
-
-CA MUST Issue A Valid Composite ED448-Prehashed Certificate
-    [Documentation]    Verifies compliance with Composite Sig Draft CMS03 by sending a valid IR with a POP for the
-    ...                prehashed composite signature version. The traditional algorithm used is ED448 and ML-DSA-87 as
-    ...                pq algorithm. The CA MUST process the valid request and issue a valid certificate.
-    [Tags]             composite-sig   positive   ed448  prehashed
-    ${key}=            Generate Key    algorithm=composite-sig  trad_name=ed448   pq_name=ml-dsa-87
-    ${cm}=             Get Next Common Name
-    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}   use_pre_hash=True
-    ${ir}=          Build Ir From Key    ${key}  ${cm}   spki=${spki}
-    ...             recipient=${RECIPIENT}   exclude_fields=senderKID,sender
-    ${protected_ir}=  Default Protect PKIMessage   ${ir}
-    ${response}=       Exchange Composite Request    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
 
