@@ -23,9 +23,6 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import CompositeSignatureValue
 from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey
-from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey, CompositeKEM07PublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
 from resources import asn1utils, certutils, cmputils, keyutils
 from resources.asn1_structures import PKIMessageTMP
 from resources.convertutils import str_to_bytes
@@ -779,15 +776,6 @@ def manipulate_bytes_based_on_key(  # noqa D417 Missing argument description in 
     if key is None:
         return manipulate_first_byte(data)
 
-    if isinstance(
-        key, (CompositeSig04PublicKey, CompositeSig04PrivateKey, CompositeKEM07PublicKey, CompositeKEM07PrivateKey)
-    ):
-        # contains the length of the signature, afterwards starts the pq signature or kem ct.
-        return data[:4] + manipulate_first_byte(data[4:])
-    if isinstance(key, (CompositeKEM07PublicKey, CompositeKEM07PrivateKey)):
-        return manipulate_first_byte(data)
-    if isinstance(key, (CompositeSig03PublicKey, CompositeSig03PrivateKey)):
-        return manipulate_composite_sig03(data)
     return manipulate_first_byte(data)
 
 
