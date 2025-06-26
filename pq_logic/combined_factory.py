@@ -923,7 +923,9 @@ class CombinedKeyFactory:
             if trad_name.startswith("rsa"):
                 trad_name = trad_name.replace("-pss", "")
             else:
-                raise ValueError(f"Unsupported traditional key type: {trad_name}. Expected RSA, ECDH, ECDSA, or EdDSA key.")
+                raise ValueError(
+                    f"Unsupported traditional key type: {trad_name}. Expected RSA, ECDH, ECDSA, or EdDSA key."
+                )
 
             _, rest = try_decode_pyasn1(trad_key_bytes, rfc8017.RSAPrivateKey())
             if rest:
@@ -940,9 +942,7 @@ class CombinedKeyFactory:
 
             num = int(trad_name.replace("rsa", ""))
             if num != trad_key.key_size:
-                raise InvalidKeyData(
-                    f"Expected RSA key size {num}, but got {trad_key.key_size} for {trad_name}."
-                )
+                raise InvalidKeyData(f"Expected RSA key size {num}, but got {trad_key.key_size} for {trad_name}.")
 
             return trad_key
         except BadAsn1Data as e:
