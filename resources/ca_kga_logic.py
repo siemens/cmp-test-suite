@@ -37,7 +37,7 @@ from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateK
 from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey
 from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, COMPOSITE_SIG_SIGNED_DATA_OID_HASH
+from pq_logic.tmp_oids import COMPOSITE_SIG06_OID_TO_NAME, COMPOSITE_SIG06_PREHASH_OID_2_HASH
 from resources import (
     asn1utils,
     certextractutils,
@@ -1152,10 +1152,9 @@ def get_digest_hash_alg_from_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> str:
         return "sha512"
     if oid == rfc9481.id_Ed448:
         return "shake256"
-    if oid in COMPOSITE_SIG_SIGNED_DATA_OID_HASH:
-        return COMPOSITE_SIG_SIGNED_DATA_OID_HASH[oid]
-    if oid in COMPOSITE_SIG04_OID_2_NAME:
-        return "sha512"
+
+    if oid in COMPOSITE_SIG06_OID_TO_NAME:
+        return COMPOSITE_SIG06_PREHASH_OID_2_HASH[oid]
 
     if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
         return PQ_SIG_PRE_HASH_OID_2_NAME[oid].split("-")[-1]
@@ -1411,11 +1410,9 @@ def validate_signature_and_digest_alg(
 
     sig_hash_oid = sig_alg_id["algorithm"]
 
-    # TODO add unit test for Composite-Sig
-    # The composite-sig-cms03 daft says should be eq to hash in section 8.
-    # But LwCMP is strict, so this follows the style to only allow the expected hash.
+    # TODO add unit test for Composite-Sig, after the new draft is created.
 
-    hash_name_sig = COMPOSITE_SIG_SIGNED_DATA_OID_HASH.get(sig_hash_oid)
+    hash_name_sig = COMPOSITE_SIG06_PREHASH_OID_2_HASH.get(sig_hash_oid)
     if hash_name_sig is None:
         hash_name_sig = get_hash_from_oid(sig_hash_oid, only_hash=True)
 

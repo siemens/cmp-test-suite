@@ -19,7 +19,6 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import DeltaCertificateDescriptor, DeltaCertificateRequestValue
 from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.tmp_oids import COMPOSITE_SIG03_HASH_OID_2_NAME, COMPOSITE_SIG04_HASH_OID_2_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -2572,12 +2571,6 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
                         f"A CA certificate can not have a PQ PreHash signature algorithm.OID: {_name}"
                     )
 
-            if oid in COMPOSITE_SIG04_HASH_OID_2_NAME or oid in COMPOSITE_SIG03_HASH_OID_2_NAME:
-                if is_ca:
-                    _name = may_return_oid_to_name(oid)
-                    raise BadCertTemplate(
-                        f"A CA certificate can not have a Composite Signature PreHash algorithm.OID: {_name}"
-                    )
     extn = certextractutils.get_extension(
         extensions,  # type: ignore
         rfc5280.id_ce_basicConstraints,
