@@ -1441,9 +1441,6 @@ def get_ocsp_url_from_cert(
     return ocsp_urls
 
 
-# TODO: add pyasn1 implementation.
-
-
 @not_keyword
 def create_ocsp_request(
     cert: rfc9480.CMPCertificate,
@@ -2300,7 +2297,7 @@ def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
         try:
             os.remove(file_path)
         except OSError as e:
-            logging.error(f"Error deleting temporary file {file_path}: {e}")
+            logging.error(f"Error deleting temporary file %s: ", file_path, exc_info=True)
 
     if expected_status == status:
         return

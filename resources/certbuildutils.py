@@ -200,16 +200,14 @@ def _parse_common_name(
     """Parse the common name into a `Name` object."""
     if isinstance(common_name, str):
         return prepareutils.prepare_name(common_name)
-    elif isinstance(common_name, rfc9480.Name):
+    if isinstance(common_name, rfc9480.Name):
         return common_name
 
-    elif isinstance(common_name, rfc9480.CMPCertificate):
+    if isinstance(common_name, rfc9480.CMPCertificate):
         # Extract the issuer name from the CMPCertificate
         field = "subject" if subject else "issuer"
         return common_name["tbsCertificate"][field]
-
-    else:
-        raise TypeError("common_name must be a string or rfc9480.Name object.")
+    raise TypeError("common_name must be a string or rfc9480.Name object.")
 
 
 @keyword(name="Build CSR")
@@ -3196,29 +3194,28 @@ def parse_subject_from_cert_related_type(
     if isinstance(cert, rfc9480.CMPCertificate):
         return cert["tbsCertificate"]["subject"]
 
-    elif isinstance(cert, rfc6402.CertificationRequest):
+    if isinstance(cert, rfc6402.CertificationRequest):
         return cert["certificationRequestInfo"]["subject"]
 
-    elif isinstance(cert, DeltaCertificateRequestValue):
+    if isinstance(cert, DeltaCertificateRequestValue):
         return copy_name(
             target=rfc9480.Name(),
             filled_name=cert["subject"],
         )
 
-    elif isinstance(cert, rfc9480.CertTemplate):
+    if isinstance(cert, rfc9480.CertTemplate):
         return copy_name(
             target=rfc9480.Name(),
             filled_name=cert["subject"],
         )
 
-    elif isinstance(cert, DeltaCertificateDescriptor):
+    if isinstance(cert, DeltaCertificateDescriptor):
         return copy_name(
             target=rfc9480.Name(),
             filled_name=cert["subject"],
         )
 
-    else:
-        raise TypeError(f"Unsupported certificate type. Got: {type(cert)}")
+    raise TypeError(f"Unsupported certificate type. Got: {type(cert)}")
 
 
 @not_keyword
