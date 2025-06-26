@@ -160,7 +160,7 @@ COMPOSITE_SIG06_INNER_HASH_OID_2_NAME = {
     id_compSig06_mldsa65_ecdsa_brainpool_p256r1: "sha256",
     id_compSig06_mldsa65_ed25519: "sha512",
     id_compSig06_mldsa87_ecdsa_p384: "sha384",
-    id_compSig06_mldsa87_ecdsa_brainpool_p384r1: "sha512",
+    id_compSig06_mldsa87_ecdsa_brainpool_p384r1: "sha384",
     id_compSig06_mldsa87_ed448: None,
     id_compSig06_mldsa87_rsa3072_pss: "sha512",
     id_compSig06_mldsa87_rsa4096_pss: "sha512",
