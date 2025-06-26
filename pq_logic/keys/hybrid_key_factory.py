@@ -14,25 +14,22 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5958
 
-from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1
 from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey, HybridPublicKey, PQPrivateKey, TradKEMPrivateKey
 from pq_logic.keys.chempat_key import ChempatPrivateKey, ChempatPublicKey
 from pq_logic.keys.composite_kem07 import (
     CompositeDHKEMRFC9180PrivateKey,
     CompositeKEM07PrivateKey,
 )
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
+from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.serialize_utils import prepare_ec_private_key
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, RSADecapKey
-from pq_logic.keys.trad_key_factory import generate_trad_key, prepare_trad_private_key_one_asym_key
+from pq_logic.keys.trad_key_factory import generate_trad_key
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import CHEMPAT_OID_2_NAME
 from resources.exceptions import BadAlg, InvalidKeyCombination, InvalidKeyData, MismatchingKey
 from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
 from resources.oidutils import (
-    ALL_COMPOSITE_SIG04_COMBINATIONS,
     ALL_COMPOSITE_SIG_COMBINATIONS,
     PQ_NAME_2_OID,
     XWING_OID_STR,
@@ -209,13 +206,12 @@ def _parse_private_keys(hybrid_type: str, pq_key, trad_key) -> HybridPrivateKey:
 
     hybrid_type = hybrid_type.replace("composite-", "")
     key_class_mappings = {
-        "sig-04": CompositeSig04PrivateKey,
-        "sig-03": CompositeSig03PrivateKey,
         "kem": CompositeKEM07PrivateKey,  # always the latest version
         "kem-07": CompositeKEM07PrivateKey,
         "kem07": CompositeKEM07PrivateKey,
         "dhkem": CompositeDHKEMRFC9180PrivateKey,  # always the latest version
-        "sig": CompositeSig04PrivateKey,  # always the latest version
+        "sig": CompositeSig06PrivateKey,  # always the latest version
+        "sig-06": CompositeSig06PrivateKey,
     }
     key_class = key_class_mappings[hybrid_type]
     return key_class(pq_key, trad_key)
@@ -225,9 +221,8 @@ class HybridKeyFactory:
     """Factory for creating hybrid keys based on traditional and post-quantum (PQ) key types."""
 
     hybrid_mappings = {
-        "sig-04": ALL_COMPOSITE_SIG04_COMBINATIONS,
-        "sig-03": ALL_COMPOSITE_SIG_COMBINATIONS,
-        "sig": ALL_COMPOSITE_SIG04_COMBINATIONS,
+        "sig-06": ALL_COMPOSITE_SIG_COMBINATIONS,
+        "sig": ALL_COMPOSITE_SIG_COMBINATIONS,
         "kem-05": ALL_COMPOSITE_KEM05_COMBINATIONS,
         "kem": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "kem-07": ALL_COMPOSITE_KEM07_COMBINATIONS,
@@ -239,9 +234,9 @@ class HybridKeyFactory:
 
     default_comb = {
         "sig": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
-        "sig-04": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
-        "sig-03": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
+        "sig-06": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "kem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
+        "kem07": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "kem-07": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "chempat": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "dhkem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
@@ -351,8 +346,7 @@ class HybridKeyFactory:
         return [
             "xwing",
             "composite-sig",
-            "composite-sig-03",
-            "composite-sig-04",
+            "composite-sig-06",
             "composite-dhkem",
             "composite-kem",
             "composite-kem-07",
@@ -576,7 +570,7 @@ class HybridKeyFactory:
             key_type=key_type,
         )
 
-        if isinstance(private_key, CompositeKEM07PrivateKey):
+        if isinstance(private_key, (CompositeKEM07PrivateKey, CompositeSig06PrivateKey)):
             if key_type == KeySaveType.SEED and hasattr(private_key.pq_key, "private_numbers"):
                 pq_key_bytes = private_key.pq_key.private_numbers()
             elif key_type == KeySaveType.SEED_AND_RAW and hasattr(private_key.pq_key, "private_numbers"):
@@ -586,44 +580,10 @@ class HybridKeyFactory:
             trad_key_bytes = private_key._export_trad_private_key()
             return pq_key_bytes + trad_key_bytes
 
-        if isinstance(private_key, CompositeSig04PrivateKey):
-            private_key_bytes = PQKeyFactory.save_keys_with_support_seed(
-                private_key=private_key.pq_key,
-                key_type=key_type,
-            )
-            private_trad_key_bytes = HybridKeyFactory._get_private_trad_key_der_data(
-                private_key=private_key.trad_key,
-            )
-            der_data_trad = encoder.encode(univ.OctetString(private_trad_key_bytes))
-            der_data_pq = encoder.encode(univ.OctetString(private_key_bytes))
-            _length = len(der_data_pq)
-            return _length.to_bytes(4, "little") + der_data_pq + der_data_trad
-
-        if isinstance(private_key, (CompositeSig03PrivateKey)):
-            pq_key_bytes = PQKeyFactory.save_private_key_one_asym_key(
-                private_key=private_key.pq_key,
-                save_type=KeySaveType.get(save_type),
-                version=1,
-                include_public_key=None,
-                unsafe=unsafe,
-            )
-
-            pq_one_asy_key = decoder.decode(pq_key_bytes, asn1Spec=rfc5958.OneAsymmetricKey())[0]
-            trad_der_data = prepare_trad_private_key_one_asym_key(
-                private_key=private_key.trad_key,
-                version=1,
-                include_public_key=None,
-            )
-            trad_one_asym_key = decoder.decode(trad_der_data, asn1Spec=rfc5958.OneAsymmetricKey())[0]
-
-            comp_key = CompositeSignaturePrivateKeyAsn1()
-            comp_key.extend([pq_one_asy_key, trad_one_asym_key])
-            return encoder.encode(comp_key)
-
         if isinstance(private_key, XWingPrivateKey):
             if key_type == KeySaveType.SEED:
                 return private_key.private_numbers()
-            elif key_type == KeySaveType.RAW:
+            if key_type == KeySaveType.RAW:
                 return private_key.private_bytes_raw()
             return private_key.private_numbers() + private_key.private_bytes_raw()
 
@@ -662,7 +622,7 @@ class HybridKeyFactory:
         one_asym_key = rfc5958.OneAsymmetricKey()
         one_asym_key["version"] = version
 
-        if isinstance(private_key, CompositeSig04PrivateKey):
+        if isinstance(private_key, CompositeSig06PrivateKey):
             oid = private_key.get_oid(use_pss=True)
         else:
             oid = private_key.get_oid()
