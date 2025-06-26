@@ -317,15 +317,23 @@ class CombinedKeyFactory:
         """
         oid = spki["algorithm"]["algorithm"]
 
+        if str(oid) == XWING_OID_STR:
+            return XWingPublicKey.from_public_bytes(spki["subjectPublicKey"].asOctets())
 
-        trad_key = CombinedKeyFactory._comp_load_trad_key(public_key=trad_pub_bytes, trad_name=trad_name, curve=curve)
+        if oid in COMPOSITE_SIG06_OID_TO_NAME:
+            name = COMPOSITE_SIG06_OID_TO_NAME[oid]
+            return CombinedKeyFactory._load_composite_sig06_from_public_bytes(
+                algorithm=name,
+                public_key_bytes=spki["subjectPublicKey"].asOctets(),
+            )
 
-        if not isinstance(pq_key, MLDSAPublicKey):
-            raise InvalidKeyData("The composite pq-public-key is not a valid MLDSA key.")
+        if oid in COMPOSITE_KEM07_OID_2_NAME:
+            return CombinedKeyFactory._load_composite_kem07_public_key(oid, spki["subjectPublicKey"].asOctets())
 
-        public_key = CompositeSig03PublicKey(pq_key, trad_key)  # type: ignore
-        public_key.get_oid()
-        return public_key
+        if oid in CHEMPAT_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
+            return CombinedKeyFactory.load_chempat_key(spki)
+
+        raise BadAlg("Unsupported hybrid key OID: {}".format(oid))
 
     @staticmethod
     def load_public_key_from_spki(spki: Union[rfc5280.SubjectPublicKeyInfo, bytes]):  # type: ignore
@@ -341,23 +349,14 @@ class CombinedKeyFactory:
 
         oid = spki["algorithm"]["algorithm"]
 
-        if oid in COMPOSITE_SIG04_OID_2_NAME:
-            return CombinedKeyFactory._get_comp_sig04_key(oid, spki["subjectPublicKey"].asOctets())
+        if str(oid) == XWING_OID_STR:
+            return XWingPublicKey.from_public_bytes(spki["subjectPublicKey"].asOctets())
 
-        if oid in CMS_COMPOSITE03_OID_2_NAME:
-            return CombinedKeyFactory._get_composite_public_key(oid, spki["subjectPublicKey"].asOctets())
-
-        if oid in COMPOSITE_KEM07_OID_2_NAME:
-            return CombinedKeyFactory._load_composite_kem07_public_key(oid, spki["subjectPublicKey"].asOctets())
-
-        if oid in CHEMPAT_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
-            return CombinedKeyFactory.load_chempat_key(spki)
+        if oid in COMPOSITE_SIG06_OID_TO_NAME or oid in COMPOSITE_KEM07_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
+            return CombinedKeyFactory._load_hybrid_key_from_spki(spki)
 
         if oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME:
             return PQKeyFactory.load_public_key_from_spki(spki=spki)
-
-        if str(oid) == XWING_OID_STR:
-            return XWingPublicKey.from_public_bytes(spki["subjectPublicKey"].asOctets())
 
         if oid == id_rsa_kem_spki:
             return RSAEncapKey.from_spki(spki)
