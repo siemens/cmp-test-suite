@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import pyasn1
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import char, tag, univ
 from pyasn1_alt_modules import rfc2986, rfc4211, rfc5280, rfc6402, rfc9480
@@ -27,12 +27,9 @@ import resources.prepare_alg_ids
 import resources.protectionutils
 from pq_logic.hybrid_structures import AltSignatureExt, AltSubPubKeyExt, UniformResourceIdentifier
 from pq_logic.keys.abstract_wrapper_keys import HybridPublicKey
-from pq_logic.keys.composite_sig03 import (
-    CompositeSig03PublicKey,
-    _compute_hash,
-)
+from pq_logic.keys.composite_sig06 import CompositeSig06PublicKey
 from pq_logic.tmp_oids import (
-    CMS_COMPOSITE03_OID_2_HASH,
+    COMPOSITE_SIG06_PREHASH_OID_2_HASH,
     id_altSignatureExt,
     id_altSigValueHashAlgAttr,
     id_altSigValueLocAttr,
@@ -40,13 +37,29 @@ from pq_logic.tmp_oids import (
     id_altSubPubKeyHashAlgAttr,
     id_altSubPubKeyLocAttr,
 )
-from resources import certbuildutils, certextractutils, convertutils, cryptoutils, keyutils, utils
+from resources import certbuildutils, certextractutils, convertutils, cryptoutils, keyutils, oid_mapping, utils
 from resources.convertutils import copy_asn1_certificate
 from resources.copyasn1utils import copy_subject_public_key_info
 from resources.exceptions import BadAsn1Data
 from resources.oid_mapping import get_hash_from_oid, sha_alg_name_to_oid
+from resources.oidutils import SHA2_NAME_2_OID
 from resources.prepare_alg_ids import prepare_sha_alg_id
 from resources.typingutils import PublicKey, SignKey
+
+
+# to avoid import conflicts will be removed in the future.
+@not_keyword
+def _compute_hash(alg_name: str, data: bytes) -> bytes:
+    """Calculate the hash of data using an algorithm given by its name.
+
+    :param alg_name: The Name of algorithm, e.g., 'sha256', see HASH_NAME_OBJ_MAP.
+    :param data: The buffer we want to hash.
+    :return: The resulting hash.
+    """
+    hash_class = oid_mapping.hash_name_to_instance(alg_name)
+    digest = hashes.Hash(hash_class)
+    digest.update(data)
+    return digest.finalize()
 
 
 def _hash_public_key(public_key: PublicKey, hash_alg: str) -> bytes:
@@ -380,19 +393,19 @@ def sun_csr_to_cert(  # noqa: D417 Missing argument descriptions in the docstrin
     """
     public_key = keyutils.load_public_key_from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
 
-    if not isinstance(public_key, CompositeSig03PublicKey):
+    if not isinstance(public_key, CompositeSig06PublicKey):
         raise ValueError("The public key must be a CompositeSigCMSPublicKey.")
 
     oid = csr["signatureAlgorithm"]["algorithm"]
     data: dict = _extract_sun_hybrid_attrs_from_csr(csr)
 
     if data["pub_key_hash_id"] is None:
-        data["pub_key_hash_id"] = CMS_COMPOSITE03_OID_2_HASH[oid] or hash_alg
+        data["pub_key_hash_id"] = SHA2_NAME_2_OID[hash_alg]
     else:
         data["pub_key_hash_id"] = get_hash_from_oid(data["pub_key_hash_id"]["algorithm"])
 
     if data["sig_hash_id"] is None:
-        data["sig_hash_id"] = CMS_COMPOSITE03_OID_2_HASH[oid] or hash_alg
+        data["sig_hash_id"] = COMPOSITE_SIG06_PREHASH_OID_2_HASH.get(oid) or hash_alg
     else:
         data["sig_hash_id"] = get_hash_from_oid(data["sig_hash_id"]["algorithm"])
 
@@ -487,7 +500,7 @@ def sun_cert_template_to_cert(  # noqa: D417 Missing argument descriptions in th
     if not isinstance(composite_key, HybridPublicKey):
         raise ValueError("The public key must be a HybridPublicKey.")
     oid = composite_key.get_oid()
-    hash_alg = hash_alg or CMS_COMPOSITE03_OID_2_HASH.get(oid) or "sha256"
+    hash_alg = hash_alg or COMPOSITE_SIG06_PREHASH_OID_2_HASH.get(oid, "sha256")
     extn_alt_pub, extn_alt_pub2 = _prepare_public_key_extensions(composite_key, hash_alg, pub_key_loc)
 
     tbs_cert["extensions"].append(extn_alt_pub)

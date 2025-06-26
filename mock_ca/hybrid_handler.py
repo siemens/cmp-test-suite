@@ -24,7 +24,7 @@ from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import (
     convert_sun_hybrid_cert_to_target_form,
     extract_sun_hybrid_alt_sig,
 )
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
+from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
 from pq_logic.pq_verify_logic import build_sun_hybrid_cert_chain, verify_hybrid_pkimessage_protection
 from pq_logic.tmp_oids import id_ce_deltaCertificateDescriptor
 from resources import certextractutils
@@ -138,7 +138,7 @@ class SunHybridHandler:
     def __init__(
         self,
         ca_cert: rfc9480.CMPCertificate,
-        ca_key: CompositeSig03PrivateKey,
+        ca_key: CompositeSig06PrivateKey,
         sun_hybrid_state: SunHybridState,
         cert_chain: Optional[rfc9480.CMPCertificate] = None,
         pre_shared_secret: bytes = b"SiemensIT",
