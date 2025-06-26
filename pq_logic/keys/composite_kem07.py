@@ -11,13 +11,14 @@ import logging
 from typing import Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives._serialization import NoEncryption
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
 from pyasn1.codec.der import encoder
 from pyasn1.type import univ
 
-import pq_logic.keys.serialize_utils
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
 from pq_logic.keys.abstract_wrapper_keys import (
     AbstractCompositePrivateKey,
@@ -221,12 +222,14 @@ class CompositeKEM07PrivateKey(HybridKEMPrivateKey, AbstractCompositePrivateKey)
         """Export the traditional part of the private key."""
         name = self._trad_key.get_trad_name
 
-        if not name.startswith("ecdh"):
-            return self._trad_key.encode()
+        if name.startswith("ecdh"):
+            return self._trad_key.private_bytes(
+                encoding=Encoding.DER,
+                format=PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=NoEncryption(),
+            )
 
-        ecc_private_key = self._trad_key._private_key  # pylint:disable=protected-access
-        ec_asn1_key = pq_logic.keys.serialize_utils.prepare_ec_private_key(ecc_private_key)
-        return encoder.encode(ec_asn1_key)
+        return super()._export_trad_private_key()
 
     def _export_private_key(self) -> bytes:
         """Export the private key."""
