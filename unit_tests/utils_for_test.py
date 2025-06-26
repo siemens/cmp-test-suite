@@ -25,7 +25,7 @@ from pyasn1_alt_modules import rfc2459, rfc5280, rfc5652, rfc6402, rfc8018, rfc9
 from robot.api.deco import not_keyword
 
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import prepare_sun_hybrid_csr_attributes
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
+from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
 from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from resources import certutils, cmputils, utils
 from resources.asn1_structures import PKIMessageTMP
@@ -629,7 +629,7 @@ def _build_pq_certs():
     mlkem_key = load_private_key_from_file("data/keys/private-key-ml-kem-768-seed.pem")
     slh_dsa_key = load_private_key_from_file("data/keys/private-key-slh-dsa-sha2-256f-seed.pem")
     mcelliece_key = load_private_key_from_file("data/keys/private-key-mceliece-6960119-raw.pem")
-    composite_sig_rsa = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem")
+    composite_sig_rsa = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
 
     cert, key = build_certificate(ca_key=mldsa_key, common_name="CN=PQ Root CA", is_ca=True, path_length=None, ski=True)
 
@@ -867,12 +867,12 @@ def _generate_update_pq_certs():
 def _save_composite_sig():
     """Generate a self-signed Composite signature Key."""
     key = generate_key("composite-sig", trad_name="rsa", length="2048", pq_name="ml-dsa-44")
-    save_key(key, "data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem", save_type="raw")
+    save_key(key, "data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem", save_type="seed")
     cert, _ = build_certificate(private_key=key, common_name="CN=Hybrid Root CompositeSig RSA2048 ML-DSA-44")
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_root_ca_composite_sig_rsa2048_ml_dsa_44.pem")
 
     key = generate_key("composite-sig", trad_name="ed448", pq_name="ml-dsa-87")
-    save_key(key, "data/keys/private-key-composite-sig-ed448-ml-dsa-87-raw.pem", save_type="raw")
+    save_key(key, "data/keys/private-key-composite-sig-ed448-ml-dsa-87.pem", save_type="seed")
     cert, _ = build_certificate(private_key=key, common_name="CN=Hybrid Root CompositeSig ED448 ML-DSA-87")
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_root_ca_composite_sig_ed448_ml_dsa_87.pem")
 
@@ -1039,7 +1039,7 @@ def _save_migration_csrs():
     save_csr(csr, "data/csrs/pq_csr_slh_dsa_shake_256s.pem", save_as_pem=True, add_pretty_print=True)
 
     # Composite Signature CSR's
-    key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem")
+    key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
     csr = build_csr(signing_key=key, common_name="CN=Hybrid CSR CompositeSig RSA2048 ML-DSA-44")
     save_csr(csr, "data/csrs/hybrid_csr_composite_sig_rsa2048_ml_dsa_44.pem", save_as_pem=True, add_pretty_print=True)
 
