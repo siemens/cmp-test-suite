@@ -40,23 +40,23 @@ from robot.api.deco import keyword, not_keyword
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey, HybridPublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
+from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
+from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
-from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME, id_rsa_kem_spki
+from pq_logic.tmp_oids import COMPOSITE_SIG06_OID_TO_NAME, id_rsa_kem_spki
 from resources import oid_mapping, typingutils, utils
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
-from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, UnknownOID
+from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, InvalidKeyCombination, UnknownOID
 from resources.oid_mapping import KEY_CLASS_MAPPING, get_curve_instance, get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import (
-    CMS_COMPOSITE03_NAME_2_OID,
     CURVE_OID_2_NAME,
+    HYBRID_SIG_OID_2_NAME,
+    KEM_OID_2_NAME,
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
@@ -109,7 +109,7 @@ def save_key(  # noqa: D417 undocumented-params
             encryption_algorithm=encrypt_algo,  # type: ignore
         )
 
-    elif isinstance(key, (MLKEMPrivateKey, MLDSAPrivateKey, HybridPublicKey)) and save_old:
+    elif isinstance(key, (MLKEMPrivateKey, MLDSAPrivateKey)) and save_old:
         warnings.warn(
             "'old_param=True' is deprecated and will be removed in a future version. "
             "Please update your code so that you can support the ne export for ML-KEM and ML-DSA keys."
@@ -577,8 +577,10 @@ def generate_key_based_on_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> Private
     elif str(oid) in TRAD_STR_OID_TO_KEY_NAME:
         return CombinedKeyFactory.generate_key(algorithm=TRAD_STR_OID_TO_KEY_NAME[str(oid)])
 
-    elif oid in CMS_COMPOSITE03_NAME_2_OID:
-        raise NotImplementedError("Composite keys are not supported yet.")
+    elif oid in HYBRID_SIG_OID_2_NAME:
+        return CombinedKeyFactory.generate_key(algorithm=HYBRID_SIG_OID_2_NAME[oid], by_name=True)
+    elif oid in KEM_OID_2_NAME:
+        return CombinedKeyFactory.generate_key(algorithm=KEM_OID_2_NAME[oid], by_name=True)
 
     raise UnknownOID(oid=oid, extra_info="For generating a private key.")
 
@@ -688,23 +690,27 @@ def check_consistency_sig_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, ke
     """
     oid = alg_id["algorithm"]
 
-    # Because the v4 is a subclass of the v3, we need to check the v4 first.
-    result1 = isinstance(key, (CompositeSig04PublicKey, CompositeSig04PrivateKey))
-    result2 = isinstance(key, (CompositeSig03PublicKey, CompositeSig03PrivateKey))
+    if oid in COMPOSITE_SIG06_OID_TO_NAME:
+        name = COMPOSITE_SIG06_OID_TO_NAME[oid]
 
-    if (result1 and oid in COMPOSITE_SIG04_OID_2_NAME) or (result2 and oid in COMPOSITE_SIG03_OID_2_NAME):
-        if result1:
-            name = COMPOSITE_SIG04_OID_2_NAME[oid]
-        else:
-            name = COMPOSITE_SIG03_OID_2_NAME[oid]
+        try:
+            use_pss = name.endswith("-pss")
+            if str(key.get_oid(use_pss=use_pss)) != str(oid):  # type: ignore
+                raise BadSigAlgID("The public key was not of the same type as the,algorithm identifier implied.")
 
-        use_pss = name.endswith("-pss")
-        pre_hash = "hash-" in name
+            return
+        except InvalidKeyCombination:
+            if hasattr(key, "name"):
+                name_type = key.name  # type: ignore
+            else:
+                name_type = type(key).__name__
 
-        if str(key.get_oid(use_pss=use_pss, pre_hash=pre_hash)) != str(oid):  # type: ignore
-            raise BadSigAlgID("The public key was not of the same type as the,algorithm identifier implied.")
-
-        return
+            raise BadSigAlgID(
+                "The public key was not of the same type as the, algorithm identifier implied.",
+                error_details=[
+                    f"OID: {oid}. The Public Key was of type: {name_type}. OID-Lookup: {may_return_oid_to_name(oid)}",
+                ],
+            )
 
     try:
         hash_alg = get_hash_from_oid(alg_id["algorithm"], only_hash=True)
@@ -1055,8 +1061,8 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
         spki = rfc5280.SubjectPublicKeyInfo()
         pub_key = pub_key if not invalid_key_size else pub_key + b"\x00"
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(pub_key)
-        if isinstance(key, CompositeSig03PrivateKey):
-            oid = key.get_oid(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
+        if isinstance(key, CompositeSig06PrivateKey):
+            oid = key.get_oid(use_pss=use_rsa_pss)
         else:
             oid = key.get_oid()
         spki["algorithm"]["algorithm"] = oid
