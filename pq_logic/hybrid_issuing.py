@@ -354,7 +354,6 @@ def build_cert_from_catalyst_request(  # noqa: D417 Missing argument description
         ca_key=ca_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=False,
         include_extensions=False,
     )
     if kwargs.get("extensions"):
@@ -903,7 +902,6 @@ def _process_single_catalyst_request(
         ca_key=ca_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=False,
         extensions=extensions,
     )
     new_ee_cert = catalyst_logic.sign_cert_catalyst(

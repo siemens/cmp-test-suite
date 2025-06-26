@@ -2554,7 +2554,6 @@ def _compute_and_prepare_pkimessage_sig_protection(
     pki_message: PKIMessageTMP,
     hash_alg: str = "sha256",
     use_rsa_pss: bool = True,
-    use_pre_hash: bool = False,
     bad_message_check: bool = False,
 ) -> PKIMessageTMP:
     """Compute the protection for a PKIMessage.
@@ -2563,7 +2562,6 @@ def _compute_and_prepare_pkimessage_sig_protection(
     :param pki_message: The PKIMessage to protect.
     :param hash_alg: The hash algorithm to use for signing.
     :param use_rsa_pss: Whether to use RSA-PSS padding for signing.
-    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :return: The protected PKIMessage.
     :raises ValueError: If the PKIMessage is missing required fields.
     """
@@ -2571,7 +2569,6 @@ def _compute_and_prepare_pkimessage_sig_protection(
         signing_key=signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
     )
     prot_alg_id = prot_alg_id.subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1), cloneValueFlag=True
@@ -2652,7 +2649,6 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
         - `do_patch`: Whether to patch the sender and senderKID fields. Defaults to `True`.
         - `hash_alg`: The hash algorithm to use for signing. Defaults to `sha256`.
         - `use_rsa_pss`: Whether to use RSA-PSS padding for signing. Defaults to `True`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
 
     Raises:
     ------
@@ -2690,7 +2686,6 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
             pki_message=pki_message,
             hash_alg=params.get("hash_alg", "sha256"),
             use_rsa_pss=params.get("use_rsa_pss", True),
-            use_pre_hash=params.get("use_pre_hash", False),
             bad_message_check=bad_message_check,
         )
 
@@ -2709,7 +2704,6 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
             pki_message=pki_message,
             hash_alg=params.get("hash_alg", "sha256"),
             use_rsa_pss=params.get("use_rsa_pss", True),
-            use_pre_hash=params.get("use_pre_hash", False),
             bad_message_check=bad_message_check,
         )
 
@@ -2720,13 +2714,11 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
         signing_key=alt_signing_key,
         hash_alg=params.get("hash_alg", "sha256"),
         use_rsa_pss=params.get("use_rsa_pss", True),
-        use_pre_hash=params.get("use_pre_hash", False),
     )
     prot_alg_id = prepare_alg_ids.prepare_sig_alg_id(
         signing_key=private_key,
         hash_alg=params.get("hash_alg", "sha256"),
         use_rsa_pss=params.get("use_rsa_pss", True),
-        use_pre_hash=params.get("use_pre_hash", False),
     )
 
     prot_alg_id = prot_alg_id.subtype(

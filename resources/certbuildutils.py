@@ -168,7 +168,6 @@ def sign_csr(  # noqa D417 undocumented-param
         signing_key=signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=kwargs.get("use_rsa_pss", False),
-        use_pre_hash=kwargs.get("use_pre_hash", False),
     )
 
     signature = cryptoutils.sign_data(
@@ -1683,7 +1682,6 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
     ---------
         - `use_rsa_pss`: Whether to use RSA-PSS or not. Defaults to `True`.
         - `bad_sig`: Whether to create a certificate with an invalid signature. Defaults to `False`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `alt_sign_key`: An alternative key to sign the certificate with. Defaults to `None`.
         - `alt_hash_alg`: The hash algorithm to use with the alternative key. Defaults to `None`.
         - `alt_use_rsa_pss`: Whether to use RSA-PSS with the alternative key. Defaults to `False`.
@@ -1713,7 +1711,6 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
         ca_key=ca_key,
         hash_alg=hash_alg or "sha256",
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
-        use_pre_hash=kwargs.get("use_pre_hash", False),
         include_extensions=False,
     )
 
@@ -1782,7 +1779,6 @@ def prepare_tbs_certificate_from_template(
     hash_alg: str = "sha256",
     days: int = 3650,
     use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
     include_extensions: bool = False,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc5280.TBSCertificate:
@@ -1795,7 +1791,6 @@ def prepare_tbs_certificate_from_template(
     :param hash_alg: The hash algorithm to use. Defaults to `sha256`.
     :param days: The number of days for which the certificate remains valid. Defaults to `3650` days.
     :param use_rsa_pss: Whether to use RSA-PSS or not. Defaults to `False`.
-    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :param include_extensions: Whether to include the extensions from the `CertTemplate`. Defaults to `False`.
     :param spki: The `SubjectPublicKeyInfo` object to include in the `TBSCertificate`. Defaults to `None`.
     :return: The prepared `TBSCertificate` structure.
@@ -1814,7 +1809,9 @@ def prepare_tbs_certificate_from_template(
     )
 
     tbs_cert["signature"] = prepare_alg_ids.prepare_sig_alg_id(
-        signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+        signing_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
     )
 
     if spki is not None:
@@ -1955,7 +1952,6 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         - `serial_number`: The serial number for the certificate. Defaults to `None`.
         - `hash_alg`: The hash algorithm to use for signing. Defaults to `sha256`.
         - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `True`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `days`: The number of days for which the certificate remains valid. Defaults to `3650` days.
         - `critical`: Whether the catalyst extensions are critical. Defaults to `False`.
         - `hash_alg`: The hash algorithm to use for signing. Defaults to `sha256`.
@@ -2009,7 +2005,6 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         signing_key=ca_key,
         hash_alg=hash_alg,
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
-        use_pre_hash=kwargs.get("use_pre_hash", False),
     )
 
     public_key = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
