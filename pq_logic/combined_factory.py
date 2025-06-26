@@ -922,6 +922,8 @@ class CombinedKeyFactory:
 
             if trad_name.startswith("rsa"):
                 trad_name = trad_name.replace("-pss", "")
+            else:
+                raise ValueError(f"Unsupported traditional key type: {trad_name}. Expected RSA, ECDH, ECDSA, or EdDSA key.")
 
             _, rest = try_decode_pyasn1(trad_key_bytes, rfc8017.RSAPrivateKey())
             if rest:
@@ -932,6 +934,16 @@ class CombinedKeyFactory:
                 raise InvalidKeyData(msg)
 
             trad_key = serialization.load_der_private_key(trad_key_bytes, password=None)
+
+            if not isinstance(trad_key, RSAPrivateKey):
+                raise InvalidKeyData(f"Expected RSA private key for {trad_name}, got: {type(trad_key)}")
+
+            num = int(trad_name.replace("rsa", ""))
+            if num != trad_key.key_size:
+                raise InvalidKeyData(
+                    f"Expected RSA key size {num}, but got {trad_key.key_size} for {trad_name}."
+                )
+
             return trad_key
         except BadAsn1Data as e:
             msg = f"Failed to load traditional Composite {prefix} private key: {trad_name}. {e.message}"
