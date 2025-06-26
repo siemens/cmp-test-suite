@@ -59,8 +59,6 @@ def sign_data(  # noqa D417 undocumented-param
     hash_alg: Union[str, None, hashes.HashAlgorithm] = None,
     use_rsa_pss: bool = False,
     ctx: Union[bytes, str] = b"",
-    *,
-    use_pre_hash: bool = False,
 ) -> bytes:
     """Sign `data` with a private key, using a specified hashing algorithm. Supports ECDSA, ED448, ED25519, RSA, DSA.
 
@@ -72,7 +70,6 @@ def sign_data(  # noqa D417 undocumented-param
         - `use_rsa_pss`: Whether to use RSA-PSS padding for RSA keys. Defaults to `False`.
         - `ctx`: Context data for the signature. Defaults to an empty byte sequence.
         (If a string begins with "0x", it will be interpreted as a hex.)
-        - `use_pre_hash`: Whether to use the pre-hash version for the composite key. Defaults to `False`.
 
     Returns:
     -------

@@ -2465,12 +2465,10 @@ def _verify_composite_sig(
     """
     use_pss = name.endswith("-pss")
     logging.debug(name)
-    pre_hash = "hash-" in name
     public_key.verify(
         data=data,
         signature=signature,
         use_pss=use_pss,
-        pre_hash=pre_hash,
     )
 
 

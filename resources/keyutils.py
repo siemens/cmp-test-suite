@@ -1001,7 +1001,6 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
     for_kga: bool = False,
     key_name: Optional[str] = None,
     use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
     hash_alg: Optional[str] = None,
     invalid_key_size: bool = False,
     add_params_rand_bytes: bool = False,
@@ -1021,7 +1020,6 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
         - `key_name`: The key algorithm name to use for the `SubjectPublicKeyInfo`.
         (can be set to `rsa_kem`. RFC9690). Defaults to `None`.
         - `use_rsa_pss`: Whether to use RSA-PSS padding. Defaults to `False`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `hash_alg`: The pre-hash algorithm to use for the pq signature key. Defaults to `None`.
         - `invalid_key_size`: A flag indicating whether the key size is invalid. Defaults to `False`.
         - `add_params_rand_bytes`: A flag indicating whether to add random bytes to the key parameters. \
@@ -1079,7 +1077,6 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
             key=key,
             key_name=key_name,
             use_pss=use_rsa_pss,
-            use_pre_hash=use_pre_hash,
             add_null=add_null,
             add_params_rand_bytes=add_params_rand_bytes,
         )
@@ -1090,7 +1087,6 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
     spki = subject_public_key_info_from_pubkey(
         public_key=key,  # type: ignore
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
         hash_alg=hash_alg,
     )
 
@@ -1108,9 +1104,7 @@ def _prepare_spki_for_kga(
     key: Optional[Union[PrivateKey, PublicKey]] = None,
     key_name: Optional[str] = None,
     use_pss: bool = False,
-    use_pre_hash: bool = False,
     add_null: bool = False,
-    *,
     add_params_rand_bytes: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare a SubjectPublicKeyInfo for KGA usage.
@@ -1118,7 +1112,6 @@ def _prepare_spki_for_kga(
     :param key: A private or public key.
     :param key_name: An optional key algorithm name.
     :param use_pss: Whether to use PSS padding for RSA and a RSA-CompositeKey.
-    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :param add_null: Whether to add a null value to the key parameters. Defaults to `False`.
     :param add_params_rand_bytes: Whether to add random bytes to the key parameters. Defaults to `False`.
     :return: The populated `SubjectPublicKeyInfo` structure.
@@ -1150,7 +1143,6 @@ def _prepare_spki_for_kga(
         spki_tmp = subject_public_key_info_from_pubkey(
             public_key=key,  # type: ignore[AssignmentTypeError]
             use_rsa_pss=use_pss,
-            use_pre_hash=use_pre_hash,
         )
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
