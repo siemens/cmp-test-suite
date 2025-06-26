@@ -23,7 +23,7 @@ def add_header_to_file(path: str, header: str = base_header):
         content = file.read()
 
     if "SPDX-License-Identifier:" not in content:
-        with open(path, "w") as file:
+        with open(path, "w", encoding="utf-8") as file:
             if os.path.basename(path) in ["__init__", "__init__.py"]:
                 file.write("# noqa D104 Missing docstring in public package" + "\n")
             file.write(header + "\n" + content)
