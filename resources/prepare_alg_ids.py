@@ -95,7 +95,7 @@ def prepare_alg_id(  # Noqa: D417 undocumented params
 
     if value is not None:
         if isinstance(value, (bytes, str)):
-            alg_id["parameters"] = str_to_bytes(value)
+            alg_id["parameters"] = univ.Any(str_to_bytes(value))
         else:
             alg_id["parameters"] = value
 
