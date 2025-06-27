@@ -1141,6 +1141,11 @@ Get PQ Issuing URL
     ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
     RETURN  ${url}
 
+Get PQ Stateful Issuing URL
+    [Documentation]    Return the URL for the PQ stateful issuing endpoint.
+    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_STATEFUL_ISSUING_SUFFIX}
+    RETURN  ${url}
+
 Get Composite Issuing URL
     [Documentation]    Return the URL for the composite issuing endpoint.
     ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
@@ -1150,6 +1155,13 @@ Exchange PKIMessage PQ
     [Documentation]    Exchange a PKIMessage with the PQ issuing endpoint.
     [Arguments]    ${pki_message}
     ${url}=   Get PQ Issuing URL
+    ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
+    RETURN   ${response}
+
+Exchange PKIMessage PQ Stateful
+    [Documentation]    Exchange a PKIMessage with the PQ stateful issuing endpoint.
+    [Arguments]    ${pki_message}
+    ${url}=   Get PQ Stateful Issuing URL
     ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
     RETURN   ${response}
 
