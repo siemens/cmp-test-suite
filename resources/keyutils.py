@@ -37,7 +37,7 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5958, rfc6402, rfc6664, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.combined_factory import CombinedKeyFactory
+import pq_logic.combined_factory
 from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
@@ -47,6 +47,7 @@ from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
+from pq_logic.keys.stateful_sig_keys import HSSPrivateKey, XMSSMTPrivateKey, XMSSPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME, id_rsa_kem_spki
@@ -126,7 +127,7 @@ def save_key(  # noqa: D417 undocumented-params
         )
 
     else:
-        data = CombinedKeyFactory.save_private_key_one_asym_key(
+        data = pq_logic.combined_factory.CombinedKeyFactory.save_private_key_one_asym_key(
             private_key=key,
             save_type=save_type,
             password=password,
@@ -295,7 +296,7 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
     algorithm = algorithm.lower()
 
     if params.get("seed") is not None:
-        return CombinedKeyFactory.generate_key_from_seed(
+        return pq_logic.combined_factory.CombinedKeyFactory.generate_key_from_seed(
             algorithm,
             seed=params.get("seed"),  # type: ignore
             curve=params.get("curve"),
@@ -329,7 +330,7 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
         )
 
     else:
-        private_key = CombinedKeyFactory.generate_key(algorithm=algorithm, **params)
+        private_key = pq_logic.combined_factory.CombinedKeyFactory.generate_key(algorithm=algorithm, **params)
 
     return private_key
 
@@ -438,7 +439,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
             else:
                 out = utils.decode_pem_string(out)
 
-            return CombinedKeyFactory.load_private_key_from_one_asym_key(data=out)
+            return pq_logic.combined_factory.CombinedKeyFactory.load_private_key_from_one_asym_key(data=out)
 
     pem_data = utils.load_and_decode_pem_file(filepath)
 
@@ -465,7 +466,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
         if password is not None:
             pem_data = load_enc_key(password=password, data=pem_data2)
 
-        return CombinedKeyFactory.load_private_key_from_one_asym_key(data=pem_data)
+        return pq_logic.combined_factory.CombinedKeyFactory.load_private_key_from_one_asym_key(data=pem_data)
 
     if password is not None:
         password = str_to_bytes(password)  # type: ignore
@@ -509,7 +510,7 @@ def load_public_key_from_file(filepath: str) -> PublicKey:  # noqa: D417 for RF 
     if rest != b"":
         raise BadAsn1Data("SubjectPublicKeyInfo")
 
-    return CombinedKeyFactory.load_public_key_from_spki(spki)
+    return pq_logic.combined_factory.CombinedKeyFactory.load_public_key_from_spki(spki)
 
 
 def load_public_key_from_spki(data: Union[bytes, rfc5280.SubjectPublicKeyInfo]) -> PublicKey:  # noqa: D417 for RF docs
@@ -541,7 +542,7 @@ def load_public_key_from_spki(data: Union[bytes, rfc5280.SubjectPublicKeyInfo]) 
         if rest != b"":
             raise BadAsn1Data("SubjectPublicKeyInfo")
 
-    return CombinedKeyFactory.load_public_key_from_spki(spki=data)
+    return pq_logic.combined_factory.CombinedKeyFactory.load_public_key_from_spki(spki=data)
 
 
 @not_keyword
@@ -562,7 +563,7 @@ def generate_key_based_on_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> Private
                 if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
                     tmp = PQ_SIG_PRE_HASH_OID_2_NAME[oid].split("-")
                     name = "-".join(tmp[:-1])
-                return CombinedKeyFactory.generate_key(algorithm=name)
+                return pq_logic.combined_factory.CombinedKeyFactory.generate_key(algorithm=name)
 
     elif oid == rfc6664.id_ecPublicKey:
         curve_oid, rest = decoder.decode(alg_id["parameters"], asn1Spec=rfc5480.ECParameters())
@@ -576,7 +577,7 @@ def generate_key_based_on_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> Private
         return ec.generate_private_key(curve=curve_instance)
 
     elif str(oid) in TRAD_STR_OID_TO_KEY_NAME:
-        return CombinedKeyFactory.generate_key(algorithm=TRAD_STR_OID_TO_KEY_NAME[str(oid)])
+        return pq_logic.combined_factory.CombinedKeyFactory.generate_key(algorithm=TRAD_STR_OID_TO_KEY_NAME[str(oid)])
 
     elif oid in CMS_COMPOSITE03_NAME_2_OID:
         raise NotImplementedError("Composite keys are not supported yet.")
@@ -977,7 +978,7 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         if version in ["v1", 0]:
             include_public_key = False
 
-    der_data = CombinedKeyFactory.save_private_key_one_asym_key(
+    der_data = pq_logic.combined_factory.CombinedKeyFactory.save_private_key_one_asym_key(
         private_key=private_key,
         public_key=public_key,
         save_type=key_save_type,
