@@ -88,13 +88,13 @@ class PQHashStatefulSigPrivateKey(PQPrivateKey, ABC):
     def public_key(self) -> PQHashStatefulSigPublicKey:
         """Return the corresponding public key for this private key."""
 
-    @abstractmethod
     def get_leaf_index(self, signature: bytes) -> int:
         """Extract the leaf index from the signature.
 
         :param signature: The signature to extract the leaf index from.
         :return: The leaf index if it can be extracted, otherwise None.
         """
+        return self.public_key().get_leaf_index(signature)
 
     @classmethod
     def from_private_bytes(cls, data: bytes) -> "PQHashStatefulSigPrivateKey":

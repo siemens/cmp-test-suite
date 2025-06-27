@@ -262,14 +262,6 @@ class XMSSPrivateKey(PQHashStatefulSigPrivateKey):
             self._public_key_bytes = _xmss_liboqs_sk_to_pk(self._sig.export_secret_key(), self._other_name)
         return XMSSPublicKey(self._name, public_key=self._public_key_bytes)
 
-    def get_leaf_index(self, signature: bytes) -> int:
-        """Extract the leaf index from the signature.
-
-        :param signature: The signature to extract the leaf index from.
-        :return: The leaf index if it can be extracted, otherwise raises an exception.
-        """
-        return self.public_key().get_leaf_index(signature)
-
     def _check_name(self, name: str) -> Tuple[str, str]:
         """Check if the name is valid and return the algorithm name.
 
@@ -519,14 +511,6 @@ class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
         if self._public_key_bytes is None:
             self._public_key_bytes = _xmss_liboqs_sk_to_pk(self._sig.export_secret_key(), self._other_name)
         return XMSSMTPublicKey(self._name, public_key=self._public_key_bytes)
-
-    def get_leaf_index(self, signature: bytes) -> int:
-        """Extract the leaf index from the signature.
-
-        :param signature: The signature to extract the leaf index from.
-        :return: The leaf index if it can be extracted, otherwise raises an exception.
-        """
-        return self.public_key().get_leaf_index(signature)
 
     def sign(self, data: bytes) -> bytes:
         """Sign the data using the private key.
