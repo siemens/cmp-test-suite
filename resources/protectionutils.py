@@ -757,6 +757,7 @@ def _prepare_signature_prot_alg_id(
     private_key: PrivateKey,
     hash_alg: Optional[str] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
+    add_params_rand_val: bool = False,
 ) -> rfc9480.AlgorithmIdentifier:
     """Prepare the `AlgorithmIdentifier` for signature-based protection in a PKIMessage.
 
@@ -764,6 +765,7 @@ def _prepare_signature_prot_alg_id(
     :param hash_alg: Optional. The hash algorithm to be used (e.g., "sha256"). If not provided, it is derived from the
                      certificate's signature hash algorithm or defaults to "sha256".
     :param cert: Optional. An x509 certificate used to determine the hash algorithm, if `hash_alg` is not provided.
+    :param add_params_rand_val: If True, adds random values to the parameters of the `AlgorithmIdentifier`.
     :return: The prepared `AlgorithmIdentifier` for signature-based protection, populated with the appropriate OID.
     :raises ValueError: If the private key is not of the expected `PrivateKey` type.
     """
@@ -777,8 +779,10 @@ def _prepare_signature_prot_alg_id(
     hash_alg = hash_alg or cert_hash_alg or "sha256"
 
     alg_oid = get_alg_oid_from_key_hash(private_key, hash_alg)
-    prot_alg_id = rfc9480.AlgorithmIdentifier()
-    prot_alg_id["algorithm"] = alg_oid
+    prot_alg_id = prepare_alg_ids.prepare_alg_id(
+        name_or_oid=str(alg_oid),
+        fill_random_params=add_params_rand_val,
+    )
     return prot_alg_id
 
 
@@ -882,6 +886,7 @@ def _prepare_prot_alg_id(
             private_key=private_key,
             cert=params.get("certificate"),
             hash_alg=params.get("hash_alg"),
+            add_params_rand_val=params.get("add_params_rand_val", False),
         )
     elif protection_type == ProtectionAlgorithm.DH:
         prot_alg_id["algorithm"] = rfc9480.id_DHBasedMac
@@ -1025,6 +1030,7 @@ def protect_pkimessage(  # noqa: D417
         - `cert_chain` (List[CMPCertificates]): The certificate chain to use for the PKIMessage, will be used to patch \
         the sender and senderKID fields, if `cert` is not provided. Defaults to `None`.
         - `peer` (CMPCertificate, ECDHPublicKey): The peer certificate or public key for DH-based MAC protection.
+        - `add_params_rand_val` (bool): If True, adds a random value to the parameters of the protection algorithm.
 
     Returns:
     -------
