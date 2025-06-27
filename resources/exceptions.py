@@ -65,6 +65,10 @@ class BadSigAlgID(CMPTestSuiteError):
     bit_num = 0
 
 
+class BadSigAlgIDParams(BadSigAlgID):
+    """Raised when the algorithm identifier parameters are invalid."""
+
+
 class UnknownOID(CMPTestSuiteError):
     """Raised when an OID is unknown."""
 
