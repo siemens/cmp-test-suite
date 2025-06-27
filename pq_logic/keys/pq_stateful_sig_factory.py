@@ -44,26 +44,25 @@ class PQStatefulSigFactory(AbstractKeyFactory):
     @staticmethod
     def supported_algorithms() -> list:
         """Return a list of supported stateful PQ algorithms."""
-        return PQStatefulSigFactory._get_algs()["xmss"] + PQStatefulSigFactory._get_algs()["xmssmt"]
+        return (
+            PQStatefulSigFactory.get_algorithms_by_family()["xmss"]
+            + PQStatefulSigFactory.get_algorithms_by_family()["xmssmt"]
+            + PQStatefulSigFactory.get_algorithms_by_family()["hss"]
+        )
 
     @classmethod
-    def _get_algs(cls) -> Dict[str, List[str]]:
+    def get_algorithms_by_family(cls) -> Dict[str, List[str]]:
         """Return a list of algorithms by family."""
+        algorithms = []
         if oqs is not None and hasattr(oqs, "get_enabled_stateful_sig_mechanisms"):
             algorithms = oqs.get_enabled_stateful_sig_mechanisms()
             algorithms = [x.lower() for x in algorithms]
-        else:
-            algorithms = [
-                "hss_lms_sha256_m32_w1",
-                "hss_lms_sha256_m32_w2",
-                "hss_lms_sha256_m32_w4",
-                "hss_lms_sha256_m32_w8",
-            ]
+
+        algorithms += hss_utils.generate_hss_combinations()
         return {
-            "lms": cls._get_alg_family(algorithms, "lms"),
             "xmss": cls._get_alg_family(algorithms, "xmss-"),
             "xmssmt": cls._get_alg_family(algorithms, "xmssmt-"),
-            "hss": cls._get_alg_family(algorithms, "hss-"),
+            "hss": cls._get_alg_family(algorithms, "hss_"),
         }
 
     @staticmethod
@@ -77,7 +76,7 @@ class PQStatefulSigFactory(AbstractKeyFactory):
             if algorithm not in PQStatefulSigFactory.supported_algorithms() + ["xmss"]:
                 msg = (
                     f"Unsupported XMSS algorithm: {algorithm}. "
-                    f"Supported algorithms are: {PQStatefulSigFactory._get_algs()['xmss']}"
+                    f"Supported algorithms are: {PQStatefulSigFactory.get_algorithms_by_family()['xmss']}"
                 )
                 raise ValueError(msg)
             return XMSSPrivateKey(algorithm)
