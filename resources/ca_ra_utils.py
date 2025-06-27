@@ -1390,6 +1390,61 @@ def validate_cert_request_controls(
     )
 
 
+def is_nist_approved_xmssmt(name: str) -> bool:
+    """Check if the given XMSSMT name is NIST approved."""
+    return (name.startswith("xmssmt-sha2_") or name.startswith("xmssmt-shake256_")) and (
+        name.endswith("_256") or name.endswith("_192")
+    )
+
+
+def is_nist_approved_xmss(name: str) -> bool:
+    """Check if the given XMSS name is NIST approved."""
+    return (name.startswith("xmss-sha2_") or name.startswith("xmss-shake256_")) and (
+        name.endswith("_256") or name.endswith("_192")
+    )
+
+
+def _validate_pq_hash_stateful_sig_pub_key(
+    public_key: PQHashStatefulSigPublicKey, alg_id: rfc9480.AlgorithmIdentifier, **kwargs
+) -> None:
+    """Validate the PQ Hash Stateful Signature public key.
+
+    :param public_key: The PQ Hash Stateful Signature public key to validate.
+    :param alg_id: The algorithm identifier to validate against.
+    :raises BadCertTemplate: If the public key is not valid.
+    """
+    if not alg_id["parameters"].isValue:
+        raise BadCertTemplate("The `parameters` field is not set for the PQ Hash Stateful Signature public key.")
+
+    if alg_id["algorithm"] != public_key.get_oid():
+        raise BadCertTemplate(
+            "The algorithm identifier does not match the public key algorithm.",
+            failinfo="badAlg,badCertTemplate",
+        )
+
+    if public_key.name.startswith("xmss"):
+        if not is_nist_approved_xmss(public_key.name):
+            raise BadCertTemplate(
+                "The XMSS public key is not NIST approved.",
+                failinfo="badAlg,badCertTemplate",
+            )
+
+    elif public_key.name.startswith("xmssmt"):
+        if not is_nist_approved_xmssmt(public_key.name):
+            raise BadCertTemplate(
+                "The XMSSMT public key is not NIST approved.",
+                failinfo="badAlg,badCertTemplate",
+            )
+    elif public_key.name.startswith("hss"):
+        raise NotImplementedError("HSS public keys are not supported yet.")
+
+    else:
+        raise NotImplementedError(
+            "Got a unsupported PQStatefulSigPublicKey type: "
+            f"{public_key.name}. Only XMSS, XMSSMT and HSS are supported."
+        )
+
+
 @not_keyword
 def validate_cert_template_public_key(
     cert_template: rfc9480.CertTemplate,
@@ -1456,8 +1511,10 @@ def validate_cert_template_public_key(
             alg_id = cert_template["publicKey"]["algorithm"]
 
             if isinstance(public_key, PQHashStatefulSigPublicKey):
-                if alg_id["parameters"].isValue:
-                    raise BadCertTemplate("The `parameters` field is not allowed for PQ hash stateful signature keys.")
+                _validate_pq_hash_stateful_sig_pub_key(
+                    public_key=public_key,
+                    alg_id=alg_id,
+                )
 
             elif isinstance(public_key, (PQPublicKey, HybridPublicKey)):
                 if alg_id["parameters"].isValue:
