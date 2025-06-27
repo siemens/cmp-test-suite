@@ -2093,6 +2093,20 @@ def validate_migration_certificate_key_usage(  # noqa: D417 Missing argument des
         raise ValueError(f"Unsupported public key type: {type(public_key)}")
 
 
+def _validate_oid_in_cert_stfl(
+    alg_name: str,
+    cert: rfc9480.CMPCertificate,
+) -> None:
+    """Validate the OID of the public key in the certificate."""
+    loaded_public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+
+    if alg_name != loaded_public_key.name:
+        raise ValueError(
+            "The public key algorithm name does not match the expected name."
+            f"Expected: {alg_name}, Got: {loaded_public_key.name}"
+        )
+
+
 @keyword(name="Validate Migration OID In Certificate")
 def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descriptions in the docstring
     cert: rfc9480.CMPCertificate, alg_name: str
@@ -2118,6 +2132,11 @@ def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descri
     pub_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
 
     name_oid = PQ_NAME_2_OID.get(alg_name) or HYBRID_NAME_2_OID.get(alg_name)
+
+    if alg_name.startswith("xmss") or alg_name.startswith("xmssmt") or alg_name.startswith("hss"):
+        _validate_oid_in_cert_stfl(alg_name, cert)
+        return
+
     if name_oid is None:
         raise ValueError(
             f"The name {alg_name} is not supported."
