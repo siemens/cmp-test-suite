@@ -20,6 +20,7 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc5958, rfc6664
 
+import pq_logic.keys.pq_stateful_sig_factory
 from pq_logic.hybrid_structures import (
     CompositeSignaturePrivateKeyAsn1,
     CompositeSignaturePublicKeyAsn1,
@@ -53,7 +54,6 @@ from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig
 from pq_logic.keys.hybrid_key_factory import HybridKeyFactory
 from pq_logic.keys.kem_keys import FrodoKEMPublicKey, MLKEMPrivateKey, MLKEMPublicKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
-from pq_logic.keys.pq_stateful_sig_factory import PQStatefulSigFactory
 from pq_logic.keys.serialize_utils import prepare_enc_key_pem
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey, RSADecapKey, RSAEncapKey
@@ -211,7 +211,9 @@ class CombinedKeyFactory:
             return generate_trad_key(algorithm, **kwargs)
 
         if algorithm.startswith("xmss") or algorithm.startswith("hss"):
-            return PQStatefulSigFactory.generate_pq_stateful_key(algorithm, **kwargs)
+            return pq_logic.keys.pq_stateful_sig_factory.PQStatefulSigFactory.generate_pq_stateful_key(
+                algorithm, **kwargs
+            )
 
         if algorithm == "rsa-kem":
             trad_key = kwargs.get("trad_key") or generate_trad_key("rsa", **kwargs)
@@ -422,7 +424,7 @@ class CombinedKeyFactory:
             return CombinedKeyFactory.load_chempat_key(spki)
 
         if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
-            return PQStatefulSigFactory.load_public_key_from_spki(spki)
+            return pq_logic.keys.pq_stateful_sig_factory.PQStatefulSigFactory.load_public_key_from_spki(spki)
 
         if oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME:
             return PQKeyFactory.load_public_key_from_spki(spki=spki)
@@ -831,7 +833,9 @@ class CombinedKeyFactory:
             return parse_trad_key_from_one_asym_key(one_asym_key=one_asym_key, must_be_version_2=must_be_version_2)
 
         if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
-            return PQStatefulSigFactory.load_private_key_from_one_asym_key(one_asym_key)
+            return pq_logic.keys.pq_stateful_sig_factory.PQStatefulSigFactory.load_private_key_from_one_asym_key(
+                one_asym_key
+            )
 
         if oid in PQ_OID_2_NAME:
             return PQKeyFactory.from_one_asym_key(one_asym_key)
