@@ -82,28 +82,28 @@ class PQStatefulSigFactory(AbstractKeyFactory):
                 raise ValueError(msg)
             return XMSSPrivateKey(algorithm)
 
-        elif algorithm.startswith("xmssmt-") or algorithm == "xmssmt":
+        if algorithm.startswith("xmssmt-") or algorithm == "xmssmt":
             if algorithm not in PQStatefulSigFactory.supported_algorithms() + ["xmssmt"]:
                 msg = (
                     f"Unsupported XMSSMT algorithm: {algorithm}. "
-                    f"Supported algorithms are: {PQStatefulSigFactory._get_algs()['xmssmt']}"
+                    f"Supported algorithms are: {PQStatefulSigFactory.get_algorithms_by_family()['xmssmt']}"
                 )
                 raise ValueError(msg)
             return XMSSMTPrivateKey(algorithm)
 
-        elif algorithm.startswith("hss"):
+        if algorithm.startswith("hss"):
             if algorithm not in PQStatefulSigFactory.supported_algorithms() + ["hss"]:
                 msg = (
                     f"Unsupported HSS algorithm: {algorithm}. "
-                    f"Supported algorithms are: {PQStatefulSigFactory._get_algs()['lms']}"
+                    f"Supported algorithms are: {PQStatefulSigFactory.get_algorithms_by_family()['lms']}"
                 )
                 raise ValueError(msg)
             return HSSPrivateKey(algorithm, length=int(kwargs.get("length", 1)))
-        else:
-            raise ValueError(
-                f"Unsupported algorithm: {algorithm}. "
-                f"Supported algorithms are: {PQStatefulSigFactory.supported_algorithms()}"
-            )
+
+        raise ValueError(
+            f"Unsupported algorithm: {algorithm}. "
+            f"Supported algorithms are: {PQStatefulSigFactory.supported_algorithms()}"
+        )
 
     @staticmethod
     def load_public_key_from_spki(spki: rfc5280.SubjectPublicKeyInfo) -> PQHashStatefulSigPublicKey:
@@ -117,12 +117,12 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         algorithm = PQ_STATEFUL_HASH_SIG_OID_2_NAME[oid]
         if algorithm == "xmss":
             return XMSSPublicKey.from_public_bytes(public_key_bytes)
-        elif algorithm == "xmssmt":
+        if algorithm == "xmssmt":
             return XMSSMTPublicKey.from_public_bytes(public_key_bytes)
-        elif algorithm == "hss":
+        if algorithm == "hss":
             return HSSPublicKey.from_public_bytes(public_key_bytes)
-        else:
-            raise ValueError(f"Unsupported algorithm in SPKI: {algorithm}")
+
+        raise ValueError(f"Unsupported algorithm in SPKI: {algorithm}")
 
     @staticmethod
     def _load_private_key_from_pkcs8(
@@ -168,15 +168,15 @@ class PQStatefulSigFactory(AbstractKeyFactory):
             if public_key_bytes:
                 return XMSSPrivateKey(private_key.name, private_key_bytes, public_key_bytes)
             return private_key
-        elif algorithm == "xmssmt":
+        if algorithm == "xmssmt":
             private_key = XMSSMTPrivateKey.from_private_bytes(private_key_bytes)
             if public_key_bytes:
                 return XMSSMTPrivateKey(private_key.name, private_key_bytes, public_key_bytes)
             return private_key
-        elif algorithm == "hss":
+        if algorithm == "hss":
             raise NotImplementedError("HSS private key loading from OneAsymmetricKey is not implemented yet.")
-        else:
-            raise ValueError(f"Unsupported algorithm in OneAsymmetricKey: {algorithm}")
+
+        raise ValueError(f"Unsupported algorithm in OneAsymmetricKey: {algorithm}")
 
     @staticmethod
     def _prepare_invalid_private_key(
