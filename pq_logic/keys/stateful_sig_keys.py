@@ -177,7 +177,7 @@ class XMSSPublicKey(PQHashStatefulSigPublicKey):
                 f"Invalid public key size for {self.name}: expected {self.key_size + 4}, "
                 f"got {len(self._public_key_bytes)}"
             )
-            raise ValueError(msg)
+            raise InvalidKeyData(msg)
         self._sig = oqs.StatefulSignature(self._other_name)  # type: ignore
 
     def get_leaf_index(self, signature: bytes) -> int:
@@ -200,7 +200,7 @@ class XMSSPublicKey(PQHashStatefulSigPublicKey):
         name = data[:4]
         alg_id = int.from_bytes(name, "big")
         if alg_id not in XMSS_ALG_IDS:
-            raise ValueError(f"Unsupported XMSS algorithm ID: {alg_id}")
+            raise InvalidKeyData(f"Unsupported XMSS algorithm ID: {alg_id}")
         return cls(XMSS_ALG_IDS[alg_id].upper(), data)
 
     def verify(self, data: bytes, signature: bytes) -> None:
@@ -286,7 +286,7 @@ class XMSSPrivateKey(PQHashStatefulSigPrivateKey):
                     f"Invalid private key size for {self.name}: expected {self.key_size}, "
                     f"got {len(self._private_key_bytes)}"
                 )
-                raise ValueError(msg)
+                raise InvalidKeyData(msg)
         else:
             self._sig = oqs.StatefulSignature(self._other_name)  # type: ignore
             self._public_key_bytes = self._sig.generate_keypair()
@@ -422,9 +422,9 @@ class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
         _name = XMSSMT_ALG_IDS[alg_id]
         key_size = XMSSMT_ALG_DETAILS[_name.lower()]["n"] * 2
         if len(data) != key_size + 4:
-            raise ValueError(f"Invalid public key size for {_name}: expected {key_size + 4}, got {len(data)}")
+            raise InvalidKeyData(f"Invalid public key size for {_name}: expected {key_size + 4}, got {len(data)}")
         if alg_id not in XMSSMT_ALG_IDS:
-            raise ValueError(f"Unsupported XMSSMT algorithm ID: {alg_id}")
+            raise InvalidKeyData(f"Unsupported XMSSMT algorithm ID: {alg_id}")
         return cls(XMSSMT_ALG_IDS[alg_id], data)
 
     def verify(self, data: bytes, signature: bytes) -> None:
@@ -500,7 +500,7 @@ class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
                     f"Invalid private key size for {self.name}: expected {self.key_size}, "
                     f"got {len(self._private_key_bytes)}"
                 )
-                raise ValueError(msg)
+                raise InvalidKeyData(msg)
         else:
             self._sig = oqs.StatefulSignature(self._other_name)  # type: ignore
             self._public_key_bytes = self._sig.generate_keypair()
@@ -613,8 +613,11 @@ class HSSPublicKey(PQHashStatefulSigPublicKey):
         """Initialize the HSS public key with the provided name and public key bytes."""
         self._sig = None
         if oqs is None or hasattr("oqs", "StatefulSignature") is False:
-            self.pub = hsslms.HSS_Pub(self._public_key_bytes)
-            self._public_key_bytes = self.pub.get_pubkey()
+            try:
+                self.pub = hsslms.HSS_Pub(self._public_key_bytes)
+                self._public_key_bytes = self.pub.get_pubkey()
+            except hsslms.INVALID as e:
+                raise InvalidKeyData("Invalid HSS public key data.") from e
         else:
             self.pub = None
             # For OQS, we use the public key bytes directly
@@ -624,7 +627,7 @@ class HSSPublicKey(PQHashStatefulSigPublicKey):
             if len(self._public_key_bytes) != self.key_size:
                 msg = f"Invalid public key size for {self.name}: expected {self.key_size + 4}, "
                 msg += f"got {len(self._public_key_bytes)}"
-                raise ValueError(msg)
+                raise InvalidKeyData(msg)
 
     @property
     def name(self) -> str:
@@ -672,7 +675,10 @@ class HSSPublicKey(PQHashStatefulSigPublicKey):
     @classmethod
     def from_public_bytes(cls, data: bytes) -> "HSSPublicKey":
         """Create a new public key object from the provided bytes."""
-        hss_pub, lmots_name, _ = cls._load_hss_public_key(data)
+        try:
+            hss_pub, lmots_name, _ = cls._load_hss_public_key(data)
+        except hsslms.INVALID as e:
+            raise InvalidKeyData("Invalid HSS public key data.") from e
         # Check if the algorithm is supported
         _w = lmots_name.split("_")[-1].lower()
         _n = lmots_name.split("_")[-2].lower()
