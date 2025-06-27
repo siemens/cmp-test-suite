@@ -1,7 +1,11 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Abstract factory class for creating keys, to have a common interface for different key types."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import List, Optional
 
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
 from pyasn1.codec.der import decoder
@@ -15,7 +19,7 @@ class AbstractKeyFactory(ABC):
     """Abstract factory class for creating keys."""
 
     @staticmethod
-    def _get_alg_family(algs: list, alg: str) -> list:
+    def _get_alg_family(algs: List[str], alg: str) -> list:
         """Get a list of algorithms that start with the specified prefix.
 
         :param algs: List of all supported algorithms.
@@ -86,7 +90,7 @@ class AbstractKeyFactory(ABC):
         """
         version = one_asym_key["version"]
         if int(version) not in (0, 1):
-            raise InvalidKeyData("Unsupported PKCS#8 version: {}".format(version))
+            raise InvalidKeyData(f"Unsupported PKCS#8 version: {version}")
 
         if one_asym_key["publicKey"].isValue and version == 0:
             raise InvalidKeyData("Public key is not allowed in PKCS#8 version 0.")
