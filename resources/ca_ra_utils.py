@@ -1456,11 +1456,14 @@ def validate_cert_template_public_key(
             alg_id = cert_template["publicKey"]["algorithm"]
 
             if isinstance(public_key, PQHashStatefulSigPublicKey):
-                raise NotImplementedError("PQHashStatefulSigPublicKey is not supported yet, to be validated.")
-
-            if isinstance(public_key, (PQPublicKey, HybridPublicKey)):
                 if alg_id["parameters"].isValue:
-                    raise BadCertTemplate("The `parameters` field is not allowed for PQ public keys.")
+                    raise BadCertTemplate("The `parameters` field is not allowed for PQ hash stateful signature keys.")
+
+            elif isinstance(public_key, (PQPublicKey, HybridPublicKey)):
+                if alg_id["parameters"].isValue:
+                    raise BadCertTemplate(
+                        "The `parameters` field is not allowed to be set, for PQ and Hybrid public keys."
+                    )
 
 
 def _process_agree_mac_key_agreement(
