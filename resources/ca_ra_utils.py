@@ -1413,8 +1413,8 @@ def _validate_pq_hash_stateful_sig_pub_key(
     :param alg_id: The algorithm identifier to validate against.
     :raises BadCertTemplate: If the public key is not valid.
     """
-    if not alg_id["parameters"].isValue:
-        raise BadCertTemplate("The `parameters` field is not set for the PQ Hash Stateful Signature public key.")
+    if alg_id["parameters"].isValue:
+        raise BadCertTemplate("The `parameters` field must not be for the PQ Hash Stateful Signature public key.")
 
     if alg_id["algorithm"] != public_key.get_oid():
         raise BadCertTemplate(
