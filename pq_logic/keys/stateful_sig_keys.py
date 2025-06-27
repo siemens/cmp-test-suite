@@ -180,15 +180,15 @@ class XMSSPublicKey(PQHashStatefulSigPublicKey):
             raise ValueError(msg)
         self._sig = oqs.StatefulSignature(self._other_name)  # type: ignore
 
-    def get_leaf_index(self, xmss_signature: bytes) -> int:
+    def get_leaf_index(self, signature: bytes) -> int:
         """Extract the leaf index from the XMSS signature."""
         # First 4 bytes of XMSS signature is the leaf index
-        if len(xmss_signature) != self.sig_size:
-            raise ValueError(f"Invalid XMSS signature size: expected {self.sig_size}, got {len(xmss_signature)}")
+        if len(signature) != self.sig_size:
+            raise ValueError(f"Invalid XMSS signature size: expected {self.sig_size}, got {len(signature)}")
 
-        if len(xmss_signature) < 4:
+        if len(signature) < 4:
             raise ValueError("Invalid XMSS signature: too short")
-        return struct.unpack(">I", xmss_signature[:4])[0]
+        return struct.unpack(">I", signature[:4])[0]
 
     def _export_public_key(self) -> bytes:
         """Return the public key as bytes."""
@@ -400,20 +400,20 @@ class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
             )
             raise ValueError(msg)
 
-    def get_leaf_index(self, xmssmt_signature: bytes) -> int:
+    def get_leaf_index(self, signature: bytes) -> int:
         """Extract the leaf index from the XMSSMT signature.
 
-        :param xmssmt_signature: The XMSSMT signature to extract the leaf index from.
+        :param signature: The XMSSMT signature to extract the leaf index from.
         :return: The leaf index extracted from the signature.
         """
-        if len(xmssmt_signature) < 4:
+        if len(signature) < 4:
             raise ValueError("Invalid XMSSMT signature: too short")
 
         # According to RFC 8391 Section 4.2.3.  XMSS^MT Signature.
         h = XMSSMT_ALG_DETAILS[self._name.lower()]["h"]
         length = math.ceil(h / 8)
         # The leaf index is stored as a big-endian integer
-        return int.from_bytes(xmssmt_signature[:length], "big")  # Ensure it's a valid integer
+        return int.from_bytes(signature[:length], "big")  # Ensure it's a valid integer
 
     @classmethod
     def from_public_bytes(cls, data: bytes):
@@ -631,17 +631,13 @@ class HSSPublicKey(PQHashStatefulSigPublicKey):
         """Return the name of the HSS public key."""
         return self._name
 
-    def get_leaf_index(self, hss_signature: bytes) -> int:
+    def get_leaf_index(self, signature: bytes) -> int:
         """Extract the leaf index from the HSS signature.
 
-        :param hss_signature: The HSS signature to extract the leaf index from.
+        :param signature: The HSS signature to extract the leaf index from.
         :return: The leaf index extracted from the signature.
         """
-        if len(hss_signature) < 4:
-            raise ValueError("Invalid HSS signature: too short")
-
-        # The leaf index is stored as a big-endian integer
-        return int.from_bytes(hss_signature[:4], "big")
+        return extract_hss_leaf_index(signature)
 
     def _export_public_key(self) -> bytes:
         """Return the public key as bytes."""
