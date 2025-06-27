@@ -93,6 +93,7 @@ from resources.exceptions import (
     CertRevoked,
     CMPTestSuiteError,
     InvalidAltSignature,
+    InvalidKeyData,
     NotAuthorized,
     UnknownOID,
 )
@@ -855,9 +856,17 @@ class CAHandler:
         :param pki_message: The PKIMessage request.
         :raises BadCertTemplate: If the certificate template is invalid.
         """
-        result = self.state.cert_state_db.check_request_for_compromised_key(pki_message)
-        if result:
-            raise BadCertTemplate("The certificate template contained a compromised key.")
+        try:
+            result = self.state.cert_state_db.check_request_for_compromised_key(pki_message)
+            if result:
+                raise BadCertTemplate("The certificate template contained a compromised key.")
+        except (InvalidKeyData, BadAsn1Data, BadAlg) as e:
+            raise BodyRelevantError(
+                e.message,
+                pki_message=pki_message,
+                failinfo="badCertTemplate",
+                error_details=e.get_error_details(),
+            )
 
     def process_ir(
         self,

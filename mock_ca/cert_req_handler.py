@@ -55,11 +55,14 @@ from resources.copyasn1utils import copy_name
 from resources.data_objects import ExtraIssuingData
 from resources.exceptions import (
     BadAlg,
+    BadAsn1Data,
     BadCertTemplate,
     BadMessageCheck,
     BadRequest,
     BadTime,
+    BodyRelevantError,
     CMPTestSuiteError,
+    InvalidKeyData,
     NotAuthorized,
     SignerNotTrusted,
     TransactionIdInUse,
@@ -199,7 +202,13 @@ class CertReqHandler:
             if spki["subjectPublicKey"].asOctets() == b"":
                 return
 
-            loaded_pub_key = keyutils.load_public_key_from_spki(spki)
+            try:
+                loaded_pub_key = keyutils.load_public_key_from_spki(spki)
+            except (InvalidKeyData, BadAsn1Data, BadAlg) as e:
+                raise BodyRelevantError(
+                    e.message, "badCertTemplate", pki_message=pki_message, error_details=e.get_error_details()
+                )
+
             if loaded_pub_key is not None:
                 if self.state.contains_pub_key(loaded_pub_key, csr["certificationRequestInfo"]["subject"]):
                     raise BadCertTemplate("The public key is already defined for the user.")
@@ -213,12 +222,17 @@ class CertReqHandler:
 
         else:
             body_name = pki_message["body"].getName()
+
             for entry in pki_message["body"][body_name]:
                 cert_template = entry["certReq"]["certTemplate"]
-                if self.is_certificate_in_list(cert_template, self.state.issued_certs):
-                    _name = get_openssl_name_notation(cert_template["subject"])
-                    raise BadCertTemplate(f"The public key is already defined for the user: {_name}")
-
+                try:
+                    if self.is_certificate_in_list(cert_template, self.state.issued_certs):
+                        _name = get_openssl_name_notation(cert_template["subject"])
+                        raise BadCertTemplate(f"The public key is already defined for the user: {_name}")
+                except (InvalidKeyData, BadAsn1Data, BadAlg) as e:
+                    raise BodyRelevantError(
+                        e.message, "badCertTemplate", pki_message=pki_message, error_details=e.get_error_details()
+                    )
                 public_key = load_public_key_from_cert_template(cert_template, must_be_present=False)
                 if public_key is not None:
                     if self.state.contains_pub_key(public_key, cert_template["subject"]):
