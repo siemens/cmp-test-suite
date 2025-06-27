@@ -1,21 +1,17 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Factory for creating stateful post-quantum signature keys."""
 
 import importlib.util
 import logging
 from typing import Dict, List, Optional
 
-from pq_logic.keys.abstract_key_factory import AbstractKeyFactory
-from resources import utils
-from resources.typingutils import PrivateKey
-
-if importlib.util.find_spec("oqs") is not None:
-    import oqs  # pylint: disable=import-error
-else:
-    logging.warning("oqs module is not installed. Some functionalities may be disabled.")
-    oqs = None  # pylint: disable=invalid-name
-
 from pyasn1_alt_modules import rfc5280, rfc5958
 
+from pq_logic.keys import hss_utils
+from pq_logic.keys.abstract_key_factory import AbstractKeyFactory
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.stateful_sig_keys import (
     HSSPrivateKey,
@@ -25,7 +21,15 @@ from pq_logic.keys.stateful_sig_keys import (
     XMSSPrivateKey,
     XMSSPublicKey,
 )
+from resources import utils
 from resources.oidutils import PQ_STATEFUL_HASH_SIG_OID_2_NAME
+from resources.typingutils import PrivateKey
+
+if importlib.util.find_spec("oqs") is not None:
+    import oqs  # pylint: disable=import-error
+else:
+    logging.warning("oqs module is not installed. Some functionalities may be disabled.")
+    oqs = None  # pylint: disable=invalid-name
 
 
 class PQStatefulSigFactory(AbstractKeyFactory):

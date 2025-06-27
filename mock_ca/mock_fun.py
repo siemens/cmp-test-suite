@@ -25,7 +25,14 @@ from resources.compareutils import compare_pyasn1_names
 from resources.convertutils import copy_asn1_certificate, ensure_is_trad_sign_key
 from resources.copyasn1utils import copy_subject_public_key_info
 from resources.deprecatedutils import _sign_crl_builder
-from resources.exceptions import BadCertId, BadMessageCheck, BadRequest, CertConfirmed, CertRevoked, TransactionIdInUse
+from resources.exceptions import (
+    BadCertId,
+    BadMessageCheck,
+    BadRequest,
+    CertConfirmed,
+    CertRevoked,
+    TransactionIdInUse,
+)
 from resources.oid_mapping import compute_hash
 from resources.oidutils import id_KemBasedMac
 from resources.protectionutils import verify_kem_based_mac_protection
@@ -418,7 +425,6 @@ class CertRevStateDB:
         if body_name in ["ir", "cr", "crr", "kur"]:
             for entry in request["body"][body_name]:
                 public_key = ca_ra_utils.get_public_key_from_cert_req_msg(entry, must_be_present=False)
-
                 if public_key is None:
                     return False
 
