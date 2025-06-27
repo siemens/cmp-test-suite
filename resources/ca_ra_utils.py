@@ -2258,7 +2258,11 @@ def _process_one_cert_request(
 
     if cert_req_msg["popo"].isValue:
         if cert_req_msg["popo"].getName() == "signature":
-            public_key = get_public_key_from_cert_req_msg(cert_req_msg)
+            try:
+                public_key = get_public_key_from_cert_req_msg(cert_req_msg)
+            except (BadAsn1Data, InvalidKeyData) as e:
+                raise BadCertTemplate(e.message, error_details=e.get_error_details()) from e
+
             try:
                 public_key = convertutils.ensure_is_verify_key(public_key)
             except ValueError as e:
@@ -2271,7 +2275,10 @@ def _process_one_cert_request(
                 )
 
             except BadSigAlgID as e:
-                raise BadPOP("The `signature` POP alg id and the public key are of different types.") from e
+                raise BadPOP(
+                    "The `signature` POP alg id and the public key are of different types.",
+                    error_details=e.get_error_details(),
+                ) from e
 
     elif not cert_req_msg["popo"].isValue:
         if not check_if_request_is_for_kga(request):
