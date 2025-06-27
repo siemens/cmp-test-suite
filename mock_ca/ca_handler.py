@@ -102,6 +102,7 @@ from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     HYBRID_SIG_OID_2_NAME,
     PQ_SIG_OID_2_NAME,
+    PQ_STATEFUL_HASH_SIG_OID_2_NAME,
     SUPPORTED_MAC_OID_2_NAME,
     TRAD_SIG_OID_2_NAME,
 )
@@ -460,6 +461,7 @@ class CAHandler:
         self.alg_profile.update(TRAD_SIG_OID_2_NAME)
         self.alg_profile.update(SUPPORTED_MAC_OID_2_NAME)
         self.alg_profile.update(PQ_SIG_OID_2_NAME)
+        self.alg_profile.update(PQ_STATEFUL_HASH_SIG_OID_2_NAME)
         self.alg_profile.update(HYBRID_SIG_OID_2_NAME)
 
         # The default algorithm for the CA, just to correctly build the error message.

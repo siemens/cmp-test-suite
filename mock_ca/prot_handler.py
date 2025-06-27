@@ -696,7 +696,7 @@ class ProtectionHandler:
         # Temporary fix to avoid errors for Composite signatures and PQ signatures.
 
         prot_type = ProtectedType.get_protection_type(pki_message)
-        result = prot_type in [ProtectedType.COMPOSITE_SIG, ProtectedType.PQ_SIG]
+        result = prot_type in [ProtectedType.COMPOSITE_SIG, ProtectedType.PQ_SIG, ProtectedType.PQ_HASH_STATEFUL_SIG]
 
         if result:
             logging.debug(
