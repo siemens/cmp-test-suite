@@ -112,6 +112,40 @@ Initialize PQ Cert And Key Variables
     # Initialize the newly issued certificates and keys.
     VAR   &{PQ_SIG_CERTS}  scope=Global
     VAR   &{PQ_SIG_KEYS}   scope=Global
+    VAR   &{PQ_STATEFUL_SIG_CERTS}   scope=Global
+    VAR   &{PQ_STATEFUL_SIG_KEYS}     scope=Global
+    Load PQ Stateful Sig Keys
+
+Get PQ Stateful Sig Key
+    [Documentation]    Get the stateful PQ signature key from the global variable.
+    ...                If the key is not set, it will be generated and returned.
+    [Arguments]    ${algorithm}
+    ${key}=    Get From Dictionary   ${PQ_STATEFUL_SIG_KEYS}   ${algorithm}   ${None}
+    IF  '${key}' == '${None}'
+        ${key}=    Generate Unique Key    ${algorithm}
+        Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS}    ${algorithm}=${key}
+    END
+    RETURN   ${key}
+
+Load PQ Stateful Sig Keys
+    [Documentation]    Load the stateful PQ signature keys from the directory, if they are not already set.
+    VAR  ${directory}    ./data/keys/xmss_xmssmt_keys
+    ${files}=    List Files In Directory    ${directory}
+    VAR  ${empty}
+    FOR  ${key_file}  IN  @{files}
+        ${key_name}=   Replace String     ${key_file}   _layers_    /
+        ${algorithm}=   Replace String    ${key_name}   .pem    ${empty}
+        ${algorithm}=   Replace String    ${algorithm}   private-key-   ${empty}
+        ${key_path}=    Set Variable    ${directory}/${key_name}
+        ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${key_path}
+        IF  ${is_file}
+            ${key}=    Load Private Key From File    ${key_path}
+            Append To List    ${BURNED_KEYS}    ${key}
+            Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS}    ${algorithm}=${key}
+            RETURN   ${key}
+        END
+    END
+
 
 Set Up CRR Test Cases
     [Documentation]    Set up the test cases for the CMP test cases.
