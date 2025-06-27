@@ -100,7 +100,7 @@ def prepare_alg_id(  # Noqa: D417 undocumented params
             alg_id["parameters"] = value
 
     elif fill_random_params:
-        alg_id["parameters"] = os.urandom(16)
+        alg_id["parameters"] = univ.Any(os.urandom(16))
 
     return alg_id
 
