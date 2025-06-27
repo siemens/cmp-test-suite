@@ -2,13 +2,13 @@
 This document provides a high-level overview of the structure and organization of the test suite for the CMP (Certificate Management Protocol) implementation.
 The document categorizes test cases based on authentication methods, key pair generation methods, and the forms of requests used during enrollment as described in the RFC.
 
-For each form of request and variant, the document gives a brief dscription and lists the relevant sections of RFC 9483 that need to be referenced during testing.
+For each form of request and variant, the document gives a brief description and lists the relevant sections of RFC 9483 that need to be referenced during testing.
 
-Each topic corresponds directly with a test class and section in the file 'requirements.md'. 
+Each topic corresponds directly to a test class and section in the file [Requirements](Requirements.md).
 
 
 TODO
-Still needing to be sorted in here:
+Still needs to be sorted here:
 - 4.3 Support Messages
 - 4.4 Handling Delay Delivery
 - fullly include Section 5
@@ -19,13 +19,13 @@ Still needing to be sorted in here:
 RFC 9483 Section 4.1: "These approaches differ in the way the EE authenticates itself to the PKI, in the form of the
 request being used, and how the key pair to be certified is generated."
 
-For each form of request being used, there will be a tests for how the EE authenticates itself to the PKI and how the Key Pair is generated. Therefore we categorizes test cases based on authentication methods, key pair generation methods, and the forms of requests used during enrollment. 
+For each form of request, there will be tests for how the EE authenticates itself to the PKI and how the key pair is generated. Therefore, we categorize test cases based on authentication methods, key pair generation methods, and the forms of requests used during enrollment.
 
-Ways how the EE authenticates itself to the PKI:
+Ways in which the EE authenticates itself to the PKI:
 - Signature-based protection 
 - MAC-based protection (see Section 4.1.5)
 
-Ways how the key pair is generated:
+Ways in which the key pair is generated:
 - Decentral key generation
 - Central key generation (see Section 4.1.6)
 
@@ -37,8 +37,8 @@ The forms of requests are:
 - 4.1.4 Enrolling an End Entitiy Using a PKCS#10 Request
 
 Sections 4.1.1 to 4.1.4 explain the forms of requests from a signature-based protection and decentral key generation perspective.
-Section 4.1.5 explaines the variants of MAC-based protection. There are variants for PKI management operations for Sections 4.1.1, 4.1.2 and 4.1.4.
-Section 4.1.6 explains the variants for adding central key pair generation to enrollment. There are variants for Sections 4.1.1 to 4.1.4 and to the variants described in Section 4.1.5.
+Section 4.1.5 explains the variants of MAC-based protection. There are variants for PKI management operations for Sections 4.1.1, 4.1.2, and 4.1.4.
+Section 4.1.6 explains the variants for adding central key pair generation to enrollment. There are variants for Sections 4.1.1 to 4.1.4 and for the variants described in Section 4.1.5.
 
 
 ### Enrolling an End Entity to a New PKI
@@ -174,7 +174,7 @@ Needed sections of the RFC:
 - 4.1.6 - for central key pair generation  variant specific details
 
 
-### Enrolling an End Entitiy Using a PKCS#10 Request
+### Enrolling an End Entity Using a PKCS#10 Request
 RFC 9483 Section 4.1 "using shared secret information known to the EE and the PKI management entity"
 RFC 9483 Section 4.1.4 "This offers a
 variation of the PKI management operations specified in Sections 4.1.1 to 4.1.3."

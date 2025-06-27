@@ -1,4 +1,5 @@
-# Guiliano Test Classes
+# Explanation of current Test Classes
+This should help with understanding the current test classes, as they have not been updated to fit the [About Suite](about_suite.md) documentation.
 ## What are in the test clases:
 This collection of references to the RFC means that this section has been mentioned in the documentation of a test case. It does not show how many times the reference has been used or what exactly has been tested in the test case that mentioned the reference.
 

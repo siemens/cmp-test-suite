@@ -5,15 +5,17 @@ Add copywrite
 # Requirements 
 This document provides detailed functional requirements for the test cases in the CMP test suite. It outlines specific prerequisites, message flows, and expected behaviors for each test case based on RFC 9483. The document serves as a blueprint for implementing and validating test cases.
 
-Important Notice: these are examples on how documentation could be done 
+Important Notice:
+- This file is not complete or completely correct yet; it should serve as a basis for further improvements.
+- This file is not automatically derived from the test cases, as this is not yet possible, and therefore there is a significant chance for human error.
 
 ## Functional test cases (implicit and explicit)
 Functional test cases always follow the same format:
 RFC {Number} Section {Number} "{Quote from which the test case arises}"
 {as many blocks as needed to explain from which RFC sections the test cases arise}
-- Test Name: {Name of the test case, which is the same as in the implemention in robot files}
+- Test Name: {Name of the test case, which is the same as in the implementation in the robot files}
     - Input: {What does the end entity send or what has occured}
-    - Output: {How should the reaction of the PKI managemet operation be}
+    - Output: {How should the PKI management operation react}
 
 ### Enrolling an End Entity to New PKI
 
@@ -29,20 +31,20 @@ Needed sections of the RFC:
 ##### Prerequisites
 RFC 9483 4.1.1 "The certificate of the EE MUST have been enrolled by an external PKI, e.g., 
 a manufacturer-issued device certificate."
-- Test Name: Reject Certificate From Non External Source
+- Test Name: Reject Certificate From Non-External Source
     - Input: EE sends certificate from not external source
-    - Output: pki sends rejection
+    - Output: PKI sends rejection
 
 RFC 9483 4.1.1 "The PKI management entity MUST have the trust anchor of the external PKI."
 - Test Name: Reject Certificate From Untrusted Source
     - Input: EE sends certificate from untrusted source
-    - Output: pki sends rejection
+    - Output: PKI sends rejection
 
 RFC 9483 4.1.1 "When using the generalInfo field certProfile, the EE MUST know the identifier 
 needed to indicate the requested certificate profile."
 - Test Name: Reject Invalid CertProfil Identifier
     - Input: EE sends ir false identifier
-    - Output: pki sends rejection
+    - Output: PKI sends rejection
 
 
 ##### Message Flow
@@ -76,11 +78,11 @@ RFC 9483 4.1.1 "If the EE successfully received the certificate, it MUST send a 
 
 - Test Name: Respond with PKIConf On Valid CertConf
     - Input: EE includes the generalInfo field implicitConfirm + ip can include no implcitConfirm granted + EE sends valid certConf
-    - Output: pki responds with pkiConf message
+    - Output: PKI responds with pkiConf message
 
 - Test Name: 
     - Input: EE includes the generalInfo field implicitConfirm + ip can include no implcitConfirm granted + EE sends not valid certConf
-    - Output: pki responds correctly 
+    - Output: PKI responds correctly 
 
 - Test Name: Response Without ImplicitConfirm When Not Granted
     - Input: EE does not request implcitConfirm 
@@ -88,14 +90,14 @@ RFC 9483 4.1.1 "If the EE successfully received the certificate, it MUST send a 
 
 - Test Name: Responds With PKIConf On Valid CertConf
     - Input: EE does not request implcitConfirm + ip does not include ImplicitConfirm + EE valid correct certConf 
-    - Output pki responds with pkiConf message
+    - Output PKI responds with pkiConf message
 
 - Test Name: 
     - Input: EE does not request implcitConfirm + ip does not include implicit Confirm + EE sends not valid certConf
     - Output: correct reaction of pki
 - Test Name: Handles Missing CertConf As Rejection
     - Input: EE does not request implcitConfirm + ip does not include implicit Confirm + EE sends certConf not in time
-    - Output: pki handles this as rejection
+    - Output: PKI handles this as rejection
 
 
 RFC 9483 4.1.1 "If the certificate request was rejected by the CA, the PKI management entity 
@@ -105,7 +107,7 @@ react to such an ip message with a certConf message, and the PKI management
 operation MUST be terminated."
 - Test Name: Reject CertConf For Rejected Certificate
     - Input: EE sends certConf message after certificate was rejected
-    - Output: pki does not react
+    - Output: PKI does not react
 
 #### MAC-based protection
 Needed sections of the RFC for testing:
@@ -143,7 +145,7 @@ RFC 9483 4.1.2 "When using the generalInfo field certProfile, the EE MUST know t
 needed to indicate the requested certificate profile."
 - Test Name: Reject Invalid CertProfil Identifier
     - Input: EE sends ir false identifier
-    - Output: pki sends rejection
+    - Output: PKI sends rejection
 
 ##### Message Flow
 RFC 9483 4.1.2 "The message sequence for this PKI management operation is identical to that given in Section 4.1.1, with the following changes:"
@@ -277,12 +279,12 @@ operation does not use a transactionID that is currently in use."
 RFC 9483 5.1 "The responding PKI management entity copy the sender field of the request to the 
 recipient field of the response, copy the senderNonce of the request to the 
 recipNonce of the response, and use the same transactionID for the response."
-- pki sends response where recipient field of response = sender field of the request
-- pki sends response where recipient field of response != sender field of the request
-- pki sends response where recipNonce of response = senderNonce of the request
-- pki sends response where recipNonce of response != senderNonce of the request
-- pki sends response where transactionID of response = transactionID of the request
-- pki sends response where transactionID of response != transactionID of the request
+- PKI sends response where recipient field of response = sender field of the request
+- PKI sends response where recipient field of response != sender field of the request
+- PKI sends response where recipNonce of response = senderNonce of the request
+- PKI sends response where recipNonce of response != senderNonce of the request
+- PKI sends response where transactionID of response = transactionID of the request
+- PKI sends response where transactionID of response != transactionID of the request
 - same things as above with version 'senderfield, transactionID' 'senderfield, senderNonce' 'senderNonce, transactionID'
 
 ### Section 5.1.1
