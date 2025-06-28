@@ -128,8 +128,12 @@ Get PQ Stateful Sig Key
     RETURN   ${key}
 
 Load PQ Stateful Sig Keys
-    [Documentation]    Load the stateful PQ signature keys from the directory, if they are not already set.
-    VAR  ${directory}    ./data/keys/xmss_xmssmt_keys
+    [Documentation]    Load every stateful PQ-signature private key in the `data/keys/xmss_xmssmt_keys` directory.
+    ...                Keys are appended to the global list `${BURNED_KEYS}` and
+    ...                stored in the dictionary `${PQ_STATEFUL_SIG_KEYS}` under
+    ...                their algorithm names (e.g. `xmss-sha2_20_256`).
+    [Tags]    setup  keys
+    VAR    ${directory}    data/keys/xmss_xmssmt_keys
     ${files}=    List Files In Directory    ${directory}
     VAR  ${empty}
     FOR  ${key_file}  IN  @{files}
@@ -142,7 +146,6 @@ Load PQ Stateful Sig Keys
             ${key}=    Load Private Key From File    ${key_path}
             Append To List    ${BURNED_KEYS}    ${key}
             Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS}    ${algorithm}=${key}
-            RETURN   ${key}
         END
     END
 
