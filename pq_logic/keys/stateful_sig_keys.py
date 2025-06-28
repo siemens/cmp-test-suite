@@ -26,6 +26,10 @@ from pyasn1.codec.der import encoder
 from pyasn1.type import namedtype, tag, univ
 from test_lms_hss_seed_der import extract_hss_leaf_index, generate_hss_priv_key_by_name
 
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
+from pq_logic.keys.hss_utils import (
+    extract_hss_leaf_index,
+)
 from resources.exceptions import InvalidKeyData
 
 if importlib.util.find_spec("oqs") is not None:
