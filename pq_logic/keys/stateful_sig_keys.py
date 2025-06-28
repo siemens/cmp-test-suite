@@ -240,11 +240,12 @@ class XMSSPublicKey(PQHashStatefulSigPublicKey):
         # n: Hash output size
         # h: Height of the tree
         # l: Winternitz parameter
-        details = XMSS_ALG_DETAILS[self.name.lower()]
-        n = details["n"]  # Hash output size
-        height = details["h"]  # Height of the tree
-        length = details["len"]  # Winternitz parameter
-        return 4 + n + (length + height) * n
+        # details = XMSS_ALG_DETAILS[self.name.lower()]
+        # n = details["n"]  # Hash output size
+        # height = details["h"]  # Height of the tree
+        # length = details["len"]  # Winternitz parameter
+        # return 4 + n + (length + height) * n
+        return self._sig.length_signature
 
 
 class XMSSPrivateKey(PQHashStatefulSigPrivateKey):
@@ -365,6 +366,11 @@ class XMSSPrivateKey(PQHashStatefulSigPrivateKey):
         """Return the size of the private key for this XMSS private key."""
         return self._sig.details["length_secret_key"]
 
+    @property
+    def sig_size(self) -> int:
+        """Return the size of the signature for this XMSS private key."""
+        return self._sig.length_signature
+
 
 class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
     """Class representing an XMSSMT public key."""
@@ -410,8 +416,7 @@ class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
             raise ValueError("Invalid XMSSMT signature: too short")
 
         # According to RFC 8391 Section 4.2.3.  XMSS^MT Signature.
-        h = XMSSMT_ALG_DETAILS[self._name.lower()]["h"]
-        length = math.ceil(h / 8)
+        length = math.ceil(self.tree_height / 8)
         # The leaf index is stored as a big-endian integer
         return int.from_bytes(signature[:length], "big")  # Ensure it's a valid integer
 
@@ -458,17 +463,30 @@ class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
         # h: Height of the tree
         # l: Winternitz parameter
         # d: Number of trees in the forest.
-        details = XMSSMT_ALG_DETAILS[self.name.lower()]
-        n = details["n"]
-        height = details["h"]
-        length = details["len"]
-        d = details["d"]
-        return math.ceil(height / 8) + n + (height + d * length) * n
+        # details = XMSSMT_ALG_DETAILS[self.name.lower()]
+        # n = details["n"]
+        # height = details["h"]
+        # length = details["len"]
+        # d = details["d"]
+        # return math.ceil(height / 8) + n + (height + d * length) * n
+        return self._sig.length_signature
 
     @property
     def key_size(self) -> int:
         """Return the size of the public key for this XMSSMT public key."""
         return self._sig.details["length_public_key"]
+
+    @property
+    def tree_height(self) -> int:
+        """Return the Merkle tree height for this key."""
+        # name format: "xmssmt-sha2_20/2_256"
+        return int(self.name.split("_")[-1].split("/")[0])  # e.g. "20/2_256" -> 20
+
+    @property
+    def layers(self) -> int:
+        """Return the number of XMSSMT layers."""
+        # name format: "xmssmt-sha2_20/2_256"
+        return int(self.name.split("_")[-1].split("/")[1].split("_")[0])  # e.g. "20/2_256" -> 2
 
 
 class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
@@ -553,6 +571,21 @@ class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
     def used_keys(self) -> list[bytes]:
         """Return the list of used keys during signing."""
         return self._sig.export_used_keys()
+
+    @property
+    def sig_size(self) -> int:
+        """Return the size of the signature for this XMSS private key."""
+        return self._sig.length_signature
+
+    @property
+    def tree_height(self) -> int:
+        """Return the height of the tree for this XMSSMT private key."""
+        return int(self.name.split("_")[1].split("/")[0])  # e.g. "xmssmt-sha2_20/2_256" -> 20
+
+    @property
+    def layers(self) -> int:
+        """Return the number of layers in the XMSSMT tree."""
+        return int(self.name.split("_")[1].split("/")[1])  # e.g. "xmssmt-sha2_20/2_256" -> 2
 
 
 class HSSPublicKey(PQHashStatefulSigPublicKey):
