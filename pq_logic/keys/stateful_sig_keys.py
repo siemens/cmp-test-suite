@@ -330,6 +330,24 @@ class XMSSPrivateKey(PQHashStatefulSigPrivateKey):
             raise NotImplementedError("Derivation of the private from a seed is not implemented yet.")
         return cls(XMSS_ALG_IDS[alg_id], data)
 
+    def _change_index(self, new_index: int) -> "XMSSPrivateKey":
+        """Change the index of the private key.
+
+        :param new_index: The new index to set.
+        """
+        private_key_bytes = self.private_bytes_raw()
+        oid = private_key_bytes[:4]  # Algorithm identifier
+        # Extract the current index (4 bytes after the OID)
+        current_index = int.from_bytes(private_key_bytes[4:8], "big")
+        if current_index == new_index:
+            return self
+
+        return XMSSPrivateKey(
+            alg_name=self.name,
+            private_bytes=oid + new_index.to_bytes(4, "big") + private_key_bytes[8:],
+            public_key=self.public_key().public_bytes_raw(),
+        )
+
     def sign(self, data: bytes) -> bytes:
         """Sign the data using the private key.
 
@@ -586,6 +604,21 @@ class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
     def layers(self) -> int:
         """Return the number of layers in the XMSSMT tree."""
         return int(self.name.split("_")[1].split("/")[1])  # e.g. "xmssmt-sha2_20/2_256" -> 2
+
+    def _change_index(self, new_index: int) -> "XMSSMTPrivateKey":
+        """Change the index of the public key.
+
+        :param new_index: The new index to set.
+        """
+        private_key_bytes = self.private_bytes_raw()
+        oid = private_key_bytes[:4]
+        index_size = math.ceil(self.tree_height / 8)
+        new_index_bytes = new_index.to_bytes(index_size, "big")
+        return XMSSMTPrivateKey(
+            alg_name=self.name,
+            private_bytes=oid + new_index_bytes + private_key_bytes[4 + index_size :],
+            public_key=self.public_key().public_bytes_raw(),
+        )
 
 
 class HSSPublicKey(PQHashStatefulSigPublicKey):
