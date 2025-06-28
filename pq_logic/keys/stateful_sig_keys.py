@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -24,7 +24,6 @@ from hsslms import HSS_Priv, HSS_Pub, LMS_Priv
 from hsslms.utils import LMOTS_ALGORITHM_TYPE, u32str
 from pyasn1.codec.der import encoder
 from pyasn1.type import namedtype, tag, univ
-from test_lms_hss_seed_der import extract_hss_leaf_index, generate_hss_priv_key_by_name
 
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.hss_utils import (
@@ -38,7 +37,6 @@ else:
     logging.warning("oqs module is not installed. Some functionalities may be disabled.")
     oqs = None  # pylint: disable=invalid-name
 
-from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 
 XMSS_ALG_DETAILS = {
     "xmss-sha2_10_256": {"hash_alg": "sha-256", "n": 32, "w": 16, "len": 67, "h": 10},
