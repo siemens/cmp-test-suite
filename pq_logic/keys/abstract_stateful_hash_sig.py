@@ -116,3 +116,8 @@ class PQHashStatefulSigPrivateKey(PQPrivateKey, ABC):
     @abstractmethod
     def sigs_remaining(self) -> int:
         """Return the number of signatures remaining for this private key."""
+
+    @property
+    @abstractmethod
+    def used_keys(self) -> list[bytes]:
+        """Return a list of used keys in the private key."""
