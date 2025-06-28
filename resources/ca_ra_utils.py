@@ -1422,14 +1422,14 @@ def _validate_pq_hash_stateful_sig_pub_key(
             failinfo="badAlg,badCertTemplate",
         )
 
-    if public_key.name.startswith("xmss"):
+    if public_key.name.startswith("xmss-"):
         if not is_nist_approved_xmss(public_key.name):
             raise BadCertTemplate(
                 "The XMSS public key is not NIST approved.",
                 failinfo="badAlg,badCertTemplate",
             )
 
-    elif public_key.name.startswith("xmssmt"):
+    elif public_key.name.startswith("xmssmt-"):
         if not is_nist_approved_xmssmt(public_key.name):
             raise BadCertTemplate(
                 "The XMSSMT public key is not NIST approved.",
