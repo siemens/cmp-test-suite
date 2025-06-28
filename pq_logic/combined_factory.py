@@ -106,6 +106,14 @@ class CombinedKeyFactory:
     """Factory for creating all known key types."""
 
     @staticmethod
+    def get_stateful_sig_algorithms() -> Dict[str, List[str]]:
+        """Get all supported stateful signature algorithms.
+
+        :return: List of supported stateful signature algorithms.
+        """
+        return pq_logic.keys.pq_stateful_sig_factory.PQStatefulSigFactory.get_algorithms_by_family()
+
+    @staticmethod
     def _generate_composite_key_by_name(algorithm: str):
         """Generate a composite key based on the provided key type.
 
