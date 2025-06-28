@@ -109,6 +109,7 @@ Initialize PQ Cert And Key Variables
     [Documentation]    Initialize the variables for the PQ certificate and key, to store freshly issued
     ...                certificates and keys. So that those certificates can be used to issue further certificates.
     ...                Additionally used, to verify if the PKIProtection is working as expected.
+    [Tags]    setup  keys   setup-global-dict
     # Initialize the newly issued certificates and keys.
     VAR   &{PQ_SIG_CERTS}  scope=Global
     VAR   &{PQ_SIG_KEYS}   scope=Global
@@ -119,9 +120,12 @@ Initialize PQ Cert And Key Variables
 Get PQ Stateful Sig Key
     [Documentation]    Get the stateful PQ signature key from the global variable.
     ...                If the key is not set, it will be generated and returned.
+    [Tags]    keys
     [Arguments]    ${algorithm}
     ${key}=    Get From Dictionary   ${PQ_STATEFUL_SIG_KEYS}   ${algorithm}   ${None}
     IF  '${key}' == '${None}'
+        Log     PQ Stateful keys: '${PQ_STATEFUL_SIG_KEYS}'
+        Fail    The PQ stateful signature key for algorithm '${algorithm}' is not set.
         ${key}=    Generate Unique Key    ${algorithm}
         Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS}    ${algorithm}=${key}
     END
@@ -140,7 +144,7 @@ Load PQ Stateful Sig Keys
         ${key_name}=   Replace String     ${key_file}   _layers_    /
         ${algorithm}=   Replace String    ${key_name}   .pem    ${empty}
         ${algorithm}=   Replace String    ${algorithm}   private-key-   ${empty}
-        ${key_path}=    Set Variable    ${directory}/${key_name}
+        ${key_path}=    Set Variable    ${directory}/${key_file}
         ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${key_path}
         IF  ${is_file}
             ${key}=    Load Private Key From File    ${key_path}
