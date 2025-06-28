@@ -133,3 +133,33 @@ jobs:
         run: pyright
     # not enforced yet, but it is still executed to provide some info
     continue-on-error: true
+
+  prepare_env:
+    runs-on: ubuntu-22.04
+    outputs:
+      image_lc: ${{ steps.setenv.outputs.image_lc }}
+    steps:
+      - name: Set lowercase image name
+        id: setenv
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_LC="ghcr.io/${OWNER_LC}/cmp-test-dev:latest"
+          echo "image_lc=$IMAGE_LC" >> $GITHUB_OUTPUT
+
+  generate_xmss_keys:
+    needs: prepare_env
+    runs-on: ubuntu-22.04
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare reports directory
+        run: mkdir -p data/keys/xmss_xmssmt_key_verbose
+      - name: Generate XMSS keys
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" python3 generate_xmss_keys.py
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmp-test-reports
+          path: reports
