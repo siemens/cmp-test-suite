@@ -26,6 +26,7 @@ COMPOSITE_SIG06_NAME_TO_ORIGINAL_NAME = {
     "composite-sig-06-ml-dsa-44-ed25519": "id-MLDSA44-Ed25519-SHA512",
     "composite-sig-06-ml-dsa-44-ecdsa-secp256r1": "id-MLDSA44-ECDSA-P256-SHA256",
     "composite-sig-06-ml-dsa-65-rsa3072-pss": "id-MLDSA65-RSA3072-PSS-SHA512",
+    "composite-sig-06-ml-dsa-65-rsa3072": "id-MLDSA65-RSA3072-PKCS15-SHA512",
     "composite-sig-06-ml-dsa-65-rsa4096-pss": "id-MLDSA65-RSA4096-PSS-SHA512",
     "composite-sig-06-ml-dsa-65-rsa4096": "id-MLDSA65-RSA4096-PKCS15-SHA512",
     "composite-sig-06-ml-dsa-65-ecdsa-secp256r1": "id-MLDSA65-ECDSA-P256-SHA512",
