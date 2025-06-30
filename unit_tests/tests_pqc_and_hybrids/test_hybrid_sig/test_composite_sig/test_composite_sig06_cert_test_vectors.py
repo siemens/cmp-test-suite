@@ -119,7 +119,6 @@ def _load_composite_sig06_from_public_bytes(algorithm: str, public_key: bytes) -
                 rest,
             )
         else:
-            print("length of rest:", len(rest))
             trad_key = load_der_public_key(rest)
     except ValueError as e:
         raise InvalidKeyData(f"Failed to load public key for {algorithm}: {e}")
