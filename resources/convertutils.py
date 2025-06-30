@@ -92,7 +92,7 @@ def ensure_is_single_verify_key(key: Any) -> Union[PQSignaturePublicKey, TradVer
 def ensure_is_kem_pub_key(key: Any) -> KEMPublicKey:
     """Ensure provided key is allowed to verify signatures."""
     if not isinstance(key, KEMPublicKey):
-        raise ValueError(f"the provided key is not allowed to be used for verifying signatures: {type(key)}")
+        raise ValueError(f"the provided key is not a KEMPublicKey: {type(key)}")
     return key
 
 
@@ -100,7 +100,7 @@ def ensure_is_kem_pub_key(key: Any) -> KEMPublicKey:
 def ensure_is_kem_priv_key(key: Any) -> KEMPrivateKey:
     """Ensure provided key is allowed to verify signatures."""
     if not isinstance(key, KEMPrivateKey):
-        raise ValueError(f"the provided key is not allowed to be used for verifying signatures: {type(key)}")
+        raise ValueError(f"the provided key is not a KEMPrivateKey: {type(key)}")
     return key
 
 
