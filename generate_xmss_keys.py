@@ -1,4 +1,4 @@
-"""This script generates XMSS and XMSSMT keys with.
+"""Generates XMSS and XMSSMT keys with.
 
 The keys take a long time, so they cannot be generated on every test run.
 """
