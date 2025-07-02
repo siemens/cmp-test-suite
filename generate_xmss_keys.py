@@ -1,21 +1,36 @@
-"""Generates XMSS and XMSSMT keys with.
+"""Generate XMSS and XMSSMT keys in parallel.
 
-The keys take a long time, so they cannot be generated on every test run.
+* Uses Python's multiprocessing.Pool with safe Ctrl-C handling.
+* CLI flags:
+    -j / --jobs            : number of worker processes
+    -c / --chunksize       : tasks bundled per queue hop
+    --serial-bodies (default) / --parallel-bodies
+* Heavy-XMSS helper (_is_heavy_xmss) and the new _is_heavy_xmssmt.
+
+All keys are written to data/keys/xmss_xmssmt_keys_verbose
 """
 
-import datetime
+import argparse
 import os
+import sys
 import time
+from multiprocessing import Pool, cpu_count, get_context
+from typing import Iterable, Sequence, Tuple
 
 from pq_logic.combined_factory import CombinedKeyFactory
-from resources.ca_ra_utils import is_nist_approved_xmss, is_nist_approved_xmssmt
+from resources.ca_ra_utils import (
+    is_nist_approved_xmss,
+    is_nist_approved_xmssmt,
+)
 from resources.keyutils import generate_key, save_key
 
-ALL_REQUEST_BODY_NAMES = [
+KEY_DIR: str = "data/keys/xmss_xmssmt_keys_verbose"
+
+ALL_REQUEST_BODY_NAMES: list[str] = [
     "ir",
+    "p10cr",
     "cr",
     "kur",
-    "p10cr",
     "ccr",
     "added-protection-inner-ir",
     "added-protection-inner-cr",
@@ -29,106 +44,241 @@ ALL_REQUEST_BODY_NAMES = [
     "batch-inner-ccr",
 ]
 
+REASONS_APPROVED: list[str] = [
+    "bad_pop",
+    "popo",
+    "bad_params",
+    "bad_key_size",
+    "exhausted",
+    "cert_conf",
+]
+REASON_DISAPPROVED: str = "bad_pop"
 
-def print_time_taken(start_time) -> str:
-    """Calculate and print the time taken for key generation."""
-    elapsed_time = time.time() - start_time
-    if elapsed_time < 60:
-        return f"{elapsed_time:.2f} seconds"
-    elif elapsed_time < 3600:
-        return f"{elapsed_time / 60:.2f} minutes"
-    else:
-        return f"{elapsed_time / 3600:.2f} hours"
-
-
-def _key_exists(alg_name: str, body_name: str, reason: str) -> bool:
-    """Check if the key already exists.
-
-    :param alg_name: The name of the algorithm.
-    :param body_name: The name of the request body.
-    :param reason: The reason for the key generation (what is tested).
-    """
-    dir_name = "data/keys/xmss_xmssmt_keys_verbose"
-    path = os.path.join(dir_name, f"{alg_name}_{body_name}_{reason}.pem")
-    return os.path.exists(path)
+_Task = Tuple[str, str, str]  # alias for readability
 
 
-def _generate_key_and_save(alg, body_name, reason):
-    """Generate a key and save it to the specified path.
+def _print_time_taken(start: float) -> str:
+    """Return a human-readable time."""
+    elapsed: float = time.time() - start
+    if elapsed < 60:
+        return f"{elapsed:.2f}s"
+    if elapsed < 3_600:
+        return f"{elapsed / 60:.2f} min"
+    return f"{elapsed / 3_600:.2f} h"
 
-    :param alg: The algorithm name.
-    :param body_name: The name of the request body.
-    :param reason: The reason for the key generation (what is tested).
-    """
-    dir_name = "data/keys/xmss_xmssmt_keys_verbose"
-    alg_name = alg.replace("/", "_layers_") if "/" in alg else alg
-    path = os.path.join(dir_name, f"{alg_name}_{body_name}_{reason}.pem")
 
+def _key_path(alg: str, body: str, reason: str) -> str:
+    """Get the file path for a key based on algorithm, body, and reason."""
+    alg_name: str = alg.replace("/", "_layers_") if "/" in alg else alg
+    return os.path.join(KEY_DIR, f"{alg_name}_{body}_{reason}.pem")
+
+
+def _needs_key(alg: str, body: str, reason: str) -> bool:
+    """Check if a key for the given (alg, body, reason) triple needs to be generated."""
+    return not os.path.exists(_key_path(alg, body, reason))
+
+
+def _generate_key_and_save(alg: str, body: str, reason: str) -> None:
+    """Generate and save a key unless it already exists."""
+    path: str = _key_path(alg, body, reason)
     if not os.path.exists(path):
         key = generate_key(alg.lower())
         save_key(key, path)
-        return True
-    return False
 
 
-def generate_verbose_xmssmt_keys():
-    """Generate XMSSMT keys with verbose output.
+def _is_heavy_xmss(alg: str) -> bool:
+    """Identify XMSS variants with height 20 (slowest in single-tree family).
 
-    Saves the keys in the `data/keys/xmss_xmssmt_keys_verbose` directory.
+    Expected format:  xmss-<hash_alg>_<height>_<security>
+    Example        :  xmss-sha2_20_256
     """
-    print("Generating XMSSMT keys...")
-    print("This may take a while, please be patient...")
-    print("All keys will be saved in the `data/keys/xmss_xmssmt_keys_verbose` directory.")
-    if not os.path.exists("data/keys/xmss_xmssmt_keys_verbose"):
-        os.makedirs("data/keys/xmss_xmssmt_keys_verbose", exist_ok=True)
-    start_time = time.time()
-    for body_name in ALL_REQUEST_BODY_NAMES:
-        for alg in CombinedKeyFactory.get_stateful_sig_algorithms()["xmssmt"]:
-            if not is_nist_approved_xmssmt(alg):
-                print(f"Skipping non-NIST approved algorithm: {alg}")
-                reason = "nist_disapproved"
-                _generate_key_and_save(alg, body_name, "bad_pop")
-                print("Finished Key: ", f"{alg.lower()}_{body_name}_{reason}", print_time_taken(start_time))
-                continue
-
-            for reason in ["bad_pop", "popo", "bad_params", "bad_key_size", "exhausted", "cert_conf"]:
-                _generate_key_and_save(alg, body_name, reason)
-                print("Finished Key: ", f"{alg.lower()}_{body_name}_{reason}", print_time_taken(start_time))
-
-            print("Finished algorithm", alg.lower(), "for body name", body_name, datetime.datetime.now())
-            start_time = time.time()  # Reset timer for next algorithm
-    print("All XMSSMT keys generated successfully.")
+    alg_low: str = alg.lower()
+    if not alg_low.startswith("xmss-"):
+        return False
+    parts = alg_low.split("_")  # ['xmss', 'sha2', '20', '256']
+    return parts[1] == "20"
 
 
-def generate_verbose_xmss_keys():
-    """Generate XMSS keys with verbose output.
+def _is_heavy_xmssmt(alg: str) -> bool:
+    """Heavy = total height ≥ 40  **or**  layer-count ≥ 4.
 
-    Saves the keys in the `data/keys/xmss_xmssmt_keys_verbose` directory.
+    Format (liboqs style, lower-case expected):
+        xmssmt-<hash_alg>_<height>/<layers>_<bits_output>
+        e.g. xmssmt-sha2_40/8_256
     """
-    print("Generating XMSS keys...")
-    print("This may take a while, please be patient...")
-    print("All keys will be saved in the `data/keys/xmss_xmssmt_keys_verbose` directory.")
-    if not os.path.exists("data/keys/xmss_xmssmt_keys_verbose"):
-        os.makedirs("data/keys/xmss_xmssmt_keys_verbose", exist_ok=True)
-    start_time = time.time()
-    for body_name in ALL_REQUEST_BODY_NAMES:
-        for alg in CombinedKeyFactory.get_stateful_sig_algorithms()["xmss"]:
-            if not is_nist_approved_xmss(alg):
-                print(f"Skipping non-NIST approved algorithm: {alg}")
-                reason = "nist_disapproved"
-                _generate_key_and_save(alg, body_name, "bad_pop")
-                print("Finished Key: ", f"{alg.lower()}_{body_name}_{reason}", print_time_taken(start_time))
-                continue
+    alg_low: str = alg.lower()
+    if not alg_low.startswith("xmssmt-"):
+        return False
+    try:
+        # after the first '_' we have '<height>/<layers>'
+        height_layers: str = alg_low.split("_", 2)[1]  # '40/8'
+        height_str, layers_str = height_layers.split("/", 1)
+        height: int = int(height_str)
+        layers: int = int(layers_str)
+        return height >= 40 or layers >= 4
+    except (IndexError, ValueError):
+        return False  # malformed name → treat as not-heavy
 
-            for reason in ["bad_pop", "popo", "bad_params", "bad_key_size", "exhausted", "cert_conf"]:
-                _generate_key_and_save(alg, body_name, reason)
-                print("Finished Key: ", f"{alg.lower()}_{body_name}_{reason}", print_time_taken(start_time))
 
-            print("Finished algorithm", alg.lower(), "for body name", body_name, datetime.datetime.now())
-            start_time = time.time()  # Reset timer for next algorithm
-    print("All XMSS keys generated successfully.")
+def _filter_existing(tasks: Sequence[_Task]) -> list[_Task]:
+    """Drop triples that already have a saved key."""
+    return [t for t in tasks if _needs_key(*t)]
+
+
+def _build_tasks_for_body(family: str, body: str) -> list[_Task]:
+    """Build all (alg, body, reason) triples for one request-body name.
+
+    `family` must be "xmss" or "xmssmt".
+    """
+    algs: Iterable[str] = CombinedKeyFactory.get_stateful_sig_algorithms()[family]
+    approved = is_nist_approved_xmss if family == "xmss" else is_nist_approved_xmssmt
+
+    tasks: list[_Task] = []
+    for alg in algs:
+        if not approved(alg):
+            tasks.append((alg, body, REASON_DISAPPROVED))
+        else:
+            tasks.extend((alg, body, r) for r in REASONS_APPROVED)
+    return _filter_existing(tasks)
+
+
+def _worker(task: _Task) -> str:
+    """Generate a single key; executed in a child process."""
+    alg, body, reason = task
+    if not _needs_key(alg, body, reason):
+        return f"SKIP  {alg.lower()}_{body}_{reason}"
+    _generate_key_and_save(alg, body, reason)
+    return f"OK    {alg.lower()}_{body}_{reason}"
+
+
+def _run_pool(
+    tasks: Iterable[_Task],
+    label: str,
+    *,
+    procs: int | None,
+    chunksize: int,
+) -> None:
+    """Print out `tasks` to a Pool, showing progress."""
+    os.makedirs(KEY_DIR, exist_ok=True)
+
+    task_list: list[_Task] = list(tasks)
+    total: int = len(task_list)
+    if total == 0:
+        print(f"✔ {label}: nothing to do")
+        return
+
+    print(f"\n▶ {label}: {total} tasks • {procs or cpu_count()} processes • chunksize {chunksize}")
+    start: float = time.time()
+
+    ctx = get_context("fork") if sys.platform != "win32" else None
+    PoolCls = ctx.Pool if ctx else Pool
+
+    try:
+        with PoolCls(processes=procs or cpu_count()) as pool:
+            try:
+                for idx, msg in enumerate(pool.imap_unordered(_worker, task_list, chunksize=chunksize), 1):
+                    elapsed = _print_time_taken(start)
+                    print(
+                        f"[{idx:>{len(str(total))}}/{total}] {msg:75} {elapsed}",
+                        flush=True,
+                    )
+            except KeyboardInterrupt:
+                print("\n↯  Ctrl-C detected – terminating workers …", file=sys.stderr)
+                pool.terminate()
+                pool.join()
+                raise
+    except KeyboardInterrupt:
+        print("✖  Generation aborted by user.", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"✔ Finished {label} in {_print_time_taken(start)}")
+
+
+def _generate_family(
+    family: str,
+    *,
+    serial_bodies: bool,
+    processes: int | None,
+    chunksize: int,
+) -> None:
+    """Generate all keys for one algorithm family (XMSS or XMSSMT)."""
+    if serial_bodies:
+        for body in ALL_REQUEST_BODY_NAMES:
+            tasks = _build_tasks_for_body(family, body)
+            _run_pool(tasks, f"{family.upper()}:{body}", procs=processes, chunksize=chunksize)
+    else:
+        all_tasks: list[_Task] = []
+        for body in ALL_REQUEST_BODY_NAMES:
+            all_tasks.extend(_build_tasks_for_body(family, body))
+        _run_pool(all_tasks, family.upper(), procs=processes, chunksize=chunksize)
+
+
+def _parse_cli() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Generate XMSS / XMSSMT keys in parallel",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "family",
+        choices=["xmss", "xmssmt", "all"],
+        nargs="?",
+        default="all",
+        help="Which key family to generate",
+    )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        "--processes",
+        dest="processes",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Worker processes (default: logical CPU count)",
+    )
+    parser.add_argument(
+        "-c",
+        "--chunksize",
+        type=int,
+        default=8,
+        metavar="N",
+        help="Tasks bundled per queue hop (1 disables batching)",
+    )
+    body_group = parser.add_mutually_exclusive_group()
+    body_group.add_argument(
+        "--serial-bodies",
+        dest="serial_bodies",
+        action="store_true",
+        default=True,
+        help="Finish one body batch before starting the next (default)",
+    )
+    body_group.add_argument(
+        "--parallel-bodies",
+        dest="serial_bodies",
+        action="store_false",
+        help="Mix all body names in a single pool run",
+    )
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    generate_verbose_xmss_keys()
-    print("All keys generated successfully.")
+    args = _parse_cli()
+    # Example usage:
+    # python3 generate_xmss_keys.py xmssmt -j 12 --chunksize 8
+    if args.family in ("xmss", "all"):
+        _generate_family(
+            "xmss",
+            serial_bodies=args.serial_bodies,
+            processes=args.processes,
+            chunksize=args.chunksize,
+        )
+
+    if args.family in ("xmssmt", "all"):
+        _generate_family(
+            "xmssmt",
+            serial_bodies=args.serial_bodies,
+            processes=args.processes,
+            chunksize=args.chunksize,
+        )
+
+    print("\n🎉  All requested keys generated.")
