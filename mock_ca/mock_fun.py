@@ -1520,3 +1520,19 @@ class IssuingReturnValue:
     dh_cert: Optional[rfc9480.CMPCertificate] = None
     dh_key: Optional[ECDHPrivateKey] = None
     private_key: Optional[PrivateKey] = None
+
+
+@dataclass
+class PQStatefulSigKeyConfig:
+    """A class to store the PQ Stateful Signature Key Configuration.
+
+    Attributes
+    ----------
+        - `allow_stfl_ccr` (bool): Whether a pq stateful signature key is allowed to be used in a CCR.
+        - `saved_bad_message_check_stfl_key` (bool): Whether the badPOP or badMessageCheck stateful key is also saved
+    as a burned key.
+
+    """
+
+    allow_stfl_ccr: bool = True
+    saved_bad_message_check_stfl_key: bool = True
