@@ -47,7 +47,7 @@ from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
-from pq_logic.keys.stateful_sig_keys import HSSPrivateKey, XMSSMTPrivateKey, XMSSPrivateKey
+from pq_logic.keys.stateful_sig_keys import XMSSMTPrivateKey, XMSSPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME, id_rsa_kem_spki
@@ -1174,3 +1174,79 @@ def _prepare_spki_for_kga(
         spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
 
     return spki
+
+
+def _get_index(
+    key,
+    last_index: bool,
+    index: Optional[int],
+) -> Tuple[bytes, int]:
+    """Get the index for the key based on the last_index flag and provided index."""
+    if not isinstance(key, (XMSSPrivateKey, XMSSMTPrivateKey)):
+        raise NotImplementedError("Exhausting keys is only implemented for XMSS and XMSSMT keys.")
+
+    length = 4
+    if isinstance(key, XMSSMTPrivateKey):
+        length = math.ceil(key.tree_height / 8)
+
+    if index is not None and last_index:
+        index_bytes = (key.max_sig_size - 1).to_bytes(length, "big")
+    elif index is not None:
+        index_bytes = index.to_bytes(length, "big")
+    else:
+        index_bytes = key.max_sig_size.to_bytes(length, "big")
+
+    return index_bytes, length
+
+
+@keyword(name="Modify PQ Stateful Sig Private Key")
+def modify_pq_stateful_sig_private_key(  # noqa: D417 undocumented-param
+    key: PQHashStatefulSigPrivateKey,
+    last_index: bool = False,
+    index: Optional[Union[str, int]] = None,
+    used_index: bool = False,
+) -> PQHashStatefulSigPrivateKey:
+    """Modify a PQ stateful signature key index to exhaust its keys or reuse a used key.
+
+    Arguments:
+    ---------
+        - `key`: The PQ stateful signature key to exhaust.
+        - `last_index`: If True, the last index of the key will be exhausted, otherwise all \
+        indices will be exhausted. Defaults to `False`.
+        - `index`: The specific index to exhaust. If None, the key will be exhausted at the \
+        current index. Defaults to `None`.
+        - `used_index`: If True, the key will be exhausted at the used index. Defaults to `False`.
+
+    Raises:
+    ------
+        - `ValueError`: If the key is not a valid PQ stateful signature key.
+
+    Examples:
+    --------
+    | ${exhausted_key}= | Exhaust PQ Stateful Sig Key | ${pq_stateful_sig_key} |
+    | ${exhausted_key}= | Exhaust PQ Stateful Sig Key | ${pq_stateful_sig_key} | last_index=True |
+    | ${exhausted_key}= | Exhaust PQ Stateful Sig Key | ${pq_stateful_sig_key} | index=0 |
+
+    """
+    index = int(index) if index is not None else None
+    if used_index:
+        if index is not None and len(key.used_keys) < index:
+            raise ValueError(f"The index {index} is not valid for the key {key.name}. Used keys: {len(key.used_keys)}")
+
+        index = index if index is not None else -1
+        private_bytes = key.used_keys[index]
+        logging.debug("Length of used keys: %s", len(key.used_keys))
+        logging.debug(f"Exhausting key with key: {key.name}, index: {index}, used_keys: {len(key.used_keys)}")
+        return key.from_private_bytes(private_bytes)
+
+    if isinstance(key, (XMSSPrivateKey, XMSSMTPrivateKey)):
+        private_bytes = key.private_bytes_raw()
+        index_bytes, length = _get_index(key, last_index, index)
+        key_bytes = private_bytes[:4] + index_bytes + private_bytes[4 + length :]
+        logging.debug(f"Exhausting key with key: {key.name}, index: {index_bytes}, length: {length}")
+        public_key_bytes = key.public_key().public_bytes_raw()
+        if isinstance(key, XMSSPrivateKey):
+            return XMSSPrivateKey(alg_name=key.name, private_bytes=key_bytes, public_key=public_key_bytes)
+        return XMSSMTPrivateKey(alg_name=key.name, private_bytes=key_bytes, public_key=public_key_bytes)
+
+    raise NotImplementedError("Exhausting PQ stateful signature keys is only implemented for XMSS keys.")
