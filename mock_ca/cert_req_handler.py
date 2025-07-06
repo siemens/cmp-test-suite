@@ -105,7 +105,7 @@ class CertReqHandler:
         kga_cert_chain: Optional[List[rfc9480.CMPCertificate]] = None,
         issuing_db: Optional[NonSigningKeyCertsAndKeys] = None,
         pq_stateful_sig_state: Optional[StatefulSigState] = None,
-        stfl_validator: Optional[STFLPKIMessageValidator]=None,
+        stfl_validator: Optional[STFLPKIMessageValidator] = None,
     ):
         """Initialize the certificate request handler.
 
