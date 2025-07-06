@@ -698,11 +698,15 @@ class PQKeyFactory(AbstractKeyFactory):
         if isinstance(private_key, (MLDSAPrivateKey, MLKEMPrivateKey)):
             return PQKeyFactory._prepare_ml_private_key(private_key, key_type, invalid_key)
 
-        if isinstance(private_key, SLHDSAPrivateKey):
+        if isinstance(private_key, FrodoKEMPrivateKey):
             if key_type == KeySaveType.SEED:
                 return private_key.private_numbers()
             if key_type == KeySaveType.SEED_AND_RAW:
                 return private_key.private_numbers() + private_key.private_bytes_raw()
+
+        elif isinstance(private_key, SLHDSAPrivateKey):
+            if key_type == KeySaveType.SEED:
+                return private_key.private_numbers()
 
         return private_key.private_bytes_raw()
 
