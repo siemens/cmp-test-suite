@@ -645,6 +645,7 @@ class PQKeyFactory(AbstractKeyFactory):
         if spki["algorithm"]["parameters"].isValue:
             raise InvalidKeyData(
                 f"The SPKI Algorithm parameters MUST be absent for PQ algorithms,but was present for {name}."
+                f"Got: {spki['algorithm'].prettyPrint()}"
             )
 
         if name.startswith("ml-dsa-"):
