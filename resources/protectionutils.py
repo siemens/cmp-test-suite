@@ -1473,6 +1473,9 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     if alg_oid in TRAD_SIG_OID_2_NAME:
         return "sig"
 
+    if alg_oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+        return prot_type.value
+
     if alg_oid in COMPOSITE_SIG03_OID_2_NAME or alg_oid in COMPOSITE_SIG04_OID_2_NAME:
         return "composite-sig"
 
