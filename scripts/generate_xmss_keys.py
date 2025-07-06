@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 """Generate XMSS and XMSSMT keys in parallel.
 
 * Uses Python's multiprocessing.Pool with safe Ctrl-C handling.
@@ -24,7 +28,7 @@ from resources.ca_ra_utils import (
 )
 from resources.keyutils import generate_key, save_key
 
-KEY_DIR: str = "data/keys/xmss_xmssmt_keys_verbose"
+KEY_DIR: str = "./data/keys/xmss_xmssmt_keys_verbose"
 
 ALL_REQUEST_BODY_NAMES: list[str] = [
     "ir",
@@ -51,6 +55,7 @@ REASONS_APPROVED: list[str] = [
     "bad_key_size",
     "exhausted",
     "cert_conf",
+    "revoke",
 ]
 REASON_DISAPPROVED: str = "bad_pop"
 
