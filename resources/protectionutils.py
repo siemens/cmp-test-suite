@@ -2476,6 +2476,138 @@ def _verify_composite_sig(
     )
 
 
+def _is_parmeters_null(alg_id: rfc9480.AlgorithmIdentifier) -> bool:
+    """Check if the parameters of the algorithm identifier are set to `NULL`."""
+    if not alg_id["parameters"].isValue:
+        return False
+    if isinstance(alg_id["parameters"], univ.Null):
+        return True
+    if not hasattr(alg_id["parameters"], "asOctets"):
+        return False
+    return alg_id["parameters"].asOctets() == b"\x05\x00"  # ASN.1 NULL is encoded as 0x05 0x00
+
+
+def _validate_pq_sig_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
+    """Validate the PQ signature algorithm identifier.
+
+    :param alg_id: The `AlgorithmIdentifier` to validate.
+    :raises ValueError: If the algorithm identifier is not a valid PQ signature algorithm.
+    """
+    oid = alg_id["algorithm"]
+
+    name = may_return_oid_to_name(oid)
+
+    if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+        _name = may_return_oid_to_name(oid)
+        if alg_id["parameters"].isValue:
+            msg = (
+                f"The {_name} signature algorithm identifier must not have parameters set. Got: {alg_id.prettyPrint()}"
+            )
+            raise BadSigAlgIDParams(msg)
+
+    elif oid in PQ_SIG_OID_2_NAME or oid in PQ_SIG_PRE_HASH_OID_2_NAME:
+        if alg_id["parameters"].isValue:
+            msg = f"For a PQ signature algorithm the parameters must be set absent. Got: {name} {alg_id.prettyPrint()}"
+            raise BadSigAlgIDParams(msg)
+    else:
+        raise BadAlg(f"Unsupported PQ signature algorithm identifier: {name}.")
+
+
+def _validate_rsa_sig_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
+    """Validate the RSA signature algorithm identifier.
+
+    :param alg_id: The `AlgorithmIdentifier` to validate.
+    :raises BadSigAlgIDParams: If the algorithm identifier parameters are invalid.
+    :raises BadAlg: If the algorithm identifier is unsupported.
+    """
+    oid = alg_id["algorithm"]
+
+    if oid in RSA_OID_2_NAME:
+        if not _is_parmeters_null(alg_id):
+            msg = (
+                f"For an RSA signature algorithm identifier "
+                f"must have the parameters set to `NULL`."
+                f"\nGot: {alg_id.prettyPrint()}"
+            )
+            raise BadSigAlgIDParams(msg)
+
+    elif oid in RSASSA_PSS_OID_2_NAME:
+        if oid == rfc9481.id_RSASSA_PSS:
+            if not alg_id["parameters"].isValue:
+                msg = f"For RSASSA-PSS, the `AlgorithmIdentifier` must have parameters set. Got: {alg_id.prettyPrint()}"
+                raise BadSigAlgIDParams(msg)
+
+        else:
+            if alg_id["parameters"].isValue:
+                msg = (
+                    f"For RSASSA-PSS-SHAKE, the `AlgorithmIdentifier` must not have parameters set. "
+                    f"Got: {alg_id.prettyPrint()}"
+                )
+                raise BadSigAlgIDParams(msg)
+
+    else:
+        name = may_return_oid_to_name(oid)
+        raise BadAlg(f"Unsupported RSA signature algorithm identifier: {name}.")
+
+
+def _validate_ecc_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
+    """Validate the ECC signature algorithm identifier.
+
+    :param alg_id: The `AlgorithmIdentifier` to validate.
+    :raises BadSigAlgIDParams: If the algorithm identifier parameters are invalid.
+    :raises BadAlg: If the algorithm identifier is unsupported.
+    """
+    oid = alg_id["algorithm"]
+
+    if oid in ECDSA_OID_2_NAME:
+        if alg_id["parameters"].isValue:
+            msg = f"For an ECDSA signature algorithm identifier not have parameters set. Got: {alg_id.prettyPrint()}"
+            raise BadSigAlgIDParams(msg)
+
+    elif oid in [rfc9481.id_Ed448, rfc9481.id_Ed25519]:
+        if alg_id["parameters"].isValue:
+            name = may_return_oid_to_name(oid)
+            msg = (
+                f"For {name} signature algorithm identifier must the `parameters` be absent. "
+                f"Got: {alg_id.prettyPrint()}"
+            )
+            raise BadSigAlgIDParams(msg)
+
+    else:
+        name = may_return_oid_to_name(oid)
+        raise BadAlg(f"Unsupported ECC signature algorithm identifier: {name}.")
+
+
+def _validate_sig_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
+    """Validate the signature algorithm identifier.
+
+    :param alg_id: The `AlgorithmIdentifier` to validate.
+    :raises BadSigAlgIDParams: If the algorithm identifier parameters are invalid.
+    :raises BadAlg: If the algorithm identifier is unsupported.
+    """
+    oid = alg_id["algorithm"]
+    if oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
+        if alg_id["parameters"].isValue:
+            msg = (
+                f"For a composite signature algorithm identifier the `parameters` must be absent. "
+                f"Got: {alg_id['algorithm'].prettyPrint()}"
+            )
+            raise BadSigAlgIDParams(msg)
+
+    elif oid in ECDSA_OID_2_NAME or oid in [rfc9481.id_Ed448, rfc9481.id_Ed25519]:
+        _validate_ecc_alg_id(alg_id)
+
+    elif oid in [*RSA_OID_2_NAME, *RSASSA_PSS_OID_2_NAME]:
+        _validate_rsa_sig_alg_id(alg_id)
+
+    elif oid in PQ_OID_2_NAME:
+        _validate_pq_sig_alg_id(alg_id)
+
+    else:
+        name = may_return_oid_to_name(oid)
+        raise BadAlg(f"Unsupported signature algorithm identifier: {name}.")
+
+
 @keyword(name="Verify Signature With AlgID")
 def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in the docstring
     public_key: VerifyKey, alg_id: rfc9480.AlgorithmIdentifier, data: bytes, signature: bytes
@@ -2503,6 +2635,7 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
 
     """
     oid = alg_id["algorithm"]
+    _validate_sig_alg_id(alg_id)
 
     if oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
         name: str = CMS_COMPOSITE03_OID_2_NAME.get(oid) or COMPOSITE_SIG04_OID_2_NAME[oid]
