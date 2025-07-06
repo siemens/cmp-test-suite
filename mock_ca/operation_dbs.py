@@ -501,3 +501,23 @@ class StatefulSigState:
                 "Is only supported for MockCA issued certificates."
             )
         return index in state.used_indices
+
+
+# TODO include this class to support PQ Stateful Signature keys in the future.
+# also include it for Composite-Sig v6 and add it for the CEK, if the
+# uses teh EncryptedKey, to proof the possession of the Private Key.
+
+
+@dataclass
+class BadRandomState:
+    """A class to store the states related to the randomness used by the Client.
+
+    Attributes
+    ----------
+        - `bad_hss_random`: The bad random number generator.
+        - `bad_random_count`: The number of times the bad random number generator was used.
+
+    """
+
+    bad_hss_random: Optional[bytes] = None
+    bad_random_count: int = 0
