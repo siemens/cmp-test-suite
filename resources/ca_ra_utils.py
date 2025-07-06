@@ -1436,7 +1436,30 @@ def _validate_pq_hash_stateful_sig_pub_key(
                 failinfo="badAlg,badCertTemplate",
             )
     elif public_key.name.startswith("hss"):
-        raise NotImplementedError("HSS public keys are not supported yet.")
+        data = public_key.public_bytes_raw()
+        _length = int.from_bytes(data[:4], "big")
+        msg = None
+        if _length == 0:
+            msg = "The HSS public key is empty, which is not allowed.Got a public key with length 0."
+
+        elif _length > 8:
+            msg = (
+                "The HSS public key is too long, which is not allowed."
+                f"Got a public key with length {_length}. The maximum length is 8."
+            )
+
+        if msg is not None:
+            raise BadCertTemplate(
+                msg,
+                failinfo="badCertTemplate,badDataFormat",
+            )
+
+        if "," in public_key.hash_alg:
+            raise BadCertTemplate(
+                "The HSS public key hash algorithm is not valid, "
+                "it should use the same hash algorithm as the LMOTS key.",
+                failinfo="badCertTemplate,badAlg",
+            )
 
     else:
         raise NotImplementedError(
