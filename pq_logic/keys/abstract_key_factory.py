@@ -95,6 +95,17 @@ class AbstractKeyFactory(ABC):
         if one_asym_key["publicKey"].isValue and version == 0:
             raise InvalidKeyData("Public key is not allowed in PKCS#8 version 0.")
 
+    @staticmethod
+    @abstractmethod
+    def validate_alg_id(
+        alg_id: rfc5280.AlgorithmIdentifier,
+    ) -> None:
+        """Validate the algorithm identifier.
+
+        :param alg_id: The algorithm identifier to validate.
+        :raises InvalidKeyData: If the algorithm identifier is invalid.
+        """
+
     @classmethod
     def load_private_key_from_one_asym_key(cls, one_asym_key: rfc5958.OneAsymmetricKey) -> PrivateKey:
         """Load a private key from a `OneAsymmetricKey`.
