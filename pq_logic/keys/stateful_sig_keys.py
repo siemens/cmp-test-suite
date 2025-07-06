@@ -182,13 +182,10 @@ class XMSSPublicKey(PQHashStatefulSigPublicKey):
 
     def get_leaf_index(self, signature: bytes) -> int:
         """Extract the leaf index from the XMSS signature."""
-        # First 4 bytes of XMSS signature is the leaf index
+        # The first 4 bytes of XMSS signature indicate the leaf index.
         if len(signature) != self.sig_size:
             raise ValueError(f"Invalid XMSS signature size: expected {self.sig_size}, got {len(signature)}")
-
-        if len(signature) < 4:
-            raise ValueError("Invalid XMSS signature: too short")
-        return struct.unpack(">I", signature[:4])[0]
+        return int.from_bytes(signature[:4], "big")
 
     def _export_public_key(self) -> bytes:
         """Return the public key as bytes."""
