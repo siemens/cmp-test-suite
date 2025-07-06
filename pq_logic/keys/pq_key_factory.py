@@ -23,7 +23,7 @@ from pq_logic.hybrid_structures import (
     MLKEM1024PrivateKeyASN1,
 )
 from pq_logic.keys.abstract_key_factory import AbstractKeyFactory
-from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQSignaturePrivateKey
+from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey
 from pq_logic.keys.abstract_wrapper_keys import PQPrivateKey, PQPublicKey
 from pq_logic.keys.kem_keys import (
     FrodoKEMPrivateKey,
@@ -427,18 +427,14 @@ class PQKeyFactory(AbstractKeyFactory):
         :param public_key_bytes: Optional public key bytes. If provided, it will be validated against the private key.
         :return: The post-quantum KEM private key instance.
         """
-        if name.startswith("ml-kem-"):
-            private_key = MLKEMPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
-            if public_key_bytes:
-                if private_key_bytes != private_key.public_key().public_bytes_raw():
-                    raise MismatchingKey(f"{name} public key does not match the private key.")
-            return private_key
-        elif name.startswith("sntrup761"):
-            private_key = Sntrup761PrivateKey.from_private_bytes(data=private_key_bytes, name=name)
-        elif name.startswith("mceliece"):
+        if _check_starts_with(name, prefixes=["ml-kem", "sntrup761", "frodokem"]):
+            return PQKeyFactory._load_pq_private_support_pub_derive(
+                name=name,
+                private_key_bytes=private_key_bytes,
+                public_key_bytes=public_key_bytes,
+            )
+        if name.startswith("mceliece"):
             private_key = McEliecePrivateKey.from_private_bytes(data=private_key_bytes, name=name)
-        elif name.startswith("frodokem"):
-            private_key = FrodoKEMPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
         else:
             raise NotImplementedError(f"Unimplemented algorithm: {name}")
 
@@ -457,23 +453,17 @@ class PQKeyFactory(AbstractKeyFactory):
         :param public_key_bytes: Optional public key bytes. If provided, it will be validated against the private key.
         :return: The post-quantum signature private key instance.
         """
-        if name.startswith("ml-dsa-"):
-            private_key = MLDSAPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
-            if public_key_bytes:
-                if private_key_bytes != private_key.public_key().public_bytes_raw():
-                    raise MismatchingKey(f"{name} public key does not match the private key.")
-        elif name.startswith("slh-dsa"):
-            private_key = SLHDSAPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
-            if public_key_bytes:
-                if private_key_bytes != private_key.public_key().public_bytes_raw():
-                    raise MismatchingKey(f"{name} public key does not match the private key.")
+        if _check_starts_with(name, prefixes=["ml-dsa", "slh-dsa"]):
+            return PQKeyFactory._load_pq_private_support_pub_derive(  # type: ignore
+                name=name,
+                private_key_bytes=private_key_bytes,
+                public_key_bytes=public_key_bytes,
+            )
 
-        elif name.startswith("falcon"):
+        if name.startswith("falcon"):
             _ = FalconPrivateKey.from_private_bytes(data=private_key_bytes, name=name)
             return FalconPrivateKey(alg_name=name, private_bytes=private_key_bytes, public_key=public_key_bytes)
-        else:
-            raise NotImplementedError(f"Unimplemented algorithm: {name}")
-        return private_key
+        raise NotImplementedError(f"Unimplemented algorithm: {name}")
 
     @staticmethod
     def validate_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> None:
