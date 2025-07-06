@@ -9,6 +9,8 @@ Designed to facilitate key management by offering simple methods to create new k
 store them and retrieve them when needed.
 """
 
+import logging
+import math
 import os
 import re
 import textwrap
