@@ -505,7 +505,7 @@ class StatefulSigState:
 
 # TODO include this class to support PQ Stateful Signature keys in the future.
 # also include it for Composite-Sig v6 and add it for the CEK, if the
-# uses teh EncryptedKey, to proof the possession of the Private Key.
+# uses the EncryptedKey, to proof the possession of the Private Key.
 
 
 @dataclass

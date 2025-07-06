@@ -415,7 +415,6 @@ class CAHandler:
         self.stfl_validator = STFLPKIMessageValidator(
             stfl_config=None,
             stfl_state=self.pq_stateful_sig_state,
-            prot_handler=self.protection_handler,
         )
 
         self.cert_req_handler.stfl_validator = self.stfl_validator
