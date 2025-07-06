@@ -113,9 +113,13 @@ Initialize PQ Cert And Key Variables
     # Initialize the newly issued certificates and keys.
     VAR   &{PQ_SIG_CERTS}  scope=Global
     VAR   &{PQ_SIG_KEYS}   scope=Global
-    VAR   &{PQ_STATEFUL_SIG_CERTS}   scope=Global
     VAR   &{PQ_STATEFUL_SIG_KEYS}     scope=Global
+    # Used for the verbose STFL signature keys.
+    VAR   &{PQ_STATEFUL_SIG_KEYS_VERBOSE}     scope=Global
+    VAR   &{PQ_STATEFUL_SIG_CERTS_VERBOSE}   scope=Global
+    VAR   &{PQ_STATEFUL_SIG_CERT_CONF_CERTS}    scope=Global
     Load PQ Stateful Sig Keys
+    Load Verbose PQ Stateful Sig Keys
 
 Get PQ Stateful Sig Key
     [Documentation]    Get the stateful PQ signature key from the global variable.
@@ -130,6 +134,19 @@ Get PQ Stateful Sig Key
         Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS}    ${algorithm}=${key}
     END
     RETURN   ${key}
+    
+Get PQ Stateful Sig Key Verbose
+    [Documentation]    Get the stateful PQ signature key from the global variable in verbose mode.
+    ...                If the key is not set, it will be generated and returned.
+    [Tags]    keys
+    [Arguments]    ${algorithm}   ${body_name}    ${reason}
+    ${name}=    Set Variable    ${algorithm}_${body_name}_${reason}
+    ${key}=    Get From Dictionary   ${PQ_STATEFUL_SIG_KEYS_VERBOSE}   ${name}   ${None}
+    IF  '${key}' == '${None}'
+        Fail    The verbose ${body_name} PQ stateful signature key for algorithm '${algorithm}' is not set, for 
+        ...     the reason ${reason}.
+    END
+    RETURN    ${key}
 
 Load PQ Stateful Sig Keys
     [Documentation]    Load every stateful PQ-signature private key in the `data/keys/xmss_xmssmt_keys` directory.
@@ -150,6 +167,31 @@ Load PQ Stateful Sig Keys
             ${key}=    Load Private Key From File    ${key_path}
             Append To List    ${BURNED_KEYS}    ${key}
             Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS}    ${algorithm}=${key}
+        END
+    END
+    
+Load Verbose PQ Stateful Sig Keys
+    [Documentation]    Load every stateful PQ-signature private key in the `data/keys/xmss_xmssmt_keys` directory.
+    ...                Keys are appended to the global list `${BURNED_KEYS}` and
+    ...                stored in the dictionary `${PQ_STATEFUL_SIG_KEYS}` under
+    ...                their algorithm names (e.g. `xmss-sha2_20_256`).
+    ...                This keyword is used to load the keys in verbose mode, which means that the keys are
+    ...                loaded with the `verbose=True` parameter. This is useful for debugging purposes.
+    [Tags]    setup  keys
+    [Arguments]
+    VAR    ${directory}    data/keys/xmss_xmssmt_keys_verbose
+    ${files}=    List Files In Directory    ${directory}
+    VAR  ${empty}
+    FOR  ${key_file}  IN  @{files}
+        ${key_name}=   Replace String     ${key_file}   _layers_    /
+        ${algorithm}=   Replace String    ${key_name}   .pem    ${empty}
+        ${algorithm}=   Replace String    ${algorithm}   private-key-   ${empty}
+        ${key_path}=    Set Variable    ${directory}/${key_file}
+        ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${key_path}
+        IF  ${is_file}
+            ${key}=    Load Private Key From File    ${key_path}
+            Append To List    ${BURNED_KEYS}    ${key}
+            Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS_VERBOSE}    ${algorithm}=${key}
         END
     END
 
