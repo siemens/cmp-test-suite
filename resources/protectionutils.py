@@ -77,12 +77,12 @@ from resources.exceptions import (
     BadMessageCheck,
     BadRequest,
     BadSigAlgID,
+    BadSigAlgIDParams,
     InvalidKeyCombination,
     LwCMPViolation,
     UnknownOID,
 )
 from resources.oid_mapping import (
-    get_alg_oid_from_key_hash,
     get_hash_from_oid,
     hash_name_to_instance,
     may_return_oid_to_name,
@@ -91,6 +91,7 @@ from resources.oidutils import (
     AES_GMAC_OID_2_NAME,
     ALL_KNOWN_OIDS_2_NAME,
     CMS_COMPOSITE03_OID_2_NAME,
+    ECDSA_OID_2_NAME,
     HKDF_OID_2_NAME,
     HMAC_OID_2_NAME,
     KMAC_OID_2_NAME,
@@ -98,6 +99,9 @@ from resources.oidutils import (
     MSG_SIG_ALG,
     PQ_OID_2_NAME,
     PQ_SIG_OID_2_NAME,
+    PQ_SIG_PRE_HASH_OID_2_NAME,
+    PQ_STATEFUL_HASH_SIG_OID_2_NAME,
+    RSA_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
     SHA2_NAME_2_OID,
     SHA_OID_2_NAME,
@@ -1282,7 +1286,12 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
         byte_secret = convertutils.str_to_bytes(password)
         expected_protection_value = _compute_symmetric_protection(pki_message, byte_secret, enforce_lwcmp=enforce_lwcmp)
 
-    elif protection_type_oid in RSASSA_PSS_OID_2_NAME or protection_type_oid in TRAD_SIG_OID_2_NAME:
+    elif (
+        protection_type_oid in RSASSA_PSS_OID_2_NAME
+        or protection_type_oid in TRAD_SIG_OID_2_NAME
+        or protection_type_oid in PQ_SIG_OID_2_NAME
+        or protection_type_oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME
+    ):
         _verify_pki_message_sig(pki_message, public_key)
         return
     else:
@@ -1317,8 +1326,8 @@ def _verify_pki_message_sig(pki_message: PKIMessageTMP, public_key: Optional[Ver
         hash_alg = get_hash_from_oid(protection_type_oid)
         hash_alg = hash_alg if hash_alg is None else hash_alg.split("-")[-1]
         if public_key is not None:
-            cryptoutils.verify_signature(
-                public_key=public_key, data=encoded, signature=protection_value, hash_alg=hash_alg
+            verify_signature_with_alg_id(
+                public_key=public_key, data=encoded, signature=protection_value, alg_id=prot_alg_id
             )
             return
 
