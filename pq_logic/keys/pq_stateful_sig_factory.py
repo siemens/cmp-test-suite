@@ -6,9 +6,9 @@
 
 import importlib.util
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Type
 
-from pyasn1_alt_modules import rfc5280, rfc5958
+from pyasn1_alt_modules import rfc5280
 
 from pq_logic.keys.abstract_key_factory import AbstractKeyFactory
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
@@ -19,6 +19,8 @@ from pq_logic.keys.stateful_sig_keys import (
     XMSSPublicKey,
 )
 from resources import utils
+from resources.exceptions import InvalidKeyData, MismatchingKey
+from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import PQ_STATEFUL_HASH_SIG_OID_2_NAME
 from resources.typingutils import PrivateKey
 
@@ -31,6 +33,15 @@ else:
 
 class PQStatefulSigFactory(AbstractKeyFactory):
     """Factory class for creating stateful PQ keys."""
+
+    _sig_prefix_2_priv_class: Dict[str, Type[PQHashStatefulSigPrivateKey]] = {
+        "xmss": XMSSPrivateKey,
+        "xmssmt": XMSSMTPrivateKey,
+    }
+    _sig_prefix_2_pub_class: Dict[str, Type[PQHashStatefulSigPublicKey]] = {
+        "xmss": XMSSPublicKey,
+        "xmssmt": XMSSMTPublicKey,
+    }
 
     @staticmethod
     def generate_key_by_name(algorithm: str) -> PrivateKey:
@@ -94,14 +105,19 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         oid = spki["algorithm"]["algorithm"]
         public_key_bytes = spki["subjectPublicKey"].asOctets()
         algorithm = PQ_STATEFUL_HASH_SIG_OID_2_NAME[oid]
-        if algorithm == "xmss":
-            return XMSSPublicKey.from_public_bytes(public_key_bytes)
-        if algorithm == "xmssmt":
-            return XMSSMTPublicKey.from_public_bytes(public_key_bytes)
-        if algorithm == "hss":
-            return HSSPublicKey.from_public_bytes(public_key_bytes)
 
-        raise ValueError(f"Unsupported algorithm in SPKI: {algorithm}")
+        alg_id = spki["algorithm"]
+        if alg_id["parameters"].isValue:
+            raise InvalidKeyData(f"The `parameters` field in the SPKI is not allowed to be set for: {algorithm}")
+
+        prefix = PQStatefulSigFactory._get_matching_prefix(algorithm, PQStatefulSigFactory.get_supported_keys())
+
+        if prefix in PQStatefulSigFactory._sig_prefix_2_pub_class:
+            pub_class = PQStatefulSigFactory._sig_prefix_2_pub_class[prefix]
+            return pub_class.from_public_bytes(public_key_bytes)
+
+        raise NotImplementedError(f"Unsupported PQ STFL algorithm in SPKI: {algorithm}")
+
 
     @staticmethod
     def _load_private_key_from_pkcs8(
@@ -116,46 +132,22 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         :param public_key_bytes: Optional raw bytes of the public key.
         """
         alg_name = PQ_STATEFUL_HASH_SIG_OID_2_NAME[alg_id["algorithm"]]
-        if alg_name.startswith("xmss-"):
-            private_key = XMSSPrivateKey.from_private_bytes(private_key_bytes)
-        elif alg_name.startswith("xmssmt-"):
-            private_key = XMSSMTPrivateKey.from_private_bytes(private_key_bytes)
-        elif alg_name.startswith("hss"):
-            private_key = HSSPrivateKey.from_private_bytes(private_key_bytes)
-        else:
-            raise ValueError(
-                f"Unsupported algorithm: {alg_name}. "
-                f"Supported algorithms are: {PQStatefulSigFactory.supported_algorithms()}"
-            )
-        return private_key.__class__(private_key.name, private_key_bytes, public_key_bytes)
+        prefix = PQStatefulSigFactory._get_matching_prefix(alg_name, PQStatefulSigFactory.get_supported_keys())
 
-    @staticmethod
-    def load_private_key_from_one_asym_key(one_asym_key: rfc5958.OneAsymmetricKey) -> PQHashStatefulSigPrivateKey:
-        """Load a private key from a OneAsymmetricKey object.
+        if prefix not in PQStatefulSigFactory._sig_prefix_2_priv_class:
+            raise NotImplementedError(f"Unsupported PQ STFL algorithm in PKCS#8: {alg_name}")
 
-        :param one_asym_key: The OneAsymmetricKey object containing the private key.
-        :return: An instance of the corresponding stateful signature private key class.
-        """
-        oid = one_asym_key["privateKeyAlgorithm"]["algorithm"]
-        algorithm = PQ_STATEFUL_HASH_SIG_OID_2_NAME[oid]
-        public_key_bytes = None
-        private_key_bytes = one_asym_key["privateKey"].asOctets()
-        if one_asym_key["publicKey"].isValue:
-            public_key_bytes = one_asym_key["publicKey"].asOctets()
-        if algorithm == "xmss":
-            private_key = XMSSPrivateKey.from_private_bytes(private_key_bytes)
-            if public_key_bytes:
-                return XMSSPrivateKey(private_key.name, private_key_bytes, public_key_bytes)
+        private_key_class = PQStatefulSigFactory._sig_prefix_2_priv_class[prefix]
+        private_key = private_key_class.from_private_bytes(private_key_bytes)
+        if public_key_bytes is None:
             return private_key
-        if algorithm == "xmssmt":
-            private_key = XMSSMTPrivateKey.from_private_bytes(private_key_bytes)
-            if public_key_bytes:
-                return XMSSMTPrivateKey(private_key.name, private_key_bytes, public_key_bytes)
-            return private_key
-        if algorithm == "hss":
-            raise NotImplementedError("HSS private key loading from OneAsymmetricKey is not implemented yet.")
 
-        raise ValueError(f"Unsupported algorithm in OneAsymmetricKey: {algorithm}")
+        PQStatefulSigFactory._validate_public_key(
+            alg_name,
+            private_key,
+            public_key_bytes,
+        )
+        return private_key
 
     @staticmethod
     def _prepare_invalid_private_key(
