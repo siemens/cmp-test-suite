@@ -95,15 +95,24 @@ class AbstractKeyFactory(ABC):
         if one_asym_key["publicKey"].isValue and version == 0:
             raise InvalidKeyData("Public key is not allowed in PKCS#8 version 0.")
 
+    @classmethod
+    def load_private_key_from_one_asym_key(cls, one_asym_key: rfc5958.OneAsymmetricKey) -> PrivateKey:
+        """Load a private key from a `OneAsymmetricKey`.
+
+        :param one_asym_key: The OneAsymmetricKey structure containing the private key.
+        :return: The private key object.
+        """
+        cls._validate_one_asym_key_version(one_asym_key)
+        cls.validate_alg_id(one_asym_key["privateKeyAlgorithm"])
         private_key_bytes = one_asym_key["privateKey"].asOctets()
         public_key_bytes = one_asym_key["publicKey"].asOctets() if one_asym_key["publicKey"].isValue else None
-        alg_id = one_asym_key["privateKeyAlgorithm"]["algorithm"]
-        private_key = AbstractKeyFactory._load_private_key_from_pkcs8(alg_id, private_key_bytes, public_key_bytes)
-        return private_key
+        alg_id = one_asym_key["privateKeyAlgorithm"]
+        return cls._load_private_key_from_pkcs8(alg_id, private_key_bytes, public_key_bytes)
 
-    @staticmethod
+    @classmethod
     @abstractmethod
     def _load_private_key_from_pkcs8(
+        cls,
         alg_id: rfc5280.AlgorithmIdentifier,
         private_key_bytes: bytes,
         public_key_bytes: Optional[bytes] = None,
