@@ -476,6 +476,19 @@ class PQKeyFactory(AbstractKeyFactory):
         return private_key
 
     @staticmethod
+    def validate_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> None:
+        """Validate the AlgorithmIdentifier for a post-quantum key.
+
+        :param alg_id: The AlgorithmIdentifier to validate.
+        :raises BadAlg: If the algorithm OID is not recognized.
+        """
+        _name = may_return_oid_to_name(alg_id["algorithm"])
+        if alg_id["algorithm"] not in PQ_OID_2_NAME:
+            raise BadAlg(f"Unsupported PQ algorithm {_name}:{alg_id['algorithm']}")
+        if alg_id["parameters"].isValue:
+            msg = f"The `parameters` field in the PQ AlgorithmIdentifier is not allowed to be set for: {_name}"
+            raise InvalidKeyData(msg)
+
     @classmethod
     def _load_private_key_from_pkcs8(
         cls, alg_id: rfc5280.AlgorithmIdentifier, private_key_bytes: bytes, public_key_bytes: Optional[bytes] = None
