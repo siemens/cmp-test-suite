@@ -68,6 +68,11 @@ class PQHashStatefulSigPublicKey(PQPublicKey, ABC):
     def max_sig_size(self) -> int:
         """Return the maximum signature size."""
 
+    @property
+    @abstractmethod
+    def hash_alg(self) -> str:
+        """Return the hash algorithm used by this public key."""
+
 
 class PQHashStatefulSigPrivateKey(PQPrivateKey, ABC):
     """Abstract base class for Post-Quantum Hash Stateful Signature Private Keys."""
@@ -121,3 +126,8 @@ class PQHashStatefulSigPrivateKey(PQPrivateKey, ABC):
     @abstractmethod
     def used_keys(self) -> list[bytes]:
         """Return a list of used keys in the private key."""
+
+    @property
+    def hash_alg(self) -> str:
+        """Return the hash algorithm used by this private key."""
+        return self.public_key().hash_alg
