@@ -29,7 +29,6 @@ from typing import Tuple
 from pq_logic.fips.fips203 import ML_KEM
 from pq_logic.fips.frodokem import FrodoKEM
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from resources.exceptions import InvalidKeyData
 
 if importlib.util.find_spec("oqs") is not None:
@@ -49,7 +48,6 @@ VALID_MCELIECE_OPTIONS = {
 ML_KEM_NAMES = ["ml-kem-512", "ml-kem-768", "ml-kem-1024"]
 ML_KEM_PRIVATE_KEY_SIZE = {"ml-kem-768": 2400, "ml-kem-512": 1632, "ml-kem-1024": 3168}
 _FRODOKEM_SEEDS_SIZE = {
-    # standard frodokem
     "frodokem-640-aes": {"lenA": 128, "lensec": 128, "lenSE": 256},
     "frodokem-640-shake": {"lenA": 128, "lensec": 128, "lenSE": 256},
     "frodokem-976-aes": {"lenA": 128, "lensec": 192, "lenSE": 384},
@@ -65,6 +63,14 @@ _FRODOKEM_NIST_LEVEL = {
     "frodokem-1344-aes": 5,
     "frodokem-1344-shake": 5,
 }
+_FRODOKEM_NAMES = [
+    "frodokem-640-aes",
+    "frodokem-640-shake",
+    "frodokem-976-aes",
+    "frodokem-976-shake",
+    "frodokem-1344-aes",
+    "frodokem-1344-shake",
+]
 
 
 ##########################
@@ -358,8 +364,7 @@ class McEliecePrivateKey(PQKEMPrivateKey):
         return name, _other
 
     def public_key(self) -> McEliecePublicKey:
-        """
-        Derive the corresponding McEliece public key from this private key.
+        """Derive the corresponding McEliece public key from this private key.
 
         :return: An instance of `McEliecePublicKey`.
         """
@@ -459,8 +464,8 @@ class FrodoKEMPublicKey(PQKEMPublicKey):
 
     def _check_name(self, name: str) -> Tuple[str, str]:
         """Validate the provided algorithm name."""
-        if name.lower() not in FRODOKEM_NAME_2_OID:
-            raise ValueError(f"Invalid key name '{name}'. Expected one of {FRODOKEM_NAME_2_OID.keys()}.")
+        if name.lower() not in _FRODOKEM_NAMES:
+            raise ValueError(f"Invalid key name '{name}'. Expected one of {_FRODOKEM_NAMES}.")
 
         _other = name.upper().replace("FRODOKEM", "FrodoKEM")
         return name, _other
@@ -543,8 +548,8 @@ class FrodoKEMPrivateKey(PQKEMPrivateKey):
     @classmethod
     def _check_name(cls, name: str) -> Tuple[str, str]:
         """Validate the provided algorithm name."""
-        if name not in FRODOKEM_NAME_2_OID:
-            raise ValueError(f"Invalid key name '{name}'. Expected one of {FRODOKEM_NAME_2_OID.keys()}.")
+        if name not in _FRODOKEM_NAMES:
+            raise ValueError(f"Invalid key name '{name}'. Expected one of {_FRODOKEM_NAMES}.")
 
         _other = name.upper().replace("FRODOKEM", "FrodoKEM")
         return name, _other
@@ -562,10 +567,8 @@ class FrodoKEMPrivateKey(PQKEMPrivateKey):
     @classmethod
     def from_seed(cls, alg_name: str, seed: bytes) -> "FrodoKEMPrivateKey":
         """Create a FrodoKEM private key from a seed."""
-        if alg_name.lower() not in FRODOKEM_NAME_2_OID:
-            raise ValueError(
-                f"Invalid FrodoKEM algorithm name: {alg_name}. Expected one of {FRODOKEM_NAME_2_OID.keys()}."
-            )
+        if alg_name.lower() not in _FRODOKEM_NAMES:
+            raise ValueError(f"Invalid FrodoKEM algorithm name: {alg_name}. Expected one of {_FRODOKEM_NAMES.keys()}.")
 
         _seed_size = sum(_FRODOKEM_SEEDS_SIZE[alg_name].values()) // 8
         if len(seed) != _seed_size:
@@ -634,8 +637,8 @@ class FrodoKEMPrivateKey(PQKEMPrivateKey):
         :raises ValueError: If the key name is not supported.
         :raises InvalidKeyData: If the key data is invalid.
         """
-        if name.lower() not in FRODOKEM_NAME_2_OID:
-            raise ValueError(f"Invalid FrodoKEM algorithm name: {name}. Expected one of {FRODOKEM_NAME_2_OID.keys()}.")
+        if name.lower() not in _FRODOKEM_NAMES:
+            raise ValueError(f"Invalid FrodoKEM algorithm name: {name}. Expected one of {_FRODOKEM_NAMES}.")
 
         if cls._seed_size(name) == len(data):
             # If the data is a seed, create a key from it
@@ -662,4 +665,3 @@ class FrodoKEMPrivateKey(PQKEMPrivateKey):
         if oqs is not None:
             return super().nist_level
         return _FRODOKEM_NIST_LEVEL[self.name]
-
