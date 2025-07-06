@@ -778,12 +778,13 @@ def _prepare_signature_prot_alg_id(
 
     hash_alg = hash_alg or cert_hash_alg or "sha256"
 
-    alg_oid = get_alg_oid_from_key_hash(private_key, hash_alg)
-    prot_alg_id = prepare_alg_ids.prepare_alg_id(
-        name_or_oid=str(alg_oid),
-        fill_random_params=add_params_rand_val,
+    signing_key = ensure_is_sign_key(private_key)
+
+    return prepare_alg_ids.prepare_sig_alg_id(
+        signing_key=signing_key,
+        hash_alg=hash_alg,
+        add_params_rand_val=add_params_rand_val,
     )
-    return prot_alg_id
 
 
 def _prepare_mac_alg_id(protection: str, **params) -> rfc9480.AlgorithmIdentifier:
