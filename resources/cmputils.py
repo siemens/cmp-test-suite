@@ -432,13 +432,15 @@ def build_p10cr_from_key(  # noqa D417 undocumented-param
 
     **params:
     --------
-       - `spki` (SubjectPublicKeyInfo): The SPKI structure to use instead of generating it from the key.
+       - `spki` (SubjectPublicKeyInfo): The SPKI structure to use instead of generating it from the key. \
        Defaults to `None`.
        - `common_name` (str): The common name to use for the CSR subject. Defaults to `CN=Hans Mustermann`.
        - `hash_alg` (str): The hash algorithm to use for the SPKI and CSR signing. Defaults to "sha256".
        - `use_rsa_pss` (bool): If `True`, uses RSA-PSS for the signature and SPKI. Defaults to `False`.
        - `use_pre_hash` (bool): If `True`, uses pre-hashed version for composite-sig keys. Defaults to `False`.
        - `bad_pop` (bool): If True, prepares a bad proof-of-possession for the CSR. Defaults to `False`.
+       - `extensions` (Sequence[Extension]): A list of Extension's or `Extensions` object to include. \
+       Defaults to `None`.
 
     Returns:
     -------
@@ -468,6 +470,7 @@ def build_p10cr_from_key(  # noqa D417 undocumented-param
         hash_alg=params.get("hash_alg", "sha256"),
         use_rsa_pss=params.get("use_rsa_pss", False),
         use_pre_hash=params.get("use_pre_hash", False),
+        extensions=params.get("extensions", None),
     )
     return build_p10cr_from_csr(
         csr=csr,
