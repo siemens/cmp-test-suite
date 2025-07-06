@@ -33,6 +33,7 @@ from pyasn1_alt_modules import (
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
 from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
@@ -2179,6 +2180,9 @@ def get_digest_from_key_hash(
     :param key: The private key instance, to determine the hash algorithm.
     :return: The matching hash algorithm or the default one "sha512".
     """
+    if isinstance(key, (PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey)):
+        return key.hash_alg
+
     if isinstance(key, (PQSignaturePrivateKey, PQSignaturePublicKey)):
         for x in PQ_SIG_PRE_HASH_NAME_2_OID:
             x: str
