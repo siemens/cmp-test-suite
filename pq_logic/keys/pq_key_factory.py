@@ -417,6 +417,36 @@ class PQKeyFactory(AbstractKeyFactory):
         return key, data[key_size:]
 
     @staticmethod
+    def _load_pq_private_support_pub_derive(
+        name: str, private_key_bytes: bytes, public_key_bytes: Optional[bytes] = None
+    ) -> PQKEMPrivateKey:
+        """Load a post-quantum private key with support for public key derivation.
+
+        :param name: The name of the algorithm.
+        :param private_key_bytes: The private key bytes.
+        :param public_key_bytes: Optional public key bytes. If provided, it will be validated against the private key.
+        """
+        private_key_type = PQKeyFactory.get_class_by_prefix(  # type: ignore
+            name,
+            PQKeyFactory._prefixes_2_priv_class,
+        )
+        private_key_type: Type[Union[PQKEMPrivateKey]]
+
+        private_key = private_key_type.from_private_bytes(data=private_key_bytes, name=name)
+        if public_key_bytes is None:
+            return private_key
+
+        try:
+            private_key.public_key().from_public_bytes(data=public_key_bytes, name=name)
+        except InvalidKeyData as e:
+            raise InvalidKeyData(f"The PKSC8 provided public key data is invalid for {name}.") from e
+
+        if public_key_bytes != private_key.public_key().public_bytes_raw():
+            raise MismatchingKey(f"{name} public key does not match the private key.")
+
+        return private_key
+
+    @staticmethod
     def _load_private_kem_key(
         name: str, private_key_bytes: bytes, public_key_bytes: Optional[bytes] = None
     ) -> PQKEMPrivateKey:
