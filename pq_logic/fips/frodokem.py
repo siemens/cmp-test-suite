@@ -1,9 +1,6 @@
 # SPDX-FileCopyrightText: Copyright 2025 Siemens AG
 #
-# SPDX-License-Identifier: Apache-2.0
-
-#Creative Commons Zero v1.0 Universal
-# SPDX-License-Identifier: CC0-1.0
+# SPDX-License-Identifier: CC0-1.0 OR Apache-2.0
 # Created by Douglas Stebila
 # Taken from: https://github.com/microsoft/PQCrypto-LWEKE/blob/master/FrodoKEM/python3/frodokem.py
 from typing import Optional
