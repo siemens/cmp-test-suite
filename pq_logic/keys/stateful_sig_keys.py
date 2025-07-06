@@ -524,13 +524,14 @@ class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
     def tree_height(self) -> int:
         """Return the Merkle tree height for this key."""
         # name format: "xmssmt-sha2_20/2_256"
-        return int(self.name.split("_")[-1].split("/")[0])  # e.g. "20/2_256" -> 20
+        return int(self.name.split("_")[1].split("/")[0])  # e.g. "20/2" -> 20
 
     @property
     def layers(self) -> int:
         """Return the number of XMSSMT layers."""
         # name format: "xmssmt-sha2_20/2_256"
-        return int(self.name.split("_")[-1].split("/")[1].split("_")[0])  # e.g. "20/2_256" -> 2
+        return int(self.name.split("_")[1].split("/")[1])  # e.g. "20/2" -> 2
+
     @property
     def hash_alg(self) -> str:
         """Return the hash algorithm used by this XMSSMT public key."""
@@ -628,12 +629,12 @@ class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
     @property
     def tree_height(self) -> int:
         """Return the height of the tree for this XMSSMT private key."""
-        return int(self.name.split("_")[1].split("/")[0])  # e.g. "xmssmt-sha2_20/2_256" -> 20
+        return self.public_key().tree_height
 
     @property
     def layers(self) -> int:
         """Return the number of layers in the XMSSMT tree."""
-        return int(self.name.split("_")[1].split("/")[1])  # e.g. "xmssmt-sha2_20/2_256" -> 2
+        return self.public_key().layers
 
     def _change_index(self, new_index: int) -> "XMSSMTPrivateKey":
         """Change the index of the public key.
