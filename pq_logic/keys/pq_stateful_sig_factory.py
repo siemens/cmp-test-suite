@@ -118,6 +118,23 @@ class PQStatefulSigFactory(AbstractKeyFactory):
 
         raise NotImplementedError(f"Unsupported PQ STFL algorithm in SPKI: {algorithm}")
 
+    @staticmethod
+    def validate_alg_id(
+        alg_id: rfc5280.AlgorithmIdentifier,
+    ) -> None:
+        """Validate the AlgorithmIdentifier for a stateful PQ signature.
+
+        :param alg_id: The AlgorithmIdentifier to validate.
+        :raises InvalidKeyData: If the AlgorithmIdentifier is invalid.
+        """
+        if alg_id["algorithm"] not in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+            _name = may_return_oid_to_name(alg_id["algorithm"])
+            raise InvalidKeyData(f"Unsupported PQ stateful signature algorithm {_name}:{alg_id['algorithm']}. ")
+        name = PQ_STATEFUL_HASH_SIG_OID_2_NAME[alg_id["algorithm"]]
+        if alg_id["parameters"].isValue:
+            raise InvalidKeyData(
+                f"The `parameters` field in the AlgorithmIdentifier is not allowed to be set for: {name}"
+            )
 
     @staticmethod
     def _load_private_key_from_pkcs8(
