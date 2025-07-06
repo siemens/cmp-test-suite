@@ -477,7 +477,10 @@ def get_common_name(  # noqa D417 undocumented-param
         # If a certificate is provided, extract the subject name
         name = name["tbsCertificate"]["subject"]
 
-    return get_openssl_name_notation(name, oids=[rfc5280.id_at_commonName])
+    return get_openssl_name_notation(
+        name,  # type: ignore
+        oids=[rfc5280.id_at_commonName],
+    )
 
 
 @not_keyword
