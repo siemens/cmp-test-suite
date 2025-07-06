@@ -82,11 +82,11 @@ class AbstractKeyFactory(ABC):
             raise MismatchingKey(msg)
 
     @staticmethod
-    def load_private_key_from_one_asym_key(one_asym_key: rfc5958.OneAsymmetricKey) -> PrivateKey:
-        """Load a private key from a `OneAsymmetricKey`.
+    def _validate_one_asym_key_version(one_asym_key: rfc5958.OneAsymmetricKey) -> None:
+        """Validate the OneAsymmetricKey structure.
 
-        :param one_asym_key: The OneAsymmetricKey structure containing the private key.
-        :return: The private key object.
+        :param one_asym_key: The OneAsymmetricKey structure to validate.
+        :raises InvalidKeyData: If the OneAsymmetricKey structure is invalid.
         """
         version = one_asym_key["version"]
         if int(version) not in (0, 1):
