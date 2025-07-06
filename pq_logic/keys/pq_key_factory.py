@@ -476,8 +476,9 @@ class PQKeyFactory(AbstractKeyFactory):
         return private_key
 
     @staticmethod
+    @classmethod
     def _load_private_key_from_pkcs8(
-        alg_id: rfc5280.AlgorithmIdentifier, private_key_bytes: bytes, public_key_bytes: Optional[bytes] = None
+        cls, alg_id: rfc5280.AlgorithmIdentifier, private_key_bytes: bytes, public_key_bytes: Optional[bytes] = None
     ) -> PQPrivateKey:
         """Load a private key from raw PKCS.
 
@@ -541,13 +542,11 @@ class PQKeyFactory(AbstractKeyFactory):
         else:
             public_bytes = None
 
-        try:
-            name = PQ_OID_2_NAME.get(oid)
-            if name is None:
-                name = PQ_OID_2_NAME[str(oid)]
-        except KeyError as err:
+        if oid not in PQ_OID_2_NAME:
             _name = may_return_oid_to_name(oid)
-            raise KeyError(f"Unrecognized algorithm identifier: {_name}") from err
+            raise KeyError(f"Unrecognized PQ algorithm identifier: {_name}:{oid}")
+
+        name = PQ_OID_2_NAME[oid]
 
         try:
             if name.startswith("ml-kem-") or name.startswith("ml-dsa-"):
@@ -578,29 +577,19 @@ class PQKeyFactory(AbstractKeyFactory):
     def load_pq_kem_public_key_from_spki(
         public_bytes: bytes,
         name: str,
-    ) -> Union[MLKEMPublicKey, Sntrup761PublicKey, McEliecePublicKey, FrodoKEMPublicKey]:
+    ) -> PQKEMPublicKey:
         """Load a post-quantum KEM public key from the given bytes.
 
         :param public_bytes: The public key bytes.
         :param name: The algorithm name.
         :return: The post-quantum KEM public key instance.
         """
-        if name.startswith("ml-kem-"):
-            public_key = MLKEMPublicKey(public_key=public_bytes, alg_name=name.upper())
-
-        elif name.startswith("mceliece"):
-            public_key = McEliecePublicKey(alg_name=name, public_key=public_bytes)
-
-        elif name.startswith("frodokem"):
-            public_key = FrodoKEMPublicKey(alg_name=name, public_key=public_bytes)
-
-        elif name == "sntrup761":
-            public_key = Sntrup761PublicKey(alg_name=name, public_key=public_bytes)
-
-        else:
-            raise NotImplementedError(f"Unimplemented pq-kem algorithm: {name}")
-
-        return public_key
+        public_key_type = PQKeyFactory.get_class_by_prefix(  # type: ignore
+            name,
+            PQKeyFactory._prefixes_2_pub_class,
+        )
+        public_key_type: Type[PQKEMPublicKey]
+        return public_key_type.from_public_bytes(data=public_bytes, name=name)
 
     @staticmethod
     def load_public_key_from_spki(spki: rfc5280.SubjectPublicKeyInfo):
