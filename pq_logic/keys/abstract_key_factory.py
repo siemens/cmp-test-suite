@@ -5,7 +5,7 @@
 """Abstract factory class for creating keys, to have a common interface for different key types."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import Dict, List, Optional, Type
 
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
 from pyasn1.codec.der import decoder
@@ -27,6 +27,31 @@ class AbstractKeyFactory(ABC):
         :return: List of algorithms that start with the specified prefix.
         """
         return [a for a in algs if a.startswith(alg)]
+
+    @staticmethod
+    def get_class_by_prefix(
+        algorithm: str,
+        prefix_map: Dict[str, Type],
+    ) -> type:
+        """Return the key class for the given algorithm prefix.
+
+        :param algorithm: The algorithms name to match against the prefix map.
+        :param prefix_map: A dictionary mapping algorithm prefixes to their corresponding key classes.
+        :return: The key class corresponding to the algorithm prefix.
+        :raises NotImplementedError: If the algorithm name does not match any prefix in the map.
+        """
+        for prefix, cls in prefix_map.items():
+            if algorithm.startswith(prefix):
+                return cls
+        raise NotImplementedError(f"Unimplemented algorithm: {algorithm}")
+
+    @classmethod
+    def _get_matching_prefix(cls, name: str, prefixes: List[str]) -> str:
+        """Return the prefix for the given algorithm."""
+        for prefix in prefixes:
+            if name.startswith(prefix):
+                return prefix
+        raise ValueError(f"Unsupported algorithm: {name}. Supported algorithms are: {cls.supported_algorithms()}")
 
     @staticmethod
     @abstractmethod
