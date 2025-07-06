@@ -249,6 +249,32 @@ class XMSSPublicKey(PQHashStatefulSigPublicKey):
         # return 4 + n + (length + height) * n
         return self._sig.length_signature
 
+    @property
+    def hash_alg(self) -> str:
+        """Return the hash algorithm used by this XMSS public key."""
+        # Different name formats for XMSS:
+        # - xmss-sha2_10_256
+        # - xmss-shake256_10_256
+        # - xmss-shake_10_256
+        if "sha2" in self.name:
+            output_size = int(self.name.split("_")[-1])
+            if output_size == 256:
+                return "sha256"
+            elif output_size == 512:
+                return "sha512"
+            return "sha256"
+        elif self.name.startswith("xmss-shake_"):
+            output_size = int(self.name.split("_")[-1])
+            if output_size == 256:
+                return "shake128"
+            elif output_size == 512:
+                return "shake256"
+            return "shake128"
+        elif self.name.startswith("xmss-shake256"):
+            return "shake256"
+
+        return XMSS_ALG_DETAILS[self.name.lower()]["hash_alg"]
+
 
 class XMSSPrivateKey(PQHashStatefulSigPrivateKey):
     """Class representing an XMSS private key."""
@@ -507,6 +533,10 @@ class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
         """Return the number of XMSSMT layers."""
         # name format: "xmssmt-sha2_20/2_256"
         return int(self.name.split("_")[-1].split("/")[1].split("_")[0])  # e.g. "20/2_256" -> 2
+    @property
+    def hash_alg(self) -> str:
+        """Return the hash algorithm used by this XMSSMT public key."""
+        return XMSSMT_ALG_DETAILS[self.name.lower()]["hash_alg"]
 
 
 class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
