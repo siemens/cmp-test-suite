@@ -32,6 +32,7 @@ from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
 from pq_logic.keys.composite_sig03 import CompositeSig03PublicKey
 from pq_logic.pq_utils import is_kem_public_key
@@ -2099,6 +2100,11 @@ def _validate_oid_in_cert_stfl(
 ) -> None:
     """Validate the OID of the public key in the certificate."""
     loaded_public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
+
+    if not isinstance(loaded_public_key, PQHashStatefulSigPublicKey):
+        raise ValueError(
+            f"The public key in the certificate is not a Stateful Hash Signature key. Got: {type(loaded_public_key)}."
+        )
 
     if alg_name != loaded_public_key.name:
         raise ValueError(
