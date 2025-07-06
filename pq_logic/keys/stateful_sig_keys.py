@@ -445,7 +445,7 @@ class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
                 f"Invalid public key size for {self.name}: expected {self.key_size + 4}, "
                 f"got {len(self._public_key_bytes)}"
             )
-            raise ValueError(msg)
+            raise InvalidKeyData(msg)
 
     def get_leaf_index(self, signature: bytes) -> int:
         """Extract the leaf index from the XMSSMT signature.
