@@ -119,6 +119,58 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         raise NotImplementedError(f"Unsupported PQ STFL algorithm in SPKI: {algorithm}")
 
     @staticmethod
+    def _validate_public_key(
+        algorithm: str,
+        private_key: PQHashStatefulSigPrivateKey,
+        public_key_bytes: bytes,
+    ) -> None:
+        """Validate that the public key matches the private key.
+
+        :param private_key: The private key to validate against.
+        :param public_key_bytes: The raw bytes of the public key.
+        :raises InvalidKeyData: If the public key is invalid.
+        :raises MismatchingKey: If the public key does not match the private key.
+        """
+        try:
+            public_key = private_key.public_key().from_public_bytes(public_key_bytes)
+        except (InvalidKeyData, KeyError) as e:
+            raise InvalidKeyData(
+                f"The PQ stateful signature inside the OneAsymmetricKey is invalid: {algorithm}."
+            ) from e
+
+        if public_key != private_key.public_key():
+            if public_key.name != private_key.name:
+                msg = (
+                    f"The PQ stateful signature public key name does not match the "
+                    f"private key name in OneAsymmetricKey type."
+                    f"Got: {public_key.name} + expected: {private_key.name}"
+                )
+                raise MismatchingKey(msg)
+
+            msg = (
+                f"The PQ stateful signature public key does not match the "
+                f"private key in OneAsymmetricKey type: {algorithm}."
+            )
+            raise MismatchingKey(msg)
+
+    @classmethod
+    def _get_matching_prefix(cls, name: str, prefixes: List[str]) -> str:
+        """Get the matching prefix for a given name from a list of prefixes.
+
+        :param name: The name to match against the prefixes.
+        :param prefixes: A list of prefixes to check against.
+        :return: The matching prefix.
+        :raises ValueError: If no matching prefix is found.
+        """
+        if name in prefixes:
+            return name
+
+        for prefix in prefixes:
+            if name.startswith(prefix + "-") or name.startswith(prefix + "_"):
+                return prefix
+        raise ValueError(f"No matching prefix found for: {name}. Supported prefixes are: {prefixes}")
+
+    @staticmethod
     def validate_alg_id(
         alg_id: rfc5280.AlgorithmIdentifier,
     ) -> None:
