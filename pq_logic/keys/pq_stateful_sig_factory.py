@@ -10,12 +10,9 @@ from typing import Dict, List, Optional
 
 from pyasn1_alt_modules import rfc5280, rfc5958
 
-from pq_logic.keys import hss_utils
 from pq_logic.keys.abstract_key_factory import AbstractKeyFactory
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.stateful_sig_keys import (
-    HSSPrivateKey,
-    HSSPublicKey,
     XMSSMTPrivateKey,
     XMSSMTPublicKey,
     XMSSPrivateKey,
@@ -43,7 +40,7 @@ class PQStatefulSigFactory(AbstractKeyFactory):
     @staticmethod
     def get_supported_keys() -> List[str]:
         """Return a list of supported stateful PQ keys."""
-        return ["hss", "xmss", "xmssmt"]
+        return ["xmss", "xmssmt"]
 
     @staticmethod
     def supported_algorithms() -> list:
@@ -51,7 +48,6 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         return (
             PQStatefulSigFactory.get_algorithms_by_family()["xmss"]
             + PQStatefulSigFactory.get_algorithms_by_family()["xmssmt"]
-            + PQStatefulSigFactory.get_algorithms_by_family()["hss"]
         )
 
     @classmethod
@@ -62,11 +58,9 @@ class PQStatefulSigFactory(AbstractKeyFactory):
             algorithms = oqs.get_enabled_stateful_sig_mechanisms()
             algorithms = [x.lower() for x in algorithms]
 
-        algorithms += hss_utils.generate_hss_combinations()
         return {
             "xmss": cls._get_alg_family(algorithms, "xmss-"),
             "xmssmt": cls._get_alg_family(algorithms, "xmssmt-"),
-            "hss": cls._get_alg_family(algorithms, "hss_"),
         }
 
     @staticmethod
@@ -76,37 +70,19 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         :param algorithm: The algorithm to use for the PQ.
         :return: An instance of the specified PQ type.
         """
-        if algorithm.startswith("xmss-") or algorithm == "xmss":
-            if algorithm not in PQStatefulSigFactory.supported_algorithms() + ["xmss"]:
-                msg = (
-                    f"Unsupported XMSS algorithm: {algorithm}. "
-                    f"Supported algorithms are: {PQStatefulSigFactory.get_algorithms_by_family()['xmss']}"
-                )
-                raise ValueError(msg)
-            return XMSSPrivateKey(algorithm)
+        prefix = PQStatefulSigFactory._get_matching_prefix(algorithm, PQStatefulSigFactory.get_supported_keys())
+        algorithms = PQStatefulSigFactory.supported_algorithms() + [prefix]
+        if algorithm not in algorithms:
+            msg = (
+                f"Unsupported {prefix.upper()} algorithm: {algorithm}. "
+                f"Supported algorithms are: {PQStatefulSigFactory.get_algorithms_by_family()[prefix]}"
+            )
+            raise ValueError(msg)
 
-        if algorithm.startswith("xmssmt-") or algorithm == "xmssmt":
-            if algorithm not in PQStatefulSigFactory.supported_algorithms() + ["xmssmt"]:
-                msg = (
-                    f"Unsupported XMSSMT algorithm: {algorithm}. "
-                    f"Supported algorithms are: {PQStatefulSigFactory.get_algorithms_by_family()['xmssmt']}"
-                )
-                raise ValueError(msg)
-            return XMSSMTPrivateKey(algorithm)
-
-        if algorithm.startswith("hss"):
-            if algorithm not in PQStatefulSigFactory.supported_algorithms() + ["hss"]:
-                msg = (
-                    f"Unsupported HSS algorithm: {algorithm}. "
-                    f"Supported algorithms are: {PQStatefulSigFactory.get_algorithms_by_family()['lms']}"
-                )
-                raise ValueError(msg)
-            return HSSPrivateKey(algorithm, length=int(kwargs.get("length", 1)))
-
-        raise ValueError(
-            f"Unsupported algorithm: {algorithm}. "
-            f"Supported algorithms are: {PQStatefulSigFactory.supported_algorithms()}"
-        )
+        private_key_type = PQStatefulSigFactory._sig_prefix_2_priv_class[prefix]
+        if prefix == "hss":
+            return private_key_type(algorithm, length=int(kwargs.get("length", 1)))  # type: ignore
+        return private_key_type(algorithm)
 
     @staticmethod
     def load_public_key_from_spki(spki: rfc5280.SubjectPublicKeyInfo) -> PQHashStatefulSigPublicKey:
