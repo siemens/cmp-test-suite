@@ -9,7 +9,6 @@ arguments, and tags. The classes are designed to be extended for specific test c
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from typing import Dict, List, Sequence, Tuple, Union
 
 NEXT_LINE_INDENT = " " * 5
