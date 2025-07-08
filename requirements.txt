@@ -12,3 +12,5 @@ pycryptodome==3.23.0
 # relevant for the Mock-CA.
 Flask==3.1.1
 tinyec==0.4.0
+# relevant for the CMP client tests.
+jinja2==3.1.4

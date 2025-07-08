@@ -18,7 +18,8 @@ ${CMP_RECIPIENT}    /CN=Mock-CA
 ${CERT_OUT}         certs/received_cert.pem
 
 # CMP Commands - Adapt these for you cmp client, default is OpenSSL
-${CMP_CLIENT}    openssl
+# CMP_CLIENT variable is always called first in the cli command
+${CMP_CLIENT}    openssl 
 ${INITIATION_REQUEST}      ir
 ${CERTIFICATION_REQUEST}   p10cr
 ${KEY_UPDATE_REQUEST}      kur

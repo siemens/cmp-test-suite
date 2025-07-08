@@ -1,6 +1,7 @@
 from robot.api.deco import keyword
 from jinja2 import Template
-
+# Jinja2 templates for CMP CLI commands, define your template here
+# This translates the tests in cmp_tests_jinja.robot to the actual commands that your CMP client will execute.
 openssl = """
 openssl cmp
  -cmd {{ cmd }}
