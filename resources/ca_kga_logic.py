@@ -1406,6 +1406,24 @@ def check_signer_infos(
     return {"digest_eContent": message_digest_value, "signatureAlgorithm": sig_alg_id, "signature": signature}
 
 
+def _is_signature_alg_id(alg_id: rfc5652.SignatureAlgorithmIdentifier) -> None:
+    """Check if the algorithm identifier is a valid signature algorithm."""
+    oid = alg_id["algorithm"]
+    if oid in MSG_SIG_ALG:
+        logging.info("Thea Signature algorithm is a MSG_SIG_ALG algorithm. Sig name: %s", MSG_SIG_ALG[oid])
+    elif oid in COMPOSITE_SIG06_OID_TO_NAME:
+        logging.info(
+            "The Signature algorithm is a Composite-Sig06 algorithm. Sig name: %s",
+        )
+    elif oid in PQ_SIG_OID_2_NAME:
+        logging.info("The Signature algorithm is a PQ_SIG algorithm. Sig name: %s", PQ_SIG_OID_2_NAME[oid])
+    else:
+        raise BadAlg(
+            "The SignerInfo `signatureAlgorithm` OID is not supported or invalid! "
+            f"Got: {may_return_oid_to_name(alg_id['algorithm'])}"
+        )
+
+
 @not_keyword
 def validate_signature_and_digest_alg(
     sig_alg_id: rfc5652.SignatureAlgorithmIdentifier,
@@ -1426,36 +1444,28 @@ def validate_signature_and_digest_alg(
     # as of RFC8419 section-3.1
     # Ed25519, the digestAlgorithm MUST be id-sha512
     # Ed448, the digestAlgorithm MUST be id-shake256 because CMP output length must be 64.
-
     if other != this:
         raise ValueError(
             "The `digestAlgorithm` inside the `SignerInfo` structure must be the same as in "
             "the `digestAlgorithms` field of `encryptedContent`"
         )
 
-    if sig_alg_id["algorithm"] not in MSG_SIG_ALG:
-        raise ValueError("The signature algorithm type must be one of MSG_SIG_ALG, as specified in RFC 9481 Section 3!")
+    _is_signature_alg_id(sig_alg_id)
 
-    sig_hash_oid = sig_alg_id["algorithm"]
+    try:
+        hash_name_dig = get_hash_from_oid(digest_alg_id["algorithm"])
+    except ValueError:
+        raise BadAlg(
+            "The `digestAlgorithm` OID is not supported or invalid!."
+            f"Got: {may_return_oid_to_name(digest_alg_id['algorithm'])}"
+        )
 
-    # TODO add unit test for Composite-Sig, after the new draft is created.
-
-    hash_name_sig = COMPOSITE_SIG06_PREHASH_OID_2_HASH.get(sig_hash_oid)
-    if hash_name_sig is None:
-        hash_name_sig = get_hash_from_oid(sig_hash_oid, only_hash=True)
-
-    hash_name_dig = get_hash_from_oid(digest_alg_id["algorithm"])
-
-    _name = MSG_SIG_ALG[sig_hash_oid]
-    if _name == "ed25519":
-        hash_name_sig = "sha512"
-    elif _name == "ed448":
-        hash_name_sig = "shake256"
-
+    hash_name_sig = get_digest_hash_alg_from_alg_id(alg_id=sig_alg_id)
     if hash_name_sig != hash_name_dig:
         raise ValueError(
             f"The hash algorithm used in `signatureAlgorithm` ({hash_name_sig}) and "
             f"`digestAlgorithm` ({hash_name_dig}) must be the same."
+            f"Signature algorithm OID: {may_return_oid_to_name(sig_alg_id['algorithm'])}, "
         )
 
 
