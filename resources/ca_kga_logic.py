@@ -73,6 +73,7 @@ from resources.oidutils import (
     KM_KW_ALG,
     ML_DSA_OID_2_NAME,
     MSG_SIG_ALG,
+    PQ_SIG_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
     PROT_SYM_ALG,
     SLH_DSA_OID_2_NAME,
@@ -1277,6 +1278,19 @@ def validate_signed_data_structure(
     return new_private_key
 
 
+def _check_is_hybrid_or_pq_sig_alg_cert_chain(certs: List[rfc9480.CMPCertificate]) -> bool:
+    """Check if the certificate chain contains hybrid or PQ signature algorithm certificates.
+
+    :param certs: A list of CMP certificates.
+    :return: True if the certificate chain contains hybrid or PQ signature algorithm certificates, False otherwise.
+    """
+    for cert in certs:
+        sig_alg = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+        if sig_alg in COMPOSITE_SIG06_OID_TO_NAME or sig_alg in PQ_SIG_OID_2_NAME:
+            return True
+    return False
+
+
 def _validate_kga_certificate(
     certs: List[rfc9480.CMPCertificate],
     asym_key_package_bytes: bytes,
@@ -1298,6 +1312,20 @@ def _validate_kga_certificate(
         logging.info("Used a self-signed certificate to sign the `SignedData` content")
     else:
         certutils.certificates_are_trustanchors([certs[-1]], trustanchors=trustanchors)
+
+        # TODO change if OpenSSL version 3.5.0 or greater is used.
+        if _check_is_hybrid_or_pq_sig_alg_cert_chain(certs):
+            logging.warning(
+                "The certificate chain is a hybrid or PQ signature algorithm certificate chain, "
+                "So it can not be verified with OpenSSL!"
+            )
+            if certutils.build_chain_from_list(certs[0], certs[1:]) != certs:
+                raise ValueError(
+                    "The certificate chain is not valid! "
+                    "The first certificate in the chain must be the KGA certificate."
+                )
+            return
+
         certutils.verify_cert_chain_openssl(cert_chain=certs)
         signer_cert_index = checkutils.find_right_cert_pos(
             certs, asym_key_package_bytes, signature=signature, hash_alg=hash_alg
