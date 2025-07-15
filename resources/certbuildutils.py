@@ -1022,6 +1022,7 @@ def generate_certificate(
     use_rsa_pss: bool = False,
     bad_sig: bool = False,
     validity: Optional[rfc5280.Validity] = None,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc9480.CMPCertificate:
     """Generate a complete `CMPCertificate` using specified parameters.
 
@@ -1037,6 +1038,7 @@ def generate_certificate(
     :param days: The duration in days for which the certificate remains valid. Defaults to 365 days.
     :param bad_sig: Whether to generate a bad signature. Defaults to `False`.
     :param validity: Optional `Validity` object to specify the certificate's validity period.
+    :param spki: Optional `SubjectPublicKeyInfo` to use for the certificate's public key.
     :return: `CMPCertificate` object representing the created certificate.
     """
     cert = rfc9480.CMPCertificate()
@@ -1063,6 +1065,7 @@ def generate_certificate(
         use_rsa_pss=use_rsa_pss,
         days=int(days),
         validity=validity,
+        spki=spki,
     )
     cert["tbsCertificate"] = tbs_cert
     return sign_cert(
@@ -1106,6 +1109,7 @@ def build_certificate(  # noqa D417 undocumented-param
         - `key_usage` (str): Specific key usage (e.g., "digitalSignature") to set on the certificate.
         - `eku` (str): Extended key usage to set for the certificate.
         - `bad_sig` (bool): Whether to generate a bad signature. Defaults to `False`.
+        - `spki` (SubjectPublicKeyInfo): Optional public key to use for the certificate.
 
     Returns:
     -------
@@ -1162,6 +1166,7 @@ def build_certificate(  # noqa D417 undocumented-param
         days=int(params.get("days", 365)),
         bad_sig=params.get("bad_sig", False),
         validity=params.get("validity"),
+        spki=params.get("spki", None),
     )
     return certificate, cert_key
 
@@ -2038,6 +2043,7 @@ def prepare_tbs_certificate(
     use_rsa_pss: bool = False,
     hash_alg: Optional[str] = "sha256",
     use_rsa_pss_pubkey: bool = False,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc5280.TBSCertificate:
     """Prepare the `TBSCertificate` structure for a certificate with specified parameters.
 
@@ -2052,6 +2058,7 @@ def prepare_tbs_certificate(
     :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
     :param hash_alg: Hash algorithm used for signing (e.g., "sha256"). Defaults to "sha256".
     :param use_rsa_pss_pubkey: Whether to use RSA-PSS for the CompositeSigKey public key. Defaults to `False`.
+    :param spki: Optional `SubjectPublicKeyInfo` to use instead of deriving from the public key.
     :return: `rfc5280.TBSCertificate` object configured with the provided parameters.
     """
     subject_obj = prepareutils.prepare_name(subject)
@@ -2060,7 +2067,7 @@ def prepare_tbs_certificate(
     else:
         issuer = copyasn1utils.copy_name(target=rfc9480.Name(), filled_name=issuer_cert["tbsCertificate"]["subject"])
 
-    pub_key = convertutils.subject_public_key_info_from_pubkey(
+    pub_key = spki or convertutils.subject_public_key_info_from_pubkey(
         public_key=public_key,
         use_rsa_pss=use_rsa_pss_pubkey,
     )
