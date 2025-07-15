@@ -37,6 +37,7 @@ from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPublicKey
 from pq_logic.keys.composite_kem07 import CompositeKEM07PublicKey
 from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey, CompositeSig06PublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
+from pq_logic.tmp_oids import COMPOSITE_SIG06_PREHASH_OID_2_HASH
 from resources import (
     asn1utils,
     certbuildutils,
@@ -48,7 +49,7 @@ from resources import (
     utils,
 )
 from resources.convertutils import copy_asn1_certificate, ensure_is_kem_pub_key, str_to_bytes
-from resources.exceptions import BadAsn1Data
+from resources.exceptions import BadAsn1Data, InvalidKeyCombination
 from resources.oid_mapping import (
     compute_hash,
     get_alg_oid_from_key_hash,
@@ -2207,7 +2208,11 @@ def get_digest_from_key_hash(
         return "shake256"
 
     if isinstance(key, (CompositeSig06PrivateKey, CompositeSig06PublicKey)):
-        return "sha512"
+        try:
+            oid = key.get_oid(use_pss=False)
+        except InvalidKeyCombination:
+            oid = key.get_oid(use_pss=True)
+        return COMPOSITE_SIG06_PREHASH_OID_2_HASH[oid]
 
     return "sha512"
 
