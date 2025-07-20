@@ -48,7 +48,7 @@ from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG06_OID_TO_NAME, id_rsa_kem_spki
-from resources import oid_mapping, typingutils, utils
+from resources import oid_mapping, prepare_alg_ids, typingutils, utils
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
 from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, InvalidKeyCombination, UnknownOID
@@ -1001,6 +1001,31 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     )
 
 
+def _prepare_rsa_pss_spki(
+    key: RSAPublicKey,
+    use_rsa_pss: bool = False,
+    hash_alg: Optional[str] = None,
+) -> rfc5280.SubjectPublicKeyInfo:
+    """Prepare a SubjectPublicKeyInfo for an RSA-PSS public key."""
+    if hash_alg is None:
+        hash_alg = "sha256"  # Default to SHA-256 if not specified
+
+    spki = rfc5280.SubjectPublicKeyInfo()
+    der_data = key.public_bytes(
+        encoding=Encoding.DER,
+        format=PublicFormat.PKCS1,
+    )
+    spki["subjectPublicKey"] = univ.BitString.fromOctetString(der_data)
+    alg_id = prepare_alg_ids.prepare_sig_alg_id(
+        signing_key=key,  # type: ignore
+        use_rsa_pss=use_rsa_pss,
+        hash_alg=hash_alg,
+    )
+    spki["algorithm"] = alg_id
+
+    return spki
+
+
 @keyword(name="Prepare SubjectPublicKeyInfo")
 def prepare_subject_public_key_info(  # noqa D417 undocumented-param
     key: Optional[Union[PrivateKey, PublicKey]] = None,
@@ -1090,11 +1115,18 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
     if key_name in ["rsa-kem", "rsa_kem"]:
         key = RSAEncapKey(key)  # type: ignore
 
-    spki = subject_public_key_info_from_pubkey(
-        public_key=key,  # type: ignore
-        use_rsa_pss=use_rsa_pss,
-        hash_alg=hash_alg,
-    )
+    if isinstance(key, RSAPublicKey) and use_rsa_pss:
+        spki = _prepare_rsa_pss_spki(
+            key=key,
+            use_rsa_pss=use_rsa_pss,
+            hash_alg=hash_alg,
+        )
+    else:
+        spki = subject_public_key_info_from_pubkey(
+            public_key=key,  # type: ignore
+            use_rsa_pss=use_rsa_pss,
+            hash_alg=hash_alg,
+        )
 
     if invalid_key_size:
         tmp = spki["subjectPublicKey"].asOctets() + b"\x00\x00"
