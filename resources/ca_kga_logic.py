@@ -1162,11 +1162,15 @@ def get_digest_hash_alg_from_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> str:
 
     if oid in ML_DSA_OID_2_NAME:
         return "sha512"
+
     if oid in SLH_DSA_OID_2_NAME:
         name = SLH_DSA_OID_2_NAME[oid]
         for option in ["sha256", "sha512", "shake128", "shake256"]:
             if name + "-" + option in SLH_DSA_PRE_HASH_NAME_2_OID:
                 return option
+
+    if oid in PQ_SIG_OID_2_NAME:
+        return "sha512"
 
     hash_alg = get_hash_from_oid(oid, only_hash=True)
     if hash_alg is None:
