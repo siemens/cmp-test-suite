@@ -333,7 +333,7 @@ class CombinedKeyFactory:
         if oid in CHEMPAT_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
             return CombinedKeyFactory.load_chempat_key(spki)
 
-        raise BadAlg("Unsupported hybrid key OID: {}".format(oid))
+        raise BadAlg(f"Unsupported hybrid key OID: {oid}")
 
     @staticmethod
     def load_public_key_from_spki(spki: Union[rfc5280.SubjectPublicKeyInfo, bytes]):  # type: ignore

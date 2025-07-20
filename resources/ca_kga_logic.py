@@ -1454,11 +1454,11 @@ def validate_signature_and_digest_alg(
 
     try:
         hash_name_dig = get_hash_from_oid(digest_alg_id["algorithm"])
-    except ValueError:
+    except ValueError as e:
         raise BadAlg(
             "The `digestAlgorithm` OID is not supported or invalid!."
             f"Got: {may_return_oid_to_name(digest_alg_id['algorithm'])}"
-        )
+        ) from e
 
     hash_name_sig = get_digest_hash_alg_from_alg_id(alg_id=sig_alg_id)
     if hash_name_sig != hash_name_dig:

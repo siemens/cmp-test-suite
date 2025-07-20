@@ -605,8 +605,8 @@ def _verify_senderkid_for_mac(pki_message: PKIMessageTMP, allow_mac_failure: boo
 
     try:
         sender_kid = pki_message["header"]["senderKID"].asOctets().decode("utf-8")
-    except UnicodeDecodeError:
-        raise BadMessageCheck("The senderKID field in the PKIHeader must be a valid UTF-8 string.")
+    except UnicodeDecodeError as e:
+        raise BadMessageCheck("The senderKID field in the PKIHeader must be a valid UTF-8 string.") from e
     sender_kid_name = sender_kid.removeprefix("CN=")
 
     cm_name = utils.get_openssl_name_notation(name=sender_name, oids=[rfc5280.id_at_commonName])

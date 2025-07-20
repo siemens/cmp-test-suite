@@ -168,7 +168,7 @@ def _ensure_is_bool(data: Union[bool, str]) -> bool:
         data = data.strip()
         if data.lower() == "true":
             return True
-        elif data.lower() == "false":
+        if data.lower() == "false":
             return False
     raise TypeError(f"Expected a boolean or a string convertible to boolean, got {data!r}.")
 
