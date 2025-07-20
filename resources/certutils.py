@@ -2276,15 +2276,15 @@ def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
     if result.returncode != 0:
         logging.error("OCSP check failed.", exc_info=True)
         raise ValueError(f"OCSP check failed (stdout): {result.stdout}")
+
+    logging.info("OCSP check succeeded.\n: %s", result.stdout)
+    logging.debug(result.stdout)
+    if "Cert Status: revoked" in result.stdout:
+        status = "revoked"
+    elif "Cert Status: good" in result.stdout:
+        status = "good"
     else:
-        logging.info("OCSP check succeeded.\n: %s", result.stdout)
-        logging.debug(result.stdout)
-        if "Cert Status: revoked" in result.stdout:
-            status = "revoked"
-        elif "Cert Status: good" in result.stdout:
-            status = "good"
-        else:
-            status = "unknown"
+        status = "unknown"
 
     for file_path in temp_files:
         try:
