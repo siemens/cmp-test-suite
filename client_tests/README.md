@@ -46,6 +46,9 @@ This folder contains test cases for the client-side components of the project.
         """
 
    ``` 
+## Issues
+1. The last test P10CR 3 doesn't work because the MockCA server sends a CP back to the sender that has CertReqId=-1. The client then sends the Certconf with the same CertReqId to the server, yet the server now returns an error because CertReqId=-1. #TODO: Fix the mockca implementation.
+
 ## Contribution
 
 - Add new tests following the existing naming conventions.
