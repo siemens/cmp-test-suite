@@ -187,6 +187,21 @@ Load And Parse Example CSR
 
 Exchange Data With CA
     [Documentation]    Send a HTTP POST request to a server, and return the response.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `${payload}`: The data to send in the request (as bytes).
+    ...                - `${url}`: The URL to send the request to. Defaults to `${CA_CMP_URL}`.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `${response}`: The response from the server, which is a `requests.Response` object.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response}= | Exchange Data With CA | ${payload} | ${url} |
+    ...
+    [Tags]    exchange    http
     [Arguments]    ${payload}    ${url}=${CA_CMP_URL}
     #    Run Keyword And Ignore Error    Try to Log PKIMessage as ASN1    ${payload}
     Try To Log PKIMessage    ${payload}
@@ -238,6 +253,16 @@ Certificate Must Be Valid
     ...    is treated as an error. PKILint is very picky and will find issues even if a certificate
     ...    is accepted by OpenSSL. PKILint's findings will be logged and reported as warnings - making
     ...    it clear that there's something of interest, but not failing the test.
+    ...
+    ...    Arguments:
+    ...    ---------
+    ...    - `${der_certificate}`: The DER-encoded certificate or `CMPCertificate` object to validate.
+    ...
+    ...    Examples:
+    ...    --------
+    ...    | Validate Certificate | ${der_certificate} |
+    ...
+    [Tags]    cert   validate
     [Arguments]    ${der_certificate}
     Log Base64    ${der_certificate}
     # If OpenSSL complains, we fail the test
@@ -329,6 +354,22 @@ Collect Nonce From PKIMessage
 Exchange PKIMessage
     [Documentation]    Send a PKIMessage to the CA or RA Server and then then parse the returned PKIMessage.
     ...    Expects to get a parse-able PKIMessage.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `${request_pki_message}`: The PKIMessage to send.
+    ...                - `${url}`: The URL of the CA or RA server to send the PKIMessage to. Defaults to
+    ...                  `${CA_CMP_URL}`.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `${response_pki_message}`: The parsed PKIMessage response from the server.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response_pki_message}= | Exchange PKIMessage | ${request_pki_message} | ${url} |
+    ...                | ${response_pki_message}= | Exchange PKIMessage | ${request_pki_message} |
+    ...
     [Tags]    exchange    http
     [Arguments]    ${request_pki_message}   ${url}=${CA_CMP_URL}
     ${encoded_request}=    Encode To Der    ${request_pki_message}
@@ -377,7 +418,9 @@ Generate Default Key
     ...                 - `DEFAULT_KEY_LENGTH` defines the key length for RSA.
     ...                 - `DEFAULT_ECC_CURVE` defines the curve for ECC. Not relevant for X25519 or X448.
     ...                 Then must the `DEFAULT_ALGORITHM` be set to `x25519` or `x448`.
+    ...
     ...                Examples:
+    ...                --------
     ...                | ${private_key}=    Generate Default Key |
     [Tags]    key
     VAR     &{params}    length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
@@ -463,7 +506,17 @@ Default Protect PKIMessage
     ...                ----
     ...                - The protection algorithm is set to `signature` by default.
     ...
+    ...                Arguments:
+    ...                ---------
+    ...                 - `${pki_message}`: The PKIMessage to protect.
+    ...                 - `${params}`: key=value pair to set variables for the protection.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `${prot_pkimessage}`: The protected PKIMessage.
+    ...
     ...                Examples:
+    ...                --------
     ...                | ${prot_pkimessage}=    Default Protect PKIMessage    | ${pki_message} |
     ...
     [Tags]    protection
@@ -615,6 +668,15 @@ Get Next Common Name
     ...                There are may some implementation which only allow one sender name, but other ones may allow
     ...                only one allow a single certificate per name, so to have more flexibility the name is added by a
     ...                number which is incremented after every test case.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `${cm}`: The common name with the current test index.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${cm}= | Get Next Common Name |
+    ...
     [Tags]    setup
     IF    ${ALLOW_ONLY_ONE_SENDER}    RETURN    ${DEFAULT_X509NAME}
     VAR    ${cm}    ${DEFAULT_X509NAME} ${TEST_INDEX}
@@ -623,6 +685,22 @@ Get Next Common Name
 
 Build Composite Signature Request
     [Documentation]    Build a ir composite signature request and returns the protected ir request.
+    ...
+    ...                Arguments:
+    ...                ----------
+    ...                - `${comp_key}`: Optional composite signature key to use. Default is `${False}`. \
+    ...                If `${False}`, a default composite signature key is generated.
+    ...                - `&{params}`: Optional key-value pairs to set parameters for the request.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `${protected_ir}`: The protected initialization request (ir) with composite signature.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${protected_ir}= | Build Composite Signature Request | ${comp_key} | &{params} |
+    ...                | ${protected_ir}= | Build Composite Signature Request | ${comp_key} |
+    ...                | ${protected_ir}= | Build Composite Signature Request |
     [Tags]    composite-sig    positive   ir
     [Arguments]    ${comp_key}=${False}   &{params}
     IF   ${comp_key}
@@ -712,16 +790,20 @@ Generate Default IR Sig Protected
     ...                one which needs to be implemented by the CA and End Entity.
     ...
     ...                Arguments:
-    ...                - `transaction_id`:Optional the transaction ID for the IR. Default is `${None}`.
-    ...                - `sender_nonce`: Optional the sender's nonce for the IR. Default is `${None}`.
+    ...                ----------
+    ...                - `${transaction_id}`:Optional the transaction ID for the IR. Default is `${None}`.
+    ...                - `${sender_nonce}`: Optional the sender's nonce for the IR. Default is `${None}`.
+    ...                - `&{params}`: Optional key-value pairs to set additional parameters for the IR.
     ...
     ...                Returns:
+    ...                -------
     ...                - The signature-protected initialization request (ir)
     ...
     ...                Examples:
     ...                | ${protected_ir}=    |    Generate Default IR Sig Protected    | transaction_id=${tx_id} |    \
     ...                sender_nonce=${nonce} |
     ...
+    [Tags]    ir    signature   setup
     [Arguments]    ${transaction_id}=${None}    ${sender_nonce}=${None}   &{params}
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
     ${ir}=    Build Ir From Key
@@ -754,12 +836,17 @@ Default Protect With MAC
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `pki_message`: The PKIMessage to be protected.
+    ...                - `${pki_message}`: The PKIMessage to be protected.
     ...
     ...                Returns:
     ...                -------
     ...                - The protected PKIMessage.
-    [Tags]    protection
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${protected_pki_message}= | Default Protect With MAC | ${pki_message} |
+    ...
+    [Tags]    protection  MAC
     [Arguments]    ${pki_message}
     ${protected_pki_message}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
     ...                          password=${PRESHARED_SECRET}
@@ -767,7 +854,22 @@ Default Protect With MAC
     RETURN    ${protected_pki_message}
 
 Default Protect PKIMessage With Trusted CA Cert
-    [Documentation]    Protects the PKIMessage with the trusted CA certificate.
+    [Documentation]    Protects the PKIMessage with the trusted CA certificate. used for
+    ...                Cross-Certification Requests (CCR) tests.
+    ...
+    ...                Arguments:
+    ...                ----------
+    ...                - `${pki_message}`: The PKIMessage to be protected.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The protected PKIMessage.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response}= | Default Protect PKIMessage With Trusted CA Cert | ${pki_message} |
+    ...
+    [Tags]    protection  trust  signature  CA
     [Arguments]    ${pki_message}
     ${response}=  Protect PKIMessage    ${pki_message}    signature
     ...           private_key=${TRUSTED_CA_KEY_OBJ}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
@@ -775,6 +877,20 @@ Default Protect PKIMessage With Trusted CA Cert
 
 Default Protect With Trusted Cert
     [Documentation]    Protect a PKIMessage with the default signature protection.
+    ...
+    ...                Arguments:
+    ...                ----------
+    ...                - `${pki_message}`: The PKIMessage to be protected.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The protected PKIMessage.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${protected}= | Default Protect With Trusted Cert | ${pki_message} |
+    ...
+    [Tags]    protection  trust  signature
     [Arguments]    ${pki_message}
     ${protected}=    Protect PKIMessage    ${pki_message}    signature   private_key=${OTHER_TRUSTED_PKI_KEY}
     ...              cert_chain=${RA_CERT_CHAIN}
@@ -971,16 +1087,21 @@ Validate EncrCert For KEM
     [Documentation]    Validate that the encrypted certificate for the KEM algorithm is correct.
     ...
     ...                Arguments:
-    ...                - ${response}: The response from the CA.
-    ...                - ${key}: The key used for the certificate generation.
+    ...                ---------
+    ...                - `${response}`: The response from the CA.
+    ...                - `${key}`: The key used for the certificate generation.
     ...
     ...                Returns:
+    ...                -------
     ...                - The certificate.
     ...
     ...                Examples:
-    ...                | Validate EncrCert For KEM | ${response} | ${key} |
+    ...                --------
+    ...                | ${cert} | Validate EncrCert For KEM | ${response} | ${key} |
+    ...
+    [Tags]    envelopedData  KEM  validate  cert
     [Arguments]    ${response}    ${key}
-    PKIStatus Must Be       ${response}    status=accepted
+    PKIStatus Must Be       ${response}    accepted
     # currently not validate able, because KEM does not allow to see the
     # the certificate in the response.
     # So the user has to now, if he expected to either has the `rid` set to the SKI or IssuerAndSerialNumber.
@@ -995,7 +1116,7 @@ Issued NEG RSA KTRI CERT
     ...
     ...                Arguments:
     ...                ---------
-    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `${url}`: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
     ...                Note:
     ...                -------
@@ -1025,7 +1146,7 @@ ISSUE POS RSA KTRI Cert
     ...
     ...                Arguments:
     ...                ---------
-    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `${url}`: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
     ...                Note:
     ...                -------
@@ -1053,7 +1174,7 @@ Issue NEG ECC KARI Cert
     ...
     ...                Arguments:
     ...                ---------
-    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `${url}`: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
     ...                Note:
     ...                -------
@@ -1083,7 +1204,7 @@ Issue POS ECC KARI Cert   # robocop: off=LEN03
     ...
     ...                Arguments:
     ...                ---------
-    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `${url}`: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
     ...                Note:
     ...                -------
@@ -1138,16 +1259,50 @@ Wait Until Server Deletes Update Request
 
 Get PQ Issuing URL
     [Documentation]    Return the URL for the PQ issuing endpoint.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The URL for the PQ issuing endpoint.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${url}= |    Get PQ Issuing URL |
+    ...
+    [Tags]    pqc
     ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
     RETURN  ${url}
 
 Get Composite Issuing URL
     [Documentation]    Return the URL for the composite issuing endpoint.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The URL for the composite issuing endpoint.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${url}= |    Get Composite Issuing URL |
+    ...
+    [Tags]   composite   hybrid
     ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
     RETURN  ${url}
 
 Exchange PKIMessage PQ
     [Documentation]    Exchange a PKIMessage with the PQ issuing endpoint.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `${pki_message}`: The PKIMessage to be exchanged.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The response PKIMessage from the PQ issuing endpoint.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response}= |    Exchange PKIMessage PQ    | ${pki_message} |
+    ...
+    [Tags]    pqc
     [Arguments]    ${pki_message}
     ${url}=   Get PQ Issuing URL
     ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
@@ -1155,6 +1310,20 @@ Exchange PKIMessage PQ
 
 Prepare Related Cert URL
     [Documentation]    Prepare the URL for the related certificate, by adding the serial number to the URL.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `${cert}`: The certificate to extract the serial number from.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The URL for the related certificate.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${url}= |    Prepare Related Cert URL    | ${cert} |
+    ...
+    [Tags]    related-cert   hybrid-cert
     [Arguments]    ${cert}
     ${ser_num}=   Get Asn1 Value As Number    ${cert}   tbsCertificate.serialNumber  False
     ${url}=   Add URL Suffix    ${URI_RELATED_CERT}   ${ser_num}
@@ -1162,6 +1331,16 @@ Prepare Related Cert URL
 
 Get Related Cert URL
     [Documentation]    Get the URL for the related certificate issuing endpoint, to send the request to.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The URL for the related certificate issuing endpoint.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${url}= |    Get Related Cert URL |
+    ...
+    [Tags]    related-cert   hybrid-cert
     ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${RELATED_CERT_SUFFIX}
     RETURN  ${url}
 
