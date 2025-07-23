@@ -433,7 +433,7 @@ Generate Default PQ SIG Key
     ...                Examples:
     ...                --------
     ...                | ${key}= | Generate Default PQ SIG Key |
-    [Tags]    key   pq
+    [Tags]    key   pqc
     ${key}=   Generate Key    ${DEFAULT_PQ_SIG_ALGORITHM}
     RETURN    ${key}
 
@@ -444,7 +444,7 @@ Generate Default PQ KEM Key
     ...                Examples:
     ...                --------
     ...                | ${key}= | Generate Default PQ KEM Key |
-    [Tags]    key   pq  kem
+    [Tags]    key   pqc  KEM
     ${key}=   Generate Key    ${DEFAULT_PQ_KEM_ALGORITHM}
     RETURN    ${key}
 
@@ -729,12 +729,14 @@ Generate CSR For Testing
     ...                and an incremented test index.
     ...
     ...                Returns:
+    ...                -------
     ...                - `csr`: The prepared certificate signing request.
     ...                - `key`: The generated cryptographic key.
     ...
     ...                Examples:
+    ...                --------
     ...                | ${csr}    ${key}= |    Generate CSR For Testing |
-    [Tags]    setup
+    [Tags]    setup  csr
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${csr}=    Build CSR    signing_key=${key}    common_name=${cm}
@@ -747,12 +749,15 @@ Generate CertTemplate For Testing
     ...                incremented test index.
     ...
     ...                Returns:
+    ...                -------
     ...                - `cert_template`: The prepared certificate template.
     ...                - `key`: The generated cryptographic key.
     ...
     ...                Examples:
+    ...                --------
     ...                | ${cert_template}    ${key}= |    Generate CertTemplate For Testing |
     ...
+    [Tags]    setup  CertTemplate
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${cert_template}=    Prepare CertTemplate    key=${key}    subject=${cm}
