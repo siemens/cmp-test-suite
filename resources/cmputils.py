@@ -1922,7 +1922,7 @@ def prepare_popo(  # noqa D417 undocumented-param
 @keyword(name="Prepare CertRequest")
 def prepare_cert_request(  # noqa D417 undocumented-param
     key: Union[PrivateKey, PublicKey],
-    common_name: Optional[str] = None,
+    common_name: Optional[Union[str, rfc9480.Name]] = None,
     cert_req_id: int = 0,
     cert_template: Optional[rfc4211.CertTemplate] = None,
     extensions: Optional[rfc5280.Extensions] = None,
@@ -2107,7 +2107,7 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
 @keyword(name="Prepare CertReqMsg")
 def prepare_cert_req_msg(  # noqa D417 undocumented-param
     private_key: PrivateKey,
-    common_name: Optional[str] = None,
+    common_name: Optional[Union[str, rfc9480.Name]] = None,
     cert_req_id: Strint = 0,
     hash_alg: str = "sha256",
     extensions: Optional[rfc9480.Extensions] = None,
@@ -2250,7 +2250,7 @@ def _prepare_cert_req_msg_body(body_type: str) -> rfc9480.PKIBody:
 def build_key_update_request(  # noqa D417 undocumented-param
     signing_key: SignKey,
     cert: Optional[rfc9480.CMPCertificate] = None,
-    common_name: str = "CN=Hans Mustermann",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     sender: str = "tests@example.com",
     recipient: str = "testr@example.com",
     exclude_fields: Optional[str] = "sender,senderKID",
@@ -2409,7 +2409,7 @@ def _prepare_build_cert_req_msgs_pkimessage(
 @keyword(name="Build Ir From Key")
 def build_ir_from_key(  # noqa D417 undocumented-param
     signing_key: PrivateKey,
-    common_name: str = "CN=Hans Mustermann",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     sender: str = "tests@example.com",
     recipient: str = "testr@example.com",
     exclude_fields: Optional[str] = None,
@@ -2497,7 +2497,7 @@ def build_ir_from_key(  # noqa D417 undocumented-param
 @keyword(name="Build Cr From Key")
 def build_cr_from_key(  # noqa D417 undocumented-param
     signing_key: PrivateKey,
-    common_name: str = "CN=Hans Mustermann",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     sender: str = "tests@example.com",
     recipient: str = "testr@example.com",
     exclude_fields: Optional[str] = None,
@@ -2577,7 +2577,7 @@ def build_cr_from_key(  # noqa D417 undocumented-param
 @keyword(name="Build Krr From Key")
 def build_krr_from_key(  # noqa D417 undocumented-param
     signing_key: PrivateKey,
-    common_name: str = "CN=Hans Mustermann",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     sender: str = "tests@example.com",
     recipient: str = "testr@example.com",
     exclude_fields: Optional[str] = None,
@@ -2652,7 +2652,7 @@ def build_krr_from_key(  # noqa D417 undocumented-param
 @keyword(name="Build Ccr From Key")
 def build_ccr_from_key(  # noqa D417 undocumented-param
     signing_key: SignKey,
-    common_name: str = "CN=Hans Mustermann",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     sender: str = "tests@example.com",
     recipient: str = "testr@example.com",
     exclude_fields: Optional[str] = "sender,senderKID",
