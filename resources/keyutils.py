@@ -1147,8 +1147,8 @@ def _prepare_spki_for_kga(
             spki["algorithm"]["parameters"]["namedCurve"] = rfc5480.secp256r1
 
     if key_name is not None:
-        key = CombinedKeyFactory.generate_key(key_name).public_key()
-        spki_tmp = subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_pss, use_pre_hash=use_pre_hash)
+        tmp_key = CombinedKeyFactory.generate_key(key_name).public_key()
+        spki_tmp = subject_public_key_info_from_pubkey(public_key=tmp_key, use_rsa_pss=use_pss, use_pre_hash=use_pre_hash)
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     elif key is not None:
