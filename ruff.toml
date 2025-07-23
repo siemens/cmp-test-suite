@@ -4,7 +4,8 @@
 
 src = ["resources"]
 exclude = ["venv*", "unit_tests", "config", "tests", "doc", "pq_logic/fips/*",
-"scripts/docstring-check.py", "scripts/add_license.py", "scripts/write_stats.py"]
+"scripts/docstring-check.py", "scripts/add_license.py", "scripts/write_stats.py",
+"liboqs-python-stateful-sig", "liboqs-python"]
 # pq_logic/fips/* is excluded because we use it "as is" from the original repo,
 # https://github.com/mjosaarinen/py-acvp-pqc, and we keep it that way
 line-length = 120
@@ -18,7 +19,13 @@ select = [
     "E", "W", # Pycodestyle
     "I", # isort
     "D",  # docstring checker
+    "T", # temporary rules.
+    # As an example, show `print` statements in the code.
 ]
+
+[lint.per-file-ignores]
+"scripts/**/*.py" = ["T"]
+"mock_ca/client.py" = ["T"]
 
 [lint.isort]
 known-first-party = ["pq_logic", "resources", "unit_tests"]
