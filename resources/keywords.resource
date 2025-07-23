@@ -767,18 +767,32 @@ Generate CCR CertTemplate For Testing
     [Documentation]    Generates a cross-certificate req. certificate template for testing purposes,
     ...                using default parameters and an incremented test index.
     ...
+    ...               Arguments:
+    ...               ---------
+    ...               - `key`: Optional key to use for the certificate template. Default is `${None}`. \
+    ...               If `${None}`, a default key is generated.
+    ...               - `cm`: Optional common name to use for the certificate template. Default is `${None}`. \
+    ...               If `${None}`, a common name is generated based on the current test index.
+    ...
     ...                Returns:
+    ...                -------
     ...                - `cert_template`: The prepared certificate template.
     ...                - `key`: The generated cryptographic key.
     ...
     ...                Examples:
+    ...                --------
     ...                | ${cert_template}    ${key}= |    Generate CertTemplate For Testing |
+    ...                | ${cert_template}    ${key}= |    Generate CCR CertTemplate For Testing |    ${key}    |
+    ...                | ${cert_template}    ${key}= |    Generate CCR CertTemplate For Testing |    ${key}   | ${cm} |
     ...
-    [Arguments]  ${key}=${None}
+    [Tags]    setup  CertTemplate  ccr
+    [Arguments]  ${key}=${None}   ${cm}=${None}
     IF  '${key}' == '${None}'
         ${key}=    Generate Default Key
     END
-    ${cm}=    Get Next Common Name
+    IF    $cm is None
+        ${cm}=    Get Next Common Name
+    END
     ${sig_alg}=   Prepare Signature AlgorithmIdentifier     ${key}   hash_alg=sha256
     # -1 day
     ${date}=   Get Current Date   UTC   increment=-86400
