@@ -702,7 +702,6 @@ def prepare_private_key_for_kga(
     """
     recip_type = _get_kga_recipient_type(pki_message=request)
     logging.debug("Recipient type used for the KGA response: %s", recip_type)
-    print("Recipient type used for the KGA response: %s", recip_type)
 
     cek = os.urandom(32)
     client_cert = request["extraCerts"][0]
@@ -1228,7 +1227,6 @@ def _verify_ra_verified(
         raise NotAuthorized("RA certificate is not self-signed, but the certificate chain could not be build.")
 
     logging.debug("RA certificate chain length: %d", len(cert_chain))
-    print("RA certificate chain length:", len(cert_chain))
 
     if verify_cert_chain:
         try:

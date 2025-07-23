@@ -1099,7 +1099,7 @@ class CertificateDB:
         :param cert_state: The new state of the certificate.
         :param updated_cert: The updated certificate (the new certificate).
         """
-        print("State before:", entry.cert_state)
+        logging.debug("State before:", entry.cert_state)
         if cert_state == CertStateEnum.UPDATED and entry.cert_state == CertStateEnum.UPDATED_BUT_NOT_CONFIRMED:
             if entry.update_cert_digest is None:
                 if updated_cert is None:
@@ -1153,8 +1153,8 @@ class CertificateDB:
             raise TypeError(f"The certificate must be of type `rfc9480.CMPCertificate`.Got: {type(cert).__name__}")
 
         cert_digest = compute_hash(self.hash_alg, encoder.encode(cert))
-        print("Cert digest:", cert_digest.hex())
-        print("Called with new state:", new_state)
+        logging.debug("Cert digest:", cert_digest.hex())
+        logging.debug("Called with new state:", new_state)
         for entry in self._certs:
             if cert_digest == entry.cert_digest:
                 if new_state == CertStateEnum.REVOKED:

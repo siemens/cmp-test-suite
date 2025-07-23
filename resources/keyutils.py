@@ -9,6 +9,7 @@ Designed to facilitate key management by offering simple methods to create new k
 store them and retrieve them when needed.
 """
 
+import logging
 import os
 import re
 import textwrap
@@ -458,7 +459,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
         pem_data2 = pem_data
 
     is_custom = any((b"-----BEGIN " + key + b" PRIVATE KEY-----") in pem_data2 for key in CUSTOM_KEY_TYPES)
-    print("is_custom:", is_custom)
+    logging.info("is_custom:", is_custom)
     if is_custom:
         pem_data = pem_data.replace(b"\r", b"\n")
         if password is not None:

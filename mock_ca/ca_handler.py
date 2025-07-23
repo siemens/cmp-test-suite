@@ -1054,7 +1054,7 @@ class CAHandler:
                 "The newly issued certificate can either be implicit confirmed ormust be confirmed, but not both."
             )
 
-        print("Issued certs is confined:", issued_cert is not None)
+        logging.debug("Issued certs is confined:", issued_cert is not None)
 
         self._after_request(
             request_msg=pki_message,
@@ -1457,7 +1457,7 @@ def get_cert(serial_number):
 def get_pubkey(serial_number):
     """Get the Sun-Hybrid public key for the specified serial number."""
     serial_number = int(serial_number)
-    print(state.sun_hybrid_state.sun_hybrid_pub_keys.keys())
+    logging.debug(state.sun_hybrid_state.sun_hybrid_pub_keys.keys())
     pub_key = state.sun_hybrid_state.sun_hybrid_pub_keys.get(serial_number)
 
     if pub_key is None:

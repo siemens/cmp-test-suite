@@ -217,7 +217,7 @@ def log_data_type(data: Any) -> None:
 
 
 if __name__ == "__main__":
-    print(load_and_decode_pem_file("../data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/csr.pem"))
+    print(load_and_decode_pem_file("../data/1.3.6.1.4.1.2.267.7.4.4-dilithium2/csr.pem"))  # noqa: T201 `print`
 
 
 def pem_to_der(pem_data: Union[str, bytes]) -> bytes:
