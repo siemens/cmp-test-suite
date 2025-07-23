@@ -56,8 +56,8 @@ def _get_tags(body_name: str) -> List[str]:
     """Get tags based on the body name."""
     if body_name in ["added-protection", "batch"]:
         return ["nested", body_name]
-    if body_name.startswith("added-protection-inner"):
-        inner_name = body_name.replace("added-protection-inner", "")
+    if body_name.startswith("added-protection-inner-"):
+        inner_name = body_name.replace("added-protection-inner-", "")
         return ["nested", "added-protection", inner_name]
     if body_name.startswith("batch_inner"):
         inner_name = body_name.replace("batch_inner_", "")
