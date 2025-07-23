@@ -1408,13 +1408,24 @@ Setup Composite Sig Cert
     VAR   ${COMPOSITE_SIG_KEY}      ${comp_key}  scope=Global  # robocop: off=VAR04
 
 Build KEMBasedMAC General Message
-    [Documentation]    Build a KEMBasedMAC General Message.
+    [Documentation]    Build a KEMBasedMAC General Message, to establish a KEM shared secret.
     ...
     ...                Arguments:
-    ...                - ${kem_key}: The KEM key to use for the message.
-    ...                - ${kem_cert}: The KEM certificate to use for the message.
-    ...                - ${random_value}: Optional random value to use for the message, for negative tests.
+    ...                ---------
+    ...                - `${kem_key}`: The KEM key to use for the message.
+    ...                - `${kem_cert}`: The KEM certificate to use for the message.
+    ...                - `${random_value}`: Optional random value to use for the message, for negative tests.
     ...                The `infoValue` field **MUST** be absent.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The built KEMBasedMAC General Message.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${genm}= |    Build KEMBasedMAC General Message    | ${kem_key} | ${kem_cert} |
+    ...                | ${genm}= |    Build KEMBasedMAC General Message    | ${kem_key} | ${kem_cert} | ${random_value} |
+    [Tags]    KEM   genm
     [Arguments]    ${kem_key}    ${kem_cert}   ${random_value}=${None}
     ${info_val}=    Prepare KEMCiphertextInfo   ${kem_key}    ${None}
     ${genm}=   Build CMP General Message   info_values=${info_val}
