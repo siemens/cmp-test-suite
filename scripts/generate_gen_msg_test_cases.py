@@ -4,66 +4,9 @@
 """Generate test cases for CMP PKIHeader validation."""
 
 import copy
-from dataclasses import dataclass, field
 from typing import List
 
-
-@dataclass
-class TestCase:
-    """Dataclass to represent a test case for CMP PKIHeader validation.
-
-    Attributes:
-        name: The name of the test case.
-        description: A description of the test case.
-        args: Arguments for the test case, each argument is a list of strings.
-        tags: Tags associated with the test case.
-        functions: Functions associated with the test case.
-
-    """
-
-    name: str
-    description: str
-    args: List[List[str]] = field(default_factory=list)
-    tags: List[str] = field(default_factory=list)
-    functions: List[str] = field(default_factory=list)
-
-    def create_test_case(self) -> str:
-        """Create a test case string."""
-        indent = " " * 4
-        docstring = f"{indent}{self.description}\n"
-
-        if self.description:
-            if "\n" not in self.description:
-                docstring = "\n" + " " * 5 + f"[Documentation]{indent}{self.description}"
-            else:
-                init_doc = "\n" + " " * 5 + f"[Documentation]{indent}" + self.description.split("\n")[0]
-                for line in self.description.split("\n")[1:]:
-                    init_doc += "\n" + " " * 5 + f"...{indent}" + line
-                docstring = init_doc
-
-        next_line = "\n" + " " * 5 + f"[Tags]{indent}"
-        tags_line = f"{indent}".join(self.tags) + "\n"
-        data = f"{self.name}{indent}{docstring}{next_line}{tags_line}"
-        for func, args in zip(self.functions, self.args):
-            data += " " * 5 + func + f"{indent}"
-            args = f"{indent}".join(args)
-            data += args
-
-        return data + "\n"
-
-
-def _get_tags(body_name: str) -> List[str]:
-    """Get tags based on the body name."""
-    if body_name in ["added-protection", "batch"]:
-        return ["nested", body_name]
-    if body_name.startswith("added-protection-inner-"):
-        inner_name = body_name.replace("added-protection-inner-", "")
-        return ["nested", "added-protection", inner_name]
-    if body_name.startswith("batch_inner"):
-        inner_name = body_name.replace("batch_inner_", "")
-        return ["nested", "batch", inner_name]
-    return [body_name]
-
+from scripts.gen_test_case_utils import TestCase, get_body_name_tags
 
 ALL_BODY_NAMES = [
     "ir",
@@ -114,7 +57,7 @@ def _generate_sender_nonce_test_cases() -> List[TestCase]:
         ("CA MUST Reject {} With Too Long SenderNonce", "Build With Too Long senderNonce"),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             test_case = TestCase(
                 name=case.format(body_name.upper()),
@@ -139,7 +82,7 @@ def _generate_recip_nonce_test_cases() -> List[TestCase]:
         ),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
             if body_name == "batch":
                 # This requires the CA to verify that this is an initial batch message.
                 tags += ["strict", "robot:skip-on-failure"]
@@ -171,7 +114,7 @@ def _generate_transaction_id_test_cases() -> List[TestCase]:
         ("CA MUST Reject {} With Too Long TransactionID", "Build With Too Long transactionID"),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             test_case = TestCase(
                 name=case.format(body_name.upper()),
@@ -198,7 +141,7 @@ def _generate_message_time_test_cases() -> List[TestCase]:
         ("CA MUST Reject {} With MessageTime In Past", "Build With MessageTime In Past"),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             test_case = TestCase(
                 name=case.format(body_name.upper()),
@@ -226,7 +169,7 @@ def _generate_mac_in_konsistent_test_cases() -> List[TestCase]:
         ),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             test_case = TestCase(
                 name=case.format(body_name.upper()),
@@ -255,7 +198,7 @@ def _generate_in_konsistent_test_cases() -> List[TestCase]:
         ("CA MUST Reject {} With Sig Algorithm without Protection", "Build With Sig Alg Without Protection"),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             tag = ["protection", "sig"] if "Sig" in func else ["protection"]
 
@@ -287,7 +230,7 @@ def _generate_sig_protected_test_cases() -> List[TestCase]:
         ("CA MUST Reject {} Without Cert Chain", "Build Without Cert Chain", ["extraCerts"]),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             test_case = TestCase(
                 name=case.format(body_name.upper()),
@@ -312,7 +255,7 @@ def _generate_neg_validate_header_test_cases() -> List[TestCase]:
         ),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             test_case = TestCase(
                 name=case.format(body_name.upper()),
@@ -337,7 +280,7 @@ def _generate_pos_validate_header_test_cases() -> List[TestCase]:
         ),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             test_case = TestCase(
                 name=case.format(body_name.upper()),
@@ -363,7 +306,7 @@ def _generate_sig_sender_kid_test_cases() -> List[TestCase]:
         ("CA MUST Reject {} With Invalid SKI SenderKID", "Build With Bad Sig SenderKID"),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             test_case = TestCase(
                 name=case.format(body_name.upper()),
@@ -392,7 +335,7 @@ def _generate_sig_sender_test_cases() -> List[TestCase]:
         ("CA MUST Reject {} With Issuer As Sender", "Build With Bad Issuer As Sender"),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             test_case = TestCase(
                 name=case.format(body_name.upper()),
@@ -422,7 +365,7 @@ def _generate_mac_sender_test_cases() -> List[TestCase]:
         ("CA MUST Reject {} With Bad MAC SenderKID", "Build With Bad MAC SenderKID"),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
 
             tag = "sender" if "SenderKID" not in func else "senderKID"
 
@@ -463,7 +406,7 @@ def _generate_mac_wrong_integrity_test_cases() -> List[TestCase]:
         ),
     ]:
         for body_name in body_names:
-            tags = _get_tags(body_name)
+            tags = get_body_name_tags(body_name)
             test_case = TestCase(
                 name=case.format(body_name.upper()),
                 args=[[body_name]],
