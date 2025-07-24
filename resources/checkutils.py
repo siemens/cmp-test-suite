@@ -23,7 +23,7 @@ from pyasn1_alt_modules import rfc5280, rfc6664, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2437 import rsaEncryption
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.tmp_oids import COMPOSITE_SIG06_OID_TO_NAME
+from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -919,13 +919,13 @@ def _validate_composite_sig_conform_to_spki(
     `False` otherwise.
     """
     cert_alg_id = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]
-    name = COMPOSITE_SIG06_OID_TO_NAME[prot_alg_id["algorithm"]]
+    name = COMPOSITE_SIG07_OID_TO_NAME[prot_alg_id["algorithm"]]
 
-    if cert_alg_id["algorithm"] not in COMPOSITE_SIG06_OID_TO_NAME:
+    if cert_alg_id["algorithm"] not in COMPOSITE_SIG07_OID_TO_NAME:
         return False
 
     if "rsa" in name:
-        name_spki = COMPOSITE_SIG06_OID_TO_NAME[cert_alg_id["algorithm"]]
+        name_spki = COMPOSITE_SIG07_OID_TO_NAME[cert_alg_id["algorithm"]]
         if name_spki is None:
             return False
         if "pss" in name_spki and "pss" in name:
@@ -1018,7 +1018,7 @@ def check_protection_alg_conform_to_spki(
     if prot_alg_id["algorithm"] in RSASSA_PSS_OID_2_NAME:
         return cert_alg_id["algorithm"] == prot_alg_id["algorithm"]
 
-    if prot_alg_id["algorithm"] in COMPOSITE_SIG06_OID_TO_NAME:
+    if prot_alg_id["algorithm"] in COMPOSITE_SIG07_OID_TO_NAME:
         return _validate_composite_sig_conform_to_spki(prot_alg_id, cert)
 
     if prot_alg_id["algorithm"] in PQ_SIG_OID_2_NAME:

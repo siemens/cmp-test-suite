@@ -37,7 +37,7 @@ from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateK
 from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey
 from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import COMPOSITE_SIG06_OID_TO_NAME, COMPOSITE_SIG06_PREHASH_OID_2_HASH
+from pq_logic.tmp_oids import COMPOSITE_SIG06_PREHASH_OID_2_HASH, COMPOSITE_SIG07_OID_TO_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -1154,7 +1154,7 @@ def get_digest_hash_alg_from_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> str:
     if oid == rfc9481.id_Ed448:
         return "shake256"
 
-    if oid in COMPOSITE_SIG06_OID_TO_NAME:
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
         return COMPOSITE_SIG06_PREHASH_OID_2_HASH[oid]
 
     if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
@@ -1290,7 +1290,7 @@ def _check_is_hybrid_or_pq_sig_alg_cert_chain(certs: List[rfc9480.CMPCertificate
     """
     for cert in certs:
         sig_alg = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
-        if sig_alg in COMPOSITE_SIG06_OID_TO_NAME or sig_alg in PQ_SIG_OID_2_NAME:
+        if sig_alg in COMPOSITE_SIG07_OID_TO_NAME or sig_alg in PQ_SIG_OID_2_NAME:
             return True
     return False
 
@@ -1415,7 +1415,7 @@ def _is_signature_alg_id(alg_id: rfc5652.SignatureAlgorithmIdentifier) -> None:
     oid = alg_id["algorithm"]
     if oid in MSG_SIG_ALG:
         logging.info("Thea Signature algorithm is a MSG_SIG_ALG algorithm. Sig name: %s", MSG_SIG_ALG[oid])
-    elif oid in COMPOSITE_SIG06_OID_TO_NAME:
+    elif oid in COMPOSITE_SIG07_OID_TO_NAME:
         logging.info(
             "The Signature algorithm is a Composite-Sig06 algorithm. Sig name: %s",
         )

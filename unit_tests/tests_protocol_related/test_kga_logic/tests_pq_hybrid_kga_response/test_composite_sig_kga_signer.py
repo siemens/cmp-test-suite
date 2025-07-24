@@ -4,7 +4,7 @@ from typing import List, Tuple
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from pyasn1_alt_modules import rfc9480
 
-from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_kga_logic import validate_not_local_key_gen
 from resources.ca_ra_utils import build_kga_cmp_response
@@ -27,7 +27,7 @@ class TestCompositeSigKGASigner(unittest.TestCase):
         cls.ca_cert, cls.ca_key = load_ca_cert_and_key()
         cls.pre_shared_secret = "SiemensIT"
 
-    def _generate_kga_extensions(self, key: CompositeSig06PrivateKey) -> rfc9480.Extensions:
+    def _generate_kga_extensions(self, key: CompositeSig07PrivateKey) -> rfc9480.Extensions:
         """Generate KGA extensions for the given key."""
         extensions = prepare_extensions(
             key_usage="keyAgreement",
@@ -41,7 +41,7 @@ class TestCompositeSigKGASigner(unittest.TestCase):
         extensions.append(extn2)
         return extensions
 
-    def _generate_kga_cert(self, key: CompositeSig06PrivateKey) -> rfc9480.CMPCertificate:
+    def _generate_kga_cert(self, key: CompositeSig07PrivateKey) -> rfc9480.CMPCertificate:
         """Generate a KGA certificate for the given key."""
         extensions = self._generate_kga_extensions(key)
         cert, _ = build_certificate(
@@ -57,7 +57,7 @@ class TestCompositeSigKGASigner(unittest.TestCase):
     def _build_kga_cmp_response(
         self,
         ir: PKIMessageTMP,
-        kga_key: CompositeSig06PrivateKey,
+        kga_key: CompositeSig07PrivateKey,
     ) -> Tuple[PKIMessageTMP, List[rfc9480.CMPCertificate]]:
         """Build a CMP response for KGA certificate generation."""
         kga_cert = self._generate_kga_cert(kga_key)

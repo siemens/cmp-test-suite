@@ -4,11 +4,11 @@
 
 import unittest
 
-from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from resources.keyutils import load_private_key_from_file, generate_key
 
 
-class TestCompositeSig04(unittest.TestCase):
+class TestCompositeSig07(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -19,24 +19,24 @@ class TestCompositeSig04(unittest.TestCase):
         cls.mldsa87_key = load_private_key_from_file("data/keys/private-key-ml-dsa-87-seed.pem")
         cls.data = b"Hello, world!"
 
-    def test_composite_sig06_rsa(self):
+    def test_composite_sig07_rsa(self):
         """
         GIVEN a Composite-Sig RSA key.
         WHEN signing data with the key.
         THEN verify the signature with the public key.
         """
-        comp_key = CompositeSig06PrivateKey(self.mldsa_key, self.rsa)
+        comp_key = CompositeSig07PrivateKey(self.mldsa_key, self.rsa)
         sig = comp_key.sign(self.data, use_pss=False, )
         public_key = comp_key.public_key()
         public_key.verify(signature=sig, data=self.data, use_pss=False)
 
-    def test_composite_sig06_rsa_pss(self):
+    def test_composite_sig07_rsa_pss(self):
         """
         GIVEN a Composite-Sig RSA key.
         WHEN signing data with the key and using PSS.
         THEN verify the signature with the public key.
         """
-        comp_key = CompositeSig06PrivateKey(self.mldsa_key, self.rsa)
+        comp_key = CompositeSig07PrivateKey(self.mldsa_key, self.rsa)
         self.assertEqual(comp_key.get_oid(), comp_key.public_key().get_oid())
         self.assertEqual(comp_key.get_oid(use_pss=True), comp_key.public_key().get_oid(use_pss=True))
         self.assertEqual(comp_key.get_oid(use_pss=True, ),
@@ -45,13 +45,13 @@ class TestCompositeSig04(unittest.TestCase):
         public_key = comp_key.public_key()
         public_key.verify(signature=sig, data=self.data, use_pss=True)
 
-    def test_composite_sig06_ecdsa(self):
+    def test_composite_sig07_ecdsa(self):
         """
         GIVEN a Composite-Sig ECDSA key.
         WHEN signing data with the key.
         THEN verify the signature with the public key.
         """
-        comp_key = CompositeSig06PrivateKey(self.mldsa_key, self.ecc_key)
+        comp_key = CompositeSig07PrivateKey(self.mldsa_key, self.ecc_key)
         self.assertEqual(comp_key.get_oid(), comp_key.public_key().get_oid())
         self.assertEqual(comp_key.get_oid(), comp_key.public_key().get_oid())
         sig = comp_key.sign(self.data, )
@@ -59,13 +59,13 @@ class TestCompositeSig04(unittest.TestCase):
         public_key.verify(signature=sig, data=self.data, )
 
 
-    def test_composite_sig06_ed448(self):
+    def test_composite_sig07_ed448(self):
         """
         GIVEN a Composite-Sig ED448 key.
         WHEN signing data with the key.
         THEN verify the signature with the public key.
         """
-        comp_key = CompositeSig06PrivateKey(self.mldsa87_key, self.ed_key)
+        comp_key = CompositeSig07PrivateKey(self.mldsa87_key, self.ed_key)
         sig = comp_key.sign(self.data, )
         public_key = comp_key.public_key()
         public_key.verify(signature=sig, data=self.data)

@@ -37,8 +37,8 @@ class TestVariousKeySerialization(unittest.TestCase):
         ]
 
         self.hybrid_alg_names = [
-            "composite-sig-06",
-            "composite-kem07",
+            "composite-sig",
+            "composite-kem",
             "chempat",
         ]
 

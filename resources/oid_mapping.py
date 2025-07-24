@@ -209,9 +209,9 @@ def get_alg_oid_from_key_hash(
 
         return PQ_NAME_2_OID[name]
 
-    from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
+    from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 
-    if isinstance(key, CompositeSig06PrivateKey):
+    if isinstance(key, CompositeSig07PrivateKey):
         alg_oid = key.get_oid(use_pss=use_rsa_pss)
 
     if alg_oid is not None:

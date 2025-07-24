@@ -4,7 +4,7 @@
 
 import unittest
 
-from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from resources.keyutils import generate_key
 
 EXPECTED_PHM_HEX = (
@@ -44,7 +44,7 @@ class TestMPrimeConstruction(unittest.TestCase):
         trad_key = generate_key("ecdsa", curve="secp256r1")
         pq_key = generate_key("ml-dsa-65")
 
-        composite_key = CompositeSig06PrivateKey(
+        composite_key = CompositeSig07PrivateKey(
             trad_key=trad_key,
             pq_key=pq_key,
         )
@@ -76,7 +76,7 @@ class TestMPrimeConstruction(unittest.TestCase):
         )
         trad_key = generate_key("ecdsa", curve="secp256r1")
         pq_key = generate_key("ml-dsa-65")
-        composite_key = CompositeSig06PrivateKey(
+        composite_key = CompositeSig07PrivateKey(
             trad_key=trad_key,
             pq_key=pq_key,
         )

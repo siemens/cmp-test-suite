@@ -9,7 +9,7 @@ from pyasn1.type import tag
 from pyasn1_alt_modules import rfc9480
 
 from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
-from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from resources.ca_kga_logic import validate_kemri_enveloped_data
 from resources.certbuildutils import build_certificate
 from resources.certutils import parse_certificate
@@ -23,7 +23,7 @@ class TestBuildSunHybridCertFromRequest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ca_key = generate_key("composite-sig") # type: ignore
-        cls.ca_key: CompositeSig06PrivateKey
+        cls.ca_key: CompositeSig07PrivateKey
         cls.ca_cert, _ = build_certificate(cls.ca_key, "CN=Test CA")
 
     def test_build_with_composite_sig(self):

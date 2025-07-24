@@ -41,13 +41,13 @@ from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
-from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
-from pq_logic.tmp_oids import COMPOSITE_SIG06_OID_TO_NAME, id_rsa_kem_spki
+from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME, id_rsa_kem_spki
 from resources import oid_mapping, prepare_alg_ids, typingutils, utils
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
@@ -690,8 +690,8 @@ def check_consistency_sig_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, ke
     """
     oid = alg_id["algorithm"]
 
-    if oid in COMPOSITE_SIG06_OID_TO_NAME:
-        name = COMPOSITE_SIG06_OID_TO_NAME[oid]
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
+        name = COMPOSITE_SIG07_OID_TO_NAME[oid]
 
         try:
             use_pss = name.endswith("-pss")
@@ -1086,7 +1086,7 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
         spki = rfc5280.SubjectPublicKeyInfo()
         pub_key = pub_key if not invalid_key_size else pub_key + b"\x00"
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(pub_key)
-        if isinstance(key, CompositeSig06PrivateKey):
+        if isinstance(key, CompositeSig07PrivateKey):
             oid = key.get_oid(use_pss=use_rsa_pss)
         else:
             oid = key.get_oid()

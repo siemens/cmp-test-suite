@@ -11,7 +11,7 @@ sys.path.append(".")
 from pq_logic.tmp_oids import (
     CHEMPAT_NAME_2_OID,
     COMPOSITE_KEM07_NAME_2_OID,
-    COMPOSITE_SIG06_NAME_TO_OID,
+    COMPOSITE_SIG07_NAME_TO_OID,
 )
 from resources.oidutils import PQ_KEM_NAME_2_OID, PQ_SIG_NAME_2_OID, PQ_SIG_PRE_HASH_NAME_2_OID
 
@@ -281,7 +281,7 @@ def _write_comp_sig_to_txt_file():
     _spacer = " " * 4  # 4 spaces between columns as per your requirement
     extra = f"ALGORITHM{_spacer}USE_RSA_PSS{_spacer}badPOP\n"
     f.write(f"*** Test Cases ***{_spacer}{extra}")
-    test_cases = generate_composite_sig_tests(COMPOSITE_SIG06_NAME_TO_OID, "composite-sig-", "COMPOSITE-SIG-")
+    test_cases = generate_composite_sig_tests(COMPOSITE_SIG07_NAME_TO_OID, "composite-sig-", "COMPOSITE-SIG-")
     for test in test_cases:
         tmp = _write_to_file(test)
         f.write(tmp)

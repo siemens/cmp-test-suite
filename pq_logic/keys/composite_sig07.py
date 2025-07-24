@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Composite Signature Implementation for Draft v04.
+"""Composite Signature Implementation for Draft v07.
 
-available at: https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-04.html
+available at: https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-07.html
 """
 
 import os
@@ -27,9 +27,9 @@ from pq_logic.keys.abstract_wrapper_keys import (
 from pq_logic.keys.serialize_utils import prepare_rsa_private_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
 from pq_logic.tmp_oids import (
-    COMPOSITE_SIG06_INNER_HASH_OID_2_NAME,
-    COMPOSITE_SIG06_NAME_TO_OID,
     COMPOSITE_SIG06_PREHASH_OID_2_HASH,
+    COMPOSITE_SIG07_INNER_HASH_OID_2_NAME,
+    COMPOSITE_SIG07_NAME_TO_OID,
 )
 from resources.exceptions import InvalidKeyCombination
 from resources.oid_mapping import hash_name_to_instance
@@ -51,10 +51,10 @@ def _compute_prehash(oid: univ.ObjectIdentifier, data: bytes) -> bytes:
     return _compute_hash(alg_name=hash_alg, data=data)
 
 
-class CompositeSig06PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
-    """Composite Signature Implementation for Draft v06.
+class CompositeSig07PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
+    """Composite Signature Implementation for Draft v07.
 
-    https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-06.html
+    https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-07.html
     """
 
     _pq_key: MLDSAPublicKey
@@ -64,7 +64,7 @@ class CompositeSig06PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
         ed25519.Ed25519PublicKey,
         ed448.Ed448PublicKey,
     ]
-    _name = "composite-sig-06"
+    _name = "composite-sig-07"
 
     def __init__(
         self,
@@ -106,9 +106,9 @@ class CompositeSig06PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
         """Get the OID for the composite signature."""
         # Defaults to use PSS padding because ML-DSA-87 only supports the PSS padding.
         _name = self._get_name(use_pss=use_pss)
-        if COMPOSITE_SIG06_NAME_TO_OID.get(_name) is None:
-            raise InvalidKeyCombination(f"Unsupported composite signature v6 combination: {_name}")
-        return COMPOSITE_SIG06_NAME_TO_OID[_name]
+        if COMPOSITE_SIG07_NAME_TO_OID.get(_name) is None:
+            raise InvalidKeyCombination(f"Unsupported composite signature v7 combination: {_name}")
+        return COMPOSITE_SIG07_NAME_TO_OID[_name]
 
     @property
     def pq_key(self) -> MLDSAPublicKey:
@@ -155,9 +155,9 @@ class CompositeSig06PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
     def _get_rsa_inner_hash(self, use_pss: bool) -> hashes.HashAlgorithm:
         """Get the inner hash algorithm for RSA signatures."""
         oid = self.get_oid(use_pss=use_pss)
-        if oid not in COMPOSITE_SIG06_INNER_HASH_OID_2_NAME:
+        if oid not in COMPOSITE_SIG07_INNER_HASH_OID_2_NAME:
             raise InvalidKeyCombination(f"Unsupported OID for composite signature: {oid}")
-        hash_alg_name = COMPOSITE_SIG06_INNER_HASH_OID_2_NAME[oid]
+        hash_alg_name = COMPOSITE_SIG07_INNER_HASH_OID_2_NAME[oid]
         if hash_alg_name is None:
             raise InvalidKeyCombination("No inner hash algorithm defined for this OID.")
         return hash_name_to_instance(hash_alg_name)
@@ -165,7 +165,7 @@ class CompositeSig06PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
     def _verify_trad(self, data: bytes, signature: bytes, use_pss: bool = False) -> None:
         """Verify the traditional signature."""
         oid = self.get_oid(use_pss=use_pss)
-        hash_alg = COMPOSITE_SIG06_INNER_HASH_OID_2_NAME[oid]
+        hash_alg = COMPOSITE_SIG07_INNER_HASH_OID_2_NAME[oid]
         if hash_alg is not None:
             hash_alg = hash_name_to_instance(hash_alg)
 
@@ -231,10 +231,10 @@ class CompositeSig06PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
         return alg_id
 
 
-class CompositeSig06PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
-    """Composite Signature Implementation for Draft v04.
+class CompositeSig07PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
+    """Composite Signature Implementation for Draft v07.
 
-    https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-04.html
+    https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-07.html
     """
 
     _pq_key: MLDSAPrivateKey
@@ -244,7 +244,7 @@ class CompositeSig06PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey)
         ed25519.Ed25519PrivateKey,
         ed448.Ed448PrivateKey,
     ]
-    _name = "composite-sig-06"
+    _name = "composite-sig-07"
 
     def _export_trad_key(self) -> bytes:
         """Export the traditional private key."""
@@ -258,9 +258,9 @@ class CompositeSig06PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey)
             )
         return self._trad_key.private_bytes_raw()
 
-    def public_key(self) -> CompositeSig06PublicKey:
+    def public_key(self) -> CompositeSig07PublicKey:
         """Generate the public key corresponding to this composite private key."""
-        return CompositeSig06PublicKey(self._pq_key.public_key(), self._trad_key.public_key())
+        return CompositeSig07PublicKey(self._pq_key.public_key(), self._trad_key.public_key())
 
     def _get_trad_key_name(self) -> str:
         """Retrieve the traditional key name."""
@@ -290,9 +290,9 @@ class CompositeSig06PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey)
     def get_oid(self, use_pss: bool = True) -> univ.ObjectIdentifier:
         """Get the OID for the composite signature."""
         _name = self._get_name(use_pss=use_pss)
-        if COMPOSITE_SIG06_NAME_TO_OID.get(_name) is None:
+        if COMPOSITE_SIG07_NAME_TO_OID.get(_name) is None:
             raise InvalidKeyCombination(f"Unsupported composite signature combination: {_name}")
-        return COMPOSITE_SIG06_NAME_TO_OID[_name]
+        return COMPOSITE_SIG07_NAME_TO_OID[_name]
 
     def _prepare_input(self, data: bytes, ctx: bytes, use_pss: bool, rand: bytes) -> bytes:
         """Prepare the input for the composite signature.
@@ -327,7 +327,7 @@ class CompositeSig06PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey)
         :return: The traditional signature.
         """
         oid = self.get_oid(use_pss=use_pss)
-        hash_alg = COMPOSITE_SIG06_INNER_HASH_OID_2_NAME[oid]
+        hash_alg = COMPOSITE_SIG07_INNER_HASH_OID_2_NAME[oid]
         if hash_alg is not None:
             hash_alg = hash_name_to_instance(hash_alg)
 

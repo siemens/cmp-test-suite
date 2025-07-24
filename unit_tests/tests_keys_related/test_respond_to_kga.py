@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from pyasn1_alt_modules import rfc9480
 
 from pq_logic.keys.composite_kem07 import CompositeKEM07PublicKey
-from pq_logic.keys.composite_sig06 import CompositeSig06PublicKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PublicKey
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import prepare_cert_and_private_key_for_kga
 from resources.certbuildutils import build_certificate, prepare_cert_template
@@ -74,7 +74,7 @@ class TestRespondToKGA(unittest.TestCase):
             kga_key=self.ca_key,
         )
         pub_key = load_public_key_from_cert(cert)
-        self.assertIsInstance(pub_key, CompositeSig06PublicKey)
+        self.assertIsInstance(pub_key, CompositeSig07PublicKey)
 
 
     def test_prepare_kga_response_with_composite_kem_key(self):

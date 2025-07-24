@@ -20,7 +20,7 @@ from pq_logic.keys.composite_kem07 import (
     CompositeDHKEMRFC9180PrivateKey,
     CompositeKEM07PrivateKey,
 )
-from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.serialize_utils import prepare_ec_private_key
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, RSADecapKey
@@ -210,8 +210,8 @@ def _parse_private_keys(hybrid_type: str, pq_key, trad_key) -> HybridPrivateKey:
         "kem-07": CompositeKEM07PrivateKey,
         "kem07": CompositeKEM07PrivateKey,
         "dhkem": CompositeDHKEMRFC9180PrivateKey,  # always the latest version
-        "sig": CompositeSig06PrivateKey,  # always the latest version
-        "sig-06": CompositeSig06PrivateKey,
+        "sig": CompositeSig07PrivateKey,  # always the latest version
+        "sig-07": CompositeSig07PrivateKey,
     }
     key_class = key_class_mappings[hybrid_type]
     return key_class(pq_key, trad_key)
@@ -221,7 +221,7 @@ class HybridKeyFactory:
     """Factory for creating hybrid keys based on traditional and post-quantum (PQ) key types."""
 
     hybrid_mappings = {
-        "sig-06": ALL_COMPOSITE_SIG_COMBINATIONS,
+        "sig-07": ALL_COMPOSITE_SIG_COMBINATIONS,
         "sig": ALL_COMPOSITE_SIG_COMBINATIONS,
         "kem-05": ALL_COMPOSITE_KEM05_COMBINATIONS,
         "kem": ALL_COMPOSITE_KEM07_COMBINATIONS,
@@ -234,7 +234,7 @@ class HybridKeyFactory:
 
     default_comb = {
         "sig": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
-        "sig-06": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
+        "sig-07": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "kem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "kem07": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "kem-07": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
@@ -303,8 +303,7 @@ class HybridKeyFactory:
                 "chempat": ["ecdh", "x25519", "x448"],
                 "composite-kem": ["rsa", "ecdh", "x25519", "x448"],
                 "composite-sig": ["rsa", "ecdsa", "ed25519", "ed448"],
-                "composite-sig-04": ["rsa", "ecdsa", "ed25519", "ed448"],
-                "composite-sig-03": ["rsa", "ecdsa", "ed25519", "ed448"],
+                "composite-sig-07": ["rsa", "ecdsa", "ed25519", "ed448"],
                 "xwing": ["x25519"],
             }.get(algo, [])
 
@@ -346,7 +345,7 @@ class HybridKeyFactory:
         return [
             "xwing",
             "composite-sig",
-            "composite-sig-06",
+            "composite-sig-07",
             "composite-dhkem",
             "composite-kem",
             "composite-kem-07",
@@ -570,7 +569,7 @@ class HybridKeyFactory:
             key_type=key_type,
         )
 
-        if isinstance(private_key, (CompositeKEM07PrivateKey, CompositeSig06PrivateKey)):
+        if isinstance(private_key, (CompositeKEM07PrivateKey, CompositeSig07PrivateKey)):
             if key_type == KeySaveType.SEED and hasattr(private_key.pq_key, "private_numbers"):
                 pq_key_bytes = private_key.pq_key.private_numbers()
             elif key_type == KeySaveType.SEED_AND_RAW and hasattr(private_key.pq_key, "private_numbers"):
@@ -622,7 +621,7 @@ class HybridKeyFactory:
         one_asym_key = rfc5958.OneAsymmetricKey()
         one_asym_key["version"] = version
 
-        if isinstance(private_key, CompositeSig06PrivateKey):
+        if isinstance(private_key, CompositeSig07PrivateKey):
             oid = private_key.get_oid(use_pss=True)
         else:
             oid = private_key.get_oid()

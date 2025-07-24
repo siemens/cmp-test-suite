@@ -5,10 +5,10 @@
 import unittest
 from pq_logic.tmp_oids import \
     CHEMPAT_NAME_2_OID, CHEMPAT_OID_2_NAME, \
-    COMPOSITE_KEM07_NAME_2_OID, COMPOSITE_KEM07_OID_2_NAME, COMPOSITE_SIG06_OID_TO_NAME
+    COMPOSITE_KEM07_NAME_2_OID, COMPOSITE_KEM07_OID_2_NAME, COMPOSITE_SIG07_OID_TO_NAME
 from resources.keyutils import generate_key, get_key_name
 from resources.oid_mapping import may_return_oid_to_name
-from resources.oidutils import PQ_SIG_PRE_HASH_NAME_2_OID, COMPOSITE_SIG06_NAME_TO_OID
+from resources.oidutils import PQ_SIG_PRE_HASH_NAME_2_OID, COMPOSITE_SIG07_NAME_TO_OID
 
 
 class TestGenerateKeyByName(unittest.TestCase):
@@ -25,18 +25,18 @@ class TestGenerateKeyByName(unittest.TestCase):
             self.assertEqual(name, key.name + "-" + hash_alg)
 
 
-    def test_composite_sig06(self):
+    def test_composite_sig07(self):
         """
-        GIVEN all known composite signature version 6 algorithms.
+        GIVEN all known composite signature version 7 algorithms.
         WHEN generating keys by name,
         THEN is the correct key generated.
         """
-        for name in COMPOSITE_SIG06_NAME_TO_OID:
+        for name in COMPOSITE_SIG07_NAME_TO_OID:
             use_pss = "pss" in name
             key = generate_key(name, by_name=True)
             _oid = key.public_key().get_oid(use_pss=use_pss) # type: ignore
             err_msg = f"Expected: {name} Got: {may_return_oid_to_name(_oid)}"
-            self.assertEqual(COMPOSITE_SIG06_OID_TO_NAME.get(_oid), name, err_msg)
+            self.assertEqual(COMPOSITE_SIG07_OID_TO_NAME.get(_oid), name, err_msg)
 
     def test_composite_kem07(self):
         """

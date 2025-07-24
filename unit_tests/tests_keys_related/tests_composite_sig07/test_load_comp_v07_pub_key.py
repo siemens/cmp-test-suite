@@ -8,28 +8,28 @@ from cryptography.hazmat.primitives.serialization import PublicFormat, Encoding
 from pyasn1.codec.der import decoder
 from pyasn1_alt_modules import rfc5280
 
-from pq_logic.keys.composite_sig06 import CompositeSig06PrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from resources import keyutils
 
 
-class TestLoadCompSig06(unittest.TestCase):
+class TestLoadCompSig07(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         rsa_key = keyutils.generate_key("rsa", length=2048)
         mldsa_key = keyutils.generate_key("ml-dsa-44")
-        cls.comp_rsa_key = CompositeSig06PrivateKey(mldsa_key, rsa_key)
+        cls.comp_rsa_key = CompositeSig07PrivateKey(mldsa_key, rsa_key)
         ed_key = keyutils.generate_key("ed448")
         mldsa_key = keyutils.generate_key("ml-dsa-87")
-        cls.comp_ed_key = CompositeSig06PrivateKey(mldsa_key, ed_key)
+        cls.comp_ed_key = CompositeSig07PrivateKey(mldsa_key, ed_key)
 
         ecc_key = keyutils.generate_key("ecdsa")
         mldsa_key = keyutils.generate_key("ml-dsa-65")
-        cls.comp_ecc_key = CompositeSig06PrivateKey(mldsa_key, ecc_key)
+        cls.comp_ecc_key = CompositeSig07PrivateKey(mldsa_key, ecc_key)
 
     def test_export_and_load_private_key_rsa(self):
         """
-        GIVEN a composite signature RSA private key in version 4.
+        GIVEN a composite signature RSA private key in version 7.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -46,7 +46,7 @@ class TestLoadCompSig06(unittest.TestCase):
 
     def test_export_and_load_private_key_ed(self):
         """
-        GIVEN a composite signature Ed private key in version 4.
+        GIVEN a composite signature Ed private key in version 7.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -62,7 +62,7 @@ class TestLoadCompSig06(unittest.TestCase):
 
     def test_export_and_load_private_key_ecc(self):
         """
-        GIVEN a composite signature ECC private key in version 4.
+        GIVEN a composite signature ECC private key in version 7.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
