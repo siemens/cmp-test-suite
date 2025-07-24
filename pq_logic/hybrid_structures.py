@@ -5,42 +5,9 @@
 """ASN.1 structures for hybrid cryptographic schemes/mechanisms."""
 
 from pyasn1.type import char, constraint, namedtype, tag, univ
-from pyasn1_alt_modules import rfc5280, rfc5958
+from pyasn1_alt_modules import rfc5280
 from pyasn1_alt_modules.rfc2315 import IssuerAndSerialNumber
 from pyasn1_alt_modules.rfc7906 import BinaryTime
-
-
-# Define the CompositeKEMPrivateKey as a SequenceOf OCTET STRING
-class CompositeKEMPrivateKeyAsn1(univ.SequenceOf):
-    """Define the CompositeKEMPrivateKey as a SequenceOf OCTET STRING of size 2."""
-
-    componentType = univ.OctetString()
-    sizeSpec = univ.SequenceOf.sizeSpec + constraint.ValueSizeConstraint(2, 2)
-
-
-# https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-03.html#name-certificate-conventions
-#  Section 5.1. CompositeSignaturePublicKey
-
-
-class CompositeSignaturePrivateKeyAsn1(univ.SequenceOf):
-    """Define CompositeSignaturePrivateKeyAsn1 as a SequenceOf OneAsymmetricKey of size 2."""
-
-    componentType = rfc5958.OneAsymmetricKey()
-    subtypeSpec = constraint.ValueSizeConstraint(2, 2)
-
-
-class CompositeSignaturePublicKeyAsn1(univ.SequenceOf):
-    """Define CompositeSignaturePublicKeyAsn1 as a SequenceOf BIT STRING of size 2."""
-
-    componentType = univ.BitString()
-    subtypeSpec = constraint.ValueSizeConstraint(2, 2)
-
-
-class CompositeSignatureValue(univ.SequenceOf):
-    """Define CompositeSignatureValue as a SequenceOf BIT STRING of size 2."""
-
-    componentType = univ.BitString()
-    sizeSpec = univ.SequenceOf.sizeSpec + constraint.ValueSizeConstraint(2, 2)
 
 
 # Used for the Sun-Hybrid-Signature method.

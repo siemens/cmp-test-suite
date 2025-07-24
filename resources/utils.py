@@ -21,12 +21,10 @@ from pyasn1.type import base, char, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.hybrid_structures import CompositeSignatureValue
 from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey
 from resources import asn1utils, certutils, cmputils, keyutils
 from resources.asn1_structures import PKIMessageTMP
 from resources.convertutils import str_to_bytes
-from resources.exceptions import BadAsn1Data
 from resources.oidutils import (
     PYASN1_CM_OID_2_NAME,
 )
@@ -777,35 +775,6 @@ def manipulate_bytes_based_on_key(  # noqa D417 Missing argument description in 
         return manipulate_first_byte(data)
 
     return manipulate_first_byte(data)
-
-
-@not_keyword
-def manipulate_composite_sig03(
-    sig: bytes,
-) -> bytes:
-    """Manipulate the first signature of a CompositeSignature.
-
-    :param sig: The DER-encoded `CompositeSignatureValue`.
-    :return: The modified `CompositeSignatureValue` as DER-encoded bytes.
-    """
-    try:
-        obj, _ = decoder.decode(sig, CompositeSignatureValue())
-    except pyasn1.error.PyAsn1Error as e:  # type: ignore
-        raise BadAsn1Data(f"Failed to manipulate the data: {e}")  # pylint: disable=raise-missing-from
-
-    sig1 = obj[0].asOctets()
-    sig2 = obj[1].asOctets()
-
-    sig1 = manipulate_first_byte(sig1)
-
-    sig1 = univ.BitString.fromOctetString(sig1)
-    sig2 = univ.BitString.fromOctetString(sig2)
-
-    out = CompositeSignatureValue()
-
-    out.append(sig1)
-    out.append(sig2)
-    return encoder.encode(out)
 
 
 @not_keyword

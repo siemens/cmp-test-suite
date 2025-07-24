@@ -164,7 +164,7 @@ def get_valid_hybrid_combination(
     """Return the first valid matching combination based on provided criteria.
 
     :param combinations: A list of dictionaries representing valid combinations.
-    :param algorithm:    The hybrid algorithm name (e.g., 'composite-sig-04', 'composite-kem', etc.).
+    :param algorithm:    The hybrid algorithm name (e.g., 'composite-sig-07', 'composite-kem', etc.).
     :param pq_name:      The post-quantum algorithm name.
     :param trad_name:    The traditional algorithm name.
     :param length:       The length of the traditional key. If `None`, the first length is chosen.

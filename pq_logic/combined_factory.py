@@ -129,8 +129,8 @@ class CombinedKeyFactory:
         )
 
         pub_key = key.public_key()
-        # RSA is only allowed as PSS for composite-sig-04-ml-dsa-87-rsa4096 and
-        # composite-sig-04-ml-dsa-87-rsa3072.
+        # RSA is only allowed as PSS for composite-sig-07-ml-dsa-87-rsa4096 and
+        # composite-sig-07-ml-dsa-87-rsa3072.
         if isinstance(pub_key, CompositeSig07PrivateKey) and trad_name.startswith("rsa"):
             _ = pub_key.get_oid(use_pss=True)
             return key

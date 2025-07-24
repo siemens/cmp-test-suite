@@ -78,8 +78,8 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
     """Generalized test case generator for composite signatures.
 
     :param name_list: List of algorithm names (strings).
-    :param replace_name: The string to replace (e.g., 'composite-sig-04-').
-    :param name_to_replace: The string to replace with (e.g., 'Composite Sig04 ').
+    :param replace_name: The string to replace (e.g., 'composite-sig-07-').
+    :param name_to_replace: The string to replace with (e.g., 'Composite Sig07 ').
     :return: List of test case dictionaries.
     """
     test_cases = []
