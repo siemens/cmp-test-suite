@@ -104,15 +104,15 @@ SPDX-License-Identifier: Apache-2.0
 
 #### Certificate Template & CSR Checks (Section 4.1 – 4.1.4)
 
-| Covered Scenario                       | Body Types Covered                                            | Body Types Missing                                   | File                              |
-|----------------------------------------|---------------------------------------------------------------|------------------------------------------------------|-----------------------------------|
-| Proof‑of‑Possession failures           | `ir`, `cr`, `kur`, `p10cr`, `ccr`,  `added‑prot*`, `batched*` | —                                                    | `cert_template_verbose_tests.txt` |
-| NULL‑DN with no SAN                    | `ir`, `cr`, `kur`, `p10cr`, `ccr`,  `added‑prot*`, `batched*` | —                                                    | `cert_template_verbose_tests.txt` |
-| `implicitConfirm` (SIG) present/absent | `ir`, `cr`, `kur`, `p10cr`, `ccr`,  `added‑prot*`             | `batched*`                                           | `cert_template_verbose_tests.txt` |
-| `implicitConfirm` (MAC) present/absent | `ir`, `cr`, `p10cr`,  `added‑prot*`                           | `kur`, `ccr`, `batched*`                             | `cert_template_verbose_tests.txt` |
-| Invalid `certReqId` (‑1, 1)            | `ir`, `cr`, `kur`, `ccr`,  `added‑prot*`, `batched*`          | —                                                    | `cert_template_verbose_tests.txt` |
-| Bad CSR version                        | `p10cr`, `added‑protection‑inner‑p10cr`, `batch‑inner‑p10cr`  | `ir`, `cr`, `kur`, `ccr`,  `added‑prot*`, `batched*` | `cert_template_verbose_tests.txt` |
-| Batch same‑key checks                  | `ir`, `cr`, `kur`, `p10cr`, `ccr`,  `added‑prot*`, `batched*` | —                                                    | `cert_template_verbose_tests.txt` |
+| Covered Scenario                       | Body Types Covered                                            | Body Types Missing | File                              |
+|----------------------------------------|---------------------------------------------------------------|--------------------|-----------------------------------|
+| Proof‑of‑Possession failures           | `ir`, `cr`, `kur`, `p10cr`, `ccr`,  `added‑prot*`, `batched*` | —                  | `cert_template_verbose_tests.txt` |
+| NULL‑DN with no SAN                    | `ir`, `cr`, `kur`, `p10cr`, `ccr`,  `added‑prot*`, `batched*` | —                  | `cert_template_verbose_tests.txt` |
+| `implicitConfirm` (SIG) present/absent | `ir`, `cr`, `kur`, `p10cr`, `ccr`,  `added‑prot*`             | `batched*`         | `cert_template_verbose_tests.txt` |
+| `implicitConfirm` (MAC) present/absent | `ir`, `cr`, `p10cr`,  `added‑prot*`                           | `batched*`         | `cert_template_verbose_tests.txt` |
+| Invalid `certReqId` (‑1, 1)            | `ir`, `cr`, `kur`, `ccr`,  `added‑prot*`, `batched*`          | —                  | `cert_template_verbose_tests.txt` |
+| Bad CSR version                        | `p10cr`, `added‑protection‑inner‑p10cr`, `batch‑inner‑p10cr`  | —                  | `cert_template_verbose_tests.txt` |
+| Batch same‑key checks                  | `ir`, `cr`, `kur`, `p10cr`, `ccr`,  `added‑prot*`, `batched*` | —                  | `cert_template_verbose_tests.txt` |
 
 **Body‑type legend**
 
