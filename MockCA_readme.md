@@ -110,20 +110,25 @@ Examples are defined inside the [client.py](mock_ca/client.py) file.
 If Python is not to be used, the OpenSSL command can be used instead:
 
 ```sh
-openssl genpkey -algorithm RSA -out new-private-key-rsa.pem -pkeyopt rsa_keygen_bits:2048
-openssl req -new -key new-private-key-rsa.pem -subj "/CN=Hans the Tester" -out csr-rsa.pem
+OUTDIR="data/openssl_out"
+mkdir -p "$OUTDIR"
 
+# Generate key and CSR
+openssl genpkey -algorithm RSA -out "$OUTDIR/new-private-key-rsa.pem" -pkeyopt rsa_keygen_bits:2048
+openssl req -new -key "$OUTDIR/new-private-key-rsa.pem" -subj "/CN=Hans the Tester" -out "$OUTDIR/csr-rsa.pem"
+
+# Send IR request with OpenSSL CMP; write outputs into $OUTDIR
 openssl cmp -cmd ir \
   -server http://localhost:5000/issuing \
-  -recipient "/CN=MockCA" \
-  -subject "/CN=Hans The Tester" \
-  -ref "CN=Hans The Tester" \
-  -csr csr-rsa.pem \
+  -recipient "/CN=Hans the Tester" \
+  -ref "CN=Hans the Tester" \
+  -subject "/CN=Hans the Tester" \
+  -csr "$OUTDIR/csr-rsa.pem" \
   -secret pass:SiemensIT \
   -popo 1 \
-  -certout result-cert.pem \
-  -newkey new-private-key-rsa.pem \
-  -reqout req-ir.pkimessage \
+  -certout "$OUTDIR/result-cert.pem" \
+  -newkey "$OUTDIR/new-private-key-rsa.pem" \
+  -reqout "$OUTDIR/req-ir.pkimessage" \
   -unprotected_errors
 ```
 
