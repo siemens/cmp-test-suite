@@ -270,3 +270,584 @@ Prepare Null-DN CSR Or CertTemplate
 
 
 *** Test Cases ***
+CA MUST Accept IR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    ir
+     Build ImplicitConfirm Request    ir    False
+
+CA MUST Accept CR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    cr
+     Build ImplicitConfirm Request    cr    False
+
+CA MUST Accept KUR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    kur
+     Build ImplicitConfirm Request    kur    False
+
+CA MUST Accept P10CR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    p10cr
+     Build ImplicitConfirm Request    p10cr    False
+
+CA MUST Accept CCR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    ccr
+     Build ImplicitConfirm Request    ccr    False
+
+CA MUST Accept ADDED-PROTECTION-INNER-IR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    nested    added-protection    ir
+     Build ImplicitConfirm Request    added-protection-inner-ir    False
+
+CA MUST Accept ADDED-PROTECTION-INNER-CR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    nested    added-protection    cr
+     Build ImplicitConfirm Request    added-protection-inner-cr    False
+
+CA MUST Accept ADDED-PROTECTION-INNER-KUR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    nested    added-protection    kur
+     Build ImplicitConfirm Request    added-protection-inner-kur    False
+
+CA MUST Accept ADDED-PROTECTION-INNER-P10CR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    nested    added-protection    p10cr
+     Build ImplicitConfirm Request    added-protection-inner-p10cr    False
+
+CA MUST Accept ADDED-PROTECTION-INNER-CCR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm    for_mac=False    nested    added-protection    ccr
+     Build ImplicitConfirm Request    added-protection-inner-ccr    False
+
+CA MUST Accept MAC IR With Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    ir
+     Build ImplicitConfirm Request    ir    True    for_mac=True
+
+CA MUST Accept MAC CR With Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    cr
+     Build ImplicitConfirm Request    cr    True    for_mac=True
+
+CA MUST Accept MAC P10CR With Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    p10cr
+     Build ImplicitConfirm Request    p10cr    True    for_mac=True
+
+CA MUST Accept MAC ADDED-PROTECTION-INNER-IR With Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    nested    added-protection    ir
+     Build ImplicitConfirm Request    added-protection-inner-ir    True    for_mac=True
+
+CA MUST Accept MAC ADDED-PROTECTION-INNER-CR With Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    nested    added-protection    cr
+     Build ImplicitConfirm Request    added-protection-inner-cr    True    for_mac=True
+
+CA MUST Accept MAC ADDED-PROTECTION-INNER-P10CR With Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    nested    added-protection    p10cr
+     Build ImplicitConfirm Request    added-protection-inner-p10cr    True    for_mac=True
+
+CA MUST Accept MAC IR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    ir
+     Build ImplicitConfirm Request    ir    False    for_mac=True
+
+CA MUST Accept MAC CR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    cr
+     Build ImplicitConfirm Request    cr    False    for_mac=True
+
+CA MUST Accept MAC P10CR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    p10cr
+     Build ImplicitConfirm Request    p10cr    False    for_mac=True
+
+CA MUST Accept MAC ADDED-PROTECTION-INNER-IR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    nested    added-protection    ir
+     Build ImplicitConfirm Request    added-protection-inner-ir    False    for_mac=True
+
+CA MUST Accept MAC ADDED-PROTECTION-INNER-CR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    nested    added-protection    cr
+     Build ImplicitConfirm Request    added-protection-inner-cr    False    for_mac=True
+
+CA MUST Accept MAC ADDED-PROTECTION-INNER-P10CR Without Implicit Confirmation
+     [Documentation]    A certificate request **MUST** have an implicit confirmation if the request is not a confirmation request.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    implicit_confirm_mac    nested    added-protection    p10cr
+     Build ImplicitConfirm Request    added-protection-inner-p10cr    False    for_mac=True
+
+CA MUST Reject IR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    ir
+     Build Bad Request ID Request    ir    -1
+
+CA MUST Reject CR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    cr
+     Build Bad Request ID Request    cr    -1
+
+CA MUST Reject KUR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    kur
+     Build Bad Request ID Request    kur    -1
+
+CA MUST Reject CCR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    ccr
+     Build Bad Request ID Request    ccr    -1
+
+CA MUST Reject ADDED-PROTECTION-INNER-IR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    nested    added-protection    ir
+     Build Bad Request ID Request    added-protection-inner-ir    -1
+
+CA MUST Reject ADDED-PROTECTION-INNER-CR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    nested    added-protection    cr
+     Build Bad Request ID Request    added-protection-inner-cr    -1
+
+CA MUST Reject ADDED-PROTECTION-INNER-KUR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    nested    added-protection    kur
+     Build Bad Request ID Request    added-protection-inner-kur    -1
+
+CA MUST Reject ADDED-PROTECTION-INNER-CCR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    nested    added-protection    ccr
+     Build Bad Request ID Request    added-protection-inner-ccr    -1
+
+CA MUST Reject BATCH-INNER-IR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    batch-inner-ir
+     Build Bad Request ID Request    batch-inner-ir    -1
+
+CA MUST Reject BATCH-INNER-CR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    batch-inner-cr
+     Build Bad Request ID Request    batch-inner-cr    -1
+
+CA MUST Reject BATCH-INNER-KUR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    batch-inner-kur
+     Build Bad Request ID Request    batch-inner-kur    -1
+
+CA MUST Reject BATCH-INNER-CCR With CertReqID Set To -1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    batch-inner-ccr
+     Build Bad Request ID Request    batch-inner-ccr    -1
+
+CA MUST Reject IR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    ir
+     Build Bad Request ID Request    ir    1
+
+CA MUST Reject CR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    cr
+     Build Bad Request ID Request    cr    1
+
+CA MUST Reject KUR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    kur
+     Build Bad Request ID Request    kur    1
+
+CA MUST Reject CCR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    ccr
+     Build Bad Request ID Request    ccr    1
+
+CA MUST Reject ADDED-PROTECTION-INNER-IR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    nested    added-protection    ir
+     Build Bad Request ID Request    added-protection-inner-ir    1
+
+CA MUST Reject ADDED-PROTECTION-INNER-CR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    nested    added-protection    cr
+     Build Bad Request ID Request    added-protection-inner-cr    1
+
+CA MUST Reject ADDED-PROTECTION-INNER-KUR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    nested    added-protection    kur
+     Build Bad Request ID Request    added-protection-inner-kur    1
+
+CA MUST Reject ADDED-PROTECTION-INNER-CCR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    nested    added-protection    ccr
+     Build Bad Request ID Request    added-protection-inner-ccr    1
+
+CA MUST Reject BATCH-INNER-IR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    batch-inner-ir
+     Build Bad Request ID Request    batch-inner-ir    1
+
+CA MUST Reject BATCH-INNER-CR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    batch-inner-cr
+     Build Bad Request ID Request    batch-inner-cr    1
+
+CA MUST Reject BATCH-INNER-KUR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    batch-inner-kur
+     Build Bad Request ID Request    batch-inner-kur    1
+
+CA MUST Reject BATCH-INNER-CCR With CertReqID Set To 1
+     [Documentation]    A certificate request **MUST** have the request ID set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    certReqID    batch-inner-ccr
+     Build Bad Request ID Request    batch-inner-ccr    1
+
+CA MUST Reject P10CR With CSR Version Set To -1
+     [Documentation]    A certificate request **MUST** have the CSR version set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    csr_version    p10cr
+     Build Bad CSR Version Request    p10cr    -1
+
+CA MUST Reject ADDED-PROTECTION-INNER-P10CR With CSR Version Set To -1
+     [Documentation]    A certificate request **MUST** have the CSR version set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    csr_version    nested    added-protection    p10cr
+     Build Bad CSR Version Request    added-protection-inner-p10cr    -1
+
+CA MUST Reject BATCH-INNER-P10CR With CSR Version Set To -1
+     [Documentation]    A certificate request **MUST** have the CSR version set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    csr_version    batch-inner-p10cr
+     Build Bad CSR Version Request    batch-inner-p10cr    -1
+
+CA MUST Reject P10CR With CSR Version Set To 1
+     [Documentation]    A certificate request **MUST** have the CSR version set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    csr_version    p10cr
+     Build Bad CSR Version Request    p10cr    1
+
+CA MUST Reject ADDED-PROTECTION-INNER-P10CR With CSR Version Set To 1
+     [Documentation]    A certificate request **MUST** have the CSR version set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    csr_version    nested    added-protection    p10cr
+     Build Bad CSR Version Request    added-protection-inner-p10cr    1
+
+CA MUST Reject BATCH-INNER-P10CR With CSR Version Set To 1
+     [Documentation]    A certificate request **MUST** have the CSR version set to `0`.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    csr_version    batch-inner-p10cr
+     Build Bad CSR Version Request    batch-inner-p10cr    1
+
+CA MUST Reject IR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    ir
+     Build BadPOP Request    ir
+
+CA MUST Reject CR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    cr
+     Build BadPOP Request    cr
+
+CA MUST Reject KUR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    kur
+     Build BadPOP Request    kur
+
+CA MUST Reject P10CR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    p10cr
+     Build BadPOP Request    p10cr
+
+CA MUST Reject CCR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    ccr
+     Build BadPOP Request    ccr
+
+CA MUST Reject ADDED-PROTECTION-INNER-IR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    nested    added-protection    ir
+     Build BadPOP Request    added-protection-inner-ir
+
+CA MUST Reject ADDED-PROTECTION-INNER-CR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    nested    added-protection    cr
+     Build BadPOP Request    added-protection-inner-cr
+
+CA MUST Reject ADDED-PROTECTION-INNER-KUR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    nested    added-protection    kur
+     Build BadPOP Request    added-protection-inner-kur
+
+CA MUST Reject ADDED-PROTECTION-INNER-P10CR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    nested    added-protection    p10cr
+     Build BadPOP Request    added-protection-inner-p10cr
+
+CA MUST Reject ADDED-PROTECTION-INNER-CCR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    nested    added-protection    ccr
+     Build BadPOP Request    added-protection-inner-ccr
+
+CA MUST Reject BATCH-INNER-IR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    batch-inner-ir
+     Build BadPOP Request    batch-inner-ir
+
+CA MUST Reject BATCH-INNER-CR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    batch-inner-cr
+     Build BadPOP Request    batch-inner-cr
+
+CA MUST Reject BATCH-INNER-KUR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    batch-inner-kur
+     Build BadPOP Request    batch-inner-kur
+
+CA MUST Reject BATCH-INNER-P10CR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    batch-inner-p10cr
+     Build BadPOP Request    batch-inner-p10cr
+
+CA MUST Reject BATCH-INNER-CCR With BadPOP
+     [Documentation]    A certificate request **MUST** have a valid Proof-of-Possession to verify the possession of the private key.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    badPOP    batch-inner-ccr
+     Build BadPOP Request    batch-inner-ccr
+
+CA MUST Reject IR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    ir
+     Build Null-DN And No SAN Request    ir
+
+CA MUST Reject CR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    cr
+     Build Null-DN And No SAN Request    cr
+
+CA MUST Reject KUR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    kur
+     Build Null-DN And No SAN Request    kur
+
+CA MUST Reject P10CR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    p10cr
+     Build Null-DN And No SAN Request    p10cr
+
+CA MUST Reject CCR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    ccr
+     Build Null-DN And No SAN Request    ccr
+
+CA MUST Reject ADDED-PROTECTION-INNER-IR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    nested    added-protection    ir
+     Build Null-DN And No SAN Request    added-protection-inner-ir
+
+CA MUST Reject ADDED-PROTECTION-INNER-CR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    nested    added-protection    cr
+     Build Null-DN And No SAN Request    added-protection-inner-cr
+
+CA MUST Reject ADDED-PROTECTION-INNER-KUR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    nested    added-protection    kur
+     Build Null-DN And No SAN Request    added-protection-inner-kur
+
+CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    nested    added-protection    p10cr
+     Build Null-DN And No SAN Request    added-protection-inner-p10cr
+
+CA MUST Reject ADDED-PROTECTION-INNER-CCR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    nested    added-protection    ccr
+     Build Null-DN And No SAN Request    added-protection-inner-ccr
+
+CA MUST Reject BATCH-INNER-IR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    batch-inner-ir
+     Build Null-DN And No SAN Request    batch-inner-ir
+
+CA MUST Reject BATCH-INNER-CR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    batch-inner-cr
+     Build Null-DN And No SAN Request    batch-inner-cr
+
+CA MUST Reject BATCH-INNER-KUR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    batch-inner-kur
+     Build Null-DN And No SAN Request    batch-inner-kur
+
+CA MUST Reject BATCH-INNER-P10CR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    batch-inner-p10cr
+     Build Null-DN And No SAN Request    batch-inner-p10cr
+
+CA MUST Reject BATCH-INNER-CCR With Null-DN And No SAN
+     [Documentation]    A certificate request **MUST** have subject alternative name (SAN) set, if the subject field is set to the NULL-DN.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    negative    NULL-DN    san    batch-inner-ccr
+     Build Null-DN And No SAN Request    batch-inner-ccr
+
+CA MUST Accept IR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    ir
+     Build Same Key Request    ir
+
+CA MUST Accept CR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    cr
+     Build Same Key Request    cr
+
+CA MUST Accept KUR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    kur
+     Build Same Key Request    kur
+
+CA MUST Accept P10CR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    p10cr
+     Build Same Key Request    p10cr
+
+CA MUST Accept CCR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    ccr
+     Build Same Key Request    ccr
+
+CA MUST Accept ADDED-PROTECTION-INNER-IR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    nested    added-protection    ir
+     Build Same Key Request    added-protection-inner-ir
+
+CA MUST Accept ADDED-PROTECTION-INNER-CR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    nested    added-protection    cr
+     Build Same Key Request    added-protection-inner-cr
+
+CA MUST Accept ADDED-PROTECTION-INNER-KUR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    nested    added-protection    kur
+     Build Same Key Request    added-protection-inner-kur
+
+CA MUST Accept ADDED-PROTECTION-INNER-P10CR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    nested    added-protection    p10cr
+     Build Same Key Request    added-protection-inner-p10cr
+
+CA MUST Accept ADDED-PROTECTION-INNER-CCR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    nested    added-protection    ccr
+     Build Same Key Request    added-protection-inner-ccr
+
+CA MUST Accept BATCH-INNER-IR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    batch-inner-ir
+     Build Same Key Request    batch-inner-ir
+
+CA MUST Accept BATCH-INNER-CR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    batch-inner-cr
+     Build Same Key Request    batch-inner-cr
+
+CA MUST Accept BATCH-INNER-KUR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    batch-inner-kur
+     Build Same Key Request    batch-inner-kur
+
+CA MUST Accept BATCH-INNER-P10CR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    batch-inner-p10cr
+     Build Same Key Request    batch-inner-p10cr
+
+CA MUST Accept BATCH-INNER-CCR With Same Key
+     [Documentation]    A certificate request **MUST** have the same key for all requests in a batch.
+     ...    Ref: RFC 9483, Section 4.
+     [Tags]    positive    same_key    batch-inner-ccr
+     Build Same Key Request    batch-inner-ccr
