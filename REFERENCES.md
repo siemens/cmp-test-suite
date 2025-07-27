@@ -18,7 +18,6 @@ when working with the Mock CA.
     - [Algorithm Profiles](#algorithm-profiles)
     - [Drafts](#drafts)
   - [Software](#software)
-
   - [Post-Quantum Key Encapsulation Mechanism (KEM)](#post-quantum-key-encapsulation-mechanism-kem)
     - [ML-KEM](#ml-kem)
       - [Related RFCs and Drafts](#related-rfcs-and-drafts)
@@ -141,7 +140,7 @@ when working with the Mock CA.
 - [draft-bonnell-lamps-chameleon-certs](https://datatracker.ietf.org/doc/draft-bonnell-lamps-chameleon-certs/)
 - Catalyst (Alternative Signature):
   - [ITU‑T X.509 (10/2019) — Alternative public key and signature extensions](https://www.itu.int/ITU-T/formal-language/itu-t/x/x509/2019/CertificateExtensions.html)
-  - Documents:
-    - [ITU‑T X.509 (10/2019) — Alternative public key and signature extensions]( https://www.itu.int/ITU-T/recommendations/rec.aspx?id=14033)
+  - Document:
+    - [ITU‑T X.509 (10/2019)]( https://www.itu.int/ITU-T/recommendations/rec.aspx?id=14033)
   - Died draft:
     - [draft-truskovsky-lamps-pq-hybrid-x509 — Multiple Public‑Key Algorithm X.509 Certificates](https://datatracker.ietf.org/doc/draft-truskovsky-lamps-pq-hybrid-x509/)
