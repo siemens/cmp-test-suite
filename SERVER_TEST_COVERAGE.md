@@ -412,7 +412,7 @@ Tests that exercise certificate **revocation** and **revival** behaviour are loc
 | `CertTemplate`          | *invalid issuer*, *invalid subject*, *mismatched publicKey*, *wrong version*, *invalid validity* | `rr`                       | added_prot, batched | `revocation_tests.robot` |
 | Extensions              | *invalid extension* or *mix of valid and invalid extensions*                                     | `rr`                       | added_prot, batched | `revocation_tests.robot` |
 | Valid revocation        | *accepted revocation request*, *`certRevoked` for duplicate*                                     | `rr` (also trusted Entity) | batched             | `revocation_tests.robot` |
-| valid revive            | *accepted revive request*, revive unkown,                                                        | `rr` (also trusted Entity) | batched, added_prot | `revocation_tests.robot` |
+| valid revive            | *accepted revive request*, revive unknown,                                                        | `rr` (also trusted Entity) | batched, added_prot | `revocation_tests.robot` |
 | Revive request checks   | *invalid issuer*, *invalid subject*, *serialNumber not revoked*                                  | `rr`                       | batched, added_prot | `revocation_tests.robot` |
 
 #### Individual Test Cases Revocation
