@@ -1,5 +1,7 @@
 from robot.api.deco import keyword
-from jinja2 import Template
+from jinja2 import Template, Environment, FileSystemLoader
+import os
+import subprocess
 # Jinja2 templates for CMP CLI commands, define your template here
 # This translates the tests in cmp_tests_jinja.robot to the actual commands that your CMP client will execute.
 openssl = """
@@ -27,6 +29,13 @@ gencmpclient  {{ cmd }}
  {% if certout %}--certout {{ certout }}{% endif %}
  
  """
+ 
+embedded_cmp = """
+./build/embedded_cmp
+{% if cmd == "ir" %}-i{% endif %}
+{% if cmd == "p10cr" or cmd == "cr" %}-c{% endif %}
+{% if cmd == "kur" %}-k{% endif %}
+"""
 
 @keyword(name="Get CMP Command")
 def get_cmp_command(client: str = "openssl", **kwargs) -> list:
