@@ -406,25 +406,34 @@ Validate Certificate Was Issued For Expected Alg
     Validate Migration OID In Certificate    ${cert}    ${expected_alg}
 
 Generate Key And CSR
-    [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the
-    ...                DER-formatted data and the key.
+    [Documentation]    Generate a fresh private key and a signed Certificate Signing Request (CSR)
+    ...                for the given algorithm and subject. The CSR is returned in DER format.
     ...
-    ...    Arguments:
-    ...    ---------
-    ...    - `key_algo_name`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
-    ...    - `key_params`:The index or indices of the bits to check within the `failInfo` field
-    ...    - `CN`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be
-    ...    permitted. However, if multiple indices are provided, only one of them can be set.
+    ...                Arguments:
+    ...                ---------
+    ...                - `key_algo_name` (string): Name of the key algorithm.
+    ...                - `CN` (string): Common Name for the CSR subject.
+    ...                - `key_params` (dict, mapping): Algorithm‑specific parameters.
     ...
-    ...    Examples:
-    ...    --------
-    ...    | ${data}    ${key}=    | Generate Key and CSR    | ${key_algo_name}    |    ${CN}    |    ${key_params} |
+    ...                Returns:
+    ...                -------
+    ...                - The CRS data in DER format.
+    ...                - Generated private key.
     ...
-    [Arguments]    ${key_algo_name}    ${CN}    ${key_params}
-    ${key}=    Generate Key    ${key_algo_name}    ${key_params}
-    ${csr_signed}    ${key}=    Generate Signed CSR    ${CN}    ${key}
-    ${data}=    Decode Pem String    ${csr_signed}
-    RETURN    ${data}    ${key}
+    ...                Raises:
+    ...                ------
+    ...                - `Error`: When key generation or CSR creation fails.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${csr_data}  ${key}= | Generate Key And CSR | rsa | ${cn} | length=2048 |
+    ...
+    [Tags]    csr  crypto  key
+    [Arguments]    ${key_algo_name}    ${cn}    ${key_params}
+    ${key}=    Generate Unique Key   ${key_algo_name}    ${key_params}
+    ${csr_signed}    ${key}=    Generate Signed CSR    ${cn}    ${key}
+    ${csr_data}=    Decode Pem String    ${csr_signed}
+    RETURN    ${csr_data}    ${key}
 
 PKIMessage Body Type Must Be
     [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
