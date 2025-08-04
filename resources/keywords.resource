@@ -1238,11 +1238,30 @@ PKIStatusInfo failinfo Bit Must Be
     ...                   `PKIStatusInfo` field, to ensure that the CA/RA responds with the correct error.
     ...                    The strictness is based on the global `FAILINFO_MUST_BE_CORRECT` variable.
     ...
+    ...
+    ...    Notes:
+    ...    -----
+    ...    - If the `failinfo` bit(s) are invalid logs the `PKIStatusInfo` in a human-readable format.
+    ...    - If `FAILINFO_MUST_BE_CORRECT` is `True`, the keyword will fail if the `failinfo` bit is not set correctly.
+    ...    - If `FAILINFO_MUST_BE_CORRECT` is `False`, the keyword will log a warning instead of failing.
+    ...
     ...    Arguments:
-    ...    - `pki_message`: The PKIMessage to be validated. Typically, this is the response from the CA/RA.
-    ...    - `failinfo`: The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
-    ...    - `exclusive`: When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
-    ...    - `index`: Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
+    ...    ---------
+    ...    - `pki_message` (PKIMessage): The PKIMessage to be validated. Typically, this is the response from the CA/RA.
+    ...    - `failinfo` (str, int): The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
+    ...    - `exclusive` (bool): When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
+    ...    - `index` (str, int): Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
+    ...
+    ...    Raises:
+    ...    ------
+    ...    - `ValueError`: If the `pki_message` does not contain a `PKIStatusInfo` object.
+    ...    - `ValueError`: If the `failinfo` bit is not set correctly.
+    ...
+    ...    Examples:
+    ...    --------
+    ...    | PKIStatusInfo failinfo Bit Must Be | ${pki_message} | failinfo=badAlg |
+    ...    | PKIStatusInfo failinfo Bit Must Be | ${pki_message} | failinfo=badAlg | exclusive=True |
+    ...
     [Arguments]    ${pki_message}    ${failinfo}    ${exclusive}=False    ${index}=0
     ${status}=    Get PKIStatusInfo    ${pki_message}    ${index}
     ${result}=    Is Bit Set    ${status["failInfo"]}    ${failinfo}    ${exclusive}
