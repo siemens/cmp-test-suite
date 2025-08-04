@@ -486,7 +486,22 @@ PKIMessage Contains ImplicitConfirm Extension
     RETURN    ${result}
 
 PKIMessage Must Contain ImplicitConfirm Extension
-    [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo
+    [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo.
+    ...                Used to verify that the server supports implicit confirmation.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message`: The PKIMessage object to check.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `AssertionError`: When the implicitConfirm extension is not found.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | PKIMessage Must Contain ImplicitConfirm Extension | ${pki_message} |
+    ...
+    [Tags]    confirmation
     [Arguments]    ${pki_message}
     ${result}=    PKIMessage Contains ImplicitConfirm Extension    ${pki_message}
     Should Be True    ${result}    The implicitConfirm extension was not found in the message
