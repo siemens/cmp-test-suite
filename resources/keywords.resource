@@ -252,6 +252,21 @@ Generate CSR With RSA2048 And A Predefined Common Name
 Load And Parse Example CSR
     [Documentation]    Load a CSR from a PEM file, and return it as a pyasn1 object. This is for convenience, to remove
     ...    the need to generate a new keypair.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The parsed `pyasn1` CSR object.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `FileNotFoundError`: When the example CSR file is missing.
+    ...                - `ValueError`: When the CSR cannot be parsed.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${parsed_csr}= | Load And Parse Example CSR |
+    ...
+    [Tags]    csr  setup  predefined
     ${csr}=    Load And Decode Pem File    data/example-csr.pem
     ${parsed_csr}=    Parse Csr    ${csr}
     RETURN    ${parsed_csr}
