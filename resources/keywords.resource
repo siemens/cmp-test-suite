@@ -390,7 +390,7 @@ Certificate Must Be Valid
     ...
     ...    Examples:
     ...    --------
-    ...    | Validate Certificate | ${cert} |
+    ...    | Certificate Must Be Valid | ${cert} |
     ...
     [Tags]    cert   validate
     [Arguments]    ${cert}
@@ -440,7 +440,7 @@ Generate Key And CSR
     ...
     ...                Raises:
     ...                ------
-    ...                - `Error`: When key generation or CSR creation fails.
+    ...                - `ValueError`: When key generation or CSR creation fails.
     ...
     ...                Examples:
     ...                --------
@@ -533,7 +533,7 @@ Collect Nonce From PKIMessage
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `pki_message`: The PKIMessage object to extract the nonce from.
+    ...                - `pki_message` (PKIMessage): The PKIMessage object to extract the nonce from.
     ...
     ...                Examples:
     ...                --------
@@ -556,13 +556,13 @@ Exchange PKIMessage
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${request_pki_message}`: The PKIMessage to send.
-    ...                - `${url}`: The URL of the CA or RA server to send the PKIMessage to. Defaults to
-    ...                  `${CA_CMP_URL}`.
+    ...                - `request_pki_message` (PKIMessage): The PKIMessage to send.
+    ...                - `url` (str): The URL of the CA or RA server to send the PKIMessage to. Defaults to
+    ...                  `CA_CMP_URL`.
     ...
     ...                Returns:
     ...                -------
-    ...                - `${response_pki_message}`: The parsed PKIMessage response from the server.
+    ...                - The parsed PKIMessage response from the server.
     ...
     ...                Examples:
     ...                --------
@@ -622,7 +622,7 @@ Generate Unique Key
 Generate Default Key
     [Documentation]    Generates a default cryptographic key using specified default parameters, set inside the config.
     ...
-    ...                Note:
+    ...                Notes:
     ...                ----
     ...                 - `DEFAULT_ALGORITHM` defines the algorithm.
     ...                 - `DEFAULT_KEY_LENGTH` defines the key length for RSA.
@@ -685,8 +685,8 @@ Generate Default Composite Sig Key
     [Documentation]    Generates a default composite signature key with the traditional algorithm
     ...                and the PQ algorithm defined in the configuration.
     ...
-    ...                Note:
-    ...                ----
+    ...                Notes:
+    ...                -----
     ...                - `DEFAULT_TRAD_ALG` defines the algorithm.
     ...                - `DEFAULT_KEY_LENGTH` defines the key length for RSA.
     ...                - `DEFAULT_PQ_ALG` defines the pq algorithm.
@@ -712,18 +712,18 @@ Default Protect PKIMessage
     [Documentation]    Protect a PKIMessage with the default protection algorithm, set inside the config
     ...                and the default parameters.
     ...
-    ...                Note:
+    ...                Notes:
     ...                ----
     ...                - The protection algorithm is set to `signature` by default.
     ...
     ...                Arguments:
     ...                ---------
-    ...                 - `${pki_message}`: The PKIMessage to protect.
-    ...                 - `${params}`: key=value pair to set variables for the protection.
+    ...                 - `pki_message` (PKIMessage): The PKIMessage to protect.
+    ...                 - `params` (dict, mapping): key=value pair to set variables for the protection.
     ...
     ...                Returns:
     ...                -------
-    ...                - `${prot_pkimessage}`: The protected PKIMessage.
+    ...                - The protected PKIMessage.
     ...
     ...                Examples:
     ...                --------
@@ -754,14 +754,15 @@ Confirm Certificate If Needed
     ...                confirm extension. If it does, the certificate is confirmed and returned. If not, the
     ...                `PKIMessage` a valid certificate confirmation message is send and the of the CA's response is
     ...                checked. If the CA's response is the `PKIMessage` `pkiconf`, then is the certificate confirmed.
+    ...
     ...                Arguments:
     ...                ---------
-    ...                 - `response`: The response message from the CA.
-    ...                 - `params`: key=value pair to set variables for the protection.
+    ...                 - `response` (PKIMessage): The response message from the CA.
+    ...                 - `params` (dict, mapping): key=value pair to set variables for the protection.
     ...
     ...                Returns:
     ...                -------
-    ...                - `cert`: The confirmed certificate.
+    ...                - The confirmed certificate.
     ...
     ...                Examples:
     ...                --------
@@ -881,7 +882,7 @@ Get Next Common Name
     ...
     ...                Returns:
     ...                -------
-    ...                - `${cm}`: The common name with the current test index.
+    ...                - `cm`: The common name with the current test index.
     ...
     ...                Examples:
     ...                --------
@@ -897,20 +898,21 @@ Build Composite Signature Request
     [Documentation]    Build a ir composite signature request and returns the protected ir request.
     ...
     ...                Arguments:
-    ...                ----------
-    ...                - `${comp_key}`: Optional composite signature key to use. Default is `${False}`. \
-    ...                If `${False}`, a default composite signature key is generated.
-    ...                - `&{params}`: Optional key-value pairs to set parameters for the request.
+    ...                ---------
+    ...                - `comp_key`: Optional composite signature key to use. Default is `False`. \
+    ...                If `False`, a default composite signature key is generated.
+    ...                - `params` (dict, mapping): Optional key-value pairs to set parameters for the request.
     ...
     ...                Returns:
     ...                -------
-    ...                - `${protected_ir}`: The protected initialization request (ir) with composite signature.
+    ...                - The protected initialization request (ir) with, an composite signature.
     ...
     ...                Examples:
     ...                --------
     ...                | ${protected_ir}= | Build Composite Signature Request | ${comp_key} | &{params} |
     ...                | ${protected_ir}= | Build Composite Signature Request | ${comp_key} |
     ...                | ${protected_ir}= | Build Composite Signature Request |
+    ...
     [Tags]    composite-sig    positive   ir
     [Arguments]    ${comp_key}=${False}   &{params}
     IF   ${comp_key}
@@ -979,10 +981,10 @@ Generate CCR CertTemplate For Testing
     ...
     ...               Arguments:
     ...               ---------
-    ...               - `key`: Optional key to use for the certificate template. Default is `${None}`. \
-    ...               If `${None}`, a default key is generated.
-    ...               - `cm`: Optional common name to use for the certificate template. Default is `${None}`. \
-    ...               If `${None}`, a common name is generated based on the current test index.
+    ...               - `key`: Optional key to use for the certificate template. Default is `None`. \
+    ...               If `None`, a default key is generated.
+    ...               - `cm`: Optional common name to use for the certificate template. Default is `None`. \
+    ...               If `None`, a common name is generated based on the current test index.
     ...
     ...                Returns:
     ...                -------
@@ -1020,9 +1022,9 @@ Generate Default IR Sig Protected
     ...
     ...                Arguments:
     ...                ----------
-    ...                - `${transaction_id}`:Optional the transaction ID for the IR. Default is `${None}`.
-    ...                - `${sender_nonce}`: Optional the sender's nonce for the IR. Default is `${None}`.
-    ...                - `&{params}`: Optional key-value pairs to set additional parameters for the IR.
+    ...                - `transaction_id` (str, bytes) :Optional the transaction ID for the IR. Default is `None`.
+    ...                - `sender_nonce` (str, bytes): Optional the sender's nonce for the IR. Default is `None`.
+    ...                - `params` (dict, mapping): Optional key-value pairs to set additional parameters for the IR.
     ...
     ...                Returns:
     ...                -------
@@ -1065,7 +1067,7 @@ Default Protect With MAC
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${pki_message}`: The PKIMessage to be protected.
+    ...                - `pki_message` (PKIMessage): The PKIMessage to be protected.
     ...
     ...                Returns:
     ...                -------
@@ -1088,7 +1090,7 @@ Default Protect PKIMessage With Trusted CA Cert
     ...
     ...                Arguments:
     ...                ----------
-    ...                - `${pki_message}`: The PKIMessage to be protected.
+    ...                - `pki_message` (PKIMessage): The PKIMessage to be protected.
     ...
     ...                Returns:
     ...                -------
@@ -1109,7 +1111,7 @@ Default Protect With Trusted Cert
     ...
     ...                Arguments:
     ...                ----------
-    ...                - `${pki_message}`: The PKIMessage to be protected.
+    ...                - `pki_message` (PKIMessage): The PKIMessage to be protected.
     ...
     ...                Returns:
     ...                -------
@@ -1213,7 +1215,7 @@ Issue And Revoke A Fresh Cert
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `reason`: The reason for revocation. Defaults to `keyCompromise`.
+    ...                - `reason` (str): The reason for revocation. Defaults to `keyCompromise`.
     ...
     ...                Returns:
     ...                -------
@@ -1317,8 +1319,8 @@ Validate EncrCert For KEM
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${response}`: The response from the CA.
-    ...                - `${key}`: The key used for the certificate generation.
+    ...                - `response` (PKIMessage): The response from the CA.
+    ...                - `key` (KEMPrivateKey): The key used for the certificate generation.
     ...
     ...                Returns:
     ...                -------
@@ -1345,11 +1347,12 @@ Issued NEG RSA KTRI CERT
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${url}`: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `url` (str): The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
-    ...                Note:
-    ...                -------
+    ...                Notes:
+    ...                -----
     ...                - Set's the ${NEG_KTRI_CERT} and ${NEG_KTRI_KEY} variables.
+    ...
     [Tags]    envelopedData  KGA  negative  rsa  ktri
     [Arguments]    ${url}=${CA_CMP_URL}
     ${is_set}=    Is Certificate And Key Set    ${NEG_KTRI_CERT}    ${NEG_KTRI_KEY}
@@ -1375,11 +1378,12 @@ ISSUE POS RSA KTRI Cert
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${url}`: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `url` (str): The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
-    ...                Note:
-    ...                -------
+    ...                Notes:
+    ...                -----
     ...                - Set's the ${KGA_KTRI_CERT} and ${KGA_KTRI_KEY} variables.
+    ...
     [Tags]    envelopedData  KGA  positive  rsa  ktri
     [Arguments]    ${url}=${CA_CMP_URL}
     ${is_set}=    Is Certificate And Key Set    ${KGA_KTRI_CERT}    ${KGA_KTRI_KEY}
@@ -1403,11 +1407,12 @@ Issue NEG ECC KARI Cert
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${url}`: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `url` (str): The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
-    ...                Note:
-    ...                -------
+    ...                Notes:
+    ...                -----
     ...               - Set's the ${NEG_KARI_CERT} and ${NEG_KARI_KEY} variables.
+    ...
     [Tags]    envelopedData  KGA  negative  ecc  kari
     [Arguments]    ${url}=${CA_CMP_URL}
     ${is_set}=    Is Certificate And Key Set    ${NEG_KARI_CERT}    ${NEG_KARI_KEY}
@@ -1433,11 +1438,12 @@ Issue POS ECC KARI Cert   # robocop: off=LEN03
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${url}`: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `url` (str): The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
-    ...                Note:
-    ...                -------
+    ...                Notes:
+    ...                -----
     ...                - Set's the ${KGA_KARI_CERT} and ${KGA_KARI_KEY} variables.
+    ...
     [Tags]    envelopedData  KGA  positive  ecc  kari
     [Arguments]    ${url}=${CA_CMP_URL}
     ${is_set}=    Is Certificate And Key Set    ${KGA_KARI_CERT}    ${KGA_KARI_KEY}
@@ -1521,7 +1527,7 @@ Exchange PKIMessage PQ
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${pki_message}`: The PKIMessage to be exchanged.
+    ...                - `pki_message` (PKIMessage): The PKIMessage to be exchanged.
     ...
     ...                Returns:
     ...                -------
@@ -1542,7 +1548,7 @@ Prepare Related Cert URL
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${cert}`: The certificate to extract the serial number from.
+    ...                - `cert` (CMPCertificate): The certificate to extract the serial number from.
     ...
     ...                Returns:
     ...                -------
