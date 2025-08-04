@@ -124,7 +124,7 @@ def sign_csr(  # noqa D417 undocumented-param
     other_key: Optional[SignKey] = None,
     bad_pop: bool = False,
     **kwargs,
-):
+) -> rfc6402.CertificationRequest:
     """Sign a `pyasn1` `CertificationRequest` (CSR).
 
     The `signatureAlgorithm` and the signature will be populated. The signature algorithm is populated based on the
