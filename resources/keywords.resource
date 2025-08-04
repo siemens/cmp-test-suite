@@ -141,8 +141,26 @@ Set Up CRR Test Cases
     VAR   ${TRUSTED_CA_CERT_CHAIN}   ${cert_chain}   scope=Global
 
 Set UP Trusted PKI RA Cert Chain
-    [Documentation]    Set up the test environment
-    [Tags]    setup  trust
+    [Documentation]    Load the trusted PKI RA certificate chain into global variables.
+    ...                Use when tests rely on a preexisting RA certificate chain. As an example, the
+    ...                nested PKIMessage tests require to be protected by a trusted PKI RA certificate chain,
+    ...                or the POPO `raVerified` option requires a trusted RA certificate to have established
+    ...                a trust relationship with sender.
+    ...
+    ...                Notes:
+    ...                ----
+    ...                - The trusted PKI RA certificate chain is loaded from the configuration file.
+    ...                - Variables `OTHER_TRUSTED_PKI_CERT`, `OTHER_TRUSTED_PKI_KEY`, and `RA_CERT_CHAIN_PATH`.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - Error: When the RA certificate chain cannot be loaded.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | Set Up Trusted PKI RA Cert Chain |
+    ...
+    [Tags]    setup  trust   RA
     ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${OTHER_TRUSTED_PKI_KEY}
     IF  ${is_file}
         ${der_cert}=    Load And Decode PEM File    ${OTHER_TRUSTED_PKI_CERT}
