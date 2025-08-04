@@ -304,6 +304,21 @@ Exchange Data With CA
 
 Sender And Recipient Nonces Must Match
     [Documentation]    Ensure that the recipient nonce in the response matches the sender nonce in the request
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `request` (PKIMessage): Original request message.
+    ...                - `response` (PKIMessage): Response message from the server.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - AssertionError: When the nonces differ.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | Sender And Recipient Nonces Must Match | ${request} | ${response} |
+    ...
+    [Tags]    nonce
     [Arguments]    ${request}    ${response}
     ${request_nonce}=    Get Asn1 Value As Bytes    ${request}    header.senderNonce
     ${response_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
