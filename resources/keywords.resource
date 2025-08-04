@@ -327,6 +327,22 @@ Sender And Recipient Nonces Must Match
 Response Time Must Be Fresh
     [Documentation]    Ensure that the response time is not far off from the time of our request
     ...    The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
+    ...                Arguments:
+    ...                ---------
+    ...                - `request` (PKIMessage): Sent message.
+    ...                - `response` (PKIMessage): Received message.
+    ...                - `tolerance` (str, int): Allowed difference in seconds. Defaults to `120` seconds.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `AssertionError`: When the time difference exceeds the tolerance.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | Response Time Must Be Fresh | ${request} | ${response} |
+    ...                | Response Time Must Be Fresh | ${request} | ${response} | 60 |
+    ...
+    [Tags]    time
     [Arguments]    ${request}    ${response}    ${tolerance}=${120}
     ${request_time}=    Get Asn1 Value As Datetime    ${request}    header.messageTime
     ${response_time}=    Get Asn1 Value As Datetime    ${response}    header.messageTime
