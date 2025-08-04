@@ -406,9 +406,14 @@ Validate Certificate Was Issued For Expected Alg
     [Documentation]    Validate that the certificate was issued for the expected algorithm.
     ...
     ...                Arguments:
-    ...                - `${response}`: The PKIMessage response.
-    ...                - `${expected_alg}`: The expected algorithm identifier (e.g., 'ml-dsa-44').
-    ...                - `${index}`: The index of the certificate in the PKIMessage. Defaults to `0`.
+    ...                ---------
+    ...                - `response` (PKIMessage): The PKIMessage response.
+    ...                - `expected_alg` (str): The expected algorithm identifier (e.g., 'ml-dsa-44').
+    ...                - `index` (str, int): The index of the certificate in the PKIMessage. Defaults to `0`.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `ValueError`: When the algorithm does not match.
     ...
     ...                Examples:
     ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 |
