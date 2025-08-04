@@ -1260,10 +1260,22 @@ PKIStatus Must Be
     [Documentation]   Verifies that the `PKIStatus` field in the `PKIMessage` matches the expected value.
     ...
     ...     Arguments:
-    ...     - `pki_message`: The PKIMessage to be validated. Typically, this is the response from the CA/RA.
-    ...     - `failinfo`: The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
-    ...     - `exclusive`: When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
-    ...     - `index`: Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
+    ...     ---------
+    ...     - `pki_message` (PKIMessage): The PKIMessage to be validated. Typically, this is the response from the CA/RA.
+    ...     - `failinfo` (str, int): The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
+    ...     - `exclusive` (bool): When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
+    ...     - `index` (str, int): Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
+    ...
+    ...     Raises:
+    ...     ------
+    ...     - `ValueError`: If the `pki_message` does not contain a `PKIStatusInfo` object.
+    ...     - `ValueError`: If the `PKIStatus` does not match the expected value.
+    ...
+    ...     Examples:
+    ...     --------
+    ...     | PKIStatus Must Be | ${pki_message} | accepted |
+    ...     | PKIStatus Must Be | ${pki_message} | rejected | 1
+    ...
     [Arguments]    ${pki_message}  ${status}   ${index}=0
     ${pki_status}=    Get Status From PKIMessage      ${pki_message}    ${index}
     IF  not '${pki_status}' == '${status}'
