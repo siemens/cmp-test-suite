@@ -276,12 +276,12 @@ Exchange Data With CA
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${payload}`: The data to send in the request (as bytes).
-    ...                - `${url}`: The URL to send the request to. Defaults to `${CA_CMP_URL}`.
+    ...                - payload (bytes): Data to send in the request.
+    ...                - url (string): Target CMP endpoint. Defaults to `${CA_CMP_URL}`.
     ...
     ...                Returns:
     ...                -------
-    ...                - `${response}`: The response from the server, which is a `requests.Response` object.
+    ...                - The response from the server, which is a `requests.Response` object.
     ...
     ...                Examples:
     ...                --------
