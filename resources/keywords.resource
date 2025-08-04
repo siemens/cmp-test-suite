@@ -229,8 +229,21 @@ Load And Refresh PKIMessage From File
     RETURN    ${pki_message}
 
 Generate CSR With RSA2048 And A Predefined Common Name
-    [Documentation]    Produce a generic, valid CSR that has a correct signature
-    ${key}=    Generate Key    rsa    length=2048
+    [Documentation]    Generate an RSA‑2048 key and produce a signed CSR with the default subject name.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The signed RSA CSR object.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `valueError`: When the key generation.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${csr_signed}= | Generate CSR With RSA2048 And A Predefined Common Name |
+    ...
+    ${key}=    Generate Unique Key    rsa    length=2048
     ${csr}=    Build CSR    ${DEFAULT_X509NAME}    exclude_signature=True
     ${csr_signed}=    Sign CSR    ${csr}    ${key}
     Log    ${csr_signed}
