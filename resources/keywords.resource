@@ -482,10 +482,18 @@ PKIMessage Contains ImplicitConfirm Extension
     [Documentation]    Checks if the implicitConfirm extension is present in the PKIMessage
     ...
     ...                Arguments:
-    ...                - `${pki_message}`: The PKIMessage object to check.
+    ...                ---------
+    ...                - `pki_message` (PKIMessage): The PKIMessage object to check.
     ...
     ...                Returns:
-    ...                - `${result}`: `True` if the implicitConfirm extension is present, `False` otherwise.
+    ...                -------
+    ...                - `True` if the implicitConfirm extension is present, `False` otherwise.
+    ...
+    ...                Examples:
+    ...                ------
+    ...                | ${result}= | PKIMessage Contains ImplicitConfirm Extension | ${pki_message} |
+    ...
+    [Tags]    confirmation
     [Arguments]    ${pki_message}
     ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
     RETURN    ${result}
