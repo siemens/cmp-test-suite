@@ -114,8 +114,25 @@ Initialize PQ Cert And Key Variables
     VAR   &{PQ_SIG_KEYS}   scope=Global
 
 Set Up CRR Test Cases
-    [Documentation]    Set up the test cases for the CMP test cases.
-    Set Up Test Suite
+    [Documentation]    Prepare the environment variables for the Cross-Certification Request (CRR) tests.
+    ...                By loading the trusted CA credentials and chain. Is required to correctly protect a
+    ...                `PKIMessage` with the trusted CA certificate and key, so that a CRR certificate can
+    ...                be issued.
+    ...
+    ...                Notes:
+    ...                -----
+    ...                - The trusted CA certificate and key are loaded from the configuration file.
+    ...                - Variables `TRUSTED_CA_CERT`, `TRUSTED_CA_KEY`, and `TRUSTED_CA_KEY_PASSWORD`.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `Error`: When the trusted CA certificate or key cannot be loaded.
+    ...
+    ...               Examples:
+    ...               --------
+    ...               | Set Up CRR Test Cases |
+    ...
+    [Tags]    setup  trust   ccr
     ${cert}=   May Load Cert   ${TRUSTED_CA_CERT}
     ${key}=    Load Private Key From File    ${TRUSTED_CA_KEY}   password=${TRUSTED_CA_KEY_PASSWORD}
     VAR   ${TRUSTED_CA_CERT_OBJ}    ${cert}  scope=Global
