@@ -353,8 +353,21 @@ Response Time Must Be Fresh
 
 SenderNonce Must Be At Least 128 Bits Long
     [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
-    ...    Ref: 3.1. General Description of the CMP Message Header
-    [Tags]    crypto
+    ...    Ref: 3.1. General Description of the CMP Message Header.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message` (PKIMessage): Message to validate.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `AssertionError`: When the nonce is shorter than 16 bytes.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | SenderNonce Must Be At Least 128 Bits Long | ${pki_message} |
+    ...
+    [Tags]    crypto  nonce
     [Arguments]    ${pki_message}
     ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
     # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
