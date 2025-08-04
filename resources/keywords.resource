@@ -1188,12 +1188,21 @@ Issue New Cert For Testing
     ...
     ...    Arguments:
     ...    ---------
-    ...    - `url`: The URL of the CA to send the request to. Defaults to `${CA_CMP_URL}`.
-    ...    - `key`: The key to use for the certificate request. If not provided, a new default key will be generated.
+    ...    - `url` (str): The URL of the CA to send the request to. Defaults to `${CA_CMP_URL}`.
+    ...    - `key` (PrivateKey): The key to use for the certificate request. If not provided, \
+    ...    a new default key will be generated.
     ...
     ...    Returns:
+    ...    -------
     ...    - `cert`: The issued certificate.
     ...    - `key`: The key used to generate the certificate request.
+    ...
+    ...    Examples:
+    ...    --------
+    ...    | ${cert}  ${key}= | Issue New Cert For Testing |
+    ...    | ${cert}  ${key}= | Issue New Cert For Testing | ${url} |
+    ...    | ${cert}  ${key}= | Issue New Cert For Testing | ${url} | ${key} |
+    ...
     [Tags]    setup
     [Arguments]    ${url}=${CA_CMP_URL}    ${key}=${None}
     IF    '${key}' == '${None}'
