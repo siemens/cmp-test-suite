@@ -386,21 +386,21 @@ Certificate Must Be Valid
     ...
     ...    Arguments:
     ...    ---------
-    ...    - `${der_certificate}`: The DER-encoded certificate or `CMPCertificate` object to validate.
+    ...    - `cert` (bytes, CMPCertificate): The DER-encoded certificate or `CMPCertificate` object to validate.
     ...
     ...    Examples:
     ...    --------
-    ...    | Validate Certificate | ${der_certificate} |
+    ...    | Validate Certificate | ${cert} |
     ...
     [Tags]    cert   validate
-    [Arguments]    ${der_certificate}
-    Log Base64    ${der_certificate}
+    [Arguments]    ${cert}
+    Log Base64    ${cert}
     # If OpenSSL complains, we fail the test
-    Validate Certificate OpenSSL    ${der_certificate}
+    Validate Certificate OpenSSL    ${cert}
     # Use PKILint to check the certificate for issues, https://github.com/digicert/pkilint
     # If PKILint complains, we log a warning, but keep going
     Run Keyword And Warn On Failure
-    ...    Validate Certificate PKILint    ${der_certificate}
+    ...    Validate Certificate PKILint    ${cert}
 
 Validate Certificate Was Issued For Expected Alg
     [Documentation]    Validate that the certificate was issued for the expected algorithm.
