@@ -449,7 +449,22 @@ Generate Key And CSR
     RETURN    ${csr_data}    ${key}
 
 PKIMessage Body Type Must Be
-    [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
+    [Documentation]    Ensure that the response type in a PKIMessage is of a certain type.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message` (PKIMessage): Message to check.
+    ...                - `expected_type` (string): Required body type.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `AssertionError`: When the body type differs.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | PKIMessage Body Type Must Be | ${pki_message} | error |
+    ...
+    [Tags]    body_type
     [Arguments]    ${pki_message}    ${expected_type}
     ${response_type}=    Get CMP Message Type    ${pki_message}
     IF    '${response_type}' != '${expected_type}'
