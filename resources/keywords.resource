@@ -544,9 +544,20 @@ Exchange PKIMessage
 Generate Unique Key
     [Documentation]    Generates a unique cryptographic key using specified default parameters, set inside the config.
     ...
+    ...                Notes:
+    ...                -----
+    ...                 - `BURNED_KEYS` is a list of keys that have been generated
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `algorithm` (string): The algorithm to use for key generation (e
+    ...                g., 'rsa', 'ecc').
+    ...                - `params` (dict, mapping): Additional parameters for key generation, such as `length` or `curve`.
+    ...                - `max_attempts` (int): Maximum number of attempts to generate a unique key. Defaults to `100`.
+    ...
     ...                Examples:
-    ...                | ${private_key}=    Generate Unique Key | rsa | length=2048 |
-    [Tags]    key
+    ...                | ${key}=    Generate Unique Key | rsa | length=2048 |
+    [Tags]    key  crypto
     [Arguments]    ${algorithm}    &{params}
     ${max_attempts}=  Get From Dictionary    ${params}    max_attempts    ${100}
     FOR    ${index}    IN RANGE    ${max_attempts}
