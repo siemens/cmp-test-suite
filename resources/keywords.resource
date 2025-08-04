@@ -1311,20 +1311,27 @@ Exchange Migration PKIMessage
 
 Exchange Hybrid PKIMessage
     [Documentation]    Exchange a PKIMessage for a hybrid algorithm certificate.
+    ...
     ...                Arguments:
-    ...                - ${name}: The hybrid algorithm name (e.g., composite-kem).
-    ...                - ${pq_name}: The PQ KEM algorithm name (e.g., ml-kem-768, ml-kem-1024).
-    ...                - ${trad_name}: The traditional algorithm name (e.g., rsa2048, ecdh-secp384r1, x25519).
-    ...                - ${invalid_key_size}: Whether to use an invalid key size. Defaults to `False`.
-    ...                - ${extensions}: Additional certificate extensions (default: None).
-    ...                - ${optional_args}: Optional key-value pairs to set variables for the protection.
+    ...                ---------
+    ...                - `name` (str): The hybrid algorithm name (e.g., composite-kem).
+    ...                - `pq_name` (str): The PQ KEM algorithm name (e.g., ml-kem-768, ml-kem-1024).
+    ...                - `trad_name` (str): The traditional algorithm name (e.g., rsa2048, ecdh-secp384r1, x25519).
+    ...                - `invalid_key_size` (bool): Whether to use an invalid key size. Defaults to `False`.
+    ...                - `extensions` (Extensions): Additional certificate extensions (default: None).
+    ...                - `optional_args` (dict, mapping): Optional key-value pairs to set variables for the protection.
     ...                (for the key generation, the certificate request, and the protection).
+    ...
     ...                Returns:
+    ...                -------
     ...                - The response PKIMessage.
     ...                - The key used to generate the request.
+    ...
     ...                Examples:
-    ...                | Exchange Composite KEM PKIMessage | composite-kem | rsa | ml-kem-768 |  length=2048 |
-    ...                | Exchange Composite KEM PKIMessage | composite-kem | ecdh | ml-kem-768 |  curve=secp256r1 |
+    ...                --------
+    ...                | ${response} ${key}= | Exchange Composite KEM PKIMessage | composite-kem | rsa | ml-kem-768 |  length=2048 |
+    ...                | ${response} ${key}= | Exchange Composite KEM PKIMessage | composite-kem | ecdh | ml-kem-768 |  curve=secp256r1 |
+    ...
     [Arguments]    ${name}    ${pq_name}    ${trad_name}    ${invalid_key_size}=False    ${extensions}=${None}    &{optional_args}
     ${length}=  Get From Dictionary    ${optional_args}    length   ${None}
     ${curve}=  Get From Dictionary    ${optional_args}    curve   ${None}
