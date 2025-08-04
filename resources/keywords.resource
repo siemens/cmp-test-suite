@@ -197,6 +197,29 @@ Load And Refresh PKIMessage From File
     [Documentation]    Load a PKIMessage from a PEM file, update its transactionId and messageTime, and return it
     ...    as a pyasn1 object. This is useful when sending previously sent messages, the CA will reject
     ...    them if the time is not fresh or if the transactionId is not unique.
+    ...
+    ...            Arguments:
+    ...            ---------
+    ...            - `path` (string): PEM file path.
+    ...            - `transaction_id` (bytes): New transaction ID. Default to `None`, which means a 16-byte random value.
+    ...            - `message_time` (datetime): New message time. Default to `None`, which means \
+    ...            the current time will be used.
+    ...
+    ...            Returns:
+    ...            -------
+    ...            - The updated/loaded PKIMessage object.
+    ...
+    ...            Raises:
+    ...            ------
+    ...            - `FileNotFoundError`: When the PEM file is missing.
+    ...            - `ValueError`: When the file content cannot be parsed as a PKIMessage.
+    ...
+    ...            Examples:
+    ...            --------
+    ...            | ${pki_message}= | Load And Refresh PKIMessage From File | ${path} |
+    ...            | ${pki_message}= | Load And Refresh PKIMessage From File | ${path} |  0x001122 |
+    ...            | ${pki_message}= | Load And Refresh PKIMessage From File | ${path} | ${transaction_id} | ${message_time} |
+    ...
     [Arguments]    ${path}    ${transaction_id}=${NONE}    ${message_time}=${NONE}
     ${raw}=    Load And Decode Pem File    ${path}
     ${pki_message}=    Parse PKIMessage    ${raw}
