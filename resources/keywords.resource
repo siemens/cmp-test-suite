@@ -521,7 +521,24 @@ PKIMessage Must Contain ImplicitConfirm Extension
 
 Collect Nonce From PKIMessage
     [Documentation]    Extract the senderNonce from a PKIMessage and append it to a list, which will be used later
-    ...    in a test that checks for nonces to be cryptographically strong.
+    ...    in a test that checks for nonces to be cryptographically strong. Used to ensure that the server does not
+    ...   send the same nonce twice, and that the nonces are cryptographically secure.
+    ...
+    ...                Notes:
+    ...                -----
+    ...                - The keyword does not return anything, but appends the nonce to the
+    ...                `COLLECTED_NONCES` list.
+    ...                - Only collect the nonces from messages that are of set in the config variable \
+    ...                `GATHER_NONCES_FROM_MSG_BODIES`.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message`: The PKIMessage object to extract the nonce from.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | Collect Nonce From PKIMessage | ${pki_message} |
+    ...
     [Arguments]    ${pki_message}
     ${body_type}=    Get Cmp Message Type    ${pki_message}
     Log   ${GATHER_NONCES_FROM_MSG_BODIES}
