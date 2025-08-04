@@ -1591,9 +1591,9 @@ Build KEMBasedMAC General Message
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `${kem_key}`: The KEM key to use for the message.
-    ...                - `${kem_cert}`: The KEM certificate to use for the message.
-    ...                - `${random_value}`: Optional random value to use for the message, for negative tests.
+    ...                - `kem_key` (KEMPrivateKey): The KEM key to use for the message.
+    ...                - `kem_cert` (CMPCertificate): The KEM certificate to use for the message.
+    ...                - `random_value` (str, bytes) : Optional random value to use for the message, for negative tests.
     ...                The `infoValue` field **MUST** be absent.
     ...
     ...                Returns:
@@ -1604,9 +1604,10 @@ Build KEMBasedMAC General Message
     ...                --------
     ...                | ${genm}= |    Build KEMBasedMAC General Message    | ${kem_key} | ${kem_cert} |
     ...                | ${genm}= |    Build KEMBasedMAC General Message    | ${kem_key} | ${kem_cert} | ${random_value} |
+    ...
     [Tags]    KEM   genm
     [Arguments]    ${kem_key}    ${kem_cert}   ${random_value}=${None}
-    ${info_val}=    Prepare KEMCiphertextInfo   ${kem_key}    ${None}
+    ${info_val}=    Prepare KEMCiphertextInfo   ${kem_key}    ${random_value}
     ${genm}=   Build CMP General Message   info_values=${info_val}
     ...        sender=${SENDER}   recipient=${RECIPIENT}
     ${cert_chain}=   Build Cert Chain From Dir    ${kem_cert}     cert_chain_dir=./data/cert_logs
