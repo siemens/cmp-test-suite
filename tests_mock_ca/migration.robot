@@ -859,7 +859,7 @@ CA Should not allow Key Update with revoked key
     PKIStatusInfo Failinfo Bit Must Be    ${response}    certRevoked
 
 CA MUST Reject A Revoked Composite Sig Key
-    [Documentation]    According to composite-sig-cms03 the keys should not be used inside another certificate.
+    [Documentation]    According to composite-sig-cms07 the keys should not be used inside another certificate.
     ...                We send a composite-sig certificate request, which contains a already revoked key.
     ...                The CA MUST reject the request and MAY respond with the optional failInfo `badCertTemplate`.
     [Tags]    composite-sig  badCertTemplate
@@ -900,7 +900,7 @@ CA MUST Accept A Valid Composite Sig Update Request
     VAR   ${UPDATED_COMP_SIG_KEY}    ${key}   scope=Global
 
 CA MUST Reject A Update Composite Sig Key
-    [Documentation]    According to composite-sig-cms03 the keys should not be used inside another certificate.
+    [Documentation]    According to composite-sig-cms07 the keys should not be used inside another certificate.
     ...                We send a composite-sig certificate request, which contains a already updated key.
     ...                The CA MUST reject the request and MAY respond with the optional failInfo `badCertTemplate`.
     [Tags]    composite-sig
@@ -920,7 +920,7 @@ CA MUST Reject A Update Composite Sig Key
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
 CA MUST Reject A Revoked Composite KEM Key
-    [Documentation]    According to composite-kem-pki05 the keys should not be used inside another certificate.
+    [Documentation]    According to composite-kem-pki07 the keys should not be used inside another certificate.
     ...                We send a composite-sig certificate request, which contains a already revoked key.
     ...                The CA MUST reject the request and MAY respond with the optional failInfo `badCertTemplate`.
     [Tags]    composite-kem
@@ -939,7 +939,7 @@ CA MUST Reject A Revoked Composite KEM Key
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
 CA MUST Reject A Update Composite KEM Key
-    [Documentation]    According to composite-kem-pki05 the keys should not be used inside another certificate.
+    [Documentation]    According to composite-kem-pki07 the keys should not be used inside another certificate.
     ...                We send a composite-sig certificate request, which contains a already updated key.
     ...                The CA MUST reject the request and MAY respond with the optional failInfo `badCertTemplate`.
     [Tags]    composite-kem
@@ -957,7 +957,7 @@ CA MUST Reject A Update Composite KEM Key
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
 CA MUST Check That The ML-DSA Key Is Not Used Inside Another Cert
-    [Documentation]    According to composite-sig-cms03 the keys should not be used inside another certificate.
+    [Documentation]    According to composite-sig-cms07 the keys should not be used inside another certificate.
     ...                We send a composite-sig certificate request, which contains a ML-DSA key, which is already used
     ...                inside another certificate. The CA MUST reject the request and MAY respond with the optional
     ...                failInfo `badCertTemplate`.
@@ -974,7 +974,7 @@ CA MUST Check That The ML-DSA Key Is Not Used Inside Another Cert
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
 CA MUST Check that the traditional key is not used inside another Cert
-    [Documentation]    According to composite-sig-cms03 the keys should not be used inside another certificate.
+    [Documentation]    According to composite-sig-cms07 the keys should not be used inside another certificate.
     ...                We send a composite-sig certificate request, which contains a traditional key, which is
     ...                already used inside another certificate. The CA MUST reject the request and MAY respond with
     ...                the optional failInfo `badCertTemplate`.
@@ -995,7 +995,7 @@ CA MUST Check that the traditional key is not used inside another Cert
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
 CA MUST Check that the ML-KEM key is not used inside another Cert
-    [Documentation]    According to composite-kem-pki05 the keys should not be used inside another certificate.
+    [Documentation]    According to composite-kem-pki07 the keys should not be used inside another certificate.
     ...                We send a composite-sig certificate request, which contains a ML-KEM key, which is already used
     ...                inside another certificate. The CA MUST reject the request and MAY respond with the optional
     ...                failInfo `badCertTemplate`.

@@ -45,8 +45,7 @@ from pq_logic.hybrid_sig.cert_binding_for_multi_auth import validate_multi_auth_
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import extract_sun_hybrid_alt_sig, sun_cert_template_to_cert
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from resources import asn1utils
@@ -302,7 +301,7 @@ class CAHandler:
         self.comp_key = generate_key("composite-sig")
         self.comp_cert = build_certificate(private_key=self.comp_key, is_ca=True, common_name="CN=Test CA")[0]
         self.sun_hybrid_key = generate_key("composite-sig")  # type: ignore
-        self.sun_hybrid_key: CompositeSig04PrivateKey
+        self.sun_hybrid_key: CompositeSig07PrivateKey
         cert_template = prepare_cert_template(
             self.sun_hybrid_key,
             subject="CN=Hans the Tester",
@@ -445,7 +444,7 @@ class CAHandler:
             extensions=extensions,
         )
 
-        if not isinstance(self.sun_hybrid_key, CompositeSig03PrivateKey):
+        if not isinstance(self.sun_hybrid_key, CompositeSig07PrivateKey):
             raise BadConfig(f"The Sun Hybrid key is not a `CompositeSig03PrivateKey`.Got: {type(self.sun_hybrid_key)}")
 
         self.sun_hybrid_handler = SunHybridHandler(
@@ -1032,7 +1031,7 @@ class CAHandler:
 
         serial_number = self._get_serial_number()
 
-        if not isinstance(self.sun_hybrid_key, CompositeSig03PrivateKey):
+        if not isinstance(self.sun_hybrid_key, CompositeSig07PrivateKey):
             raise Exception("The Sun-Hybrid CA key is not a CompositeSig03PrivateKey.")
 
         try:

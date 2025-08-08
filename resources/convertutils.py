@@ -18,7 +18,7 @@ from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, KEMPublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PublicKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PublicKey
 from resources.copyasn1utils import copy_subject_public_key_info
 from resources.oidutils import PQ_NAME_2_OID
 from resources.typingutils import PublicKey, SignKey, TradSignKey, TradVerifyKey, VerifyKey
@@ -92,7 +92,7 @@ def ensure_is_single_verify_key(key: Any) -> Union[PQSignaturePublicKey, TradVer
 def ensure_is_kem_pub_key(key: Any) -> KEMPublicKey:
     """Ensure provided key is allowed to verify signatures."""
     if not isinstance(key, KEMPublicKey):
-        raise ValueError(f"the provided key is not allowed to be used for verifying signatures: {type(key)}")
+        raise ValueError(f"the provided key is not a KEMPublicKey: {type(key)}")
     return key
 
 
@@ -100,7 +100,7 @@ def ensure_is_kem_pub_key(key: Any) -> KEMPublicKey:
 def ensure_is_kem_priv_key(key: Any) -> KEMPrivateKey:
     """Ensure provided key is allowed to verify signatures."""
     if not isinstance(key, KEMPrivateKey):
-        raise ValueError(f"the provided key is not allowed to be used for verifying signatures: {type(key)}")
+        raise ValueError(f"the provided key is not a KEMPrivateKey: {type(key)}")
     return key
 
 
@@ -109,7 +109,6 @@ def subject_public_key_info_from_pubkey(
     public_key: PublicKey,
     target: Optional[rfc5280.SubjectPublicKeyInfo] = None,
     use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
     hash_alg: Optional[str] = None,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Convert a `PublicKey` object to a `rfc5280.SubjectPublicKeyInfo` structure.
@@ -122,14 +121,13 @@ def subject_public_key_info_from_pubkey(
     :param target: An optional existing `rfc5280.SubjectPublicKeyInfo` object to populate
     with the decoded data. If not provided, a new structure is created.
     :param use_rsa_pss: Whether RSA-PSS-Padding was used for signing. Only relevant for CompositeSigKeys.
-    :param use_pre_hash: Whether the CompositeKey uses a pre_hashing OID.
     :param hash_alg: The hash algorithm to use for pq-signature key, pre-hashing.
     (e,g. "sha512", "shake256").
     (some implementations may require two SPKIs for the public key).
     :return: An `rfc5280.SubjectPublicKeyInfo` structure containing the public key information.
     """
-    if isinstance(public_key, CompositeSig03PublicKey):
-        return public_key.to_spki(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
+    if isinstance(public_key, CompositeSig07PublicKey):
+        return public_key.to_spki(use_pss=use_rsa_pss)
 
     oid = None
     if hash_alg is not None and isinstance(public_key, PQSignaturePublicKey):

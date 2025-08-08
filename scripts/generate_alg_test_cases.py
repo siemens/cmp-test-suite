@@ -10,10 +10,8 @@ sys.path.append(".")
 
 from pq_logic.tmp_oids import (
     CHEMPAT_NAME_2_OID,
-    COMPOSITE_KEM05_NAME_2_OID,
-    COMPOSITE_KEM06_NAME_2_OID,
-    COMPOSITE_SIG03_NAME_2_OID,
-    COMPOSITE_SIG04_NAME_2_OID,
+    COMPOSITE_KEM07_NAME_2_OID,
+    COMPOSITE_SIG07_NAME_TO_OID,
 )
 from resources.oidutils import PQ_KEM_NAME_2_OID, PQ_SIG_NAME_2_OID, PQ_SIG_PRE_HASH_NAME_2_OID
 
@@ -77,12 +75,11 @@ def generate_pq_sig_tests():
 
 
 def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: str):
-    """
-    Generalized test case generator for composite signatures.
+    """Generalized test case generator for composite signatures.
 
     :param name_list: List of algorithm names (strings).
-    :param replace_name: The string to replace (e.g., 'composite-sig-04-').
-    :param name_to_replace: The string to replace with (e.g., 'Composite Sig04 ').
+    :param replace_name: The string to replace (e.g., 'composite-sig-07-').
+    :param name_to_replace: The string to replace with (e.g., 'Composite Sig07 ').
     :return: List of test case dictionaries.
     """
     test_cases = []
@@ -90,7 +87,6 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
 
     for name in name_list:
         use_pss = name.endswith("-pss")
-        pre_hash = "hash-" in name
 
         # Replace part of name dynamically
         base_name = name.replace(replace_name, name_to_replace).replace("ml-dsa", "ML-DSA").upper()
@@ -115,29 +111,26 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
                     curve_name = entries[ind + 1]
                     tags.append("ecdsa")
                     tags.append(curve_name)
-                    if f"{curve_name}-{test_type}-{pre_hash}" in _found_entries:
+                    if f"{curve_name}-{test_type}" in _found_entries:
                         tags.append("completeness")
                     else:
-                        _found_entries.append(f"{curve_name}-{test_type}-{pre_hash}")
+                        _found_entries.append(f"{curve_name}-{test_type}")
                 except ValueError:
                     pass  # ecdsa not found
 
             if "ed448" in lowered_name:
                 tags.append("ed448")
-                if f"ed448-{test_type}-{pre_hash}" in _found_entries:
+                if f"ed448-{test_type}" in _found_entries:
                     tags.append("completeness")
                 else:
                     _found_entries.append(f"ed448-{test_type}")
 
             if "ed25519" in lowered_name:
                 tags.append("ed25519")
-                if f"ed25519-{test_type}-{pre_hash}" in _found_entries:
+                if f"ed25519-{test_type}" in _found_entries:
                     tags.append("completeness")
                 else:
-                    _found_entries.append(f"ed25519-{test_type}-{pre_hash}")
-
-            if "hash" in lowered_name:
-                tags.append("pre_hash")
+                    _found_entries.append(f"ed25519-{test_type}")
 
             return tags
 
@@ -145,7 +138,7 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
         test_cases.append(
             {
                 "test_name": invalid_test_name.strip(),
-                "arguments": {"algorithm": name, "use_pss": use_pss, "pre_hash": pre_hash, "invalid": True},
+                "arguments": {"algorithm": name, "use_pss": use_pss, "invalid": True},
                 "tags": generate_tags("negative"),
             }
         )
@@ -154,7 +147,7 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
         test_cases.append(
             {
                 "test_name": valid_test_name.strip(),
-                "arguments": {"algorithm": name, "use_pss": use_pss, "pre_hash": pre_hash, "invalid": False},
+                "arguments": {"algorithm": name, "use_pss": use_pss, "invalid": False},
                 "tags": generate_tags("positive"),
             }
         )
@@ -219,8 +212,7 @@ def _generate_hybrid_kem_tests():
     for hybrid_type, name_list in {
         "xwing": {"xwing"},
         "chempat": CHEMPAT_NAME_2_OID,
-        "composite-kem-05": COMPOSITE_KEM05_NAME_2_OID,
-        "composite-kem-06": COMPOSITE_KEM06_NAME_2_OID,
+        "composite-kem07": COMPOSITE_KEM07_NAME_2_OID,
     }.items():
         for name in name_list:
             if "composite-dhkem" in name:
@@ -287,10 +279,9 @@ def _generate_hybrid_kem_tests():
 def _write_comp_sig_to_txt_file():
     f = open("composite_sig_test_cases.txt", "w", encoding="utf-8")
     _spacer = " " * 4  # 4 spaces between columns as per your requirement
-    extra = f"ALGORITHM{_spacer}   USE_RSA_PSS{_spacer}    USE_PRE_HASH{_spacer}    badPOP\n"
-    f.write(f"*** Test Cases *** {_spacer}{extra}\n\n")
-    test_cases = generate_composite_sig_tests(COMPOSITE_SIG03_NAME_2_OID, "composite-sig-", "COMPOSITE-SIG-")
-    test_cases += generate_composite_sig_tests(COMPOSITE_SIG04_NAME_2_OID, "composite-sig-", "COMPOSITE-SIG-")
+    extra = f"ALGORITHM{_spacer}USE_RSA_PSS{_spacer}badPOP\n"
+    f.write(f"*** Test Cases ***{_spacer}{extra}")
+    test_cases = generate_composite_sig_tests(COMPOSITE_SIG07_NAME_TO_OID, "composite-sig-", "COMPOSITE-SIG-")
     for test in test_cases:
         tmp = _write_to_file(test)
         f.write(tmp)
@@ -299,8 +290,9 @@ def _write_comp_sig_to_txt_file():
 def _write_to_file(test_case: dict):
     tmp = f"{test_case['test_name']}\n"
     # Print arguments with 4 spaces between
+    spacer = " " * 4  # 4 spaces between columns as per your requirement
     args = test_case["arguments"]
-    args_str = f"{args['algorithm']}    {str(args['use_pss'])}    {str(args['pre_hash'])}    {str(args['invalid'])}"
+    args_str = f"{args['algorithm']}{spacer}{str(args['use_pss'])}{spacer}{str(args['invalid'])}"
     tmp += f"     ...    {args_str}\n"
     tags_str = "  ".join(test_case["tags"])
     tmp += f"     [Tags]    {tags_str}\n\n"
@@ -348,10 +340,11 @@ def _write_hybrid_kem_tests():
     f = open("hybrid_kem_test_cases.txt", "w", encoding="utf-8")
     _spacer = " " * 4  # 4 spaces between columns as per your requirement
     extra = f"ALGORITHM{_spacer}INVALID_KEY_SIZE\n"
-    f.write(f"*** Test Cases *** {_spacer}{extra}\n\n")
+    f.write(f"*** Test Cases *** {_spacer}{extra}")
     for test in test_cases:
         tmp = _write_to_file_pq(test)
         f.write(tmp)
 
 
 _write_comp_sig_to_txt_file()
+_write_hybrid_kem_tests()

@@ -120,7 +120,6 @@ The following post-quantum combined mechanisms are supported:
 - **Chempat**: A hybrid cryptographic approach.
 - **XWing**: Combines post-quantum KEM with traditional methods.
 - **Composite KEM**: Merges traditional and PQ cryptography.
-- **Composite KEM KMAC**: A variant of Composite KEM (now expired).
 
 ---
 

@@ -34,9 +34,10 @@ from robot.api.deco import keyword, not_keyword
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateKey
+from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey
 from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import COMPOSITE_SIG04_OID_2_NAME, COMPOSITE_SIG_SIGNED_DATA_OID_HASH
+from pq_logic.tmp_oids import COMPOSITE_SIG06_PREHASH_OID_2_HASH, COMPOSITE_SIG07_OID_TO_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -72,6 +73,7 @@ from resources.oidutils import (
     KM_KW_ALG,
     ML_DSA_OID_2_NAME,
     MSG_SIG_ALG,
+    PQ_SIG_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
     PROT_SYM_ALG,
     SLH_DSA_OID_2_NAME,
@@ -1151,21 +1153,24 @@ def get_digest_hash_alg_from_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> str:
         return "sha512"
     if oid == rfc9481.id_Ed448:
         return "shake256"
-    if oid in COMPOSITE_SIG_SIGNED_DATA_OID_HASH:
-        return COMPOSITE_SIG_SIGNED_DATA_OID_HASH[oid]
-    if oid in COMPOSITE_SIG04_OID_2_NAME:
-        return "sha512"
+
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
+        return COMPOSITE_SIG06_PREHASH_OID_2_HASH[oid]
 
     if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
         return PQ_SIG_PRE_HASH_OID_2_NAME[oid].split("-")[-1]
 
     if oid in ML_DSA_OID_2_NAME:
         return "sha512"
+
     if oid in SLH_DSA_OID_2_NAME:
         name = SLH_DSA_OID_2_NAME[oid]
         for option in ["sha256", "sha512", "shake128", "shake256"]:
             if name + "-" + option in SLH_DSA_PRE_HASH_NAME_2_OID:
                 return option
+
+    if oid in PQ_SIG_OID_2_NAME:
+        return "sha512"
 
     hash_alg = get_hash_from_oid(oid, only_hash=True)
     if hash_alg is None:
@@ -1277,6 +1282,19 @@ def validate_signed_data_structure(
     return new_private_key
 
 
+def _check_is_hybrid_or_pq_sig_alg_cert_chain(certs: List[rfc9480.CMPCertificate]) -> bool:
+    """Check if the certificate chain contains hybrid or PQ signature algorithm certificates.
+
+    :param certs: A list of CMP certificates.
+    :return: True if the certificate chain contains hybrid or PQ signature algorithm certificates, False otherwise.
+    """
+    for cert in certs:
+        sig_alg = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+        if sig_alg in COMPOSITE_SIG07_OID_TO_NAME or sig_alg in PQ_SIG_OID_2_NAME:
+            return True
+    return False
+
+
 def _validate_kga_certificate(
     certs: List[rfc9480.CMPCertificate],
     asym_key_package_bytes: bytes,
@@ -1298,6 +1316,20 @@ def _validate_kga_certificate(
         logging.info("Used a self-signed certificate to sign the `SignedData` content")
     else:
         certutils.certificates_are_trustanchors([certs[-1]], trustanchors=trustanchors)
+
+        # TODO change if OpenSSL version 3.5.0 or greater is used.
+        if _check_is_hybrid_or_pq_sig_alg_cert_chain(certs):
+            logging.warning(
+                "The certificate chain is a hybrid or PQ signature algorithm certificate chain, "
+                "So it can not be verified with OpenSSL!"
+            )
+            if certutils.build_chain_from_list(certs[0], certs[1:]) != certs:
+                raise ValueError(
+                    "The certificate chain is not valid! "
+                    "The first certificate in the chain must be the KGA certificate."
+                )
+            return
+
         certutils.verify_cert_chain_openssl(cert_chain=certs)
         signer_cert_index = checkutils.find_right_cert_pos(
             certs, asym_key_package_bytes, signature=signature, hash_alg=hash_alg
@@ -1378,6 +1410,24 @@ def check_signer_infos(
     return {"digest_eContent": message_digest_value, "signatureAlgorithm": sig_alg_id, "signature": signature}
 
 
+def _is_signature_alg_id(alg_id: rfc5652.SignatureAlgorithmIdentifier) -> None:
+    """Check if the algorithm identifier is a valid signature algorithm."""
+    oid = alg_id["algorithm"]
+    if oid in MSG_SIG_ALG:
+        logging.info("Thea Signature algorithm is a MSG_SIG_ALG algorithm. Sig name: %s", MSG_SIG_ALG[oid])
+    elif oid in COMPOSITE_SIG07_OID_TO_NAME:
+        logging.info(
+            "The Signature algorithm is a Composite-Sig06 algorithm. Sig name: %s",
+        )
+    elif oid in PQ_SIG_OID_2_NAME:
+        logging.info("The Signature algorithm is a PQ_SIG algorithm. Sig name: %s", PQ_SIG_OID_2_NAME[oid])
+    else:
+        raise BadAlg(
+            "The SignerInfo `signatureAlgorithm` OID is not supported or invalid! "
+            f"Got: {may_return_oid_to_name(alg_id['algorithm'])}"
+        )
+
+
 @not_keyword
 def validate_signature_and_digest_alg(
     sig_alg_id: rfc5652.SignatureAlgorithmIdentifier,
@@ -1398,38 +1448,28 @@ def validate_signature_and_digest_alg(
     # as of RFC8419 section-3.1
     # Ed25519, the digestAlgorithm MUST be id-sha512
     # Ed448, the digestAlgorithm MUST be id-shake256 because CMP output length must be 64.
-
     if other != this:
         raise ValueError(
             "The `digestAlgorithm` inside the `SignerInfo` structure must be the same as in "
             "the `digestAlgorithms` field of `encryptedContent`"
         )
 
-    if sig_alg_id["algorithm"] not in MSG_SIG_ALG:
-        raise ValueError("The signature algorithm type must be one of MSG_SIG_ALG, as specified in RFC 9481 Section 3!")
+    _is_signature_alg_id(sig_alg_id)
 
-    sig_hash_oid = sig_alg_id["algorithm"]
+    try:
+        hash_name_dig = get_hash_from_oid(digest_alg_id["algorithm"])
+    except ValueError as e:
+        raise BadAlg(
+            "The `digestAlgorithm` OID is not supported or invalid!."
+            f"Got: {may_return_oid_to_name(digest_alg_id['algorithm'])}"
+        ) from e
 
-    # TODO add unit test for Composite-Sig
-    # The composite-sig-cms03 daft says should be eq to hash in section 8.
-    # But LwCMP is strict, so this follows the style to only allow the expected hash.
-
-    hash_name_sig = COMPOSITE_SIG_SIGNED_DATA_OID_HASH.get(sig_hash_oid)
-    if hash_name_sig is None:
-        hash_name_sig = get_hash_from_oid(sig_hash_oid, only_hash=True)
-
-    hash_name_dig = get_hash_from_oid(digest_alg_id["algorithm"])
-
-    _name = MSG_SIG_ALG[sig_hash_oid]
-    if _name == "ed25519":
-        hash_name_sig = "sha512"
-    elif _name == "ed448":
-        hash_name_sig = "shake256"
-
+    hash_name_sig = get_digest_hash_alg_from_alg_id(alg_id=sig_alg_id)
     if hash_name_sig != hash_name_dig:
         raise ValueError(
             f"The hash algorithm used in `signatureAlgorithm` ({hash_name_sig}) and "
             f"`digestAlgorithm` ({hash_name_dig}) must be the same."
+            f"Signature algorithm OID: {may_return_oid_to_name(sig_alg_id['algorithm'])}, "
         )
 
 
@@ -2235,7 +2275,9 @@ def process_kem_recip_info(
         is_sun_hybrid=is_sun_hybrid,
     )
 
-    if not isinstance(private_key, (RSAPrivateKey, RSADecapKey)):
+    if isinstance(private_key, CompositeKEM07PrivateKey):
+        shared_secret = private_key.decaps(validated_info["kemct"], use_in_cms=True)
+    elif not isinstance(private_key, (RSAPrivateKey, RSADecapKey)):
         shared_secret = private_key.decaps(validated_info["kemct"])
     else:
         shared_secret = perform_rsa_kemri(
