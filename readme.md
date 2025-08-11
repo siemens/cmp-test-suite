@@ -61,7 +61,7 @@ Note that if you have not activated the environment yet, do so now.
    - Run `robot tests/smoke.robot` to run the smoke test, that checks if everything works so far.
    - Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment. 
 4. In your directory in the folder of cmp-test-suite you will find `report.html`.
-   - [Detailed explanation of the output](Output.md)
+   - [Detailed explanation of the output](output.md)
 
 ### Additional RobotFramework commands
 You can run specific tests on specific environments by adjusting command line options. Consider this example:

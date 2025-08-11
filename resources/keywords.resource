@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 *** Settings ***
-Documentation       Keywords are often used for testing.
+Documentation       Keywords are often used for testing. Keywords are sorted by their functionality. 
 
 Resource            ../config/${environment}.robot
 # Resource    ../config/local.robot
@@ -27,7 +27,7 @@ Library             ../pq_logic/pq_verify_logic.py
 
 *** Variables ***
 ${environment}          cloudpki
-# ${environment}    local
+#${environment}    local
 
 # This variable is a collector of nonces that the server sent back to us throughout all the tests. In the end we use
 # it to check that the server is not sending the same nonce twice, and that the nonces are cryptographically secure.
@@ -40,6 +40,7 @@ ${TEST_INDEX}            ${0}
 ...        password=${PRESHARED_SECRET}    protection=signature
 
 *** Keywords ***
+#### Set up Keywords - These keywords are used to set up the test suite, initialize variables, and prepare the environment for testing.
 Set Up Test Suite
     [Documentation]    This keyword is used to set up the test suite. It is called at the beginning of the test suite.
     ...                Or a test file to ensure that all prerequisites are met. As an example a first certificate is
@@ -149,111 +150,77 @@ Increase TestIndex
     ${NUMBER}=    Evaluate    ${TEST_INDEX} + 1
     VAR    ${TEST_INDEX}    ${NUMBER}    scope=Global   # robocop: off=VAR04
 
-Try To Log PKIMessage As ASN1
-    [Documentation]    Tentatively parse a buffer, assuming it is a DER-encoded PKIMessage, and log its contents.
-    ...    If that is not the case, ignore this and keep going. This is for convenience in logging.
-    ...    DEPRECATED in favour of `try_to_log_pkimessage' in Python, which is more concise.
-    [Tags]    robot:flatten
-    [Arguments]    ${payload}
-    ${pki_message}=    Parse PKIMessage    ${payload}
-    Log Asn1    ${pki_message}
+Get Next Common Name
+    [Documentation]    Return the common name added with the current test index and increment it afterwards.
+    ...                There are may some implementation which only allow one sender name, but other ones may allow
+    ...                only one allow a single certificate per name, so to have more flexibility the name is added by a
+    ...                number which is incremented after every test case.
+    [Tags]    setup
+    IF    ${ALLOW_ONLY_ONE_SENDER}    RETURN    ${DEFAULT_X509NAME}
+    VAR    ${cm}    ${DEFAULT_X509NAME} ${TEST_INDEX}
+    Increase TestIndex
+    RETURN    ${cm}
 
-Load And Refresh PKIMessage From File
-    [Documentation]    Load a PKIMessage from a PEM file, update its transactionId and messageTime, and return it
-    ...    as a pyasn1 object. This is useful when sending previously sent messages, the CA will reject
-    ...    them if the time is not fresh or if the transactionId is not unique.
-    [Arguments]    ${path}    ${transaction_id}=${NONE}    ${message_time}=${NONE}
-    ${raw}=    Load And Decode Pem File    ${path}
-    ${pki_message}=    Parse PKIMessage    ${raw}
-    Log Asn1    ${pki_message}
-    ${pki_message}=    Patch TransactionID    ${pki_message}    ${transaction_id}
-    ${pki_message}=    Patch MessageTime    ${pki_message}    ${message_time}
-    RETURN    ${pki_message}
+Set Up EnvelopedData Certs For Tests
+    [Documentation]    Set up the KGA certs for the tests. This is done by creating a new key and
+    ...               certificate for the KGA. Currently only RSA and ECC are supported.
+    [Tags]    setup   envelopedData   KGA
+    Issued NEG RSA KTRI CERT
+    Issue POS RSA KTRI Cert
+    Issue NEG ECC KARI Cert
+    Issue POS ECC KARI Cert
 
-Generate CSR With RSA2048 And A Predefined Common Name
-    [Documentation]    Produce a generic, valid CSR that has a correct signature
-    ${key}=    Generate Key    rsa    length=2048
-    ${csr}=    Build CSR    ${DEFAULT_X509NAME}    exclude_signature=True
-    ${csr_signed}=    Sign CSR    ${csr}    ${key}
-    Log    ${csr_signed}
-    RETURN    ${csr_signed}
+#### Certificate and key initialization keywords- These keywords are used for generation, validation, and handling of certificates
+#### and keys. 
+### Certificate initialization keywords
+Issue New Cert For Testing
+    [Documentation]    Issue a new certificate to be used in tests. It ensures that a valid certificate
+    ...    is available for testing.
+    ...
+    ...    Returns:
+    ...    - `cert`: The issued certificate.
+    ...    - `key`: The key used to generate the certificate request.
+    [Tags]    setup
+    ${cert_template}   ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build IR From Key   ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
+    ...                  implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}    exclude_fields=sender,senderKID
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange PKIMessage    ${protected_ir}
+    PKIStatus Must Be   ${response}   accepted
+    ${cert}=   Confirm Certificate If Needed    ${response}
+    RETURN   ${cert}    ${key}
 
-Load And Parse Example CSR
-    [Documentation]    Load a CSR from a PEM file, and return it as a pyasn1 object. This is for convenience, to remove
-    ...    the need to generate a new keypair.
-    ${csr}=    Load And Decode Pem File    data/example-csr.pem
-    ${parsed_csr}=    Parse Csr    ${csr}
-    RETURN    ${parsed_csr}
-
-Exchange Data With CA
-    [Documentation]    Send a HTTP POST request to a server, and return the response.
-    [Arguments]    ${payload}    ${url}=${CA_CMP_URL}
-    #    Run Keyword And Ignore Error    Try to Log PKIMessage as ASN1    ${payload}
-    Try To Log PKIMessage    ${payload}
-    # TODO check if type of payload is a pyasn1 structure, and if it is, der-encode it automatically? Maybe?
-    VAR    &{headers}    Content-Type=application/pkixcmp    Accept-Type=application/pkixcmp
-    ${response}=    POST
-    ...    url=${url}
-    ...    data=${payload}
-    ...    headers=&{headers}
-    ...    verify=${False}
-    ...    expected_status=any
-    Try To Log PKIMessage    ${response.content}
-    RETURN    ${response}
-
-Sender And Recipient Nonces Must Match
-    [Documentation]    Ensure that the recipient nonce in the response matches the sender nonce in the request
-    [Arguments]    ${request}    ${response}
-    ${request_nonce}=    Get Asn1 Value As Bytes    ${request}    header.senderNonce
-    ${response_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
-    Should Be Equal    ${request_nonce}    ${response_nonce}
-
-Response Time Must Be Fresh
-    [Documentation]    Ensure that the response time is not far off from the time of our request
-    ...    The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
-    [Arguments]    ${request}    ${response}    ${tolerance}=${120}
-    ${request_time}=    Get Asn1 Value As Datetime    ${request}    header.messageTime
-    ${response_time}=    Get Asn1 Value As Datetime    ${response}    header.messageTime
-
-    ${delta_verbose}=    Subtract Date From Date    ${response_time}    ${request_time}    verbose
-    ${delta}=    Subtract Date From Date    ${response_time}    ${request_time}
-    Should Be True    ${delta} < ${tolerance}    Time between request and response exceeds tolerance
-
-SenderNonce Must Be At Least 128 Bits Long
-    [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
-    ...    Ref: 3.1. General Description of the CMP Message Header
-    [Tags]    crypto
-    [Arguments]    ${pki_message}
-    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
-    # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
-    # Buffer length must be at least    ${sender_nonce}    32
-    # 16 bytes is 128 bits
-    Buffer Length Must Be At Least    ${sender_nonce}    16
-
-Certificate Must Be Valid
-    [Documentation]    Verify if a certificate is valid and passes sanity checks. The certificate is passed as a
-    ...    DER-encoded byte buffer. These checks are done by trying to parse the certificate with
-    ...    OpenSSL and PKILint. OpenSSL is relatively forgiving and will accept a certificate that
-    ...    may contain issues, but is good enough for practical applications - failure to load with OpenSSL
-    ...    is treated as an error. PKILint is very picky and will find issues even if a certificate
-    ...    is accepted by OpenSSL. PKILint's findings will be logged and reported as warnings - making
-    ...    it clear that there's something of interest, but not failing the test.
-    [Arguments]    ${der_certificate}
-    Log Base64    ${der_certificate}
-    # If OpenSSL complains, we fail the test
-    Validate Certificate OpenSSL    ${der_certificate}
-    # Use PKILint to check the certificate for issues, https://github.com/digicert/pkilint
-    # If PKILint complains, we log a warning, but keep going
-    Run Keyword And Warn On Failure
-    ...    Validate Certificate PKILint    ${der_certificate}
-
-Validate Certificate Was Issued For Expected Alg
-    [Documentation]    Validate that the certificate was issued for the expected algorithm.
+Issue And Revoke A Fresh Cert
+    [Documentation]    Issue a new certificate and then revoke it. This is useful for testing purposes.
+    ...                The function ensures that a valid certificate is available for testing.
     ...
     ...                Arguments:
-    ...                - `${response}`: The PKIMessage response.
-    ...                - `${expected_alg}`: The expected algorithm identifier (e.g., 'ml-dsa-44').
-    ...                - `${index}`: The index of the certificate in the PKIMessage. Defaults to `0`.
+    ...                ---------
+    ...                - `reason`: The reason for revocation. Defaults to `keyCompromise`.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `cert`: The revoked certificate.
+    ...                - `key`: The revoked key
+    [Tags]    setup  revocation
+    [Arguments]    ${reason}=keyCompromise
+    ${cert}    ${key}=   Issue New Cert For Testing
+    ${rr}=   Build CMP Revoke Request   ${cert}   recipient=${RECIPIENT}   reason=${reason}
+    ${protected_rr}=   Default Protect PKIMessage    ${rr}
+    ${protected_rr}=   Protect PKIMessage    ${protected_rr}    protection=signature
+    ...                                         private_key=${key}    cert=${cert}
+    ${response}=   Exchange PKIMessage    ${protected_rr}
+    PKIMessage Body Type Must Be   ${response}   rp
+    PKIStatus Must Be   ${response}   accepted
+    RETURN   ${cert}    ${key}
+
+Generate CSR For Testing
+    [Documentation]    Generates a certificate signing request for testing purposes, using default parameters
+    ...                and an incremented test index.
+    ...
+    ...                Returns:
+    ...                - `csr`: The prepared certificate signing request.
+    ...                - `key`: The generated cryptographic key.
     ...
     ...                Examples:
     ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 |
@@ -455,35 +422,43 @@ Generate Default Composite Sig Key
     ${key}=      Generate Unique Key    algorithm=composite-sig    &{params}
     RETURN     ${key}
 
-Default Protect PKIMessage
-    [Documentation]    Protect a PKIMessage with the default protection algorithm, set inside the config
-    ...                and the default parameters.
+
+
+
+
+### Certificate validation and confirmation keywords
+Certificate Must Be Valid
+    [Documentation]    Verify if a certificate is valid and passes sanity checks. The certificate is passed as a
+    ...    DER-encoded byte buffer. These checks are done by trying to parse the certificate with
+    ...    OpenSSL and PKILint. OpenSSL is relatively forgiving and will accept a certificate that
+    ...    may contain issues, but is good enough for practical applications - failure to load with OpenSSL
+    ...    is treated as an error. PKILint is very picky and will find issues even if a certificate
+    ...    is accepted by OpenSSL. PKILint's findings will be logged and reported as warnings - making
+    ...    it clear that there's something of interest, but not failing the test.
+    [Arguments]    ${der_certificate}
+    Log Base64    ${der_certificate}
+    # If OpenSSL complains, we fail the test
+    Validate Certificate OpenSSL    ${der_certificate}
+    # Use PKILint to check the certificate for issues, https://github.com/digicert/pkilint
+    # If PKILint complains, we log a warning, but keep going
+    Run Keyword And Warn On Failure
+    ...    Validate Certificate PKILint    ${der_certificate}
+
+Validate Certificate Was Issued For Expected Alg
+    [Documentation]    Validate that the certificate was issued for the expected algorithm.
     ...
-    ...                Note:
-    ...                ----
-    ...                - The protection algorithm is set to `signature` by default.
+    ...                Arguments:
+    ...                - `${response}`: The PKIMessage response.
+    ...                - `${expected_alg}`: The expected algorithm identifier (e.g., 'ml-dsa-44').
+    ...                - `${index}`: The index of the certificate in the PKIMessage. Defaults to `0`.
     ...
     ...                Examples:
-    ...                | ${prot_pkimessage}=    Default Protect PKIMessage    | ${pki_message} |
-    ...
-    [Tags]    protection
-    [Arguments]    ${pki_message}    &{params}
-    ${length}=   Get Length   ${params}
-    IF  not ${length}
-        ${args}=    Copy Dictionary    ${DEFAULT_PROTECTION_VALS}
-    ELSE
-        ${args}=    May Patch Params    ${params}    &{DEFAULT_PROTECTION_VALS}
-    END
-    ${protection}=   Get From Dictionary    ${args}    protection
-    IF  '${protection}' == 'signature'
-        ${prot_pkimessage}=    Protect Hybrid PKIMessage    ${pki_message}  &{args}
-    ELSE IF  '${protection}' == 'mac'
-        ${args}=    Set To Dictionary    ${args}   protection=${DEFAULT_MAC_ALGORITHM}
-        ${prot_pkimessage}=    Protect PKIMessage    ${pki_message}    &{args}
-    ELSE
-        ${prot_pkimessage}=    Protect PKIMessage    ${pki_message}    &{args}
-    END
-    RETURN    ${prot_pkimessage}
+    ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 |
+    ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 | 1 |
+    [Arguments]    ${response}    ${expected_alg}    ${index}=0
+    PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=    Get Cert From PKIMessage    ${response}    ${index}
+    Validate Migration OID In Certificate    ${cert}    ${expected_alg}
 
 Confirm Certificate If Needed
     [Documentation]    Some Test cases need a valid certificate to work. Because not all CA's might support the
@@ -645,14 +620,13 @@ Build Composite Signature Request
 
 # TODO maybe Update to create a unique key.
 # because some implementations only allow new keys, if for ir or cr is the same key send.
-
-Generate CSR For Testing
-    [Documentation]    Generates a certificate signing request for testing purposes, using default parameters
-    ...                and an incremented test index.
+Default Protect PKIMessage
+    [Documentation]    Protect a PKIMessage with the default protection algorithm, set inside the config
+    ...                and the default parameters.
     ...
-    ...                Returns:
-    ...                - `csr`: The prepared certificate signing request.
-    ...                - `key`: The generated cryptographic key.
+    ...                Note:
+    ...                ----
+    ...                - The protection algorithm is set to `signature` by default.
     ...
     ...                Examples:
     ...                | ${csr}    ${key}= |    Generate CSR For Testing |
@@ -867,25 +841,171 @@ Issue And Revoke A Fresh Cert
     ...                The function ensures that a valid certificate is available for testing.
     ...
     ...                Arguments:
-    ...                ---------
-    ...                - `reason`: The reason for revocation. Defaults to `keyCompromise`.
+    ...                - `transaction_id`:Optional the transaction ID for the IR. Default is `${None}`.
+    ...                - `sender_nonce`: Optional the sender's nonce for the IR. Default is `${None}`.
     ...
     ...                Returns:
-    ...                -------
-    ...                - `cert`: The revoked certificate.
-    ...                - `key`: The revoked key
-    [Tags]    setup  revocation
-    [Arguments]    ${reason}=keyCompromise
-    ${cert}    ${key}=   Issue New Cert For Testing
-    ${rr}=   Build CMP Revoke Request   ${cert}   recipient=${RECIPIENT}   reason=${reason}
-    ${protected_rr}=   Default Protect PKIMessage    ${rr}
-    ${protected_rr}=   Protect PKIMessage    ${protected_rr}    protection=signature
-    ...                                         private_key=${key}    cert=${cert}
-    ${response}=   Exchange PKIMessage    ${protected_rr}
-    PKIMessage Body Type Must Be   ${response}   rp
-    PKIStatus Must Be   ${response}   accepted
-    RETURN   ${cert}    ${key}
+    ...                - The signature-protected initialization request (ir)
+    ...
+    ...                Examples:
+    ...                | ${protected_ir}=    |    Generate Default IR Sig Protected    | transaction_id=${tx_id} |    \
+    ...                sender_nonce=${nonce} |
+    ...
+    [Arguments]    ${transaction_id}=${None}    ${sender_nonce}=${None}   &{params}
+    ${cert_template}    ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key
+    ...       ${key}
+    ...       sender_nonce=${sender_nonce}
+    ...       transaction_id=${transaction_id}
+    ...       cert_template=${cert_template}
+    ...       recipient=${RECIPIENT}
+    ...       implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
+    ...       exclude_fields=sender,senderKID
+    ...       &{params}
+    ${protected_ir}=    Protect PKIMessage
+    ...                 ${ir}
+    ...                 protection=signature
+    ...                 private_key=${ISSUED_KEY}
+    ...                 cert=${ISSUED_CERT}
+    ...                 &{params}
+    RETURN    ${protected_ir}
 
+
+### Transportation keywords
+Exchange Data With CA
+    [Documentation]    Send a HTTP POST request to a server, and return the response.
+    [Arguments]    ${payload}    ${url}=${CA_CMP_URL}
+    #    Run Keyword And Ignore Error    Try to Log PKIMessage as ASN1    ${payload}
+    Try To Log PKIMessage    ${payload}
+    # TODO check if type of payload is a pyasn1 structure, and if it is, der-encode it automatically? Maybe?
+    VAR    &{headers}    Content-Type=application/pkixcmp    Accept-Type=application/pkixcmp
+    ${response}=    POST
+    ...    url=${url}
+    ...    data=${payload}
+    ...    headers=&{headers}
+    ...    verify=${False}
+    ...    expected_status=any
+    Try To Log PKIMessage    ${response.content}
+    RETURN    ${response}
+
+Exchange PKIMessage
+    [Documentation]    Send a PKIMessage to the CA or RA Server and then then parse the returned PKIMessage.
+    ...    Expects to get a parse-able PKIMessage.
+    [Tags]    exchange    http
+    [Arguments]    ${request_pki_message}   ${url}=${CA_CMP_URL}
+    ${encoded_request}=    Encode To Der    ${request_pki_message}
+    Log Base64    ${encoded_request}
+    ${response}=    Exchange Data With CA    ${encoded_request}   ${url}
+    Log Base64    ${response.content}
+    ${response_pki_message}=    Parse PKIMessage    ${response.content}
+    Collect Nonce From PKIMessage    ${response_pki_message}
+    RETURN    ${response_pki_message}
+
+
+Exchange Migration PKIMessage
+    [Documentation]    Exchange a PKIMessage with the Mock CA
+    [Arguments]    ${ir}    ${ca_base_url}=${CA_BASE_URL}    ${suffix}=${NONE}
+    ${url}=    Add URL Suffix    ${ca_base_url}    ${suffix}
+    ${response}=    Exchange PKIMessage    ${ir}    ${url}
+    RETURN    ${response}
+
+
+
+### PKIMessage Parsing and Logging Keywords
+Try To Log PKIMessage As ASN1
+    [Documentation]    Tentatively parse a buffer, assuming it is a DER-encoded PKIMessage, and log its contents.
+    ...    If that is not the case, ignore this and keep going. This is for convenience in logging.
+    ...    DEPRECATED in favour of `try_to_log_pkimessage' in Python, which is more concise.
+    [Tags]    robot:flatten
+    [Arguments]    ${payload}
+    ${pki_message}=    Parse PKIMessage    ${payload}
+    Log Asn1    ${pki_message}
+
+Load And Refresh PKIMessage From File
+    [Documentation]    Load a PKIMessage from a PEM file, update its transactionId and messageTime, and return it
+    ...    as a pyasn1 object. This is useful when sending previously sent messages, the CA will reject
+    ...    them if the time is not fresh or if the transactionId is not unique.
+    [Arguments]    ${path}    ${transaction_id}=${NONE}    ${message_time}=${NONE}
+    ${raw}=    Load And Decode Pem File    ${path}
+    ${pki_message}=    Parse PKIMessage    ${raw}
+    Log Asn1    ${pki_message}
+    ${pki_message}=    Patch TransactionID    ${pki_message}    ${transaction_id}
+    ${pki_message}=    Patch MessageTime    ${pki_message}    ${message_time}
+    RETURN    ${pki_message}
+
+
+#### PKIMessage Validation keywords - These are used to validate the PKIMessage structure, contents, and status
+#### of PKIMessages. 
+
+### PKImessage body variables keywords
+PKIMessage Body Type Must Be
+    [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
+    [Arguments]    ${pki_message}    ${expected_type}
+    ${response_type}=    Get CMP Message Type    ${pki_message}
+    IF    '${response_type}' != '${expected_type}'
+        # For better logging.
+        ${pki_status_info}=    Get PKIStatusInfo    ${pki_message}   # robocop: off=VAR02
+    END
+    Should Be Equal    ${response_type}    ${expected_type}    Response type mismatch
+
+PKIMessage Must Contain ImplicitConfirm Extension
+    [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo
+    [Arguments]    ${pki_message}
+    ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
+    Should Be True    ${result}    The implicitConfirm extension was not found in the message
+
+### Nonce validation keywords
+Sender And Recipient Nonces Must Match
+    [Documentation]    Ensure that the recipient nonce in the response matches the sender nonce in the request
+    [Arguments]    ${request}    ${response}
+    ${request_nonce}=    Get Asn1 Value As Bytes    ${request}    header.senderNonce
+    ${response_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
+    Should Be Equal    ${request_nonce}    ${response_nonce}
+
+SenderNonce Must Be At Least 128 Bits Long
+    [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
+    ...    Ref: 3.1. General Description of the CMP Message Header
+    [Tags]    crypto
+    [Arguments]    ${pki_message}
+    ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
+    # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
+    # Buffer length must be at least    ${sender_nonce}    32
+    # 16 bytes is 128 bits
+    Buffer Length Must Be At Least    ${sender_nonce}    16
+
+Collect Nonce From PKIMessage
+    [Documentation]    Extract the senderNonce from a PKIMessage and append it to a list, which will be used later
+    ...    in a test that checks for nonces to be cryptographically strong.
+    [Arguments]    ${pki_message}
+    ${body_type}=    Get Cmp Message Type    ${pki_message}
+    Log   ${GATHER_NONCES_FROM_MSG_BODIES}
+    Log   ${body_type}
+    ${is_present}=  Evaluate  '${body_type}' in '${GATHER_NONCES_FROM_MSG_BODIES}'
+    IF    ${is_present}
+        ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
+        Append To List    ${COLLECTED_NONCES}    ${sender_nonce}
+        Log    ${COLLECTED_NONCES}
+    END
+
+
+### Response time validation keywords
+Response Time Must Be Fresh
+    [Documentation]    Ensure that the response time is not far off from the time of our request
+    ...    The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
+    [Arguments]    ${request}    ${response}    ${tolerance}=${120}
+    ${request_time}=    Get Asn1 Value As Datetime    ${request}    header.messageTime
+    ${response_time}=    Get Asn1 Value As Datetime    ${response}    header.messageTime
+
+    ${delta_verbose}=    Subtract Date From Date    ${response_time}    ${request_time}    verbose
+    ${delta}=    Subtract Date From Date    ${response_time}    ${request_time}
+    Should Be True    ${delta} < ${tolerance}    Time between request and response exceeds tolerance
+
+
+
+
+
+
+### PKIMessage Status Validation Keywords
 PKIStatusInfo failinfo Bit Must Be
     [Documentation]       Validates that the given PKIMessage contains the expected `failinfo` bit(s) in the
     ...                   `PKIStatusInfo` field, to ensure that the CA/RA responds with the correct error.
@@ -924,13 +1044,45 @@ PKIStatus Must Be
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
 
-Exchange Migration PKIMessage
-    [Documentation]    Exchange a PKIMessage with the Mock CA
-    [Arguments]    ${ir}    ${ca_base_url}=${CA_BASE_URL}    ${suffix}=${NONE}
-    ${url}=    Add URL Suffix    ${ca_base_url}    ${suffix}
-    ${response}=    Exchange PKIMessage    ${ir}    ${url}
-    RETURN    ${response}
+#### Certificate Signing Request keywords - these keywords handle the generation and parsing of CSR for testing purposes.
+Generate CSR With RSA2048 And A Predefined Common Name
+    [Documentation]    Produce a generic, valid CSR that has a correct signature
+    ${key}=    Generate Key    rsa    length=2048
+    ${csr}=    Build CSR    ${DEFAULT_X509NAME}    exclude_signature=True
+    ${csr_signed}=    Sign CSR    ${csr}    ${key}
+    Log    ${csr_signed}
+    RETURN    ${csr_signed}
 
+Load And Parse Example CSR
+    [Documentation]    Load a CSR from a PEM file, and return it as a pyasn1 object. This is for convenience, to remove
+    ...    the need to generate a new keypair.
+    ${csr}=    Load And Decode Pem File    data/example-csr.pem
+    ${parsed_csr}=    Parse Csr    ${csr}
+    RETURN    ${parsed_csr}
+
+Generate Key And CSR
+    [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the
+    ...                DER-formatted data and the key.
+    ...
+    ...    Arguments:
+    ...    ---------
+    ...    - `key_algo_name`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
+    ...    - `key_params`:The index or indices of the bits to check within the `failInfo` field
+    ...    - `CN`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be
+    ...    permitted. However, if multiple indices are provided, only one of them can be set.
+    ...
+    ...    Examples:
+    ...    --------
+    ...    | ${data}    ${key}=    | Generate Key and CSR    | ${key_algo_name}    |    ${CN}    |    ${key_params} |
+    ...
+    [Arguments]    ${key_algo_name}    ${CN}    ${key_params}
+    ${key}=    Generate Key    ${key_algo_name}    ${key_params}
+    ${csr_signed}    ${key}=    Generate Signed CSR    ${CN}    ${key}
+    ${data}=    Decode Pem String    ${csr_signed}
+    RETURN    ${data}    ${key}
+
+
+#### Hybrid algorithm keywords - These keywords are used to issue certificates for the hybrid algorithm tests.
 Exchange Hybrid PKIMessage
     [Documentation]    Exchange a PKIMessage for a hybrid algorithm certificate.
     ...                Arguments:
@@ -989,6 +1141,8 @@ Validate EncrCert For KEM
     Validate Migration Certificate KeyUsage    ${cert}
     RETURN    ${cert}
 
+
+#### EnvelopedData keywords - These keywords are used to issue certificates for the EnvelopedData tests.
 Issued NEG RSA KTRI CERT
     [Documentation]    Issue a new RSA negative KTRI certificate for the EnvelopedData tests.
     ...                This certificate is negative, because the keyEncipherment KeyUsage bit is missing.
