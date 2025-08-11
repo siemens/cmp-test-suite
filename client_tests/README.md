@@ -1,4 +1,5 @@
-This folder contains test cases for the client-side components of the project.
+This folder contains an experimental draft for test cases of client-side
+CMP implementations.
 
 - `cmp_tests_jinja.robot`: Main test suite for client-side components.
 - `certs`: Contains all required certificates for testing.
@@ -45,15 +46,4 @@ This folder contains test cases for the client-side components of the project.
         {% if unprotected_requests %}-unprotected_requests{% endif %}
         """
 
-   ``` 
-## EmbeddedCMP
-To run embeddedCMP, take a look at [HOWTO.md](../embeddedCMP/docs/HOWTO.md).
-## Issues/TODO
-1. The last test P10CR 3 doesn't work because the MockCA server sends a CP back to the sender that has CertReqId=-1. The client then sends the Certconf with the same CertReqId to the server, yet the server now returns an error because CertReqId=-1. #TODO: Fix the mockca implementation.
-2. It is not possible to test the embeddedCMP with the current client_tests, since the embeddedCMP implementation doesn't have parameters that can be passed in the CLI, and everything is hardcoded in "embeddedCMP/program/cmpclient_config.h". To tackle this, a wrapper can be created for it, so that it extends the CLI. 
-3. Right now, running ```python./build/embedded_cmp -i``` to create an IR request using the embeddedCMP fails, because of a mismatch between the protection values. This is probably due to the certificates not matching each other? To be further investigated.
-
-## Contribution
-
-- Add new tests following the existing naming conventions.
-- Ensure all tests pass before submitting a pull request.
+   ```
