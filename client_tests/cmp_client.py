@@ -1,7 +1,12 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
+"""CMP Client Command Generation Module"""
+
+from jinja2 import Template
 from robot.api.deco import keyword
-from jinja2 import Template, Environment, FileSystemLoader
-import os
-import subprocess
+
 # Jinja2 templates for CMP CLI commands, define your template here
 # This translates the tests in cmp_tests_jinja.robot to the actual commands that your CMP client will execute.
 openssl = """
@@ -26,10 +31,9 @@ gencmpclient  {{ cmd }}
  --secret "{{ secret }}"
  {% if csr %}--csr {{ csr }}{% endif %}
  {% if newkey %}--newkey {{ newkey }}{% endif %}
- {% if certout %}--certout {{ certout }}{% endif %}
- 
- """
- 
+ {% if certout %}--certout {{ certout }}{% endif %} 
+"""  # noqa: W291 Trailing whitespace
+
 embedded_cmp = """
 ./build/embedded_cmp
 {% if cmd == "ir" %}-i{% endif %}
@@ -37,27 +41,29 @@ embedded_cmp = """
 {% if cmd == "kur" %}-k{% endif %}
 """
 
+
 @keyword(name="Get CMP Command")
-def get_cmp_command(client: str = "openssl", **kwargs) -> list:
-    """Constructs a CMP command based on the client and keyword arguments.
+def get_cmp_command(client: str = "openssl", **kwargs) -> list:  # noqa: D417 undocumented params
+    """Construct a CMP command based on the client and keyword arguments.
 
     Arguments:
-    ----------
+    ---------
     - `client`: The CMP client to use (e.g. "openssl").
     - `**kwargs`: Keyword arguments like cmd, server, ref, subject, etc.
 
     Returns:
-    --------
+    -------
     - List of command-line arguments suitable for use with Run Process
 
     Example:
-    --------
+    -------
     | ${args}= | Get CMP Command | openssl | cmd=ir | server=http://localhost:5000 | ... |
+
     """
     try:
         template = Template(globals()[client])
     except KeyError:
         raise ValueError(f"Unsupported CMP client: {client}")
-        
+
     rendered = template.render(**kwargs)
     return rendered.strip().split()

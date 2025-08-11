@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG   # robocop: off=COM04
+#
+# SPDX-License-Identifier: Apache-2.0
+
 *** Settings ***
 Documentation       Minimal CMP tests.
 Library             Process
