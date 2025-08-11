@@ -250,7 +250,6 @@ def build_cmp_ckuann_message(  # noqa: D417 undocumented-params
             old_priv_key=old_key,
             hash_alg=kwargs.get("hash_alg", "sha256"),
             use_rsa_pss=kwargs.get("use_rsa_pss", True),
-            use_pre_hash=kwargs.get("use_pre_hash", False),
         )
 
     if use_new:

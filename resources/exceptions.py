@@ -186,13 +186,15 @@ class BadDataFormat(CMPTestSuiteError):
     failinfo = "badDataFormat"
     bit_num = 5
 
-    def __init__(self, message: str):
+    def __init__(
+        self, message: str, failinfo: Optional[str] = None, error_details: Optional[Union[List[str], str]] = None
+    ):
         """Initialize the exception with the message.
 
         :param message: The message to display.
         """
         self.message = message
-        super().__init__(f"Bad data format: {message}")
+        super().__init__(f"Bad data format: {message}", failinfo=failinfo, error_details=error_details)
 
 
 class InvalidKeyData(BadDataFormat):

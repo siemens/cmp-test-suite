@@ -80,7 +80,6 @@ def prepare_alt_sig_alg_id_extn(  # noqa: D417 Missing a parameter in the Docstr
     critical: bool = False,
     hash_alg: str = "sha256",
     use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
     key: Optional[SignKey] = None,
 ) -> rfc5280.Extension:
     """Prepare the altSignatureAlgorithm extension.
@@ -91,7 +90,6 @@ def prepare_alt_sig_alg_id_extn(  # noqa: D417 Missing a parameter in the Docstr
         - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
         - `hash_alg`: The hash algorithm to use. Defaults to "sha256".
         - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `key`: The key to prepare the signature algorithm for. Defaults to `None`.
 
     Returns:
@@ -113,7 +111,9 @@ def prepare_alt_sig_alg_id_extn(  # noqa: D417 Missing a parameter in the Docstr
 
     if key is not None:
         alg_id = resources.prepare_alg_ids.prepare_sig_alg_id(
-            signing_key=key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+            signing_key=key,
+            hash_alg=hash_alg,
+            use_rsa_pss=use_rsa_pss,
         )
 
     alt_signature_algorithm_extension = rfc5280.Extension()
@@ -506,7 +506,6 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
     include_alt_public_key: bool = False,
     hash_alg: str = "sha256",
     alt_hash_alg: Optional[str] = None,
-    use_pre_hash: bool = False,
     use_rsa_pss: bool = False,
     critical: bool = False,
     bad_sig: bool = False,
@@ -526,11 +525,10 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
        - `hash_alg`: The hash algorithm to use. Defaults to "sha256".
        - `alt_hash_alg`: The hash algorithm to use for the alternative signature. Defaults to `None`.
        (if not provided, will use the same as `hash_alg`)
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
-        - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
-        - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
-        - `bad_sig`: Whether to manipulate the signature to be invalid. Defaults to `False`.
-        - `bad_alt_sig`: Whether to manipulate the alternative signature to be invalid. Defaults to `False`.
+       - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
+       - `critical`: Whether the extension should be marked as critical. Defaults to `False`.
+       - `bad_sig`: Whether to manipulate the signature to be invalid. Defaults to `False`.
+       - `bad_alt_sig`: Whether to manipulate the alternative signature to be invalid. Defaults to `False`.
 
     Returns:
     -------
@@ -543,7 +541,9 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
 
     """
     crl["signatureAlgorithm"] = resources.prepare_alg_ids.prepare_sig_alg_id(
-        signing_key=ca_private_key, use_rsa_pss=use_rsa_pss, hash_alg=hash_alg, use_pre_hash=use_pre_hash
+        signing_key=ca_private_key,
+        use_rsa_pss=use_rsa_pss,
+        hash_alg=hash_alg,
     )
 
     if alt_private_key is not None:
@@ -551,7 +551,6 @@ def sign_crl_catalyst(  # noqa: D417 Missing a parameter in the Docstring
             alg_id=None,
             hash_alg=alt_hash_alg or hash_alg,
             key=alt_private_key,
-            use_pre_hash=use_pre_hash,
             use_rsa_pss=use_rsa_pss,
             critical=critical,
         )

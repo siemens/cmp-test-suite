@@ -15,8 +15,7 @@ from typing import Optional, Union
 
 from pyasn1.codec.der import decoder
 from pyasn1.type import base, univ
-from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
-from pyasn1_alt_modules.rfc5652 import Attribute
+from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from robot.api.deco import not_keyword
 
 from resources import asn1utils
@@ -290,7 +289,7 @@ def extract_extensions_from_csr(csr: rfc6402.CertificationRequest) -> Optional[r
         return None
 
     ext_oid = univ.ObjectIdentifier("1.2.840.113549.1.9.14")
-    attr: Attribute
+    attr: rfc5652.Attribute
 
     for attr in csr["certificationRequestInfo"]["attributes"]:
         if attr["attrType"] == ext_oid:

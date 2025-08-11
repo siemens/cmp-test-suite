@@ -65,7 +65,7 @@ jobs:
       - name: Spelling checker (codespell)
         run: |
           docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" \
-            codespell . --check-filenames --skip "*.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py"
+            codespell . --check-filenames --skip "*.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py,./data/rfc_test_vectors/*"
 
   dependency_check:
     # See if newer versions of our Python dependencies are available. This does

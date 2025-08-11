@@ -370,7 +370,8 @@ class DHKEMPublicKey(TradKEMPublicKey):
     def encode(self) -> bytes:
         """Encode the public key as bytes."""
         if isinstance(self._public_key, ec.EllipticCurvePublicKey):
-            return self._public_key.public_bytes(Encoding.X962, PublicFormat.CompressedPoint)
+            # MUST be an uncompressed point for Composite KEM.
+            return self._public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
         return self._public_key.public_bytes_raw()
 
     @classmethod

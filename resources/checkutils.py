@@ -23,6 +23,7 @@ from pyasn1_alt_modules import rfc5280, rfc6664, rfc9480, rfc9481
 from pyasn1_alt_modules.rfc2437 import rsaEncryption
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -53,6 +54,8 @@ from resources.oid_mapping import (
 from resources.oidutils import (
     ECDSA_SHA_OID_2_NAME,
     MSG_SIG_ALG,
+    PQ_SIG_OID_2_NAME,
+    PQ_SIG_PRE_HASH_OID_2_NAME,
     RSA_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
     id_KemBasedMac,
@@ -605,8 +608,8 @@ def _verify_senderkid_for_mac(pki_message: PKIMessageTMP, allow_mac_failure: boo
 
     try:
         sender_kid = pki_message["header"]["senderKID"].asOctets().decode("utf-8")
-    except UnicodeDecodeError:
-        raise BadMessageCheck("The senderKID field in the PKIHeader must be a valid UTF-8 string.")
+    except UnicodeDecodeError as e:
+        raise BadMessageCheck("The senderKID field in the PKIHeader must be a valid UTF-8 string.") from e
     sender_kid_name = sender_kid.removeprefix("CN=")
 
     cm_name = utils.get_openssl_name_notation(name=sender_name, oids=[rfc5280.id_at_commonName])
@@ -905,6 +908,74 @@ def find_right_cert_pos(
     return -1
 
 
+def _validate_composite_sig_conform_to_spki(
+    prot_alg_id: rfc5280.AlgorithmIdentifier, cert: rfc9480.CMPCertificate
+) -> bool:
+    """Check Composite signature algorithms against the certificate SPKI algorithm.
+
+    :param prot_alg_id: The `AlgorithmIdentifier` of the composite signature algorithm identifier.
+    :param cert: The `CMPCertificate` from which the subject public key info is extracted.
+    :return: `True` if the composite signature algorithm is compatible with the spki algorithm in the certificate,
+    `False` otherwise.
+    """
+    cert_alg_id = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]
+    name = COMPOSITE_SIG07_OID_TO_NAME[prot_alg_id["algorithm"]]
+
+    if cert_alg_id["algorithm"] not in COMPOSITE_SIG07_OID_TO_NAME:
+        return False
+
+    if "rsa" in name:
+        name_spki = COMPOSITE_SIG07_OID_TO_NAME[cert_alg_id["algorithm"]]
+        if name_spki is None:
+            return False
+        if "pss" in name_spki and "pss" in name:
+            return name_spki == name
+        if "pss" not in name_spki and "pss" not in name:
+            return name_spki == name
+        if "pss" in name_spki:
+            return name + "-pss" == name_spki
+        return name == name_spki + "-pss"
+
+    try:
+        return prot_alg_id["algorithm"] == cert_alg_id["algorithm"]
+    except pyasn1.error.PyAsn1Error:
+        # if tried to compare a schema object.
+        return False
+
+
+def _check_pq_sig_conform_to_spki(prot_alg_id: rfc5280.AlgorithmIdentifier, cert: rfc9480.CMPCertificate) -> bool:
+    """Check PQ signature algorithms against the certificate SPKI algorithm.
+
+    Handles both pre-hash and non-pre-hash variants of PQ signature OIDs.
+    :param prot_alg_id: The `AlgorithmIdentifier` of the PQ signature algorithm identifier.
+    :param cert: The `CMPCertificate` from which the subject public key info is extracted.
+    :return: `True` if the PQ signature algorithm is compatible with the spki algorithm in the certificate,
+    """
+    cert_alg_id = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]
+    prot_oid = prot_alg_id["algorithm"]
+    cert_oid = cert_alg_id["algorithm"]
+
+    if cert_oid not in PQ_SIG_OID_2_NAME:
+        return False
+
+    if prot_oid not in PQ_SIG_PRE_HASH_OID_2_NAME and cert_oid not in PQ_SIG_PRE_HASH_OID_2_NAME:
+        return prot_oid == cert_oid
+
+    if prot_oid in PQ_SIG_PRE_HASH_OID_2_NAME and cert_oid in PQ_SIG_PRE_HASH_OID_2_NAME:
+        return prot_oid == cert_oid
+
+    if prot_oid in PQ_SIG_PRE_HASH_OID_2_NAME:
+        name = PQ_SIG_PRE_HASH_OID_2_NAME[prot_oid]
+        hash_alg = name.split("-")[-1]
+        cert_name = PQ_SIG_OID_2_NAME[cert_oid]
+        return f"{cert_name}-{hash_alg}" == name
+
+    name = PQ_SIG_PRE_HASH_OID_2_NAME[cert_oid]
+    hash_alg = name.split("-")[-1]
+    prot_name = PQ_SIG_OID_2_NAME[prot_oid]
+    return f"{prot_name}-{hash_alg}" == name
+
+
 @not_keyword
 def check_protection_alg_conform_to_spki(
     prot_alg_id: rfc5280.AlgorithmIdentifier, cert: rfc9480.CMPCertificate
@@ -934,8 +1005,24 @@ def check_protection_alg_conform_to_spki(
     # TODO verify if that is allowed?
     if prot_alg_id["algorithm"] in RSA_OID_2_NAME:
         return cert_alg_id["algorithm"] in RSA_OID_2_NAME
+
+    if prot_alg_id["algorithm"] == rfc9481.id_RSASSA_PSS:
+        # To ensure that if an RSA-PSS combination is used, it is the same as
+        # the one in the certificate.
+        try:
+            return cert_alg_id == prot_alg_id
+        except pyasn1.error.PyAsn1Error:
+            # if tried to compare a schema object.
+            return False
+
     if prot_alg_id["algorithm"] in RSASSA_PSS_OID_2_NAME:
         return cert_alg_id["algorithm"] == prot_alg_id["algorithm"]
+
+    if prot_alg_id["algorithm"] in COMPOSITE_SIG07_OID_TO_NAME:
+        return _validate_composite_sig_conform_to_spki(prot_alg_id, cert)
+
+    if prot_alg_id["algorithm"] in PQ_SIG_OID_2_NAME:
+        return _check_pq_sig_conform_to_spki(prot_alg_id, cert)
 
     try:
         return prot_alg_id == cert_alg_id
