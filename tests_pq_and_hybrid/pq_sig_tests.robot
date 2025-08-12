@@ -125,6 +125,8 @@ CA MUST Issue A Valid ML-DSA-44 Cert
     ${cert}=   Get Cert From PKIMessage    ${response}
     Validate Migration Certificate KeyUsage   ${cert}
     Certificate Must Be Valid    ${cert}
+    ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}   ${cert}
+    Verify Cert Chain OpenSSL PQC    ${cert_chain}
 
 CA MUST Reject A Invalid ML-DSA-44 POP
     [Documentation]   According to draft-ietf-lamps-dilithium-certificates-07 is ML-DSA-44 used. We send an valid IR
@@ -279,6 +281,8 @@ CA MUST Accept Valid SLH-DSA-SHA2-128S IR
     Validate Certificate Was Issued For Expected Alg    ${response}    slh-dsa-sha2-128s
     ${cert}=         Get Cert From PKIMessage    ${response}
     Certificate Must Be Valid    ${cert}
+    ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}   ${cert}
+    Verify Cert Chain OpenSSL PQC    ${cert_chain}
 
 CA MUST Reject SLH-DSA-SHA2-128S IR with Invalid POP
     [Documentation]  According to draft-ietf-lamps-cms-sphincs-plus-17 is the SLH-DSA-SHA2-128S used.

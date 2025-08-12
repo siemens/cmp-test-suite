@@ -73,6 +73,7 @@ CA MUST Accept A Valid IR FOR ML-KEM-768
     VAR   ${KEM_KEY}   ${key}         scope=GLOBAL
     ${certs}=   Build CMP Chain From PKIMessage    ${response}   ${cert}
     Write Certs To Dir     ${certs}
+    Verify Cert Chain OpenSSL PQC    ${certs}
 
 CA MUST Reject ML-KEM with Invalid KeyUsage
     [Documentation]   According to draft-ietf-lamps-kyber-certificates-07 is ML-KEM-768 used. We send an IR with a
