@@ -974,6 +974,85 @@ def _get_crl_filepath_for_verification(
     _concatenate_crls(crl_files=crl_files)
 
 
+@not_keyword
+def check_openssl_pqc_support() -> bool:
+    """Check if OpenSSL PQC support is enabled.
+
+    Only OpenSSL 3.5 and later versions support PQC.
+
+    :return: `True` if OpenSSL PQC support is enabled, `False` otherwise.
+    """
+    try:
+        result = subprocess.run(["openssl", "version"], capture_output=True, text=True, check=True)
+        ver_str = result.stdout.strip().split()[1]
+        ver_num = ver_str.split("-")[0].split("+")[0]
+        version_tuple = tuple(int(part) for part in ver_num.split(".")[:3])
+        return version_tuple >= (3, 5, 0)
+    except subprocess.CalledProcessError as e:
+        logging.error("OpenSSL PQC support check failed: %s", e.stderr)
+    except Exception as e:  # pylint: disable=broad-except
+        logging.error("An unexpected error occurred while checking OpenSSL PQC support: %s", str(e))
+    return False
+
+
+@keyword(name="Verify Cert Chain OpenSSL PQC")
+def verify_cert_chain_openssl_pqc(  # noqa D417 undocumented-param
+    cert_chain: List[rfc9480.CMPCertificate],
+    crl_check: bool = False,
+    verbose: bool = True,
+    timeout: typingutils.Strint = 60,
+    crl_path: Optional[str] = None,
+    crl_check_all: bool = False,
+) -> None:
+    """Verify a certificate chain using OpenSSL with PQC support.
+
+    The certificate chain has to start from the end-entity certificate and ends with the Root certificate.
+
+    Note:
+    ----
+    - Should only be used if OpenSSL PQC support is not surely enabled, otherwise \
+    use the `Verify Cert Chain OpenSSL` keyword. Because it will skip the certificate \
+    checks, if PQC support is not enabled.
+
+    Arguments:
+    ---------
+        - `cert_chain`: A list of untrusted certificate objects to verify against the root certificate.
+        - `crl_check`: Whether to perform CRL checks to verify if any certificate was revoked.
+        Defaults to `False`.
+        - `verbose`: Whether to use the verbose output flag for the OpenSSL `verify` command.
+        Defaults to `True`.
+        - `timeout`: The timeout of the verify command in seconds. Defaults to `60`.
+        - `crl_path`: The path to the CRL file to use for verification. Defaults to `None`.
+        - `crl_check_all`: Whether to check all certificates in the chain against the CRL(s).
+
+    Raises:
+    ------
+        - `SignerNotTrusted`: If the certificate validation fails, according to the OpenSSL `verify` command.
+        - `SignerNotTrusted`: If the verification took too long.
+
+    Examples:
+    --------
+    | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} |
+    | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} | crl_check=True | verbose=False |
+    | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} | crl_check_all=True | timeout=120 |
+
+    """
+    if verbose:
+        utils.log_certificates(certs=cert_chain, msg_suffix="Untrusted Certificates:\n")
+
+    if not check_openssl_pqc_support():
+        logging.warning("OpenSSL PQC support is not enabled.")
+    else:
+        verify_cert_chain_openssl(
+            cert_chain=cert_chain,
+            crl_check=crl_check,
+            verbose=verbose,
+            timeout=timeout,
+            crl_path=crl_path,
+            crl_check_all=crl_check_all,
+        )
+
+
 @keyword(name="Verify Cert Chain OpenSSL")
 def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     cert_chain: List[rfc9480.CMPCertificate],
