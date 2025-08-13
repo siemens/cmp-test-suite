@@ -13,4 +13,4 @@ pycryptodome==3.23.0
 Flask==3.1.1
 tinyec==0.4.0
 # relevant for the CMP client tests.
-jinja2==3.1.4
+jinja2==3.1.6
