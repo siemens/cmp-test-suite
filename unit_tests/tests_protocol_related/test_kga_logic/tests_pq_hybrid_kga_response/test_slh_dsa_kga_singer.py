@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 import unittest
 from typing import List, Tuple
 
@@ -32,8 +36,10 @@ class TestMLDSAKGASigner(unittest.TestCase):
             eku="cmKGA",
             critical=False,
         )
-        extn = prepare_ski_extension(key, critical=True)
-        extn2 = prepare_authority_key_identifier_extension(ca_key=self.ca_key.public_key(), critical=True)
+        # Must be set to not critical for OpenSSL.
+        extn = prepare_ski_extension(key, critical=False)
+        # Must be set to not critical for OpenSSL.
+        extn2 = prepare_authority_key_identifier_extension(ca_key=self.ca_key.public_key(), critical=False)
 
         extensions.append(extn)
         extensions.append(extn2)
@@ -48,7 +54,7 @@ class TestMLDSAKGASigner(unittest.TestCase):
             ca_cert=self.ca_cert,
             ca_key=self.ca_key,
             serial_number=1,
-            subject_name="CN=Composite KGA Test Key",
+            common_name="CN=SLH-DSA KGA Test Key",
         )
         return cert
 
