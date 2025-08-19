@@ -44,15 +44,21 @@ testlog:
 	robot --pythonpath=./ --exclude verbose-tests --outputdir=reports/`date +%Y-%m-%d_%H-%M_%B-%d` --variable environment:$(env) tests
 
 
-DOCKERFILE_UNITTEST = data/dockerfiles/Dockerfile.unittest
+DOCKERFILE_UNITTEST = data/dockerfiles/Dockerfile.base
 
 build-unittest:
 	@echo "Building unittest Docker image..."
-	docker build -t unittest-image -f $(DOCKERFILE_UNITTEST) .
+	sudo docker build -t unittest-image -f $(DOCKERFILE_UNITTEST) .
 
 unittest-docker: build-unittest
 	@echo "Running unittest Docker container..."
-	docker run --rm -t --workdir=/app unittest-image
+	sudo docker run --rm -v $(shell pwd):/app -w /app unittest-image \
+		python3 -m unittest discover -s unit_tests
+
+unittest-docker-single: build-unittest
+	@echo "Running unittest Docker container with verbose output..."
+	sudo docker run --rm -v $(shell pwd):/app -w /app unittest-image \
+		python3 -m unittest discover -s ./unit_tests/tests_protocol_related/test_kga_logic/tests_pq_hybrid_kga_response
 
 unittest:
 	# adjust path such that the unit tests can be started from the root directory, to make it easier to load
@@ -124,4 +130,3 @@ test-mock-ca-verbose:
 	# The results will be stored in the reports/ directory.
 	# This will run all tests, including those marked as verbose-tests.
 	robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests tests_mock_ca tests_pq_and_hybrid
-
