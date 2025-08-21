@@ -93,6 +93,16 @@ class TestVerifyPQCertChainOpenSSL(unittest.TestCase):
         chain = self._build_chain(["ml-dsa-44", "ml-dsa-44", "ml-kem-768"])
         self._verify_or_skip(chain, "ML-KEM")
 
+    def test_verify_non_nist_alg(self):
+        """
+        GIVEN a certificate chain with a non-NIST algorithm.
+        WHEN the chain is validated using OpenSSL,
+        THEN the validation should raise an `ValueError` exception.
+        """
+        chain = self._build_chain(["ml-dsa-44", "ml-dsa-44", "falcon-1024"])
+        with self.assertRaises(ValueError):
+            verify_cert_chain_openssl_pqc(chain)
+
 
 if __name__ == "__main__":
     unittest.main()

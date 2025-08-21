@@ -35,6 +35,7 @@ from pq_logic.keys.abstract_pq import PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
 from pq_logic.keys.composite_sig07 import CompositeSig07PublicKey
 from pq_logic.pq_utils import is_kem_public_key
+from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -64,12 +65,17 @@ from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
     HYBRID_NAME_2_OID,
     HYBRID_OID_2_NAME,
+    ML_DSA_OID_2_NAME,
+    ML_KEM_OID_2_NAME,
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
+    PQ_SIG_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
+    SLH_DSA_OID_2_NAME,
 )
 from resources.suiteenums import KeyUsageStrictness
 from resources.typingutils import SignKey, Strint, VerifyKey
+from resources.utils import get_openssl_name_notation
 
 # for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False
@@ -994,6 +1000,44 @@ def check_openssl_pqc_support() -> bool:
     return False
 
 
+def cannot_be_validated_with_openssl(
+    certs: List[rfc9480.CMPCertificate],
+) -> bool:
+    """Check if the PQ certificate chain can not be validated with OpenSSL.
+
+    OpenSSL only supports ML-DSA, ML-KEM and SLH-DSA signatures, so if the certificate chain contains
+    any other signature algorithm, it can not be validated with OpenSSL.
+
+    :param certs: A list of CMPCertificate's.
+    :return: `True` if the certificate chain can not be validated with OpenSSL, `False` otherwise.
+    """
+    for cert in certs:
+        spki_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+        if spki_oid in COMPOSITE_SIG07_OID_TO_NAME:
+            return True
+        if spki_oid in PQ_SIG_OID_2_NAME:
+            if spki_oid not in SLH_DSA_OID_2_NAME and spki_oid not in ML_DSA_OID_2_NAME:
+                return True
+        if spki_oid not in ML_KEM_OID_2_NAME:
+            return True
+    return False
+
+
+def _get_algs(certs: List[rfc9480.CMPCertificate]) -> str:
+    """Get the signature algorithms from the certificate chain.
+
+    :param certs: A list of CMPCertificate's.
+    :return: The signature algorithms in a human-readable format.
+    """
+    algs = []
+    for cert in certs:
+        spki_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+        oid_name = oid_mapping.may_return_oid_to_name(spki_oid)
+        subject = get_openssl_name_notation(cert["tbsCertificate"]["subject"])
+        algs.append(f"Subject={subject} OID:{oid_name} ")
+    return "\n".join(algs)
+
+
 @keyword(name="Verify Cert Chain OpenSSL PQC")
 def verify_cert_chain_openssl_pqc(  # noqa D417 undocumented-param
     cert_chain: List[rfc9480.CMPCertificate],
@@ -1041,15 +1085,23 @@ def verify_cert_chain_openssl_pqc(  # noqa D417 undocumented-param
 
     if not check_openssl_pqc_support():
         logging.warning("OpenSSL PQC support is not enabled.")
+
     else:
-        verify_cert_chain_openssl(
-            cert_chain=cert_chain,
-            crl_check=crl_check,
-            verbose=verbose,
-            timeout=timeout,
-            crl_path=crl_path,
-            crl_check_all=crl_check_all,
-        )
+        if cannot_be_validated_with_openssl(certs=cert_chain):
+            raise ValueError(
+                "The provided PQC certificate chain can not be validated with OpenSSL."
+                "Supported PQC algorithms are: ML-DSA, ML-KEM, SLH-DSA."
+                f"Found the following algorithms:\n{_get_algs(certs=cert_chain)}"
+            )
+        else:
+            verify_cert_chain_openssl(
+                cert_chain=cert_chain,
+                crl_check=crl_check,
+                verbose=verbose,
+                timeout=timeout,
+                crl_path=crl_path,
+                crl_check_all=crl_check_all,
+            )
 
 
 @keyword(name="Verify Cert Chain OpenSSL")
