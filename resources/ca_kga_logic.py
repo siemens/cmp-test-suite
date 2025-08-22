@@ -1290,7 +1290,7 @@ def _check_is_hybrid_or_pq_sig_alg_cert_chain(certs: List[rfc9480.CMPCertificate
     """
     support_openssl_pq = certutils.check_openssl_pqc_support()
     if support_openssl_pq:
-        return certutils.cannot_be_validated_with_openssl(certs=certs)
+        return certutils.pqc_algs_cannot_be_validated_with_openssl(certs=certs)
     for cert in certs:
         sig_alg = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
         if sig_alg in COMPOSITE_SIG07_OID_TO_NAME or sig_alg in PQ_SIG_OID_2_NAME:

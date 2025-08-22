@@ -75,7 +75,6 @@ from resources.oidutils import (
 )
 from resources.suiteenums import KeyUsageStrictness
 from resources.typingutils import SignKey, Strint, VerifyKey
-from resources.utils import get_openssl_name_notation
 
 # for these to integrate smoothly into RF, they have to raise exceptions in case of failure, rather than
 # return False
@@ -1000,7 +999,8 @@ def check_openssl_pqc_support() -> bool:
     return False
 
 
-def cannot_be_validated_with_openssl(
+@not_keyword
+def pqc_algs_cannot_be_validated_with_openssl(
     certs: List[rfc9480.CMPCertificate],
 ) -> bool:
     """Check if the PQ certificate chain can not be validated with OpenSSL.
@@ -1018,7 +1018,7 @@ def cannot_be_validated_with_openssl(
         if spki_oid in PQ_SIG_OID_2_NAME:
             if spki_oid not in SLH_DSA_OID_2_NAME and spki_oid not in ML_DSA_OID_2_NAME:
                 return True
-        if spki_oid not in ML_KEM_OID_2_NAME:
+        elif spki_oid not in ML_KEM_OID_2_NAME:
             return True
     return False
 
@@ -1033,7 +1033,7 @@ def _get_algs(certs: List[rfc9480.CMPCertificate]) -> str:
     for cert in certs:
         spki_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
         oid_name = oid_mapping.may_return_oid_to_name(spki_oid)
-        subject = get_openssl_name_notation(cert["tbsCertificate"]["subject"])
+        subject = utils.get_openssl_name_notation(cert["tbsCertificate"]["subject"])
         algs.append(f"Subject={subject} OID:{oid_name} ")
     return "\n".join(algs)
 
@@ -1080,6 +1080,8 @@ def verify_cert_chain_openssl_pqc(  # noqa D417 undocumented-param
     | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} | crl_check_all=True | timeout=120 |
 
     """
+    # TODO: maybe allow or change the setup to use the `oqsprovider` to validate all PQC algorithms.
+
     if verbose:
         utils.log_certificates(certs=cert_chain, msg_suffix="Untrusted Certificates:\n")
 
@@ -1087,7 +1089,7 @@ def verify_cert_chain_openssl_pqc(  # noqa D417 undocumented-param
         logging.warning("OpenSSL PQC support is not enabled.")
 
     else:
-        if cannot_be_validated_with_openssl(certs=cert_chain):
+        if pqc_algs_cannot_be_validated_with_openssl(certs=cert_chain):
             raise ValueError(
                 "The provided PQC certificate chain can not be validated with OpenSSL."
                 "Supported PQC algorithms are: ML-DSA, ML-KEM, SLH-DSA."
