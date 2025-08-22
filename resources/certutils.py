@@ -1095,15 +1095,14 @@ def verify_cert_chain_openssl_pqc(  # noqa D417 undocumented-param
                 "Supported PQC algorithms are: ML-DSA, ML-KEM, SLH-DSA."
                 f"Found the following algorithms:\n{_get_algs(certs=cert_chain)}"
             )
-        else:
-            verify_cert_chain_openssl(
-                cert_chain=cert_chain,
-                crl_check=crl_check,
-                verbose=verbose,
-                timeout=timeout,
-                crl_path=crl_path,
-                crl_check_all=crl_check_all,
-            )
+        verify_cert_chain_openssl(
+            cert_chain=cert_chain,
+            crl_check=crl_check,
+            verbose=verbose,
+            timeout=timeout,
+            crl_path=crl_path,
+            crl_check_all=crl_check_all,
+        )
 
 
 @keyword(name="Verify Cert Chain OpenSSL")
@@ -1771,7 +1770,7 @@ def check_ocsp_response_for_cert(  # noqa D417 undocumented-param
         raise ValueError("Invalid expected status. Must be one of 'good', 'revoked', or 'unknown'")
 
     if must_be_present is None:
-        must_be_present = True if ocsp_url is not None else False
+        must_be_present = ocsp_url is not None
 
     req, ocsp_url_found = create_ocsp_request(
         cert=cert, ca_cert=issuer, hash_alg=hash_alg, must_be_present=must_be_present
@@ -2325,6 +2324,45 @@ def _write_temp_cert(cert_to_write: rfc9480.CMPCertificate) -> str:
         return tmp_file.name
 
 
+def _parse_ocsp_request_args(
+    cert: Union[str, rfc9480.CMPCertificate],
+    ca_cert: Union[str, rfc9480.CMPCertificate],
+    ocsp_url: Optional[str] = None,
+) -> Tuple[str, str, Optional[str]]:
+    """Parse the OCSP arguments and return the certificate path, issuer path, and OCSP URL.
+
+    :param cert: The certificate to check. Can be a file path or a certificate object.
+    :param ca_cert: The issuer certificate. Can be a file path or a certificate object
+    :param ocsp_url: The OCSP URL. If not provided, it will be extracted from the certificate.
+    :return: A tuple containing the certificate path, issuer path, and OCSP URL.
+    :raises `ValueError`: If no OCSP URL is found in the certificate.
+    :raises `PyAsn1Error`: If the certificate or issuer certificate is malformed.
+    """
+    # Determine if inputs are file paths or certificate objects
+    if isinstance(cert, str):
+        cert_path = cert
+        der_data = utils.load_and_decode_pem_file(cert_path)
+        cert_obj = parse_certificate(der_data)
+    else:
+        cert_obj = cert
+        cert_path = _write_temp_cert(cert)
+
+    if isinstance(ca_cert, str):
+        issuer_path = ca_cert
+    else:
+        issuer_path = _write_temp_cert(ca_cert)
+
+    ocsp_urls = ocsp_url or get_ocsp_url_from_cert(cert_obj)
+
+    if not ocsp_urls:
+        raise ValueError("No OCSP URL found in the certificate.")
+
+    if isinstance(ocsp_urls, list):
+        ocsp_url = ocsp_urls[0]
+
+    return cert_path, issuer_path, ocsp_url
+
+
 @keyword(name="Validate OCSP Status OpenSSL")
 def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
     cert: Union[str, rfc9480.CMPCertificate],
@@ -2359,29 +2397,11 @@ def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
     """
     temp_files = []
 
-    # Determine if inputs are file paths or certificate objects
-    if isinstance(cert, str):
-        cert_path = cert
-        der_data = utils.load_and_decode_pem_file(cert_path)
-        cert_obj = parse_certificate(der_data)
-    else:
-        cert_obj = cert
-        cert_path = _write_temp_cert(cert)
-        temp_files.append(cert_path)
-
-    if isinstance(ca_cert, str):
-        issuer_path = ca_cert
-    else:
-        issuer_path = _write_temp_cert(ca_cert)
-        temp_files.append(issuer_path)
-
-    ocsp_urls = ocsp_url or get_ocsp_url_from_cert(cert_obj)
-
-    if not ocsp_urls:
-        raise ValueError("No OCSP URL found in the certificate.")
-
-    if isinstance(ocsp_urls, list):
-        ocsp_url = ocsp_urls[0]
+    cert_path, issuer_path, ocsp_url = _parse_ocsp_request_args(
+        cert=cert,
+        ca_cert=ca_cert,
+        ocsp_url=ocsp_url,
+    )
 
     cmds = [
         "openssl",
