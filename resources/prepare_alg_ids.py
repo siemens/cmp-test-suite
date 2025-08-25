@@ -37,7 +37,7 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from resources import convertutils, oid_mapping
 from resources.asn1_structures import KemBMParameterAsn1, KemOtherInfoAsn1
 from resources.convertutils import str_to_bytes
@@ -694,9 +694,7 @@ def prepare_sig_alg_id(  # noqa D417 undocumented-param
     signing_key: SignKey,
     hash_alg: Optional[str] = "sha256",
     use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
     add_params_rand_val: bool = False,
-    *,
     add_null: Optional[bool] = None,
 ) -> rfc9480.AlgorithmIdentifier:
     """Prepare the AlgorithmIdentifier for the signature algorithm based on the key and hash algorithm.
@@ -710,7 +708,6 @@ def prepare_sig_alg_id(  # noqa D417 undocumented-param
         - `hash_alg`: The hash algorithm to use. Defaults to `"sha256"`.
         (must be populated with the correct hash algorithm for PQ signature keys)
         - `use_rsa_pss`: Whether to use RSA-PSS for the signature algorithm. Defaults to `False`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `add_params_rand_val`: Whether to add the `parameters` field with a random value. Defaults to `False`.
         (Or hash algorithm for RSA-PSS-SHA256) (**MUST** be absent)
         - `add_null`: Whether to add a `Null` value to the `parameters` field (will be added if \
@@ -737,16 +734,9 @@ def prepare_sig_alg_id(  # noqa D417 undocumented-param
     """
     alg_id = rfc9480.AlgorithmIdentifier()
 
-    if isinstance(signing_key, CompositeSig03PrivateKey):
-        # TODO maybe make it better to get the oid from the key itself.
-        # Left like this, because unknown how the cryptography library will
-        # implement the CompositeSigPrivateKey (Probably for every key a new class).
-        domain_oid = signing_key.get_oid(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
-        alg_id["algorithm"] = domain_oid
-
-    elif isinstance(signing_key, CompositeSig03PrivateKey):
+    if isinstance(signing_key, CompositeSig07PrivateKey):
         # means an expired key is used.
-        domain_oid = signing_key.get_oid(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
+        domain_oid = signing_key.get_oid(use_pss=use_rsa_pss)
         alg_id["algorithm"] = domain_oid
 
     else:

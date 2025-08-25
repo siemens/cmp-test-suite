@@ -57,7 +57,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Spelling checker
-        run: codespell . --check-filenames --skip *.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py
+        run: codespell . --check-filenames --skip *.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py,./data/rfc_test_vectors/*
 
   dependency_check:
     # See if newer versions of our Python dependencies are available. This does

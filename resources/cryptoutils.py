@@ -39,12 +39,12 @@ from robot.api.deco import not_keyword
 from tinyec import registry
 from tinyec.ec import Inf, Point
 
-from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractHybridRawPublicKey, KEMPrivateKey, KEMPublicKey
-from pq_logic.keys.composite_kem05 import CompositeKEMPublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.trad_kem_keys import RSADecapKey, RSAEncapKey
+from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey, CompositeKEM07PublicKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey, CompositeSig07PublicKey
+from pq_logic.keys.trad_kem_keys import DHKEMPublicKey, RSADecapKey, RSAEncapKey
 from resources import convertutils, envdatautils, keyutils, oid_mapping
 from resources.asn1_structures import KemCiphertextInfoAsn1
 from resources.data_objects import FixedSHAKE128, FixedSHAKE256
@@ -60,8 +60,6 @@ def sign_data(  # noqa D417 undocumented-param
     hash_alg: Union[str, None, hashes.HashAlgorithm] = None,
     use_rsa_pss: bool = False,
     ctx: Union[bytes, str] = b"",
-    *,
-    use_pre_hash: bool = False,
 ) -> bytes:
     """Sign `data` with a private key, using a specified hashing algorithm. Supports ECDSA, ED448, ED25519, RSA, DSA.
 
@@ -73,7 +71,6 @@ def sign_data(  # noqa D417 undocumented-param
         - `use_rsa_pss`: Whether to use RSA-PSS padding for RSA keys. Defaults to `False`.
         - `ctx`: Context data for the signature. Defaults to an empty byte sequence.
         (If a string begins with "0x", it will be interpreted as a hex.)
-        - `use_pre_hash`: Whether to use the pre-hash version for the composite key. Defaults to `False`.
 
     Returns:
     -------
@@ -97,8 +94,8 @@ def sign_data(  # noqa D417 undocumented-param
     elif hash_alg is not None:
         hash_alg = hash_name_to_instance(hash_alg)  # type: ignore
 
-    if isinstance(key, CompositeSig03PrivateKey):
-        return key.sign(data=data, use_pss=use_rsa_pss, ctx=ctx, pre_hash=use_pre_hash)  # type: ignore
+    if isinstance(key, CompositeSig07PrivateKey):
+        return key.sign(data=data, use_pss=use_rsa_pss, ctx=ctx)  # type: ignore
 
     if isinstance(
         key,
@@ -669,11 +666,10 @@ def verify_signature(  # noqa D417 undocumented-param
         hash_alg = public_key.check_hash_alg(hash_alg)
         public_key.verify(data=data, hash_alg=hash_alg, signature=signature, is_prehashed=use_pre_hash)
 
+    elif isinstance(public_key, CompositeSig07PublicKey):
+        public_key.verify(signature=signature, data=data, use_pss=use_rsa_pss)
     elif isinstance(public_key, PQHashStatefulSigPublicKey):
         public_key.verify(data=data, signature=signature)
-
-    elif isinstance(public_key, CompositeSig03PublicKey):
-        public_key.verify(signature=signature, data=data, use_pss=use_rsa_pss, pre_hash=use_pre_hash)
 
     else:
         if isinstance(hash_alg, hashes.HashAlgorithm):
@@ -795,6 +791,7 @@ def compute_encapsulation(  # noqa: D417 Missing argument descriptions in the do
     key: KEMPublicKey,
     other_key: Optional[ECDHPrivateKey] = None,
     key_length: int = 32,
+    use_in_cms: bool = False,
 ) -> Tuple[bytes, bytes]:
     """Compute encapsulation for a key.
 
@@ -802,8 +799,10 @@ def compute_encapsulation(  # noqa: D417 Missing argument descriptions in the do
     ---------
         - `key`: The key to encapsulate.
         - `other_key`: The other key to use for encapsulation. Defaults to `None`.
-        - `key_length`: The length of the key in bytes. Defaults to `32`. (only used for RSA to align with RFC9690.)
-        (uses `KDF3` with `SHA-256`).
+        - `key_length`: The length of the key in bytes. Defaults to `32`. (only used for RSA to \
+        align with RFC9690. uses `KDF3` with `SHA-256`).
+        - `use_in_cms`: Whether Composite-KEM07PublicKey encapsulation should be used in CMS \
+        (uses HKDF instead of HMAC). Defaults to `False`.
 
     Returns:
     -------
@@ -831,12 +830,20 @@ def compute_encapsulation(  # noqa: D417 Missing argument descriptions in the do
         )
     if isinstance(key, AbstractHybridRawPublicKey):
         return key.encaps(private_key=other_key)
-    if isinstance(key, CompositeKEMPublicKey):
+    if isinstance(key, CompositeKEM07PublicKey):
         if isinstance(key.trad_key, RSAEncapKey) and other_key is not None:
             raise InvalidKeyCombination("Composite-KEM RSA can not be encapsulated with ECDH.")
         if isinstance(key.trad_key, RSAEncapKey):
-            return key.encaps()
+            return key.encaps(use_in_cms=use_in_cms)
+        return key.encaps(private_key=other_key, use_in_cms=use_in_cms)
+    if isinstance(key, DHKEMPublicKey):
         return key.encaps(private_key=other_key)
+
+    if isinstance(key, PQKEMPublicKey):
+        if other_key is not None:
+            raise InvalidKeyCombination("PQKEMPublicKey can not be encapsulated with ECDH.")
+        return key.encaps()
+
     raise ValueError(f"Unsupported key type: {type(key).__name__}.")
 
 
@@ -844,6 +851,7 @@ def compute_decapsulation(  # noqa: D417 Missing argument descriptions in the do
     key: KEMPrivateKey,
     ciphertext: Union[bytes, KemCiphertextInfoAsn1],
     key_length: int = 32,
+    use_in_cms: bool = False,
 ) -> bytes:
     """Compute decapsulation with a given ciphertext and private key.
 
@@ -853,6 +861,8 @@ def compute_decapsulation(  # noqa: D417 Missing argument descriptions in the do
         - `ciphertext`: The ciphertext to decapsulate or a `KemCiphertextInfoAsn1` object.
         - `key_length`: The length of the key in bytes. (only used for RSA to align with RFC9690.) Defaults to `32`.
         (uses `KDF3` with `SHA-256`).
+        - `use_in_cms`: Whether Composite-KEM07PrivateKey decapsulation should be used in CMS (uses \
+        HKDF instead of HMAC). Defaults to `False`.
 
     Returns:
     -------
@@ -881,9 +891,12 @@ def compute_decapsulation(  # noqa: D417 Missing argument descriptions in the do
             use_oaep=False,
             ss_length=key_length,
         )
+    if isinstance(key, CompositeKEM07PrivateKey):
+        return key.decaps(ct=ct, use_in_cms=use_in_cms)
     return key.decaps(ct)
 
 
+@not_keyword
 def derive_shared_secret_ec(
     z: bytes,
     key_wrap_oid: univ.ObjectIdentifier,
@@ -999,6 +1012,7 @@ def compute_sender_ecdh_mqv_one_pass_exchange(
     return z.to_bytes((z.bit_length() + 7) // 8, byteorder="big")
 
 
+@not_keyword
 def convert_private_key_to_tinyec(private_key: EllipticCurvePrivateKey) -> Tuple[int, Point]:
     """Convert a cryptography EC private key to a tinyec private key.
 
@@ -1017,6 +1031,7 @@ def convert_private_key_to_tinyec(private_key: EllipticCurvePrivateKey) -> Tuple
     return private_value, public_point
 
 
+@not_keyword
 def convert_public_key_to_tinyec(public_key: EllipticCurvePublicKey) -> Point:
     """Convert a cryptography EC public key to a tinyec public key.
 
@@ -1071,6 +1086,7 @@ def perform_one_pass_mqv(
     return k
 
 
+@not_keyword
 def compute_recipient_ecdh_mqv_one_pass_exchange(
     recip_key: EllipticCurvePrivateKey,
     static_public_key: EllipticCurvePublicKey,

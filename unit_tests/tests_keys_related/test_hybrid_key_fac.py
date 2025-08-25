@@ -77,7 +77,7 @@ class TestHybridKeyFactory(unittest.TestCase):
                                                    trad_name="rsa",
                                                 )
 
-        self.assertEqual(key.pq_key.name, "ml-kem-768")
+        self.assertEqual(key.pq_key.name, "ml-kem-1024")
         self.assertIsInstance(key.trad_key, RSADecapKey)
 
 

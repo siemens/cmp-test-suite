@@ -23,7 +23,7 @@ from robot.api.deco import not_keyword
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey
 from pq_logic.tmp_oids import (
-    CMS_COMPOSITE03_OID_2_HASH,
+    COMPOSITE_SIG06_PREHASH_OID_2_HASH,
 )
 from resources.oidutils import (
     ALL_KNOWN_NAMES_2_OID,
@@ -142,8 +142,8 @@ def get_hash_from_oid(oid: univ.ObjectIdentifier, only_hash: bool = False) -> Un
     if oid in {rfc9481.id_Ed25519, rfc9481.id_Ed448}:
         return None
 
-    if oid in CMS_COMPOSITE03_OID_2_HASH:
-        return CMS_COMPOSITE03_OID_2_HASH[oid]
+    if oid in COMPOSITE_SIG06_PREHASH_OID_2_HASH:
+        return COMPOSITE_SIG06_PREHASH_OID_2_HASH[oid]
 
     try:
         if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
@@ -180,7 +180,9 @@ def hash_name_to_instance(alg: str) -> hashes.HashAlgorithm:
 
 @not_keyword
 def get_alg_oid_from_key_hash(
-    key: PrivateKey, hash_alg: Optional[str], use_rsa_pss: bool = False, use_pre_hash: bool = False
+    key: PrivateKey,
+    hash_alg: Optional[str],
+    use_rsa_pss: bool = False,
 ) -> univ.ObjectIdentifier:
     """Find the pyasn1 oid given the hazmat key instance and a name of a hashing algorithm.
 
@@ -189,7 +191,6 @@ def get_alg_oid_from_key_hash(
     :param key: The private key instance.
     :param hash_alg: Name of hashing algorithm, e.g., 'sha256'
     :param use_rsa_pss: Flag to use RSA-PSS padding. Default is False.
-    :param use_pre_hash: Flag to use prehashed key. Default is False.
     :return: The OID of the signature algorithm.
     """
     if isinstance(key, dsa.DSAPrivateKey):
@@ -209,10 +210,10 @@ def get_alg_oid_from_key_hash(
 
         return PQ_NAME_2_OID[name]
 
-    from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey
+    from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 
-    if isinstance(key, CompositeSig03PrivateKey):
-        alg_oid = key.get_oid(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
+    if isinstance(key, CompositeSig07PrivateKey):
+        alg_oid = key.get_oid(use_pss=use_rsa_pss)
 
     if isinstance(key, PQHashStatefulSigPrivateKey):
         return key.get_oid()

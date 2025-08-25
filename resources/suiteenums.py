@@ -14,7 +14,7 @@ from typing import List, Union
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9480
 
-from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME
+from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME
 from resources.asn1_structures import PKIMessageTMP
 from resources.exceptions import UnknownOID
 from resources.oidutils import (
@@ -237,7 +237,7 @@ class ProtectedType(enum.Enum):
                 return cls.PQ_HASH_STATEFUL_SIG
             if oid in PQ_SIG_OID_2_NAME:
                 return cls.PQ_SIG
-            if oid in COMPOSITE_SIG04_OID_2_NAME or oid in COMPOSITE_SIG03_OID_2_NAME:
+            if oid in COMPOSITE_SIG07_OID_TO_NAME:
                 return cls.COMPOSITE_SIG
             raise UnknownOID(oid, "The OID is not supported, to retrieve the protection type from.")
 

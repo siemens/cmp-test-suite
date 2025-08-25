@@ -48,7 +48,6 @@ class TestRootCAKeyUpdate(unittest.TestCase):
             new_priv_key=self.new_key,
             hash_alg=None,
             use_rsa_pss=True,
-            use_pre_hash=False,
             bad_sig=False,
         )
 
@@ -82,7 +81,6 @@ class TestRootCAKeyUpdate(unittest.TestCase):
             new_priv_key=self.new_key,
             hash_alg=None,
             use_rsa_pss=True,
-            use_pre_hash=False,
             bad_sig=False,
         )
 

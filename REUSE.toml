@@ -13,7 +13,8 @@ SPDX-License-Identifier = "Apache-2.0"
 path = [
     "config/cert/**", "data/**", "unit_tests/**",
     "scripts/**", "pq_logic/fips/frodokem.py",
-    "pyrightconfig.json", "VERSION"
+    "pyrightconfig.json", "VERSION",
+    "client_tests/certs/**",
 ]
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright 2024 Siemens AG"

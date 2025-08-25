@@ -34,11 +34,13 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey, CompositeSig07PublicKey
 from pq_logic.keys.sig_keys import MLDSAPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME, id_it_KemCiphertextInfo
+from pq_logic.tmp_oids import (
+    COMPOSITE_SIG07_OID_TO_NAME,
+    id_it_KemCiphertextInfo,
+)
 from resources import (
     certbuildutils,
     certextractutils,
@@ -90,7 +92,6 @@ from resources.oid_mapping import (
 from resources.oidutils import (
     AES_GMAC_OID_2_NAME,
     ALL_KNOWN_OIDS_2_NAME,
-    CMS_COMPOSITE03_OID_2_NAME,
     ECDSA_OID_2_NAME,
     HKDF_OID_2_NAME,
     HMAC_OID_2_NAME,
@@ -1476,7 +1477,7 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
     if alg_oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
         return prot_type.value
 
-    if alg_oid in COMPOSITE_SIG03_OID_2_NAME or alg_oid in COMPOSITE_SIG04_OID_2_NAME:
+    if alg_oid in COMPOSITE_SIG07_OID_TO_NAME:
         return "composite-sig"
 
     if alg_oid in PQ_SIG_OID_2_NAME:
@@ -2373,7 +2374,12 @@ def verify_kem_based_mac_protection(
             )
 
         kem_ct = kem_ct_info_val["ct"].asOctets()
-        shared_secret = private_key.decaps(kem_ct)
+
+        shared_secret = cryptoutils.compute_decapsulation(
+            private_key,
+            ciphertext=kem_ct,
+            use_in_cms=True,
+        )
         logging.info("Shared Secret %s", shared_secret.hex())
 
     if shared_secret is None:
@@ -2441,16 +2447,10 @@ def sign_data_with_alg_id(  # noqa: D417 Missing argument descriptions in the do
     """
     oid = alg_id["algorithm"]
 
-    if isinstance(key, CompositeSig04PrivateKey):
-        name: str = COMPOSITE_SIG04_OID_2_NAME[oid]
+    if isinstance(key, CompositeSig07PrivateKey):
+        name: str = COMPOSITE_SIG07_OID_TO_NAME[oid]
         use_pss = name.endswith("-pss")
-        pre_hash = "hash-" in name
-        return key.sign(data=data, use_pss=use_pss, pre_hash=pre_hash)
-    if isinstance(key, CompositeSig03PrivateKey):
-        name: str = CMS_COMPOSITE03_OID_2_NAME[oid]
-        use_pss = name.endswith("-pss")
-        pre_hash = "hash-" in name
-        return key.sign(data=data, use_pss=use_pss, pre_hash=pre_hash)
+        return key.sign(data=data, use_pss=use_pss)
 
     # TODO fix this
     if oid in RSASSA_PSS_OID_2_NAME and isinstance(key, rsa.RSAPrivateKey):
@@ -2464,7 +2464,7 @@ def sign_data_with_alg_id(  # noqa: D417 Missing argument descriptions in the do
 
 
 def _verify_composite_sig(
-    public_key: CompositeSig03PublicKey,
+    public_key: CompositeSig07PublicKey,
     data: bytes,
     signature: bytes,
     name: str,
@@ -2479,12 +2479,10 @@ def _verify_composite_sig(
     """
     use_pss = name.endswith("-pss")
     logging.debug(name)
-    pre_hash = "hash-" in name
     public_key.verify(
         data=data,
         signature=signature,
         use_pss=use_pss,
-        pre_hash=pre_hash,
     )
 
 
@@ -2598,7 +2596,7 @@ def _validate_sig_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
     :raises BadAlg: If the algorithm identifier is unsupported.
     """
     oid = alg_id["algorithm"]
-    if oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
         if alg_id["parameters"].isValue:
             msg = (
                 f"For a composite signature algorithm identifier the `parameters` must be absent. "
@@ -2649,13 +2647,17 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
     oid = alg_id["algorithm"]
     _validate_sig_alg_id(alg_id)
 
-    if oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
-        name: str = CMS_COMPOSITE03_OID_2_NAME.get(oid) or COMPOSITE_SIG04_OID_2_NAME[oid]
-        if not isinstance(public_key, CompositeSig03PublicKey):
-            raise ValueError(
-                f"The public key must be a CompositeSigPublicKey. Got: {keyutils.get_key_name(public_key)}"
-            )
-        _verify_composite_sig(public_key=public_key, data=data, signature=signature, name=name)
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
+        if not isinstance(public_key, CompositeSig07PublicKey):
+            raise TypeError(f"The public key must be a CompositeSigPublicKey. Got: {keyutils.get_key_name(public_key)}")
+        name = COMPOSITE_SIG07_OID_TO_NAME[oid]
+        use_pss = name.endswith("-pss")
+        logging.debug("Verifying composite signature with name: %s", name)
+        public_key.verify(
+            data=data,
+            signature=signature,
+            use_pss=use_pss,
+        )
 
     elif oid in RSASSA_PSS_OID_2_NAME and isinstance(public_key, rsa.RSAPublicKey):
         verify_rsassa_pss_from_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
@@ -2704,7 +2706,6 @@ def _compute_and_prepare_pkimessage_sig_protection(
     pki_message: PKIMessageTMP,
     hash_alg: str = "sha256",
     use_rsa_pss: bool = True,
-    use_pre_hash: bool = False,
     bad_message_check: bool = False,
 ) -> PKIMessageTMP:
     """Compute the protection for a PKIMessage.
@@ -2713,7 +2714,6 @@ def _compute_and_prepare_pkimessage_sig_protection(
     :param pki_message: The PKIMessage to protect.
     :param hash_alg: The hash algorithm to use for signing.
     :param use_rsa_pss: Whether to use RSA-PSS padding for signing.
-    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :return: The protected PKIMessage.
     :raises ValueError: If the PKIMessage is missing required fields.
     """
@@ -2721,7 +2721,6 @@ def _compute_and_prepare_pkimessage_sig_protection(
         signing_key=signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
     )
     prot_alg_id = prot_alg_id.subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1), cloneValueFlag=True
@@ -2802,7 +2801,6 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
         - `do_patch`: Whether to patch the sender and senderKID fields. Defaults to `True`.
         - `hash_alg`: The hash algorithm to use for signing. Defaults to `sha256`.
         - `use_rsa_pss`: Whether to use RSA-PSS padding for signing. Defaults to `True`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
 
     Raises:
     ------
@@ -2840,7 +2838,6 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
             pki_message=pki_message,
             hash_alg=params.get("hash_alg", "sha256"),
             use_rsa_pss=params.get("use_rsa_pss", True),
-            use_pre_hash=params.get("use_pre_hash", False),
             bad_message_check=bad_message_check,
         )
 
@@ -2849,7 +2846,7 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
             if isinstance(alt_signing_key, PQSignaturePrivateKey):
                 private_key, alt_signing_key = alt_signing_key, private_key
 
-            private_key = CompositeSig04PrivateKey(
+            private_key = CompositeSig07PrivateKey(
                 pq_key=private_key,  # type: ignore
                 trad_key=alt_signing_key,  # type: ignore
             )
@@ -2859,7 +2856,6 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
             pki_message=pki_message,
             hash_alg=params.get("hash_alg", "sha256"),
             use_rsa_pss=params.get("use_rsa_pss", True),
-            use_pre_hash=params.get("use_pre_hash", False),
             bad_message_check=bad_message_check,
         )
 
@@ -2870,13 +2866,11 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
         signing_key=alt_signing_key,
         hash_alg=params.get("hash_alg", "sha256"),
         use_rsa_pss=params.get("use_rsa_pss", True),
-        use_pre_hash=params.get("use_pre_hash", False),
     )
     prot_alg_id = prepare_alg_ids.prepare_sig_alg_id(
         signing_key=private_key,
         hash_alg=params.get("hash_alg", "sha256"),
         use_rsa_pss=params.get("use_rsa_pss", True),
-        use_pre_hash=params.get("use_pre_hash", False),
     )
 
     prot_alg_id = prot_alg_id.subtype(
@@ -2991,12 +2985,8 @@ def verify_composite_signature_with_keys(
     if not isinstance(second_key, (ECVerifyKey, RSAPublicKey)):
         raise InvalidKeyCombination("The Composite signature trad-key is not a EC or RSA key.")
 
-    if alg_id["algorithm"] in CMS_COMPOSITE03_OID_2_NAME:
-        public_key = CompositeSig03PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
-
-    elif alg_id["algorithm"] in COMPOSITE_SIG04_OID_2_NAME:
-        public_key = CompositeSig04PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
-
+    if alg_id["algorithm"] in COMPOSITE_SIG07_OID_TO_NAME:
+        public_key = CompositeSig07PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
     else:
         raise BadAlg(f"Invalid algorithm for composite signature: {alg_id['algorithm']}")
 

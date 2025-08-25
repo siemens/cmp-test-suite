@@ -43,24 +43,24 @@ import pq_logic.combined_factory
 from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
-from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey, HybridPublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
-from pq_logic.keys.composite_sig04 import CompositeSig04PrivateKey, CompositeSig04PublicKey
+from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
 from pq_logic.keys.stateful_sig_keys import XMSSMTPrivateKey, XMSSPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
-from pq_logic.tmp_oids import COMPOSITE_SIG03_OID_2_NAME, COMPOSITE_SIG04_OID_2_NAME, id_rsa_kem_spki
-from resources import oid_mapping, typingutils, utils
+from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME, id_rsa_kem_spki
+from resources import oid_mapping, prepare_alg_ids, typingutils, utils
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
-from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, UnknownOID
+from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, InvalidKeyCombination, UnknownOID
 from resources.oid_mapping import KEY_CLASS_MAPPING, get_curve_instance, get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import (
-    CMS_COMPOSITE03_NAME_2_OID,
     CURVE_OID_2_NAME,
+    HYBRID_SIG_OID_2_NAME,
+    KEM_OID_2_NAME,
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
@@ -113,7 +113,7 @@ def save_key(  # noqa: D417 undocumented-params
             encryption_algorithm=encrypt_algo,  # type: ignore
         )
 
-    elif isinstance(key, (MLKEMPrivateKey, MLDSAPrivateKey, HybridPublicKey)) and save_old:
+    elif isinstance(key, (MLKEMPrivateKey, MLDSAPrivateKey)) and save_old:
         warnings.warn(
             "'old_param=True' is deprecated and will be removed in a future version. "
             "Please update your code so that you can support the ne export for ML-KEM and ML-DSA keys."
@@ -254,8 +254,8 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
     Hybrid algorithms:
     ------------------
         - "xwing"
-        - "composite-sig" (v3)
-        - "composite-sig-04"
+        - "composite-sig" (latest version of composite signature)
+        - "composite-sig-07"
         - "composite-kem"
         - "composite-dhkem" (uses DHKEM: RFC9180)
         - "chempat"
@@ -581,8 +581,12 @@ def generate_key_based_on_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> Private
     elif str(oid) in TRAD_STR_OID_TO_KEY_NAME:
         return pq_logic.combined_factory.CombinedKeyFactory.generate_key(algorithm=TRAD_STR_OID_TO_KEY_NAME[str(oid)])
 
-    elif oid in CMS_COMPOSITE03_NAME_2_OID:
-        raise NotImplementedError("Composite keys are not supported yet.")
+    elif oid in HYBRID_SIG_OID_2_NAME:
+        return pq_logic.combined_factory.CombinedKeyFactory.generate_key(
+            algorithm=HYBRID_SIG_OID_2_NAME[oid], by_name=True
+        )
+    elif oid in KEM_OID_2_NAME:
+        return pq_logic.combined_factory.CombinedKeyFactory.generate_key(algorithm=KEM_OID_2_NAME[oid], by_name=True)
 
     raise UnknownOID(oid=oid, extra_info="For generating a private key.")
 
@@ -692,23 +696,27 @@ def check_consistency_sig_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, ke
     """
     oid = alg_id["algorithm"]
 
-    # Because the v4 is a subclass of the v3, we need to check the v4 first.
-    result1 = isinstance(key, (CompositeSig04PublicKey, CompositeSig04PrivateKey))
-    result2 = isinstance(key, (CompositeSig03PublicKey, CompositeSig03PrivateKey))
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
+        name = COMPOSITE_SIG07_OID_TO_NAME[oid]
 
-    if (result1 and oid in COMPOSITE_SIG04_OID_2_NAME) or (result2 and oid in COMPOSITE_SIG03_OID_2_NAME):
-        if result1:
-            name = COMPOSITE_SIG04_OID_2_NAME[oid]
-        else:
-            name = COMPOSITE_SIG03_OID_2_NAME[oid]
+        try:
+            use_pss = name.endswith("-pss")
+            if str(key.get_oid(use_pss=use_pss)) != str(oid):  # type: ignore
+                raise BadSigAlgID("The public key was not of the same type as the,algorithm identifier implied.")
 
-        use_pss = name.endswith("-pss")
-        pre_hash = "hash-" in name
+            return
+        except InvalidKeyCombination:
+            if hasattr(key, "name"):
+                name_type = key.name  # type: ignore
+            else:
+                name_type = type(key).__name__
 
-        if str(key.get_oid(use_pss=use_pss, pre_hash=pre_hash)) != str(oid):  # type: ignore
-            raise BadSigAlgID("The public key was not of the same type as the,algorithm identifier implied.")
-
-        return
+            raise BadSigAlgID(
+                "The public key was not of the same type as the, algorithm identifier implied.",
+                error_details=[
+                    f"OID: {oid}. The Public Key was of type: {name_type}. OID-Lookup: {may_return_oid_to_name(oid)}",
+                ],
+            )
 
     try:
         hash_alg = get_hash_from_oid(alg_id["algorithm"], only_hash=True)
@@ -1010,13 +1018,37 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
     )
 
 
+def _prepare_rsa_pss_spki(
+    key: RSAPublicKey,
+    use_rsa_pss: bool = False,
+    hash_alg: Optional[str] = None,
+) -> rfc5280.SubjectPublicKeyInfo:
+    """Prepare a SubjectPublicKeyInfo for an RSA-PSS public key."""
+    if hash_alg is None:
+        hash_alg = "sha256"  # Default to SHA-256 if not specified
+
+    spki = rfc5280.SubjectPublicKeyInfo()
+    der_data = key.public_bytes(
+        encoding=Encoding.DER,
+        format=PublicFormat.PKCS1,
+    )
+    spki["subjectPublicKey"] = univ.BitString.fromOctetString(der_data)
+    alg_id = prepare_alg_ids.prepare_sig_alg_id(
+        signing_key=key,  # type: ignore
+        use_rsa_pss=use_rsa_pss,
+        hash_alg=hash_alg,
+    )
+    spki["algorithm"] = alg_id
+
+    return spki
+
+
 @keyword(name="Prepare SubjectPublicKeyInfo")
 def prepare_subject_public_key_info(  # noqa D417 undocumented-param
     key: Optional[Union[PrivateKey, PublicKey]] = None,
     for_kga: bool = False,
     key_name: Optional[str] = None,
     use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
     hash_alg: Optional[str] = None,
     invalid_key_size: bool = False,
     add_params_rand_bytes: bool = False,
@@ -1036,7 +1068,6 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
         - `key_name`: The key algorithm name to use for the `SubjectPublicKeyInfo`.
         (can be set to `rsa_kem`. RFC9690). Defaults to `None`.
         - `use_rsa_pss`: Whether to use RSA-PSS padding. Defaults to `False`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `hash_alg`: The pre-hash algorithm to use for the pq signature key. Defaults to `None`.
         - `invalid_key_size`: A flag indicating whether the key size is invalid. Defaults to `False`.
         - `add_params_rand_bytes`: A flag indicating whether to add random bytes to the key parameters. \
@@ -1072,8 +1103,8 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
         spki = rfc5280.SubjectPublicKeyInfo()
         pub_key = pub_key if not invalid_key_size else pub_key + b"\x00"
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(pub_key)
-        if isinstance(key, CompositeSig03PrivateKey):
-            oid = key.get_oid(use_pss=use_rsa_pss, pre_hash=use_pre_hash)
+        if isinstance(key, CompositeSig07PrivateKey):
+            oid = key.get_oid(use_pss=use_rsa_pss)
         else:
             oid = key.get_oid()
         spki["algorithm"]["algorithm"] = oid
@@ -1094,7 +1125,6 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
             key=key,
             key_name=key_name,
             use_pss=use_rsa_pss,
-            use_pre_hash=use_pre_hash,
             add_null=add_null,
             add_params_rand_bytes=add_params_rand_bytes,
         )
@@ -1102,12 +1132,18 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
     if key_name in ["rsa-kem", "rsa_kem"]:
         key = RSAEncapKey(key)  # type: ignore
 
-    spki = subject_public_key_info_from_pubkey(
-        public_key=key,  # type: ignore
-        use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
-        hash_alg=hash_alg,
-    )
+    if isinstance(key, RSAPublicKey) and use_rsa_pss:
+        spki = _prepare_rsa_pss_spki(
+            key=key,
+            use_rsa_pss=use_rsa_pss,
+            hash_alg=hash_alg,
+        )
+    else:
+        spki = subject_public_key_info_from_pubkey(
+            public_key=key,  # type: ignore
+            use_rsa_pss=use_rsa_pss,
+            hash_alg=hash_alg,
+        )
 
     if invalid_key_size:
         tmp = spki["subjectPublicKey"].asOctets() + b"\x00\x00"
@@ -1123,9 +1159,7 @@ def _prepare_spki_for_kga(
     key: Optional[Union[PrivateKey, PublicKey]] = None,
     key_name: Optional[str] = None,
     use_pss: bool = False,
-    use_pre_hash: bool = False,
     add_null: bool = False,
-    *,
     add_params_rand_bytes: bool = False,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare a SubjectPublicKeyInfo for KGA usage.
@@ -1133,7 +1167,6 @@ def _prepare_spki_for_kga(
     :param key: A private or public key.
     :param key_name: An optional key algorithm name.
     :param use_pss: Whether to use PSS padding for RSA and a RSA-CompositeKey.
-    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :param add_null: Whether to add a null value to the key parameters. Defaults to `False`.
     :param add_params_rand_bytes: Whether to add random bytes to the key parameters. Defaults to `False`.
     :return: The populated `SubjectPublicKeyInfo` structure.
@@ -1161,8 +1194,11 @@ def _prepare_spki_for_kga(
             spki["algorithm"]["parameters"]["namedCurve"] = rfc5480.secp256r1
 
     if key_name is not None:
-        key = generate_key(key_name).public_key()
-        spki_tmp = subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_pss, use_pre_hash=use_pre_hash)
+        key = pq_logic.combined_factory.CombinedKeyFactory.generate_key(key_name).public_key()
+        spki_tmp = subject_public_key_info_from_pubkey(
+            public_key=key,  # type: ignore[AssignmentTypeError]
+            use_rsa_pss=use_pss,
+        )
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
 
     elif key is not None:

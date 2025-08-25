@@ -338,7 +338,7 @@ CA MUST Detect Already Used Base XMSS Key
     ${csr}=    Build Paired CSR    ${pq_key2}    ${trad_key2}
     ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}
     ...                                 exclude_fields=sender,senderKID   implicit_confirm=True
-    ${pq_key}=   Exhaust PQ Stateful Sig Key    ${pq_key}    index=0
+    ${pq_key}=   Modify PQ Stateful Sig Private Key    ${pq_key}    index=0
     ${protected_p10cr}=  Protect PKIMessage    ${p10cr}   signature   private_key=${pq_key}
     ...                                        cert=${cert}
     ${response}=   Exchange Migration PKIMessage    ${protected_p10cr}  ${CA_BASE_URL}   ${CHAMELEON_SUFFIX}
@@ -370,7 +370,7 @@ CA MUST Detect Already Used Delta XMSS Key
     ${csr}=    Build Paired CSR    ${trad_key2}    ${pq_key2}
     ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}
     ...                                 exclude_fields=sender,senderKID   implicit_confirm=True
-    ${pq_key}=   Exhaust PQ Stateful Sig Key    ${pq_key}    index=0
+    ${pq_key}=   Modify PQ Stateful Sig Private Key    ${pq_key}    index=0
     ${protected_p10cr}=  Protect PKIMessage    ${p10cr}   signature   private_key=${pq_key}
     ...                                        cert=${delta_cert}
     ${response}=   Exchange Migration PKIMessage    ${protected_p10cr}  ${CA_BASE_URL}   ${CHAMELEON_SUFFIX}
