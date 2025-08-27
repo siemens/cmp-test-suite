@@ -29,7 +29,7 @@ from pq_logic.hybrid_structures import AltSignatureExt, AltSubPubKeyExt, Uniform
 from pq_logic.keys.abstract_wrapper_keys import HybridPublicKey
 from pq_logic.keys.composite_sig07 import CompositeSig07PublicKey
 from pq_logic.tmp_oids import (
-    COMPOSITE_SIG06_PREHASH_OID_2_HASH,
+    COMPOSITE_SIG07_PREHASH_OID_2_HASH,
     id_altSignatureExt,
     id_altSigValueHashAlgAttr,
     id_altSigValueLocAttr,
@@ -405,7 +405,7 @@ def sun_csr_to_cert(  # noqa: D417 Missing argument descriptions in the docstrin
         data["pub_key_hash_id"] = get_hash_from_oid(data["pub_key_hash_id"]["algorithm"])
 
     if data["sig_hash_id"] is None:
-        data["sig_hash_id"] = COMPOSITE_SIG06_PREHASH_OID_2_HASH.get(oid) or hash_alg
+        data["sig_hash_id"] = COMPOSITE_SIG07_PREHASH_OID_2_HASH.get(oid) or hash_alg
     else:
         data["sig_hash_id"] = get_hash_from_oid(data["sig_hash_id"]["algorithm"])
 
@@ -500,7 +500,7 @@ def sun_cert_template_to_cert(  # noqa: D417 Missing argument descriptions in th
     if not isinstance(composite_key, HybridPublicKey):
         raise ValueError("The public key must be a HybridPublicKey.")
     oid = composite_key.get_oid()
-    hash_alg = hash_alg or COMPOSITE_SIG06_PREHASH_OID_2_HASH.get(oid, "sha256")
+    hash_alg = hash_alg or COMPOSITE_SIG07_PREHASH_OID_2_HASH.get(oid, "sha256")
     extn_alt_pub, extn_alt_pub2 = _prepare_public_key_extensions(composite_key, hash_alg, pub_key_loc)
 
     tbs_cert["extensions"].append(extn_alt_pub)

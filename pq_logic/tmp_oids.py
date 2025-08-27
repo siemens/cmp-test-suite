@@ -166,7 +166,7 @@ COMPOSITE_SIG07_INNER_HASH_OID_2_NAME = {
     id_compSig07_mldsa87_rsa4096_pss: "sha512",
     id_compSig07_mldsa87_ecdsa_p521: "sha512",
 }
-COMPOSITE_SIG06_PREHASH_OID_2_HASH = {
+COMPOSITE_SIG07_PREHASH_OID_2_HASH = {
     id_compSig07_mldsa44_rsa2048_pss: "sha256",
     id_compSig07_mldsa44_rsa2048_pkcs15: "sha256",
     id_compSig07_mldsa44_ed25519: "sha512",
