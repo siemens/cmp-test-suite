@@ -37,7 +37,7 @@ from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateK
 from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey
 from pq_logic.pq_utils import get_kem_oid_from_key
-from pq_logic.tmp_oids import COMPOSITE_SIG06_PREHASH_OID_2_HASH, COMPOSITE_SIG07_OID_TO_NAME
+from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -55,8 +55,10 @@ from resources.asn1_structures import PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MismatchingKey
+from resources.keyutils import get_digest_alg_for_cmp
 from resources.oid_mapping import (
     compute_hash,
+    get_digest_hash_alg_from_alg_id,
     get_hash_from_oid,
     may_return_oid_to_name,
 )
@@ -71,13 +73,9 @@ from resources.oidutils import (
     KM_KD_ALG,
     KM_KT_ALG,
     KM_KW_ALG,
-    ML_DSA_OID_2_NAME,
     MSG_SIG_ALG,
     PQ_SIG_OID_2_NAME,
-    PQ_SIG_PRE_HASH_OID_2_NAME,
     PROT_SYM_ALG,
-    SLH_DSA_OID_2_NAME,
-    SLH_DSA_PRE_HASH_NAME_2_OID,
 )
 from resources.suiteenums import KeyUsageStrictness
 from resources.typingutils import ECDHPrivateKey, EnvDataPrivateKey, PrivateKey, Strint
@@ -1145,39 +1143,6 @@ def get_certificates_from_signed_data(certificates: rfc5652.CertificateSet) -> L
     return out_chain
 
 
-@not_keyword
-def get_digest_hash_alg_from_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> str:
-    """Get the hash algorithm from the `AlgorithmIdentifier` structure."""
-    oid = alg_id["algorithm"]
-    if oid == rfc9481.id_Ed25519:
-        return "sha512"
-    if oid == rfc9481.id_Ed448:
-        return "shake256"
-
-    if oid in COMPOSITE_SIG07_OID_TO_NAME:
-        return COMPOSITE_SIG06_PREHASH_OID_2_HASH[oid]
-
-    if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
-        return PQ_SIG_PRE_HASH_OID_2_NAME[oid].split("-")[-1]
-
-    if oid in ML_DSA_OID_2_NAME:
-        return "sha512"
-
-    if oid in SLH_DSA_OID_2_NAME:
-        name = SLH_DSA_OID_2_NAME[oid]
-        for option in ["sha256", "sha512", "shake128", "shake256"]:
-            if name + "-" + option in SLH_DSA_PRE_HASH_NAME_2_OID:
-                return option
-
-    if oid in PQ_SIG_OID_2_NAME:
-        return "sha512"
-
-    hash_alg = get_hash_from_oid(oid, only_hash=True)
-    if hash_alg is None:
-        raise ValueError(f"Unsupported hash algorithm: {oid}, please check `_get_digest_hash_alg_from_alg_id`")
-    return hash_alg
-
-
 def _validate_signature_and_algorithm_in_signed_data(
     data: dict, asym_key_package_bytes: bytes, encap_content_info_data: bytes, kga_certificate: rfc9480.CMPCertificate
 ) -> None:
@@ -1192,7 +1157,7 @@ def _validate_signature_and_algorithm_in_signed_data(
     signature = data["signature"]
     digest_econtent = data["digest_eContent"]
 
-    hash_alg = get_digest_hash_alg_from_alg_id(data["signatureAlgorithm"])
+    hash_alg = get_digest_alg_for_cmp(data["signatureAlgorithm"], kga_certificate)
 
     digest = compute_hash(hash_alg, asym_key_package_bytes)
     if digest_econtent != digest:

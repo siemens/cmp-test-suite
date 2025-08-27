@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448P
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc5958, rfc6664, rfc9480, rfc9481
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc5958, rfc6664, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
@@ -54,7 +54,6 @@ from resources import (
 )
 from resources.asn1_structures import CertResponseTMP, ChallengeASN1, PKIBodyTMP, PKIMessageTMP
 from resources.asn1utils import get_set_bitstring_names, try_decode_pyasn1
-from resources.ca_kga_logic import get_digest_hash_alg_from_alg_id
 from resources.certextractutils import get_extension
 from resources.convertutils import (
     copy_asn1_certificate,
@@ -83,7 +82,12 @@ from resources.exceptions import (
     SignerNotTrusted,
     UnsupportedVersion,
 )
-from resources.oid_mapping import compute_hash, get_hash_from_oid, may_return_oid_to_name, sha_alg_name_to_oid
+from resources.oid_mapping import (
+    compute_hash,
+    get_hash_from_oid,
+    may_return_oid_to_name,
+    sha_alg_name_to_oid,
+)
 from resources.oidutils import CURVE_OID_2_NAME, id_KemBasedMac
 from resources.suiteenums import InvalidOneAsymKeyType, KeySaveType
 from resources.typingutils import (
@@ -3098,7 +3102,6 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
     --------
         - additional values to set for the header.
         - `hash_alg`: The hash algorithm to use for signing the certificate. Defaults to `sha256`.
-        - `allow_auto_ed`: Whether to allow automatic ED hash algorithm choice. Defaults to `True`.
         - `use_fresh_nonce`: Whether to use a fresh sender nonce. Defaults to `True`.
 
     Returns:
@@ -3153,11 +3156,9 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
             # is ensured with the flag `only_hash=False`
             hash_alg = get_hash_from_oid(entry["hashAlg"]["algorithm"], only_hash=False)
         else:
-            alg_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
-            hash_alg = get_hash_from_oid(alg_oid, only_hash=True)
-            if kwargs.get("allow_auto_ed", False):
-                if alg_oid in [rfc9481.id_Ed25519, rfc9481.id_Ed448]:
-                    hash_alg = get_digest_hash_alg_from_alg_id(alg_id=issued_cert["tbsCertificate"]["signature"])
+            hash_alg = keyutils.get_digest_alg_for_cmp(
+                issued_cert["tbsCertificate"]["signature"], kwargs.get("ca_cert")
+            )
 
         if hash_alg is None:
             raise BadCertId(

@@ -52,11 +52,17 @@ from pq_logic.keys.stateful_sig_keys import XMSSMTPrivateKey, XMSSPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME, id_rsa_kem_spki
-from resources import oid_mapping, prepare_alg_ids, typingutils, utils
+from resources import certutils, oid_mapping, prepare_alg_ids, typingutils, utils
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
 from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, InvalidKeyCombination, UnknownOID
-from resources.oid_mapping import KEY_CLASS_MAPPING, get_curve_instance, get_hash_from_oid, may_return_oid_to_name
+from resources.oid_mapping import (
+    KEY_CLASS_MAPPING,
+    get_curve_instance,
+    get_digest_hash_alg_from_alg_id,
+    get_hash_from_oid,
+    may_return_oid_to_name,
+)
 from resources.oidutils import (
     CURVE_OID_2_NAME,
     HYBRID_SIG_OID_2_NAME,
@@ -64,6 +70,7 @@ from resources.oidutils import (
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
+    PQ_STATEFUL_HASH_SIG_OID_2_NAME,
     TRAD_SIG_NAME_2_OID,
     TRAD_STR_OID_TO_KEY_NAME,
 )
@@ -1288,3 +1295,53 @@ def modify_pq_stateful_sig_private_key(  # noqa: D417 undocumented-param
         return XMSSMTPrivateKey(alg_name=key.name, private_bytes=key_bytes, public_key=public_key_bytes)
 
     raise NotImplementedError("Exhausting PQ stateful signature keys is only implemented for XMSS keys.")
+
+
+@keyword(name="Get Digest Alg For CMP")
+def get_digest_alg_for_cmp(  # noqa D417 undocumented-param
+    alg_id: rfc9480.AlgorithmIdentifier, cert_or_pub_key: Optional[Union[rfc9480.CMPCertificate, PublicKey]] = None
+) -> str:
+    """Get the hash algorithm for the SignedData or the certificate confirmation computation.
+
+    Note:
+    ----
+    - For stateful hash signatures (e.g., XMSS, HSS), the public key or certificate must be provided
+      to determine the hash algorithm.
+    - For other signature algorithms, the hash algorithm is extracted directly from the AlgorithmIdentifier.
+
+    Arguments:
+    ---------
+    - `alg_id`: The AlgorithmIdentifier for the signing.
+    - `cert_or_pub_key`: Optional certificate or public key to determine the hash algorithm if needed.
+
+    Raises:
+    ------
+    - `ValueError`: If the public key or certificate is required but not provided for stateful hash signatures.
+    - `BadSigAlgID`: If the provided public key is not a stateful hash signature public key when required.
+
+    Examples:
+    --------
+    | ${hash_alg}= | Get Digest Alg For CMP | ${alg_id} | ${certificate} |
+    | ${hash_alg}= | Get Digest Alg For CMP | ${alg_id} | ${public_key} |
+
+    """
+    oid = alg_id["algorithm"]
+    if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+        if cert_or_pub_key is None:
+            raise ValueError("For stateful hash signatures, the public key or certificate must be provided.")
+        if isinstance(cert_or_pub_key, rfc9480.CMPCertificate):
+            pub_key = certutils.load_public_key_from_cert(cert_or_pub_key)
+        else:
+            pub_key = cert_or_pub_key
+
+        if not isinstance(pub_key, PQHashStatefulSigPublicKey):
+            msg = (
+                "Provided public key is not a stateful hash signature public key, despite the OID."
+                f"Public key type: {type(pub_key).__name__}: {may_return_oid_to_name(oid)}"
+            )
+
+            raise BadSigAlgID(msg)
+
+        return pub_key.hash_alg
+
+    return get_digest_hash_alg_from_alg_id(alg_id)

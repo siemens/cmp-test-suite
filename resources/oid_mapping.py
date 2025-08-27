@@ -16,13 +16,14 @@ from typing import Optional, Union
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dsa, ec
 from pyasn1.type import univ
-from pyasn1_alt_modules import rfc9481
+from pyasn1_alt_modules import rfc9480, rfc9481
 from pyasn1_alt_modules.rfc5480 import id_dsa_with_sha256
 from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey
 from pq_logic.tmp_oids import (
+    COMPOSITE_SIG07_OID_TO_NAME,
     COMPOSITE_SIG07_PREHASH_OID_2_HASH,
 )
 from resources.oidutils import (
@@ -30,11 +31,17 @@ from resources.oidutils import (
     ALL_KNOWN_OIDS_2_NAME,
     ALLOWED_HASH_TYPES,
     CURVE_NAMES_TO_INSTANCES,
+    ML_DSA_OID_2_NAME,
     OID_HASH_MAP,
     OID_HASH_NAME_2_OID,
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
+    PQ_SIG_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
+    SLH_DSA_HASH_MAPPING,
+    SLH_DSA_OID_2_NAME,
+    SLH_DSA_PRE_HASH_NAME_2_OID,
+    SLH_DSA_PRE_HASH_OID_2_NAME,
     SUPPORTED_MAC_NAME_2_OID,
     TRAD_SIG_NAME_2_OID,
 )
@@ -263,3 +270,39 @@ def may_return_oid_by_name(name: str) -> univ.ObjectIdentifier:
     if "." in name:
         return univ.ObjectIdentifier(name)
     return ALL_KNOWN_NAMES_2_OID[name]
+
+
+@not_keyword
+def get_digest_hash_alg_from_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> str:
+    """Get the hash algorithm from the `AlgorithmIdentifier` structure."""
+    oid = alg_id["algorithm"]
+    if oid == rfc9481.id_Ed25519:
+        return "sha512"
+    if oid == rfc9481.id_Ed448:
+        return "shake256"
+
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
+        return COMPOSITE_SIG07_PREHASH_OID_2_HASH[oid]
+
+    if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
+        return PQ_SIG_PRE_HASH_OID_2_NAME[oid].split("-")[-1]
+
+    if oid in ML_DSA_OID_2_NAME:
+        return "sha512"
+
+    if oid in SLH_DSA_OID_2_NAME:
+        if oid in SLH_DSA_PRE_HASH_NAME_2_OID:
+            name = SLH_DSA_PRE_HASH_OID_2_NAME[oid]
+            hash_alg = name.split("-")[-1]
+            name = name[: -len(hash_alg)]
+        else:
+            name = SLH_DSA_OID_2_NAME[oid]
+        return SLH_DSA_HASH_MAPPING[name]
+
+    if oid in PQ_SIG_OID_2_NAME:
+        return "sha512"
+
+    hash_alg = get_hash_from_oid(oid, only_hash=True)
+    if hash_alg is None:
+        raise ValueError(f"Unsupported hash algorithm: {oid}, please check `_get_digest_hash_alg_from_alg_id`")
+    return hash_alg
