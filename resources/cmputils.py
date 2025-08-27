@@ -32,6 +32,7 @@ from pyasn1_alt_modules import (
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPublicKey
+from pq_logic.keys.composite_kem07 import CompositeKEM07PublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_private_key
 from resources import (
     asn1utils,
@@ -167,7 +168,7 @@ def _ensure_is_bool(data: Union[bool, str]) -> bool:
         data = data.strip()
         if data.lower() == "true":
             return True
-        elif data.lower() == "false":
+        if data.lower() == "false":
             return False
     raise TypeError(f"Expected a boolean or a string convertible to boolean, got {data!r}.")
 
@@ -437,7 +438,6 @@ def build_p10cr_from_key(  # noqa D417 undocumented-param
        - `common_name` (str): The common name to use for the CSR subject. Defaults to `CN=Hans Mustermann`.
        - `hash_alg` (str): The hash algorithm to use for the SPKI and CSR signing. Defaults to "sha256".
        - `use_rsa_pss` (bool): If `True`, uses RSA-PSS for the signature and SPKI. Defaults to `False`.
-       - `use_pre_hash` (bool): If `True`, uses pre-hashed version for composite-sig keys. Defaults to `False`.
        - `bad_pop` (bool): If True, prepares a bad proof-of-possession for the CSR. Defaults to `False`.
 
     Returns:
@@ -457,7 +457,6 @@ def build_p10cr_from_key(  # noqa D417 undocumented-param
             key=key,
             hash_alg=params.get("hash_alg", "sha256"),
             use_rsa_pss=params.get("use_rsa_pss", False),
-            use_pre_hash=params.get("use_pre_hash", False),
         )
 
     csr = certbuildutils.build_csr(
@@ -467,7 +466,6 @@ def build_p10cr_from_key(  # noqa D417 undocumented-param
         spki=spki,
         hash_alg=params.get("hash_alg", "sha256"),
         use_rsa_pss=params.get("use_rsa_pss", False),
-        use_pre_hash=params.get("use_pre_hash", False),
         version=params.get("version", 0),  # type: ignore
     )
     return build_p10cr_from_csr(
@@ -2044,7 +2042,6 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
     hash_alg: Optional[str] = "sha256",
     bad_pop: bool = False,
     use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
     add_params_rand_val: bool = False,
     sender: Optional[str] = None,
 ) -> rfc4211.ProofOfPossession:
@@ -2058,7 +2055,6 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
         - `bad_pop`: If `True`, the first byte of the signature will be modified to create an invalid.
         POP signature.
         - `use_rsa_pss`: If `True`, the RSA-PSS signature scheme will be used.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `add_params_rand_val`: If `True`, the random value will be added to the parameters field of the signature
         alg id. Defaults to `False`.
         - `sender`: The sender information for `POPOSigningKeyInput`, which **MUST** be absent. Defaults to `None`.
@@ -2077,7 +2073,6 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
         data=der_cert_request,
         key=signing_key,
         hash_alg=hash_alg,
-        use_pre_hash=use_pre_hash,
         use_rsa_pss=use_rsa_pss,
     )
     logging.info("Calculated POPO without manipulation: %s", signature.hex())
@@ -2086,7 +2081,6 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
         signing_key=signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
         add_params_rand_val=add_params_rand_val,
     )
 
@@ -5619,7 +5613,9 @@ def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument descri
 
         ca_key = convertutils.ensure_is_kem_pub_key(ca_key)
 
-        if isinstance(ca_key, HybridKEMPublicKey):
+        if isinstance(ca_key, CompositeKEM07PublicKey):
+            shared_secret, ct = ca_key.encaps(use_in_cms=False)
+        elif isinstance(ca_key, HybridKEMPublicKey):
             shared_secret, ct = ca_key.encaps(client_key)  # type: ignore
         else:
             shared_secret, ct = ca_key.encaps()  # type: ignore

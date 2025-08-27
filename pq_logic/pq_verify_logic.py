@@ -27,10 +27,10 @@ from pq_logic.hybrid_sig import (
     sun_lamps_hybrid_scheme_00,
 )
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PrivateKey, CompositeSig03PublicKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PublicKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_oids import (
-    COMPOSITE_SIG04_OID_2_NAME,
+    COMPOSITE_SIG07_OID_TO_NAME,
     id_altSubPubKeyExt,
     id_ce_deltaCertificateDescriptor,
     id_relatedCert,
@@ -42,7 +42,6 @@ from resources.convertutils import ensure_is_pq_verify_key
 from resources.exceptions import BadAsn1Data, BadMessageCheck, BadSigAlgID, InvalidAltSignature, UnknownOID
 from resources.oid_mapping import get_hash_from_oid
 from resources.oidutils import (
-    CMS_COMPOSITE03_OID_2_NAME,
     MSG_SIG_ALG,
     PQ_OID_2_NAME,
     TRAD_STR_OID_TO_KEY_NAME,
@@ -87,23 +86,22 @@ def verify_cert_hybrid_signature(  # noqa D417 undocumented-param
     oid = ee_cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
     alg_id = ee_cert["tbsCertificate"]["signature"]
     spki = other_cert["tbsCertificate"]["subjectPublicKeyInfo"]
-    if oid in CMS_COMPOSITE03_OID_2_NAME:
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
         if other_cert is None and catalyst_key is None:
             composite_key = PQKeyFactory.load_public_key_from_spki(spki)
-            if not isinstance(composite_key, CompositeSig03PublicKey):
+            if not isinstance(composite_key, CompositeSig07PublicKey):
                 raise ValueError("The loaded key is not a composite signature key.")
         elif other_cert is not None:
             trad_key = keyutils.load_public_key_from_spki(issuer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
             pq_key = PQKeyFactory.load_public_key_from_spki(other_cert["tbsCertificate"]["subjectPublicKeyInfo"])
-            composite_key = CompositeSig03PublicKey(pq_key, trad_key=trad_key)  # type: ignore
+            composite_key = CompositeSig07PublicKey(pq_key, trad_key=trad_key)  # type: ignore
 
         else:
             trad_key = keyutils.load_public_key_from_spki(issuer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
-            composite_key = CompositeSig03PublicKey(catalyst_key, trad_key=trad_key)  # type: ignore
+            composite_key = CompositeSig07PublicKey(catalyst_key, trad_key=trad_key)  # type: ignore
 
         data = encoder.encode(ee_cert["tbsCertificate"])
         signature = ee_cert["signature"].asOctets()
-        CompositeSig03PrivateKey.validate_oid(oid, composite_key)
         protectionutils.verify_signature_with_alg_id(composite_key, alg_id=alg_id, signature=signature, data=data)
 
     else:
@@ -131,7 +129,7 @@ def _verify_signature_with_other_cert(
     """
     sig_alg_oid = sig_alg_id["algorithm"]
 
-    if sig_alg_oid not in CMS_COMPOSITE03_OID_2_NAME and sig_alg_oid not in COMPOSITE_SIG04_OID_2_NAME:
+    if sig_alg_oid not in COMPOSITE_SIG07_OID_TO_NAME:
         raise ValueError("The signature algorithm is not a composite signature one.")
 
     if other_certs is not None:
@@ -143,7 +141,7 @@ def _verify_signature_with_other_cert(
 
     trad_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
 
-    if sig_alg_oid in COMPOSITE_SIG04_OID_2_NAME or sig_alg_oid in CMS_COMPOSITE03_OID_2_NAME:
+    if sig_alg_oid in COMPOSITE_SIG07_OID_TO_NAME:
         protectionutils.verify_composite_signature_with_keys(
             data=data,
             signature=signature,
@@ -192,7 +190,7 @@ def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
     """
     oid = sig_alg["algorithm"]
 
-    if oid not in CMS_COMPOSITE03_OID_2_NAME and oid not in COMPOSITE_SIG04_OID_2_NAME:
+    if oid not in COMPOSITE_SIG07_OID_TO_NAME:
         raise ValueError("The signature algorithm is not a composite signature.")
 
     cert_sig_alg = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
@@ -210,7 +208,7 @@ def verify_composite_signature_with_hybrid_cert(  # noqa D417 undocumented-param
             "having the certificate with traditional signature algorithm."
         )
 
-    if cert_sig_alg in CMS_COMPOSITE03_OID_2_NAME or cert_sig_alg in COMPOSITE_SIG04_OID_2_NAME:
+    if cert_sig_alg in COMPOSITE_SIG07_OID_TO_NAME:
         logging.info("The certificate contains a composite signature algorithm.")
         public_key = keyutils.load_public_key_from_spki(cert["tbsCertificate"]["subjectPublicKeyInfo"])
         public_key = convertutils.ensure_is_verify_key(public_key)
@@ -546,9 +544,7 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
 
     oid = prot_alg_id["algorithm"]
 
-    if isinstance(public_key, CompositeSig03PublicKey) and (
-        oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME
-    ):
+    if isinstance(public_key, CompositeSig07PublicKey) and (oid in COMPOSITE_SIG07_OID_TO_NAME):
         protectionutils.verify_signature_with_alg_id(
             public_key=public_key,
             alg_id=prot_alg_id,
@@ -556,7 +552,7 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
             signature=pki_message["protection"].asOctets(),
         )
 
-    elif oid in CMS_COMPOSITE03_OID_2_NAME or oid in COMPOSITE_SIG04_OID_2_NAME:
+    elif oid in COMPOSITE_SIG07_OID_TO_NAME:
         other_certs = None
         if len(pki_message) > 1:
             other_certs = pki_message["extraCerts"][1:]
@@ -796,9 +792,8 @@ def may_extract_alt_key_from_cert(  # noqa: D417 Missing argument descriptions i
         spki = chameleon_logic.get_chameleon_delta_public_key(cert)
         return keyutils.load_public_key_from_spki(spki)  # type: ignore
 
-    if oid in CMS_COMPOSITE03_OID_2_NAME:
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
         public_key = keyutils.load_public_key_from_spki(spki)
-        CompositeSig03PublicKey.validate_oid(oid, public_key)
         return public_key.pq_key  # type: ignore
 
     return None

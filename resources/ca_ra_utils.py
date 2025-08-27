@@ -3922,7 +3922,6 @@ def prepare_new_ca_certificate(  # noqa D417 undocumented-param
     new_priv_key: SignKey,
     hash_alg: Optional[str] = "sha256",
     use_rsa_pss: bool = True,
-    use_pre_hash: bool = False,
     bad_sig: bool = False,
 ) -> rfc9480.CMPCertificate:
     """Prepare a new CA certificate.
@@ -3933,8 +3932,6 @@ def prepare_new_ca_certificate(  # noqa D417 undocumented-param
         - `new_priv_key`: The private key of the new CA certificate.
         - `hash_alg`: The hash algorithm to use for the signature. Defaults to "sha256".
         - `use_rsa_pss`: Whether to use RSA-PSS for the signature. Defaults to `True`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite signature key. \
-        Defaults to `False`.
         - `bad_sig`: Whether to generate a bad signature. Defaults to `False`.
 
     Returns:
@@ -3973,7 +3970,9 @@ def prepare_new_ca_certificate(  # noqa D417 undocumented-param
     new_cert["tbsCertificate"]["subjectPublicKeyInfo"] = subject_public_key_info_from_pubkey(new_priv_key.public_key())
 
     sig_alg = prepare_alg_ids.prepare_sig_alg_id(
-        new_priv_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+        new_priv_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
     )
 
     new_cert["tbsCertificate"]["signature"] = sig_alg
@@ -3999,7 +3998,6 @@ def prepare_old_with_new_cert(  # noqa D417 undocumented-param
     new_priv_key: SignKey,
     hash_alg: str = "sha256",
     use_rsa_pss: bool = True,
-    use_pre_hash: bool = True,
     bad_sig: bool = False,
 ) -> rfc9480.CMPCertificate:
     """Prepare the old certificate signed by the new one.
@@ -4013,8 +4011,6 @@ def prepare_old_with_new_cert(  # noqa D417 undocumented-param
         - `new_priv_key`: The private key of the new certificate.
         - `hash_alg`: The hash algorithm to use for the signature. Defaults to "sha256".
         - `use_rsa_pss`: Whether to use RSA-PSS for the signature. Defaults to `True`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite signature key. \
-        Defaults to `False`.
         - `bad_sig`: Whether to generate a bad signature. Defaults to `False`.
 
     Returns:
@@ -4034,7 +4030,6 @@ def prepare_old_with_new_cert(  # noqa D417 undocumented-param
         signing_key=new_priv_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
         bad_sig=bad_sig,
     )
 
@@ -4045,7 +4040,6 @@ def prepare_new_root_ca_certificate(  # noqa D417 undocumented-param
     new_priv_key: SignKey,
     hash_alg: str = "sha256",
     use_rsa_pss: bool = True,
-    use_pre_hash: bool = True,
     bad_sig: bool = False,
     bad_sig_old: bool = False,
     bad_sig_new: bool = False,
@@ -4063,8 +4057,6 @@ def prepare_new_root_ca_certificate(  # noqa D417 undocumented-param
         - `new_priv_key`: The private key of the new root CA certificate.
         - `hash_alg`: The hash algorithm to use for the signature. Defaults to "sha256".
         - `use_rsa_pss`: Whether to use RSA-PSS for the signature. Defaults to `True`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite signature key. \
-        Defaults to `False`.
         - `bad_sig`: Whether to generate a bad signature for the new CA certificate. Defaults to `False`.
         - `bad_sig_old`: Whether to generate a bad signature for the old certificate signed by the new one. \
         Defaults to `False`.
@@ -4095,7 +4087,6 @@ def prepare_new_root_ca_certificate(  # noqa D417 undocumented-param
         new_priv_key=new_priv_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
         bad_sig=bad_sig,
     )
 
@@ -4105,7 +4096,6 @@ def prepare_new_root_ca_certificate(  # noqa D417 undocumented-param
         new_priv_key=old_priv_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
         bad_sig=bad_sig_new,
     )
     old_with_new_cert = None
@@ -4116,7 +4106,6 @@ def prepare_new_root_ca_certificate(  # noqa D417 undocumented-param
             new_priv_key=new_priv_key,
             hash_alg=hash_alg,
             use_rsa_pss=use_rsa_pss,
-            use_pre_hash=use_pre_hash,
             bad_sig=bad_sig_old,
         )
 

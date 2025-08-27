@@ -49,9 +49,12 @@ from typing import Any, Optional, Tuple, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed448, ed25519, rsa, x448, x25519
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
 from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PrivateKey, Ed448PublicKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.serialization import (
     BestAvailableEncryption,
     Encoding,
@@ -63,7 +66,6 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc5280, rfc5958
 
-from pq_logic.hybrid_structures import CompositeSignaturePrivateKeyAsn1, CompositeSignaturePublicKeyAsn1
 from pq_logic.keys.serialize_utils import prepare_enc_key_pem
 from resources.oidutils import PQ_NAME_2_OID
 
@@ -826,11 +828,11 @@ class AbstractCompositePublicKey(HybridPublicKey, ABC):
         return self._trad_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
 
     def _export_public_key(self) -> bytes:
-        """Convert the public key to a raw DER-encoded structure."""
-        data = CompositeSignaturePublicKeyAsn1()
-        data.append(univ.BitString.fromOctetString(self._pq_key.public_bytes_raw()))
-        data.append(univ.BitString.fromOctetString(self.encode_trad_part()))
-        return encoder.encode(data)
+        """Export the public key as bytes.
+
+        :return: The combined public key as bytes, starting with the PQ key and followed by the traditional key.
+        """
+        return self._pq_key.public_bytes_raw() + self.encode_trad_part()
 
     def to_spki(
         self, use_pss: bool = False, pre_hash: bool = False, use_2_spki: bool = False
@@ -878,22 +880,40 @@ class AbstractCompositePrivateKey(HybridPrivateKey, ABC):
     def public_key(self) -> "AbstractCompositePublicKey":
         """Return the corresponding public key class."""
 
-    def _export_private_key(self) -> bytes:
-        """Convert the private key to a CompositeSignaturePrivateKeyAsn1 structure.
+    def _export_trad_private_key(self) -> bytes:
+        """Export the traditional part of the private key.
 
-        :return: The DER-encoded CompositeSignaturePrivateKeyAsn1 structure.
+        :return: The traditional part of the private key as bytes.
         """
-        data = CompositeSignaturePrivateKeyAsn1()
+        if isinstance(self._trad_key, (X25519PrivateKey, X448PrivateKey, Ed25519PrivateKey, Ed448PrivateKey)):
+            return self._trad_key.private_bytes_raw()
 
-        pq_bytes = self.pq_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, serialization.NoEncryption())
-        trad_bytes = self.trad_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, serialization.NoEncryption())
+        if isinstance(self._trad_key, EllipticCurvePrivateKey):
+            return self._trad_key.private_bytes(
+                encoding=Encoding.DER,
+                format=PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
 
-        obj, _ = decoder.decode(pq_bytes, asn1Spec=rfc5958.OneAsymmetricKey())
-        obj2, _ = decoder.decode(trad_bytes, asn1Spec=rfc5958.OneAsymmetricKey())
-        data.append(obj)
-        data.append(obj2)
+        if isinstance(self._trad_key, RSAPrivateKey):
+            der = self._trad_key.private_bytes(
+                encoding=Encoding.DER,
+                format=PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+            decoded = decoder.decode(der, asn1Spec=rfc5958.OneAsymmetricKey())[0]
+            return decoded["privateKey"].asOctets()
 
-        return encoder.encode(data)
+        return self._trad_key.encode()
+
+    def _export_private_key(self) -> bytes:
+        """Export the private key as bytes.
+
+        :return: The combined private key as bytes, starting with the PQ key and followed by the traditional key.
+        """
+        if hasattr(self._pq_key, "private_numbers"):
+            return self._pq_key.private_numbers() + self._export_trad_private_key()
+        return self._pq_key.private_bytes_raw() + self._export_trad_private_key()
 
     @property
     def key_size(self) -> int:

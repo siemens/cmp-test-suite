@@ -15,7 +15,7 @@ class TestPrepareSPKIInvalidKeySize(unittest.TestCase):
     def setUpClass(cls):
         cls.rsa_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.mldsa_key = load_private_key_from_file("data/keys/private-key-ml-dsa-44-seed.pem")
-        cls.comp_key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44-raw.pem")
+        cls.comp_key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
 
     @staticmethod
     def _prepare_cert_template(key):

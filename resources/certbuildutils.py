@@ -19,7 +19,6 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic.hybrid_structures import DeltaCertificateDescriptor, DeltaCertificateRequestValue
 from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.tmp_oids import COMPOSITE_SIG03_HASH_OID_2_NAME, COMPOSITE_SIG04_HASH_OID_2_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -169,7 +168,6 @@ def sign_csr(  # noqa D417 undocumented-param
         signing_key=signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=kwargs.get("use_rsa_pss", False),
-        use_pre_hash=kwargs.get("use_pre_hash", False),
     )
 
     signature = cryptoutils.sign_data(
@@ -177,7 +175,6 @@ def sign_csr(  # noqa D417 undocumented-param
         key=other_key or signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=kwargs.get("use_rsa_pss", False),
-        use_pre_hash=kwargs.get("use_pre_hash", False),
     )
     logging.info("CSR Signature: %s", signature)
     if bad_pop:
@@ -201,16 +198,14 @@ def _parse_common_name(
     """Parse the common name into a `Name` object."""
     if isinstance(common_name, str):
         return prepareutils.prepare_name(common_name)
-    elif isinstance(common_name, rfc9480.Name):
+    if isinstance(common_name, rfc9480.Name):
         return common_name
 
-    elif isinstance(common_name, rfc9480.CMPCertificate):
+    if isinstance(common_name, rfc9480.CMPCertificate):
         # Extract the issuer name from the CMPCertificate
         field = "subject" if subject else "issuer"
         return common_name["tbsCertificate"][field]
-
-    else:
-        raise TypeError("common_name must be a string or rfc9480.Name object.")
+    raise TypeError("common_name must be a string or rfc9480.Name object.")
 
 
 @keyword(name="Build CSR")
@@ -224,8 +219,6 @@ def build_csr(  # noqa D417 undocumented-param
     exclude_signature: bool = False,
     for_kga: bool = False,
     bad_pop: bool = False,
-    use_pre_hash: bool = False,
-    use_pre_hash_pub_key: Optional[bool] = None,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
     **kwargs,
 ) -> rfc6402.CertificationRequest:
@@ -247,9 +240,6 @@ def build_csr(  # noqa D417 undocumented-param
         - `for_kga`: If the CSR is created for non-local key generation. The `signature` and the
         `subjectPublicKey` are set to a zero bit string. And the algorithm identifiers are set to the provided key.
         - `bad_sig`: Whether to manipulate the signature for negative testing.
-        - `use_pre_hash`:Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
-        - `use_pre_hash_pub_key`: Whether to use the pre-hash version for a composite-sig public key.
-        Defaults to `use_pre_hash`.
         - `spki`: Optional `SubjectPublicKeyInfo` object to populate the CSR with. Defaults to `None`.
 
     **kwargs:
@@ -273,9 +263,9 @@ def build_csr(  # noqa D417 undocumented-param
     csr["certificationRequestInfo"]["version"] = int(kwargs.get("version", 0))
     csr["certificationRequestInfo"]["subject"] = _parse_common_name(common_name, subject=True)
 
-    use_pre_hash_pub_key = use_pre_hash if use_pre_hash_pub_key is None else use_pre_hash_pub_key
     spki = spki or convertutils.subject_public_key_info_from_pubkey(
-        public_key=signing_key.public_key(), use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash_pub_key
+        public_key=signing_key.public_key(),
+        use_rsa_pss=use_rsa_pss,
     )
     if for_kga:
         spki_kga = rfc5280.SubjectPublicKeyInfo()
@@ -301,7 +291,6 @@ def build_csr(  # noqa D417 undocumented-param
             hash_alg=hash_alg,
             use_rsa_pss=use_rsa_pss,
             bad_pop=bad_pop,
-            use_pre_hash=use_pre_hash,
         )
 
     elif for_kga:
@@ -959,7 +948,6 @@ def sign_cert(  # noqa: D417 Missing argument descriptions in the docstring
     hash_alg: Optional[str] = "sha256",
     use_rsa_pss: bool = False,
     bad_sig: bool = False,
-    use_pre_hash: bool = False,
     patch_sig_fields: bool = True,
 ) -> rfc9480.CMPCertificate:
     """Sign a `CMPCertificate` object with the provided private key.
@@ -972,7 +960,6 @@ def sign_cert(  # noqa: D417 Missing argument descriptions in the docstring
         - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `False`.
         - `modify_signature`: The signature will be modified by changing the first byte.
         - `bad_sig`: The signature will be manipulated to be invalid.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `patch_sig_fields`: Whether to patch the signature and signatureAlgorithm fields in the certificate.
         Defaults to `True`.
 
@@ -998,7 +985,6 @@ def sign_cert(  # noqa: D417 Missing argument descriptions in the docstring
             signing_key=signing_key,
             hash_alg=hash_alg,
             use_rsa_pss=use_rsa_pss,
-            use_pre_hash=use_pre_hash,
         )
         cert["tbsCertificate"]["signature"] = cert["signatureAlgorithm"]
 
@@ -1009,7 +995,6 @@ def sign_cert(  # noqa: D417 Missing argument descriptions in the docstring
         key=signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
     )
 
     logging.info("Certificate signature: %s", signature.hex())
@@ -1037,6 +1022,7 @@ def generate_certificate(
     use_rsa_pss: bool = False,
     bad_sig: bool = False,
     validity: Optional[rfc5280.Validity] = None,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc9480.CMPCertificate:
     """Generate a complete `CMPCertificate` using specified parameters.
 
@@ -1052,6 +1038,7 @@ def generate_certificate(
     :param days: The duration in days for which the certificate remains valid. Defaults to 365 days.
     :param bad_sig: Whether to generate a bad signature. Defaults to `False`.
     :param validity: Optional `Validity` object to specify the certificate's validity period.
+    :param spki: Optional `SubjectPublicKeyInfo` to use for the certificate's public key.
     :return: `CMPCertificate` object representing the created certificate.
     """
     cert = rfc9480.CMPCertificate()
@@ -1078,6 +1065,7 @@ def generate_certificate(
         use_rsa_pss=use_rsa_pss,
         days=int(days),
         validity=validity,
+        spki=spki,
     )
     cert["tbsCertificate"] = tbs_cert
     return sign_cert(
@@ -1121,6 +1109,7 @@ def build_certificate(  # noqa D417 undocumented-param
         - `key_usage` (str): Specific key usage (e.g., "digitalSignature") to set on the certificate.
         - `eku` (str): Extended key usage to set for the certificate.
         - `bad_sig` (bool): Whether to generate a bad signature. Defaults to `False`.
+        - `spki` (SubjectPublicKeyInfo): Optional public key to use for the certificate.
 
     Returns:
     -------
@@ -1177,6 +1166,7 @@ def build_certificate(  # noqa D417 undocumented-param
         days=int(params.get("days", 365)),
         bad_sig=params.get("bad_sig", False),
         validity=params.get("validity"),
+        spki=params.get("spki", None),
     )
     return certificate, cert_key
 
@@ -1419,7 +1409,7 @@ def prepare_cert_template(  # noqa D417 undocumented-param
 
     if "publicKey" not in exclude_list:
         cert_template["publicKey"] = _prepare_public_key_for_cert_template(
-            key=key, for_kga=for_kga, cert=cert, use_pre_hash=use_pre_hash, spki=spki
+            key=key, for_kga=for_kga, cert=cert, spki=spki
         )
 
     if sign_alg is not None and "signingAlg" not in exclude_list:
@@ -1480,7 +1470,6 @@ def _prepare_public_key_for_cert_template(
     for_kga: bool = False,
     cert: Optional[rfc9480.CMPCertificate] = None,
     use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc5280.SubjectPublicKeyInfo:
     """Prepare the `pyasn1` `SubjectPublicKeyInfo` for the `CertTemplate` structure.
@@ -1489,7 +1478,6 @@ def _prepare_public_key_for_cert_template(
     :param for_kga: Boolean flag indicating whether to prepare the key for non-local-key generation.
     :param cert: Optional `rfc9480.CMPCertificate` object to extract the public key from if no `key` is provided.
     :param use_rsa_pss: Whether to prepare the public key as RSA-PSS. Defaults to `False`.
-    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :return: A `SubjectPublicKeyInfo` object ready to be used in a certificate template.
     """
     public_key_obj = rfc5280.SubjectPublicKeyInfo().subtype(
@@ -1522,15 +1510,14 @@ def _prepare_public_key_for_cert_template(
         raise ValueError("The key cannot be None, if the `for_kga` is set to `False`!")
 
     if not for_kga:
-        cert_public_key = convertutils.subject_public_key_info_from_pubkey(
-            public_key=key, use_pre_hash=use_pre_hash, use_rsa_pss=use_rsa_pss
-        )
+        cert_public_key = convertutils.subject_public_key_info_from_pubkey(public_key=key, use_rsa_pss=use_rsa_pss)
         public_key_obj = copyasn1utils.copy_subject_public_key_info(
             target=public_key_obj, filled_sub_pubkey_info=cert_public_key
         )
     else:
         cert_public_key = convertutils.subject_public_key_info_from_pubkey(
-            public_key=key, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+            public_key=key,
+            use_rsa_pss=use_rsa_pss,
         )
 
         public_key_obj["algorithm"] = cert_public_key["algorithm"]
@@ -1718,7 +1705,6 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
     ---------
         - `use_rsa_pss`: Whether to use RSA-PSS or not. Defaults to `True`.
         - `bad_sig`: Whether to create a certificate with an invalid signature. Defaults to `False`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `alt_sign_key`: An alternative key to sign the certificate with. Defaults to `None`.
         - `alt_hash_alg`: The hash algorithm to use with the alternative key. Defaults to `None`.
         - `alt_use_rsa_pss`: Whether to use RSA-PSS with the alternative key. Defaults to `False`.
@@ -1748,7 +1734,6 @@ def build_cert_from_cert_template(  # noqa D417 undocumented-param
         ca_key=ca_key,
         hash_alg=hash_alg or "sha256",
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
-        use_pre_hash=kwargs.get("use_pre_hash", False),
         include_extensions=False,
     )
 
@@ -1817,7 +1802,6 @@ def prepare_tbs_certificate_from_template(
     hash_alg: str = "sha256",
     days: int = 3650,
     use_rsa_pss: bool = False,
-    use_pre_hash: bool = False,
     include_extensions: bool = False,
     spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc5280.TBSCertificate:
@@ -1830,7 +1814,6 @@ def prepare_tbs_certificate_from_template(
     :param hash_alg: The hash algorithm to use. Defaults to `sha256`.
     :param days: The number of days for which the certificate remains valid. Defaults to `3650` days.
     :param use_rsa_pss: Whether to use RSA-PSS or not. Defaults to `False`.
-    :param use_pre_hash: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
     :param include_extensions: Whether to include the extensions from the `CertTemplate`. Defaults to `False`.
     :param spki: The `SubjectPublicKeyInfo` object to include in the `TBSCertificate`. Defaults to `None`.
     :return: The prepared `TBSCertificate` structure.
@@ -1849,7 +1832,9 @@ def prepare_tbs_certificate_from_template(
     )
 
     tbs_cert["signature"] = prepare_alg_ids.prepare_sig_alg_id(
-        signing_key=ca_key, hash_alg=hash_alg, use_rsa_pss=use_rsa_pss, use_pre_hash=use_pre_hash
+        signing_key=ca_key,
+        hash_alg=hash_alg,
+        use_rsa_pss=use_rsa_pss,
     )
 
     if spki is not None:
@@ -1906,7 +1891,6 @@ def _sign_cert(
         signing_key=ca_key,
         hash_alg=kwargs.get("hash_alg", "sha256"),
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
-        use_pre_hash=kwargs.get("use_pre_hash", False),
         bad_sig=kwargs.get("bad_sig", False),
     )
 
@@ -1991,7 +1975,6 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         - `serial_number`: The serial number for the certificate. Defaults to `None`.
         - `hash_alg`: The hash algorithm to use for signing. Defaults to `sha256`.
         - `use_rsa_pss`: Whether to use RSA-PSS for signing. Defaults to `True`.
-        - `use_pre_hash`: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
         - `days`: The number of days for which the certificate remains valid. Defaults to `3650` days.
         - `critical`: Whether the catalyst extensions are critical. Defaults to `False`.
         - `hash_alg`: The hash algorithm to use for signing. Defaults to `sha256`.
@@ -2045,7 +2028,6 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
         signing_key=ca_key,
         hash_alg=hash_alg,
         use_rsa_pss=kwargs.get("use_rsa_pss", True),
-        use_pre_hash=kwargs.get("use_pre_hash", False),
     )
 
     public_key = keyutils.load_public_key_from_spki(tbs_cert["subjectPublicKeyInfo"])
@@ -2078,9 +2060,8 @@ def prepare_tbs_certificate(
     days: int = 3650,
     use_rsa_pss: bool = False,
     hash_alg: Optional[str] = "sha256",
-    use_pre_hash: bool = False,
     use_rsa_pss_pubkey: bool = False,
-    use_pre_hash_pubkey: bool = False,
+    spki: Optional[rfc5280.SubjectPublicKeyInfo] = None,
 ) -> rfc5280.TBSCertificate:
     """Prepare the `TBSCertificate` structure for a certificate with specified parameters.
 
@@ -2094,9 +2075,8 @@ def prepare_tbs_certificate(
     :param days: Number of days the certificate is valid if `validity` is not provided. Defaults to 365 days.
     :param use_rsa_pss: Whether to use RSA-PSS for signing. Defaults to `False`.
     :param hash_alg: Hash algorithm used for signing (e.g., "sha256"). Defaults to "sha256".
-    :param use_pre_hash: Whether to use the pre-hash version for the composite-sig key signature. Defaults to `False`.
     :param use_rsa_pss_pubkey: Whether to use RSA-PSS for the CompositeSigKey public key. Defaults to `False`.
-    :param use_pre_hash_pubkey: Whether to use the pre-hash version for a composite-sig key. Defaults to `False`.
+    :param spki: Optional `SubjectPublicKeyInfo` to use instead of deriving from the public key.
     :return: `rfc5280.TBSCertificate` object configured with the provided parameters.
     """
     subject_obj = _parse_common_name(common_name=subject, subject=True)
@@ -2105,8 +2085,9 @@ def prepare_tbs_certificate(
     else:
         issuer = copyasn1utils.copy_name(target=rfc9480.Name(), filled_name=issuer_cert["tbsCertificate"]["subject"])
 
-    pub_key = convertutils.subject_public_key_info_from_pubkey(
-        public_key=public_key, use_rsa_pss=use_rsa_pss_pubkey, use_pre_hash=use_pre_hash_pubkey
+    pub_key = spki or convertutils.subject_public_key_info_from_pubkey(
+        public_key=public_key,
+        use_rsa_pss=use_rsa_pss_pubkey,
     )
     tbs_cert = _prepare_shared_tbs_cert(
         issuer=issuer,
@@ -2126,7 +2107,6 @@ def prepare_tbs_certificate(
         signing_key=signing_key,
         hash_alg=hash_alg,
         use_rsa_pss=use_rsa_pss,
-        use_pre_hash=use_pre_hash,
     )
     return tbs_cert
 
@@ -2611,12 +2591,6 @@ def verify_ca_basic_constraints(  # noqa D417 undocumented-param
                         f"A CA certificate can not have a PQ PreHash signature algorithm.OID: {_name}"
                     )
 
-            if oid in COMPOSITE_SIG04_HASH_OID_2_NAME or oid in COMPOSITE_SIG03_HASH_OID_2_NAME:
-                if is_ca:
-                    _name = may_return_oid_to_name(oid)
-                    raise BadCertTemplate(
-                        f"A CA certificate can not have a Composite Signature PreHash algorithm.OID: {_name}"
-                    )
     extn = certextractutils.get_extension(
         extensions,  # type: ignore
         rfc5280.id_ce_basicConstraints,
@@ -3233,29 +3207,28 @@ def parse_subject_from_cert_related_type(
     if isinstance(cert, rfc9480.CMPCertificate):
         return cert["tbsCertificate"]["subject"]
 
-    elif isinstance(cert, rfc6402.CertificationRequest):
+    if isinstance(cert, rfc6402.CertificationRequest):
         return cert["certificationRequestInfo"]["subject"]
 
-    elif isinstance(cert, DeltaCertificateRequestValue):
+    if isinstance(cert, DeltaCertificateRequestValue):
         return copy_name(
             target=rfc9480.Name(),
             filled_name=cert["subject"],
         )
 
-    elif isinstance(cert, rfc9480.CertTemplate):
+    if isinstance(cert, rfc9480.CertTemplate):
         return copy_name(
             target=rfc9480.Name(),
             filled_name=cert["subject"],
         )
 
-    elif isinstance(cert, DeltaCertificateDescriptor):
+    if isinstance(cert, DeltaCertificateDescriptor):
         return copy_name(
             target=rfc9480.Name(),
             filled_name=cert["subject"],
         )
 
-    else:
-        raise TypeError(f"Unsupported certificate type. Got: {type(cert)}")
+    raise TypeError(f"Unsupported certificate type. Got: {type(cert)}")
 
 
 @not_keyword

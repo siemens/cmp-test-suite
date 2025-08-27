@@ -33,7 +33,7 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
-from pq_logic.keys.composite_sig03 import CompositeSig03PublicKey
+from pq_logic.keys.composite_sig07 import CompositeSig07PublicKey
 from pq_logic.pq_utils import is_kem_public_key
 from resources import (
     asn1utils,
@@ -62,7 +62,6 @@ from resources.exceptions import (
 from resources.oid_mapping import get_hash_from_oid, may_return_oid_to_name
 from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
-    CMS_COMPOSITE03_OID_2_NAME,
     HYBRID_NAME_2_OID,
     HYBRID_OID_2_NAME,
     PQ_NAME_2_OID,
@@ -1441,9 +1440,6 @@ def get_ocsp_url_from_cert(
     return ocsp_urls
 
 
-# TODO: add pyasn1 implementation.
-
-
 @not_keyword
 def create_ocsp_request(
     cert: rfc9480.CMPCertificate,
@@ -2076,7 +2072,7 @@ def validate_migration_certificate_key_usage(  # noqa: D417 Missing argument des
 
     sig_usages = {"digitalSignature", "nonRepudiation", "keyCertSign", "cRLSign"}
 
-    if isinstance(public_key, (PQSignaturePublicKey, CompositeSig03PublicKey)):
+    if isinstance(public_key, (PQSignaturePublicKey, CompositeSig07PublicKey)):
         ml_dsa_disallowed = {"keyEncipherment", "dataEncipherment", "keyAgreement", "encipherOnly", "decipherOnly"}
 
         if not set(key_usage).issubset(sig_usages):
@@ -2166,15 +2162,9 @@ def verify_csr_signature(  # noqa: D417 Missing argument descriptions in the doc
     | Verify CSR Signature | ${csr} |
 
     """
-    alg_id = csr["signatureAlgorithm"]
     spki = csr["certificationRequestInfo"]["subjectPublicKeyInfo"]
 
-    if alg_id["algorithm"] in CMS_COMPOSITE03_OID_2_NAME:
-        public_key = keyutils.load_public_key_from_spki(spki)
-        CompositeSig03PublicKey.validate_oid(alg_id["algorithm"], public_key)
-    else:
-        public_key = keyutils.load_public_key_from_spki(spki)
-
+    public_key = keyutils.load_public_key_from_spki(spki)
     verify_key = ensure_is_verify_key(public_key)
 
     signature = csr["signature"].asOctets()
@@ -2286,21 +2276,21 @@ def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
     if result.returncode != 0:
         logging.error("OCSP check failed.", exc_info=True)
         raise ValueError(f"OCSP check failed (stdout): {result.stdout}")
+
+    logging.info("OCSP check succeeded.\n: %s", result.stdout)
+    logging.debug(result.stdout)
+    if "Cert Status: revoked" in result.stdout:
+        status = "revoked"
+    elif "Cert Status: good" in result.stdout:
+        status = "good"
     else:
-        logging.info("OCSP check succeeded.\n: %s", result.stdout)
-        logging.debug(result.stdout)
-        if "Cert Status: revoked" in result.stdout:
-            status = "revoked"
-        elif "Cert Status: good" in result.stdout:
-            status = "good"
-        else:
-            status = "unknown"
+        status = "unknown"
 
     for file_path in temp_files:
         try:
             os.remove(file_path)
-        except OSError as e:
-            logging.error(f"Error deleting temporary file {file_path}: {e}")
+        except OSError:
+            logging.error("Error deleting temporary file %s: ", file_path, exc_info=True)
 
     if expected_status == status:
         return

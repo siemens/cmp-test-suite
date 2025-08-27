@@ -42,4 +42,3 @@ class TestCompositeSignature(unittest.TestCase):
         key = generate_key("composite-sig", trad_name="rsa")
         csr = build_csr(key)
         verify_csr_signature(csr)
-
