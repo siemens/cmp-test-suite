@@ -55,7 +55,6 @@ from resources.asn1_structures import PKIMessageTMP
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import str_to_bytes
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyData, MismatchingKey
-from resources.keyutils import get_digest_alg_for_cmp
 from resources.oid_mapping import (
     compute_hash,
     get_digest_hash_alg_from_alg_id,
@@ -1157,7 +1156,7 @@ def _validate_signature_and_algorithm_in_signed_data(
     signature = data["signature"]
     digest_econtent = data["digest_eContent"]
 
-    hash_alg = get_digest_alg_for_cmp(data["signatureAlgorithm"], kga_certificate)
+    hash_alg = keyutils.get_digest_alg_for_cmp(data["signatureAlgorithm"], kga_certificate)
 
     digest = compute_hash(hash_alg, asym_key_package_bytes)
     if digest_econtent != digest:
