@@ -47,6 +47,35 @@ else:
 FALCON_NAMES = ["falcon-512", "falcon-1024", "falcon-padded-512", "falcon-padded-1024"]
 ML_DSA_NAMES = ["ml-dsa-44", "ml-dsa-65", "ml-dsa-87"]
 
+# Mapping of SLH-DSA algorithm names to their liboqs counterparts.
+SLH_DSA_LIBOQS_NAME_MAP = {
+    "slh-dsa-sha2-128s": "SLH_DSA_PURE_SHA2_128S",
+    "slh-dsa-sha2-128f": "SLH_DSA_PURE_SHA2_128F",
+    "slh-dsa-sha2-192s": "SLH_DSA_PURE_SHA2_192S",
+    "slh-dsa-sha2-192f": "SLH_DSA_PURE_SHA2_192F",
+    "slh-dsa-sha2-256s": "SLH_DSA_PURE_SHA2_256S",
+    "slh-dsa-sha2-256f": "SLH_DSA_PURE_SHA2_256F",
+    "slh-dsa-shake-128s": "SLH_DSA_PURE_SHAKE_128S",
+    "slh-dsa-shake-128f": "SLH_DSA_PURE_SHAKE_128F",
+    "slh-dsa-shake-192s": "SLH_DSA_PURE_SHAKE_192S",
+    "slh-dsa-shake-192f": "SLH_DSA_PURE_SHAKE_192F",
+    "slh-dsa-shake-256s": "SLH_DSA_PURE_SHAKE_256S",
+    "slh-dsa-shake-256f": "SLH_DSA_PURE_SHAKE_256F",
+    # Pre-hash variants
+    "slh-dsa-sha2-128s-sha256": "SLH_DSA_SHA2_256_PREHASH_SHA2_128S",
+    "slh-dsa-sha2-128f-sha256": "SLH_DSA_SHA2_256_PREHASH_SHA2_128F",
+    "slh-dsa-sha2-192s-sha512": "SLH_DSA_SHA2_512_PREHASH_SHA2_192S",
+    "slh-dsa-sha2-192f-sha512": "SLH_DSA_SHA2_512_PREHASH_SHA2_192F",
+    "slh-dsa-sha2-256s-sha512": "SLH_DSA_SHA2_512_PREHASH_SHA2_256S",
+    "slh-dsa-sha2-256f-sha512": "SLH_DSA_SHA2_512_PREHASH_SHA2_256F",
+    "slh-dsa-shake-128s-shake128": "SLH_DSA_SHAKE_128_PREHASH_SHAKE_128S",
+    "slh-dsa-shake-128f-shake128": "SLH_DSA_SHAKE_128_PREHASH_SHAKE_128F",
+    "slh-dsa-shake-192s-shake256": "SLH_DSA_SHAKE_256_PREHASH_SHAKE_192S",
+    "slh-dsa-shake-192f-shake256": "SLH_DSA_SHAKE_256_PREHASH_SHAKE_192F",
+    "slh-dsa-shake-256s-shake256": "SLH_DSA_SHAKE_256_PREHASH_SHAKE_256S",
+    "slh-dsa-shake-256f-shake256": "SLH_DSA_SHAKE_256_PREHASH_SHAKE_256F",
+}
+
 
 class MLDSAPublicKey(PQSignaturePublicKey):
     """Represent an ML-DSA public key."""
@@ -372,6 +401,32 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
 ##########################
 
 
+def _get_liboqs_slh_dsa_name(alg_name: str, hash_alg: Optional[str]) -> str:
+    """Get the SLH-DSA algorithm name based on the base algorithm and hash algorithm.
+
+    :param alg_name: The base SLH-DSA algorithm name (e.g., "slh-dsa-sha2-128s").
+    :param hash_alg: The optional hash algorithm name (e.g., "sha256").
+    :return: The combined SLH-DSA algorithm name.
+    """
+    alg_name = alg_name.lower()
+
+    if alg_name not in SLH_DSA_LIBOQS_NAME_MAP:
+        raise ValueError(f"Invalid SLH-DSA algorithm name provided: {alg_name}.")
+
+    if hash_alg is None:
+        return SLH_DSA_LIBOQS_NAME_MAP[alg_name]
+
+    hash_alg = hash_alg.lower()
+
+    if hash_alg in ["sha256", "sha512", "shake128", "shake256"]:
+        combined_name = f"{alg_name}-{hash_alg}"
+        if combined_name in SLH_DSA_PRE_HASH_NAME_2_OID:
+            return SLH_DSA_LIBOQS_NAME_MAP[combined_name]
+        raise ValueError(f"Invalid combination of SLH-DSA and hash algorithm: {combined_name}.")
+
+    raise ValueError(f"Invalid hash algorithm for SLH-DSA: {hash_alg}.")
+
+
 class SLHDSAPublicKey(PQSignaturePublicKey):
     """Represent an SLH-DSA public key."""
 
@@ -388,6 +443,14 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
         """Initialize the SLH-DSA public key."""
         _other = self.name.replace("_", "-")
         self._slh_class: SLH_DSA = fips205.SLH_DSA_PARAMS[_other]
+
+        if oqs is not None:
+            oqs_name = SLH_DSA_LIBOQS_NAME_MAP.get(self.name)
+            if oqs_name is not None:
+                try:
+                    self._sig_method = oqs.Signature(oqs_name)
+                except Exception:  # pragma: no cover - liboqs not available pylint: disable=broad-exception-caught
+                    self._sig_method = None
 
     def _check_name(self, name: str) -> Tuple[str, str]:
         """Check if the name is valid."""
@@ -411,6 +474,26 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
         logging.info("%s does not support the hash algorithm: %s", self.name, hash_alg)
         return None
 
+    def _verify_oqs_signature(self, signature: bytes, data: bytes, ctx: bytes, hash_alg: Optional[str]) -> bool:
+        """Verify the signature using liboqs.
+
+        :param signature: The signature to verify.
+        :param data: The data to verify.
+        :param ctx: The context to add for the signature. Defaults to `b""`.
+        :return: True if the signature is valid, False otherwise.
+        :raises `InvalidSignature`: If the signature method is not initialized.
+        """
+        if self._sig_method is None:
+            raise ValueError("liboqs signature method is not initialized.")
+        try:
+            tmp_name = _get_liboqs_slh_dsa_name(alg_name=self.name, hash_alg=hash_alg)
+            with oqs.Signature(tmp_name) as _sig_method:
+                result = _sig_method.verify_with_ctx_str(data, signature, ctx, self._public_key_bytes)
+
+        except RuntimeError as exc:
+            raise InvalidSignature() from exc
+        return result
+
     def verify(
         self,
         signature: bytes,
@@ -429,6 +512,19 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
         :raises InvalidSignature: If the signature is invalid.
         """
         hash_alg = self.check_hash_alg(hash_alg=hash_alg)
+        msg = "SLH-DSA Signature verification failed."
+
+        if len(ctx) > 255:
+            raise ValueError(f"The context length is longer than 255 bytes. Got: {len(ctx)}")
+
+        if not is_prehashed and getattr(self, "_sig_method", None):
+            logging.info("Verify SLH-DSA signature with `liboqs`.")
+
+            try:
+                self._verify_oqs_signature(signature, data, ctx, hash_alg)
+            except (RuntimeError, InvalidSignature) as exc:
+                raise InvalidSignature(msg) from exc
+
         if hash_alg is None:
             sig = self._slh_class.slh_verify(m=data, sig=signature, pk=self._public_key_bytes, ctx=ctx)
         else:
@@ -441,7 +537,7 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
             sig = self._slh_class.slh_verify_internal(m=mp, sig=signature, pk=self._public_key_bytes)
 
         if not sig:
-            raise InvalidSignature()
+            raise InvalidSignature(msg)
 
     @classmethod
     def from_public_bytes(cls, data: bytes, name: str) -> "SLHDSAPublicKey":
@@ -511,6 +607,20 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
 
     def _initialize_key(self) -> None:
         """Initialize the SLH-DSA private key."""
+        try:
+            if oqs is not None:
+                self._sig_method = oqs.Signature(SLH_DSA_LIBOQS_NAME_MAP[self.name], secret_key=self._private_key_bytes)
+                if self._private_key_bytes is None and self._seed is None:
+                    logging.info("Generate SLH-DSA keypair with `liboqs`")
+                    print("Generate SLH-DSA keypair with `liboqs`")
+                    self._public_key_bytes = self._sig_method.generate_keypair()
+                    self._private_key_bytes = self._sig_method.export_secret_key()
+                    seed_size = self._seed_size(self.name)
+                    self._seed = self._private_key_bytes[:seed_size]
+
+        except Exception:  # pragma: no cover - liboqs not available pylint: disable=broad-exception-caught
+            self._sig_method = None
+
         self._slh_class: SLH_DSA = fips205.SLH_DSA_PARAMS[self._other_name]
         if self._private_key_bytes is None and self._public_key_bytes is None:
             priv_key, pub_key, seed = self._from_seed(self.name, self._seed)
@@ -548,6 +658,26 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
         """
         return SLHDSAPublicKey(alg_name=self.name, public_key=self._public_key_bytes)
 
+    def _sign_with_oqs(self, data: bytes, ctx: bytes, hash_alg: Optional[str]) -> bytes:
+        """Sign the data using liboqs.
+
+        :param data: The data to sign.
+        :param ctx: The context to add for the signature. Defaults to `b""`.
+        :param hash_alg: The optional hash algorithm to use for the pre-hashing of the data.
+        :return: The computed signature.
+        :raises ValueError: If the signature method is not initialized.
+        """
+        if self._sig_method is None:
+            raise ValueError("liboqs signature method is not initialized.")
+        try:
+            tmp_name = _get_liboqs_slh_dsa_name(alg_name=self.name, hash_alg=hash_alg)
+            logging.info("Sing data with: %s", tmp_name)
+            with oqs.Signature(tmp_name, secret_key=self._private_key_bytes) as _sig_method:
+                sig = _sig_method.sign_with_ctx_str(data, ctx)
+        except RuntimeError as exc:
+            raise ValueError("Could not sign the data with SLH-DSA") from exc
+        return sig
+
     def sign(
         self,
         data: bytes,
@@ -566,6 +696,14 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
         :raises ValueError: If the context is too long (255), or if the signature cannot be computed.
         """
         hash_alg = self.check_hash_alg(hash_alg=hash_alg)
+
+        if len(ctx) > 255:
+            raise ValueError(f"The context length is longer than 255 bytes. Got: {len(ctx)}")
+
+        if not is_prehashed and getattr(self, "_sig_method", None):
+            logging.info("Sign SLH-DSA signature with `liboqs`.")
+            return self._sign_with_oqs(data=data, ctx=ctx, hash_alg=hash_alg)
+
         if hash_alg is None:
             sig = self._slh_class.slh_sign(m=data, sk=self._private_key_bytes, ctx=ctx)
 
@@ -646,6 +784,17 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
                 raise ValueError("The provided public key does not match the private key.")
 
         return s_key
+
+    @staticmethod
+    def _seed_size(name: str) -> int:
+        """Return the size of the seed used for SLH-DSA key generation."""
+        _slh_class: SLH_DSA = fips205.SLH_DSA_PARAMS[name.replace("_", "-")]
+        return 3 * _slh_class.n
+
+    @property
+    def seed_size(self) -> int:
+        """Return the size of the seed used for SLH-DSA key generation."""
+        return self._seed_size(name=self.name)
 
 
 ##########################
