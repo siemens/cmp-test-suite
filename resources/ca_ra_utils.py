@@ -3077,6 +3077,49 @@ def _validate_cert_status(
         raise BadRequest("Certificate status is accepted, but a fail info is present.")
 
 
+def _process_cert_hash_alg(
+    entry: rfc9480.CertStatus,
+    pvno: int,
+    issued_cert: rfc9480.CMPCertificate,
+    hash_alg: Optional[str] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+) -> str:
+    """Process the certificate hash algorithm.
+
+    :param entry: The CertStatus entry to process.
+    :param pvno: The protocol version number.
+    :param issued_cert: The issued certificate to process.
+    :param hash_alg: The hash algorithm to use for signing the certificate. Defaults to `None`.
+    :param ca_cert: The CA certificate to use for determining the hash algorithm. Defaults to `None`.
+    :return: The hash algorithm to use.
+    :raises BadCertId: If no hash algorithm is found.
+    """
+    if entry["hashAlg"].isValue:
+        logging.warning(entry["hashAlg"])
+        if pvno != 3:
+            raise BadCertId("Hash algorithm is set in CertConf message, but the version is not 3.")
+        # expected to be sha256 or similar,
+        # is ensured with the flag `only_hash=False`
+        tmp_hash_alg = get_hash_from_oid(entry["hashAlg"]["algorithm"], only_hash=False)
+    else:
+        tmp_hash_alg = keyutils.get_digest_alg_for_cmp(issued_cert["tbsCertificate"]["signature"], ca_cert)
+
+    if tmp_hash_alg != hash_alg and hash_alg is not None:
+        logging.warning("The provided hash algorithm does not match the one in the CertConf message.")
+        logging.warning("The hash algorithm in the CertConf message is: %s", tmp_hash_alg)
+        logging.warning("The provided hash algorithm is: %s ", hash_alg)
+
+    hash_alg = hash_alg or tmp_hash_alg
+
+    if hash_alg is None:
+        raise BadCertId(
+            "No hash algorithm found for the certificate signature algorithm,"
+            "please use version 3 and set the hash algorithm in the `CertConf` message."
+        )
+
+    return hash_alg
+
+
 @keyword(name="Build pkiconf from CertConf")
 def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions in the docstring
     request: PKIMessageTMP,
@@ -3148,31 +3191,27 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
                 logging.debug("Certificate status was rejection.")
                 continue
 
-        if entry["hashAlg"].isValue:
-            logging.warning(entry["hashAlg"])
-            if int(request["header"]["pvno"]) != 3:
-                raise BadCertId("Hash algorithm is set in CertConf message, but the version is not 3.")
-            # expected to be sha256 or similar,
-            # is ensured with the flag `only_hash=False`
-            hash_alg = get_hash_from_oid(entry["hashAlg"]["algorithm"], only_hash=False)
-        else:
-            hash_alg = keyutils.get_digest_alg_for_cmp(
-                issued_cert["tbsCertificate"]["signature"], kwargs.get("ca_cert")
-            )
-
-        if hash_alg is None:
-            raise BadCertId(
-                "No hash algorithm found for the certificate signature algorithm,"
-                "please use version 3 and set the hash algorithm in the `CertConf` message."
-            )
+        digest_alg = _process_cert_hash_alg(
+            entry=entry,
+            pvno=int(request["header"]["pvno"]),
+            issued_cert=issued_cert,
+            hash_alg=hash_alg,
+            ca_cert=kwargs.get("ca_cert"),
+        )
 
         computed_hash = compute_hash(
-            alg_name=hash_alg,
+            alg_name=digest_alg,
             data=encoder.encode(issued_cert),
         )
 
         if entry["certHash"].asOctets() != computed_hash:
-            raise BadCertId("Invalid certificate hash in CertConf message.")
+            sig_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
+            sig_algorithms = may_return_oid_to_name(sig_oid)
+            raise BadCertId(
+                "Invalid certificate hash in CertConf message."
+                f"Computed the hash with hash alg: {digest_alg}.\n"
+                f"Signature algorithm: {sig_algorithms}"
+            )
 
     if request and set_header_fields:
         kwargs = set_ca_header_fields(request, kwargs)
@@ -3181,7 +3220,6 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
     pki_message["body"]["pkiconf"] = rfc9480.PKIConfirmContent("").subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 19)
     )
-
     return pki_message
 
 
