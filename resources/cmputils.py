@@ -3353,7 +3353,7 @@ def _process_single_cert_conf_cert(
     :param cert_hash: The hash of the certificate. Defaults to `None`.
     other algorithms. Defaults to `True`.
     """
-    # To remove the ANS.1 tagging.
+    # To remove the ASN.1 tagging. # codespell: ignore
     cert = copy_asn1_certificate(cert=tmp_cert)
     digest_alg = _may_set_hash_alg(cert, hash_alg, ca_cert)
     cert_hash = cert_hash or calculate_cert_hash(cert, digest_alg)
