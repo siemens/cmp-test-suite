@@ -20,7 +20,7 @@ from unit_tests.utils_for_test import load_ca_cert_and_key
 class TestCertConfHashAlgByVersion(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.ee_key = load_private_key_from_file("../../data/keys/private-key-ecdsa.pem")
+        cls.ee_key = load_private_key_from_file("./data/keys/private-key-ecdsa.pem")
         cls.ca_cert, cls.ca_key = load_ca_cert_and_key()
         if not isinstance(cls.ca_key, Ed25519PrivateKey):
             raise ValueError(
