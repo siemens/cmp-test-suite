@@ -1023,7 +1023,6 @@ def convert_private_key_to_tinyec(private_key: EllipticCurvePrivateKey) -> Tuple
     curve_name = private_key.curve.name.lower()
     curve = registry.get_curve(curve_name)
     public_point = private_value * curve.g
-    public_point: Point
 
     if isinstance(public_point, Inf):
         raise TypeError("Computed point is at infinity.")
