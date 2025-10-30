@@ -42,6 +42,7 @@ from pq_logic.tmp_oids import (
     id_it_KemCiphertextInfo,
 )
 from resources import (
+    asn1utils,
     certbuildutils,
     certextractutils,
     certutils,
@@ -2108,28 +2109,42 @@ def compute_kem_based_mac_from_alg_id(
     data: bytes,
     alg_id: rfc9480.AlgorithmIdentifier,
     ss: bytes,
+    tx_id: bytes,
 ) -> bytes:
-    """Compute a `KEMBasedMac` using the provided AlgorithmIdentifier.
+    """Compute a KEMBasedMac using the provided AlgorithmIdentifier.
 
-    :param data: The data to be protected.
-    :param ss: The shared secret to use as key material.
-    :param alg_id: The `AlgorithmIdentifier` structure containing the KEMBasedMac parameters.
+    Implements KEMBasedMac computation based on RFC 9810 Section 5.1.3.4.
+
+    :param data: The data to protect.
+    :param ss: The shared secret (ss) resulting from the KEM.
+    :param alg_id: The AlgorithmIdentifier carrying KemBMParameter.
+    :param tx_id: The transactionID of the message that conveyed `KemCiphertextInfo` (ct).
     :return: The computed MAC value.
     """
     if not isinstance(alg_id["parameters"], KemBMParameterAsn1):
-        parameters = decoder.decode(alg_id["parameters"], asn1Spec=KemBMParameterAsn1())[0]
+        parameters, rest = asn1utils.try_decode_pyasn1(alg_id["parameters"], KemBMParameterAsn1())  # type: ignore
+        parameters: KemBMParameterAsn1
+        if rest:
+            raise BadAsn1Data("KemBMParameter")
     else:
         parameters = alg_id["parameters"]
 
-    ukm = b"" if not parameters["kemContext"].isValue else parameters["kemContext"].asOctets()
+    ukm_bytes = b"" if not parameters["kemContext"].isValue else parameters["kemContext"].asOctets()
 
-    if ukm != b"":
-        _process_kem_other_info(parameters["kemContext"])
+    kem_other_info = KemOtherInfoAsn1()
+    kem_other_info["staticString"].extend(["CMP-KEM"])
+    kem_other_info["transactionID"] = univ.OctetString(tx_id)
+    if ukm_bytes:
+        kem_other_info["kemContext"] = univ.OctetString(ukm_bytes).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+        )
+
+    other_info_der = encoder.encode(kem_other_info)
 
     kdf_alg_id = parameters["kdf"]
     length = int(parameters["len"])
 
-    mac_key = compute_kdf_from_alg_id(kdf_alg_id=kdf_alg_id, ss=ss, length=length, ukm=ukm)
+    mac_key = compute_kdf_from_alg_id(kdf_alg_id=kdf_alg_id, ss=ss, length=length, ukm=other_info_der)
 
     logging.info("KEMBasedMac MAC-key: %s", mac_key.hex())
 
@@ -2143,7 +2158,7 @@ def compute_kem_based_mac_from_alg_id(
     if mac_oid in KMAC_OID_2_NAME:
         return cryptoutils.compute_kmac_from_alg_id(key=mac_key, data=data, alg_id=mac_alg_id)
 
-    raise ValueError(f"Unsupported MAC algorithm: {may_return_oid_to_name(mac_oid)}")
+    raise ValueError(f"Unsupported MAC algorithm: {may_return_oid_to_name(mac_oid)}, for KEMBasedMac.")
 
 
 @keyword(name="Prepare KEMCiphertextInfo")
@@ -2206,7 +2221,9 @@ def prepare_kem_other_info(
     other_info = KemOtherInfoAsn1()
     other_info["transactionID"] = univ.OctetString(transaction_id)
     if context is not None:
-        other_info["kemContext"] = univ.OctetString(context)
+        other_info["kemContext"] = univ.OctetString(context).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+        )
 
     if isinstance(static_string, str):
         static_string = [static_string]
@@ -2214,6 +2231,13 @@ def prepare_kem_other_info(
     other_info["staticString"].extend(static_string)
 
     return other_info
+
+
+def may_get_tx_id(request: PKIMessageTMP) -> bytes:
+    """Return the PKIMessage header.transactionID for KEMBasedMAC operations (RFC 9810 Section 5.1.3.4)."""
+    if request["header"]["transactionID"].isValue:
+        return request["header"]["transactionID"].asOctets()
+    raise BadMessageCheck("The PKIMessage header.transactionID MUST be present for KEMBasedMAC.")
 
 
 @keyword(name="Protect PKIMessage KEMBasedMAC")
@@ -2280,48 +2304,23 @@ def protect_pkimessage_kem_based_mac(  # noqa: D417 Missing argument description
         shared_secret, kem_ct = public_key.encaps()
         info_val = prepare_kem_ciphertextinfo(key=public_key, ct=kem_ct)
         pki_message["header"]["generalInfo"].append(info_val)
-        kem_context = kem_context or prepare_kem_other_info(
-            transaction_id=pki_message["header"]["transactionID"].asOctets(), context=context, static_string="CMP-KEM"
-        )
 
     prot_alg_id = prepare_alg_ids.prepare_kem_based_mac_alg_id(
-        hash_alg=hash_alg, length=32, kem_context=kem_context, kdf=kdf
+        hash_alg=hash_alg, length=32, kem_context=context, kdf=kdf
     )
     pki_message["header"]["protectionAlg"] = prot_alg_id.subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1), cloneValueFlag=True
     )
 
     data = prepare_protected_part(pki_message)
-    mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=prot_alg_id, ss=shared_secret)
+    tx_id = may_get_tx_id(request=pki_message)
+    mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=prot_alg_id, ss=shared_secret, tx_id=tx_id)
 
     if bad_message_check:
         mac = utils.manipulate_first_byte(mac)
 
     pki_message["protection"] = prepare_pki_protection_field(mac)
     return pki_message
-
-
-def _process_kem_other_info(kem_other_info: bytes, expected_tx_id: Optional[bytes] = None) -> None:
-    """Process the KEMOtherInfo structure from bytes.
-
-    :param kem_other_info: The KEMOtherInfo structure as bytes.
-    :param expected_tx_id: The expected transaction ID. Defaults to `None`.
-    """
-    kem_info, rest = decoder.decode(kem_other_info, asn1Spec=KemOtherInfoAsn1())
-    if rest:
-        raise ValueError("The decoding of the `KemOtherInfo` had a remainder.")
-
-    kem_info["transactionID"] = kem_info["transactionID"].asOctets()
-
-    if expected_tx_id is not None and kem_info["transactionID"] != expected_tx_id:
-        raise ValueError("The transactionID does not match the expected value.")
-
-    static_string = kem_info["staticString"][0]
-    if static_string != "CMP-KEM":
-        raise ValueError(f"Unexpected static string: {static_string}. MUST be 'CMP-KEM'.")
-
-    if kem_info["kemContext"].isValue:
-        raise NotImplementedError("KEMContext inside the `KemOtherInfo` structure is not yet supported.")
 
 
 @not_keyword
@@ -2387,7 +2386,8 @@ def verify_kem_based_mac_protection(
 
     data = prepare_protected_part(pki_message)
     alg_id = pki_message["header"]["protectionAlg"]
-    computed_mac = compute_kem_based_mac_from_alg_id(data, alg_id, shared_secret)
+    header_tx_id = may_get_tx_id(pki_message)
+    computed_mac = compute_kem_based_mac_from_alg_id(data, alg_id, shared_secret, tx_id=header_tx_id)
     logging.debug("Computed MAC: %s", computed_mac.hex())
     logging.debug("Received MAC: %s", pki_message["protection"].asOctets().hex())
     if computed_mac != pki_message["protection"].asOctets():

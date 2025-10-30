@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
+import os
 import unittest
 
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
@@ -47,17 +48,33 @@ class TestKEMBasedMac(unittest.TestCase):
         THEN the computed MAC should be equal to the expected MAC.
         """
         data = b"AAAAAAAAAAAAAAAAAAAAAAAA"
-        kem_context = prepare_kem_other_info(transaction_id=b"12345678", static_string="CMP-KEM")
-        alg_id = prepare_kem_based_mac_alg_id(kdf="kdf3", length=32, hash_alg="sha256",
-                                              kem_context=kem_context)
+        tx_id = b"12345678"
+        alg_id = prepare_kem_based_mac_alg_id(kdf="kdf3", length=32, hash_alg="sha256")
         ss, _ = self.mlkem_key.public_key().encaps()
-        computed_mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=alg_id, ss=ss)
-        der_kem_context = encoder.encode(kem_context)
-        mac_key = compute_ansi_x9_63_kdf(ss, 32, der_kem_context, hash_alg="sha256",
-                                         use_version_2=False)
+        computed_mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=alg_id, ss=ss, tx_id=tx_id)
+        kem_other_info = prepare_kem_other_info(transaction_id=tx_id, static_string="CMP-KEM")
+        der_kem_context = encoder.encode(kem_other_info)
+        mac_key = compute_ansi_x9_63_kdf(ss, 32, der_kem_context, hash_alg="sha256", use_version_2=False)
         mac = compute_hmac(key=mac_key, data=data, hash_alg="sha256")
         self.assertEqual(mac.hex(), computed_mac.hex())
 
+    def test_compute_kem_based_mac_with_context(self):
+        """
+        GIVEN data, shared secret and algorithm ID and a KEM context.
+        WHEN compute_kem_based_mac is called,
+        THEN the computed MAC should be equal to the expected MAC.
+        """
+        data = b"AAAAAAAAAAAAAAAAAAAAAAAA"
+        kem_context = os.urandom(16)
+        tx_id = b"ABCDEFGH"
+        alg_id = prepare_kem_based_mac_alg_id(kdf="kdf3", length=32, hash_alg="sha256", kem_context=kem_context)
+        ss, _ = self.mlkem_key.public_key().encaps()
+        computed_mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=alg_id, ss=ss, tx_id=tx_id)
+        kem_other_info = prepare_kem_other_info(transaction_id=tx_id, static_string="CMP-KEM", context=kem_context)
+        der_kem_context = encoder.encode(kem_other_info)
+        mac_key = compute_ansi_x9_63_kdf(ss, 32, der_kem_context, hash_alg="sha256", use_version_2=False)
+        mac = compute_hmac(key=mac_key, data=data, hash_alg="sha256")
+        self.assertEqual(mac.hex(), computed_mac.hex())
 
     def test_protect_pkimessage_kem_based_mac(self):
         """
@@ -151,6 +168,5 @@ class TestKEMBasedMac(unittest.TestCase):
         der_data = encoder.encode(protected_ir)
         protected_ir = parse_pkimessage(der_data)
         verify_kem_based_mac_protection(pki_message=protected_ir, private_key=composite_kem)
-
 
 
