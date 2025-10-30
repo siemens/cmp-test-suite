@@ -52,8 +52,7 @@ from pq_logic.keys.stateful_sig_keys import XMSSMTPrivateKey, XMSSPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME, id_rsa_kem_spki
-from resources import certutils, oid_mapping, prepare_alg_ids, typingutils, utils
-from resources.asn1utils import try_decode_pyasn1
+from resources import asn1utils, certutils, oid_mapping, prepare_alg_ids, typingutils, utils
 from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
 from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, InvalidKeyCombination, UnknownOID
 from resources.oid_mapping import (
@@ -514,7 +513,7 @@ def load_public_key_from_file(filepath: str) -> PublicKey:  # noqa: D417 for RF 
     """
     der_data = utils.load_and_decode_pem_file(filepath)
 
-    spki, rest = try_decode_pyasn1(der_data, rfc5280.SubjectPublicKeyInfo())  # type: ignore
+    spki, rest = asn1utils.try_decode_pyasn1(der_data, rfc5280.SubjectPublicKeyInfo())  # type: ignore
     spki: rfc5280.SubjectPublicKeyInfo
     if rest != b"":
         raise BadAsn1Data("SubjectPublicKeyInfo")
