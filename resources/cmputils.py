@@ -5616,6 +5616,7 @@ def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument descri
 
     Arguments:
     ---------
+        - `request`: The PKIMessage to be protected.
         - `shared_secret`: The shared secret to use for the MAC. Defaults to `None`.
         - `ca_cert`: The CA certificate to use for encapsulation. Defaults to `None`.
         - `request`: The PKIMessage with the request. Defaults to `None`.
@@ -5627,6 +5628,7 @@ def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument descri
         - The protected PKIMessage.
 
     Raises:
+    ------
         - `ValueError`: If the shared secret is not provided or generated.
         - `ValueError`: If the KEM algorithm does not match the client key.
         - `ValueError`: If the CA certificate is not provided and no client key is given.
