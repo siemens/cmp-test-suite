@@ -39,7 +39,6 @@ from resources.convertutils import str_to_bytes
 from resources.cryptoutils import compute_aes_cbc, perform_ecdh
 from resources.exceptions import BadAsn1Data, BadRequest, InvalidKeyCombination
 from resources.typingutils import ECDHPrivateKey, ECDHPublicKey, EnvDataPrivateKey, PrivateKey, Strint
-from resources.utils import get_openssl_name_notation
 
 
 @keyword(name="Prepare PKMAC POPO")
@@ -557,7 +556,7 @@ def process_pkimessage_with_popdecc(  # noqa D417 undocumented-param
     if expected_sender is not None:
         sender = prepareutils.prepare_name(expected_sender)
         if not compareutils.compare_general_name_and_name(rand["sender"], sender):
-            rand_name = get_openssl_name_notation(rand["sender"]["directoryName"])
+            rand_name = utils.get_openssl_name_notation(rand["sender"]["directoryName"])
             raise ValueError(f"Expected sender name: {expected_sender}. Got: {rand_name}")
 
     kwargs = _set_header_fields(pki_message, kwargs)

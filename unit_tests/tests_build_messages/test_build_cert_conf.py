@@ -28,6 +28,7 @@ from unit_tests.utils_for_test import de_and_encode_pkimessage
 class TestBuildCertConf(unittest.TestCase):
     def setUp(self):
         self.sender, self.recipient = "CN=Hans the Tester", "CN=Hans the Tester"
+        self.ca_cert = parse_certificate(load_and_decode_pem_file("data/unittest/ca1_cert_ecdsa.pem"))
         self.cert = parse_certificate(load_and_decode_pem_file("data/unittest/ca2_cert_rsa.pem"))
         self.no_hash_alg_cert = parse_certificate(load_and_decode_pem_file("data/unittest/root_cert_ed25519.pem"))
 
@@ -121,6 +122,7 @@ class TestBuildCertConf(unittest.TestCase):
         THEN should the PKIMessage have the same values as the CA message.
         """
         ca_message = build_ca_pki_message(cert=self.cert)
+        ca_message["extraCerts"].append(self.ca_cert)
         ca_message = patch_sendernonce(ca_message, sender_nonce=b"A" * 16)
         ca_message = patch_transaction_id(ca_message, new_id=b"B" * 16)
         ca_message = patch_recipnonce(ca_message, recip_nonce=b"C" * 16)
@@ -143,6 +145,7 @@ class TestBuildCertConf(unittest.TestCase):
         THEN should the PKIMessage have the same values as the CA message and a fresh nonce.
         """
         ca_message = build_ca_pki_message(cert=self.cert)
+        ca_message["extraCerts"].append(self.ca_cert)
         ca_message = patch_sendernonce(ca_message, sender_nonce=b"A" * 16)
         ca_message = patch_transaction_id(ca_message, new_id=b"B" * 16)
         ca_message = patch_recipnonce(ca_message, recip_nonce=b"C" * 16)

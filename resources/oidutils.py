@@ -46,14 +46,12 @@ from pq_logic.tmp_oids import (
     COMPOSITE_SIG07_OID_TO_NAME,
     FALCON_NAME_2_OID,
     FRODOKEM_NAME_2_OID,
-    FRODOKEM_OID_2_NAME,
     MCELIECE_NAME_2_OID,
-    MCELIECE_OID_2_NAME,
     id_altSignatureExt,
     id_altSubPubKeyExt,
     id_ce_deltaCertificateDescriptor,
     id_relatedCert,
-    id_sntrup761_str,
+    id_sntrup761,
 )
 from resources.asn1_structures import (
     EmailAddressASN1,
@@ -549,8 +547,6 @@ ML_KEM_NAME_2_OID = {
 PQ_KEM_NAME_2_OID = {}
 PQ_KEM_NAME_2_OID.update(ML_KEM_NAME_2_OID)
 
-PQ_KEM_OID_2_NAME = {y: x for x, y in PQ_KEM_NAME_2_OID.items()}
-
 ALL_KNOWN_OIDS_2_NAME.update(PQ_KEM_NAME_2_OID)
 
 # ###################------
@@ -624,6 +620,27 @@ SLH_DSA_PRE_HASH_NAME_2_OID = {
     "slh-dsa-shake-256f-shake256": sig_algorithms_oid + (46,),
 }
 
+# As per RFC 9814 defined.
+# Those hash algorithms are used to the SignedData structure inside the signature
+# and for the certificate confirmation, when the signature algorithm is one of the
+# SLH-DSA algorithms.
+# Uses the same for the Pre-Hash variants.
+SLH_DSA_HASH_MAPPING = {
+    "slh-dsa-sha2-128s": "sha256",
+    "slh-dsa-sha2-128f": "sha256",
+    "slh-dsa-sha2-192s": "sha512",
+    "slh-dsa-sha2-192f": "sha512",
+    "slh-dsa-sha2-256s": "sha512",
+    "slh-dsa-sha2-256f": "sha512",
+    "slh-dsa-shake-128s": "shake128",
+    "slh-dsa-shake-128f": "shake128",
+    "slh-dsa-shake-192s": "shake256",
+    "slh-dsa-shake-192f": "shake256",
+    "slh-dsa-shake-256s": "shake256",
+    "slh-dsa-shake-256f": "shake256",
+}
+
+
 SLH_DSA_PRE_HASH_OID_2_NAME = {y: x for x, y in SLH_DSA_PRE_HASH_NAME_2_OID.items()}
 
 SLH_DSA_NAME_2_OID.update(SLH_DSA_PRE_HASH_NAME_2_OID)
@@ -631,11 +648,13 @@ SLH_DSA_NAME_2_OID.update(SLH_DSA_PRE_HASH_NAME_2_OID)
 SLH_DSA_OID_2_NAME = {y: x for x, y in SLH_DSA_NAME_2_OID.items()}
 
 
-STATEFUL_HASH_SIGNATURE_OID_2_NAME = {
-    rfc9708.id_alg_hss_lms_hashsig: "hss-lms-hashsig",
+PQ_STATEFUL_HASH_SIG_NAME_2_OID = {
+    "xmss": univ.ObjectIdentifier("1.3.6.1.5.5.7.6.34"),
+    "xmssmt": univ.ObjectIdentifier("1.3.6.1.5.5.7.6.35"),
+    "hss": rfc9708.id_alg_hss_lms_hashsig,
 }
 
-STATEFUL_HASH_SIGNATURE_NAME_2_OID = {y: x for x, y in STATEFUL_HASH_SIGNATURE_OID_2_NAME.items()}
+PQ_STATEFUL_HASH_SIG_OID_2_NAME = {y: x for x, y in PQ_STATEFUL_HASH_SIG_NAME_2_OID.items()}
 
 
 PQ_SIG_NAME_2_OID = {}
@@ -648,6 +667,7 @@ PQ_SIG_OID_2_NAME = {y: x for x, y in PQ_SIG_NAME_2_OID.items()}
 PQ_NAME_2_OID = {}
 PQ_NAME_2_OID.update(PQ_SIG_NAME_2_OID)
 PQ_NAME_2_OID.update(PQ_KEM_NAME_2_OID)
+PQ_NAME_2_OID.update(PQ_STATEFUL_HASH_SIG_NAME_2_OID)
 
 KEY_WRAP_NAME_2_OID = {
     "aes128_wrap": rfc3565.id_aes128_wrap,
@@ -708,9 +728,11 @@ ALL_COMPOSITE_SIG06_COMBINATIONS = ALL_COMPOSITE_SIG_COMBINATIONS + [
 
 PQ_SIG_NAME_2_OID.update(FALCON_NAME_2_OID)
 
-PQ_KEM_NAME_2_OID.update({"sntrup761": id_sntrup761_str})
+PQ_KEM_NAME_2_OID.update({"sntrup761": id_sntrup761})
 PQ_KEM_NAME_2_OID.update(MCELIECE_NAME_2_OID)
+PQ_KEM_NAME_2_OID.update(FRODOKEM_NAME_2_OID)
 
+PQ_KEM_OID_2_NAME = {y: x for x, y in PQ_KEM_NAME_2_OID.items()}
 
 PQ_SIG_PRE_HASH_OID_2_NAME = {}
 PQ_SIG_PRE_HASH_OID_2_NAME.update(ML_DSA_PRE_HASH_OID_2_NAME)
@@ -720,15 +742,11 @@ PQ_SIG_PRE_HASH_NAME_2_OID = {y: x for x, y in PQ_SIG_PRE_HASH_OID_2_NAME.items(
 
 PQ_NAME_2_OID.update(PQ_KEM_NAME_2_OID)
 PQ_NAME_2_OID.update(PQ_SIG_NAME_2_OID)
-PQ_NAME_2_OID.update(FRODOKEM_NAME_2_OID)
-PQ_NAME_2_OID.update(MCELIECE_NAME_2_OID)
 
 PQ_OID_2_NAME = {y: x for x, y in PQ_NAME_2_OID.items()}
 
 
 KEM_OID_2_NAME = {y: x for x, y in PQ_KEM_NAME_2_OID.items()}
-KEM_OID_2_NAME.update(FRODOKEM_OID_2_NAME)
-KEM_OID_2_NAME.update(MCELIECE_OID_2_NAME)
 KEM_OID_2_NAME.update(CHEMPAT_OID_2_NAME)
 KEM_OID_2_NAME.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
 KEM_OID_2_NAME.update(COMPOSITE_KEM07_OID_2_NAME)
@@ -816,7 +834,7 @@ EXTENSION_OID_2_SPECS = {
 ALL_SIG_ALG_OID_2_NAME = {}
 ALL_SIG_ALG_OID_2_NAME.update(TRAD_SIG_OID_2_NAME)
 ALL_SIG_ALG_OID_2_NAME.update(PQ_SIG_OID_2_NAME)
-ALL_SIG_ALG_OID_2_NAME.update(STATEFUL_HASH_SIGNATURE_NAME_2_OID)
+ALL_SIG_ALG_OID_2_NAME.update(PQ_STATEFUL_HASH_SIG_NAME_2_OID)
 ALL_SIG_ALG_OID_2_NAME.update(HYBRID_SIG_OID_2_NAME)
 
 ALL_SIG_ALG_NAME_2_OID = {y: x for x, y in ALL_SIG_ALG_OID_2_NAME.items()}

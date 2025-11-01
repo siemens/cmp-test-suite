@@ -20,6 +20,7 @@ from resources.exceptions import UnknownOID
 from resources.oidutils import (
     AES_GMAC_NAME_2_OID,
     PQ_SIG_OID_2_NAME,
+    PQ_STATEFUL_HASH_SIG_OID_2_NAME,
     SYMMETRIC_PROT_ALGO,
     TRAD_SIG_OID_2_NAME,
     id_KemBasedMac,
@@ -206,6 +207,7 @@ class ProtectedType(enum.Enum):
     MAC = "mac"
     PQ_SIG = "pq-sig"
     COMPOSITE_SIG = "composite-sig"
+    PQ_HASH_STATEFUL_SIG = "pq-hash-stateful-sig"
 
     @classmethod
     def get_protection_type(
@@ -231,6 +233,8 @@ class ProtectedType(enum.Enum):
                 return cls.MAC
             if oid in TRAD_SIG_OID_2_NAME:
                 return cls.TRAD_SIGNATURE
+            if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+                return cls.PQ_HASH_STATEFUL_SIG
             if oid in PQ_SIG_OID_2_NAME:
                 return cls.PQ_SIG
             if oid in COMPOSITE_SIG07_OID_TO_NAME:

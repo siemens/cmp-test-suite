@@ -253,10 +253,10 @@ CA MUST ISSUE A Valid McEliece Certificate
     [Documentation]    According to the McEliece specification, is a valid IR CMP message send.
     ...                The CA MUST accept the request and response with a encrypted certificate.
     [Tags]    mceliece
-    ${response}  ${key}=    Build And Exchange KEM Certificate Request    mceliece-6960119
+    ${response}  ${key}=    Build And Exchange KEM Certificate Request    mceliece-348864
     PKIMessage Body Type Must Be    ${response}    ip
     ${cert}=  Validate EncrCert For KEM    ${response}    ${key}
-    Validate Migration OID In Certificate    ${cert}    mceliece-6960119
+    Validate Migration OID In Certificate    ${cert}    mceliece-348864
 
 CA MUST ISSUE A Valid sntrup761 Certificate
     [Documentation]    According to the NTRU specification, is a valid IR CMP message send.

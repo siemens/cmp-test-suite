@@ -217,6 +217,7 @@ ${DEFAULT_PQ_SIG_ALG}   ml-dsa-44
 
 ${INIT_SUFFIX}   issuing
 ${PQ_ISSUING_SUFFIX}   issuing
+${PQ_STATEFUL_ISSUING_SUFFIX}   issuing
 ${URI_RELATED_CERT}   http://127.0.0.1:5000/cert
 ${NEG_URI_RELATED_CERT}   http://127.0.0.1:5000/cert_neg
 ${ISSUING_SUFFIX}   issuing

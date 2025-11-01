@@ -28,15 +28,16 @@ from pyasn1_alt_modules import rfc5280, rfc5652, rfc6402, rfc9480
 from pyasn1_alt_modules.rfc7906 import BinaryTime
 from robot.api.deco import keyword, not_keyword
 
-import resources.certbuildutils
 from pq_logic.hybrid_structures import RelatedCertificate, RequesterCertificate
 from pq_logic.tmp_oids import id_aa_relatedCertRequest, id_relatedCert
 from resources import (
     ca_kga_logic,
+    certbuildutils,
     certextractutils,
     certutils,
     cmputils,
     cryptoutils,
+    oid_mapping,
     utils,
 )
 from resources.asn1utils import get_set_bitstring_names, try_decode_pyasn1
@@ -109,7 +110,7 @@ def prepare_requester_certificate(  # noqa: D417 Missing argument descriptions i
     current_time = int(current_time)
 
     bin_time = BinaryTime(current_time)
-    cert_id = resources.certbuildutils.prepare_issuer_and_serial_number(
+    cert_id = certbuildutils.prepare_issuer_and_serial_number(
         cert=cert_a, modify_serial_number=invalid_serial_number, modify_issuer=invalid_issuer
     )
 
@@ -129,7 +130,7 @@ def prepare_requester_certificate(  # noqa: D417 Missing argument descriptions i
         hash_alg = get_hash_from_oid(oid, only_hash=True)
 
     if hash_alg is None:
-        hash_alg = ca_kga_logic.get_digest_hash_alg_from_alg_id(cert_a["tbsCertificate"]["signature"])
+        hash_alg = oid_mapping.get_digest_hash_alg_from_alg_id(cert_a["tbsCertificate"]["signature"])
 
     signature = cryptoutils.sign_data(data=data, key=cert_a_key, hash_alg=hash_alg)
 
@@ -397,7 +398,7 @@ def _get_hash_alg(hash_alg: Optional[str], cert_a: rfc9480.CMPCertificate) -> st
     if hash_alg is not None:
         return hash_alg
 
-    hash_alg = ca_kga_logic.get_digest_hash_alg_from_alg_id(alg_id)
+    hash_alg = oid_mapping.get_digest_hash_alg_from_alg_id(alg_id)
 
     if hash_alg is None:
         raise ValueError("The hash algorithm could not be determined.")

@@ -132,7 +132,7 @@ def _prepare_sender_kid(
     return _prepare_octet_string_field(sender_kid, 2)
 
 
-def _prepare_pvno(pvno: Optional[Strint], for_kga: bool, update_hash: bool, default: int = 2) -> int:
+def _prepare_pvno(pvno: Optional[Strint], for_kga: bool, default: int = 2) -> int:
     """Prepare the protocol version number.
 
     :param pvno: The protocol version number.
@@ -143,12 +143,11 @@ def _prepare_pvno(pvno: Optional[Strint], for_kga: bool, update_hash: bool, defa
     :return: The prepared protocol version number.
     """
     for_kga = _ensure_is_bool(for_kga)
-    update_hash = _ensure_is_bool(update_hash)
 
     if pvno is not None:
         return int(pvno)
 
-    if update_hash or for_kga:
+    if for_kga:
         return 3
     # If the message is not for KGA and no hash update is needed, use the default version.
     return default
@@ -218,7 +217,7 @@ def prepare_pki_message(
     implicit_confirm = _ensure_is_bool(implicit_confirm)
     for_mac = _ensure_is_bool(kwargs.get("for_mac", False))
 
-    pvno = _prepare_pvno(pvno, kwargs.get("for_kga", False), kwargs.get("update_hash", False))
+    pvno = _prepare_pvno(pvno, kwargs.get("for_kga", False))
     pki_header = _prepare_pki_header(sender, recipient, pvno, to_exclude)
     if "transactionID" not in to_exclude:
         transaction_value = convertutils.str_to_bytes(transaction_id or os.urandom(16))
@@ -433,12 +432,14 @@ def build_p10cr_from_key(  # noqa D417 undocumented-param
 
     **params:
     --------
-       - `spki` (SubjectPublicKeyInfo): The SPKI structure to use instead of generating it from the key.
+       - `spki` (SubjectPublicKeyInfo): The SPKI structure to use instead of generating it from the key. \
        Defaults to `None`.
        - `common_name` (str): The common name to use for the CSR subject. Defaults to `CN=Hans Mustermann`.
        - `hash_alg` (str): The hash algorithm to use for the SPKI and CSR signing. Defaults to "sha256".
        - `use_rsa_pss` (bool): If `True`, uses RSA-PSS for the signature and SPKI. Defaults to `False`.
        - `bad_pop` (bool): If True, prepares a bad proof-of-possession for the CSR. Defaults to `False`.
+       - `extensions` (Sequence[Extension]): A list of Extension's or `Extensions` object to include. \
+       Defaults to `None`.
 
     Returns:
     -------
@@ -466,6 +467,7 @@ def build_p10cr_from_key(  # noqa D417 undocumented-param
         spki=spki,
         hash_alg=params.get("hash_alg", "sha256"),
         use_rsa_pss=params.get("use_rsa_pss", False),
+        extensions=params.get("extensions", None),
     )
     return build_p10cr_from_csr(
         csr=csr,
@@ -3315,30 +3317,20 @@ def extract_fields_for_exchange(
 
 
 def _may_set_hash_alg(
-    set_for_ed: bool,
-    allow_set_hash_for_ed: bool,
     cert: rfc9480.CMPCertificate,
     hash_alg: Optional[str] = None,
-) -> Tuple[bool, Optional[str]]:
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+) -> str:
     """Set the hash algorithm for EdDSA signatures.
 
-    :param set_for_ed: Whether the hash algorithm is already set for EdDSA signatures.
-    :param allow_set_hash_for_ed: Whether to allow setting the hash algorithm for EdDSA signatures.
     :param cert: The certificate to check.
     :param hash_alg: The hash algorithm to set.
+    :param ca_cert: The CA certificate to use for the hash algorithm, if none is provided.
     :return: A tuple with a boolean indicating whether the hash algorithm was set and the hash algorithm.
     """
-    if allow_set_hash_for_ed and hash_alg is None:
-        sig_algorithm = cert["tbsCertificate"]["signature"]["algorithm"]
-        hash_alg = oid_mapping.get_hash_from_oid(sig_algorithm, only_hash=True)
-        pubic_key = certutils.load_public_key_from_cert(cert)  # type: ignore
-        if hash_alg is None:
-            set_for_ed = True
-            hash_alg = envdatautils.get_digest_from_key_hash(pubic_key)  # type: ignore
-            return set_for_ed, hash_alg
-        return set_for_ed, None
-
-    return set_for_ed, hash_alg
+    if hash_alg is None:
+        return keyutils.get_digest_alg_for_cmp(cert["tbsCertificate"]["signature"], ca_cert)
+    return hash_alg
 
 
 def _process_single_cert_conf_cert(
@@ -3347,9 +3339,11 @@ def _process_single_cert_conf_cert(
     cert_req_id: Optional[Strint] = None,
     status_info: Optional[rfc9480.PKIStatusInfo] = None,
     cert_hash: Optional[bytes] = None,
-    allow_set_hash: bool = True,
-    set_for_ed: bool = False,
-) -> Tuple[rfc9480.CertStatus, bool]:
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+    *,
+    pvno: int = 2,
+    hash_for_v3: bool = True,
+) -> rfc9480.CertStatus:
     """Process a single certificate for `certConf` PKIMessage.
 
     :param tmp_cert: The certificate to process.
@@ -3357,22 +3351,29 @@ def _process_single_cert_conf_cert(
     :param cert_req_id: The certificate request ID. Defaults to `0`.
     :param status_info: The status information to include in the `CertStatus`.
     :param cert_hash: The hash of the certificate. Defaults to `None`.
-    :param allow_set_hash: Whether to allow setting the hash algorithm for EdDSA signatures or
     other algorithms. Defaults to `True`.
     """
-    # To remove the tagging.
+    # To remove the ASN.1 tagging. # codespell: ignore
     cert = copy_asn1_certificate(cert=tmp_cert)
-    set_for_ed, digest_alg = _may_set_hash_alg(set_for_ed, allow_set_hash, cert, hash_alg)
+    digest_alg = _may_set_hash_alg(cert, hash_alg, ca_cert)
+    cert_hash = cert_hash or calculate_cert_hash(cert, digest_alg)
+
+    # Only include hashAlg field in CertStatus when allowed:
+    # - By default, include it only for pvno=3.
+    # - If hash_alg is explicitly provided, include it only for pvno=3.
+    include_hash_alg = hash_for_v3 and (pvno == 3)
+    # Prefer the explicitly provided hash_alg; otherwise fall back to the derived digest_alg
+    hash_alg_for_status: Optional[str] = digest_alg if include_hash_alg else None
 
     cert_status = prepare_certstatus(
-        hash_alg=digest_alg,
+        hash_alg=hash_alg_for_status,
         cert=cert,
         cert_req_id=0 if cert_req_id is None else int(cert_req_id),
         status="accepted",
         status_info=status_info,
         cert_hash=cert_hash,
     )
-    return cert_status, set_for_ed
+    return cert_status
 
 
 def _get_cert_req_id(
@@ -3392,6 +3393,18 @@ def _get_cert_req_id(
     return int(cert_req_id) if cert_req_id is not None else int(cert_resp["certReqId"])
 
 
+def _get_pvno(ca_message: PKIMessageTMP, pvno: Optional[Strint] = None) -> int:
+    """Get the protocol version number from a `PKIMessage` or use the provided one.
+
+    :param ca_message: The `PKIMessage` from which to extract the protocol version number.
+    :param pvno: The protocol version number to use. If not provided, it will be extracted from the `PKIMessage`.
+    :return: The protocol version number as an integer. Defaults to the one in the `PKIMessage`.
+    """
+    if pvno is None:
+        return int(ca_message["header"]["pvno"])
+    return int(pvno)
+
+
 @keyword(name="Build Cert Conf From Resp")
 def build_cert_conf_from_resp(  # noqa D417 undocumented-param
     ca_message: PKIMessageTMP,
@@ -3401,6 +3414,7 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
     exclude_fields: Optional[str] = None,
     hash_alg: Optional[str] = None,
     cert_req_id: Optional[Strint] = None,
+    hash_for_v3: bool = True,
     **params,
 ) -> PKIMessageTMP:
     """Create a certConf PKIMessage from a response PKIMessage.
@@ -3420,11 +3434,15 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
          for all issued certificates.
         - `exclude_fields`: A comma-separated list of fields to omit from the PKIHeader.
         - `hash_alg`: The hash algorithm to use for calculating the certificate hash. Defaults to `None`.
-
+        - `hash_for_v3`: If `True` and `hash_alg` or the CMP protocol version is 3 (pvno=3), \
+        then include the hash algorithm for better debugging. (was added in CMPv3 ref: RFC9483 Section 4.1). \
+        If `False`, do not include the hash algorithm. Defaults to `True`.
 
     **params:
     ----------
-       - Additional parameters for customizing the `PKIHeader`:
+       - Additional parameters for customizing the `PKIHeader` fields.
+       - `cert` (CMPCertificate): An optional certificate to use for the confirmation.
+       - `ca_cert` (CMPCertificate): An optional CA certificate to use for determining the hash algorithm.
        - `status_info` (PKISatusInfo): PKISatusInfo object to include in the `CertStatus`.
        - `cert_req_id` (int, str): The certificate request ID. Defaults to `0`.
        - `cert_hash` (bytes): The hash of the certificate to confirm.
@@ -3434,7 +3452,6 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
        other algorithms which do not use a direct hash algorithm. Defaults to `True`.
        - `use_fresh_nonce` (bool): Flag indicating if a fresh nonce should be used for the `senderNonce` or the
          `recipNonce` from the request. Defaults to `True`.
-
 
     Returns:
     -------
@@ -3456,30 +3473,58 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
         if key not in params:
             params[key] = value
 
+    # If a hash algorithm is explicitly provided for certConf, ensure pvno=3 unless disabled (for debugging).
+    enforce_v3 = _ensure_is_bool(hash_for_v3)
+    pvno = _get_pvno(ca_message, pvno=params.get("pvno", None))
+    if enforce_v3 and hash_alg is not None and pvno != 3:
+        logging.warning(
+            "Building certConf: hash_alg provided, but pvno is not 3. "
+            "Consider passing pvno=3 (or use hash_for_v3=True) for better debugging."
+        )
+
     message_type = ca_message["body"].getName()
     if message_type not in {"cp", "kup", "ip", "ccp"}:
         raise ValueError(f"The provided `PKIBody` does not contain a certificate. Got: `{message_type}`")
 
     cert_status_list = []
-    set_for_ed = False
 
     if params.get("cert") is not None:
         tmp_cert = params.get("cert")
         if not isinstance(tmp_cert, rfc9480.CMPCertificate):
-            raise ValueError("The provided `cert` is not a valid `CMPCertificate` object.")
-        cert_status, set_for_ed = _process_single_cert_conf_cert(
+            raise TypeError("The provided `cert` is not a valid `CMPCertificate` object.")
+
+        # When the CA returns an encrypted certificate (certOrEncCert = encryptedCert),
+        # extracting the EE cert from the PKIMessage via get_cert_from_pkimessage() will fail.
+        # In that case we already received the decrypted EE cert via the `cert` argument.
+        # Build the chain using the provided EE cert together with extraCerts/caPubs from the message.
+        try:
+            cert_chain = certutils.build_cmp_chain_from_pkimessage(ca_message, ee_cert=tmp_cert, for_issued_cert=False)
+        except ValueError:
+            # Fall back to any explicitly provided CA cert if chain building fails
+            logging.warning("Could not build cert chain from PKIMessage; falling back to provided ca_cert (if any).")
+            cert_chain = []
+
+        if len(cert_chain) > 1:
+            ca_cert = cert_chain[1]
+        else:
+            ca_cert = params.get("ca_cert")
+
+        cert_status = _process_single_cert_conf_cert(
             tmp_cert=tmp_cert,
             hash_alg=hash_alg,
             cert_req_id=cert_req_id,
             status_info=params.get("status_info"),
             cert_hash=params.get("cert_hash"),
-            allow_set_hash=params.get("allow_set_hash", True),
+            ca_cert=ca_cert,
+            pvno=pvno,
+            hash_for_v3=hash_for_v3,
         )
         cert_status_list.append(cert_status)
 
     elif cert_status is None:
         cert_resp_msg: rfc9480.CertRepMessage = ca_message["body"][message_type]["response"]
         entry: rfc9480.CertResponse
+        cert_chain = certutils.build_cmp_chain_from_pkimessage(ca_message, for_issued_cert=True)
         for i, entry in enumerate(cert_resp_msg):
             # remove the tagging.
             cert_req_id = _get_cert_req_id(
@@ -3490,13 +3535,15 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
 
             tmp_cert = get_cert_from_pkimessage(ca_message, cert_number=i)
 
-            cert_status, set_for_ed = _process_single_cert_conf_cert(
+            cert_status = _process_single_cert_conf_cert(
                 tmp_cert=tmp_cert,
                 hash_alg=hash_alg,
                 cert_req_id=cert_req_id,
                 status_info=params.get("status_info"),
                 cert_hash=params.get("cert_hash"),
-                allow_set_hash=params.get("allow_set_hash", True),
+                ca_cert=cert_chain[1],
+                pvno=pvno,
+                hash_for_v3=hash_for_v3,
             )
             cert_status_list.append(cert_status)
     else:
@@ -3520,7 +3567,6 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
         sender_kid=params.get("sender_kid"),
         pvno=params.get("pvno"),
         for_mac=params.get("for_mac", False),
-        update_hash=set_for_ed,
     )
     pki_message["body"] = pki_body
     return pki_message
@@ -5570,6 +5616,7 @@ def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument descri
 
     Arguments:
     ---------
+        - `request`: The PKIMessage to be protected.
         - `shared_secret`: The shared secret to use for the MAC. Defaults to `None`.
         - `ca_cert`: The CA certificate to use for encapsulation. Defaults to `None`.
         - `request`: The PKIMessage with the request. Defaults to `None`.
@@ -5581,6 +5628,7 @@ def build_kem_based_mac_protected_message(  # noqa: D417 Missing argument descri
         - The protected PKIMessage.
 
     Raises:
+    ------
         - `ValueError`: If the shared secret is not provided or generated.
         - `ValueError`: If the KEM algorithm does not match the client key.
         - `ValueError`: If the CA certificate is not provided and no client key is given.

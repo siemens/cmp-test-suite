@@ -44,7 +44,7 @@ class KemBMParameterAsn1(univ.Sequence):
     componentType = namedtype.NamedTypes(
         namedtype.NamedType("kdf", rfc5280.AlgorithmIdentifier()),
         namedtype.OptionalNamedType(
-            "kemContext", univ.OctetString().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
+            "kemContext", univ.OctetString().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0))
         ),
         namedtype.NamedType(
             "len", univ.Integer().subtype(subtypeSpec=constraint.ValueRangeConstraint(1, float("inf")))
