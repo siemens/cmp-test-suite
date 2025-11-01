@@ -460,7 +460,11 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
         pass
 
     try:
-        if b"SPDX-License-Identifier:" in pem_data:
+        # The reuse tool will also look for its marker in the entire body of the
+        # file, not just the header - so in the line below it would've been
+        # triggered because `in pem_data:` is not a valid license name.
+        # Hence we don't include the complete marker, but only its prefix.
+        if b"SPDX-License" in pem_data:
             pem_data2 = _extract_and_format_key(filepath)
         else:
             pem_data2 = pem_data

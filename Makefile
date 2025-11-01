@@ -93,7 +93,7 @@ autoformat:
 verify:
 	reuse lint
 	ruff check .
-	pylint .
+	pylint . --ignore-paths="^venv"
 	PYTHONPATH=./resources pyright
 	# on Windows Powershell: `$env:PYTHONPATH = "./resources"; pyright`
 
