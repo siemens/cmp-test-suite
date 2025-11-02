@@ -6,7 +6,7 @@
 # To experiment with the latest OpenSSL version, you can set the `OPENSSL_VERSION`
 # Usage examples:
 #  docker build -t cmptest-base -f data/dockerfiles/Dockerfile.base .
-#  docker build -t cmptest-base -f data/dockerfiles/Dockerfile.base --build-arg OPENSSL_VERSION=3.5.2 .
+#  docker build -t cmptest-base -f data/dockerfiles/Dockerfile.base --build-arg OPENSSL_VERSION=3.6.0 .
 #  docker run --rm -it cmptest-base
 
 FROM ubuntu:22.04
