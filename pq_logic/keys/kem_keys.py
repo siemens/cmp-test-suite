@@ -27,8 +27,8 @@ import os
 from typing import Tuple
 
 from pq_logic.fips.fips203 import ML_KEM
+from pq_logic.fips.frodokem import FrodoKEM
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
-from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from resources.exceptions import InvalidKeyData
 
 if importlib.util.find_spec("oqs") is not None:
@@ -47,6 +47,31 @@ VALID_MCELIECE_OPTIONS = {
 }
 ML_KEM_NAMES = ["ml-kem-512", "ml-kem-768", "ml-kem-1024"]
 ML_KEM_PRIVATE_KEY_SIZE = {"ml-kem-768": 2400, "ml-kem-512": 1632, "ml-kem-1024": 3168}
+_FRODOKEM_SEEDS_SIZE = {
+    "frodokem-640-aes": {"lenA": 128, "lensec": 128, "lenSE": 256},
+    "frodokem-640-shake": {"lenA": 128, "lensec": 128, "lenSE": 256},
+    "frodokem-976-aes": {"lenA": 128, "lensec": 192, "lenSE": 384},
+    "frodokem-976-shake": {"lenA": 128, "lensec": 192, "lenSE": 384},
+    "frodokem-1344-aes": {"lenA": 128, "lensec": 256, "lenSE": 512},
+    "frodokem-1344-shake": {"lenA": 128, "lensec": 256, "lenSE": 512},
+}
+_FRODOKEM_NIST_LEVEL = {
+    "frodokem-640-aes": 1,
+    "frodokem-640-shake": 1,
+    "frodokem-976-aes": 3,
+    "frodokem-976-shake": 3,
+    "frodokem-1344-aes": 5,
+    "frodokem-1344-shake": 5,
+}
+_FRODOKEM_NAMES = [
+    "frodokem-640-aes",
+    "frodokem-640-shake",
+    "frodokem-976-aes",
+    "frodokem-976-shake",
+    "frodokem-1344-aes",
+    "frodokem-1344-shake",
+]
+
 
 ##########################
 # ML-KEM
@@ -233,6 +258,17 @@ class MLKEMPrivateKey(PQKEMPrivateKey):
         return {"ml-kem-768": 3, "ml-kem-512": 1, "ml-kem-1024": 5}[self.name]
 
     @staticmethod
+    def _seed_size(name: str) -> int:
+        """Get the size of the seed for the specified ML-KEM algorithm.
+
+        :param name: The algorithm name (e.g., "ml-kem-512").
+        :return: The size of the seed in bytes.
+        """
+        if name not in ML_KEM_NAMES:
+            raise ValueError(f"Invalid ML-KEM algorithm name: {name}. Supported options: {ML_KEM_NAMES}")
+        return 64
+
+    @staticmethod
     def _from_seed(alg_name: str, seed: bytes) -> Tuple[bytes, bytes, bytes]:
         """Generate a new ML-KEM private key from a seed.
 
@@ -328,8 +364,7 @@ class McEliecePrivateKey(PQKEMPrivateKey):
         return name, _other
 
     def public_key(self) -> McEliecePublicKey:
-        """
-        Derive the corresponding McEliece public key from this private key.
+        """Derive the corresponding McEliece public key from this private key.
 
         :return: An instance of `McEliecePublicKey`.
         """
@@ -393,6 +428,9 @@ class Sntrup761PrivateKey(PQKEMPrivateKey):
 
         :return: An instance of `Sntrup761PublicKey`.
         """
+        if self._public_key_bytes is None:
+            # If the public key is not set, derive it from the private key bytes
+            self._public_key_bytes = self._private_key_bytes[382 : 382 + 1158]
         return Sntrup761PublicKey(public_key=self._public_key_bytes, alg_name="sntrup761")
 
     @classmethod
@@ -413,14 +451,21 @@ class Sntrup761PrivateKey(PQKEMPrivateKey):
 class FrodoKEMPublicKey(PQKEMPublicKey):
     """Represents a FrodoKEM public key."""
 
+    def _initialize_key(self):
+        """Initialize the FrodoKEM public key."""
+        if oqs is not None:
+            self._kem_method = oqs.KeyEncapsulation(self._other_name)
+        else:
+            self._kem_method = FrodoKEM(self._other_name)
+
     def _get_header_name(self) -> bytes:
         """Return the key name to write the PEM-header for the key."""
         return b"FrodoKEM"
 
     def _check_name(self, name: str) -> Tuple[str, str]:
         """Validate the provided algorithm name."""
-        if name.lower() not in FRODOKEM_NAME_2_OID:
-            raise ValueError(f"Invalid key name '{name}'. Expected one of {FRODOKEM_NAME_2_OID.keys()}.")
+        if name.lower() not in _FRODOKEM_NAMES:
+            raise ValueError(f"Invalid key name '{name}'. Expected one of {_FRODOKEM_NAMES}.")
 
         _other = name.upper().replace("FRODOKEM", "FrodoKEM")
         return name, _other
@@ -428,16 +473,83 @@ class FrodoKEMPublicKey(PQKEMPublicKey):
     @classmethod
     def from_public_bytes(cls, data: bytes, name: str) -> "FrodoKEMPublicKey":
         """Load an ML-KEM public key from raw bytes."""
-        return super().from_public_bytes(data, name)  # type: ignore
+        if oqs is not None:
+            return super().from_public_bytes(data, name)  # type: ignore
+        else:
+            return cls(alg_name=name, public_key=data)
+
+    @property
+    def key_size(self) -> int:
+        """Get the size of the key."""
+        if oqs is not None:
+            return super().key_size
+        return FrodoKEM(self._other_name).len_pk_bytes
+
+    def encaps(self) -> Tuple[bytes, bytes]:
+        """Encapsulate a shared secret using the public key."""
+        if oqs is not None:
+            return super().encaps()
+        ct, ss = FrodoKEM(self._other_name).kem_encaps(self._public_key_bytes)
+        return ss, ct
+
+    @property
+    def ct_length(self) -> int:
+        """Get the length of the ciphertext."""
+        if oqs is not None:
+            return super().ct_length
+        return FrodoKEM(self._other_name).len_ct_bytes
+
+    @property
+    def nist_level(self) -> int:
+        """Get the claimed NIST level."""
+        if oqs is not None:
+            return super().nist_level
+        return _FRODOKEM_NIST_LEVEL[self.name]
 
 
 class FrodoKEMPrivateKey(PQKEMPrivateKey):
     """Represents a FrodoKEM private key."""
 
-    def _check_name(self, name: str) -> Tuple[str, str]:
+    def _derivate_public_key(self) -> bytes:
+        """Derive the FrodoKEM public key from the private key."""
+        fk = FrodoKEM(self._other_name)
+        start = fk.len_s_bytes  # skip the private `s`
+        end = start + fk.len_pk_bytes  # grab seedA || b
+        return self._private_key_bytes[start:end]
+
+    def _initialize_key(self):
+        """Initialize the FrodoKEM private key."""
+        if self._private_key_bytes is not None and self._public_key_bytes is not None:
+            if oqs is not None:
+                self._kem_method = oqs.KeyEncapsulation(self._other_name, secret_key=self._private_key_bytes)
+            else:
+                self._kem_method = FrodoKEM(self._other_name)
+        elif self._private_key_bytes is None and self._public_key_bytes is None:
+            self._seed = self._seed or os.urandom(self.seed_size)
+
+            if len(self._seed) != self.seed_size:
+                raise InvalidKeyData(f"Invalid seed length for {self.name}. Expected {self.seed_size} bytes.")
+
+            public_key, private_key = FrodoKEM(self._other_name).kem_keygen(self._seed)
+            self._public_key_bytes = public_key
+            self._private_key_bytes = private_key
+
+            if oqs is not None:
+                self._kem_method = oqs.KeyEncapsulation(self._other_name, secret_key=self._private_key_bytes)
+            else:
+                self._kem_method = FrodoKEM(self._other_name)
+        elif self._private_key_bytes is not None:
+            # If only the private key is provided, derive the public key
+            if oqs is not None:
+                self._kem_method = oqs.KeyEncapsulation(self._other_name, secret_key=self._private_key_bytes)
+            else:
+                self._kem_method = FrodoKEM(self._other_name)
+
+    @classmethod
+    def _check_name(cls, name: str) -> Tuple[str, str]:
         """Validate the provided algorithm name."""
-        if name not in FRODOKEM_NAME_2_OID:
-            raise ValueError(f"Invalid key name '{name}'. Expected one of {FRODOKEM_NAME_2_OID.keys()}.")
+        if name not in _FRODOKEM_NAMES:
+            raise ValueError(f"Invalid key name '{name}'. Expected one of {_FRODOKEM_NAMES}.")
 
         _other = name.upper().replace("FRODOKEM", "FrodoKEM")
         return name, _other
@@ -448,4 +560,108 @@ class FrodoKEMPrivateKey(PQKEMPrivateKey):
 
     def public_key(self) -> FrodoKEMPublicKey:
         """Derive the corresponding public key from the private key."""
+        if self._public_key_bytes is None:
+            self._public_key_bytes = self._derivate_public_key()
         return FrodoKEMPublicKey(public_key=self._public_key_bytes, alg_name=self.name)
+
+    @classmethod
+    def from_seed(cls, alg_name: str, seed: bytes) -> "FrodoKEMPrivateKey":
+        """Create a FrodoKEM private key from a seed."""
+        if alg_name.lower() not in _FRODOKEM_NAMES:
+            raise ValueError(f"Invalid FrodoKEM algorithm name: {alg_name}. Expected one of {_FRODOKEM_NAMES.keys()}.")
+
+        _seed_size = sum(_FRODOKEM_SEEDS_SIZE[alg_name].values()) // 8
+        if len(seed) != _seed_size:
+            msg = f"Invalid seed length for {alg_name}. Expected {_seed_size} bytes, got {len(seed)} bytes."
+            raise InvalidKeyData(msg)
+        _, other_name = cls._check_name(alg_name)
+        public_key, private_key = FrodoKEM(other_name).kem_keygen(seed)
+        return cls(alg_name=alg_name, private_bytes=private_key, public_key=public_key, seed=seed)
+
+    def private_numbers(self) -> bytes:
+        """Return the private key seed, if available.
+
+        :return: The private key seed as bytes.
+        :raises ValueError: If the private key seed is not available.
+        """
+        if self._seed is None:
+            raise ValueError("Private key seed is not available.")
+        return self._seed
+
+    @property
+    def ct_length(self) -> int:
+        """Get the length of the ciphertext."""
+        if oqs is not None:
+            return super().ct_length
+        return self._kem_method.len_ct_bytes
+
+    def decaps(self, ct: bytes) -> bytes:
+        """Decapsulate a shared secret using the private key.
+
+        :param ct: The ciphertext to decapsulate the shared secret from.
+        :return: The shared secret.
+        :raises ValueError: If the ciphertext length is invalid or if the ciphertext is malformed.
+        """
+        if oqs is not None:
+            return super().decaps(ct)
+
+        if len(ct) != self.ct_length:
+            raise ValueError(
+                f"Invalid ciphertext length for {self.name}. Expected {self.ct_length} bytes, got {len(ct)} bytes."
+            )
+        try:
+            return self._kem_method.kem_decaps(self._private_key_bytes, ct)
+        except IndexError as e:
+            raise ValueError("Invalid ciphertext.") from e
+
+    @classmethod
+    def _from_seed(cls, alg_name: str, seed: bytes) -> Tuple[bytes, bytes, bytes]:
+        """Generate a new FrodoKEM private key from a seed.
+
+        :param alg_name: The algorithm name (e.g., "frodokem-640-aes").
+        :param seed: The seed to use for key generation.
+        :return: The private key, public key, and seed.
+        """
+        if len(seed) != cls._seed_size(alg_name):
+            raise ValueError(f"Invalid seed length for {alg_name}. Expected {cls._seed_size(alg_name)} bytes.")
+        public_key, private_key = FrodoKEM(alg_name).kem_keygen(seed)
+        return private_key, public_key, seed
+
+    @classmethod
+    def from_private_bytes(cls, data: bytes, name: str) -> "FrodoKEMPrivateKey":
+        """Create a FrodoKEM private key from raw bytes.
+
+        :param data: The private key as raw bytes.
+        :param name: The algorithm name.
+        :return: The FrodoKEM private key.
+        :raises ValueError: If the key name is not supported.
+        :raises InvalidKeyData: If the key data is invalid.
+        """
+        if name.lower() not in _FRODOKEM_NAMES:
+            raise ValueError(f"Invalid FrodoKEM algorithm name: {name}. Expected one of {_FRODOKEM_NAMES}.")
+
+        if cls._seed_size(name) == len(data):
+            # If the data is a seed, create a key from it
+            return cls.from_seed(alg_name=name, seed=data)
+        if oqs is not None:
+            return super().from_private_bytes(data, name)  # type: ignore
+        return cls(alg_name=name, private_bytes=data)  # type: ignore
+
+    @staticmethod
+    def _seed_size(name: str) -> int:
+        """Return the size of the seed used for key generation."""
+        return sum(_FRODOKEM_SEEDS_SIZE[name.lower()].values()) // 8
+
+    @property
+    def key_size(self) -> int:
+        """Get the size of the key."""
+        if oqs is not None:
+            return super().key_size
+        return FrodoKEM(self._other_name).len_sk_bytes
+
+    @property
+    def nist_level(self) -> int:
+        """Get the claimed NIST level."""
+        if oqs is not None:
+            return super().nist_level
+        return _FRODOKEM_NIST_LEVEL[self.name]

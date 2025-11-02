@@ -27,9 +27,9 @@ from pq_logic.keys.abstract_wrapper_keys import (
 from pq_logic.keys.serialize_utils import prepare_rsa_private_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
 from pq_logic.tmp_oids import (
-    COMPOSITE_SIG06_PREHASH_OID_2_HASH,
     COMPOSITE_SIG07_INNER_HASH_OID_2_NAME,
     COMPOSITE_SIG07_NAME_TO_OID,
+    COMPOSITE_SIG07_PREHASH_OID_2_HASH,
 )
 from resources.exceptions import InvalidKeyCombination
 from resources.oid_mapping import hash_name_to_instance
@@ -47,7 +47,7 @@ def _compute_hash(alg_name: str, data: bytes) -> bytes:
 
 def _compute_prehash(oid: univ.ObjectIdentifier, data: bytes) -> bytes:
     """Compute the pre-hash of the data."""
-    hash_alg = COMPOSITE_SIG06_PREHASH_OID_2_HASH[oid]
+    hash_alg = COMPOSITE_SIG07_PREHASH_OID_2_HASH[oid]
     return _compute_hash(alg_name=hash_alg, data=data)
 
 

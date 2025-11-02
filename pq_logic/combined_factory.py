@@ -21,6 +21,7 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc3370, rfc5280, rfc5915, rfc5958, rfc6664, rfc8017
 
+import pq_logic.keys.pq_stateful_sig_factory
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.keys.abstract_wrapper_keys import (
     HybridPrivateKey,
@@ -68,6 +69,7 @@ from resources.oidutils import (
     CURVE_NAMES_TO_INSTANCES,
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
+    PQ_STATEFUL_HASH_SIG_OID_2_NAME,
     TRAD_STR_OID_TO_KEY_NAME,
     XWING_OID_STR,
 )
@@ -93,6 +95,14 @@ class CombinedKeyFactory:
     """Factory for creating all known key types."""
 
     _composite_prefixes = ["kem-07", "kem07", "dhkem", "kem", "sig-07", "sig"]
+
+    @staticmethod
+    def get_stateful_sig_algorithms() -> Dict[str, List[str]]:
+        """Get all supported stateful signature algorithms.
+
+        :return: List of supported stateful signature algorithms.
+        """
+        return pq_logic.keys.pq_stateful_sig_factory.PQStatefulSigFactory.get_algorithms_by_family()
 
     @staticmethod
     def _generate_composite_key_by_name(algorithm: str):
@@ -200,6 +210,11 @@ class CombinedKeyFactory:
         if algorithm in ["rsa", "ecdsa", "ed25519", "ed448", "bad_rsa_key"]:
             return generate_trad_key(algorithm, **kwargs)
 
+        if algorithm.startswith("xmss") or algorithm.startswith("hss"):
+            return pq_logic.keys.pq_stateful_sig_factory.PQStatefulSigFactory.generate_pq_stateful_key(
+                algorithm, **kwargs
+            )
+
         if algorithm == "rsa-kem":
             trad_key = kwargs.get("trad_key") or generate_trad_key("rsa", **kwargs)
             if not isinstance(trad_key, (RSAPrivateKey, RSADecapKey)):
@@ -214,11 +229,11 @@ class CombinedKeyFactory:
                 return HybridKeyFactory.from_keys(
                     algorithm=algorithm, pq_key=kwargs.get("pq_key"), trad_key=kwargs.get("trad_key")
                 )
-
             return HybridKeyFactory.generate_hybrid_key(algorithm=algorithm, **kwargs)
 
         options = ", ".join(CombinedKeyFactory.supported_algorithms())
-        raise ValueError(f"Unsupported key type: **{algorithm}** Supported are {options}")
+        msg = f"Unsupported key type: {algorithm}. Supported are {options}."
+        raise ValueError(msg)
 
     @staticmethod
     def _comp_load_trad_key(
@@ -356,6 +371,9 @@ class CombinedKeyFactory:
 
         if oid in COMPOSITE_SIG07_OID_TO_NAME or oid in COMPOSITE_KEM07_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
             return CombinedKeyFactory._load_hybrid_key_from_spki(spki)
+
+        if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+            return pq_logic.keys.pq_stateful_sig_factory.PQStatefulSigFactory.load_public_key_from_spki(spki)
 
         if oid in PQ_OID_2_NAME or str(oid) in PQ_OID_2_NAME:
             return PQKeyFactory.load_public_key_from_spki(spki=spki)
@@ -576,6 +594,11 @@ class CombinedKeyFactory:
 
         if str(oid) in TRAD_STR_OID_TO_KEY_NAME or oid == rfc6664.id_ecPublicKey:
             return parse_trad_key_from_one_asym_key(one_asym_key=one_asym_key, must_be_version_2=must_be_version_2)
+
+        if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+            return pq_logic.keys.pq_stateful_sig_factory.PQStatefulSigFactory.load_private_key_from_one_asym_key(
+                one_asym_key
+            )
 
         if oid in PQ_OID_2_NAME:
             return PQKeyFactory.from_one_asym_key(one_asym_key)

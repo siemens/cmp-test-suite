@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 *** Settings ***
 Documentation       Minimal CMP tests.
 Library             Process
@@ -75,9 +79,6 @@ IR 02 - IR Request With Wrong Secret Should Fail
     ...                The OpenSSL client output should indicate a failure due to authentication error
     ...                and include the keyword `error`.
     [Tags]    ir    negative    secret
-
-    
-
     ${args}=    Get CMP Command
     ...    ${CMP_CLIENT}
     ...    cmd=${INITIATION_REQUEST}
@@ -106,8 +107,6 @@ P10CR 01 - P10CR Unprotected Request Should Fail
     ...
     ...                The OpenSSL client should log an error related to missing request protection.
     [Tags]    p10cr    negative    unprotected
-    
-
     ${args}=    Get CMP Command
     ...    ${CMP_CLIENT}
     ...    cmd=${CERTIFICATION_REQUEST}
@@ -135,8 +134,6 @@ P10CR 02 - P10CR With Missing CSR Should Fail
     ...
     ...                The client should output an error message indicating missing or invalid input.
     [Tags]    p10cr    negative    malformed
-
-
     ${args}=    Get CMP Command
     ...    ${CMP_CLIENT}
     ...    cmd=${CERTIFICATION_REQUEST}
@@ -160,7 +157,6 @@ P10CR 03 - Valid P10CR With CSR Should Pass
     ...                This test uses a signed CSR (`csr_p10cr-client-3.pem`) and a shared secret
     ...                to authenticate the request. The subject in the CSR matches the subject in the CMP header.
     [Tags]    p10cr    positive    validation
-
     ${args}=    Get CMP Command
     ...    ${CMP_CLIENT}
     ...    cmd=${CERTIFICATION_REQUEST}

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 This folder contains an experimental draft for test cases of client-side
 CMP implementations.
 
@@ -45,5 +51,4 @@ CMP implementations.
         {% if certout %}-certout {{ certout }}{% endif %}
         {% if unprotected_requests %}-unprotected_requests{% endif %}
         """
-
    ```

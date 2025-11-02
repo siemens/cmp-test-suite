@@ -14,7 +14,9 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X
 from pyasn1_alt_modules import rfc9480, rfc9481
 
 from mock_ca.db_config_vars import ProtectionHandlerConfig, TrustConfig
-from mock_ca.mock_fun import KEMSharedSecretList
+from mock_ca.mock_fun import KEMSharedSecretList, PQStatefulSigKeyConfig
+from mock_ca.operation_dbs import StatefulSigState
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import get_public_key_from_cert_req_msg
@@ -45,6 +47,7 @@ from resources.exceptions import (
     BadSigAlgID,
     CMPTestSuiteError,
     InvalidAltSignature,
+    InvalidKeyData,
     LwCMPViolation,
     NotAuthorized,
     SignerNotTrusted,
@@ -80,6 +83,8 @@ class ProtectionHandler:
         trusted_ras_dir: Optional[str] = "./data/trusted_ras",
         trusted_cas_dir: Optional[str] = "./data/trusted_ras",
         config: Optional[ProtectionHandlerConfig] = None,
+        pq_stateful_cfg: Optional[PQStatefulSigKeyConfig] = None,
+        pq_stateful_sig_state: Optional[StatefulSigState] = None,
     ) -> None:
         """Initialize the ProtectionHandler with the specified parameters.
 
@@ -95,6 +100,8 @@ class ProtectionHandler:
         :param trusted_cas_dir: The directory containing the trusted CA certificates. Defaults to `None`.
         :param config: Optional configuration for the ProtectionHandler. If not provided, a
         default configuration is used.
+        :param pq_stateful_cfg: Optional configuration for PQ stateful signature keys.
+        :param pq_stateful_sig_state: Optional stateful signature state for managing stateful signatures.
         """
         self.prot_cert = cmp_protection_cert
         self.prot_key = cmp_prot_key
@@ -128,6 +135,16 @@ class ProtectionHandler:
             trusted_config=trust_cfg,
             enforce_lwcmp=enforce_rfc9481,
         )
+
+        self.pq_stateful_cfg = pq_stateful_cfg or PQStatefulSigKeyConfig(
+            allow_stfl_ccr=False,
+            saved_bad_message_check_stfl_key=True,
+        )
+
+        if pq_stateful_sig_state:
+            if not isinstance(pq_stateful_sig_state, StatefulSigState):
+                raise BadConfig("The provided stateful signature state is not a valid StatefulSigState.")
+            self.pq_stateful_sig_state = pq_stateful_sig_state
 
     def patch_for_mac(self, response: PKIMessageTMP) -> PKIMessageTMP:
         """Patch a PKIMessage for MAC protection, by modifying the sender and senderKid fields."""
@@ -551,20 +568,98 @@ class ProtectionHandler:
                 error_details=[e.message] + e.get_error_details(),
             ) from e
 
-    def validate_signature_protection(self, pki_message: PKIMessageTMP, cc_certs: List[rfc9480.CMPCertificate]):
+    def validate_stfl_signature_protection(
+        self,
+        pki_message: PKIMessageTMP,
+        stfl_state: StatefulSigState,
+        exclude_stateful_sig: bool = False,
+    ) -> None:
+        """Validate the signature protection of a PKIMessage for Stateful signatures.
+
+        :param pki_message: The PKI message to validate.
+        :param stfl_state: The stateful signature state containing the public key and leaf index.
+        :param exclude_stateful_sig: If True, skip validation for PQHashStateful signatures index. Defaults to `False`.
+        :raises BadMessageCheck: If the message is invalid or the signature is not valid.
+        """
+        if not pki_message["extraCerts"].isValue:
+            raise BadMessageCheck("No extra certificates in PKI message. Cannot validate signature.")
+
+        if get_cmp_message_type(pki_message) == "ccr":
+            # Validate if the signer is allowed to send a CCR.
+            if not self.pq_stateful_cfg.allow_stfl_ccr:
+                raise BadRequest("The Stateful signature algorithm is not allowed for CCRs")
+
+        ee_cert = pki_message["extraCerts"][0]
+        try:
+            public_key = load_public_key_from_cert(ee_cert)
+        except InvalidKeyData as e:
+            raise BadMessageCheck(
+                "The extra certificate in the PKI message does not contain a valid public key.",
+                error_details=[e.message] + e.error_details,
+            ) from e
+
+        if not isinstance(public_key, PQHashStatefulSigPublicKey):
+            raise BadMessageCheck(
+                "The extra certificate in the PKI message does not contain a valid Stateful signature public key."
+            )
+
+        if exclude_stateful_sig:
+            # If the stateful signature is excluded, we do not need to check the state.
+            return
+
+        state = stfl_state.get_state(cert=ee_cert)
+
+        if state is None:
+            raise BadMessageCheck(
+                "The PKIMessage does not contain a valid Stateful signature state. "
+                "Please check if the certificate is registered for Stateful signatures."
+            )
+
+        signature = pki_message["protection"].asOctets()
+        index = public_key.get_leaf_index(signature)
+
+        if state.contains_used_index(index):
+            raise BadMessageCheck(
+                "The signature in the PKIMessage has already been used. Stateful signatures must not be reused."
+            )
+
+        # TODO decided if a BadMessageCheck or a badPOP key is also saved in the state.
+        if self.pq_stateful_cfg.saved_bad_message_check_stfl_key:
+            state.add_used_index(index)
+
+    def validate_signature_protection(
+        self,
+        pki_message: PKIMessageTMP,
+        cc_certs: List[rfc9480.CMPCertificate],
+        pq_stateful_state: Optional[StatefulSigState],
+        exclude_stateful_sig: bool = False,
+    ):
         """Validate the signature protection of the PKI message.
 
         :param pki_message: The PKI message to validate.
         :param cc_certs: The certificates to check against for Cross-Certification Requests (CCR).
+        :param pq_stateful_state: The stateful signature state for PQHashStateful signatures. Defaults to `None`.
+        :param exclude_stateful_sig: If True, skip validation for PQHashStateful signatures index. Defaults to `False`.
         :return: True if the signature protection is valid, False otherwise.
         """
         if not pki_message["extraCerts"].isValue:
             raise BadMessageCheck("No extra certificates in PKI message. Cannot validate signature.")
+
+        pq_stateful_state = pq_stateful_state or self.pq_stateful_sig_state
+
         if get_cmp_message_type(pki_message) == "ccr":
             # Validate if the signer is allowed to send a CCR.
             self.validate_signer_for_ccr(pki_message, cc_certs)
         try:
             prot_type = ProtectedType.get_protection_type(pki_message)
+            if prot_type == ProtectedType.PQ_HASH_STATEFUL_SIG:
+                # Validate the signature protection for Stateful signatures
+                self.validate_stfl_signature_protection(
+                    pki_message=pki_message,
+                    stfl_state=pq_stateful_state,
+                    exclude_stateful_sig=exclude_stateful_sig,
+                )
+
             if prot_type == ProtectedType.TRAD_SIGNATURE:
                 # Validate traditional signature protection
                 verify_pkimessage_protection(
@@ -575,6 +670,26 @@ class ProtectionHandler:
                 verify_hybrid_pkimessage_protection(
                     pki_message=pki_message,
                 )
+
+            if (
+                not self.pq_stateful_cfg.saved_bad_message_check_stfl_key
+                and prot_type == ProtectedType.PQ_HASH_STATEFUL_SIG
+            ):
+                if pq_stateful_state is None:
+                    raise BadMessageCheck(
+                        "The pq_stateful_state is None, but the PKIMessage contains a Stateful signature. "
+                    )
+
+                signature = pki_message["protection"].asOctets()
+                public_key = load_public_key_from_cert(pki_message["extraCerts"][0])  # type: ignore[AssignmentTypeError]
+                public_key: PQHashStatefulSigPublicKey = public_key  # type: ignore[AssignmentTypeError]
+                state = pq_stateful_state.get_state(cert=pki_message["extraCerts"][0])
+                if state is None:
+                    raise BadRequest(
+                        "The PKIMessage does not contain a valid Stateful signature state. "
+                        "The Mock CA does only support Stateful certificates which were issued by the Mock CA."
+                    )
+                state.add_used_index(public_key.get_leaf_index(signature))
 
         except BadSigAlgID as e:
             raise BadMessageCheck(
@@ -587,17 +702,29 @@ class ProtectionHandler:
 
         self.check_signer_is_trusted(pki_message, for_dh=False)
 
-    def validate_protection(self, pki_message: PKIMessageTMP, cc_certs: List[rfc9480.CMPCertificate]) -> None:
+    def validate_protection(
+        self,
+        pki_message: PKIMessageTMP,
+        cc_certs: List[rfc9480.CMPCertificate],
+        pq_stateful_state: Optional[StatefulSigState] = None,
+        exclude_stateful_sig_check: bool = False,
+    ) -> None:
         """Validate the protection of the PKI message.
 
         :param pki_message: The PKI message to validate.
         :param cc_certs: The certificates to check against for Cross-Certification Requests (CCR).
+        :param pq_stateful_state: The stateful signature state for PQHashStateful signatures. Defaults to `None`.
+        :param exclude_stateful_sig_check: If True, skip validation for PQHashStateful signatures index. \
+        Defaults to `False`.
         :return: True if the protection is valid, False otherwise.
         :raises BadMessageCheck: If the message is invalid.
         :raises BadMacProtection: If the MAC protection is invalid.
         :raises SignerNotTrusted: If the signer is not trusted.
         :raises NotAuthorized: If the signer is not authorized, to perform the operation.
         """
+        if pq_stateful_state is None:
+            pq_stateful_state = self.pq_stateful_sig_state
+
         if not pki_message["header"]["protectionAlg"].isValue:
             raise BadMessageCheck("The protection algorithm is not set.")
 
@@ -619,7 +746,12 @@ class ProtectionHandler:
             self.validate_mac_protection(pki_message)
 
         else:
-            self.validate_signature_protection(pki_message, cc_certs=cc_certs)
+            self.validate_signature_protection(
+                pki_message,
+                cc_certs=cc_certs,
+                pq_stateful_state=pq_stateful_state,
+                exclude_stateful_sig=exclude_stateful_sig_check,
+            )
 
     @staticmethod
     def check_signer_extensions(pki_message: PKIMessageTMP) -> None:
@@ -696,7 +828,7 @@ class ProtectionHandler:
         # Temporary fix to avoid errors for Composite signatures and PQ signatures.
 
         prot_type = ProtectedType.get_protection_type(pki_message)
-        result = prot_type in [ProtectedType.COMPOSITE_SIG, ProtectedType.PQ_SIG]
+        result = prot_type in [ProtectedType.COMPOSITE_SIG, ProtectedType.PQ_SIG, ProtectedType.PQ_HASH_STATEFUL_SIG]
 
         if result:
             logging.debug(
@@ -731,11 +863,13 @@ class ProtectionHandler:
         pki_message: PKIMessageTMP,
         cc_certs: List[rfc9480.CMPCertificate],
         must_be_protected: bool = False,
+        pq_stateful_state: Optional[StatefulSigState] = None,
     ) -> None:
         """Verify the added protection of the PKIMessage
 
         :param pki_message: The inner PKIMessage to verify.
         :param cc_certs: The cross-certificates to check for CCR messages.
+        :param pq_stateful_state: The stateful signature state for PQHashStateful signatures. Defaults to `None`.
         :param must_be_protected: If the PKIMessage must be protected. Defaults to `False`.
         """
         inner_msg = pki_message["body"]["nested"][0]
@@ -743,10 +877,10 @@ class ProtectionHandler:
 
         body_name = get_cmp_message_type(inner_msg)
         if body_name in ["rr", "kur", "ccr"]:
-            self.validate_protection(inner_msg, cc_certs=cc_certs)
+            self.validate_protection(inner_msg, cc_certs=cc_certs, pq_stateful_state=pq_stateful_state)
 
         elif inner_msg["header"]["protectionAlg"].isValue:
-            self.validate_protection(inner_msg, cc_certs=cc_certs)
+            self.validate_protection(inner_msg, cc_certs=cc_certs, pq_stateful_state=pq_stateful_state)
 
         validate_orig_pkimessage(
             pki_message,
@@ -792,6 +926,7 @@ class ProtectionHandler:
         cc_certs: List[rfc9480.CMPCertificate],
         index: int,
         must_be_protected: bool = False,
+        pq_stateful_state: Optional[StatefulSigState] = None,
     ) -> None:
         """Verify the inner batch PKIMessage
 
@@ -799,6 +934,7 @@ class ProtectionHandler:
         :param cc_certs: The cross-certificates to check for CCR messages.
         :param index: The index of the inner PKIMessage in the batch. Defaults to `None`.
         :param must_be_protected: If the PKIMessage must be protected. Defaults to `False`.
+        :param pq_stateful_state: The stateful signature state for PQHashStateful signatures. Defaults to `None`.
         :raises WrongIntegrity: If the inner batch PKIMessage is MAC protected, which is not allowed,
         for `rr`, `kur`, or `ccr` messages.
         :raises BadMessageCheck: If the inner batch PKIMessage protection is invalid.
@@ -826,7 +962,9 @@ class ProtectionHandler:
             ) from e
         if pki_message["header"]["protectionAlg"].isValue:
             try:
-                self.validate_protection(pki_message=pki_message, cc_certs=cc_certs)
+                self.validate_protection(
+                    pki_message=pki_message, cc_certs=cc_certs, pq_stateful_state=pq_stateful_state
+                )
             except BadMessageCheck as e:
                 msg = f"Invalid inner batch PKIMessage protection at index {index}."
                 raise BadMessageCheck(
@@ -840,11 +978,17 @@ class ProtectionHandler:
                     failinfo=e.get_failinfo(),
                 ) from e
 
-    def verify_nested_protection(self, pki_message: PKIMessageTMP, cc_certs: List[rfc9480.CMPCertificate]) -> None:
+    def verify_nested_protection(
+        self,
+        pki_message: PKIMessageTMP,
+        cc_certs: List[rfc9480.CMPCertificate],
+        pq_stateful_state: Optional[StatefulSigState] = None,
+    ) -> None:
         """Verify the nested protection of the PKIMessage
 
         :param pki_message: The PKIMessage to verify.
         :param cc_certs: The cross-certificates to check for CCR messages.
+        :param pq_stateful_state: The stateful signature state for PQHashStateful signatures. Defaults to `None`.
         """
         prot_type = ProtectedType.get_protection_type(pki_message)
         if prot_type == ProtectedType.MAC:
@@ -863,7 +1007,7 @@ class ProtectionHandler:
         except SignerNotTrusted as e:
             raise NotAuthorized("The signer of the nested PKIMessage is not trusted.") from e
 
-        self.validate_signature_protection(pki_message, cc_certs=cc_certs)
+        self.validate_signature_protection(pki_message, cc_certs=cc_certs, pq_stateful_state=pq_stateful_state)
 
         if len(pki_message["body"]["nested"]) == 0:
             raise BadRequest("The nested field was not set, in the nested PKIMessage.")

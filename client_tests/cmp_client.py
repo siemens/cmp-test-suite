@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
+"""Client test logic for CMP operations."""
 
 from jinja2 import Template
 from robot.api.deco import keyword
@@ -27,8 +32,7 @@ gencmpclient  {{ cmd }}
  {% if csr %}--csr {{ csr }}{% endif %}
  {% if newkey %}--newkey {{ newkey }}{% endif %}
  {% if certout %}--certout {{ certout }}{% endif %}
- 
- """
+"""
 
 embedded_cmp = """
 ./build/embedded_cmp
@@ -39,8 +43,8 @@ embedded_cmp = """
 
 
 @keyword(name="Get CMP Command")
-def get_cmp_command(client: str = "openssl", **kwargs) -> list:
-    """Constructs a CMP command based on the client and keyword arguments.
+def get_cmp_command(client: str = "openssl", **kwargs) -> list:  # noqa: D417
+    """Construct a CMP command based on the client and keyword arguments.
 
     Arguments:
     ---------
@@ -58,8 +62,8 @@ def get_cmp_command(client: str = "openssl", **kwargs) -> list:
     """
     try:
         template = Template(globals()[client])
-    except KeyError:
-        raise ValueError(f"Unsupported CMP client: {client}")
+    except KeyError as e:
+        raise ValueError(f"Unsupported CMP client: {client}") from e
 
     rendered = template.render(**kwargs)
     return rendered.strip().split()

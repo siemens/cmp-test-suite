@@ -89,6 +89,9 @@ class TestVariousKeySerialization(unittest.TestCase):
     def test_key_serialization_and_loading_pq_seed_and_raw(self):
             with self.subTest(f"Testing PQ keys with save type: Seed and RAW"):
                 for name in self.pq_alg_names:
+                    if name == "slh-dsa":
+                        # slh-dsa does not support seed_and_raw export type
+                        continue
                     with self.subTest(algorithm=name):
                         key, der_data = self._generate_seed_key_and_der(name, KeySaveType.SEED_AND_RAW)
                         loaded_key = CombinedKeyFactory.load_private_key_from_one_asym_key(der_data)

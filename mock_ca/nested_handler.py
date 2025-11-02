@@ -6,11 +6,13 @@
 
 import copy
 import logging
+from typing import Optional
 
 from pyasn1.codec.der import encoder
 
 from mock_ca.cert_conf_handler import CertConfHandler
 from mock_ca.cert_req_handler import CertReqHandler
+from mock_ca.operation_dbs import StatefulSigState
 from mock_ca.prot_handler import ProtectionHandler
 from resources.asn1_structures import PKIMessageTMP
 from resources.checkutils import (
@@ -68,13 +70,17 @@ class NestedHandler:
         return get_cmp_message_type(request["body"]["nested"][index])
 
     def _process_added_protection_request(
-        self, request: PKIMessageTMP, prot_handler: ProtectionHandler
+        self,
+        request: PKIMessageTMP,
+        prot_handler: ProtectionHandler,
+        pq_stateful_state: Optional[StatefulSigState] = None,
     ) -> PKIMessageTMP:
         """Process the added protection request.
 
         :param request: The request to process.
         :param prot_handler: The protection handler to use, to validate the protection, of the request.
         Defaults to `None`.
+        :param pq_stateful_state: The state for stateful signatures, if needed.
         """
         validate_add_protection_tx_id_and_nonces(request)
         body_name = NestedHandler.get_nested_body_name(request, 0)
@@ -85,6 +91,7 @@ class NestedHandler:
             request,
             cc_certs=self.cert_req_handler.cross_signed_certs,
             must_be_protected=not self.allow_inner_unprotected,
+            pq_stateful_state=pq_stateful_state,
         )
 
         if body_name in ["ir", "cr", "p10cr", "kur", "ccr"]:
@@ -112,14 +119,24 @@ class NestedHandler:
             request=inner_msg,
         )
 
-    def process_nested_request(self, request: PKIMessageTMP, prot_handler: ProtectionHandler) -> PKIMessageTMP:
+    def process_nested_request(
+        self,
+        request: PKIMessageTMP,
+        prot_handler: ProtectionHandler,
+        pq_stateful_state: Optional[StatefulSigState] = None,
+    ) -> PKIMessageTMP:
         """Process the nested request.
 
         :param request: The request to process.
         :param prot_handler: The protection handler to use, to validate the protection, of the request.
+        :param pq_stateful_state: The state for stateful signatures, if needed.
         :raises BadRequest: If the request is not valid.
         """
-        prot_handler.verify_nested_protection(pki_message=request, cc_certs=self.cert_req_handler.cross_signed_certs)
+        prot_handler.verify_nested_protection(
+            pki_message=request,
+            cc_certs=self.cert_req_handler.cross_signed_certs,
+            pq_stateful_state=pq_stateful_state,
+        )
         len_request = len(request["body"]["nested"])
         self.cert_req_handler.validate_header(pki_message=request, must_be_protected=True, for_nested=True)
 
@@ -130,7 +147,9 @@ class NestedHandler:
             self._check_sender(request)
 
         if len_request == 1:
-            return self._process_added_protection_request(request, prot_handler=prot_handler)
+            return self._process_added_protection_request(
+                request, prot_handler=prot_handler, pq_stateful_state=pq_stateful_state
+            )
 
         return self.process_batched_request(request, prot_handler=prot_handler)
 
@@ -214,7 +233,12 @@ class NestedHandler:
                 "Which contains requests of type `ir`, `cr`, `kur`, `p10cr`, `rr`."
             )
 
-    def process_batched_request(self, request: PKIMessageTMP, prot_handler: ProtectionHandler) -> PKIMessageTMP:
+    def process_batched_request(
+        self,
+        request: PKIMessageTMP,
+        prot_handler: ProtectionHandler,
+        pq_stateful_state: Optional[StatefulSigState] = None,
+    ) -> PKIMessageTMP:
         """Process the batched request."""
         out = []
         self._check_nonces(request)
@@ -230,7 +254,9 @@ class NestedHandler:
                         ", but allows a added protection request. "
                         f"Got length: {len(entry['body']['nested'])}."
                     )
-                response = self._process_added_protection_request(entry, prot_handler=prot_handler)
+                response = self._process_added_protection_request(
+                    entry, prot_handler=prot_handler, pq_stateful_state=pq_stateful_state
+                )
                 out.append(response)
 
             elif entry["body"].getName() == "certConf":
@@ -253,6 +279,7 @@ class NestedHandler:
                     cc_certs=self.cert_req_handler.get_cross_signed_certs(),
                     must_be_protected=not self.allow_inner_unprotected,
                     index=i,
+                    pq_stateful_state=pq_stateful_state,
                 )
                 if entry["body"].getName() in ["cr", "ir", "p10cr"]:
                     # Different if cases, if somebody decides that

@@ -68,7 +68,7 @@ FALCON_NAME_2_OID = {
 FALCON_OID_2_NAME = {y: x for x, y in FALCON_NAME_2_OID.items()}
 
 id_ntru = f"{id_kem_test_suite}.1"
-id_sntrup761_str = univ.ObjectIdentifier(f"{id_ntru}.1")
+id_sntrup761 = univ.ObjectIdentifier(f"{id_ntru}.1")
 
 
 id_mceliece = f"{id_kem_test_suite}.2"
@@ -166,7 +166,7 @@ COMPOSITE_SIG07_INNER_HASH_OID_2_NAME = {
     id_compSig07_mldsa87_rsa4096_pss: "sha512",
     id_compSig07_mldsa87_ecdsa_p521: "sha512",
 }
-COMPOSITE_SIG06_PREHASH_OID_2_HASH = {
+COMPOSITE_SIG07_PREHASH_OID_2_HASH = {
     id_compSig07_mldsa44_rsa2048_pss: "sha256",
     id_compSig07_mldsa44_rsa2048_pkcs15: "sha256",
     id_compSig07_mldsa44_ed25519: "sha512",

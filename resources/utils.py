@@ -448,6 +448,35 @@ def get_openssl_name_notation(
     return out_name
 
 
+@keyword(name="Get Common Name")
+def get_common_name(  # noqa D417 undocumented-param
+    name: Union[rfc9480.Name, rfc9480.CMPCertificate],
+) -> str:
+    """Get the common name from a `pyasn1` Name object.
+
+    Arguments:
+    ---------
+        - `name`: The Name object from which to extract the common name.
+
+    Returns:
+    -------
+        - A string representing the common name extracted from the Name object.
+
+    Examples:
+    --------
+    | ${common_name}= | Get Common Name | ${name} |
+
+    """
+    if isinstance(name, rfc9480.CMPCertificate):
+        # If a certificate is provided, extract the subject name
+        name = name["tbsCertificate"]["subject"]
+
+    return get_openssl_name_notation(
+        name,  # type: ignore
+        oids=[rfc5280.id_at_commonName],
+    )
+
+
 @not_keyword
 def load_crl_from_file(path: str) -> rfc5280.CertificateList:
     """Load a CRL from a filepath.

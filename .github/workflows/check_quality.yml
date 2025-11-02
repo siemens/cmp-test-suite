@@ -133,3 +133,15 @@ jobs:
         run: pyright
     # not enforced yet, but it is still executed to provide some info
     continue-on-error: true
+
+  prepare_env:
+    runs-on: ubuntu-22.04
+    outputs:
+      image_lc: ${{ steps.setenv.outputs.image_lc }}
+    steps:
+      - name: Set lowercase image name
+        id: setenv
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_LC="ghcr.io/${OWNER_LC}/cmp-test-dev:latest"
+          echo "image_lc=$IMAGE_LC" >> $GITHUB_OUTPUT

@@ -10,7 +10,12 @@ SPDX-License-Identifier = "Apache-2.0"
 # these are config files or sample payloads which may be in formats that cannot
 # be annotated, hence we mention the relevant information here
 [[annotations]]
-path = ["config/cert/**", "data/**", "unit_tests/**", "scripts/**", "pyrightconfig.json", "VERSION"]
+path = [
+    "config/cert/**", "data/**", "unit_tests/**",
+    "scripts/**", "pq_logic/fips/frodokem.py",
+    "pyrightconfig.json", "VERSION",
+    "client_tests/certs/**",
+]
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright 2024 Siemens AG"
 SPDX-License-Identifier = "Apache-2.0"

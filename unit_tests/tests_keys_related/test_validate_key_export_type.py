@@ -58,6 +58,10 @@ class TestValidateKeyExportType(unittest.TestCase):
         """
         key_save_type = "seed_and_raw"
         for key_name in self.key_names:
+            if key_name == "slh-dsa":
+                # slh-dsa does not support seed_and_raw export type
+                continue
+
             with self.subTest(key_name=key_name):
                 key = generate_key(key_name)
                 one_asym_key = prepare_one_asymmetric_key(private_key=key, key_save_type=key_save_type)
