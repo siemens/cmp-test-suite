@@ -50,7 +50,6 @@ class FrodoKEM(object):
             self.gen = self.genSHAKE128
         else:
             raise ValueError("Unknown variant: {:s}".format(variant))
-        warnings.warn("WARNING: This Python3 implementation of FrodoKEM is not designed to be fast or secure, and may leak secret information via timing or other side channels; it should not be used in production environments.")
 
     def setParamsFrodo640(self):
         """Set the parameters for Frodo640"""
