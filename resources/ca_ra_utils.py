@@ -93,6 +93,7 @@ from resources.suiteenums import InvalidOneAsymKeyType, KeySaveType
 from resources.typingutils import (
     CAResponse,
     CertOrCerts,
+    CertRequestType,
     ECDHPrivateKey,
     ECDHPublicKey,
     EnvDataPrivateKey,
@@ -705,7 +706,6 @@ def prepare_private_key_for_kga(
     """
     recip_type = _get_kga_recipient_type(pki_message=request)
     logging.debug("Recipient type used for the KGA response: %s", recip_type)
-    print("Recipient type used for the KGA response: %s", recip_type)
 
     cek = os.urandom(32)
     client_cert = request["extraCerts"][0]
@@ -1231,7 +1231,6 @@ def _verify_ra_verified(
         raise NotAuthorized("RA certificate is not self-signed, but the certificate chain could not be build.")
 
     logging.debug("RA certificate chain length: %d", len(cert_chain))
-    print("RA certificate chain length:", len(cert_chain))
 
     if verify_cert_chain:
         try:
@@ -2243,6 +2242,23 @@ def set_ca_header_fields(request: PKIMessageTMP, kwargs: dict) -> dict:
     return kwargs
 
 
+def _validate_subject_field_for_cert_request(
+    csr_or_template: CertRequestType,
+) -> None:
+    """Validate the subject field in the certificate request.
+
+    :param csr_or_template: The CSR or certificate template to use for validation.
+    :raises BadCertTemplate: If the subject field is invalid.
+    """
+    extensions, _ = certbuildutils.parse_extension_and_public_key(csr_or_template)
+    subject = certbuildutils.parse_subject_from_cert_related_type(csr_or_template)
+    if compareutils.is_null_dn(subject):
+        if extensions is None or get_extension(extensions, rfc5280.id_ce_subjectAltName) is None:
+            raise BadCertTemplate(
+                "The CSR's subject field is set to `Null-DN` and the `subjectAltName` extension is missing."
+            )
+
+
 @keyword(name="Build CP From P10CR")
 def build_cp_from_p10cr(  # noqa: D417 Missing argument descriptions in the docstring
     request: PKIMessageTMP,
@@ -2300,6 +2316,8 @@ def build_cp_from_p10cr(  # noqa: D417 Missing argument descriptions in the docs
     certutils.verify_csr_signature(request["body"]["p10cr"])
     if cert is None and ca_key is None and ca_cert is None:
         raise ValueError("Either `cert` or `ca_key` and `ca_cert` must be provided to build a CA CMP message.")
+
+    _validate_subject_field_for_cert_request(request["body"]["p10cr"])
 
     cert = cert or certbuildutils.build_cert_from_csr(
         csr=request["body"]["p10cr"],
@@ -2487,6 +2505,44 @@ def _build_ca_cert_response_body(
     pki_message = cmputils.prepare_pki_message(**kwargs)
     pki_message["body"] = body
     return pki_message
+
+
+@not_keyword
+def validate_cert_req_id_nums(pki_message: PKIMessageTMP) -> None:
+    """Validate if the certReqId numbers are unique and not negative or the CSR version is `0`.
+
+    Also checks if the numbers are in the range from 0 to len(cert_req_msg) - 1.
+
+    :param pki_message: The PKIMessage containing the certificate requests.
+    :raises BadRequest: If the certReqId numbers are not unique or not in the range from 0 to len(cert_req_msg) - 1.
+    """
+    cert_req_ids = set()
+
+    body_name = pki_message["body"].getName()
+    if body_name == "p10cr":
+        if int(pki_message["body"]["p10cr"]["certificationRequestInfo"]["version"]) != 0:
+            raise BadCertTemplate("The `certificationRequestInfo` version of the P10CR message was not `0`.")
+        return
+
+    cert_req_msg: Sequence[rfc4211.CertReqMsg] = pki_message["body"][body_name]
+
+    if len(cert_req_msg) == 0:
+        raise BadRequest("No certificate requests found in the message. At least one certReq must be present.")
+
+    if len(cert_req_msg) == 1:
+        if int(cert_req_msg[0]["certReq"]["certReqId"]) != 0:
+            raise BadRequest("The certReqId must be set to `0` or greater.")
+        return
+
+    for req in cert_req_msg:
+        cert_req_id = int(req["certReq"]["certReqId"])
+        if cert_req_id in cert_req_ids:
+            raise BadRequest(f"Duplicate certReqId found: {cert_req_id}. All certReqIds must be unique.")
+        cert_req_ids.add(cert_req_id)
+
+    # Must be correctly ordered, from 0 to len(cert_req_msg) - 1.
+    if not all(req_id in cert_req_ids for req_id in range(len(cert_req_msg))):
+        raise BadRequest("The certReqId numbers must be unique and in the range from 0 to the number of requests - 1.")
 
 
 @keyword(name="Build CP CMP Message")

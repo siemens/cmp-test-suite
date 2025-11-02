@@ -26,6 +26,7 @@ from resources.ca_ra_utils import (
     build_kup_from_kur,
     build_unsuccessful_ca_cert_response,
     set_ca_header_fields,
+    validate_cert_req_id_nums,
 )
 from resources.certbuildutils import prepare_extensions
 from resources.certutils import (
@@ -674,6 +675,8 @@ class CertReqHandler:
             self.check_same_key_cert_request(pki_message=pki_message)
             self.check_cert_is_updated(pki_message=pki_message)
             self._validate_orig_req(pki_message=pki_message)
+
+            validate_cert_req_id_nums(pki_message)
 
             if msg_type == "ir":
                 response = self.process_ir(pki_message, verify_ra_verified=verify_ra_verified)

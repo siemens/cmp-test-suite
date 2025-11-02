@@ -438,7 +438,6 @@ Build Body By Name
     END
     RETURN    ${prot_body}
 
-
 Check For Resource Minimizing
     [Documentation]    Check if created structures can be reused, for the next test.
     [Arguments]    ${body_name}
@@ -712,6 +711,7 @@ Build Message For Negative Header Validation
         Validate Negative Response   ${response}   ${body_name}   badPOP   True
     END
 
+
 *** Test Cases ***
 CA MUST Reject IR Without SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
@@ -755,27 +755,27 @@ CA MUST Reject ADDED-PROTECTION Without SenderNonce
 
 CA MUST Reject ADDED-PROTECTION-INNER-IR Without SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -ir
+     [Tags]    negative    senderNonce    nested    added-protection    ir
      Build Without senderNonce    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR Without SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -cr
+     [Tags]    negative    senderNonce    nested    added-protection    cr
      Build Without senderNonce    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR Without SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -kur
+     [Tags]    negative    senderNonce    nested    added-protection    kur
      Build Without senderNonce    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR Without SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -p10cr
+     [Tags]    negative    senderNonce    nested    added-protection    p10cr
      Build Without senderNonce    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR Without SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -ccr
+     [Tags]    negative    senderNonce    nested    added-protection    ccr
      Build Without senderNonce    added-protection-inner-ccr
 
 CA MUST Reject BATCH Without SenderNonce
@@ -850,27 +850,27 @@ CA MUST Reject ADDED-PROTECTION With Too Short SenderNonce
 
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Too Short SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -ir
+     [Tags]    negative    senderNonce    nested    added-protection    ir
      Build With Too Short senderNonce    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Too Short SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -cr
+     [Tags]    negative    senderNonce    nested    added-protection    cr
      Build With Too Short senderNonce    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Too Short SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -kur
+     [Tags]    negative    senderNonce    nested    added-protection    kur
      Build With Too Short senderNonce    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Too Short SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -p10cr
+     [Tags]    negative    senderNonce    nested    added-protection    p10cr
      Build With Too Short senderNonce    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Too Short SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -ccr
+     [Tags]    negative    senderNonce    nested    added-protection    ccr
      Build With Too Short senderNonce    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Too Short SenderNonce
@@ -945,27 +945,27 @@ CA MUST Reject ADDED-PROTECTION With Too Long SenderNonce
 
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Too Long SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -ir
+     [Tags]    negative    senderNonce    nested    added-protection    ir
      Build With Too Long senderNonce    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Too Long SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -cr
+     [Tags]    negative    senderNonce    nested    added-protection    cr
      Build With Too Long senderNonce    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Too Long SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -kur
+     [Tags]    negative    senderNonce    nested    added-protection    kur
      Build With Too Long senderNonce    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Too Long SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -p10cr
+     [Tags]    negative    senderNonce    nested    added-protection    p10cr
      Build With Too Long senderNonce    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Too Long SenderNonce
      [Documentation]    A PKIMessage **MUST** have a `senderNonce` set which is 16-Bytes long. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    senderNonce    nested    added-protection    -ccr
+     [Tags]    negative    senderNonce    nested    added-protection    ccr
      Build With Too Long senderNonce    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Too Long SenderNonce
@@ -999,97 +999,97 @@ CA MUST Reject BATCH_INNER_CCR With Too Long SenderNonce
      Build With Too Long senderNonce    batch_inner_ccr
 
 CA MUST Reject IR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    ir
      Build With recipNonce    ir
 
 CA MUST Reject P10CR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    p10cr
      Build With recipNonce    p10cr
 
 CA MUST Reject CR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    cr
      Build With recipNonce    cr
 
 CA MUST Reject KUR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    kur
      Build With recipNonce    kur
 
 CA MUST Reject GENM With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    genm
      Build With recipNonce    genm
 
 CA MUST Reject CCR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    ccr
      Build With recipNonce    ccr
 
 CA MUST Reject RR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    rr
      Build With recipNonce    rr
 
 CA MUST Reject ADDED-PROTECTION With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    nested    added-protection
      Build With recipNonce    added-protection
 
 CA MUST Reject ADDED-PROTECTION-INNER-IR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    recipNonce    nested    added-protection    -ir
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
+     [Tags]    negative    recipNonce    nested    added-protection    ir
      Build With recipNonce    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    recipNonce    nested    added-protection    -cr
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
+     [Tags]    negative    recipNonce    nested    added-protection    cr
      Build With recipNonce    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    recipNonce    nested    added-protection    -kur
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
+     [Tags]    negative    recipNonce    nested    added-protection    kur
      Build With recipNonce    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    recipNonce    nested    added-protection    -p10cr
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
+     [Tags]    negative    recipNonce    nested    added-protection    p10cr
      Build With recipNonce    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    recipNonce    nested    added-protection    -ccr
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
+     [Tags]    negative    recipNonce    nested    added-protection    ccr
      Build With recipNonce    added-protection-inner-ccr
 
 CA MUST Reject BATCH With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    nested    batch    strict    robot:skip-on-failure
      Build With recipNonce    batch
 
 CA MUST Reject BATCH_INNER_IR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    nested    batch    ir
      Build With recipNonce    batch_inner_ir
 
 CA MUST Reject BATCH_INNER_CR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    nested    batch    cr
      Build With recipNonce    batch_inner_cr
 
 CA MUST Reject BATCH_INNER_KUR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    nested    batch    kur
      Build With recipNonce    batch_inner_kur
 
 CA MUST Reject BATCH_INNER_P10CR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    nested    batch    p10cr
      Build With recipNonce    batch_inner_p10cr
 
 CA MUST Reject BATCH_INNER_CCR With RecipNonce
-     [Documentation]    A PKIMessage **MUST** not have a `recipNonce`. Ref: RFC 9483, Section 3.1.
+     [Documentation]    A PKIMessage **MUST** not have a `recipNonce` set. Ref: RFC 9483, Section 3.1.
      [Tags]    negative    recipNonce    nested    batch    ccr
      Build With recipNonce    batch_inner_ccr
 
@@ -1144,31 +1144,31 @@ CA MUST Reject ADDED-PROTECTION Without TransactionID
 CA MUST Reject ADDED-PROTECTION-INNER-IR Without TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -ir
+     [Tags]    negative    transactionID    nested    added-protection    ir
      Build Without transactionID    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR Without TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -cr
+     [Tags]    negative    transactionID    nested    added-protection    cr
      Build Without transactionID    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR Without TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -kur
+     [Tags]    negative    transactionID    nested    added-protection    kur
      Build Without transactionID    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR Without TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -p10cr
+     [Tags]    negative    transactionID    nested    added-protection    p10cr
      Build Without transactionID    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR Without TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -ccr
+     [Tags]    negative    transactionID    nested    added-protection    ccr
      Build Without transactionID    added-protection-inner-ccr
 
 CA MUST Reject BATCH Without TransactionID
@@ -1258,31 +1258,31 @@ CA MUST Reject ADDED-PROTECTION With Too Short TransactionID
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Too Short TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -ir
+     [Tags]    negative    transactionID    nested    added-protection    ir
      Build With Too Short transactionID    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Too Short TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -cr
+     [Tags]    negative    transactionID    nested    added-protection    cr
      Build With Too Short transactionID    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Too Short TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -kur
+     [Tags]    negative    transactionID    nested    added-protection    kur
      Build With Too Short transactionID    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Too Short TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -p10cr
+     [Tags]    negative    transactionID    nested    added-protection    p10cr
      Build With Too Short transactionID    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Too Short TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -ccr
+     [Tags]    negative    transactionID    nested    added-protection    ccr
      Build With Too Short transactionID    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Too Short TransactionID
@@ -1372,31 +1372,31 @@ CA MUST Reject ADDED-PROTECTION With Too Long TransactionID
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Too Long TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -ir
+     [Tags]    negative    transactionID    nested    added-protection    ir
      Build With Too Long transactionID    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Too Long TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -cr
+     [Tags]    negative    transactionID    nested    added-protection    cr
      Build With Too Long transactionID    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Too Long TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -kur
+     [Tags]    negative    transactionID    nested    added-protection    kur
      Build With Too Long transactionID    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Too Long TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -p10cr
+     [Tags]    negative    transactionID    nested    added-protection    p10cr
      Build With Too Long transactionID    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Too Long TransactionID
      [Documentation]    A PKIMessage **MUST** have a `transactionID` set which is 16-Bytes long.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    transactionID    nested    added-protection    -ccr
+     [Tags]    negative    transactionID    nested    added-protection    ccr
      Build With Too Long transactionID    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Too Long TransactionID
@@ -1486,31 +1486,31 @@ CA MUST Reject ADDED-PROTECTION Without MessageTime
 CA MUST Reject ADDED-PROTECTION-INNER-IR Without MessageTime
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -ir
+     [Tags]    negative    messageTime    nested    added-protection    ir
      Build Without messageTime    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR Without MessageTime
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -cr
+     [Tags]    negative    messageTime    nested    added-protection    cr
      Build Without messageTime    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR Without MessageTime
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -kur
+     [Tags]    negative    messageTime    nested    added-protection    kur
      Build Without messageTime    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR Without MessageTime
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -p10cr
+     [Tags]    negative    messageTime    nested    added-protection    p10cr
      Build Without messageTime    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR Without MessageTime
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -ccr
+     [Tags]    negative    messageTime    nested    added-protection    ccr
      Build Without messageTime    added-protection-inner-ccr
 
 CA MUST Reject BATCH Without MessageTime
@@ -1600,31 +1600,31 @@ CA MUST Reject ADDED-PROTECTION With MessageTime In Future
 CA MUST Reject ADDED-PROTECTION-INNER-IR With MessageTime In Future
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -ir
+     [Tags]    negative    messageTime    nested    added-protection    ir
      Build With MessageTime In Future    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With MessageTime In Future
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -cr
+     [Tags]    negative    messageTime    nested    added-protection    cr
      Build With MessageTime In Future    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With MessageTime In Future
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -kur
+     [Tags]    negative    messageTime    nested    added-protection    kur
      Build With MessageTime In Future    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With MessageTime In Future
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -p10cr
+     [Tags]    negative    messageTime    nested    added-protection    p10cr
      Build With MessageTime In Future    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With MessageTime In Future
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -ccr
+     [Tags]    negative    messageTime    nested    added-protection    ccr
      Build With MessageTime In Future    added-protection-inner-ccr
 
 CA MUST Reject BATCH With MessageTime In Future
@@ -1714,31 +1714,31 @@ CA MUST Reject ADDED-PROTECTION With MessageTime In Past
 CA MUST Reject ADDED-PROTECTION-INNER-IR With MessageTime In Past
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -ir
+     [Tags]    negative    messageTime    nested    added-protection    ir
      Build With MessageTime In Past    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With MessageTime In Past
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -cr
+     [Tags]    negative    messageTime    nested    added-protection    cr
      Build With MessageTime In Past    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With MessageTime In Past
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -kur
+     [Tags]    negative    messageTime    nested    added-protection    kur
      Build With MessageTime In Past    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With MessageTime In Past
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -p10cr
+     [Tags]    negative    messageTime    nested    added-protection    p10cr
      Build With MessageTime In Past    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With MessageTime In Past
      [Documentation]    A PKIMessage **MUST** have a `messageTime` which is sufficiently fresh.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    messageTime    nested    added-protection    -ccr
+     [Tags]    negative    messageTime    nested    added-protection    ccr
      Build With MessageTime In Past    added-protection-inner-ccr
 
 CA MUST Reject BATCH With MessageTime In Past
@@ -1828,31 +1828,31 @@ CA MUST Reject ADDED-PROTECTION With Invalid Sig Protection
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Invalid Sig Protection
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -ir
+     [Tags]    negative    sig    protection    nested    added-protection    ir
      Build With Bad Sig Protection    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Invalid Sig Protection
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -cr
+     [Tags]    negative    sig    protection    nested    added-protection    cr
      Build With Bad Sig Protection    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Invalid Sig Protection
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -kur
+     [Tags]    negative    sig    protection    nested    added-protection    kur
      Build With Bad Sig Protection    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Invalid Sig Protection
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -p10cr
+     [Tags]    negative    sig    protection    nested    added-protection    p10cr
      Build With Bad Sig Protection    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Invalid Sig Protection
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -ccr
+     [Tags]    negative    sig    protection    nested    added-protection    ccr
      Build With Bad Sig Protection    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Invalid Sig Protection
@@ -1942,31 +1942,31 @@ CA MUST Reject ADDED-PROTECTION Without extraCerts
 CA MUST Reject ADDED-PROTECTION-INNER-IR Without extraCerts
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -ir    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    ir    extraCerts
      Build Without extraCerts    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR Without extraCerts
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -cr    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    cr    extraCerts
      Build Without extraCerts    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR Without extraCerts
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -kur    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    kur    extraCerts
      Build Without extraCerts    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR Without extraCerts
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -p10cr    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    p10cr    extraCerts
      Build Without extraCerts    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR Without extraCerts
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -ccr    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    ccr    extraCerts
      Build Without extraCerts    added-protection-inner-ccr
 
 CA MUST Reject BATCH Without extraCerts
@@ -2056,31 +2056,31 @@ CA MUST Reject ADDED-PROTECTION Without Cert Chain
 CA MUST Reject ADDED-PROTECTION-INNER-IR Without Cert Chain
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -ir    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    ir    extraCerts
      Build Without Cert Chain    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR Without Cert Chain
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -cr    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    cr    extraCerts
      Build Without Cert Chain    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR Without Cert Chain
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -kur    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    kur    extraCerts
      Build Without Cert Chain    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR Without Cert Chain
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -p10cr    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    p10cr    extraCerts
      Build Without Cert Chain    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR Without Cert Chain
      [Documentation]    A PKIMessage **MUST** contain the complete cert chain and be valid protected.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    protection    nested    added-protection    -ccr    extraCerts
+     [Tags]    negative    sig    protection    nested    added-protection    ccr    extraCerts
      Build Without Cert Chain    added-protection-inner-ccr
 
 CA MUST Reject BATCH Without Cert Chain
@@ -2170,31 +2170,31 @@ CA MUST Reject ADDED-PROTECTION With Protection without Algorithm
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Protection without Algorithm
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    nested    added-protection    -ir
+     [Tags]    negative    inconsistent    protection    nested    added-protection    ir
      Build With Protection Without Alg    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Protection without Algorithm
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    nested    added-protection    -cr
+     [Tags]    negative    inconsistent    protection    nested    added-protection    cr
      Build With Protection Without Alg    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Protection without Algorithm
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    nested    added-protection    -kur
+     [Tags]    negative    inconsistent    protection    nested    added-protection    kur
      Build With Protection Without Alg    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Protection without Algorithm
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    nested    added-protection    -p10cr
+     [Tags]    negative    inconsistent    protection    nested    added-protection    p10cr
      Build With Protection Without Alg    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Protection without Algorithm
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    nested    added-protection    -ccr
+     [Tags]    negative    inconsistent    protection    nested    added-protection    ccr
      Build With Protection Without Alg    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Protection without Algorithm
@@ -2284,31 +2284,31 @@ CA MUST Reject ADDED-PROTECTION With Sig Algorithm without Protection
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Sig Algorithm without Protection
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    -ir
+     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    ir
      Build With Sig Alg Without Protection    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Sig Algorithm without Protection
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    -cr
+     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    cr
      Build With Sig Alg Without Protection    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Sig Algorithm without Protection
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    -kur
+     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    kur
      Build With Sig Alg Without Protection    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Sig Algorithm without Protection
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    -p10cr
+     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    p10cr
      Build With Sig Alg Without Protection    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Sig Algorithm without Protection
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    -ccr
+     [Tags]    negative    inconsistent    protection    sig    nested    added-protection    ccr
      Build With Sig Alg Without Protection    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Sig Algorithm without Protection
@@ -2374,19 +2374,19 @@ CA MUST Reject GENM With MAC Algorithm without Protection
 CA MUST Reject ADDED-PROTECTION-INNER-IR With MAC Algorithm without Protection
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    mac    nested    added-protection    -ir
+     [Tags]    negative    inconsistent    protection    mac    nested    added-protection    ir
      Build With MAC Alg Without Protection    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With MAC Algorithm without Protection
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    mac    nested    added-protection    -cr
+     [Tags]    negative    inconsistent    protection    mac    nested    added-protection    cr
      Build With MAC Alg Without Protection    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With MAC Algorithm without Protection
      [Documentation]    A PKIMessage **MUST** either be correctly protected with a signature or a MAC, or not at all.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    inconsistent    protection    mac    nested    added-protection    -p10cr
+     [Tags]    negative    inconsistent    protection    mac    nested    added-protection    p10cr
      Build With MAC Alg Without Protection    added-protection-inner-p10cr
 
 CA MUST Reject BATCH_INNER_IR With MAC Algorithm without Protection
@@ -2458,31 +2458,31 @@ CA MUST Reject ADDED-PROTECTION With Invalid Sig Sender
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Invalid Sig Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -ir
+     [Tags]    negative    sig    sender    nested    added-protection    ir
      Build With Bad Sig Sender    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Invalid Sig Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -cr
+     [Tags]    negative    sig    sender    nested    added-protection    cr
      Build With Bad Sig Sender    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Invalid Sig Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -kur
+     [Tags]    negative    sig    sender    nested    added-protection    kur
      Build With Bad Sig Sender    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Invalid Sig Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -p10cr
+     [Tags]    negative    sig    sender    nested    added-protection    p10cr
      Build With Bad Sig Sender    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Invalid Sig Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -ccr
+     [Tags]    negative    sig    sender    nested    added-protection    ccr
      Build With Bad Sig Sender    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Invalid Sig Sender
@@ -2572,31 +2572,31 @@ CA MUST Reject ADDED-PROTECTION With Issuer As Sender
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Issuer As Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -ir
+     [Tags]    negative    sig    sender    nested    added-protection    ir
      Build With Bad Issuer As Sender    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Issuer As Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -cr
+     [Tags]    negative    sig    sender    nested    added-protection    cr
      Build With Bad Issuer As Sender    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Issuer As Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -kur
+     [Tags]    negative    sig    sender    nested    added-protection    kur
      Build With Bad Issuer As Sender    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Issuer As Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -p10cr
+     [Tags]    negative    sig    sender    nested    added-protection    p10cr
      Build With Bad Issuer As Sender    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Issuer As Sender
      [Documentation]    A signature protected PKIMessage **MUST** have the `sender` field set to the `subject`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    sender    nested    added-protection    -ccr
+     [Tags]    negative    sig    sender    nested    added-protection    ccr
      Build With Bad Issuer As Sender    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Issuer As Sender
@@ -2686,31 +2686,31 @@ CA MUST Reject ADDED-PROTECTION With Invalid SKI SenderKID
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Invalid SKI SenderKID
      [Documentation]    A signature protected PKIMessage **MUST** have the senderKID set the SKI of the protection cert, if present.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    senderKID    nested    added-protection    -ir
+     [Tags]    negative    sig    senderKID    nested    added-protection    ir
      Build With Bad Sig SenderKID    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Invalid SKI SenderKID
      [Documentation]    A signature protected PKIMessage **MUST** have the senderKID set the SKI of the protection cert, if present.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    senderKID    nested    added-protection    -cr
+     [Tags]    negative    sig    senderKID    nested    added-protection    cr
      Build With Bad Sig SenderKID    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-KUR With Invalid SKI SenderKID
      [Documentation]    A signature protected PKIMessage **MUST** have the senderKID set the SKI of the protection cert, if present.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    senderKID    nested    added-protection    -kur
+     [Tags]    negative    sig    senderKID    nested    added-protection    kur
      Build With Bad Sig SenderKID    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Invalid SKI SenderKID
      [Documentation]    A signature protected PKIMessage **MUST** have the senderKID set the SKI of the protection cert, if present.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    senderKID    nested    added-protection    -p10cr
+     [Tags]    negative    sig    senderKID    nested    added-protection    p10cr
      Build With Bad Sig SenderKID    added-protection-inner-p10cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR With Invalid SKI SenderKID
      [Documentation]    A signature protected PKIMessage **MUST** have the senderKID set the SKI of the protection cert, if present.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    sig    senderKID    nested    added-protection    -ccr
+     [Tags]    negative    sig    senderKID    nested    added-protection    ccr
      Build With Bad Sig SenderKID    added-protection-inner-ccr
 
 CA MUST Reject BATCH With Invalid SKI SenderKID
@@ -2776,19 +2776,19 @@ CA MUST Reject GENM With Invalid MAC Sender
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Invalid MAC Sender
      [Documentation]    A MAC protected PKIMessage **MUST** have the `sender` field set to the `directoryName` choice.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    sender    nested    added-protection    -ir
+     [Tags]    negative    mac    sender    nested    added-protection    ir
      Build With Bad MAC Sender Choice    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Invalid MAC Sender
      [Documentation]    A MAC protected PKIMessage **MUST** have the `sender` field set to the `directoryName` choice.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    sender    nested    added-protection    -cr
+     [Tags]    negative    mac    sender    nested    added-protection    cr
      Build With Bad MAC Sender Choice    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Invalid MAC Sender
      [Documentation]    A MAC protected PKIMessage **MUST** have the `sender` field set to the `directoryName` choice.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    sender    nested    added-protection    -p10cr
+     [Tags]    negative    mac    sender    nested    added-protection    p10cr
      Build With Bad MAC Sender Choice    added-protection-inner-p10cr
 
 CA MUST Reject BATCH_INNER_IR With Invalid MAC Sender
@@ -2836,19 +2836,19 @@ CA MUST Reject GENM Which is Invalid Protected
 CA MUST Reject ADDED-PROTECTION-INNER-IR Which is Invalid Protected
      [Documentation]    A MAC protected PKIMessage **MUST** have the `sender` field set to the `directoryName` choice.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    sender    nested    added-protection    -ir
+     [Tags]    negative    mac    sender    nested    added-protection    ir
      Build Bad MAC Protected Message    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR Which is Invalid Protected
      [Documentation]    A MAC protected PKIMessage **MUST** have the `sender` field set to the `directoryName` choice.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    sender    nested    added-protection    -cr
+     [Tags]    negative    mac    sender    nested    added-protection    cr
      Build Bad MAC Protected Message    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR Which is Invalid Protected
      [Documentation]    A MAC protected PKIMessage **MUST** have the `sender` field set to the `directoryName` choice.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    sender    nested    added-protection    -p10cr
+     [Tags]    negative    mac    sender    nested    added-protection    p10cr
      Build Bad MAC Protected Message    added-protection-inner-p10cr
 
 CA MUST Reject BATCH_INNER_IR Which is Invalid Protected
@@ -2896,19 +2896,19 @@ CA MUST Reject GENM With Bad MAC SenderKID
 CA MUST Reject ADDED-PROTECTION-INNER-IR With Bad MAC SenderKID
      [Documentation]    A MAC protected PKIMessage **MUST** have the `sender` field set to the `directoryName` choice.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    senderKID    nested    added-protection    -ir
+     [Tags]    negative    mac    senderKID    nested    added-protection    ir
      Build With Bad MAC SenderKID    added-protection-inner-ir
 
 CA MUST Reject ADDED-PROTECTION-INNER-CR With Bad MAC SenderKID
      [Documentation]    A MAC protected PKIMessage **MUST** have the `sender` field set to the `directoryName` choice.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    senderKID    nested    added-protection    -cr
+     [Tags]    negative    mac    senderKID    nested    added-protection    cr
      Build With Bad MAC SenderKID    added-protection-inner-cr
 
 CA MUST Reject ADDED-PROTECTION-INNER-P10CR With Bad MAC SenderKID
      [Documentation]    A MAC protected PKIMessage **MUST** have the `sender` field set to the `directoryName` choice.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    senderKID    nested    added-protection    -p10cr
+     [Tags]    negative    mac    senderKID    nested    added-protection    p10cr
      Build With Bad MAC SenderKID    added-protection-inner-p10cr
 
 CA MUST Reject BATCH_INNER_IR With Bad MAC SenderKID
@@ -2956,13 +2956,13 @@ CA MUST Reject BATCH_INNER_KUR Which Is MAC Protected
 CA MUST Reject ADDED-PROTECTION-INNER-KUR Which Is MAC Protected
      [Documentation]    A MAC protected PKIMessage is not allowed for a `rr` or `kur`,`ccr` and `nested` messages.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    nested    added-protection    -kur
+     [Tags]    negative    mac    nested    added-protection    kur
      Build Not Allowed MAC-Protected Message    added-protection-inner-kur
 
 CA MUST Reject ADDED-PROTECTION-INNER-CCR Which Is MAC Protected
      [Documentation]    A MAC protected PKIMessage is not allowed for a `rr` or `kur`,`ccr` and `nested` messages.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    mac    nested    added-protection    -ccr
+     [Tags]    negative    mac    nested    added-protection    ccr
      Build Not Allowed MAC-Protected Message    added-protection-inner-ccr
 
 CA MUST Reject CCR Which Is MAC Protected
@@ -3034,31 +3034,31 @@ CA MUST Return For NEG ADDED-PROTECTION A Valid PKIHeader
 CA MUST Return For NEG ADDED-PROTECTION-INNER-IR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    PKIHeader    nested    added-protection    -ir
+     [Tags]    negative    PKIHeader    nested    added-protection    ir
      Build Message For Negative Header Validation    added-protection-inner-ir
 
 CA MUST Return For NEG ADDED-PROTECTION-INNER-CR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    PKIHeader    nested    added-protection    -cr
+     [Tags]    negative    PKIHeader    nested    added-protection    cr
      Build Message For Negative Header Validation    added-protection-inner-cr
 
 CA MUST Return For NEG ADDED-PROTECTION-INNER-KUR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    PKIHeader    nested    added-protection    -kur
+     [Tags]    negative    PKIHeader    nested    added-protection    kur
      Build Message For Negative Header Validation    added-protection-inner-kur
 
 CA MUST Return For NEG ADDED-PROTECTION-INNER-P10CR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    PKIHeader    nested    added-protection    -p10cr
+     [Tags]    negative    PKIHeader    nested    added-protection    p10cr
      Build Message For Negative Header Validation    added-protection-inner-p10cr
 
 CA MUST Return For NEG ADDED-PROTECTION-INNER-CCR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    negative    PKIHeader    nested    added-protection    -ccr
+     [Tags]    negative    PKIHeader    nested    added-protection    ccr
      Build Message For Negative Header Validation    added-protection-inner-ccr
 
 CA MUST Return For NEG BATCH A Valid PKIHeader
@@ -3148,31 +3148,31 @@ CA MUST Return For POS ADDED-PROTECTION A Valid PKIHeader
 CA MUST Return For POS ADDED-PROTECTION-INNER-IR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    positive    PKIHeader    nested    added-protection    -ir
+     [Tags]    positive    PKIHeader    nested    added-protection    ir
      Build Message For Positive Header Validation    added-protection-inner-ir
 
 CA MUST Return For POS ADDED-PROTECTION-INNER-CR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    positive    PKIHeader    nested    added-protection    -cr
+     [Tags]    positive    PKIHeader    nested    added-protection    cr
      Build Message For Positive Header Validation    added-protection-inner-cr
 
 CA MUST Return For POS ADDED-PROTECTION-INNER-KUR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    positive    PKIHeader    nested    added-protection    -kur
+     [Tags]    positive    PKIHeader    nested    added-protection    kur
      Build Message For Positive Header Validation    added-protection-inner-kur
 
 CA MUST Return For POS ADDED-PROTECTION-INNER-P10CR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    positive    PKIHeader    nested    added-protection    -p10cr
+     [Tags]    positive    PKIHeader    nested    added-protection    p10cr
      Build Message For Positive Header Validation    added-protection-inner-p10cr
 
 CA MUST Return For POS ADDED-PROTECTION-INNER-CCR A Valid PKIHeader
      [Documentation]    A PKIMessage **MUST** have a valid `PKIHeader`.
      ...    Ref: RFC 9483, Section 3.1.
-     [Tags]    positive    PKIHeader    nested    added-protection    -ccr
+     [Tags]    positive    PKIHeader    nested    added-protection    ccr
      Build Message For Positive Header Validation    added-protection-inner-ccr
 
 CA MUST Return For POS BATCH A Valid PKIHeader

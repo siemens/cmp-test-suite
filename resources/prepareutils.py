@@ -83,7 +83,20 @@ def parse_common_name_from_str(common_name: str) -> x509.Name:
     if "=" not in common_name:
         raise ValueError("The common name must contain at least one attribute, e.g., 'CN=Joe Mustermann'")
 
-    return x509.Name.from_rfc4514_string(data=common_name.replace(", ", ","))
+    try:
+        # Returns an empty `ValueError` if this function fails.
+        return x509.Name.from_rfc4514_string(data=common_name.replace(", ", ","))
+    except ValueError as e:
+        # The type is included in the error message to help debugging.
+        # Because the parsing might be wrong with the RF and automatically
+        # changes the rfc9480.Name to a string.
+        # If this happens, update the typing of the python function to
+        # `Union[str, rfc9480.Name]` to allow the string to be passed and the
+        # rfc9480.Name.
+        raise ValueError(
+            f"Failed to parse common name from string: (type: {type(common_name)}{common_name}. "
+            f"Ensure it is in OpenSSL notation, e.g., 'C=DE,ST=Bavaria,L= Munich,CN=Joe Mustermann'."
+        ) from e
 
 
 # TODO Talk to alex about updating for CertDiscovery ?

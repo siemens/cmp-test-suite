@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from pathlib import Path
 
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from pyasn1_alt_modules import rfc5280
@@ -139,7 +140,7 @@ class TestCmpUtils(unittest.TestCase):
         THEN the CR is correctly built.
         """
         csr = self.csr_object
-        raw_key = open("data/keys/private-key-rsa.pem", "rb").read()
+        raw_key = Path("data/keys/private-key-rsa.pem").read_bytes()
         private_key = load_pem_private_key(raw_key, password=None)
         pki_message = cmputils.build_cr_from_csr(csr, private_key, hash_alg="sha256", cert_req_id=1945)
         # print(pki_message.prettyPrint())

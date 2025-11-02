@@ -503,7 +503,7 @@ class ProtectionHandler:
         if "kmac" in name:
             pwd, _ = get_password_in_size("kmac", self._prot_config.pre_shared_secret, name.replace("kmac-", ""))
         else:
-            print("Using the default password.", name)
+            logging.debug("Using the default password.", name)
             pwd, _ = get_password_in_size(name, self._prot_config.pre_shared_secret)
 
         return pwd

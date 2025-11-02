@@ -266,7 +266,7 @@ class RevocationHandler:
         )
 
         status_info = get_pkistatusinfo(response)
-        print("Self Revive Status: ", display_pki_status_info(status_info))
+        logging.debug("Self Revive Status: ", display_pki_status_info(status_info))
 
         revive_certs = self._process_revive_response(response, [cert])
         return response, revive_certs

@@ -123,7 +123,7 @@ def sign_csr(  # noqa D417 undocumented-param
     other_key: Optional[SignKey] = None,
     bad_pop: bool = False,
     **kwargs,
-):
+) -> rfc6402.CertificationRequest:
     """Sign a `pyasn1` `CertificationRequest` (CSR).
 
     The `signatureAlgorithm` and the signature will be populated. The signature algorithm is populated based on the
@@ -312,7 +312,7 @@ def build_csr(  # noqa D417 undocumented-param
 
 @not_keyword
 def generate_signed_csr(  # noqa D417 undocumented-param
-    common_name: str, key: Union[SignKey, str, None] = None, return_as_pem: bool = True, **params
+    common_name: Union[str, rfc9480.Name], key: Union[SignKey, str, None] = None, return_as_pem: bool = True, **params
 ) -> Tuple[Union[bytes, rfc6402.CertificationRequest], SignKey]:
     """Generate signed CSR for a given common name (CN).
 
@@ -1011,7 +1011,7 @@ def sign_cert(  # noqa: D417 Missing argument descriptions in the docstring
 @not_keyword
 def generate_certificate(
     private_key: Union[str, PrivateKey],
-    common_name: str = "CN=Hans Mustermann",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
     hash_alg: Union[None, str] = "sha256",
     ski: Optional[bool] = False,
     serial_number: Optional[Strint] = None,
@@ -1079,7 +1079,7 @@ def generate_certificate(
 
 def build_certificate(  # noqa D417 undocumented-param
     private_key: Optional[Union[str, PrivateKey]] = None,
-    common_name: str = "CN=Hans",
+    common_name: Union[str, rfc9480.Name] = "CN=Hans",
     hash_alg: str = "sha256",
     include_ski: bool = False,
     ca_key: Optional[SignKey] = None,
@@ -1218,11 +1218,29 @@ def modify_common_name_cert(  # noqa D417 undocumented-param
     return data[0:-1]
 
 
+def _prepare_name_obj(cm: Union[str, rfc9480.Name], tagged_name: rfc9480.Name) -> rfc9480.Name:
+    """Prepare a `pyasn1` Name object from a string or an existing Name object.
+
+    :param cm: The common name in OpenSSL notation or an existing `rfc5280.Name` object.
+    :param tagged_name: The target `rfc5280.Name` object to populate.
+    :return: The populated `rfc5280.Name` object.
+    """
+    if isinstance(cm, str):
+        tmp_name = prepareutils.prepare_name(common_name=cm, target=tagged_name)
+    elif isinstance(cm, rfc5280.Name):
+        tmp_name = cm
+    else:
+        raise TypeError(f"Expected str or rfc9480.Name, got {type(cm)}")
+
+    tagged_name["rdnSequence"] = tmp_name["rdnSequence"]
+    return tagged_name
+
+
 def _prepare_issuer_and_subject(
     cert_template: rfc9480.CertTemplate,
     exclude_list: List[str],
-    subject: Optional[str] = None,
-    issuer: Optional[str] = None,
+    subject: Optional[Union[str, rfc9480.Name]] = None,
+    issuer: Optional[Union[str, rfc9480.Name]] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
 ) -> rfc9480.CertTemplate:
     """Populate the issuer and subject fields of a certificate template.
@@ -1240,13 +1258,13 @@ def _prepare_issuer_and_subject(
 
     if subject and "subject" not in exclude_list:
         subject_obj = rfc5280.Name().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 5))
-        subject_obj = prepareutils.prepare_name(common_name=subject, target=subject_obj)
+        subject_obj = _prepare_name_obj(subject, subject_obj)
         cert_template.setComponentByName("subject", subject_obj)
 
     if issuer and "issuer" not in exclude_list:
         issuer_obj = rfc5280.Name().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 3))
-        issuer_obj = prepareutils.prepare_name(common_name=issuer, target=issuer_obj)
-        cert_template.setComponentByName("issuer", issuer_obj)
+        issuer_obj = _prepare_name_obj(issuer, issuer_obj)
+        cert_template["issuer"] = issuer_obj
 
     return cert_template
 
@@ -1290,8 +1308,8 @@ def _prepare_extensions_for_cert_template(
 @keyword(name="Prepare CertTemplate")
 def prepare_cert_template(  # noqa D417 undocumented-param
     key: Optional[Union[typingutils.PrivateKey, typingutils.PublicKey]] = None,
-    subject: Optional[str] = None,
-    issuer: Optional[str] = None,
+    subject: Optional[Union[str, rfc9480.Name]] = None,
+    issuer: Optional[Union[str, rfc9480.Name]] = None,
     include_fields: Optional[str] = None,
     exclude_fields: str = "validity",
     serial_number: Optional[typingutils.Strint] = None,
@@ -2032,7 +2050,7 @@ def build_cert_from_csr(  # noqa D417 undocumented-param
 
 @not_keyword
 def prepare_tbs_certificate(
-    subject: str,
+    subject: Union[str, rfc9480.Name],
     signing_key: SignKey,
     public_key: typingutils.PublicKey,
     serial_number: Optional[int] = None,
@@ -2061,7 +2079,7 @@ def prepare_tbs_certificate(
     :param spki: Optional `SubjectPublicKeyInfo` to use instead of deriving from the public key.
     :return: `rfc5280.TBSCertificate` object configured with the provided parameters.
     """
-    subject_obj = prepareutils.prepare_name(subject)
+    subject_obj = _parse_common_name(common_name=subject, subject=True)
     if issuer_cert is None:
         issuer = subject_obj
     else:
