@@ -36,6 +36,18 @@ jobs:
       - name: License check (reuse)
         run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" reuse lint
 
+  rf-run-able:
+    needs: prepare_env
+    runs-on: ubuntu-22.04
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: RobotFramework run-ability check
+        run: |
+          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" \
+            make dryrun
+
   rf_style_check:
     needs: prepare_env
     runs-on: ubuntu-22.04
