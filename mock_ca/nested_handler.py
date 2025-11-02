@@ -177,10 +177,8 @@ class NestedHandler:
         request2 = parse_pkimessage(der_data2)
 
         cert_conf_nonces = False
-        print("called", "_check_nonces_depth")
-        print(len(request["body"]["nested"]))
-        print((request["body"]["nested"][0]["body"].getName()))
-        # print(request["body"]["nested"][0]["body"].prettyPrint())
+        logging.info("called", "_check_nonces_depth")
+        logging.info(len(request["body"]["nested"]))
 
         for entry in request2["body"]["nested"]:
             if entry["body"].getName() == "nested":

@@ -55,6 +55,7 @@ from resources.ca_ra_utils import (
     build_cp_cmp_message,
     build_ip_cmp_message,
     get_popo_from_pkimessage,
+    validate_cert_req_id_nums,
 )
 from resources.certbuildutils import (
     build_certificate,
@@ -959,6 +960,7 @@ class CAHandler:
 
                 self.hybrid_handler.chameleon_handler.is_delta_key_revoked(request=pki_message)
 
+                validate_cert_req_id_nums(pki_message)
                 response, paired_cert, delta_cert = build_chameleon_from_p10cr(
                     request=pki_message,
                     ca_cert=self.ca_cert,
@@ -1089,7 +1091,7 @@ class CAHandler:
                 "The newly issued certificate can either be implicit confirmed ormust be confirmed, but not both."
             )
 
-        print("Issued certs is confined:", issued_cert is not None)
+        logging.debug("Issued certs is confined:", issued_cert is not None)
 
         self._after_request(
             request_msg=pki_message,
@@ -1253,6 +1255,7 @@ class CAHandler:
         result = find_oid_in_general_info(pki_message, str(rfc9480.id_it_implicitConfirm))
 
         try:
+            validate_cert_req_id_nums(pki_message)
             self.validate_p10cr_public_key(pki_message)
             related_cert = validate_multi_auth_binding_csr(
                 pki_message["body"]["p10cr"],
@@ -1315,6 +1318,8 @@ class CAHandler:
             if body_name == "certConf":
                 return self.process_cert_conf(pki_message)
 
+            validate_cert_req_id_nums(pki_message)
+
             response, certs = build_catalyst_signed_cert_from_req(
                 request=pki_message,
                 ca_cert=self.ca_cert,
@@ -1344,6 +1349,7 @@ class CAHandler:
             if body_name == "certConf":
                 return self.process_cert_conf(pki_message)
 
+            validate_cert_req_id_nums(pki_message)
             response, cert = build_cert_from_catalyst_request(
                 request=pki_message,
                 ca_cert=self.ca_cert,
@@ -1488,7 +1494,7 @@ def get_cert(serial_number):
 def get_pubkey(serial_number):
     """Get the Sun-Hybrid public key for the specified serial number."""
     serial_number = int(serial_number)
-    print(state.sun_hybrid_state.sun_hybrid_pub_keys.keys())
+    logging.debug(state.sun_hybrid_state.sun_hybrid_pub_keys.keys())
     pub_key = state.sun_hybrid_state.sun_hybrid_pub_keys.get(serial_number)
 
     if pub_key is None:

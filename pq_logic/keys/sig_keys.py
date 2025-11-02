@@ -622,7 +622,6 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
                 self._sig_method = oqs.Signature(SLH_DSA_LIBOQS_NAME_MAP[self.name], secret_key=self._private_key_bytes)
                 if self._private_key_bytes is None and self._seed is None:
                     logging.info("Generate SLH-DSA keypair with `liboqs`")
-                    print("Generate SLH-DSA keypair with `liboqs`")
                     self._public_key_bytes = self._sig_method.generate_keypair()
                     self._private_key_bytes = self._sig_method.export_secret_key()
                     seed_size = self._seed_size(self.name)

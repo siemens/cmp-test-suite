@@ -197,8 +197,25 @@ Load Verbose PQ Stateful Sig Keys
 
 
 Set Up CRR Test Cases
-    [Documentation]    Set up the test cases for the CMP test cases.
-    Set Up Test Suite
+    [Documentation]    Prepare the environment variables for the Cross-Certification Request (CRR) tests.
+    ...                By loading the trusted CA credentials and chain. Is required to correctly protect a
+    ...                `PKIMessage` with the trusted CA certificate and key, so that a CRR certificate can
+    ...                be issued.
+    ...
+    ...                Notes:
+    ...                -----
+    ...                - The trusted CA certificate and key are loaded from the configuration file.
+    ...                - Variables `TRUSTED_CA_CERT`, `TRUSTED_CA_KEY`, and `TRUSTED_CA_KEY_PASSWORD`.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `Error`: When the trusted CA certificate or key cannot be loaded.
+    ...
+    ...               Examples:
+    ...               --------
+    ...               | Set Up CRR Test Cases |
+    ...
+    [Tags]    setup  trust   ccr
     ${cert}=   May Load Cert   ${TRUSTED_CA_CERT}
     ${key}=    Load Private Key From File    ${TRUSTED_CA_KEY}   password=${TRUSTED_CA_KEY_PASSWORD}
     VAR   ${TRUSTED_CA_CERT_OBJ}    ${cert}  scope=Global
@@ -207,8 +224,26 @@ Set Up CRR Test Cases
     VAR   ${TRUSTED_CA_CERT_CHAIN}   ${cert_chain}   scope=Global
 
 Set UP Trusted PKI RA Cert Chain
-    [Documentation]    Set up the test environment
-    [Tags]    setup  trust
+    [Documentation]    Load the trusted PKI RA certificate chain into global variables.
+    ...                Use when tests rely on a preexisting RA certificate chain. As an example, the
+    ...                nested PKIMessage tests require to be protected by a trusted PKI RA certificate chain,
+    ...                or the POPO `raVerified` option requires a trusted RA certificate to have established
+    ...                a trust relationship with sender.
+    ...
+    ...                Notes:
+    ...                ----
+    ...                - The trusted PKI RA certificate chain is loaded from the configuration file.
+    ...                - Variables `OTHER_TRUSTED_PKI_CERT`, `OTHER_TRUSTED_PKI_KEY`, and `RA_CERT_CHAIN_PATH`.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - Error: When the RA certificate chain cannot be loaded.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | Set Up Trusted PKI RA Cert Chain |
+    ...
+    [Tags]    setup  trust   RA
     ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${OTHER_TRUSTED_PKI_KEY}
     IF  ${is_file}
         ${der_cert}=    Load And Decode PEM File    ${OTHER_TRUSTED_PKI_CERT}
@@ -245,6 +280,29 @@ Load And Refresh PKIMessage From File
     [Documentation]    Load a PKIMessage from a PEM file, update its transactionId and messageTime, and return it
     ...    as a pyasn1 object. This is useful when sending previously sent messages, the CA will reject
     ...    them if the time is not fresh or if the transactionId is not unique.
+    ...
+    ...            Arguments:
+    ...            ---------
+    ...            - `path` (string): PEM file path.
+    ...            - `transaction_id` (bytes): New transaction ID. Default to `None`, which means a 16-byte random value.
+    ...            - `message_time` (datetime): New message time. Default to `None`, which means \
+    ...            the current time will be used.
+    ...
+    ...            Returns:
+    ...            -------
+    ...            - The updated/loaded PKIMessage object.
+    ...
+    ...            Raises:
+    ...            ------
+    ...            - `FileNotFoundError`: When the PEM file is missing.
+    ...            - `ValueError`: When the file content cannot be parsed as a PKIMessage.
+    ...
+    ...            Examples:
+    ...            --------
+    ...            | ${pki_message}= | Load And Refresh PKIMessage From File | ${path} |
+    ...            | ${pki_message}= | Load And Refresh PKIMessage From File | ${path} |  0x001122 |
+    ...            | ${pki_message}= | Load And Refresh PKIMessage From File | ${path} | ${transaction_id} | ${message_time} |
+    ...
     [Arguments]    ${path}    ${transaction_id}=${NONE}    ${message_time}=${NONE}
     ${raw}=    Load And Decode Pem File    ${path}
     ${pki_message}=    Parse PKIMessage    ${raw}
@@ -254,8 +312,21 @@ Load And Refresh PKIMessage From File
     RETURN    ${pki_message}
 
 Generate CSR With RSA2048 And A Predefined Common Name
-    [Documentation]    Produce a generic, valid CSR that has a correct signature
-    ${key}=    Generate Key    rsa    length=2048
+    [Documentation]    Generate an RSA‑2048 key and produce a signed CSR with the default subject name.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The signed RSA CSR object.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `valueError`: When the key generation.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${csr_signed}= | Generate CSR With RSA2048 And A Predefined Common Name |
+    ...
+    ${key}=    Generate Unique Key    rsa    length=2048
     ${csr}=    Build CSR    ${DEFAULT_X509NAME}    exclude_signature=True
     ${csr_signed}=    Sign CSR    ${csr}    ${key}
     Log    ${csr_signed}
@@ -264,12 +335,42 @@ Generate CSR With RSA2048 And A Predefined Common Name
 Load And Parse Example CSR
     [Documentation]    Load a CSR from a PEM file, and return it as a pyasn1 object. This is for convenience, to remove
     ...    the need to generate a new keypair.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The parsed `pyasn1` CSR object.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `FileNotFoundError`: When the example CSR file is missing.
+    ...                - `ValueError`: When the CSR cannot be parsed.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${parsed_csr}= | Load And Parse Example CSR |
+    ...
+    [Tags]    csr  setup  predefined
     ${csr}=    Load And Decode Pem File    data/example-csr.pem
     ${parsed_csr}=    Parse Csr    ${csr}
     RETURN    ${parsed_csr}
 
 Exchange Data With CA
     [Documentation]    Send a HTTP POST request to a server, and return the response.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - payload (bytes): Data to send in the request.
+    ...                - url (string): Target CMP endpoint. Defaults to `${CA_CMP_URL}`.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The response from the server, which is a `requests.Response` object.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response}= | Exchange Data With CA | ${payload} | ${url} |
+    ...
+    [Tags]    exchange    http
     [Arguments]    ${payload}    ${url}=${CA_CMP_URL}
     #    Run Keyword And Ignore Error    Try to Log PKIMessage as ASN1    ${payload}
     Try To Log PKIMessage    ${payload}
@@ -286,6 +387,21 @@ Exchange Data With CA
 
 Sender And Recipient Nonces Must Match
     [Documentation]    Ensure that the recipient nonce in the response matches the sender nonce in the request
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `request` (PKIMessage): Original request message.
+    ...                - `response` (PKIMessage): Response message from the server.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - AssertionError: When the nonces differ.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | Sender And Recipient Nonces Must Match | ${request} | ${response} |
+    ...
+    [Tags]    nonce
     [Arguments]    ${request}    ${response}
     ${request_nonce}=    Get Asn1 Value As Bytes    ${request}    header.senderNonce
     ${response_nonce}=    Get Asn1 Value As Bytes    ${response}    header.recipNonce
@@ -294,6 +410,22 @@ Sender And Recipient Nonces Must Match
 Response Time Must Be Fresh
     [Documentation]    Ensure that the response time is not far off from the time of our request
     ...    The tolerance is given in seconds, and defaults to 120 (i.e., 2 minutes)
+    ...                Arguments:
+    ...                ---------
+    ...                - `request` (PKIMessage): Sent message.
+    ...                - `response` (PKIMessage): Received message.
+    ...                - `tolerance` (str, int): Allowed difference in seconds. Defaults to `120` seconds.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `AssertionError`: When the time difference exceeds the tolerance.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | Response Time Must Be Fresh | ${request} | ${response} |
+    ...                | Response Time Must Be Fresh | ${request} | ${response} | 60 |
+    ...
+    [Tags]    time
     [Arguments]    ${request}    ${response}    ${tolerance}=${120}
     ${request_time}=    Get Asn1 Value As Datetime    ${request}    header.messageTime
     ${response_time}=    Get Asn1 Value As Datetime    ${response}    header.messageTime
@@ -304,8 +436,21 @@ Response Time Must Be Fresh
 
 SenderNonce Must Be At Least 128 Bits Long
     [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
-    ...    Ref: 3.1. General Description of the CMP Message Header
-    [Tags]    crypto
+    ...    Ref: 3.1. General Description of the CMP Message Header.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message` (PKIMessage): Message to validate.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `AssertionError`: When the nonce is shorter than 16 bytes.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | SenderNonce Must Be At Least 128 Bits Long | ${pki_message} |
+    ...
+    [Tags]    crypto  nonce
     [Arguments]    ${pki_message}
     ${sender_nonce}=    Get Asn1 Value As Bytes    ${pki_message}    header.senderNonce
     # Use this to provoke a failure, by deliberately requesting a nonce that is longer than really needed
@@ -321,22 +466,37 @@ Certificate Must Be Valid
     ...    is treated as an error. PKILint is very picky and will find issues even if a certificate
     ...    is accepted by OpenSSL. PKILint's findings will be logged and reported as warnings - making
     ...    it clear that there's something of interest, but not failing the test.
-    [Arguments]    ${der_certificate}
-    Log Base64    ${der_certificate}
+    ...
+    ...    Arguments:
+    ...    ---------
+    ...    - `cert` (bytes, CMPCertificate): The DER-encoded certificate or `CMPCertificate` object to validate.
+    ...
+    ...    Examples:
+    ...    --------
+    ...    | Certificate Must Be Valid | ${cert} |
+    ...
+    [Tags]    cert   validate
+    [Arguments]    ${cert}
+    Log Base64    ${cert}
     # If OpenSSL complains, we fail the test
-    Validate Certificate OpenSSL    ${der_certificate}
+    Validate Certificate OpenSSL    ${cert}
     # Use PKILint to check the certificate for issues, https://github.com/digicert/pkilint
     # If PKILint complains, we log a warning, but keep going
     Run Keyword And Warn On Failure
-    ...    Validate Certificate PKILint    ${der_certificate}
+    ...    Validate Certificate PKILint    ${cert}
 
 Validate Certificate Was Issued For Expected Alg
     [Documentation]    Validate that the certificate was issued for the expected algorithm.
     ...
     ...                Arguments:
-    ...                - `${response}`: The PKIMessage response.
-    ...                - `${expected_alg}`: The expected algorithm identifier (e.g., 'ml-dsa-44').
-    ...                - `${index}`: The index of the certificate in the PKIMessage. Defaults to `0`.
+    ...                ---------
+    ...                - `response` (PKIMessage): The PKIMessage response.
+    ...                - `expected_alg` (str): The expected algorithm identifier (e.g., 'ml-dsa-44').
+    ...                - `index` (str, int): The index of the certificate in the PKIMessage. Defaults to `0`.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `ValueError`: When the algorithm does not match.
     ...
     ...                Examples:
     ...                | Validate Certificate Was Issued For Expected Alg | ${response} | ml-dsa-44 |
@@ -347,28 +507,52 @@ Validate Certificate Was Issued For Expected Alg
     Validate Migration OID In Certificate    ${cert}    ${expected_alg}
 
 Generate Key And CSR
-    [Documentation]    This function generates a fresh Certificate Signing Request (CSR) and key, returning the
-    ...                DER-formatted data and the key.
+    [Documentation]    Generate a fresh private key and a signed Certificate Signing Request (CSR)
+    ...                for the given algorithm and subject. The CSR is returned in DER format.
     ...
-    ...    Arguments:
-    ...    ---------
-    ...    - `key_algo_name`: The `PKIMessage` object that contains the `PKIStatusInfo` structure to be checked.
-    ...    - `key_params`:The index or indices of the bits to check within the `failInfo` field
-    ...    - `CN`: Determines if other bits can also be set. If set to `True`, only the specified bit index will be
-    ...    permitted. However, if multiple indices are provided, only one of them can be set.
+    ...                Arguments:
+    ...                ---------
+    ...                - `key_algo_name` (string): Name of the key algorithm.
+    ...                - `CN` (string): Common Name for the CSR subject.
+    ...                - `key_params` (dict, mapping): Algorithm‑specific parameters.
     ...
-    ...    Examples:
-    ...    --------
-    ...    | ${data}    ${key}=    | Generate Key and CSR    | ${key_algo_name}    |    ${CN}    |    ${key_params} |
+    ...                Returns:
+    ...                -------
+    ...                - The CRS data in DER format.
+    ...                - Generated private key.
     ...
-    [Arguments]    ${key_algo_name}    ${CN}    ${key_params}
-    ${key}=    Generate Key    ${key_algo_name}    ${key_params}
-    ${csr_signed}    ${key}=    Generate Signed CSR    ${CN}    ${key}
-    ${data}=    Decode Pem String    ${csr_signed}
-    RETURN    ${data}    ${key}
+    ...                Raises:
+    ...                ------
+    ...                - `ValueError`: When key generation or CSR creation fails.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${csr_data}  ${key}= | Generate Key And CSR | rsa | ${cn} | length=2048 |
+    ...
+    [Tags]    csr  crypto  key
+    [Arguments]    ${key_algo_name}    ${cn}    ${key_params}
+    ${key}=    Generate Unique Key   ${key_algo_name}    ${key_params}
+    ${csr_signed}    ${key}=    Generate Signed CSR    ${cn}    ${key}
+    ${csr_data}=    Decode Pem String    ${csr_signed}
+    RETURN    ${csr_data}    ${key}
 
 PKIMessage Body Type Must Be
-    [Documentation]    Ensure that the response type in a PKIMessage is of a certain type
+    [Documentation]    Ensure that the response type in a PKIMessage is of a certain type.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message` (PKIMessage): Message to check.
+    ...                - `expected_type` (string): Required body type.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `AssertionError`: When the body type differs.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | PKIMessage Body Type Must Be | ${pki_message} | error |
+    ...
+    [Tags]    body_type
     [Arguments]    ${pki_message}    ${expected_type}
     ${response_type}=    Get CMP Message Type    ${pki_message}
     IF    '${response_type}' != '${expected_type}'
@@ -381,23 +565,63 @@ PKIMessage Contains ImplicitConfirm Extension
     [Documentation]    Checks if the implicitConfirm extension is present in the PKIMessage
     ...
     ...                Arguments:
-    ...                - `${pki_message}`: The PKIMessage object to check.
+    ...                ---------
+    ...                - `pki_message` (PKIMessage): The PKIMessage object to check.
     ...
     ...                Returns:
-    ...                - `${result}`: `True` if the implicitConfirm extension is present, `False` otherwise.
+    ...                -------
+    ...                - `True` if the implicitConfirm extension is present, `False` otherwise.
+    ...
+    ...                Examples:
+    ...                ------
+    ...                | ${result}= | PKIMessage Contains ImplicitConfirm Extension | ${pki_message} |
+    ...
+    [Tags]    confirmation
     [Arguments]    ${pki_message}
     ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
     RETURN    ${result}
 
 PKIMessage Must Contain ImplicitConfirm Extension
-    [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo
+    [Documentation]    Ensure the given PKIMessage contains the implicitConfirm extension in its header.generalInfo.
+    ...                Used to verify that the server supports implicit confirmation.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message`: The PKIMessage object to check.
+    ...
+    ...                Raises:
+    ...                ------
+    ...                - `AssertionError`: When the implicitConfirm extension is not found.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | PKIMessage Must Contain ImplicitConfirm Extension | ${pki_message} |
+    ...
+    [Tags]    confirmation
     [Arguments]    ${pki_message}
     ${result}=    PKIMessage Contains ImplicitConfirm Extension    ${pki_message}
     Should Be True    ${result}    The implicitConfirm extension was not found in the message
 
 Collect Nonce From PKIMessage
     [Documentation]    Extract the senderNonce from a PKIMessage and append it to a list, which will be used later
-    ...    in a test that checks for nonces to be cryptographically strong.
+    ...    in a test that checks for nonces to be cryptographically strong. Used to ensure that the server does not
+    ...   send the same nonce twice, and that the nonces are cryptographically secure.
+    ...
+    ...                Notes:
+    ...                -----
+    ...                - The keyword does not return anything, but appends the nonce to the
+    ...                `COLLECTED_NONCES` list.
+    ...                - Only collect the nonces from messages that are of set in the config variable \
+    ...                `GATHER_NONCES_FROM_MSG_BODIES`.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message` (PKIMessage): The PKIMessage object to extract the nonce from.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | Collect Nonce From PKIMessage | ${pki_message} |
+    ...
     [Arguments]    ${pki_message}
     ${body_type}=    Get Cmp Message Type    ${pki_message}
     Log   ${GATHER_NONCES_FROM_MSG_BODIES}
@@ -412,6 +636,22 @@ Collect Nonce From PKIMessage
 Exchange PKIMessage
     [Documentation]    Send a PKIMessage to the CA or RA Server and then then parse the returned PKIMessage.
     ...    Expects to get a parse-able PKIMessage.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `request_pki_message` (PKIMessage): The PKIMessage to send.
+    ...                - `url` (str): The URL of the CA or RA server to send the PKIMessage to. Defaults to
+    ...                  `CA_CMP_URL`.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The parsed PKIMessage response from the server.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response_pki_message}= | Exchange PKIMessage | ${request_pki_message} | ${url} |
+    ...                | ${response_pki_message}= | Exchange PKIMessage | ${request_pki_message} |
+    ...
     [Tags]    exchange    http
     [Arguments]    ${request_pki_message}   ${url}=${CA_CMP_URL}
     ${encoded_request}=    Encode To Der    ${request_pki_message}
@@ -432,9 +672,20 @@ Exchange PKIMessage
 Generate Unique Key
     [Documentation]    Generates a unique cryptographic key using specified default parameters, set inside the config.
     ...
+    ...                Notes:
+    ...                -----
+    ...                 - `BURNED_KEYS` is a list of keys that have been generated
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `algorithm` (string): The algorithm to use for key generation (e
+    ...                g., 'rsa', 'ecc').
+    ...                - `params` (dict, mapping): Additional parameters for key generation, such as `length` or `curve`.
+    ...                - `max_attempts` (int): Maximum number of attempts to generate a unique key. Defaults to `100`.
+    ...
     ...                Examples:
-    ...                | ${private_key}=    Generate Unique Key | rsa | length=2048 |
-    [Tags]    key
+    ...                | ${key}=    Generate Unique Key | rsa | length=2048 |
+    [Tags]    key  crypto
     [Arguments]    ${algorithm}    &{params}
     ${max_attempts}=  Get From Dictionary    ${params}    max_attempts    ${100}
     FOR    ${index}    IN RANGE    ${max_attempts}
@@ -454,13 +705,15 @@ Generate Unique Key
 Generate Default Key
     [Documentation]    Generates a default cryptographic key using specified default parameters, set inside the config.
     ...
-    ...                Note:
+    ...                Notes:
     ...                ----
     ...                 - `DEFAULT_ALGORITHM` defines the algorithm.
     ...                 - `DEFAULT_KEY_LENGTH` defines the key length for RSA.
     ...                 - `DEFAULT_ECC_CURVE` defines the curve for ECC. Not relevant for X25519 or X448.
     ...                 Then must the `DEFAULT_ALGORITHM` be set to `x25519` or `x448`.
+    ...
     ...                Examples:
+    ...                --------
     ...                | ${private_key}=    Generate Default Key |
     [Tags]    key
     VAR     &{params}    length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
@@ -473,7 +726,7 @@ Generate Default PQ SIG Key
     ...                Examples:
     ...                --------
     ...                | ${key}= | Generate Default PQ SIG Key |
-    [Tags]    key   pq
+    [Tags]    key   pqc
     ${key}=   Generate Key    ${DEFAULT_PQ_SIG_ALGORITHM}
     RETURN    ${key}
 
@@ -484,7 +737,7 @@ Generate Default PQ KEM Key
     ...                Examples:
     ...                --------
     ...                | ${key}= | Generate Default PQ KEM Key |
-    [Tags]    key   pq  kem
+    [Tags]    key   pqc  KEM
     ${key}=   Generate Key    ${DEFAULT_PQ_KEM_ALGORITHM}
     RETURN    ${key}
 
@@ -515,8 +768,8 @@ Generate Default Composite Sig Key
     [Documentation]    Generates a default composite signature key with the traditional algorithm
     ...                and the PQ algorithm defined in the configuration.
     ...
-    ...                Note:
-    ...                ----
+    ...                Notes:
+    ...                -----
     ...                - `DEFAULT_TRAD_ALG` defines the algorithm.
     ...                - `DEFAULT_KEY_LENGTH` defines the key length for RSA.
     ...                - `DEFAULT_PQ_ALG` defines the pq algorithm.
@@ -542,11 +795,21 @@ Default Protect PKIMessage
     [Documentation]    Protect a PKIMessage with the default protection algorithm, set inside the config
     ...                and the default parameters.
     ...
-    ...                Note:
+    ...                Notes:
     ...                ----
     ...                - The protection algorithm is set to `signature` by default.
     ...
+    ...                Arguments:
+    ...                ---------
+    ...                 - `pki_message` (PKIMessage): The PKIMessage to protect.
+    ...                 - `params` (dict, mapping): key=value pair to set variables for the protection.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The protected PKIMessage.
+    ...
     ...                Examples:
+    ...                --------
     ...                | ${prot_pkimessage}=    Default Protect PKIMessage    | ${pki_message} |
     ...
     [Tags]    protection
@@ -574,14 +837,15 @@ Confirm Certificate If Needed
     ...                confirm extension. If it does, the certificate is confirmed and returned. If not, the
     ...                `PKIMessage` a valid certificate confirmation message is send and the of the CA's response is
     ...                checked. If the CA's response is the `PKIMessage` `pkiconf`, then is the certificate confirmed.
+    ...
     ...                Arguments:
     ...                ---------
-    ...                 - `response`: The response message from the CA.
-    ...                 - `params`: key=value pair to set variables for the protection.
+    ...                 - `response` (PKIMessage): The response message from the CA.
+    ...                 - `params` (dict, mapping): key=value pair to set variables for the protection.
     ...
     ...                Returns:
     ...                -------
-    ...                - `cert`: The confirmed certificate.
+    ...                - The confirmed certificate.
     ...
     ...                Examples:
     ...                --------
@@ -698,6 +962,15 @@ Get Next Common Name
     ...                There are may some implementation which only allow one sender name, but other ones may allow
     ...                only one allow a single certificate per name, so to have more flexibility the name is added by a
     ...                number which is incremented after every test case.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - `cm`: The common name with the current test index.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${cm}= | Get Next Common Name |
+    ...
     [Tags]    setup
     IF    ${ALLOW_ONLY_ONE_SENDER}    RETURN    ${DEFAULT_X509NAME}
     VAR    ${cm}    ${DEFAULT_X509NAME} ${TEST_INDEX}
@@ -706,6 +979,23 @@ Get Next Common Name
 
 Build Composite Signature Request
     [Documentation]    Build a ir composite signature request and returns the protected ir request.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `comp_key`: Optional composite signature key to use. Default is `False`. \
+    ...                If `False`, a default composite signature key is generated.
+    ...                - `params` (dict, mapping): Optional key-value pairs to set parameters for the request.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The protected initialization request (ir) with, an composite signature.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${protected_ir}= | Build Composite Signature Request | ${comp_key} | &{params} |
+    ...                | ${protected_ir}= | Build Composite Signature Request | ${comp_key} |
+    ...                | ${protected_ir}= | Build Composite Signature Request |
+    ...
     [Tags]    composite-sig    positive   ir
     [Arguments]    ${comp_key}=${False}   &{params}
     IF   ${comp_key}
@@ -734,12 +1024,14 @@ Generate CSR For Testing
     ...                and an incremented test index.
     ...
     ...                Returns:
+    ...                -------
     ...                - `csr`: The prepared certificate signing request.
     ...                - `key`: The generated cryptographic key.
     ...
     ...                Examples:
+    ...                --------
     ...                | ${csr}    ${key}= |    Generate CSR For Testing |
-    [Tags]    setup
+    [Tags]    setup  csr
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${csr}=    Build CSR    signing_key=${key}    common_name=${cm}
@@ -752,12 +1044,15 @@ Generate CertTemplate For Testing
     ...                incremented test index.
     ...
     ...                Returns:
+    ...                -------
     ...                - `cert_template`: The prepared certificate template.
     ...                - `key`: The generated cryptographic key.
     ...
     ...                Examples:
+    ...                --------
     ...                | ${cert_template}    ${key}= |    Generate CertTemplate For Testing |
     ...
+    [Tags]    setup  CertTemplate
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${cert_template}=    Prepare CertTemplate    key=${key}    subject=${cm}
@@ -767,18 +1062,32 @@ Generate CCR CertTemplate For Testing
     [Documentation]    Generates a cross-certificate req. certificate template for testing purposes,
     ...                using default parameters and an incremented test index.
     ...
+    ...               Arguments:
+    ...               ---------
+    ...               - `key`: Optional key to use for the certificate template. Default is `None`. \
+    ...               If `None`, a default key is generated.
+    ...               - `cm`: Optional common name to use for the certificate template. Default is `None`. \
+    ...               If `None`, a common name is generated based on the current test index.
+    ...
     ...                Returns:
+    ...                -------
     ...                - `cert_template`: The prepared certificate template.
     ...                - `key`: The generated cryptographic key.
     ...
     ...                Examples:
+    ...                --------
     ...                | ${cert_template}    ${key}= |    Generate CertTemplate For Testing |
+    ...                | ${cert_template}    ${key}= |    Generate CCR CertTemplate For Testing |    ${key}    |
+    ...                | ${cert_template}    ${key}= |    Generate CCR CertTemplate For Testing |    ${key}   | ${cm} |
     ...
-    [Arguments]  ${key}=${None}
+    [Tags]    setup  CertTemplate  ccr
+    [Arguments]  ${key}=${None}   ${cm}=${None}
     IF  '${key}' == '${None}'
         ${key}=    Generate Default Key
     END
-    ${cm}=    Get Next Common Name
+    IF    $cm is None
+        ${cm}=    Get Next Common Name
+    END
     ${sig_alg}=   Prepare Signature AlgorithmIdentifier     ${key}   hash_alg=sha256
     # -1 day
     ${date}=   Get Current Date   UTC   increment=-86400
@@ -795,16 +1104,20 @@ Generate Default IR Sig Protected
     ...                one which needs to be implemented by the CA and End Entity.
     ...
     ...                Arguments:
-    ...                - `transaction_id`:Optional the transaction ID for the IR. Default is `${None}`.
-    ...                - `sender_nonce`: Optional the sender's nonce for the IR. Default is `${None}`.
+    ...                ----------
+    ...                - `transaction_id` (str, bytes) :Optional the transaction ID for the IR. Default is `None`.
+    ...                - `sender_nonce` (str, bytes): Optional the sender's nonce for the IR. Default is `None`.
+    ...                - `params` (dict, mapping): Optional key-value pairs to set additional parameters for the IR.
     ...
     ...                Returns:
+    ...                -------
     ...                - The signature-protected initialization request (ir)
     ...
     ...                Examples:
     ...                | ${protected_ir}=    |    Generate Default IR Sig Protected    | transaction_id=${tx_id} |    \
     ...                sender_nonce=${nonce} |
     ...
+    [Tags]    ir    signature   setup
     [Arguments]    ${transaction_id}=${None}    ${sender_nonce}=${None}   &{params}
     ${cert_template}    ${key}=    Generate CertTemplate For Testing
     ${ir}=    Build Ir From Key
@@ -837,12 +1150,17 @@ Default Protect With MAC
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `pki_message`: The PKIMessage to be protected.
+    ...                - `pki_message` (PKIMessage): The PKIMessage to be protected.
     ...
     ...                Returns:
     ...                -------
     ...                - The protected PKIMessage.
-    [Tags]    protection
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${protected_pki_message}= | Default Protect With MAC | ${pki_message} |
+    ...
+    [Tags]    protection  MAC
     [Arguments]    ${pki_message}
     ${protected_pki_message}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
     ...                          password=${PRESHARED_SECRET}
@@ -850,7 +1168,22 @@ Default Protect With MAC
     RETURN    ${protected_pki_message}
 
 Default Protect PKIMessage With Trusted CA Cert
-    [Documentation]    Protects the PKIMessage with the trusted CA certificate.
+    [Documentation]    Protects the PKIMessage with the trusted CA certificate. used for
+    ...                Cross-Certification Requests (CCR) tests.
+    ...
+    ...                Arguments:
+    ...                ----------
+    ...                - `pki_message` (PKIMessage): The PKIMessage to be protected.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The protected PKIMessage.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response}= | Default Protect PKIMessage With Trusted CA Cert | ${pki_message} |
+    ...
+    [Tags]    protection  trust  signature  CA
     [Arguments]    ${pki_message}
     ${response}=  Protect PKIMessage    ${pki_message}    signature
     ...           private_key=${TRUSTED_CA_KEY_OBJ}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
@@ -858,6 +1191,20 @@ Default Protect PKIMessage With Trusted CA Cert
 
 Default Protect With Trusted Cert
     [Documentation]    Protect a PKIMessage with the default signature protection.
+    ...
+    ...                Arguments:
+    ...                ----------
+    ...                - `pki_message` (PKIMessage): The PKIMessage to be protected.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The protected PKIMessage.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${protected}= | Default Protect With Trusted Cert | ${pki_message} |
+    ...
+    [Tags]    protection  trust  signature
     [Arguments]    ${pki_message}
     ${protected}=    Protect PKIMessage    ${pki_message}    signature   private_key=${OTHER_TRUSTED_PKI_KEY}
     ...              cert_chain=${RA_CERT_CHAIN}
@@ -924,12 +1271,21 @@ Issue New Cert For Testing
     ...
     ...    Arguments:
     ...    ---------
-    ...    - `url`: The URL of the CA to send the request to. Defaults to `${CA_CMP_URL}`.
-    ...    - `key`: The key to use for the certificate request. If not provided, a new default key will be generated.
+    ...    - `url` (str): The URL of the CA to send the request to. Defaults to `${CA_CMP_URL}`.
+    ...    - `key` (PrivateKey): The key to use for the certificate request. If not provided, \
+    ...    a new default key will be generated.
     ...
     ...    Returns:
+    ...    -------
     ...    - `cert`: The issued certificate.
     ...    - `key`: The key used to generate the certificate request.
+    ...
+    ...    Examples:
+    ...    --------
+    ...    | ${cert}  ${key}= | Issue New Cert For Testing |
+    ...    | ${cert}  ${key}= | Issue New Cert For Testing | ${url} |
+    ...    | ${cert}  ${key}= | Issue New Cert For Testing | ${url} | ${key} |
+    ...
     [Tags]    setup
     [Arguments]    ${url}=${CA_CMP_URL}    ${key}=${None}
     IF    '${key}' == '${None}'
@@ -951,7 +1307,7 @@ Issue And Revoke A Fresh Cert
     ...
     ...                Arguments:
     ...                ---------
-    ...                - `reason`: The reason for revocation. Defaults to `keyCompromise`.
+    ...                - `reason` (str): The reason for revocation. Defaults to `keyCompromise`.
     ...
     ...                Returns:
     ...                -------
@@ -974,11 +1330,30 @@ PKIStatusInfo failinfo Bit Must Be
     ...                   `PKIStatusInfo` field, to ensure that the CA/RA responds with the correct error.
     ...                    The strictness is based on the global `FAILINFO_MUST_BE_CORRECT` variable.
     ...
+    ...
+    ...    Notes:
+    ...    -----
+    ...    - If the `failinfo` bit(s) are invalid logs the `PKIStatusInfo` in a human-readable format.
+    ...    - If `FAILINFO_MUST_BE_CORRECT` is `True`, the keyword will fail if the `failinfo` bit is not set correctly.
+    ...    - If `FAILINFO_MUST_BE_CORRECT` is `False`, the keyword will log a warning instead of failing.
+    ...
     ...    Arguments:
-    ...    - `pki_message`: The PKIMessage to be validated. Typically, this is the response from the CA/RA.
-    ...    - `failinfo`: The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
-    ...    - `exclusive`: When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
-    ...    - `index`: Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
+    ...    ---------
+    ...    - `pki_message` (PKIMessage): The PKIMessage to be validated. Typically, this is the response from the CA/RA.
+    ...    - `failinfo` (str, int): The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
+    ...    - `exclusive` (bool): When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
+    ...    - `index` (str, int): Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
+    ...
+    ...    Raises:
+    ...    ------
+    ...    - `ValueError`: If the `pki_message` does not contain a `PKIStatusInfo` object.
+    ...    - `ValueError`: If the `failinfo` bit is not set correctly.
+    ...
+    ...    Examples:
+    ...    --------
+    ...    | PKIStatusInfo failinfo Bit Must Be | ${pki_message} | failinfo=badAlg |
+    ...    | PKIStatusInfo failinfo Bit Must Be | ${pki_message} | failinfo=badAlg | exclusive=True |
+    ...
     [Arguments]    ${pki_message}    ${failinfo}    ${exclusive}=False    ${index}=0
     ${status}=    Get PKIStatusInfo    ${pki_message}    ${index}
     ${result}=    Is Bit Set    ${status["failInfo"]}    ${failinfo}    ${exclusive}
@@ -996,10 +1371,22 @@ PKIStatus Must Be
     [Documentation]   Verifies that the `PKIStatus` field in the `PKIMessage` matches the expected value.
     ...
     ...     Arguments:
-    ...     - `pki_message`: The PKIMessage to be validated. Typically, this is the response from the CA/RA.
-    ...     - `failinfo`: The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
-    ...     - `exclusive`: When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
-    ...     - `index`: Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
+    ...     ---------
+    ...     - `pki_message` (PKIMessage): The PKIMessage to be validated. Typically, this is the response from the CA/RA.
+    ...     - `failinfo` (str, int): The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
+    ...     - `exclusive` (bool): When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
+    ...     - `index` (str, int): Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
+    ...
+    ...     Raises:
+    ...     ------
+    ...     - `ValueError`: If the `pki_message` does not contain a `PKIStatusInfo` object.
+    ...     - `ValueError`: If the `PKIStatus` does not match the expected value.
+    ...
+    ...     Examples:
+    ...     --------
+    ...     | PKIStatus Must Be | ${pki_message} | accepted |
+    ...     | PKIStatus Must Be | ${pki_message} | rejected | 1
+    ...
     [Arguments]    ${pki_message}  ${status}   ${index}=0
     ${pki_status}=    Get Status From PKIMessage      ${pki_message}    ${index}
     IF  not '${pki_status}' == '${status}'
@@ -1016,20 +1403,27 @@ Exchange Migration PKIMessage
 
 Exchange Hybrid PKIMessage
     [Documentation]    Exchange a PKIMessage for a hybrid algorithm certificate.
+    ...
     ...                Arguments:
-    ...                - ${name}: The hybrid algorithm name (e.g., composite-kem).
-    ...                - ${pq_name}: The PQ KEM algorithm name (e.g., ml-kem-768, ml-kem-1024).
-    ...                - ${trad_name}: The traditional algorithm name (e.g., rsa2048, ecdh-secp384r1, x25519).
-    ...                - ${invalid_key_size}: Whether to use an invalid key size. Defaults to `False`.
-    ...                - ${extensions}: Additional certificate extensions (default: None).
-    ...                - ${optional_args}: Optional key-value pairs to set variables for the protection.
+    ...                ---------
+    ...                - `name` (str): The hybrid algorithm name (e.g., composite-kem).
+    ...                - `pq_name` (str): The PQ KEM algorithm name (e.g., ml-kem-768, ml-kem-1024).
+    ...                - `trad_name` (str): The traditional algorithm name (e.g., rsa2048, ecdh-secp384r1, x25519).
+    ...                - `invalid_key_size` (bool): Whether to use an invalid key size. Defaults to `False`.
+    ...                - `extensions` (Extensions): Additional certificate extensions (default: None).
+    ...                - `optional_args` (dict, mapping): Optional key-value pairs to set variables for the protection.
     ...                (for the key generation, the certificate request, and the protection).
+    ...
     ...                Returns:
+    ...                -------
     ...                - The response PKIMessage.
     ...                - The key used to generate the request.
+    ...
     ...                Examples:
-    ...                | Exchange Composite KEM PKIMessage | composite-kem | rsa | ml-kem-768 |  length=2048 |
-    ...                | Exchange Composite KEM PKIMessage | composite-kem | ecdh | ml-kem-768 |  curve=secp256r1 |
+    ...                --------
+    ...                | ${response} ${key}= | Exchange Composite KEM PKIMessage | composite-kem | rsa | ml-kem-768 |  length=2048 |
+    ...                | ${response} ${key}= | Exchange Composite KEM PKIMessage | composite-kem | ecdh | ml-kem-768 |  curve=secp256r1 |
+    ...
     [Arguments]    ${name}    ${pq_name}    ${trad_name}    ${invalid_key_size}=False    ${extensions}=${None}    &{optional_args}
     ${length}=  Get From Dictionary    ${optional_args}    length   ${None}
     ${curve}=  Get From Dictionary    ${optional_args}    curve   ${None}
@@ -1054,16 +1448,21 @@ Validate EncrCert For KEM
     [Documentation]    Validate that the encrypted certificate for the KEM algorithm is correct.
     ...
     ...                Arguments:
-    ...                - ${response}: The response from the CA.
-    ...                - ${key}: The key used for the certificate generation.
+    ...                ---------
+    ...                - `response` (PKIMessage): The response from the CA.
+    ...                - `key` (KEMPrivateKey): The key used for the certificate generation.
     ...
     ...                Returns:
+    ...                -------
     ...                - The certificate.
     ...
     ...                Examples:
-    ...                | Validate EncrCert For KEM | ${response} | ${key} |
+    ...                --------
+    ...                | ${cert} | Validate EncrCert For KEM | ${response} | ${key} |
+    ...
+    [Tags]    envelopedData  KEM  validate  cert
     [Arguments]    ${response}    ${key}
-    PKIStatus Must Be       ${response}    status=accepted
+    PKIStatus Must Be       ${response}    accepted
     # currently not validate able, because KEM does not allow to see the
     # the certificate in the response.
     # So the user has to now, if he expected to either has the `rid` set to the SKI or IssuerAndSerialNumber.
@@ -1078,11 +1477,12 @@ Issued NEG RSA KTRI CERT
     ...
     ...                Arguments:
     ...                ---------
-    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `url` (str): The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
-    ...                Note:
-    ...                -------
+    ...                Notes:
+    ...                -----
     ...                - Set's the ${NEG_KTRI_CERT} and ${NEG_KTRI_KEY} variables.
+    ...
     [Tags]    envelopedData  KGA  negative  rsa  ktri
     [Arguments]    ${url}=${CA_CMP_URL}
     ${is_set}=    Is Certificate And Key Set    ${NEG_KTRI_CERT}    ${NEG_KTRI_KEY}
@@ -1108,11 +1508,12 @@ ISSUE POS RSA KTRI Cert
     ...
     ...                Arguments:
     ...                ---------
-    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `url` (str): The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
-    ...                Note:
-    ...                -------
+    ...                Notes:
+    ...                -----
     ...                - Set's the ${KGA_KTRI_CERT} and ${KGA_KTRI_KEY} variables.
+    ...
     [Tags]    envelopedData  KGA  positive  rsa  ktri
     [Arguments]    ${url}=${CA_CMP_URL}
     ${is_set}=    Is Certificate And Key Set    ${KGA_KTRI_CERT}    ${KGA_KTRI_KEY}
@@ -1136,11 +1537,12 @@ Issue NEG ECC KARI Cert
     ...
     ...                Arguments:
     ...                ---------
-    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `url` (str): The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
-    ...                Note:
-    ...                -------
+    ...                Notes:
+    ...                -----
     ...               - Set's the ${NEG_KARI_CERT} and ${NEG_KARI_KEY} variables.
+    ...
     [Tags]    envelopedData  KGA  negative  ecc  kari
     [Arguments]    ${url}=${CA_CMP_URL}
     ${is_set}=    Is Certificate And Key Set    ${NEG_KARI_CERT}    ${NEG_KARI_KEY}
@@ -1166,11 +1568,12 @@ Issue POS ECC KARI Cert   # robocop: off=LEN03
     ...
     ...                Arguments:
     ...                ---------
-    ...                - ${url}: The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
+    ...                - `url` (str): The URL to the CA CMP server. Defaults to `${CA_CMP_URL}`.
     ...
-    ...                Note:
-    ...                -------
+    ...                Notes:
+    ...                -----
     ...                - Set's the ${KGA_KARI_CERT} and ${KGA_KARI_KEY} variables.
+    ...
     [Tags]    envelopedData  KGA  positive  ecc  kari
     [Arguments]    ${url}=${CA_CMP_URL}
     ${is_set}=    Is Certificate And Key Set    ${KGA_KARI_CERT}    ${KGA_KARI_KEY}
@@ -1221,6 +1624,16 @@ Wait Until Server Deletes Update Request
 
 Get PQ Issuing URL
     [Documentation]    Return the URL for the PQ issuing endpoint.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The URL for the PQ issuing endpoint.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${url}= |    Get PQ Issuing URL |
+    ...
+    [Tags]    pqc
     ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
     RETURN  ${url}
 
@@ -1231,11 +1644,35 @@ Get PQ Stateful Issuing URL
 
 Get Composite Issuing URL
     [Documentation]    Return the URL for the composite issuing endpoint.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The URL for the composite issuing endpoint.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${url}= |    Get Composite Issuing URL |
+    ...
+    [Tags]   composite   hybrid
     ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
     RETURN  ${url}
 
 Exchange PKIMessage PQ
     [Documentation]    Exchange a PKIMessage with the PQ issuing endpoint.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message` (PKIMessage): The PKIMessage to be exchanged.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The response PKIMessage from the PQ issuing endpoint.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response}= |    Exchange PKIMessage PQ    | ${pki_message} |
+    ...
+    [Tags]    pqc
     [Arguments]    ${pki_message}
     ${url}=   Get PQ Issuing URL
     ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
@@ -1250,6 +1687,20 @@ Exchange PKIMessage PQ Stateful
 
 Prepare Related Cert URL
     [Documentation]    Prepare the URL for the related certificate, by adding the serial number to the URL.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `cert` (CMPCertificate): The certificate to extract the serial number from.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The URL for the related certificate.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${url}= |    Prepare Related Cert URL    | ${cert} |
+    ...
+    [Tags]    related-cert   hybrid-cert
     [Arguments]    ${cert}
     ${ser_num}=   Get Asn1 Value As Number    ${cert}   tbsCertificate.serialNumber  False
     ${url}=   Add URL Suffix    ${URI_RELATED_CERT}   ${ser_num}
@@ -1257,6 +1708,16 @@ Prepare Related Cert URL
 
 Get Related Cert URL
     [Documentation]    Get the URL for the related certificate issuing endpoint, to send the request to.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The URL for the related certificate issuing endpoint.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${url}= |    Get Related Cert URL |
+    ...
+    [Tags]    related-cert   hybrid-cert
     ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${RELATED_CERT_SUFFIX}
     RETURN  ${url}
 
@@ -1319,15 +1780,27 @@ Setup Composite Sig Cert
     VAR   ${COMPOSITE_SIG_KEY}      ${comp_key}  scope=Global  # robocop: off=VAR04
 
 Build KEMBasedMAC General Message
-    [Documentation]    Build a KEMBasedMAC General Message.
+    [Documentation]    Build a KEMBasedMAC General Message, to establish a KEM shared secret.
     ...
     ...                Arguments:
-    ...                - ${kem_key}: The KEM key to use for the message.
-    ...                - ${kem_cert}: The KEM certificate to use for the message.
-    ...                - ${random_value}: Optional random value to use for the message, for negative tests.
+    ...                ---------
+    ...                - `kem_key` (KEMPrivateKey): The KEM key to use for the message.
+    ...                - `kem_cert` (CMPCertificate): The KEM certificate to use for the message.
+    ...                - `random_value` (str, bytes) : Optional random value to use for the message, for negative tests.
     ...                The `infoValue` field **MUST** be absent.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The built KEMBasedMAC General Message.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${genm}= |    Build KEMBasedMAC General Message    | ${kem_key} | ${kem_cert} |
+    ...                | ${genm}= |    Build KEMBasedMAC General Message    | ${kem_key} | ${kem_cert} | ${random_value} |
+    ...
+    [Tags]    KEM   genm
     [Arguments]    ${kem_key}    ${kem_cert}   ${random_value}=${None}
-    ${info_val}=    Prepare KEMCiphertextInfo   ${kem_key}    ${None}
+    ${info_val}=    Prepare KEMCiphertextInfo   ${kem_key}    ${random_value}
     ${genm}=   Build CMP General Message   info_values=${info_val}
     ...        sender=${SENDER}   recipient=${RECIPIENT}
     ${cert_chain}=   Build Cert Chain From Dir    ${kem_cert}     cert_chain_dir=./data/cert_logs

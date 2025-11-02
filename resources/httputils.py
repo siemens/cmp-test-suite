@@ -139,7 +139,7 @@ def start_ssl_server(  # noqa: D417 Missing argument descriptions in the docstri
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.bind((host, port))
             sock.listen(1)
-            print(f"Listening on {host}:{port}")
+            logging.info(f"Listening on {host}:{port}")
 
             # Accept a client connection
             with context.wrap_socket(sock, server_side=True) as secure_sock:
@@ -204,7 +204,7 @@ def start_unsafe_tcp_server(  # noqa: D417 Missing argument descriptions in the 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind((host, port))
         sock.listen(1)
-        print(f"Server listening on {host}:{port}")
+        logging.info(f"Server listening on {host}:{port}")
 
         # Accept a client connection
         conn, addr = sock.accept()
@@ -237,7 +237,7 @@ if __name__ == "__main__":
     # start_ssl_server("./data/unittest/bare_certificate.pem",
     #                 "./data/keys/private-key-rsa.pem", "./data/unittest/bare_certificate.pem")
     rec_data = start_unsafe_tcp_server()
-    print(f"Received: {rec_data}")
+    print(f"Received: {rec_data}")  # noqa: T201 `print` used for testing.
 
 
 @not_keyword
@@ -265,9 +265,9 @@ def ssl_client(
 
     with socket.create_connection((server_host, server_port)) as sock:
         with context.wrap_socket(sock, server_hostname=server_host) as secure_sock:
-            print(f"Connected to {server_host}:{server_port}")
+            logging.info(f"Connected to {server_host}:{server_port}")
             secure_sock.sendall(message)
-            print(f"Sent: {message}")
+            logging.info(f"Sent: {message}")
 
 
 def _unsafe_client() -> Optional[bytes]:
@@ -277,7 +277,7 @@ def _unsafe_client() -> Optional[bytes]:
         response = requests.post("http://localhost:8443", data=b"Hello, World!", verify=False, timeout=20)
         return response.content
     except requests.exceptions.ReadTimeout:
-        print("Timeout occurred.")
+        logging.info("Timeout occurred.")
         return None
 
 

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-safety>= 3.3.1, < 4.0.0
+safety>= 3.6.0, < 4.0.0
 pylint>= 4.0.2, < 5.0.0
 black>= 25.0.0, < 26.0.0
 ruff>= 0.14.3, < 1.0.0

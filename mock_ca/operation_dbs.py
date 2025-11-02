@@ -449,7 +449,6 @@ class StatefulSigKeyState:
     def contains_used_index(self, index: int) -> bool:
         """Check if a used index exists in the state."""
         # logging.debug(f"Checking if index {index} is in used indices: {self.used_indices}")
-        print("Checking if index", index, "is in used indices:", self.used_indices)
         return index in self.used_indices
 
 

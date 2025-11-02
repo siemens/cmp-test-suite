@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """Client to send requests to the Mock CA."""
 
+import logging
 import sys
 import time
 from typing import List, Optional, Tuple
@@ -79,15 +79,15 @@ def send_to_ejbca(pki_message: PKIMessageTMP, url: Optional[str] = None) -> None
     try:
         response = requests.post(url, data=der_data, timeout=60)
         if response.status_code == 200:
-            print("Success:")
+            logging.info("Success:")
             der_data = response.content
             response, _ = parse_pkimessage(der_data)
-            print(response.prettyPrint())
+            logging.debug(response.prettyPrint())
 
-        print(f"Error: {response.status_code}")
-        print(response.text)
+        logging.debug(f"Error: {response.status_code}")
+        logging.info(response.text)
     except requests.RequestException as e:
-        print(f"Request failed: {e}")
+        logging.debug(f"Request failed: {e}")
 
 
 def build_example_rsa_mac_request(sender_cm: str = "CN=Hans The Tester") -> Tuple[PKIMessageTMP, SignKey]:
