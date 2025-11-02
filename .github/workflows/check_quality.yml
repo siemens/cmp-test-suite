@@ -37,16 +37,41 @@ jobs:
         run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" reuse lint
 
   rf-run-able:
+    # Checks if the RobotFramework tests can be executed (dryrun). If not, uploads the artifacts for debugging.
+    # Sometimes it is import error or some sub dependency missing, this helps to identify such issues early.
     needs: prepare_env
     runs-on: ubuntu-22.04
     env:
       IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
       - uses: actions/checkout@v4
+
+      # 1) Run dryrun but don't stop the job on failure
       - name: RobotFramework run-ability check
+        id: dryrun
+        continue-on-error: true
         run: |
+          set -euo pipefail
           docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" \
             make dryrun
+
+      # 2) Upload ONLY if the dryrun step failed
+      - name: Upload RobotFramework artifacts (only if dryrun failed)
+        if: ${{ steps.dryrun.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: robot-dryrun-artifacts-${{ github.run_id }}
+          path: |
+            ./output.xml
+            ./log.html
+            ./report.html
+          if-no-files-found: warn
+          retention-days: 14
+
+      # 3) Fail the job if dryrun failed (after uploading)
+      - name: Mark job as failed if dryrun failed
+        if: ${{ steps.dryrun.outcome == 'failure' }}
+        run: exit 1
 
   rf_style_check:
     needs: prepare_env
