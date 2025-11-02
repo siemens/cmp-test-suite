@@ -32,7 +32,7 @@ def add_header_to_file(path: str, header: str = base_header):
 
 
 # Use glob to find all .py files recursively
-for dir_path in ["./resources", "./pq_logic", "./unit_tests", "./scripts", "./mock_ca"]:
+for dir_path in ["./resources", "./pq_logic", "./unit_tests", "./scripts", "./mock_ca", "./client_tests"]:
     for file in glob.iglob(f"{dir_path}/**/*.py", recursive=True):
         add_header_to_file(file)
 

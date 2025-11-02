@@ -39,7 +39,7 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from resources import convertutils, oid_mapping
-from resources.asn1_structures import KemBMParameterAsn1, KemOtherInfoAsn1
+from resources.asn1_structures import KemBMParameterAsn1
 from resources.convertutils import str_to_bytes
 from resources.oid_mapping import hash_name_to_instance, sha_alg_name_to_oid
 from resources.oidutils import (
@@ -95,12 +95,12 @@ def prepare_alg_id(  # Noqa: D417 undocumented params
 
     if value is not None:
         if isinstance(value, (bytes, str)):
-            alg_id["parameters"] = str_to_bytes(value)
+            alg_id["parameters"] = univ.Any(str_to_bytes(value))
         else:
             alg_id["parameters"] = value
 
     elif fill_random_params:
-        alg_id["parameters"] = os.urandom(16)
+        alg_id["parameters"] = univ.OctetString(os.urandom(16))
 
     return alg_id
 
@@ -503,7 +503,7 @@ def prepare_dh_based_mac_alg_id(
 
 
 def _prepare_kem_based_mac_params(
-    kem_context: Optional[KemOtherInfoAsn1] = None,
+    kem_context: Optional[Union[bytes, str]] = None,
     kdf: str = "pbkdf2",
     salt: Optional[bytes] = None,
     iterations: int = 100000,
@@ -511,10 +511,12 @@ def _prepare_kem_based_mac_params(
     length: int = 32,
     hash_alg: str = "sha256",
 ) -> KemBMParameterAsn1:
-    """Prepare a `KemBMParameter` structure.
+    """Prepare a KemBMParameter (RFC 9810, Section 5.1.3.4).
 
-    Constructs the parameters required for a KEMBasedMac operation, including key derivation
-    and mac configurations.
+    Behavior per RFC 9810:
+    ---------------------
+    - kemContext is an OPTIONAL OCTET STRING for algorithm-specific context (ukm).
+    - Lines 2009–2033 define KemOtherInfo, which is constructed at computation time and used as KDF 'info'.
 
     :param kem_context: Optional context information (e.g., UKM) for the KEM operation.
     :param kdf: The key derivation function to use (e.g., "pbkdf2"). Defaults to "pbkdf2".
@@ -539,9 +541,9 @@ def _prepare_kem_based_mac_params(
     param["kdf"] = kdf_alg_id
 
     if kem_context is not None:
-        kem_context = encoder.encode(kem_context)
-        param["kemContext"] = univ.OctetString(kem_context).subtype(
-            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+        kem_ctx_bytes = str_to_bytes(kem_context)
+        param["kemContext"] = univ.OctetString(kem_ctx_bytes).subtype(
+            explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
         )
 
     param["len"] = univ.Integer(length).subtype(subtypeSpec=constraint.ValueRangeConstraint(1, float("inf")))
@@ -551,7 +553,7 @@ def _prepare_kem_based_mac_params(
 
 @not_keyword
 def prepare_kem_based_mac_alg_id(
-    kem_context: Optional[KemOtherInfoAsn1] = None,
+    kem_context: Optional[Union[bytes, str]] = None,
     salt: Optional[bytes] = None,
     kdf: str = "pbkdf2",
     iterations: int = 100000,
@@ -559,11 +561,10 @@ def prepare_kem_based_mac_alg_id(
     length: int = 32,
     hash_alg: str = "sha256",
 ) -> rfc9480.AlgorithmIdentifier:
-    """Prepare a KEMBasedMac `AlgorithmIdentifier`.
+    """Prepare AlgorithmIdentifier for id-KemBasedMac (RFC 9810, Section 5.1.3.4).
 
-    Constructs an `AlgorithmIdentifier` structure for the KEMBasedMac operation, including the
-    algorithm OID and associated parameters. The function allows customization of key derivation
-    parameters such as salt, iterations, and hash algorithm.
+    Behavior per RFC 9810: kemContext is OPTIONAL ukm bytes. The KDF 'info' is the DER-encoded KemOtherInfo composed
+    at computation time and MUST NOT be embedded here.
 
     :param kem_context: Optional KEM context. Defaults to `None`.
     :param salt: Optional salt for key derivation. Defaults to `None`.

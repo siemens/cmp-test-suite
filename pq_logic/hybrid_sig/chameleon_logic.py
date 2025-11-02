@@ -519,6 +519,24 @@ def extract_chameleon_attributes(
     return non_signature_attributes, delta_cert_request, delta_cert_request_signature  # type: ignore
 
 
+@not_keyword
+def get_delta_request_signature(
+    csr: rfc6402.CertificationRequest,
+) -> bytes:
+    """Extract the Delta Certificate Request Signature from the CSR.
+
+    :param csr: The `CertificationRequest` to extract the signature from.
+    :return: The Delta certificate requests signature as bytes.
+    :raises ValueError: If the Delta Certificate Request Signature attribute is missing.
+    """
+    _, _, delta_sig = extract_chameleon_attributes(csr=csr)
+
+    if delta_sig is None:
+        raise ValueError("Delta Certificate Request Signature attribute is missing.")
+
+    return delta_sig.asOctets()
+
+
 @keyword(name="Verify Paired CSR Signature")
 def verify_paired_csr_signature(  # noqa: D417 Missing argument description in the docstring
     csr: rfc6402.CertificationRequest,

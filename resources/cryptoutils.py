@@ -40,6 +40,7 @@ from tinyec import registry
 from tinyec.ec import Inf, Point
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractHybridRawPublicKey, KEMPrivateKey, KEMPublicKey
 from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey, CompositeKEM07PublicKey
 from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey, CompositeSig07PublicKey
@@ -109,6 +110,9 @@ def sign_data(  # noqa D417 undocumented-param
         return _sign_traditional_key(data, key, hash_alg, use_rsa_pss)
     if isinstance(key, (x25519.X25519PrivateKey, x448.X448PrivateKey)):
         raise ValueError(f"Key type '{type(key).__name__}' is not used for signing. It is used for key exchange.")
+
+    if isinstance(key, PQHashStatefulSigPrivateKey):
+        return key.sign(data)
 
     if isinstance(key, PQSignaturePrivateKey):
         # TODO maybe think about a better solution.
@@ -664,6 +668,8 @@ def verify_signature(  # noqa D417 undocumented-param
 
     elif isinstance(public_key, CompositeSig07PublicKey):
         public_key.verify(signature=signature, data=data, use_pss=use_rsa_pss)
+    elif isinstance(public_key, PQHashStatefulSigPublicKey):
+        public_key.verify(data=data, signature=signature)
 
     else:
         if isinstance(hash_alg, hashes.HashAlgorithm):
@@ -1017,7 +1023,6 @@ def convert_private_key_to_tinyec(private_key: EllipticCurvePrivateKey) -> Tuple
     curve_name = private_key.curve.name.lower()
     curve = registry.get_curve(curve_name)
     public_point = private_value * curve.g
-    public_point: Point
 
     if isinstance(public_point, Inf):
         raise TypeError("Computed point is at infinity.")

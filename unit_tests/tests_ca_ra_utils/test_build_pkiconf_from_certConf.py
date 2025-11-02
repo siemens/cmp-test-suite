@@ -31,6 +31,7 @@ class TestBuildPkiConfFromCertConf(unittest.TestCase):
             ca_cert=cls.ca_cert,
             cert_index=0,
         )
+        cls.response["extraCerts"].append(cls.ca_cert)
 
 
     def test_valid_cert_conf(self):

@@ -274,3 +274,19 @@ class PQKEMPrivateKey(PQPrivateKey, KEMPrivateKey, ABC):
     def nist_level(self) -> int:
         """Return the claimed NIST security level as string."""
         return self.public_key().nist_level
+
+    @staticmethod
+    def _seed_size(name: str) -> int:
+        """Return the size of the seed used for key generation."""
+        if oqs is None:
+            raise ImportError("The `liboqs` is not installed.")
+        _kem_method = oqs.KeyEncapsulation(name)
+        if not hasattr(_kem_method, "length_keypair_seed"):
+            logging.warning("The KEM method does not support keypair seed length, returning 0.")
+            return 0
+        return _kem_method.length_keypair_seed if _kem_method else 0
+
+    @property
+    def seed_size(self) -> int:
+        """Return the size of the seed used for key generation."""
+        return self._seed_size(self._other_name)

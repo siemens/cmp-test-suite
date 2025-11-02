@@ -101,6 +101,7 @@ ${TRUSTED_CA_DIR}            ${None}
 # Hybrid Endpoints
 
 ${PQ_ISSUING_SUFFIX}    ${None}
+${PQ_STATEFUL_ISSUING_SUFFIX}   ${None}
 ${URI_RELATED_CERT}   ${None}
 ${NEG_URI_RELATED_CERT}   ${None}
 ${ISSUING_SUFFIX}    ${None}

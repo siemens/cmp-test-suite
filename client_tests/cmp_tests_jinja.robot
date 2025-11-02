@@ -133,8 +133,6 @@ P10CR 02 - P10CR With Missing CSR Should Fail
     ...
     ...                The client should output an error message indicating missing or invalid input.
     [Tags]    p10cr    negative    malformed
-
-
     ${args}=    Get CMP Command
     ...    ${CMP_CLIENT}
     ...    cmd=${CERTIFICATION_REQUEST}

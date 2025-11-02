@@ -13,11 +13,14 @@ from pyasn1_alt_modules import rfc9480
 
 from mock_ca.db_config_vars import CertConfConfigVars
 from mock_ca.mock_fun import CertStateEnum, MockCAState
+from mock_ca.operation_dbs import StatefulSigState
+from mock_ca.stfl_validator import STFLPKIMessageValidator
 from resources.asn1_structures import PKIMessageTMP
 from resources.ca_ra_utils import build_pki_conf_from_cert_conf
 from resources.checkutils import validate_pkimessage_header
 from resources.cmputils import get_cmp_message_type
 from resources.exceptions import (
+    BadConfig,
     BadDataFormat,
     BadMessageCheck,
     BadRecipientNonce,
@@ -27,6 +30,7 @@ from resources.exceptions import (
     WrongAuthority,
     WrongIntegrity,
 )
+from resources.oidutils import PQ_STATEFUL_HASH_SIG_OID_2_NAME
 from resources.protectionutils import get_protection_alg_name
 from resources.suiteenums import ProtectedType
 
@@ -198,7 +202,13 @@ class CertConfState:
 class CertConfHandler:
     """Certificate Confirmation handler for the Mock CA."""
 
-    def __init__(self, state_db: MockCAState, config_vars: Optional[CertConfConfigVars] = None):
+    def __init__(
+        self,
+        state_db: MockCAState,
+        config_vars: Optional[CertConfConfigVars] = None,
+        pq_stateful_sig_state: Optional[StatefulSigState] = None,
+        stfl_validator: Optional[STFLPKIMessageValidator] = None,
+    ):
         """Initialize the handler with the state database."""
         self.conf_state = CertConfState()
         self.state_db = state_db
@@ -209,6 +219,8 @@ class CertConfHandler:
             allow_auto_ed=True,
             must_be_fresh_nonce=True,
         )
+        self.pq_stateful_sig_state = pq_stateful_sig_state
+        self.stfl_validator = stfl_validator
 
     def set_config_vars(self, config_vars: Union[CertConfConfigVars, dict]) -> None:
         """Set the configuration variables."""
@@ -369,10 +381,32 @@ class CertConfHandler:
                 cert,
                 new_state=CertStateEnum.CONFIRMED,
             )
+            self._may_add_stfl_confirmed_cert(cert, requests)
 
         self.conf_state.remove_request(pki_message)
 
         return response, ccp_cert
+
+    def _may_add_stfl_confirmed_cert(
+        self,
+        cert: rfc9480.CMPCertificate,
+        requests: PKIMessageTMP,
+        pq_stateful_sig_state: Optional[StatefulSigState] = None,
+    ) -> None:
+        """Add the confirmed certificate to the state if it is a stateful certificate."""
+        spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
+        oid = spki["algorithm"]["algorithm"]
+        if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+            logging.info("Adding the confirmed stateful certificate to the state.")
+
+            if self.stfl_validator is not None:
+                self.stfl_validator.process_stfl_after_request(certs=[cert], request=requests, confirmed=True)
+            else:
+                pq_stateful_sig_state = pq_stateful_sig_state or self.pq_stateful_sig_state
+                if pq_stateful_sig_state is None:
+                    raise BadConfig("The PQ Stateful Signature state is not set.")
+
+                pq_stateful_sig_state.add_state(cert)
 
     def details(self) -> Dict[str, Union[CertConfConfigVars, CertConfState, List[bytes]]]:
         """Get the details of the certificate confirmation handler."""

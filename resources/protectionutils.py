@@ -42,6 +42,7 @@ from pq_logic.tmp_oids import (
     id_it_KemCiphertextInfo,
 )
 from resources import (
+    asn1utils,
     certbuildutils,
     certextractutils,
     certutils,
@@ -79,12 +80,12 @@ from resources.exceptions import (
     BadMessageCheck,
     BadRequest,
     BadSigAlgID,
+    BadSigAlgIDParams,
     InvalidKeyCombination,
     LwCMPViolation,
     UnknownOID,
 )
 from resources.oid_mapping import (
-    get_alg_oid_from_key_hash,
     get_hash_from_oid,
     hash_name_to_instance,
     may_return_oid_to_name,
@@ -92,6 +93,7 @@ from resources.oid_mapping import (
 from resources.oidutils import (
     AES_GMAC_OID_2_NAME,
     ALL_KNOWN_OIDS_2_NAME,
+    ECDSA_OID_2_NAME,
     HKDF_OID_2_NAME,
     HMAC_OID_2_NAME,
     KMAC_OID_2_NAME,
@@ -99,6 +101,9 @@ from resources.oidutils import (
     MSG_SIG_ALG,
     PQ_OID_2_NAME,
     PQ_SIG_OID_2_NAME,
+    PQ_SIG_PRE_HASH_OID_2_NAME,
+    PQ_STATEFUL_HASH_SIG_OID_2_NAME,
+    RSA_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
     SHA2_NAME_2_OID,
     SHA_OID_2_NAME,
@@ -758,6 +763,7 @@ def _prepare_signature_prot_alg_id(
     private_key: PrivateKey,
     hash_alg: Optional[str] = None,
     cert: Optional[rfc9480.CMPCertificate] = None,
+    add_params_rand_val: bool = False,
 ) -> rfc9480.AlgorithmIdentifier:
     """Prepare the `AlgorithmIdentifier` for signature-based protection in a PKIMessage.
 
@@ -765,6 +771,7 @@ def _prepare_signature_prot_alg_id(
     :param hash_alg: Optional. The hash algorithm to be used (e.g., "sha256"). If not provided, it is derived from the
                      certificate's signature hash algorithm or defaults to "sha256".
     :param cert: Optional. An x509 certificate used to determine the hash algorithm, if `hash_alg` is not provided.
+    :param add_params_rand_val: If True, adds random values to the parameters of the `AlgorithmIdentifier`.
     :return: The prepared `AlgorithmIdentifier` for signature-based protection, populated with the appropriate OID.
     :raises ValueError: If the private key is not of the expected `PrivateKey` type.
     """
@@ -777,10 +784,13 @@ def _prepare_signature_prot_alg_id(
 
     hash_alg = hash_alg or cert_hash_alg or "sha256"
 
-    alg_oid = get_alg_oid_from_key_hash(private_key, hash_alg)
-    prot_alg_id = rfc9480.AlgorithmIdentifier()
-    prot_alg_id["algorithm"] = alg_oid
-    return prot_alg_id
+    signing_key = ensure_is_sign_key(private_key)
+
+    return prepare_alg_ids.prepare_sig_alg_id(
+        signing_key=signing_key,
+        hash_alg=hash_alg,
+        add_params_rand_val=add_params_rand_val,
+    )
 
 
 def _prepare_mac_alg_id(protection: str, **params) -> rfc9480.AlgorithmIdentifier:
@@ -883,6 +893,7 @@ def _prepare_prot_alg_id(
             private_key=private_key,
             cert=params.get("certificate"),
             hash_alg=params.get("hash_alg"),
+            add_params_rand_val=params.get("add_params_rand_val", False),
         )
     elif protection_type == ProtectionAlgorithm.DH:
         prot_alg_id["algorithm"] = rfc9480.id_DHBasedMac
@@ -1026,6 +1037,7 @@ def protect_pkimessage(  # noqa: D417
         - `cert_chain` (List[CMPCertificates]): The certificate chain to use for the PKIMessage, will be used to patch \
         the sender and senderKID fields, if `cert` is not provided. Defaults to `None`.
         - `peer` (CMPCertificate, ECDHPublicKey): The peer certificate or public key for DH-based MAC protection.
+        - `add_params_rand_val` (bool): If True, adds a random value to the parameters of the protection algorithm.
 
     Returns:
     -------
@@ -1276,7 +1288,12 @@ def verify_pkimessage_protection(  # noqa: D417 undocumented-param
         byte_secret = convertutils.str_to_bytes(password)
         expected_protection_value = _compute_symmetric_protection(pki_message, byte_secret, enforce_lwcmp=enforce_lwcmp)
 
-    elif protection_type_oid in RSASSA_PSS_OID_2_NAME or protection_type_oid in TRAD_SIG_OID_2_NAME:
+    elif (
+        protection_type_oid in RSASSA_PSS_OID_2_NAME
+        or protection_type_oid in TRAD_SIG_OID_2_NAME
+        or protection_type_oid in PQ_SIG_OID_2_NAME
+        or protection_type_oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME
+    ):
         _verify_pki_message_sig(pki_message, public_key)
         return
     else:
@@ -1311,8 +1328,8 @@ def _verify_pki_message_sig(pki_message: PKIMessageTMP, public_key: Optional[Ver
         hash_alg = get_hash_from_oid(protection_type_oid)
         hash_alg = hash_alg if hash_alg is None else hash_alg.split("-")[-1]
         if public_key is not None:
-            cryptoutils.verify_signature(
-                public_key=public_key, data=encoded, signature=protection_value, hash_alg=hash_alg
+            verify_signature_with_alg_id(
+                public_key=public_key, data=encoded, signature=protection_value, alg_id=prot_alg_id
             )
             return
 
@@ -1457,6 +1474,9 @@ def get_protection_type_from_pkimessage(  # noqa D417 undocumented-param
 
     if alg_oid in TRAD_SIG_OID_2_NAME:
         return "sig"
+
+    if alg_oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+        return prot_type.value
 
     if alg_oid in COMPOSITE_SIG07_OID_TO_NAME:
         return "composite-sig"
@@ -2089,28 +2109,42 @@ def compute_kem_based_mac_from_alg_id(
     data: bytes,
     alg_id: rfc9480.AlgorithmIdentifier,
     ss: bytes,
+    tx_id: bytes,
 ) -> bytes:
-    """Compute a `KEMBasedMac` using the provided AlgorithmIdentifier.
+    """Compute a KEMBasedMac using the provided AlgorithmIdentifier.
 
-    :param data: The data to be protected.
-    :param ss: The shared secret to use as key material.
-    :param alg_id: The `AlgorithmIdentifier` structure containing the KEMBasedMac parameters.
+    Implements KEMBasedMac computation based on RFC 9810 Section 5.1.3.4.
+
+    :param data: The data to protect.
+    :param ss: The shared secret (ss) resulting from the KEM.
+    :param alg_id: The AlgorithmIdentifier carrying KemBMParameter.
+    :param tx_id: The transactionID of the message that conveyed `KemCiphertextInfo` (ct).
     :return: The computed MAC value.
     """
     if not isinstance(alg_id["parameters"], KemBMParameterAsn1):
-        parameters = decoder.decode(alg_id["parameters"], asn1Spec=KemBMParameterAsn1())[0]
+        parameters, rest = asn1utils.try_decode_pyasn1(alg_id["parameters"], KemBMParameterAsn1())  # type: ignore
+        parameters: KemBMParameterAsn1
+        if rest:
+            raise BadAsn1Data("KemBMParameter")
     else:
         parameters = alg_id["parameters"]
 
-    ukm = b"" if not parameters["kemContext"].isValue else parameters["kemContext"].asOctets()
+    ukm_bytes = b"" if not parameters["kemContext"].isValue else parameters["kemContext"].asOctets()
 
-    if ukm != b"":
-        _process_kem_other_info(parameters["kemContext"])
+    kem_other_info = KemOtherInfoAsn1()
+    kem_other_info["staticString"].extend(["CMP-KEM"])
+    kem_other_info["transactionID"] = univ.OctetString(tx_id)
+    if ukm_bytes:
+        kem_other_info["kemContext"] = univ.OctetString(ukm_bytes).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+        )
+
+    other_info_der = encoder.encode(kem_other_info)
 
     kdf_alg_id = parameters["kdf"]
     length = int(parameters["len"])
 
-    mac_key = compute_kdf_from_alg_id(kdf_alg_id=kdf_alg_id, ss=ss, length=length, ukm=ukm)
+    mac_key = compute_kdf_from_alg_id(kdf_alg_id=kdf_alg_id, ss=ss, length=length, ukm=other_info_der)
 
     logging.info("KEMBasedMac MAC-key: %s", mac_key.hex())
 
@@ -2124,7 +2158,7 @@ def compute_kem_based_mac_from_alg_id(
     if mac_oid in KMAC_OID_2_NAME:
         return cryptoutils.compute_kmac_from_alg_id(key=mac_key, data=data, alg_id=mac_alg_id)
 
-    raise ValueError(f"Unsupported MAC algorithm: {may_return_oid_to_name(mac_oid)}")
+    raise ValueError(f"Unsupported MAC algorithm: {may_return_oid_to_name(mac_oid)}, for KEMBasedMac.")
 
 
 @keyword(name="Prepare KEMCiphertextInfo")
@@ -2187,7 +2221,9 @@ def prepare_kem_other_info(
     other_info = KemOtherInfoAsn1()
     other_info["transactionID"] = univ.OctetString(transaction_id)
     if context is not None:
-        other_info["kemContext"] = univ.OctetString(context)
+        other_info["kemContext"] = univ.OctetString(context).subtype(
+            implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)
+        )
 
     if isinstance(static_string, str):
         static_string = [static_string]
@@ -2195,6 +2231,13 @@ def prepare_kem_other_info(
     other_info["staticString"].extend(static_string)
 
     return other_info
+
+
+def may_get_tx_id(request: PKIMessageTMP) -> bytes:
+    """Return the PKIMessage header.transactionID for KEMBasedMAC operations (RFC 9810 Section 5.1.3.4)."""
+    if request["header"]["transactionID"].isValue:
+        return request["header"]["transactionID"].asOctets()
+    raise BadMessageCheck("The PKIMessage header.transactionID MUST be present for KEMBasedMAC.")
 
 
 @keyword(name="Protect PKIMessage KEMBasedMAC")
@@ -2261,48 +2304,23 @@ def protect_pkimessage_kem_based_mac(  # noqa: D417 Missing argument description
         shared_secret, kem_ct = public_key.encaps()
         info_val = prepare_kem_ciphertextinfo(key=public_key, ct=kem_ct)
         pki_message["header"]["generalInfo"].append(info_val)
-        kem_context = kem_context or prepare_kem_other_info(
-            transaction_id=pki_message["header"]["transactionID"].asOctets(), context=context, static_string="CMP-KEM"
-        )
 
     prot_alg_id = prepare_alg_ids.prepare_kem_based_mac_alg_id(
-        hash_alg=hash_alg, length=32, kem_context=kem_context, kdf=kdf
+        hash_alg=hash_alg, length=32, kem_context=context, kdf=kdf
     )
     pki_message["header"]["protectionAlg"] = prot_alg_id.subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 1), cloneValueFlag=True
     )
 
     data = prepare_protected_part(pki_message)
-    mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=prot_alg_id, ss=shared_secret)
+    tx_id = may_get_tx_id(request=pki_message)
+    mac = compute_kem_based_mac_from_alg_id(data=data, alg_id=prot_alg_id, ss=shared_secret, tx_id=tx_id)
 
     if bad_message_check:
         mac = utils.manipulate_first_byte(mac)
 
     pki_message["protection"] = prepare_pki_protection_field(mac)
     return pki_message
-
-
-def _process_kem_other_info(kem_other_info: bytes, expected_tx_id: Optional[bytes] = None) -> None:
-    """Process the KEMOtherInfo structure from bytes.
-
-    :param kem_other_info: The KEMOtherInfo structure as bytes.
-    :param expected_tx_id: The expected transaction ID. Defaults to `None`.
-    """
-    kem_info, rest = decoder.decode(kem_other_info, asn1Spec=KemOtherInfoAsn1())
-    if rest:
-        raise ValueError("The decoding of the `KemOtherInfo` had a remainder.")
-
-    kem_info["transactionID"] = kem_info["transactionID"].asOctets()
-
-    if expected_tx_id is not None and kem_info["transactionID"] != expected_tx_id:
-        raise ValueError("The transactionID does not match the expected value.")
-
-    static_string = kem_info["staticString"][0]
-    if static_string != "CMP-KEM":
-        raise ValueError(f"Unexpected static string: {static_string}. MUST be 'CMP-KEM'.")
-
-    if kem_info["kemContext"].isValue:
-        raise NotImplementedError("KEMContext inside the `KemOtherInfo` structure is not yet supported.")
 
 
 @not_keyword
@@ -2368,7 +2386,8 @@ def verify_kem_based_mac_protection(
 
     data = prepare_protected_part(pki_message)
     alg_id = pki_message["header"]["protectionAlg"]
-    computed_mac = compute_kem_based_mac_from_alg_id(data, alg_id, shared_secret)
+    header_tx_id = may_get_tx_id(pki_message)
+    computed_mac = compute_kem_based_mac_from_alg_id(data, alg_id, shared_secret, tx_id=header_tx_id)
     logging.debug("Computed MAC: %s", computed_mac.hex())
     logging.debug("Received MAC: %s", pki_message["protection"].asOctets().hex())
     if computed_mac != pki_message["protection"].asOctets():
@@ -2467,6 +2486,138 @@ def _verify_composite_sig(
     )
 
 
+def _is_parmeters_null(alg_id: rfc9480.AlgorithmIdentifier) -> bool:
+    """Check if the parameters of the algorithm identifier are set to `NULL`."""
+    if not alg_id["parameters"].isValue:
+        return False
+    if isinstance(alg_id["parameters"], univ.Null):
+        return True
+    if not hasattr(alg_id["parameters"], "asOctets"):
+        return False
+    return alg_id["parameters"].asOctets() == b"\x05\x00"  # ASN.1 NULL is encoded as 0x05 0x00
+
+
+def _validate_pq_sig_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
+    """Validate the PQ signature algorithm identifier.
+
+    :param alg_id: The `AlgorithmIdentifier` to validate.
+    :raises ValueError: If the algorithm identifier is not a valid PQ signature algorithm.
+    """
+    oid = alg_id["algorithm"]
+
+    name = may_return_oid_to_name(oid)
+
+    if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+        _name = may_return_oid_to_name(oid)
+        if alg_id["parameters"].isValue:
+            msg = (
+                f"The {_name} signature algorithm identifier must not have parameters set. Got: {alg_id.prettyPrint()}"
+            )
+            raise BadSigAlgIDParams(msg)
+
+    elif oid in PQ_SIG_OID_2_NAME or oid in PQ_SIG_PRE_HASH_OID_2_NAME:
+        if alg_id["parameters"].isValue:
+            msg = f"For a PQ signature algorithm the parameters must be set absent. Got: {name} {alg_id.prettyPrint()}"
+            raise BadSigAlgIDParams(msg)
+    else:
+        raise BadAlg(f"Unsupported PQ signature algorithm identifier: {name}.")
+
+
+def _validate_rsa_sig_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
+    """Validate the RSA signature algorithm identifier.
+
+    :param alg_id: The `AlgorithmIdentifier` to validate.
+    :raises BadSigAlgIDParams: If the algorithm identifier parameters are invalid.
+    :raises BadAlg: If the algorithm identifier is unsupported.
+    """
+    oid = alg_id["algorithm"]
+
+    if oid in RSA_OID_2_NAME:
+        if not _is_parmeters_null(alg_id):
+            msg = (
+                f"For an RSA signature algorithm identifier "
+                f"must have the parameters set to `NULL`."
+                f"\nGot: {alg_id.prettyPrint()}"
+            )
+            raise BadSigAlgIDParams(msg)
+
+    elif oid in RSASSA_PSS_OID_2_NAME:
+        if oid == rfc9481.id_RSASSA_PSS:
+            if not alg_id["parameters"].isValue:
+                msg = f"For RSASSA-PSS, the `AlgorithmIdentifier` must have parameters set. Got: {alg_id.prettyPrint()}"
+                raise BadSigAlgIDParams(msg)
+
+        else:
+            if alg_id["parameters"].isValue:
+                msg = (
+                    f"For RSASSA-PSS-SHAKE, the `AlgorithmIdentifier` must not have parameters set. "
+                    f"Got: {alg_id.prettyPrint()}"
+                )
+                raise BadSigAlgIDParams(msg)
+
+    else:
+        name = may_return_oid_to_name(oid)
+        raise BadAlg(f"Unsupported RSA signature algorithm identifier: {name}.")
+
+
+def _validate_ecc_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
+    """Validate the ECC signature algorithm identifier.
+
+    :param alg_id: The `AlgorithmIdentifier` to validate.
+    :raises BadSigAlgIDParams: If the algorithm identifier parameters are invalid.
+    :raises BadAlg: If the algorithm identifier is unsupported.
+    """
+    oid = alg_id["algorithm"]
+
+    if oid in ECDSA_OID_2_NAME:
+        if alg_id["parameters"].isValue:
+            msg = f"For an ECDSA signature algorithm identifier not have parameters set. Got: {alg_id.prettyPrint()}"
+            raise BadSigAlgIDParams(msg)
+
+    elif oid in [rfc9481.id_Ed448, rfc9481.id_Ed25519]:
+        if alg_id["parameters"].isValue:
+            name = may_return_oid_to_name(oid)
+            msg = (
+                f"For {name} signature algorithm identifier must the `parameters` be absent. "
+                f"Got: {alg_id.prettyPrint()}"
+            )
+            raise BadSigAlgIDParams(msg)
+
+    else:
+        name = may_return_oid_to_name(oid)
+        raise BadAlg(f"Unsupported ECC signature algorithm identifier: {name}.")
+
+
+def _validate_sig_alg_id(alg_id: rfc9480.AlgorithmIdentifier) -> None:
+    """Validate the signature algorithm identifier.
+
+    :param alg_id: The `AlgorithmIdentifier` to validate.
+    :raises BadSigAlgIDParams: If the algorithm identifier parameters are invalid.
+    :raises BadAlg: If the algorithm identifier is unsupported.
+    """
+    oid = alg_id["algorithm"]
+    if oid in COMPOSITE_SIG07_OID_TO_NAME:
+        if alg_id["parameters"].isValue:
+            msg = (
+                f"For a composite signature algorithm identifier the `parameters` must be absent. "
+                f"Got: {alg_id['algorithm'].prettyPrint()}"
+            )
+            raise BadSigAlgIDParams(msg)
+
+    elif oid in ECDSA_OID_2_NAME or oid in [rfc9481.id_Ed448, rfc9481.id_Ed25519]:
+        _validate_ecc_alg_id(alg_id)
+
+    elif oid in [*RSA_OID_2_NAME, *RSASSA_PSS_OID_2_NAME]:
+        _validate_rsa_sig_alg_id(alg_id)
+
+    elif oid in PQ_OID_2_NAME:
+        _validate_pq_sig_alg_id(alg_id)
+
+    else:
+        name = may_return_oid_to_name(oid)
+        raise BadAlg(f"Unsupported signature algorithm identifier: {name}.")
+
+
 @keyword(name="Verify Signature With AlgID")
 def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in the docstring
     public_key: VerifyKey, alg_id: rfc9480.AlgorithmIdentifier, data: bytes, signature: bytes
@@ -2494,6 +2645,7 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
 
     """
     oid = alg_id["algorithm"]
+    _validate_sig_alg_id(alg_id)
 
     if oid in COMPOSITE_SIG07_OID_TO_NAME:
         if not isinstance(public_key, CompositeSig07PublicKey):

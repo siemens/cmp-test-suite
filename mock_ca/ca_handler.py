@@ -30,9 +30,10 @@ from mock_ca.general_msg_handler import GeneralMessageHandler
 from mock_ca.hybrid_handler import HybridIssuingHandler, SunHybridHandler
 from mock_ca.mock_fun import KeySecurityChecker, MockCAState
 from mock_ca.nested_handler import NestedHandler
-from mock_ca.operation_dbs import MockCAOPCertsAndKeys
+from mock_ca.operation_dbs import MockCAOPCertsAndKeys, StatefulSigState
 from mock_ca.prot_handler import ProtectionHandler
 from mock_ca.rev_handler import RevocationHandler
+from mock_ca.stfl_validator import STFLPKIMessageValidator
 from pq_logic.hybrid_issuing import (
     build_catalyst_signed_cert_from_req,
     build_cert_discovery_cert_from_p10cr,
@@ -92,6 +93,7 @@ from resources.exceptions import (
     CertRevoked,
     CMPTestSuiteError,
     InvalidAltSignature,
+    InvalidKeyData,
     NotAuthorized,
     UnknownOID,
 )
@@ -101,6 +103,7 @@ from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import (
     HYBRID_SIG_OID_2_NAME,
     PQ_SIG_OID_2_NAME,
+    PQ_STATEFUL_HASH_SIG_OID_2_NAME,
     SUPPORTED_MAC_OID_2_NAME,
     TRAD_SIG_OID_2_NAME,
 )
@@ -351,7 +354,6 @@ class CAHandler:
                     f"The hybrid kem private key is not a `HybridKEMPrivateKey`.Got: {type(self.xwing_key)}"
                 )
 
-        # Handler classes
         self.rev_handler = RevocationHandler(self.state.certificate_db)
         self.cert_conf_handler = CertConfHandler(self.state)
 
@@ -381,6 +383,8 @@ class CAHandler:
         if self.xwing_cert is not None:
             self.own_certs.append(self.xwing_cert)
 
+        self.pq_stateful_sig_state = StatefulSigState()
+
         self.protection_handler = ProtectionHandler(
             cmp_protection_cert=self.ca_cert,
             cmp_prot_key=self.ca_key,
@@ -390,6 +394,7 @@ class CAHandler:
             def_mac_alg="password_based_mac",
             enforce_rfc9481=enforce_rfc9481,
             trusted_ras_dir=trusted_ras_dir,
+            pq_stateful_sig_state=self.pq_stateful_sig_state,
         )
 
         self.cert_req_handler = CertReqHandler(
@@ -403,7 +408,16 @@ class CAHandler:
             kga_key=self.kga_key,
             kga_cert_chain=self.kga_cert_chain,
             cmp_protection_cert=self.protection_handler.protection_cert,
+            pq_stateful_sig_state=self.pq_stateful_sig_state,
         )
+
+        self.stfl_validator = STFLPKIMessageValidator(
+            stfl_config=None,
+            stfl_state=self.pq_stateful_sig_state,
+        )
+
+        self.cert_req_handler.stfl_validator = self.stfl_validator
+        self.cert_conf_handler.stfl_validator = self.stfl_validator
 
         self.nested_handler = NestedHandler(
             cert_req_handler=self.cert_req_handler,
@@ -459,6 +473,7 @@ class CAHandler:
         self.alg_profile.update(TRAD_SIG_OID_2_NAME)
         self.alg_profile.update(SUPPORTED_MAC_OID_2_NAME)
         self.alg_profile.update(PQ_SIG_OID_2_NAME)
+        self.alg_profile.update(PQ_STATEFUL_HASH_SIG_OID_2_NAME)
         self.alg_profile.update(HYBRID_SIG_OID_2_NAME)
 
         # The default algorithm for the CA, just to correctly build the error message.
@@ -545,6 +560,7 @@ class CAHandler:
         if not request_msg["header"]["protectionAlg"].isValue:
             raise BadMessageCheck("Protection algorithm not provided for request.")
 
+        self.stfl_validator.validate_pq_stateful_pki_message(request_msg)
         prot_type = ProtectedType.get_protection_type(request_msg)
 
         if prot_type == ProtectedType.KEM:
@@ -552,7 +568,9 @@ class CAHandler:
             self.state.kem_mac_based.verify_pkimessage_protection(request=request_msg)
             return
 
-        self.protection_handler.validate_protection(request_msg, cc_certs=self.get_cc_certs())
+        self.protection_handler.validate_protection(
+            request_msg, cc_certs=self.get_cc_certs(), exclude_stateful_sig_check=True
+        )
 
     def _sign_nested_response(self, response: PKIMessageTMP, request_msg: PKIMessageTMP) -> PKIMessageTMP:
         """Sign the nested response."""
@@ -716,7 +734,10 @@ class CAHandler:
             elif pki_message["body"].getName() == "nested":
                 return self.process_nested_request(pki_message)
             elif pki_message["body"].getName() in ["ir", "cr", "p10cr", "kur", "ccr"]:
-                self.protection_handler.validate_protection(pki_message=pki_message, cc_certs=self.get_cc_certs())
+                self.protection_handler.validate_protection(
+                    pki_message=pki_message, cc_certs=self.get_cc_certs(), exclude_stateful_sig_check=True
+                )
+                self.stfl_validator.add_pq_stateful_pki_message(pki_message=pki_message)
                 response = self.cert_req_handler.process_cert_request(pki_message)
             elif pki_message["body"].getName() == "rr":
                 try:
@@ -820,7 +841,11 @@ class CAHandler:
         :param request_msg: The nested request.
         :return: The PKI message containing the response.
         """
-        return self.nested_handler.process_nested_request(request_msg, prot_handler=self.protection_handler)
+        return self.nested_handler.process_nested_request(
+            request_msg,
+            prot_handler=self.protection_handler,
+            pq_stateful_state=self.pq_stateful_sig_state,
+        )
 
     def process_rr(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Process the RR message.
@@ -852,9 +877,17 @@ class CAHandler:
         :param pki_message: The PKIMessage request.
         :raises BadCertTemplate: If the certificate template is invalid.
         """
-        result = self.state.cert_state_db.check_request_for_compromised_key(pki_message)
-        if result:
-            raise BadCertTemplate("The certificate template contained a compromised key.")
+        try:
+            result = self.state.cert_state_db.check_request_for_compromised_key(pki_message)
+            if result:
+                raise BadCertTemplate("The certificate template contained a compromised key.")
+        except (InvalidKeyData, BadAsn1Data, BadAlg) as e:
+            raise BodyRelevantError(
+                e.message,
+                pki_message=pki_message,
+                failinfo="badCertTemplate",
+                error_details=e.get_error_details(),
+            )
 
     def process_ir(
         self,
@@ -919,6 +952,8 @@ class CAHandler:
         """
         if pki_message["body"].getName() == "p10cr":
             try:
+                self.stfl_validator.validate_pq_stateful_pki_message(pki_message)
+
                 if pki_message["extraCerts"].isValue:
                     self.hybrid_handler.is_revoked_for_issuing(request=pki_message, used_both_certs=False)
 
@@ -937,6 +972,9 @@ class CAHandler:
                 result = find_oid_in_general_info(pki_message, str(rfc9480.id_it_implicitConfirm))
                 self.state.add_certs(certs=[paired_cert, delta_cert], was_confirmed=result)
 
+                self.stfl_validator.process_stfl_after_request(
+                    request=pki_message, certs=[paired_cert, delta_cert], chameleon=True
+                )
                 return self.sign_response(
                     response=response,
                     request_msg=pki_message,
