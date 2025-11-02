@@ -11,7 +11,7 @@
 
 FROM ubuntu:22.04
 
-ARG OPENSSL_VERSION=3.5.2
+ARG OPENSSL_VERSION=3.6.0
 
 # We install OpenSSL under /opt so we DO NOT overwrite Ubuntu’s system OpenSSL.
 # The system version remains installed (e.g., /usr/bin/openssl), but we will make
@@ -73,7 +73,7 @@ RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
 # 4) Build and install liboqs-python for other post-quantum
 # cryptography algorithms.
 #######################################################################
-RUN git clone --depth 1 https://https://github.com/Guiliano99/liboqs-python-stateful-sig && \
+RUN git clone --depth 1 https://github.com/Guiliano99/liboqs-python-stateful-sig && \
     cd liboqs-python-stateful-sig && \
     PKG_CONFIG_PATH="${OPENSSL_PREFIX}/lib64/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig" \
     CFLAGS="-I${OPENSSL_PREFIX}/include" \
