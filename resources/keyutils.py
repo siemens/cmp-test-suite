@@ -1206,7 +1206,7 @@ def _prepare_spki_for_kga(
     if key_name is not None:
         key = pq_logic.combined_factory.CombinedKeyFactory.generate_key(key_name).public_key()
         spki_tmp = subject_public_key_info_from_pubkey(
-            public_key=tmp_key,  # type: ignore[AssignmentTypeError]
+            public_key=key,  # type: ignore[AssignmentTypeError]
             use_rsa_pss=use_pss,
         )
         spki["algorithm"]["algorithm"] = spki_tmp["algorithm"]["algorithm"]
