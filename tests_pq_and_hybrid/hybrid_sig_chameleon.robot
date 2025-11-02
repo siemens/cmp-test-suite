@@ -257,3 +257,123 @@ Client MUST Check that the Chameleon Certificate is Valid
     PKIStatusInfo Failinfo Bit Must Be    ${response}    signerNotTrusted,certRevoked
 
 # Client MUST Reject Recursively Built Paired Certificate
+
+###########################
+# PQ STFL Chameleon Tests
+###########################
+CA CAN Issue a valid Base STFL Chameleon Cert
+    [Documentation]    According to chameleon-certs-05 section 5, is a valid paired CSR send.
+    ...                The CA should issue a valid chameleon certificate. We send a paired CSR,
+    ...                which contains for the primary key a PQ stateful signature key and for the
+    ...                secondary key a traditional signature key. The CA should issue a valid
+    ...                chameleon certificate with a paired certificate, which contains the same
+    ...                PQ stateful signature key.
+    [Tags]      positive  pq-stateful-sig
+    ${pq_key}=  Generate Unique Key    xmss-sha2_10_256
+    ${trad_key}=  Generate Key   rsa   length=2048
+    ${csr}=    Build Paired CSR    ${pq_key}    ${trad_key}
+    ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}
+    ...                                 exclude_fields=sender,senderKID   implicit_confirm=True
+    ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
+    ${response}=   Exchange Migration PKIMessage    ${protected_p10cr}  ${CA_BASE_URL}   ${CHAMELEON_SUFFIX}
+    PKIMessage Body Type Must Be    ${response}    cp
+    PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=   Get Cert From PKIMessage    ${response}
+    ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
+    ${extracted_delta_cert}=   Get From List    ${response["extraCerts"]}    1
+    ${der_delta}=   Encode To Der    ${delta_cert}
+    ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
+    Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
+    ...                be the same as the extracted delta certificate.
+    Validate Migration OID In Certificate    ${cert}    xmss-sha2_10_256
+
+CA CAN Issue a valid Delta STFL Chameleon Cert
+    [Documentation]    According to chameleon-certs-05 section 5, is a valid paired CSR send.
+    ...                The CA should issue a valid chameleon certificate. We send a paired CSR,
+    ...                which contains for the primary key a traditional signature key and for the
+    ...                secondary key a PQ stateful signature key. The CA should issue a valid
+    ...                chameleon certificate with a delta certificate, which contains the same
+    ...                PQ stateful signature key.
+    [Tags]      positive  pq-stateful-sig
+    ${pq_key}=  Generate Unique Key    xmss-sha2_10_256
+    ${trad_key}=  Generate Key   rsa   length=2048
+    ${csr}=    Build Paired CSR   ${trad_key}   ${pq_key}
+    ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}
+    ...                                 exclude_fields=sender,senderKID   implicit_confirm=True
+    ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
+    ${response}=   Exchange Migration PKIMessage    ${protected_p10cr}  ${CA_BASE_URL}   ${CHAMELEON_SUFFIX}
+    PKIMessage Body Type Must Be    ${response}    cp
+    PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=   Get Cert From PKIMessage    ${response}
+    ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
+    ${extracted_delta_cert}=   Get From List    ${response["extraCerts"]}    1
+    ${der_delta}=   Encode To Der    ${delta_cert}
+    ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
+    Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
+    ...                be the same as the extracted delta certificate.
+    Validate Migration OID In Certificate    ${delta_cert}    xmss-sha2_10_256
+
+CA MUST Detect Already Used Base XMSS Key
+    [Documentation]    According to chameleon-certs-05 section 5, is a valid paired CSR send.
+    ...                The CA should issue a valid chameleon certificate.
+    [Tags]      negative  pq-stateful-sig
+    ${pq_key}=  Generate Unique Key    xmss-sha2_10_256
+    ${trad_key}=  Generate Unique Key   rsa   length=2048
+    ${csr}=    Build Paired CSR    ${pq_key}    ${trad_key}
+    ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}
+    ...                                 exclude_fields=sender,senderKID   implicit_confirm=True
+    ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
+    ${response}=   Exchange Migration PKIMessage    ${protected_p10cr}  ${CA_BASE_URL}   ${CHAMELEON_SUFFIX}
+    PKIMessage Body Type Must Be    ${response}    cp
+    PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=   Get Cert From PKIMessage    ${response}
+    ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
+    ${extracted_delta_cert}=   Get From List    ${response["extraCerts"]}    1
+    ${der_delta}=   Encode To Der    ${delta_cert}
+    ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
+    Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
+    ...                be the same as the extracted delta certificate.
+    ${pq_key2}=  Generate Unique Key    xmss-sha2_10_256
+    ${trad_key2}=  Generate Unique Key   rsa   length=2048
+    ${csr}=    Build Paired CSR    ${pq_key2}    ${trad_key2}
+    ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}
+    ...                                 exclude_fields=sender,senderKID   implicit_confirm=True
+    ${pq_key}=   Modify PQ Stateful Sig Private Key    ${pq_key}    index=0
+    ${protected_p10cr}=  Protect PKIMessage    ${p10cr}   signature   private_key=${pq_key}
+    ...                                        cert=${cert}
+    ${response}=   Exchange Migration PKIMessage    ${protected_p10cr}  ${CA_BASE_URL}   ${CHAMELEON_SUFFIX}
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badMessageCheck,badRequest
+
+CA MUST Detect Already Used Delta XMSS Key
+    [Documentation]    According to chameleon-certs-05 section 5, is a valid paired CSR send.
+    ...                The CA should issue a valid chameleon certificate.
+    [Tags]      negative  pq-stateful-sig
+    ${pq_key}=  Generate Unique Key    xmss-sha2_10_256
+    ${trad_key}=  Generate Key   rsa   length=2048
+    ${csr}=    Build Paired CSR   ${trad_key}   ${pq_key}
+    ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}
+    ...                                 exclude_fields=sender,senderKID   implicit_confirm=True
+    ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
+    ${response}=   Exchange Migration PKIMessage    ${protected_p10cr}  ${CA_BASE_URL}   ${CHAMELEON_SUFFIX}
+    PKIMessage Body Type Must Be    ${response}    cp
+    PKIStatus Must Be    ${response}    status=accepted
+    ${cert}=   Get Cert From PKIMessage    ${response}
+    ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
+    ${extracted_delta_cert}=   Get From List    ${response["extraCerts"]}    1
+    ${der_delta}=   Encode To Der    ${delta_cert}
+    ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
+    Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
+    ...                be the same as the extracted delta certificate.
+    ${pq_key2}=  Generate Unique Key    xmss-sha2_10_256
+    ${trad_key2}=  Generate Key   rsa   length=2048
+    ${csr}=    Build Paired CSR    ${trad_key2}    ${pq_key2}
+    ${p10cr}=  Build P10cr From CSR    ${csr}    recipient=${RECIPIENT}
+    ...                                 exclude_fields=sender,senderKID   implicit_confirm=True
+    ${pq_key}=   Modify PQ Stateful Sig Private Key    ${pq_key}    index=0
+    ${protected_p10cr}=  Protect PKIMessage    ${p10cr}   signature   private_key=${pq_key}
+    ...                                        cert=${delta_cert}
+    ${response}=   Exchange Migration PKIMessage    ${protected_p10cr}  ${CA_BASE_URL}   ${CHAMELEON_SUFFIX}
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badMessageCheck,badRequest
+    Verify StatusString    ${response}    any_text=Delta key,used,already used,exhausted

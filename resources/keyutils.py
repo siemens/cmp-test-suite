@@ -9,6 +9,8 @@ Designed to facilitate key management by offering simple methods to create new k
 store them and retrieve them when needed.
 """
 
+import logging
+import math
 import os
 import re
 import textwrap
@@ -37,22 +39,29 @@ from pyasn1.type import tag, univ
 from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5958, rfc6402, rfc6664, rfc9480
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.combined_factory import CombinedKeyFactory
+import pq_logic.combined_factory
 from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
 from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
+from pq_logic.keys.stateful_sig_keys import XMSSMTPrivateKey, XMSSPrivateKey
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME, id_rsa_kem_spki
-from resources import oid_mapping, prepare_alg_ids, typingutils, utils
-from resources.asn1utils import try_decode_pyasn1
+from resources import asn1utils, certutils, oid_mapping, prepare_alg_ids, typingutils, utils
 from resources.convertutils import str_to_bytes, subject_public_key_info_from_pubkey
 from resources.exceptions import BadAlg, BadAsn1Data, BadCertTemplate, BadSigAlgID, InvalidKeyCombination, UnknownOID
-from resources.oid_mapping import KEY_CLASS_MAPPING, get_curve_instance, get_hash_from_oid, may_return_oid_to_name
+from resources.oid_mapping import (
+    KEY_CLASS_MAPPING,
+    get_curve_instance,
+    get_digest_hash_alg_from_alg_id,
+    get_hash_from_oid,
+    may_return_oid_to_name,
+)
 from resources.oidutils import (
     CURVE_OID_2_NAME,
     HYBRID_SIG_OID_2_NAME,
@@ -60,6 +69,7 @@ from resources.oidutils import (
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
     PQ_SIG_PRE_HASH_OID_2_NAME,
+    PQ_STATEFUL_HASH_SIG_OID_2_NAME,
     TRAD_SIG_NAME_2_OID,
     TRAD_STR_OID_TO_KEY_NAME,
 )
@@ -125,7 +135,7 @@ def save_key(  # noqa: D417 undocumented-params
         )
 
     else:
-        data = CombinedKeyFactory.save_private_key_one_asym_key(
+        data = pq_logic.combined_factory.CombinedKeyFactory.save_private_key_one_asym_key(
             private_key=key,
             save_type=save_type,
             password=password,
@@ -294,7 +304,7 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
     algorithm = algorithm.lower()
 
     if params.get("seed") is not None:
-        return CombinedKeyFactory.generate_key_from_seed(
+        return pq_logic.combined_factory.CombinedKeyFactory.generate_key_from_seed(
             algorithm,
             seed=params.get("seed"),  # type: ignore
             curve=params.get("curve"),
@@ -328,7 +338,7 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
         )
 
     else:
-        private_key = CombinedKeyFactory.generate_key(algorithm=algorithm, **params)
+        private_key = pq_logic.combined_factory.CombinedKeyFactory.generate_key(algorithm=algorithm, **params)
 
     return private_key
 
@@ -437,7 +447,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
             else:
                 out = utils.decode_pem_string(out)
 
-            return CombinedKeyFactory.load_private_key_from_one_asym_key(data=out)
+            return pq_logic.combined_factory.CombinedKeyFactory.load_private_key_from_one_asym_key(data=out)
 
     pem_data = utils.load_and_decode_pem_file(filepath)
 
@@ -450,7 +460,11 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
         pass
 
     try:
-        if b"SPDX-License-Identifier:" in pem_data:
+        # The reuse tool will also look for its marker in the entire body of the
+        # file, not just the header - so in the line below it would've been
+        # triggered because `in pem_data:` is not a valid license name.
+        # Hence we don't include the complete marker, but only its prefix.
+        if b"SPDX-License" in pem_data:
             pem_data2 = _extract_and_format_key(filepath)
         else:
             pem_data2 = pem_data
@@ -464,7 +478,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
         if password is not None:
             pem_data = load_enc_key(password=password, data=pem_data2)
 
-        return CombinedKeyFactory.load_private_key_from_one_asym_key(data=pem_data)
+        return pq_logic.combined_factory.CombinedKeyFactory.load_private_key_from_one_asym_key(data=pem_data)
 
     if password is not None:
         password = str_to_bytes(password)  # type: ignore
@@ -503,12 +517,12 @@ def load_public_key_from_file(filepath: str) -> PublicKey:  # noqa: D417 for RF 
     """
     der_data = utils.load_and_decode_pem_file(filepath)
 
-    spki, rest = try_decode_pyasn1(der_data, rfc5280.SubjectPublicKeyInfo())  # type: ignore
+    spki, rest = asn1utils.try_decode_pyasn1(der_data, rfc5280.SubjectPublicKeyInfo())  # type: ignore
     spki: rfc5280.SubjectPublicKeyInfo
     if rest != b"":
         raise BadAsn1Data("SubjectPublicKeyInfo")
 
-    return CombinedKeyFactory.load_public_key_from_spki(spki)
+    return pq_logic.combined_factory.CombinedKeyFactory.load_public_key_from_spki(spki)
 
 
 def load_public_key_from_spki(data: Union[bytes, rfc5280.SubjectPublicKeyInfo]) -> PublicKey:  # noqa: D417 for RF docs
@@ -540,7 +554,7 @@ def load_public_key_from_spki(data: Union[bytes, rfc5280.SubjectPublicKeyInfo]) 
         if rest != b"":
             raise BadAsn1Data("SubjectPublicKeyInfo")
 
-    return CombinedKeyFactory.load_public_key_from_spki(spki=data)
+    return pq_logic.combined_factory.CombinedKeyFactory.load_public_key_from_spki(spki=data)
 
 
 @not_keyword
@@ -561,7 +575,7 @@ def generate_key_based_on_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> Private
                 if oid in PQ_SIG_PRE_HASH_OID_2_NAME:
                     tmp = PQ_SIG_PRE_HASH_OID_2_NAME[oid].split("-")
                     name = "-".join(tmp[:-1])
-                return CombinedKeyFactory.generate_key(algorithm=name)
+                return pq_logic.combined_factory.CombinedKeyFactory.generate_key(algorithm=name)
 
     elif oid == rfc6664.id_ecPublicKey:
         curve_oid, rest = decoder.decode(alg_id["parameters"], asn1Spec=rfc5480.ECParameters())
@@ -575,12 +589,14 @@ def generate_key_based_on_alg_id(alg_id: rfc5280.AlgorithmIdentifier) -> Private
         return ec.generate_private_key(curve=curve_instance)
 
     elif str(oid) in TRAD_STR_OID_TO_KEY_NAME:
-        return CombinedKeyFactory.generate_key(algorithm=TRAD_STR_OID_TO_KEY_NAME[str(oid)])
+        return pq_logic.combined_factory.CombinedKeyFactory.generate_key(algorithm=TRAD_STR_OID_TO_KEY_NAME[str(oid)])
 
     elif oid in HYBRID_SIG_OID_2_NAME:
-        return CombinedKeyFactory.generate_key(algorithm=HYBRID_SIG_OID_2_NAME[oid], by_name=True)
+        return pq_logic.combined_factory.CombinedKeyFactory.generate_key(
+            algorithm=HYBRID_SIG_OID_2_NAME[oid], by_name=True
+        )
     elif oid in KEM_OID_2_NAME:
-        return CombinedKeyFactory.generate_key(algorithm=KEM_OID_2_NAME[oid], by_name=True)
+        return pq_logic.combined_factory.CombinedKeyFactory.generate_key(algorithm=KEM_OID_2_NAME[oid], by_name=True)
 
     raise UnknownOID(oid=oid, extra_info="For generating a private key.")
 
@@ -732,6 +748,17 @@ def check_consistency_sig_alg_id_and_key(alg_id: rfc9480.AlgorithmIdentifier, ke
 
         if str(PQ_NAME_2_OID[_name]) != str(oid):
             raise BadSigAlgID("The public key was not of the same type as the,algorithm identifier implied.")
+
+    elif isinstance(key, (PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey)):
+        if key.get_oid() != oid:
+            raise BadSigAlgID(
+                "The public key was not of the same type as the, algorithm identifier implied.",
+                error_details=[
+                    f"OID: {oid}. The Public Key was of type: {type(key).__name__}. "
+                    f"OID-Lookup: {may_return_oid_to_name(oid)}"
+                ],
+            )
+
     elif isinstance(key, (TradSignKey, TradVerifyKey)):
         if isinstance(key, TradSignKey):
             key = key.public_key()
@@ -971,7 +998,7 @@ def prepare_one_asymmetric_key(  # noqa: D417 undocumented-params
         if version in ["v1", 0]:
             include_public_key = False
 
-    der_data = CombinedKeyFactory.save_private_key_one_asym_key(
+    der_data = pq_logic.combined_factory.CombinedKeyFactory.save_private_key_one_asym_key(
         private_key=private_key,
         public_key=public_key,
         save_type=key_save_type,
@@ -1177,7 +1204,7 @@ def _prepare_spki_for_kga(
             spki["algorithm"]["parameters"]["namedCurve"] = rfc5480.secp256r1
 
     if key_name is not None:
-        key = CombinedKeyFactory.generate_key(key_name).public_key()
+        key = pq_logic.combined_factory.CombinedKeyFactory.generate_key(key_name).public_key()
         spki_tmp = subject_public_key_info_from_pubkey(
             public_key=key,  # type: ignore[AssignmentTypeError]
             use_rsa_pss=use_pss,
@@ -1195,3 +1222,129 @@ def _prepare_spki_for_kga(
         spki["algorithm"]["parameters"] = univ.BitString.fromOctetString(os.urandom(16))
 
     return spki
+
+
+def _get_index(
+    key,
+    last_index: bool,
+    index: Optional[int],
+) -> Tuple[bytes, int]:
+    """Get the index for the key based on the last_index flag and provided index."""
+    if not isinstance(key, (XMSSPrivateKey, XMSSMTPrivateKey)):
+        raise NotImplementedError("Exhausting keys is only implemented for XMSS and XMSSMT keys.")
+
+    length = 4
+    if isinstance(key, XMSSMTPrivateKey):
+        length = math.ceil(key.tree_height / 8)
+
+    if index is not None and last_index:
+        index_bytes = (key.max_sig_size - 1).to_bytes(length, "big")
+    elif index is not None:
+        index_bytes = index.to_bytes(length, "big")
+    else:
+        index_bytes = key.max_sig_size.to_bytes(length, "big")
+
+    return index_bytes, length
+
+
+@keyword(name="Modify PQ Stateful Sig Private Key")
+def modify_pq_stateful_sig_private_key(  # noqa: D417 undocumented-param
+    key: PQHashStatefulSigPrivateKey,
+    last_index: bool = False,
+    index: Optional[Union[str, int]] = None,
+    used_index: bool = False,
+) -> PQHashStatefulSigPrivateKey:
+    """Modify a PQ stateful signature key index to exhaust its keys or reuse a used key.
+
+    Arguments:
+    ---------
+        - `key`: The PQ stateful signature key to exhaust.
+        - `last_index`: If True, the last index of the key will be exhausted, otherwise all \
+        indices will be exhausted. Defaults to `False`.
+        - `index`: The specific index to exhaust. If None, the key will be exhausted at the \
+        current index. Defaults to `None`.
+        - `used_index`: If True, the key will be exhausted at the used index. Defaults to `False`.
+
+    Raises:
+    ------
+        - `ValueError`: If the key is not a valid PQ stateful signature key.
+
+    Examples:
+    --------
+    | ${exhausted_key}= | Exhaust PQ Stateful Sig Key | ${pq_stateful_sig_key} |
+    | ${exhausted_key}= | Exhaust PQ Stateful Sig Key | ${pq_stateful_sig_key} | last_index=True |
+    | ${exhausted_key}= | Exhaust PQ Stateful Sig Key | ${pq_stateful_sig_key} | index=0 |
+
+    """
+    index = int(index) if index is not None else None
+    if used_index:
+        if index is not None and len(key.used_keys) < index:
+            raise ValueError(f"The index {index} is not valid for the key {key.name}. Used keys: {len(key.used_keys)}")
+
+        index = index if index is not None else -1
+        private_bytes = key.used_keys[index]
+        logging.debug("Length of used keys: %s", len(key.used_keys))
+        logging.debug(f"Exhausting key with key: {key.name}, index: {index}, used_keys: {len(key.used_keys)}")
+        return key.from_private_bytes(private_bytes)
+
+    if isinstance(key, (XMSSPrivateKey, XMSSMTPrivateKey)):
+        private_bytes = key.private_bytes_raw()
+        index_bytes, length = _get_index(key, last_index, index)
+        key_bytes = private_bytes[:4] + index_bytes + private_bytes[4 + length :]
+        logging.debug(f"Exhausting key with key: {key.name}, index: {index_bytes}, length: {length}")
+        public_key_bytes = key.public_key().public_bytes_raw()
+        if isinstance(key, XMSSPrivateKey):
+            return XMSSPrivateKey(alg_name=key.name, private_bytes=key_bytes, public_key=public_key_bytes)
+        return XMSSMTPrivateKey(alg_name=key.name, private_bytes=key_bytes, public_key=public_key_bytes)
+
+    raise NotImplementedError("Exhausting PQ stateful signature keys is only implemented for XMSS keys.")
+
+
+@keyword(name="Get Digest Alg For CMP")
+def get_digest_alg_for_cmp(  # noqa D417 undocumented-param
+    alg_id: rfc9480.AlgorithmIdentifier, cert_or_pub_key: Optional[Union[rfc9480.CMPCertificate, PublicKey]] = None
+) -> str:
+    """Get the hash algorithm for the SignedData or the certificate confirmation computation.
+
+    Note:
+    ----
+    - For stateful hash signatures (e.g., XMSS, HSS), the public key or certificate must be provided
+      to determine the hash algorithm.
+    - For other signature algorithms, the hash algorithm is extracted directly from the AlgorithmIdentifier.
+
+    Arguments:
+    ---------
+    - `alg_id`: The AlgorithmIdentifier for the signing.
+    - `cert_or_pub_key`: Optional certificate or public key to determine the hash algorithm if needed.
+
+    Raises:
+    ------
+    - `ValueError`: If the public key or certificate is required but not provided for stateful hash signatures.
+    - `BadSigAlgID`: If the provided public key is not a stateful hash signature public key when required.
+
+    Examples:
+    --------
+    | ${hash_alg}= | Get Digest Alg For CMP | ${alg_id} | ${certificate} |
+    | ${hash_alg}= | Get Digest Alg For CMP | ${alg_id} | ${public_key} |
+
+    """
+    oid = alg_id["algorithm"]
+    if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
+        if cert_or_pub_key is None:
+            raise ValueError("For stateful hash signatures, the public key or certificate must be provided.")
+        if isinstance(cert_or_pub_key, rfc9480.CMPCertificate):
+            pub_key = certutils.load_public_key_from_cert(cert_or_pub_key)
+        else:
+            pub_key = cert_or_pub_key
+
+        if not isinstance(pub_key, PQHashStatefulSigPublicKey):
+            msg = (
+                "Provided public key is not a stateful hash signature public key, despite the OID."
+                f"Public key type: {type(pub_key).__name__}: {may_return_oid_to_name(oid)}"
+            )
+
+            raise BadSigAlgID(msg)
+
+        return pub_key.hash_alg
+
+    return get_digest_hash_alg_from_alg_id(alg_id)

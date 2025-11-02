@@ -924,20 +924,20 @@ def _save_composite_kem():
     ml_dsa_cert = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
 
     key = generate_key("composite-kem", trad_name="rsa", length="2048", pq_name="ml-kem-768")
-    save_key(key, "data/keys/private-key-composite-kem-ml-kem-768-rsa2048-raw.pem", save_type="raw")
+    save_key(key, "data/keys/private-key-composite-kem-ml-kem-768-rsa2048-seed.pem", save_type="seed")
     cert, _ = build_certificate(
         private_key=key, ca_key=mldsa_key, ca_cert=ml_dsa_cert, common_name="CN=PQ CompositeKEM ML-KEM-768 RSA2048"
     )
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_ml_kem_768_rsa2048.pem")
 
     key = generate_key("composite-kem", trad_name="x25519", pq_name="ml-kem-768")
-    save_key(key, "data/keys/private-key-composite-kem-ml-kem-1024-x25519-raw.pem", save_type="raw")
+    save_key(key, "data/keys/private-key-composite-kem-ml-kem-1024-x25519-seed.pem", save_type="seed")
     cert, _ = build_certificate(
         private_key=key, ca_key=mldsa_key, ca_cert=ml_dsa_cert, common_name="CN=Hybrid CompositeKEM ML-KEM-1024 x25519"
     )
 
     key = generate_key("composite-kem", trad_name="x448", pq_name="ml-kem-1024")
-    save_key(key, "data/keys/private-key-composite-kem-ml-kem-1024-x448-raw.pem", save_type="raw")
+    save_key(key, "data/keys/private-key-composite-kem-ml-kem-1024-x448-seed.pem", save_type="seed")
     cert, _ = build_certificate(
         private_key=key, ca_key=mldsa_key, ca_cert=ml_dsa_cert, common_name="CN=Hybrid CompositeKEM ML-KEM-1024 X448"
     )
@@ -945,7 +945,7 @@ def _save_composite_kem():
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_ml_kem_1024_x448.pem")
 
     key = generate_key(algorithm="composite-kem", pq_name="frodokem-976-aes", trad_name="rsa", length="2048")
-    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-rsa2048-raw.pem", save_type="raw")
+    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-rsa2048-seed.pem", save_type="seed")
     cert, _ = build_certificate(
         private_key=key,
         ca_key=mldsa_key,
@@ -955,7 +955,7 @@ def _save_composite_kem():
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_frodokem_976_aes_rsa2048.pem")
 
     key = generate_key(algorithm="composite-kem", pq_name="frodokem-976-aes", trad_name="x25519")
-    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-x25519-raw.pem", save_type="raw")
+    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-x25519-seed.pem", save_type="seed")
     cert, _ = build_certificate(
         private_key=key,
         ca_key=mldsa_key,
@@ -965,7 +965,7 @@ def _save_composite_kem():
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_frodokem_976_aes_x25519.pem")
 
     key = generate_key(algorithm="composite-kem", pq_name="frodokem-976-shake", trad_name="x25519")
-    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-shake-x25519-raw.pem", save_type="raw")
+    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-shake-x25519-seed.pem", save_type="seed")
     cert, _ = build_certificate(
         private_key=key,
         ca_key=mldsa_key,
@@ -1789,3 +1789,54 @@ def verbose_pyasn1_compare(obj1: univ.Sequence, obj2: univ.Sequence, exclude_fie
             non_eq_fields.append(msg)
 
     return eq_fields, non_eq_fields
+
+def generate_all_xmss_xmssmt_keys() -> None:
+    """Generate all XMSS and XMSSMT keys.
+
+    Generates enabled keys for XMSS and XMSSMT algorithms,
+    in the OQS library and saves them to the specified directory.
+    The keys are saved in PEM format with filenames based on the algorithm name.
+    Directory structure:
+    data/keys/xmss_xmssmt_keys/
+        ├── private-key-xmss-sha_10_256.pem
+        ├── private-key-xmssmt_shake_60_layers_12_256.pem
+        └── ...
+    """
+    dir_path = "data/keys/xmss_xmssmt_keys"
+    os.makedirs(dir_path, exist_ok=True)
+
+    for alg_name in oqs.get_enabled_stateful_sig_mechanisms():
+        alg_name = alg_name.lower()
+        if alg_name.startswith("xmss-") or alg_name.startswith("xmssmt-"):
+            print(f"Testing algorithm: {alg_name}")
+            # XMSS (e.g XMSS-SHA_10_256)
+            # XMSSMT (e.g XMSSMT-SHAKE_60/12_256)
+            key_name = alg_name.lower().replace("/", "_layers_", 1)
+            path = os.path.join(dir_path, f"private-key-{key_name}.pem")
+            if os.path.exists(path):
+                print(f"Key already exists at {path}, skipping generation.")
+                continue
+            key = generate_key(alg_name)
+            save_key(key, path)
+
+def get_all_xmss_xmssmt_keys() -> dict[str, str]:
+    """Get all XMSS and XMSSMT keys.
+
+    :return: Dictionary of algorithm names and their key file paths.
+    """
+    dir_path = "./data/keys/xmss_xmssmt_keys"
+    keys = {}
+    # here importing, if not enabled, it will raise an ImportError,
+    # but the file does not exist, so it is safe to import here.
+    import oqs
+    for alg_name in oqs.get_enabled_stateful_sig_mechanisms():
+        alg_name = alg_name.lower()
+        if alg_name.startswith("xmss-") or alg_name.startswith("xmssmt-"):
+            key_name = alg_name.lower().replace("/", "_layers_", 1)
+            path = os.path.join(dir_path, f"private-key-{key_name}.pem")
+            if os.path.exists(path):
+                keys[alg_name] = path
+            else:
+                raise FileNotFoundError(f"Key file for {alg_name} not found at {path}")
+
+    return keys

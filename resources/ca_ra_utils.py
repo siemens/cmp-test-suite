@@ -21,12 +21,13 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448P
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import tag, univ
-from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc5958, rfc6664, rfc9480, rfc9481
+from pyasn1_alt_modules import rfc4211, rfc5280, rfc5480, rfc5652, rfc5958, rfc6664, rfc9480
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
 from pq_logic.combined_factory import CombinedKeyFactory
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import (
     HybridKEMPrivateKey,
     HybridKEMPublicKey,
@@ -35,7 +36,6 @@ from pq_logic.keys.abstract_wrapper_keys import (
     KEMPublicKey,
     PQPublicKey,
 )
-from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from resources import (
     ca_kga_logic,
@@ -54,7 +54,6 @@ from resources import (
 )
 from resources.asn1_structures import CertResponseTMP, ChallengeASN1, PKIBodyTMP, PKIMessageTMP
 from resources.asn1utils import get_set_bitstring_names, try_decode_pyasn1
-from resources.ca_kga_logic import get_digest_hash_alg_from_alg_id
 from resources.certextractutils import get_extension
 from resources.convertutils import (
     copy_asn1_certificate,
@@ -83,7 +82,12 @@ from resources.exceptions import (
     SignerNotTrusted,
     UnsupportedVersion,
 )
-from resources.oid_mapping import compute_hash, get_hash_from_oid, may_return_oid_to_name, sha_alg_name_to_oid
+from resources.oid_mapping import (
+    compute_hash,
+    get_hash_from_oid,
+    may_return_oid_to_name,
+    sha_alg_name_to_oid,
+)
 from resources.oidutils import CURVE_OID_2_NAME, id_KemBasedMac
 from resources.suiteenums import InvalidOneAsymKeyType, KeySaveType
 from resources.typingutils import (
@@ -1390,6 +1394,84 @@ def validate_cert_request_controls(
     )
 
 
+def is_nist_approved_xmssmt(name: str) -> bool:
+    """Check if the given XMSSMT name is NIST approved."""
+    return (name.startswith("xmssmt-sha2_") or name.startswith("xmssmt-shake256_")) and (
+        name.endswith("_256") or name.endswith("_192")
+    )
+
+
+def is_nist_approved_xmss(name: str) -> bool:
+    """Check if the given XMSS name is NIST approved."""
+    return (name.startswith("xmss-sha2_") or name.startswith("xmss-shake256_")) and (
+        name.endswith("_256") or name.endswith("_192")
+    )
+
+
+def _validate_pq_hash_stateful_sig_pub_key(
+    public_key: PQHashStatefulSigPublicKey, alg_id: rfc9480.AlgorithmIdentifier, **kwargs
+) -> None:
+    """Validate the PQ Hash Stateful Signature public key.
+
+    :param public_key: The PQ Hash Stateful Signature public key to validate.
+    :param alg_id: The algorithm identifier to validate against.
+    :raises BadCertTemplate: If the public key is not valid.
+    """
+    if alg_id["parameters"].isValue:
+        raise BadCertTemplate("The `parameters` field must not be for the PQ Hash Stateful Signature public key.")
+
+    if alg_id["algorithm"] != public_key.get_oid():
+        raise BadCertTemplate(
+            "The algorithm identifier does not match the public key algorithm.",
+            failinfo="badAlg,badCertTemplate",
+        )
+
+    if public_key.name.startswith("xmss-"):
+        if not is_nist_approved_xmss(public_key.name):
+            raise BadCertTemplate(
+                "The XMSS public key is not NIST approved.",
+                failinfo="badAlg,badCertTemplate",
+            )
+
+    elif public_key.name.startswith("xmssmt-"):
+        if not is_nist_approved_xmssmt(public_key.name):
+            raise BadCertTemplate(
+                "The XMSSMT public key is not NIST approved.",
+                failinfo="badAlg,badCertTemplate",
+            )
+    elif public_key.name.startswith("hss"):
+        data = public_key.public_bytes_raw()
+        _length = int.from_bytes(data[:4], "big")
+        msg = None
+        if _length == 0:
+            msg = "The HSS public key is empty, which is not allowed.Got a public key with length 0."
+
+        elif _length > 8:
+            msg = (
+                "The HSS public key is too long, which is not allowed."
+                f"Got a public key with length {_length}. The maximum length is 8."
+            )
+
+        if msg is not None:
+            raise BadCertTemplate(
+                msg,
+                failinfo="badCertTemplate,badDataFormat",
+            )
+
+        if "," in public_key.hash_alg:
+            raise BadCertTemplate(
+                "The HSS public key hash algorithm is not valid, "
+                "it should use the same hash algorithm as the LMOTS key.",
+                failinfo="badCertTemplate,badAlg",
+            )
+
+    else:
+        raise NotImplementedError(
+            "Got a unsupported PQStatefulSigPublicKey type: "
+            f"{public_key.name}. Only XMSS, XMSSMT and HSS are supported."
+        )
+
+
 @not_keyword
 def validate_cert_template_public_key(
     cert_template: rfc9480.CertTemplate,
@@ -1456,11 +1538,16 @@ def validate_cert_template_public_key(
             alg_id = cert_template["publicKey"]["algorithm"]
 
             if isinstance(public_key, PQHashStatefulSigPublicKey):
-                raise NotImplementedError("PQHashStatefulSigPublicKey is not supported yet, to be validated.")
+                _validate_pq_hash_stateful_sig_pub_key(
+                    public_key=public_key,
+                    alg_id=alg_id,
+                )
 
-            if isinstance(public_key, (PQPublicKey, HybridPublicKey)):
+            elif isinstance(public_key, (PQPublicKey, HybridPublicKey)):
                 if alg_id["parameters"].isValue:
-                    raise BadCertTemplate("The `parameters` field is not allowed for PQ public keys.")
+                    raise BadCertTemplate(
+                        "The `parameters` field is not allowed to be set, for PQ and Hybrid public keys."
+                    )
 
 
 def _process_agree_mac_key_agreement(
@@ -2255,7 +2342,11 @@ def _process_one_cert_request(
 
     if cert_req_msg["popo"].isValue:
         if cert_req_msg["popo"].getName() == "signature":
-            public_key = get_public_key_from_cert_req_msg(cert_req_msg)
+            try:
+                public_key = get_public_key_from_cert_req_msg(cert_req_msg)
+            except (BadAsn1Data, InvalidKeyData) as e:
+                raise BadCertTemplate(e.message, error_details=e.get_error_details()) from e
+
             try:
                 public_key = convertutils.ensure_is_verify_key(public_key)
             except ValueError as e:
@@ -2268,7 +2359,10 @@ def _process_one_cert_request(
                 )
 
             except BadSigAlgID as e:
-                raise BadPOP("The `signature` POP alg id and the public key are of different types.") from e
+                raise BadPOP(
+                    "The `signature` POP alg id and the public key are of different types.",
+                    error_details=e.get_error_details(),
+                ) from e
 
     elif not cert_req_msg["popo"].isValue:
         if not check_if_request_is_for_kga(request):
@@ -2983,6 +3077,49 @@ def _validate_cert_status(
         raise BadRequest("Certificate status is accepted, but a fail info is present.")
 
 
+def _process_cert_hash_alg(
+    entry: rfc9480.CertStatus,
+    pvno: int,
+    issued_cert: rfc9480.CMPCertificate,
+    hash_alg: Optional[str] = None,
+    ca_cert: Optional[rfc9480.CMPCertificate] = None,
+) -> str:
+    """Process the certificate hash algorithm.
+
+    :param entry: The CertStatus entry to process.
+    :param pvno: The protocol version number.
+    :param issued_cert: The issued certificate to process.
+    :param hash_alg: The hash algorithm to use for signing the certificate. Defaults to `None`.
+    :param ca_cert: The CA certificate to use for determining the hash algorithm. Defaults to `None`.
+    :return: The hash algorithm to use.
+    :raises BadCertId: If no hash algorithm is found.
+    """
+    if entry["hashAlg"].isValue:
+        logging.warning(entry["hashAlg"])
+        if pvno != 3:
+            raise BadCertId("Hash algorithm is set in CertConf message, but the version is not 3.")
+        # expected to be sha256 or similar,
+        # is ensured with the flag `only_hash=False`
+        tmp_hash_alg = get_hash_from_oid(entry["hashAlg"]["algorithm"], only_hash=False)
+    else:
+        tmp_hash_alg = keyutils.get_digest_alg_for_cmp(issued_cert["tbsCertificate"]["signature"], ca_cert)
+
+    if tmp_hash_alg != hash_alg and hash_alg is not None:
+        logging.warning("The provided hash algorithm does not match the one in the CertConf message.")
+        logging.warning("The hash algorithm in the CertConf message is: %s", tmp_hash_alg)
+        logging.warning("The provided hash algorithm is: %s ", hash_alg)
+
+    hash_alg = hash_alg or tmp_hash_alg
+
+    if hash_alg is None:
+        raise BadCertId(
+            "No hash algorithm found for the certificate signature algorithm,"
+            "please use version 3 and set the hash algorithm in the `CertConf` message."
+        )
+
+    return hash_alg
+
+
 @keyword(name="Build pkiconf from CertConf")
 def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions in the docstring
     request: PKIMessageTMP,
@@ -3008,7 +3145,6 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
     --------
         - additional values to set for the header.
         - `hash_alg`: The hash algorithm to use for signing the certificate. Defaults to `sha256`.
-        - `allow_auto_ed`: Whether to allow automatic ED hash algorithm choice. Defaults to `True`.
         - `use_fresh_nonce`: Whether to use a fresh sender nonce. Defaults to `True`.
 
     Returns:
@@ -3055,33 +3191,27 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
                 logging.debug("Certificate status was rejection.")
                 continue
 
-        if entry["hashAlg"].isValue:
-            logging.warning(entry["hashAlg"])
-            if int(request["header"]["pvno"]) != 3:
-                raise BadCertId("Hash algorithm is set in CertConf message, but the version is not 3.")
-            # expected to be sha256 or similar,
-            # is ensured with the flag `only_hash=False`
-            hash_alg = get_hash_from_oid(entry["hashAlg"]["algorithm"], only_hash=False)
-        else:
-            alg_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
-            hash_alg = get_hash_from_oid(alg_oid, only_hash=True)
-            if kwargs.get("allow_auto_ed", False):
-                if alg_oid in [rfc9481.id_Ed25519, rfc9481.id_Ed448]:
-                    hash_alg = get_digest_hash_alg_from_alg_id(alg_id=issued_cert["tbsCertificate"]["signature"])
-
-        if hash_alg is None:
-            raise BadCertId(
-                "No hash algorithm found for the certificate signature algorithm,"
-                "please use version 3 and set the hash algorithm in the `CertConf` message."
-            )
+        digest_alg = _process_cert_hash_alg(
+            entry=entry,
+            pvno=int(request["header"]["pvno"]),
+            issued_cert=issued_cert,
+            hash_alg=hash_alg,
+            ca_cert=kwargs.get("ca_cert"),
+        )
 
         computed_hash = compute_hash(
-            alg_name=hash_alg,
+            alg_name=digest_alg,
             data=encoder.encode(issued_cert),
         )
 
         if entry["certHash"].asOctets() != computed_hash:
-            raise BadCertId("Invalid certificate hash in CertConf message.")
+            sig_oid = issued_cert["tbsCertificate"]["signature"]["algorithm"]
+            sig_algorithms = may_return_oid_to_name(sig_oid)
+            raise BadCertId(
+                "Invalid certificate hash in CertConf message."
+                f"Computed the hash with hash alg: {digest_alg}.\n"
+                f"Signature algorithm: {sig_algorithms}"
+            )
 
     if request and set_header_fields:
         kwargs = set_ca_header_fields(request, kwargs)
@@ -3090,7 +3220,6 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
     pki_message["body"]["pkiconf"] = rfc9480.PKIConfirmContent("").subtype(
         explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 19)
     )
-
     return pki_message
 
 

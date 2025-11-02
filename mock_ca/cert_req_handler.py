@@ -11,7 +11,8 @@ from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc9480, rfc9481
 
 from mock_ca.mock_fun import MockCAState
-from mock_ca.operation_dbs import NonSigningKeyCertsAndKeys
+from mock_ca.operation_dbs import NonSigningKeyCertsAndKeys, StatefulSigState
+from mock_ca.stfl_validator import STFLPKIMessageValidator
 from pq_logic.hybrid_sig.chameleon_logic import load_chameleon_csr_delta_key_and_sender
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
@@ -55,11 +56,15 @@ from resources.copyasn1utils import copy_name
 from resources.data_objects import ExtraIssuingData
 from resources.exceptions import (
     BadAlg,
+    BadAsn1Data,
     BadCertTemplate,
+    BadConfig,
     BadMessageCheck,
     BadRequest,
     BadTime,
+    BodyRelevantError,
     CMPTestSuiteError,
+    InvalidKeyData,
     NotAuthorized,
     SignerNotTrusted,
     TransactionIdInUse,
@@ -99,6 +104,8 @@ class CertReqHandler:
         kga_key: Optional[SignKey] = None,
         kga_cert_chain: Optional[List[rfc9480.CMPCertificate]] = None,
         issuing_db: Optional[NonSigningKeyCertsAndKeys] = None,
+        pq_stateful_sig_state: Optional[StatefulSigState] = None,
+        stfl_validator: Optional[STFLPKIMessageValidator] = None,
     ):
         """Initialize the certificate request handler.
 
@@ -109,6 +116,10 @@ class CertReqHandler:
         :param extensions: A list of extensions (e.g. OCSP, CRL) to include in responses.
         :param shared_secrets: The shared secret used for MAC protection.
         :param xwing_key: Optional fallback key for verifying password-based protection.
+        :param kga_key: The key agreement key used for KEM protection.
+        :param kga_cert_chain: The certificate chain for the key agreement key.
+        :param issuing_db: The database for issuing non-signing keys and certificates.
+        :param pq_stateful_sig_state: The state for post-quantum stateful signatures.
         """
         self.ca_cert = ca_cert
         self.ca_key = ca_key
@@ -156,6 +167,8 @@ class CertReqHandler:
 
         self.cert_db = self.state.certificate_db
         self.cross_signed_certs: List[rfc9480.CMPCertificate] = []
+        self.pq_stateful_sig_state = pq_stateful_sig_state
+        self.stfl_validator = stfl_validator
 
     def get_cross_signed_certs(self) -> List[rfc9480.CMPCertificate]:
         """Get the list of cross-signed certificates."""
@@ -199,7 +212,13 @@ class CertReqHandler:
             if spki["subjectPublicKey"].asOctets() == b"":
                 return
 
-            loaded_pub_key = keyutils.load_public_key_from_spki(spki)
+            try:
+                loaded_pub_key = keyutils.load_public_key_from_spki(spki)
+            except (InvalidKeyData, BadAsn1Data, BadAlg) as e:
+                raise BodyRelevantError(
+                    e.message, "badCertTemplate", pki_message=pki_message, error_details=e.get_error_details()
+                )
+
             if loaded_pub_key is not None:
                 if self.state.contains_pub_key(loaded_pub_key, csr["certificationRequestInfo"]["subject"]):
                     raise BadCertTemplate("The public key is already defined for the user.")
@@ -213,12 +232,17 @@ class CertReqHandler:
 
         else:
             body_name = pki_message["body"].getName()
+
             for entry in pki_message["body"][body_name]:
                 cert_template = entry["certReq"]["certTemplate"]
-                if self.is_certificate_in_list(cert_template, self.state.issued_certs):
-                    _name = get_openssl_name_notation(cert_template["subject"])
-                    raise BadCertTemplate(f"The public key is already defined for the user: {_name}")
-
+                try:
+                    if self.is_certificate_in_list(cert_template, self.state.issued_certs):
+                        _name = get_openssl_name_notation(cert_template["subject"])
+                        raise BadCertTemplate(f"The public key is already defined for the user: {_name}")
+                except (InvalidKeyData, BadAsn1Data, BadAlg) as e:
+                    raise BodyRelevantError(
+                        e.message, "badCertTemplate", pki_message=pki_message, error_details=e.get_error_details()
+                    )
                 public_key = load_public_key_from_cert_template(cert_template, must_be_present=False)
                 if public_key is not None:
                     if self.state.contains_pub_key(public_key, cert_template["subject"]):
@@ -289,6 +313,15 @@ class CertReqHandler:
         if confirm_:
             self.state.add_certs(certs=certs)
             self.cert_conf_handler.add_confirmed_certs(request)
+            if self.stfl_validator is not None:
+                self.stfl_validator.process_stfl_after_request(request=request, certs=certs, confirmed=True)
+
+            elif self.pq_stateful_sig_state is None:
+                raise BadConfig("The PQ stateful signature state is not set and the STFL validator is not set.")
+
+            else:
+                for x in certs:
+                    self.pq_stateful_sig_state.add_state(x)
         else:
             self.state.add_certs(certs=certs, was_confirmed=False)
             self.add_request_for_cert_conf(request=request, response=response, certs=certs)

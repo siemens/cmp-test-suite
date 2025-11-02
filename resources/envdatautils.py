@@ -33,11 +33,12 @@ from pyasn1_alt_modules import (
 from robot.api.deco import keyword, not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPublicKey
 from pq_logic.keys.composite_kem07 import CompositeKEM07PublicKey
 from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey, CompositeSig07PublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
-from pq_logic.tmp_oids import COMPOSITE_SIG06_PREHASH_OID_2_HASH
+from pq_logic.tmp_oids import COMPOSITE_SIG07_PREHASH_OID_2_HASH
 from resources import (
     asn1utils,
     certbuildutils,
@@ -2181,6 +2182,9 @@ def get_digest_from_key_hash(
     :param key: The private key instance, to determine the hash algorithm.
     :return: The matching hash algorithm or the default one "sha512".
     """
+    if isinstance(key, (PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey)):
+        return key.hash_alg
+
     if isinstance(key, (PQSignaturePrivateKey, PQSignaturePublicKey)):
         for x in PQ_SIG_PRE_HASH_NAME_2_OID:
             x: str
@@ -2212,7 +2216,7 @@ def get_digest_from_key_hash(
             oid = key.get_oid(use_pss=False)
         except InvalidKeyCombination:
             oid = key.get_oid(use_pss=True)
-        return COMPOSITE_SIG06_PREHASH_OID_2_HASH[oid]
+        return COMPOSITE_SIG07_PREHASH_OID_2_HASH[oid]
 
     return "sha512"
 

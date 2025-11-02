@@ -84,6 +84,9 @@ CUSTOM_KEY_TYPES = [
     b"CHEMPAT",
     b"BASE",
     b"PQ",
+    b"XMSS",
+    b"XMSSMT",
+    b"HSS",
 ]
 
 supported_keys += CUSTOM_KEY_TYPES

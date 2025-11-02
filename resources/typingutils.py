@@ -26,6 +26,7 @@ from pq_logic.keys.abstract_pq import (
     PQSignaturePrivateKey,
     PQSignaturePublicKey,
 )
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import (
     HybridSigPrivateKey,
     HybridSigPublicKey,
@@ -34,7 +35,6 @@ from pq_logic.keys.abstract_wrapper_keys import (
     WrapperPrivateKey,
     WrapperPublicKey,
 )
-from pq_logic.keys.stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from resources.asn1_structures import CertResponseTMP, PKIMessageTMP
 
 # The `ECDHPrivKeyTypes` includes all private key types supported
@@ -77,6 +77,7 @@ TradVerifyKey = Union[
 ECPrivateKey = Union[ECDHPrivateKey, ECSignKey]
 
 TradPrivateKey = Union[TradSignKey, DHPrivateKey, X25519PrivateKey, X448PrivateKey]
+TradPublicKey = Union[TradVerifyKey, DHPublicKey, X25519PublicKey, X448PublicKey]
 
 # Type alias for supported private key types
 PrivateKey = Union[TradPrivateKey, WrapperPrivateKey]

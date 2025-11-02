@@ -14,10 +14,12 @@ from pyasn1_alt_modules import rfc9480
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey
+from resources.asn1utils import encode_to_der
 from resources.certutils import build_cert_chain_from_dir, parse_certificate
 from resources.convertutils import ensure_is_sign_key, str_to_bytes
-from resources.exceptions import BadConfig
+from resources.exceptions import BadConfig, BadRequest
 from resources.keyutils import load_private_key_from_file
+from resources.oid_mapping import compute_hash
 from resources.typingutils import ECDHPrivateKey, PrivateKey, PublicKey, SignKey
 from resources.utils import (
     is_certificate_and_key_set,
@@ -432,3 +434,90 @@ class SunHybridState:
     sun_hybrid_certs: Dict[int, rfc9480.CMPCertificate] = field(default_factory=dict)
     sun_hybrid_pub_keys: Dict[int, PublicKey] = field(default_factory=dict)
     sun_hybrid_signatures: Dict[int, bytes] = field(default_factory=dict)
+
+
+@dataclass
+class StatefulSigKeyState:
+    """A simple class to store the state of the StatefulSigHandler."""
+
+    used_indices: List[int] = field(default_factory=list)
+
+    def add_used_index(self, index: int) -> None:
+        """Add a used index to the state."""
+        self.used_indices.append(index)
+
+    def contains_used_index(self, index: int) -> bool:
+        """Check if a used index exists in the state."""
+        # logging.debug(f"Checking if index {index} is in used indices: {self.used_indices}")
+        print("Checking if index", index, "is in used indices:", self.used_indices)
+        return index in self.used_indices
+
+
+@dataclass
+class StatefulSigState:
+    """A simple class to store the state of the StatefulSigHandler."""
+
+    used_indices: Dict[bytes, StatefulSigKeyState] = field(default_factory=dict)
+    hash_alg: str = "sha256"
+
+    def add_state(self, cert: rfc9480.CMPCertificate, state: Optional[StatefulSigKeyState] = None) -> None:
+        """Add a state for a given certificate."""
+        der_data = encode_to_der(cert)
+        hashed_cert = compute_hash(self.hash_alg, der_data)
+        if hashed_cert in self.used_indices:
+            raise BadRequest("State for this certificate already exists.")
+        self.used_indices[hashed_cert] = state or StatefulSigKeyState(used_indices=[0])
+
+    def get_state(self, cert: rfc9480.CMPCertificate) -> Optional[StatefulSigKeyState]:
+        """Get the state for a given certificate."""
+        der_data = encode_to_der(cert)
+        hashed_cert = compute_hash(self.hash_alg, der_data)
+        if hashed_cert not in self.used_indices:
+            return None
+        return self.used_indices[hashed_cert]
+
+    def add_used_index(self, cert: rfc9480.CMPCertificate, index: int) -> None:
+        """Add a used index for a given certificate."""
+        state = self.get_state(cert)
+        if state is None:
+            raise BadRequest(
+                "StatefulSigKeyState not found for the given certificate."
+                "Is only supported for MockCA issued certificates."
+            )
+        state.used_indices.append(index)
+
+    def contains_used_index(self, cert: rfc9480.CMPCertificate, index: int) -> bool:
+        """Check if a used index exists for a given certificate.
+
+        :param cert: The certificate to check.
+        :param index: The index to check.
+        :return: True if the index is used, False otherwise.
+        :raises BadRequest: If the state for the certificate is not found.
+        """
+        state = self.get_state(cert)
+        if state is None:
+            raise BadRequest(
+                "StatefulSigKeyState not found for the given certificate."
+                "Is only supported for MockCA issued certificates."
+            )
+        return index in state.used_indices
+
+
+# TODO include this class to support PQ Stateful Signature keys in the future.
+# also include it for Composite-Sig v6 and add it for the CEK, if the
+# uses the EncryptedKey, to proof the possession of the Private Key.
+
+
+@dataclass
+class BadRandomState:
+    """A class to store the states related to the randomness used by the Client.
+
+    Attributes
+    ----------
+        - `bad_hss_random`: The bad random number generator.
+        - `bad_random_count`: The number of times the bad random number generator was used.
+
+    """
+
+    bad_hss_random: Optional[bytes] = None
+    bad_random_count: int = 0

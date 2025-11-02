@@ -52,6 +52,8 @@ class TestRequestResponseWorkflow(unittest.TestCase):
                                   implicit_confirm=False,
                                   )
 
+        # To be able to build the cert chain.
+        ip["extraCerts"].append(self.ca_cert)
         cert_conf = build_cert_conf_from_resp(ca_message=ip)
         build_pki_conf_from_cert_conf(
             request=cert_conf,

@@ -37,18 +37,18 @@ CMP implementations.
     ${REVOCATION_REQUEST}      rr
 ```
 2. Define all available CLI commands for your cmp client in "cmp_client.py" using jinja, example of openssl:
-```python
-openssl = """
-    openssl cmp
-    -cmd {{ cmd }}
-    -server {{ server }}
-    -subject {{ subject }}
-    -secret {{ secret }}
-    -ref {{ ref | default('NULL-DN') }}
-    {% if recipient %}-recipient {{ recipient }}{% endif %}
-    {% if csr %}-csr {{ csr }}{% endif %}
-    {% if newkey %}-newkey {{ newkey }}{% endif %}
-    {% if certout %}-certout {{ certout }}{% endif %}
-    {% if unprotected_requests %}-unprotected_requests{% endif %}
-    """
-```
+   ```python
+    openssl = """
+        openssl cmp
+        -cmd {{ cmd }}
+        -server {{ server }}
+        -subject {{ subject }}
+        -secret {{ secret }}
+        -ref {{ ref | default('NULL-DN') }}
+        {% if recipient %}-recipient {{ recipient }}{% endif %}
+        {% if csr %}-csr {{ csr }}{% endif %}
+        {% if newkey %}-newkey {{ newkey }}{% endif %}
+        {% if certout %}-certout {{ certout }}{% endif %}
+        {% if unprotected_requests %}-unprotected_requests{% endif %}
+        """
+   ```

@@ -99,7 +99,7 @@ autoformat:
 verify:
 	reuse lint
 	ruff check .
-	pylint .
+	pylint . --ignore-paths="^venv"
 	PYTHONPATH=./resources pyright
 	# on Windows Powershell: `$env:PYTHONPATH = "./resources"; pyright`
 
@@ -116,6 +116,10 @@ check-sigs:
 test-pq-hybrid:
     # Start the tests for PQ and Hybrid algorithms/mechanisms.
 	robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable environment:$(env) tests_pq_and_hybrid
+
+test-pq-hybrid-verbose:
+    # Start the tests for PQ and Hybrid algorithms/mechanisms.
+	robot --pythonpath=./ --outputdir=reports --variable environment:$(env) tests_pq_and_hybrid
 
 start-mock-ca:
 	python ./mock_ca/ca_handler.py
