@@ -129,6 +129,12 @@ def asn1_must_contain_fields(data: base.Asn1Type, fields: str):  # noqa D417 und
         raise ValueError(f"The following required fields were absent: {absent_fields}")
 
 
+def set_asn1_value(asn1_obj: base.Asn1Item, path:str, value: base.Asn1Item):
+    """Update an ASN1 structure, set the attribute at a specified path to a given value."""
+
+    pass
+
+
 def get_asn1_value(asn1_obj: base.Asn1Item, query: str) -> base.Asn1Item:  # noqa D417 undocumented-param
     """Extract a value from a complex `pyasn1` structure by specifying its path in ASN1Path notation.
 
