@@ -1091,9 +1091,9 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
 
     Examples:
     --------
-    | Verify Cert Chain OpenSSL | root_cert=${root_cert} | untrusted=${untrusted} | crl_check=True | verbose=False |
-    | Verify Cert Chain OpenSSL | root_cert=${root_cert} | untrusted=${untrusted} | crl_check=False | verbose=True |
-    | Verify Cert Chain OpenSSL | untrusted=${untrusted} | crl_check=False | verbose=True |
+    | Verify Cert Chain OpenSSL | cert_chain=${cert_chain} |
+    | Verify Cert Chain OpenSSL | cert_chain=${cert_chain} | crl_check=True | verbose=False |
+    | Verify Cert Chain OpenSSL | cert_chain=${cert_chain} | crl_check_all=True |
 
     """
     if verbose:
