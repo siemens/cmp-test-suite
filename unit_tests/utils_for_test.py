@@ -45,6 +45,7 @@ from resources.envdatautils import (
 from resources.exceptions import BadAsn1Data, MismatchingKey
 from resources.keyutils import generate_key, load_private_key_from_file, save_key
 from resources.oid_mapping import may_return_oid_to_name
+from resources.oidutils import EXTENSION_OID_2_NAME
 from resources.prepare_alg_ids import prepare_pbkdf2_alg_id
 from resources.protectionutils import sign_data_with_alg_id
 from resources.typingutils import PrivateKey, SignKey
@@ -417,6 +418,17 @@ def print_chain_subject_and_issuer(cert_or_chain: Union[rfc9480.CMPCertificate, 
     for cert in cert_or_chain:
         print(get_subject_and_issuer(cert))
 
+def print_extensions(extensions: rfc9480.Extensions) -> None:
+    """Print the extensions in a human-readable format.
+
+    :param extensions: The `Extensions` object to print.
+    """
+    for ext in extensions:
+        extn_id = ext["extnID"]
+        name = EXTENSION_OID_2_NAME.get(extn_id)
+        critical = ext["critical"]
+        extn_value = ext["extnValue"].prettyPrint()
+        print(f"Extension {name} ID: {extn_id}, Critical: {critical}, Value: {extn_value}")
 
 def compare_pyasn1_objects(first: base.Asn1Type, second: base.Asn1Type) -> bool:
     """Compare if two pyasn1 structures, by first encoding them and then compare the bytes.
