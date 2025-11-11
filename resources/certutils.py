@@ -1081,12 +1081,22 @@ def verify_cert_chain_openssl_pqc(  # noqa D417 undocumented-param
     | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} | crl_check_all=True | timeout=120 |
 
     """
+    # TODO: maybe allow or change the setup to use the `oqsprovider` to validate all PQC algorithms.
+
     if verbose:
         utils.log_certificates(certs=cert_chain, msg_suffix="Untrusted Certificates:\n")
 
     if not check_openssl_pqc_support():
         logging.warning("OpenSSL PQC support is not enabled.")
+
     else:
+        if pqc_algs_cannot_be_validated_with_openssl(certs=cert_chain):
+            raise ValueError(
+                "The provided PQC certificate chain can not be validated with OpenSSL."
+                "Supported PQC algorithms are: ML-DSA, ML-KEM, SLH-DSA."
+                f"Found the following algorithms:\n{_get_algs(certs=cert_chain)}"
+            )
+
         verify_cert_chain_openssl(
             cert_chain=cert_chain,
             crl_check=crl_check,
