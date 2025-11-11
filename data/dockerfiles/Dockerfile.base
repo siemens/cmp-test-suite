@@ -7,8 +7,13 @@
 FROM ubuntu:22.04
 
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip openssl libssl-dev cmake git && \
+    apt-get install -y python3 python3-pip python3-venv openssl libssl-dev cmake git build-essential ca-certificates && \
     apt-get clean
+
+# Use a dedicated virtual environment to avoid PEP 668 (externally-managed-environment)
+ENV VENV_PATH=/opt/venv
+RUN python3 -m venv "$VENV_PATH"
+ENV PATH="$VENV_PATH/bin:$PATH"
 
 WORKDIR /app
 
@@ -22,7 +27,7 @@ RUN git clone --depth=1 https://github.com/open-quantum-safe/liboqs-python && \
     python3 -c "import oqs"  # Trigger the build of liboqs, by importing it
 
 # Remove unnecessary packages after we're done
-RUN apt-get remove -y cmake git && \
+RUN apt-get remove -y cmake git build-essential && \
     apt-get autoremove -y && \
     apt-get clean
 
