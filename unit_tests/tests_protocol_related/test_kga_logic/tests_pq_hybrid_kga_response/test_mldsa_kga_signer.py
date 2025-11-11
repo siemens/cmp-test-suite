@@ -20,7 +20,7 @@ from resources.certbuildutils import (
 from resources.cmputils import build_ir_from_key
 from resources.keyutils import generate_key
 from resources.protectionutils import protect_pkimessage
-from unit_tests.utils_for_test import load_ca_cert_and_key
+from unit_tests.utils_for_test import load_ca_cert_and_key, print_extensions
 
 
 class TestMLDSAKGASigner(unittest.TestCase):
@@ -36,8 +36,10 @@ class TestMLDSAKGASigner(unittest.TestCase):
             eku="cmKGA",
             critical=False,
         )
-        extn = prepare_ski_extension(key, critical=True)
-        extn2 = prepare_authority_key_identifier_extension(ca_key=self.ca_key.public_key(), critical=True)
+        # Must be set to not critical for OpenSSL.
+        extn = prepare_ski_extension(key, critical=False)
+        # Must be set to not critical for OpenSSL.
+        extn2 = prepare_authority_key_identifier_extension(ca_key=self.ca_key.public_key(), critical=False)
 
         extensions.append(extn)
         extensions.append(extn2)
@@ -52,7 +54,7 @@ class TestMLDSAKGASigner(unittest.TestCase):
             ca_cert=self.ca_cert,
             ca_key=self.ca_key,
             serial_number=1,
-            subject_name="CN=Composite KGA Test Key",
+            common_name="CN=ML-DSA KGA Test Key",
         )
         return cert
 
@@ -63,6 +65,7 @@ class TestMLDSAKGASigner(unittest.TestCase):
     ) -> Tuple[PKIMessageTMP, List[rfc9480.CMPCertificate]]:
         """Build a CMP response for KGA certificate generation."""
         kga_cert = self._generate_kga_cert(kga_key)
+
         response, issued_certs = build_kga_cmp_response(
             ir,
             ca_cert=self.ca_cert,
