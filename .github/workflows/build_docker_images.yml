@@ -37,8 +37,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Some accounts did not use a lowercase repository owner, so we need to ensure
-      # that the repository owner is always in lowercase to be able to build the images.
+      # Some contributors have names that contain upper-case characters, but
+      # GHCR requires them to be lower-case, so we apply the change here
       - name: Set lowercase GitHub owner
         run: echo "REPO_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
