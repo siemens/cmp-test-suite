@@ -1252,6 +1252,9 @@ def _check_is_hybrid_or_pq_sig_alg_cert_chain(certs: List[rfc9480.CMPCertificate
     :param certs: A list of CMP certificates.
     :return: True if the certificate chain contains hybrid or PQ signature algorithm certificates, False otherwise.
     """
+    support_openssl_pq = certutils.check_openssl_pqc_support()
+    if support_openssl_pq:
+        return certutils.pqc_algs_cannot_be_validated_with_openssl(certs=certs)
     for cert in certs:
         sig_alg = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
         if sig_alg in COMPOSITE_SIG07_OID_TO_NAME or sig_alg in PQ_SIG_OID_2_NAME:
@@ -1281,7 +1284,6 @@ def _validate_kga_certificate(
     else:
         certutils.certificates_are_trustanchors([certs[-1]], trustanchors=trustanchors)
 
-        # TODO change if OpenSSL version 3.5.0 or greater is used.
         if _check_is_hybrid_or_pq_sig_alg_cert_chain(certs):
             logging.warning(
                 "The certificate chain is a hybrid or PQ signature algorithm certificate chain, "

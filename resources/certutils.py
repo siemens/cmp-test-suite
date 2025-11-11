@@ -36,6 +36,7 @@ from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
 from pq_logic.keys.composite_sig07 import CompositeSig07PublicKey
 from pq_logic.pq_utils import is_kem_public_key
+from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -65,9 +66,13 @@ from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
     HYBRID_NAME_2_OID,
     HYBRID_OID_2_NAME,
+    ML_DSA_OID_2_NAME,
+    ML_KEM_OID_2_NAME,
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
+    PQ_SIG_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
+    SLH_DSA_OID_2_NAME,
 )
 from resources.suiteenums import KeyUsageStrictness
 from resources.typingutils import SignKey, Strint, VerifyKey
@@ -974,6 +979,133 @@ def _get_crl_filepath_for_verification(
     _concatenate_crls(crl_files=crl_files)
 
 
+@not_keyword
+def check_openssl_pqc_support() -> bool:
+    """Check if OpenSSL PQC support is enabled.
+
+    Only OpenSSL 3.5 and later versions support PQC.
+
+    :return: `True` if OpenSSL PQC support is enabled, `False` otherwise.
+    """
+    try:
+        result = subprocess.run(["openssl", "version"], capture_output=True, text=True, check=True)
+        ver_str = result.stdout.strip().split()[1]
+        ver_num = ver_str.split("-")[0].split("+")[0]
+        version_tuple = tuple(int(part) for part in ver_num.split(".")[:3])
+        return version_tuple >= (3, 5, 0)
+    except subprocess.CalledProcessError as e:
+        logging.error("OpenSSL PQC support check failed: %s", e.stderr)
+    except Exception as e:  # pylint: disable=broad-except
+        logging.error("An unexpected error occurred while checking OpenSSL PQC support: %s", str(e))
+    return False
+
+
+@not_keyword
+def pqc_algs_cannot_be_validated_with_openssl(
+    certs: List[rfc9480.CMPCertificate],
+) -> bool:
+    """Check if the PQ certificate chain can not be validated with OpenSSL.
+
+    OpenSSL only supports ML-DSA, ML-KEM and SLH-DSA signatures, so if the certificate chain contains
+    any other signature algorithm, it can not be validated with OpenSSL.
+
+    :param certs: A list of CMPCertificate's.
+    :return: `True` if the certificate chain can not be validated with OpenSSL, `False` otherwise.
+    """
+    for cert in certs:
+        spki_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+        if spki_oid in COMPOSITE_SIG07_OID_TO_NAME:
+            return True
+        if spki_oid in PQ_SIG_OID_2_NAME:
+            if spki_oid not in SLH_DSA_OID_2_NAME and spki_oid not in ML_DSA_OID_2_NAME:
+                return True
+        elif spki_oid not in ML_KEM_OID_2_NAME:
+            return True
+    return False
+
+
+def _get_algs(certs: List[rfc9480.CMPCertificate]) -> str:
+    """Get the signature algorithms from the certificate chain.
+
+    :param certs: A list of CMPCertificate's.
+    :return: The signature algorithms in a human-readable format.
+    """
+    algs = []
+    for cert in certs:
+        spki_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+        oid_name = oid_mapping.may_return_oid_to_name(spki_oid)
+        subject = utils.get_openssl_name_notation(cert["tbsCertificate"]["subject"])
+        algs.append(f"Subject={subject} OID:{oid_name} ")
+    return "\n".join(algs)
+
+
+@keyword(name="Verify Cert Chain OpenSSL PQC")
+def verify_cert_chain_openssl_pqc(  # noqa D417 undocumented-param
+    cert_chain: List[rfc9480.CMPCertificate],
+    crl_check: bool = False,
+    verbose: bool = True,
+    timeout: typingutils.Strint = 60,
+    crl_path: Optional[str] = None,
+    crl_check_all: bool = False,
+) -> None:
+    """Verify a certificate chain using OpenSSL with PQC support.
+
+    The certificate chain has to start from the end-entity certificate and ends with the Root certificate.
+
+    Note:
+    ----
+    - Should only be used if OpenSSL PQC support is not surely enabled, otherwise \
+    use the `Verify Cert Chain OpenSSL` keyword. Because it will skip the certificate \
+    checks, if PQC support is not enabled.
+
+    Arguments:
+    ---------
+        - `cert_chain`: A list of untrusted certificate objects to verify against the root certificate.
+        - `crl_check`: Whether to perform CRL checks to verify if any certificate was revoked.
+        Defaults to `False`.
+        - `verbose`: Whether to use the verbose output flag for the OpenSSL `verify` command.
+        Defaults to `True`.
+        - `timeout`: The timeout of the verify command in seconds. Defaults to `60`.
+        - `crl_path`: The path to the CRL file to use for verification. Defaults to `None`.
+        - `crl_check_all`: Whether to check all certificates in the chain against the CRL(s).
+
+    Raises:
+    ------
+        - `SignerNotTrusted`: If the certificate validation fails, according to the OpenSSL `verify` command.
+        - `SignerNotTrusted`: If the verification took too long.
+
+    Examples:
+    --------
+    | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} |
+    | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} | crl_check=True | verbose=False |
+    | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} | crl_check_all=True | timeout=120 |
+
+    """
+    # TODO: maybe allow or change the setup to use the `oqsprovider` to validate all PQC algorithms.
+
+    if verbose:
+        utils.log_certificates(certs=cert_chain, msg_suffix="Untrusted Certificates:\n")
+
+    if not check_openssl_pqc_support():
+        logging.warning("OpenSSL PQC support is not enabled.")
+
+    else:
+        if pqc_algs_cannot_be_validated_with_openssl(certs=cert_chain):
+            raise ValueError(
+                "The provided PQC certificate chain can not be validated with OpenSSL."
+                "Supported PQC algorithms are: ML-DSA, ML-KEM, SLH-DSA."
+                f"Found the following algorithms:\n{_get_algs(certs=cert_chain)}"
+            )
+        verify_cert_chain_openssl(
+            cert_chain=cert_chain,
+            crl_check=crl_check,
+            verbose=verbose,
+            timeout=timeout,
+            crl_path=crl_path,
+            crl_check_all=crl_check_all,
+        )
+
+
 @keyword(name="Verify Cert Chain OpenSSL")
 def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     cert_chain: List[rfc9480.CMPCertificate],
@@ -1012,9 +1144,9 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
 
     Examples:
     --------
-    | Verify Cert Chain OpenSSL | root_cert=${root_cert} | untrusted=${untrusted} | crl_check=True | verbose=False |
-    | Verify Cert Chain OpenSSL | root_cert=${root_cert} | untrusted=${untrusted} | crl_check=False | verbose=True |
-    | Verify Cert Chain OpenSSL | untrusted=${untrusted} | crl_check=False | verbose=True |
+    | Verify Cert Chain OpenSSL | cert_chain=${cert_chain} |
+    | Verify Cert Chain OpenSSL | cert_chain=${cert_chain} | crl_check=True | verbose=False |
+    | Verify Cert Chain OpenSSL | cert_chain=${cert_chain} | crl_check_all=True |
 
     """
     if verbose:
@@ -1639,7 +1771,7 @@ def check_ocsp_response_for_cert(  # noqa D417 undocumented-param
         raise ValueError("Invalid expected status. Must be one of 'good', 'revoked', or 'unknown'")
 
     if must_be_present is None:
-        must_be_present = True if ocsp_url is not None else False
+        must_be_present = ocsp_url is not None
 
     req, ocsp_url_found = create_ocsp_request(
         cert=cert, ca_cert=issuer, hash_alg=hash_alg, must_be_present=must_be_present
@@ -2217,6 +2349,45 @@ def _write_temp_cert(cert_to_write: rfc9480.CMPCertificate) -> str:
         return tmp_file.name
 
 
+def _parse_ocsp_request_args(
+    cert: Union[str, rfc9480.CMPCertificate],
+    ca_cert: Union[str, rfc9480.CMPCertificate],
+    ocsp_url: Optional[str] = None,
+) -> Tuple[str, str, Optional[str]]:
+    """Parse the OCSP arguments and return the certificate path, issuer path, and OCSP URL.
+
+    :param cert: The certificate to check. Can be a file path or a certificate object.
+    :param ca_cert: The issuer certificate. Can be a file path or a certificate object
+    :param ocsp_url: The OCSP URL. If not provided, it will be extracted from the certificate.
+    :return: A tuple containing the certificate path, issuer path, and OCSP URL.
+    :raises `ValueError`: If no OCSP URL is found in the certificate.
+    :raises `PyAsn1Error`: If the certificate or issuer certificate is malformed.
+    """
+    # Determine if inputs are file paths or certificate objects
+    if isinstance(cert, str):
+        cert_path = cert
+        der_data = utils.load_and_decode_pem_file(cert_path)
+        cert_obj = parse_certificate(der_data)
+    else:
+        cert_obj = cert
+        cert_path = _write_temp_cert(cert)
+
+    if isinstance(ca_cert, str):
+        issuer_path = ca_cert
+    else:
+        issuer_path = _write_temp_cert(ca_cert)
+
+    ocsp_urls = ocsp_url or get_ocsp_url_from_cert(cert_obj)
+
+    if not ocsp_urls:
+        raise ValueError("No OCSP URL found in the certificate.")
+
+    if isinstance(ocsp_urls, list):
+        ocsp_url = ocsp_urls[0]
+
+    return cert_path, issuer_path, ocsp_url
+
+
 @keyword(name="Validate OCSP Status OpenSSL")
 def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
     cert: Union[str, rfc9480.CMPCertificate],
@@ -2251,29 +2422,11 @@ def validate_ocsp_status_openssl(  # noqa: D417 undocumented-param
     """
     temp_files = []
 
-    # Determine if inputs are file paths or certificate objects
-    if isinstance(cert, str):
-        cert_path = cert
-        der_data = utils.load_and_decode_pem_file(cert_path)
-        cert_obj = parse_certificate(der_data)
-    else:
-        cert_obj = cert
-        cert_path = _write_temp_cert(cert)
-        temp_files.append(cert_path)
-
-    if isinstance(ca_cert, str):
-        issuer_path = ca_cert
-    else:
-        issuer_path = _write_temp_cert(ca_cert)
-        temp_files.append(issuer_path)
-
-    ocsp_urls = ocsp_url or get_ocsp_url_from_cert(cert_obj)
-
-    if not ocsp_urls:
-        raise ValueError("No OCSP URL found in the certificate.")
-
-    if isinstance(ocsp_urls, list):
-        ocsp_url = ocsp_urls[0]
+    cert_path, issuer_path, ocsp_url = _parse_ocsp_request_args(
+        cert=cert,
+        ca_cert=ca_cert,
+        ocsp_url=ocsp_url,
+    )
 
     cmds = [
         "openssl",

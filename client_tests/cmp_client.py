@@ -55,8 +55,8 @@ def get_cmp_command(client: str = "openssl", **kwargs) -> list:  # noqa: D417
     -------
     - List of command-line arguments suitable for use with Run Process
 
-    Example:
-    -------
+    Examples:
+    --------
     | ${args}= | Get CMP Command | openssl | cmd=ir | server=http://localhost:5000 | ... |
 
     """

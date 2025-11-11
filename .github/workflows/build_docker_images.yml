@@ -15,8 +15,9 @@ name: Build and push base docker images
 on:
   push:
     paths:
-    - 'data/dockerfiles/Dockerfile.*'
-    - 'requirements*.txt'
+      - 'data/dockerfiles/Dockerfile.*'
+      - '.github/workflows/build_docker_images.yml'
+      - 'requirements*.txt'
   workflow_dispatch:
 
 jobs:
@@ -57,9 +58,9 @@ jobs:
             -f data/dockerfiles/Dockerfile.dev .
 
       - name: Build and push the production test suite Docker image
-      # This one is meant to be directly invoked by end-users who don't want to get into the details
-      # of how the test suite works, they just want to run it to test their CA. For their convenience,
-      # we give it a short name, to be invoked as `docker run --rm -it ghcr.io/siemens/cmp-test`
+        # This one is meant to be directly invoked by end-users who don't want to get into the details
+        # of how the test suite works, they just want to run it to test their CA. For their convenience,
+        # we give it a short name, to be invoked as `docker run --rm -it ghcr.io/siemens/cmp-test`
         run: |
           docker buildx build \
             --tag ghcr.io/${REPO_OWNER_LC}/cmp-test:latest \
