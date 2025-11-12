@@ -4,7 +4,7 @@
 # To experiment locally, build it with:
 # `docker build -t cmptest-base -f data/dockerfiles/Dockerfile.base .`
 
-FROM ubuntu:22.04
+FROM ubuntu:25.10
 
 RUN apt-get update && \
     apt-get install -y python3 python3-pip python3-venv openssl libssl-dev cmake git build-essential ca-certificates && \
