@@ -5,6 +5,7 @@
 """Help Utility to build pki message structures or other stuff for the unittests and debugging."""
 
 import base64
+import importlib.util
 import os
 import os.path
 import textwrap
@@ -46,7 +47,6 @@ from resources.exceptions import BadAsn1Data, MismatchingKey
 from resources.keyutils import generate_key, load_private_key_from_file, save_key
 from resources.oid_mapping import may_return_oid_to_name
 from resources.prepare_alg_ids import prepare_pbkdf2_alg_id
-from resources.protectionutils import sign_data_with_alg_id
 from resources.typingutils import PrivateKey, SignKey
 from resources.utils import (
     get_openssl_name_notation,
@@ -54,6 +54,11 @@ from resources.utils import (
     load_certificate_chain,
     write_cmp_certificate_to_pem,
 )
+
+if importlib.util.find_spec("oqs") is not None:
+    import oqs  # pylint: disable=import-error
+else:
+    oqs = None  # pylint: disable=invalid-name
 
 
 def build_pkimessage(body_type="p10cr", **params):
@@ -1793,6 +1798,9 @@ def generate_all_xmss_xmssmt_keys() -> None:
     dir_path = "data/keys/xmss_xmssmt_keys"
     os.makedirs(dir_path, exist_ok=True)
 
+    if oqs is None:
+        raise ImportError("The 'oqs' library is not installed. Please install it to generate XMSS/XMSSMT keys.")
+
     for alg_name in oqs.get_enabled_stateful_sig_mechanisms():
         alg_name = alg_name.lower()
         if alg_name.startswith("xmss-") or alg_name.startswith("xmssmt-"):
@@ -1816,7 +1824,10 @@ def get_all_xmss_xmssmt_keys() -> dict[str, str]:
     keys = {}
     # here importing, if not enabled, it will raise an ImportError,
     # but the file does not exist, so it is safe to import here.
-    import oqs
+
+    if oqs is None:
+        raise ImportError("The 'oqs' library is not installed. Please install it to load XMSS/XMSSMT keys.")
+
     for alg_name in oqs.get_enabled_stateful_sig_mechanisms():
         alg_name = alg_name.lower()
         if alg_name.startswith("xmss-") or alg_name.startswith("xmssmt-"):
