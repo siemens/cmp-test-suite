@@ -188,8 +188,9 @@ class PQStatefulSigFactory(AbstractKeyFactory):
                 f"The `parameters` field in the AlgorithmIdentifier is not allowed to be set for: {name}"
             )
 
-    @staticmethod
+    @classmethod
     def _load_private_key_from_pkcs8(
+        cls,
         alg_id: rfc5280.AlgorithmIdentifier,
         private_key_bytes: bytes,
         public_key_bytes: Optional[bytes] = None,
@@ -201,17 +202,17 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         :param public_key_bytes: Optional raw bytes of the public key.
         """
         alg_name = PQ_STATEFUL_HASH_SIG_OID_2_NAME[alg_id["algorithm"]]
-        prefix = PQStatefulSigFactory._get_matching_prefix(alg_name, PQStatefulSigFactory.get_supported_keys())
+        prefix = cls._get_matching_prefix(alg_name, cls.get_supported_keys())
 
-        if prefix not in PQStatefulSigFactory._sig_prefix_2_priv_class:
+        if prefix not in cls._sig_prefix_2_priv_class:
             raise NotImplementedError(f"Unsupported PQ STFL algorithm in PKCS#8: {alg_name}")
 
-        private_key_class = PQStatefulSigFactory._sig_prefix_2_priv_class[prefix]
+        private_key_class = cls._sig_prefix_2_priv_class[prefix]
         private_key = private_key_class.from_private_bytes(private_key_bytes)
         if public_key_bytes is None:
             return private_key
 
-        PQStatefulSigFactory._validate_public_key(
+        cls._validate_public_key(
             alg_name,
             private_key,
             public_key_bytes,

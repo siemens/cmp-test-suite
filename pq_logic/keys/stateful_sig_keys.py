@@ -49,6 +49,9 @@ XMSS_ALG_DETAILS = {
     "xmss-shake256_10_192": {"hash_alg": "shake256", "n": 24, "w": 16, "len": 67, "h": 10},
     "xmss-shake256_16_192": {"hash_alg": "shake256", "n": 24, "w": 16, "len": 67, "h": 16},
     "xmss-shake256_20_192": {"hash_alg": "shake256", "n": 24, "w": 16, "len": 67, "h": 20},
+    "xmss-shake256_10_256": {"hash_alg": "shake256", "n": 32, "w": 16, "len": 67, "h": 10},
+    "xmss-shake256_16_256": {"hash_alg": "shake256", "n": 32, "w": 16, "len": 67, "h": 16},
+    "xmss-shake256_20_256": {"hash_alg": "shake256", "n": 32, "w": 16, "len": 67, "h": 20},
 }
 
 XMSSMT_ALG_DETAILS = {
@@ -251,23 +254,13 @@ class XMSSPublicKey(PQHashStatefulSigPublicKey):
         # - xmss-sha2_10_256
         # - xmss-shake256_10_256
         # - xmss-shake_10_256
-        if "sha2" in self.name:
-            output_size = int(self.name.split("_")[-1])
-            if output_size == 256:
-                return "sha256"
-            elif output_size == 512:
-                return "sha512"
-            return "sha256"
-        elif self.name.startswith("xmss-shake_"):
+        if self.name.startswith("xmss-shake_"):
             output_size = int(self.name.split("_")[-1])
             if output_size == 256:
                 return "shake128"
-            elif output_size == 512:
+            if output_size == 512:
                 return "shake256"
             return "shake128"
-        elif self.name.startswith("xmss-shake256"):
-            return "shake256"
-
         return XMSS_ALG_DETAILS[self.name.lower()]["hash_alg"]
 
 
