@@ -920,6 +920,205 @@ class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
         )
 
 
+class HSSPublicKey(PQHashStatefulSigPublicKey):
+    """Representation of an HSS public key."""
+
+    def __init__(self, alg_name: str, public_key: bytes):
+        """Initialize the HSS public key.
+
+        :param alg_name: The name of the HSS algorithm.
+        :param public_key: The public key bytes.
+        """
+        self._details: Dict[str, Union[str, int]] = {}
+        self._levels = 0
+        self._hss_pub: Optional[pyhsslms.HssPublicKey]
+        self._sig: Optional["oqs.StatefulSignature"] = None
+        super().__init__(alg_name, public_key)
+
+    def _get_header_name(self) -> bytes:
+        """Return the header name for the HSS public key."""
+        return b"HSS"
+
+    def _check_name(self, name: str) -> Tuple[str, str]:
+        """Check if the name is valid and return the algorithm name."""
+        normalized = _get_and_chck_hss_name(name)
+        details = HSS_ALGORITHM_DETAILS.get(normalized)
+        if details is None:
+            raise ValueError(f"Unsupported HSS algorithm: {name}")
+        self._details = details
+        return normalized, normalized
+
+    def _initialize_key(self):
+        """Initialize the HSS public key with the provided name and public key bytes."""
+        try:
+            self._hss_pub = pyhsslms.HssPublicKey.deserialize(self._public_key_bytes)
+        except ValueError as e:
+            raise InvalidKeyData("Failed to parse HSS public key bytes.") from e
+        expected_len = 4 + self._details["lms_public_key_length"]
+        if len(self._public_key_bytes) != expected_len:
+            raise InvalidKeyData(
+                f"Invalid HSS public key size for {self.name}: expected {expected_len}, "
+                f"got {len(self._public_key_bytes)}"
+            )
+        self._levels = self._hss_pub.levels
+        root_pub = self._hss_pub.pub
+        canonical = build_hss_name_from_codes(root_pub.lms_type, root_pub.lmots_type)
+        if canonical != self._name:
+            raise InvalidKeyData(
+                "The LMS/LMOTS types embedded in the HSS public key do not match the requested algorithm."
+            )
+
+        if oqs is not None and self._can_verify_with_ops():
+            self._sig = oqs.StatefulSignature(self._convert_hss_name_to_oqs())  # type: ignore
+
+    def _export_public_key(self) -> bytes:
+        """Return the public key as bytes."""
+        return self._public_key_bytes
+
+    @classmethod
+    def from_public_bytes(cls, data: bytes) -> "HSSPublicKey":
+        """Load an HSS public key from the provided bytes."""
+        hss_pub = pyhsslms.HssPublicKey.deserialize(data)
+        root_pub = hss_pub.pub
+        lms_params = PYHSSLMS_LMS_PARAMS.get(root_pub.lms_type)
+        lmots_params = PYHSSLMS_LMOTS_PARAMS.get(root_pub.lmots_type)
+        try:
+            name = build_hss_name_from_codes(root_pub.lms_type, root_pub.lmots_type)
+        except InvalidKeyData:
+            if lms_params and lmots_params:
+                lms_hash, m, _ = lms_params
+                lmots_hash, n, p, w, ls = lmots_params
+                if lms_hash != lmots_hash or m != n:
+                    logging.info(
+                        "HSS public key LMS/LMOTS mismatch: LMS hash=%s digest=%d vs LMOTS hash=%s digest=%d. "
+                        "LMOTS parameters: %s",
+                        lms_hash,
+                        m,
+                        lmots_hash,
+                        n,
+                        {
+                            "hash_alg": lmots_hash,
+                            "n": n,
+                            "p": p,
+                            "w": w,
+                            "ls": ls,
+                        },
+                    )
+            raise
+        return cls(name, data)
+
+    def verify(self, data: bytes, signature: bytes) -> None:
+        """Verify the HSS signature using the public key.
+
+        :param data: The data to verify the signature against.
+        :param signature: The signature to verify.
+        :raises InvalidSignature: If the signature is invalid.
+        """
+        if self._hss_pub is None:
+            raise InvalidKeyData("The HSS public key is not initialised.")
+        try:
+            if self._can_verify_with_ops():
+                self._verify_with_oqs(data, signature)
+                return
+
+            if not self._hss_pub.verify(data, signature):
+                raise InvalidSignature("HSS signature verification failed")
+        except ValueError as exc:
+            raise InvalidSignature("Malformed HSS signature") from exc
+
+    def _convert_hss_name_to_oqs(self) -> str:
+        """Translate the internal algorithm name into the liboqs identifier.
+
+        :return: The liboqs algorithm name for this HSS key.
+        :raises InvalidKeyData: If the HSS parameter set is not supported by liboqs.
+        """
+        if self.name not in LIBOQS_LMS_NAME_BY_ALG:
+            raise InvalidKeyData(f"The HSS parameter set {self.name} is not supported by the liboqs LMS provider.")
+        return LIBOQS_LMS_NAME_BY_ALG[self.name]
+
+    def _verify_with_oqs(self, data: bytes, signature: bytes) -> None:
+        """Verify the HSS signature using the oqs provider.
+
+        :param data: The data to verify the signature against.
+        :param signature: The signature to verify.
+        """
+        if oqs is None:
+            raise InvalidSignature("The oqs backend is not available for HSS verification.")
+
+        sig = oqs.StatefulSignature(self._convert_hss_name_to_oqs())
+
+        if len(signature) != self.sig_size:
+            raise InvalidSignature(f"Signature size mismatch: expected {self.sig_size}, got {len(signature)}")
+
+        if not sig.verify(message=data, signature=signature, public_key=self._public_key_bytes):
+            raise InvalidSignature("HSS Signature verification failed")
+
+    def _can_verify_with_ops(self) -> bool:
+        """Return whether ops-backed verification is supported for this key.
+
+        The ops provider only exposes SHA-2 based parameter sets, so SHAKE
+        variants must fall back to the software verifier.
+        """
+        return self.name in LIBOQS_LMS_NAME_BY_ALG and self.levels < 9
+
+    def get_leaf_index(self, signature: bytes) -> int:
+        """Extract the leaf index from the HSS signature."""
+        try:
+            hss_sig = pyhsslms.HssSignature.deserialize(signature)
+        except ValueError as exc:  # pragma: no cover - library validation
+            raise ValueError("Malformed HSS signature") from exc
+        return hss_sig.lms_sig.q
+
+    @property
+    def max_sig_size(self) -> int:
+        """Return the maximum number of signatures supported by this HSS key."""
+        # TODO fix, if needed for different LMS and LMOTS key types.
+        return self._hss_pub.maxSignatures()
+
+    @property
+    def key_size(self) -> int:
+        """Return the size of the public key for this HSS key."""
+        return len(self._public_key_bytes)
+
+    @property
+    def sig_size(self) -> int:
+        """Return the size of the signature for this HSS key."""
+        return _compute_hss_signature_length(self._details, self._levels)
+
+    @property
+    def hash_alg(self) -> str:
+        """Return the hash algorithm used by the HSS key."""
+        return self._details["hash_alg"]
+
+    @property
+    def levels(self) -> int:
+        """Return the number of LMS layers used by the HSS key."""
+        return self._levels
+
+    def get_level_names(self) -> Sequence[Tuple[str, str]]:
+        """Return the LMS and LMOTS parameter names for each level of the HSS key."""
+        # TODO fix for multiple levels with different parameters.
+        # Extract LMS and LMOTS type codes from the root public key
+        root_pub = self._hss_pub.pub
+        lms_type_code = root_pub.lms_type
+        lmots_type_code = root_pub.lmots_type
+
+        # Convert type codes to canonical parameter names
+        lms_name = PYHSS_LMS_NAME_BY_CODE.get(lms_type_code)
+        lmots_name = PYHSS_LMOTS_NAME_BY_CODE.get(lmots_type_code)
+
+        if lms_name is None:
+            raise InvalidKeyData(f"Unrecognized LMS type code in HSS public key: 0x{lms_type_code.hex()}")
+        if lmots_name is None:
+            raise InvalidKeyData(f"Unrecognized LMOTS type code in HSS public key: 0x{lmots_type_code.hex()}")
+
+        # In the current implementation, all levels use the same LMS/LMOTS parameters
+        # Return a list with the same pair repeated for each level
+        num_levels = self.levels
+        levels = [(lms_name, lmots_name)] * num_levels
+        return levels
+
+
 XMSS_ALG_IDS = {
     0x00000001: "XMSS-SHA2_10_256",
     0x00000002: "XMSS-SHA2_16_256",
