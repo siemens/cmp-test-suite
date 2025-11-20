@@ -244,6 +244,47 @@ def _build_hss_algorithms() -> Dict[str, Dict[str, int]]:
 HSS_ALGORITHM_DETAILS = _build_hss_algorithms()
 DEFAULT_HSS_ALGORITHM = "hss_lms_sha256_m32_h5_lmots_sha256_n32_w8"
 
+
+def _convert_to_liboqs_lms_name(details: Dict[str, Union[str, int]]) -> Optional[str]:
+    """Return the `liboqs` LMS identifier for the provided parameter set."""
+    hash_alg = details.get("hash_alg")
+    n = details.get("n")
+    height = details.get("tree_height")
+    word_size = details.get("word_size")
+
+    if not isinstance(hash_alg, str) or hash_alg.lower() != "sha256":
+        return None
+    if n != 32 or not isinstance(height, int) or not isinstance(word_size, int):
+        return None
+
+    return f"LMS_SHA256_H{height}_W{word_size}"
+
+
+def _get_hss_name_to_oqs_name() -> Dict[str, str]:
+    """Build a mapping from HSS algorithm names to liboqs LMS identifiers."""
+    name_map: Dict[str, str] = {}
+    if oqs is None:
+        return name_map
+
+    for name, details in HSS_ALGORITHM_DETAILS.items():
+        oqs_name = _convert_to_liboqs_lms_name(details)
+        if oqs_name is not None and oqs_name in oqs.get_enabled_stateful_sig_mechanisms():
+            name_map[name] = oqs_name
+    return name_map
+
+
+LIBOQS_LMS_NAME_BY_ALG = _get_hss_name_to_oqs_name()
+
+
+def _get_and_chck_hss_name(name: str) -> str:
+    """Check and normalize the provided HSS algorithm name."""
+    if not name:
+        return DEFAULT_HSS_ALGORITHM
+    normalized = name.lower()
+    if normalized == "hss":
+        normalized = DEFAULT_HSS_ALGORITHM
+    return normalized
+
 def _xmss_liboqs_sk_to_pk(sk: bytes, name: str = "XMSS-SHA2_10_256") -> bytes:
     """Extract root||PUB_SEED from a liboqs-exported XMSS or XMSS-MT secret key.
 
