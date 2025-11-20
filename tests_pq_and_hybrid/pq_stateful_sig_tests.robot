@@ -277,6 +277,20 @@ CA MUST Reject A Exhausted XMSSMT Private Key
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP,badCertTemplate   False
 
+CA MUST Issue A Valid HSS Certificate
+    [Documentation]    According to RFC 8554 and RFC 9802 an HSS private key with LMS/LMOTS parameters
+    ...                is a valid stateful signature algorithm. We send a valid `ir` PKIMessage to the CA
+    ...                and expect it to issue a valid certificate using the default HSS algorithm.
+    [Tags]             positive    hss
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=   Get Cert From PKIMessage    ${response}
+    Certificate Must Be Valid    ${cert}
 
 *** Keywords ***
 Protect And Send PKIMessage PQ Stateful
