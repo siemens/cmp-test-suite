@@ -13,7 +13,7 @@ Currently supported:
 import importlib.util
 import logging
 import math
-from typing import Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
 
@@ -91,30 +91,94 @@ XMSSMT_ALG_DETAILS = {
 }
 
 lmots_algorithm_type_dict = {
-    "LMOTS_SHA256_N32_W1": 1,
-    "LMOTS_SHA256_N32_W2": 2,
-    "LMOTS_SHA256_N32_W4": 3,
-    "LMOTS_SHA256_N32_W8": 4,
-    "LMOTS_SHA256_N24_W1": 5,
-    "LMOTS_SHA256_N24_W2": 6,
-    "LMOTS_SHA256_N24_W4": 7,
-    "LMOTS_SHA256_N24_W8": 8,
+    "lmots_sha256_n32_w1": b'\x00\x00\x00\x01',
+    "lmots_sha256_n32_w2": b'\x00\x00\x00\x02',
+    "lmots_sha256_n32_w4": b'\x00\x00\x00\x03',
+    "lmots_sha256_n32_w8": b'\x00\x00\x00\x04',
+    "lmots_sha256_n24_w1": b'\x00\x00\x00\x05',
+    "lmots_sha256_n24_w2": b'\x00\x00\x00\x06',
+    "lmots_sha256_n24_w4": b'\x00\x00\x00\x07',
+    "lmots_sha256_n24_w8": b'\x00\x00\x00\x08',
+    "lmots_shake_n32_w1": b'\x00\x00\x00\x09',
+    "lmots_shake_n32_w2": b'\x00\x00\x00\x0a',
+    "lmots_shake_n32_w4": b'\x00\x00\x00\x0b',
+    "lmots_shake_n32_w8": b'\x00\x00\x00\x0c',
+    "lmots_shake_n24_w1": b'\x00\x00\x00\x0d',
+    "lmots_shake_n24_w2": b'\x00\x00\x00\x0e',
+    "lmots_shake_n24_w4": b'\x00\x00\x00\x0f',
+    "lmots_shake_n24_w8": b'\x00\x00\x00\x10',
 }
 
 lms_algorithm_type_dict = {
-    "LMS_SHA256_M32_H5": 5,
-    "LMS_SHA256_M32_H10": 6,
-    "LMS_SHA256_M32_H15": 7,
-    "LMS_SHA256_M32_H20": 8,
-    "LMS_SHA256_M32_H25": 9,
-    "LMS_SHA256_M24_H5": 10,
-    "LMS_SHA256_M24_H10": 11,
-    "LMS_SHA256_M24_H15": 12,
-    "LMS_SHA256_M24_H20": 13,
-    "LMS_SHA256_M24_H25": 14,
+    "lms_sha256_m32_h5": b'\x00\x00\x00\x05',
+    "lms_sha256_m32_h10": b'\x00\x00\x00\x06',
+    "lms_sha256_m32_h15": b'\x00\x00\x00\x07',
+    "lms_sha256_m32_h20": b'\x00\x00\x00\x08',
+    "lms_sha256_m32_h25": b'\x00\x00\x00\x09',
+    "lms_sha256_m24_h5": b'\x00\x00\x00\x0a',
+    "lms_sha256_m24_h10": b'\x00\x00\x00\x0b',
+    "lms_sha256_m24_h15": b'\x00\x00\x00\x0c',
+    "lms_sha256_m24_h20": b'\x00\x00\x00\x0d',
+    "lms_sha256_m24_h25": b'\x00\x00\x00\x0e',
+    "lms_shake_m32_h5": b'\x00\x00\x00\x0f',
+    "lms_shake_m32_h10": b'\x00\x00\x00\x10',
+    "lms_shake_m32_h15": b'\x00\x00\x00\x11',
+    "lms_shake_m32_h20": b'\x00\x00\x00\x12',
+    "lms_shake_m32_h25": b'\x00\x00\x00\x13',
+    "lms_shake_m24_h5": b'\x00\x00\x00\x14',
+    "lms_shake_m24_h10": b'\x00\x00\x00\x15',
+    "lms_shake_m24_h15": b'\x00\x00\x00\x16',
+    "lms_shake_m24_h20": b'\x00\x00\x00\x17',
+    "lms_shake_m24_h25": b'\x00\x00\x00\x18',
 }
+
 lms_id_2_algorithm_type_dict = {y: x for x, y in lms_algorithm_type_dict.items()}
 lmots_id_2_algorithm_type_dict = {y: x for x, y in lmots_algorithm_type_dict.items()}
+
+# More information at:
+# https://www.iana.org/assignments/leighton-micali-signatures/leighton-micali-signatures.xhtml
+
+LMS_NAMES: Sequence[str] = (
+    "lms_sha256_m24_h5",
+    "lms_sha256_m24_h10",
+    "lms_sha256_m24_h15",
+    "lms_sha256_m24_h20",
+    "lms_sha256_m24_h25",
+    "lms_sha256_m32_h5",
+    "lms_sha256_m32_h10",
+    "lms_sha256_m32_h15",
+    "lms_sha256_m32_h20",
+    "lms_sha256_m32_h25",
+    "lms_shake_m24_h5",
+    "lms_shake_m24_h10",
+    "lms_shake_m24_h15",
+    "lms_shake_m24_h20",
+    "lms_shake_m24_h25",
+    "lms_shake_m32_h5",
+    "lms_shake_m32_h10",
+    "lms_shake_m32_h15",
+    "lms_shake_m32_h20",
+    "lms_shake_m32_h25",
+)
+
+LMOTS_NAMES: Sequence[str] = (
+    "lmots_sha256_n24_w1",
+    "lmots_sha256_n24_w2",
+    "lmots_sha256_n24_w4",
+    "lmots_sha256_n24_w8",
+    "lmots_sha256_n32_w1",
+    "lmots_sha256_n32_w2",
+    "lmots_sha256_n32_w4",
+    "lmots_sha256_n32_w8",
+    "lmots_shake_n24_w1",
+    "lmots_shake_n24_w2",
+    "lmots_shake_n24_w4",
+    "lmots_shake_n24_w8",
+    "lmots_shake_n32_w1",
+    "lmots_shake_n32_w2",
+    "lmots_shake_n32_w4",
+    "lmots_shake_n32_w8",
+)
 
 
 def _xmss_liboqs_sk_to_pk(sk: bytes, name: str = "XMSS-SHA2_10_256") -> bytes:
