@@ -1148,6 +1148,7 @@ class HSSPrivateKey(PQHashStatefulSigPrivateKey):
         )
 
     def _get_header_name(self) -> bytes:
+        """Return the header name for the HSS private key."""
         return b"HSS"
 
     def _check_name(self, name: str) -> Tuple[str, str]:
@@ -1194,18 +1195,14 @@ class HSSPrivateKey(PQHashStatefulSigPrivateKey):
                 hss_priv = hsslms.HSS_Priv([lms_type] * target_levels, lmots_type)
                 self._hss = _convert_hsslms_private_to_pyhsslms(hss_priv)
 
-            elif str(self._details["hash_alg"]).startswith("shake") and target_levels > 8:
-                raise InvalidKeyData(
-                    "The requested HSS parameter set with SHAKE and more than 8 levels is not supported yet."
-                )
-
             else:
+                # Will probably only work with pyhsslms version pyhsslms==2.0.0,
+                # because of error for the raise statement in pyhsslms.
                 self._hss = pyhsslms.HssPrivateKey(
                     levels=target_levels,
                     lms_type=self._details["lms_type_py"],
                     lmots_type=self._details["lmots_type_py"],
                 )
-            self._levels = target_levels
         if self._hss is None:
             raise InvalidKeyData("Failed to initialize the HSS private key.")
 
