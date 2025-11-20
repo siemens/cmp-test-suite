@@ -1119,6 +1119,179 @@ class HSSPublicKey(PQHashStatefulSigPublicKey):
         return levels
 
 
+class HSSPrivateKey(PQHashStatefulSigPrivateKey):
+    """Representation of an HSS private key."""
+
+    def __init__(
+        self,
+        alg_name: str,
+        private_bytes: Optional[bytes] = None,
+        public_key: Optional[bytes] = None,
+        levels: Optional[int] = None,
+    ):
+        """Initialize a HSS private key.
+
+        :param alg_name: The name of the HSS algorithm.
+        :param private_bytes: The bytes of the private key to use.
+        :param public_key: The public key bytes to use. Defaults to `None`.
+        :param levels: The number of LMS layers to use. Defaults to `None`.
+        """
+        self._requested_levels = int(levels) if levels is not None else None
+        self._details: Dict[str, int] = {}
+        self._hss: Optional[pyhsslms.HssPrivateKey] = None
+        self._levels = 0
+        self._used_signatures: List[bytes] = []
+        super().__init__(
+            alg_name=alg_name,
+            private_bytes=private_bytes,
+            public_key=public_key,
+        )
+
+    def _get_header_name(self) -> bytes:
+        return b"HSS"
+
+    def _check_name(self, name: str) -> Tuple[str, str]:
+        """Check if the name is valid and return the algorithm name and the `liboqs` equivalent, if possible."""
+        normalized = _get_and_chck_hss_name(name)
+        details = HSS_ALGORITHM_DETAILS.get(normalized)
+        if details is None:
+            raise ValueError(f"Unsupported HSS algorithm: {name}")
+        self._details = details
+        other_name = LIBOQS_LMS_NAME_BY_ALG.get(normalized) or normalized
+        return normalized, other_name
+
+    def _initialize_key(self):
+        """Initialize the HSS private key with the provided name and private key bytes."""
+        target_levels = self._requested_levels or 1
+
+        if self._private_key_bytes is not None:
+            try:
+                self._hss = pyhsslms.HssPrivateKey.deserialize(self._private_key_bytes)
+            except ValueError as exc:  # pragma: no cover - library validation
+                raise InvalidKeyData("Failed to parse HSS private key bytes.") from exc
+            self._levels = self._hss.levels
+            if self._levels != target_levels:
+                raise InvalidKeyData(
+                    f"The provided HSS private key uses {self._levels} levels, expected {target_levels}."
+                )
+            name = build_hss_name_from_codes(
+                self._hss.prv[0].lms_type,
+                self._hss.prv[0].lmots_type,
+            )
+            if name != self._name:
+                raise InvalidKeyData(
+                    "The LMS/LMOTS types encoded in the HSS private key do not match the requested algorithm."
+                )
+        else:
+            use_hsslms = self._details["hash_alg"] == "sha256" and self._details["tree_height"] >= 10
+            if use_hsslms:
+                lms_type = self._details.get("lms_type_hsslms")
+                lmots_type = self._details.get("lmots_type_hsslms")
+                if lms_type is None or lmots_type is None:
+                    raise InvalidKeyData(
+                        "The requested HSS parameter set requires SHAKE support which is not available in hsslms."
+                    )
+                hss_priv = hsslms.HSS_Priv([lms_type] * target_levels, lmots_type)
+                self._hss = _convert_hsslms_private_to_pyhsslms(hss_priv)
+
+            elif str(self._details["hash_alg"]).startswith("shake") and target_levels > 8:
+                raise InvalidKeyData(
+                    "The requested HSS parameter set with SHAKE and more than 8 levels is not supported yet."
+                )
+
+            else:
+                self._hss = pyhsslms.HssPrivateKey(
+                    levels=target_levels,
+                    lms_type=self._details["lms_type_py"],
+                    lmots_type=self._details["lmots_type_py"],
+                )
+            self._levels = target_levels
+        if self._hss is None:
+            raise InvalidKeyData("Failed to initialize the HSS private key.")
+
+        self._levels = self._hss.levels
+        self._public_key_bytes = self._hss.publicKey().serialize()
+        self._private_key_bytes = self._hss.serialize()
+
+    def public_key(self) -> HSSPublicKey:
+        """Return the corresponding public key for this HSS private key."""
+        if self._public_key_bytes is None:
+            raise InvalidKeyData("The HSS public key bytes are not initialised.")
+        return HSSPublicKey(self._name, self._public_key_bytes)
+
+    def _export_private_key(self) -> bytes:
+        """Return the private key as bytes."""
+        if self._hss is None:
+            raise InvalidKeyData("The HSS private key is not initialised.")
+        return self._hss.serialize()
+
+    def private_bytes_raw(self) -> bytes:
+        """Return the raw private key bytes."""
+        return self._private_key_bytes
+
+    @classmethod
+    def from_private_bytes(cls, data: bytes) -> "HSSPrivateKey":
+        """Load an HSS private key from its serialized byte representation."""
+        hss = pyhsslms.HssPrivateKey.deserialize(data)
+        name = build_hss_name_from_codes(hss.prv[0].lms_type, hss.prv[0].lmots_type)
+        return cls(name, private_bytes=data, levels=hss.levels)
+
+    def sign(self, data: bytes) -> bytes:
+        """Sign the data using the HSS private key."""
+        if self._hss is None:
+            raise ValueError("The HSS private key is not initialised.")
+        signature = self._hss.sign(data)
+        self._private_key_bytes = self._hss.serialize()
+        try:
+            hss_sig = pyhsslms.HssSignature.deserialize(signature)
+            self._used_signatures.append(hss_sig.lms_sig.q.to_bytes(4, "big"))
+        except ValueError:  # pragma: no cover - library validation
+            self._used_signatures.append(signature)
+        return signature
+
+    @property
+    def max_sig_size(self) -> int:
+        """Return the maximum number of signatures supported by this HSS key."""
+        return self.public_key().max_sig_size
+
+    @property
+    def sigs_remaining(self) -> int:
+        """Return the number of signatures remaining for this HSS key."""
+        if self._hss is None:
+            raise InvalidKeyData("The HSS private key is not initialised.")
+        return self._hss.remaining()
+
+    @property
+    def used_keys(self) -> list[bytes]:
+        """Return a copy of the consumed LMS leaf identifiers."""
+        return list(self._used_signatures)
+
+    @property
+    def sig_size(self) -> int:
+        """Return the size of the signature for this HSS key."""
+        return self.public_key().sig_size
+
+    @property
+    def key_size(self) -> int:
+        """Return the size of the private key for this HSS key."""
+        return len(self._private_key_bytes)
+
+    @classmethod
+    def supported_algorithms(cls) -> List[str]:
+        """Return all supported HSS algorithm identifiers."""
+        return sorted(HSS_ALGORITHM_DETAILS.keys())
+
+    @staticmethod
+    def normalize_algorithm(name: str) -> str:
+        """Normalise an HSS algorithm string, extracting the optional hierarchy depth."""
+        return _get_and_chck_hss_name(name)
+
+    @property
+    def levels(self) -> int:
+        """Return the configured number of LMS layers."""
+        return self._levels
+
+
 XMSS_ALG_IDS = {
     0x00000001: "XMSS-SHA2_10_256",
     0x00000002: "XMSS-SHA2_16_256",
