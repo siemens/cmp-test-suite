@@ -372,6 +372,29 @@ def build_hss_name_from_codes(lms_type: bytes, lmots_type: bytes) -> str:
     return name
 
 
+def _convert_hsslms_private_to_pyhsslms(hss_priv: hsslms.HSS_Priv) -> pyhsslms.HssPrivateKey:
+    """Convert an ``hsslms`` private key into the ``pyhsslms`` representation."""
+    py_prvs: List[pyhsslms.LmsPrivateKey] = []
+    for priv in hss_priv.priv:
+        data = (
+            priv.typecode.value.to_bytes(4, "big")
+            + priv.otstypecode.value.to_bytes(4, "big")
+            + priv.SEED
+            + priv.I
+            + priv.q.to_bytes(4, "big")
+        )
+        py_prvs.append(pyhsslms.LmsPrivateKey.deserialize(data))
+    sigs = hss_priv.sig or None
+    return pyhsslms.HssPrivateKey(
+        levels=hss_priv.L,
+        lms_type=py_prvs[0].lms_type,
+        lmots_type=py_prvs[0].lmots_type,
+        remaining_signatures=hss_priv.get_avail_signatures(),
+        prvs=py_prvs,
+        sigs=sigs,
+    )
+
+
 def _xmss_liboqs_sk_to_pk(sk: bytes, name: str = "XMSS-SHA2_10_256") -> bytes:
     """Extract root||PUB_SEED from a liboqs-exported XMSS or XMSS-MT secret key.
 
