@@ -330,6 +330,48 @@ def compute_hss_signature_index(signature: bytes, key: Union["HSSPrivateKey", "H
 
     return total_index
 
+
+def build_hss_name_from_codes(lms_type: bytes, lmots_type: bytes) -> str:
+    """Return the canonical algorithm name for the provided LMS/LMOTS type codes."""
+    lms_name = PYHSS_LMS_NAME_BY_CODE.get(lms_type)
+    lmots_name = PYHSS_LMOTS_NAME_BY_CODE.get(lmots_type)
+
+    # Check LMS identifier
+    if lms_name is None:
+        lms_id = int.from_bytes(lms_type, "big")
+        # Private use range: 0xFF000000 to 0xFFFFFFFF (RFC 8554)
+        if 0xFF000000 <= lms_id <= 0xFFFFFFFF:
+            raise InvalidKeyData(
+                f"The LMS identifier 0x{lms_type.hex()} is not set inside the code as Private use algorithm. "
+                f"Either update the code base or fix your id setting."
+            )
+        # Unassigned identifier
+        raise InvalidKeyData(
+            f"The LMS identifier 0x{lms_type.hex()} is unassigned or unsupported. "
+            f"Check RFC 8554 for valid LMS type codes."
+        )
+
+    # Check LMOTS identifier
+    if lmots_name is None:
+        lmots_id = int.from_bytes(lmots_type, "big")
+        # Private use range: 0xFF000000 to 0xFFFFFFFF (RFC 8554)
+        if 0xFF000000 <= lmots_id <= 0xFFFFFFFF:
+            raise InvalidKeyData(
+                f"The LMOTS identifier 0x{lmots_type.hex()} is not set inside the code as Private use algorithm. "
+                f"Either update the code base or fix your id setting."
+            )
+        # Unassigned identifier
+        raise InvalidKeyData(
+            f"The LMOTS identifier 0x{lmots_type.hex()} is unassigned or unsupported. "
+            f"Check RFC 8554 for valid LMOTS type codes."
+        )
+
+    name = f"hss_{lms_name}_{lmots_name}"
+    if name not in HSS_ALGORITHM_DETAILS:
+        raise InvalidKeyData(f"Unsupported HSS parameter combination inside the key data. Got: {name}")
+    return name
+
+
 def _xmss_liboqs_sk_to_pk(sk: bytes, name: str = "XMSS-SHA2_10_256") -> bytes:
     """Extract root||PUB_SEED from a liboqs-exported XMSS or XMSS-MT secret key.
 
