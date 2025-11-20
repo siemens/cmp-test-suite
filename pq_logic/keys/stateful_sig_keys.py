@@ -285,6 +285,51 @@ def _get_and_chck_hss_name(name: str) -> str:
         normalized = DEFAULT_HSS_ALGORITHM
     return normalized
 
+
+def _compute_hss_signature_length(details: Dict[str, int], levels: int) -> int:
+    """Compute the serialized signature length for the given details and hierarchy depth."""
+    # TODO fix, if needed for different LMS and LMOTS key types.
+    per_sig = details["lms_signature_length"]
+    per_pub = details["lms_public_key_length"]
+    return 4 + max(levels - 1, 0) * (per_sig + per_pub) + per_sig
+
+
+def compute_hss_signature_index(signature: bytes, key: Union["HSSPrivateKey", "HSSPublicKey"]) -> int:
+    """Return the global HSS signature index and the encoded depth."""
+    # TODO fix, if needed for different LMS and LMOTS key types.
+    details = HSS_ALGORITHM_DETAILS.get(key.name)
+    if details is None:
+        raise ValueError(f"Unsupported HSS algorithm: {key.name}")
+
+    try:
+        hss_sig = pyhsslms.HssSignature.deserialize(signature)
+    except ValueError as exc:  # pragma: no cover - library validation
+        raise ValueError("Malformed HSS signature") from exc
+
+    max_per_tree = details["max_per_tree"]
+    indices = [sig_part.q for sig_part in hss_sig.sig]
+    indices.append(hss_sig.lms_sig.q)
+
+    if len(indices) != hss_sig.levels:
+        raise InvalidSignature(
+            f"HSS signature level mismatch: expected {hss_sig.levels}, found {len(indices)} indices",
+        )
+
+    total_index = 0
+    for value in indices:
+        if value >= max_per_tree:
+            raise InvalidSignature(
+                f"LMS index {value} exceeds tree capacity {max_per_tree - 1} for {key.name}",
+            )
+        total_index = total_index * max_per_tree + value
+
+    if key.levels != hss_sig.levels:
+        raise InvalidSignature(
+            f"Signature encodes {hss_sig.levels} levels but key expects {key.levels}",
+        )
+
+    return total_index
+
 def _xmss_liboqs_sk_to_pk(sk: bytes, name: str = "XMSS-SHA2_10_256") -> bytes:
     """Extract root||PUB_SEED from a liboqs-exported XMSS or XMSS-MT secret key.
 
