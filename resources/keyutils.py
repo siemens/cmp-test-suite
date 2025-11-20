@@ -1301,7 +1301,53 @@ def modify_pq_stateful_sig_private_key(  # noqa: D417 undocumented-param
             return XMSSPrivateKey(alg_name=key.name, private_bytes=key_bytes, public_key=public_key_bytes)
         return XMSSMTPrivateKey(alg_name=key.name, private_bytes=key_bytes, public_key=public_key_bytes)
 
-    raise NotImplementedError("Exhausting PQ stateful signature keys is only implemented for XMSS keys.")
+    if isinstance(key, HSSPrivateKey):
+        # For HSS keys, we need to manipulate the internal state by modifying the q index
+        # of the LMS private keys at each level
+        private_bytes = key.private_bytes_raw()
+
+        # Deserialize to get access to the internal structure
+        modified_key = key.from_private_bytes(private_bytes)
+
+        # Access the internal HSS structure (modified_key._hss)
+        hss_internal = modified_key._hss
+
+        if hss_internal is None:
+            raise ValueError("HSS private key is not properly initialized.")
+
+        # Determine which index to set based on parameters
+        if index is not None and last_index:
+            # Set to the last valid index (max - 1)
+            target_index = hss_internal.maxSignatures() - 1
+        elif index is not None:
+            # Set to a specific index
+            target_index = index
+        else:
+            # Exhaust all indices by setting to max
+            target_index = hss_internal.maxSignatures()
+
+        # For HSS, we need to exhaust all levels to make the key unusable
+        # The bottom level (leaf) LMS tree index controls the current state
+        if target_index >= hss_internal.maxSignatures():
+            # Exhaust all levels
+            for level_key in hss_internal.prv:
+                level_key.q = level_key.maxSignatures()
+        else:
+            # Set the bottom level to the target index
+            # Calculate which level and position based on the hierarchical structure
+            if hss_internal.levels > 0 and len(hss_internal.prv) > 0:
+                hss_internal.prv[0].q = target_index
+
+        logging.debug(
+            f"Modified HSS key: {key.name}, target_index: {target_index}, "
+            f"max_sigs: {hss_internal.maxSignatures()}, is_exhausted: {hss_internal.is_exhausted()}"
+        )
+
+        # Serialize the modified key back
+        modified_bytes = hss_internal.serialize()
+        return HSSPrivateKey.from_private_bytes(modified_bytes)
+
+    raise NotImplementedError("Exhausting PQ stateful signature keys is only implemented for XMSS and HSS keys.")
 
 
 @keyword(name="Get Digest Alg For CMP")
