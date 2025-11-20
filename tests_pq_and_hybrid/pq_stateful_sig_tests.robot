@@ -327,6 +327,10 @@ Check PKIMessage Accepted
     ...                - `response`: The PKIMessage response object to check.
     ...                - `expected_pkibody`: The expected PKIBody type. Defaults to 'ip' (initialization response).
     ...
+    ...                Returns:
+    ...                ------------
+    ...                - The valid certificate extracted from the PKIMessage.
+    ...
     ...                Examples:
     ...                --------
     ...                | Check PKIMessage Accepted | ${response} |
@@ -337,6 +341,7 @@ Check PKIMessage Accepted
     PKIStatus Must Be    ${response}    accepted
     ${cert}=    Get Cert From PKIMessage    ${response}
     Certificate Must Be Valid    ${cert}
+    RETURN    ${cert}
 
 Check PKIMessage Rejected
     [Documentation]    Verifies that a PKIMessage response is correctly rejected.
