@@ -272,8 +272,7 @@ CA MUST Reject A Exhausted XMSSMT Private Key
     ${key}=   Modify PQ Stateful Sig Private Key    ${key}
     ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
     ...         exclude_fields=sender,senderKID
-    ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP,badCertTemplate   False
