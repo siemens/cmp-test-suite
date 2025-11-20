@@ -286,6 +286,10 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
         - pq_key (PQPrivateKey): The post-quantum private key.
         - trad_key (ECDHPrivateKey or RSA): The traditional private key.
 
+    Additional PQ parameters:
+    ------------------------
+        - `levels`(int): To set the levels for an HSS private key.
+
     Returns:
     -------
         - The generated private key.
