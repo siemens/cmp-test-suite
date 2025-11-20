@@ -3,8 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 *** Settings ***
-Documentation    Test cases for XMSS and XMSSMT stateful hash-based signature algorithms,
-...              based on RFC 8391 and the RFC 9802 document.
+Documentation    Test cases for XMSS, XMSSMT, and HSS stateful hash-based signature algorithms,
+...              based on RFC 8391, RFC 8554, and RFC 9802. Tests cover certificate issuance,
+...              key usage validation for EE and CA certificates, public key format validation,
+...              algorithm identifier parameter handling, exhausted key detection,
+...              HSS multi-level hierarchies, and LMS/LMOTS index management.
 Resource            ../resources/keywords.resource
 Library             Collections
 Library             OperatingSystem
