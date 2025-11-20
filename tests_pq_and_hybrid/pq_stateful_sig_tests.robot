@@ -280,6 +280,29 @@ CA MUST Reject A Exhausted XMSSMT Private Key
 
 
 *** Keywords ***
+Protect And Send PKIMessage PQ Stateful
+    [Documentation]    Protects and send a PKIMessage which is protected for a PQ Stateful signature algorithm test.
+    ...
+    ...                A default protection mechanism is applied to the provided PKIMessage.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message`: The PKIMessage object to protect and send.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The PKIMessage response from the CMP server.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response}= | Protect And Send PKIMessage PQ Stateful | ${pki_message} |
+    ...
+    [Tags]    exchange
+    [Arguments]    ${pki_message}
+    ${prot_pki_message}=    Default Protect PKIMessage    ${pki_message}
+    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_pki_message}
+    RETURN    ${response}
+
 Build And Send PKIMessage PQ Stateful
     [Documentation]    Build and send a protected PKIMessage for PQ Stateful signature tests.
     ...                This keyword constructs a PKIMessage using the provided key and subject (common name),
