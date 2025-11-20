@@ -15,7 +15,12 @@ import logging
 import math
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
+import hsslms
+import pyhsslms
 from cryptography.exceptions import InvalidSignature
+from pyhsslms.pyhsslms import LenI
+from pyhsslms.pyhsslms import lmots_params as PYHSSLMS_LMOTS_PARAMS
+from pyhsslms.pyhsslms import lms_params as PYHSSLMS_LMS_PARAMS
 
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from resources.exceptions import InvalidKeyData
@@ -180,6 +185,64 @@ LMOTS_NAMES: Sequence[str] = (
     "lmots_shake_n32_w8",
 )
 
+
+def _collect_pyhsslms_types(names: Sequence[str]) -> Dict[str, bytes]:
+    """Collect type codes from the ``pyhsslms`` module for known constant names."""
+    values: Dict[str, bytes] = {}
+    for name in names:
+        value = getattr(pyhsslms, name)
+        if not isinstance(value, (bytes, bytearray)) or len(value) != 4:
+            raise ValueError(f"Unexpected pyhsslms constant shape for {name}")
+        values[name] = bytes(value)
+    return values
+
+
+PYHSS_LMS_TYPES: Dict[str, bytes] = _collect_pyhsslms_types(LMS_NAMES)
+PYHSS_LMOTS_TYPES: Dict[str, bytes] = _collect_pyhsslms_types(LMOTS_NAMES)
+
+PYHSS_LMS_NAME_BY_CODE: Dict[bytes, str] = {value: name for name, value in PYHSS_LMS_TYPES.items()}
+PYHSS_LMOTS_NAME_BY_CODE: Dict[bytes, str] = {value: name for name, value in PYHSS_LMOTS_TYPES.items()}
+
+HSSLMS_LMS_TYPES: Dict[str, Optional[hsslms.LMS_ALGORITHM_TYPE]] = {
+    name: getattr(hsslms.LMS_ALGORITHM_TYPE, name.upper(), None) for name in PYHSS_LMS_TYPES
+}
+HSSLMS_LMOTS_TYPES: Dict[str, Optional[hsslms.LMOTS_ALGORITHM_TYPE]] = {
+    name: getattr(hsslms.LMOTS_ALGORITHM_TYPE, name.upper(), None) for name in PYHSS_LMOTS_TYPES
+}
+
+
+def _build_hss_algorithms() -> Dict[str, Dict[str, int]]:
+    """Build metadata for all supported HSS parameter sets."""
+    algorithms: Dict[str, Dict[str, int]] = {}
+    for lms_name, lms_code in PYHSS_LMS_TYPES.items():
+        hash_alg, m, h = PYHSSLMS_LMS_PARAMS[lms_code]
+        for lmots_name, lmots_code in PYHSS_LMOTS_TYPES.items():
+            lmots_hash, n, p, w, _ = PYHSSLMS_LMOTS_PARAMS[lmots_code]
+            if lmots_hash != hash_alg or n != m:
+                continue
+            name = f"hss_{lms_name}_{lmots_name}"
+            lmots_sig_len = 4 + n * (p + 1)
+            lms_sig_len = 4 + lmots_sig_len + 4 + h * m
+            lms_pub_len = 8 + LenI + m
+            algorithms[name] = {
+                "hash_alg": hash_alg,
+                "lms_type_py": lms_code,
+                "lmots_type_py": lmots_code,
+                "lms_type_hsslms": HSSLMS_LMS_TYPES.get(lms_name),
+                "lmots_type_hsslms": HSSLMS_LMOTS_TYPES.get(lmots_name),
+                "tree_height": h,
+                "word_size": w,
+                "n": n,
+                "lmots_signature_length": lmots_sig_len,
+                "lms_signature_length": lms_sig_len,
+                "lms_public_key_length": lms_pub_len,
+                "max_per_tree": 2**h,
+            }
+    return algorithms
+
+
+HSS_ALGORITHM_DETAILS = _build_hss_algorithms()
+DEFAULT_HSS_ALGORITHM = "hss_lms_sha256_m32_h5_lmots_sha256_n32_w8"
 
 def _xmss_liboqs_sk_to_pk(sk: bytes, name: str = "XMSS-SHA2_10_256") -> bytes:
     """Extract root||PUB_SEED from a liboqs-exported XMSS or XMSS-MT secret key.
