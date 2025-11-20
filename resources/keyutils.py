@@ -48,7 +48,15 @@ from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
-from pq_logic.keys.stateful_sig_keys import XMSSMTPrivateKey, XMSSPrivateKey
+from pq_logic.keys.stateful_sig_keys import (
+    HSSPrivateKey,
+    HSSPublicKey,
+    XMSSMTPrivateKey,
+    XMSSMTPublicKey,
+    XMSSPrivateKey,
+    XMSSPublicKey,
+    compute_hss_signature_index,
+)
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME, id_rsa_kem_spki
@@ -1398,3 +1406,51 @@ def get_digest_alg_for_cmp(  # noqa D417 undocumented-param
         return pub_key.hash_alg
 
     return get_digest_hash_alg_from_alg_id(alg_id)
+
+
+@keyword(name="Get PQ Stateful Sig Index From Sig")
+def get_pq_stateful_sig_index_from_sig(  # noqa D417 undocumented-params
+    signature: bytes,
+    key: Union[PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey],
+    return_lms_index: bool = False,
+) -> int:
+    """Extract the signature index from a PQ stateful signature.
+
+    Note:
+    ----
+    - For HSS signatures, the index is computed which matches the actual used index for
+    the private key (not the LMS leaf index).
+
+    Arguments:
+    ---------
+    - `signature`: The signature bytes from which to extract the index.
+    - `key`: The PQ stateful signature key (private or public) associated with the signature.
+    - `return_lms_index`: If `True` and the key is an HSS key, return the LMS leaf index instead \
+    of the HSS signature index.
+
+    Returns:
+    -------
+    - The extracted signature index as an integer.
+
+    Raises:
+    ------
+    - `NotImplementedError`: If the key type is unsupported for signature index extraction.
+
+    Examples:
+    --------
+    | ${sig_index}= | Get PQ Stateful Sig Index From Sig | ${signature} | ${pq_stateful_sig_key} |
+    | ${sig_index}= | Get PQ Stateful Sig Index From Sig | ${signature} | ${pq_stateful_sig_key} | True |
+
+    """
+    if isinstance(key, PQHashStatefulSigPrivateKey):
+        key = key.public_key()
+
+    if isinstance(key, HSSPublicKey):
+        if return_lms_index:
+            return key.get_leaf_index(signature=signature)
+        return compute_hss_signature_index(signature, key)
+
+    if isinstance(key, (XMSSPublicKey, XMSSMTPublicKey)):
+        return key.get_leaf_index(signature)
+
+    raise NotImplementedError(f"Unsupported key type for signature index extraction. Got: {type(key).__name__}")
