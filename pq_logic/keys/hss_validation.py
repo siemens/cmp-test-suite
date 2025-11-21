@@ -28,10 +28,10 @@ LMS_SHA256_NAMES = [f"lms_sha256_m{m}_h{h}" for m in (24, 32) for h in (5, 10, 1
 LMS_SHAKE_NAMES = [f"lms_shake_m{m}_h{h}" for m in (24, 32) for h in (5, 10, 15, 20, 25)]
 LMOTS_SHA256_NAMES = [f"lmots_sha256_n{n}_w{w}" for n in (24, 32) for w in (1, 2, 4, 8)]
 
-_ALL_LMOTS_NAMES = {name for name in (*LMOTS_SHA256_NAMES, *LMOTS_SHAKE_NAMES)}
-_ALL_LMS_NAMES = {name for name in (*LMS_SHA256_NAMES, *LMS_SHAKE_NAMES)}
+_ALL_LMOTS_NAMES = { *LMOTS_SHA256_NAMES, *LMOTS_SHAKE_NAMES }
+_ALL_LMS_NAMES = { *LMS_SHA256_NAMES, *LMS_SHAKE_NAMES }
 
-_LMOTS_NAME_RE = re.compile(r"^lmots_(sha256|shake)_n(24|32)_w(1|2|4|8)$")
+_LMOTS_NAME_RE = re.compile(r"^lmots_(sha256|shake)_n(24|32)_w([1248])$")
 _LMS_NAME_RE = re.compile(r"^lms_(sha256|shake)_m(24|32)_h(5|10|15|20|25)$")
 
 
@@ -77,12 +77,12 @@ def _validate_lms_lmots_pair(lms: str, lmots: str) -> List[str]:
 
     if lms_family != lmots_family:
         errors.append(
-            "Hash family mismatch: LMS uses %s while LMOTS uses %s (RFC 8554 §5.1)." % (lms_family, lmots_family)
+            f"Hash family mismatch: LMS uses {lms_family} while LMOTS uses {lmots_family} (RFC 8554 §5.1)."
         )
 
     if lms_digest != lmots_digest:
         errors.append(
-            "Digest size mismatch: LMS m=%d bytes, LMOTS n=%d bytes (must match)." % (lms_digest, lmots_digest)
+            f"Digest size mismatch: LMS m={lms_digest} bytes, LMOTS n={lmots_digest} bytes (must match)."
         )
 
     if lmots_w not in (1, 2, 4, 8):
@@ -130,10 +130,10 @@ def _check_digest_size_mismatch(
     if not canonical_levels:
         return issues
 
-    first_lms, first_lmots = canonical_levels[0]
+    _, first_lmots = canonical_levels[0]
     _, first_digest_size, _ = _parse_lmots(first_lmots)
 
-    for idx, (lms_name, lmots_name) in enumerate(canonical_levels[1:], start=1):
+    for idx, (_, lmots_name) in enumerate(canonical_levels[1:], start=1):
         _, digest_size, _ = _parse_lmots(lmots_name)
         if digest_size != first_digest_size:
             issues.append(
@@ -158,10 +158,10 @@ def _check_hash_family_mismatch(
     if not canonical_levels:
         return issues
 
-    first_lms, first_lmots = canonical_levels[0]
+    first_lms, _ = canonical_levels[0]
     first_family, _, _ = _parse_lms(first_lms)
 
-    for idx, (lms_name, lmots_name) in enumerate(canonical_levels[1:], start=1):
+    for idx, (lms_name, _) in enumerate(canonical_levels[1:], start=1):
         lms_family, _, _ = _parse_lms(lms_name)
         if lms_family != first_family:
             issues.append(
