@@ -15,7 +15,6 @@ import logging
 import math
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
-import hsslms
 import pyhsslms
 from cryptography.exceptions import InvalidSignature
 from pyhsslms.pyhsslms import LenI
@@ -203,13 +202,6 @@ PYHSS_LMOTS_TYPES: Dict[str, bytes] = _collect_pyhsslms_types(LMOTS_NAMES)
 PYHSS_LMS_NAME_BY_CODE: Dict[bytes, str] = {value: name for name, value in PYHSS_LMS_TYPES.items()}
 PYHSS_LMOTS_NAME_BY_CODE: Dict[bytes, str] = {value: name for name, value in PYHSS_LMOTS_TYPES.items()}
 
-HSSLMS_LMS_TYPES: Dict[str, Optional[hsslms.LMS_ALGORITHM_TYPE]] = {
-    name: getattr(hsslms.LMS_ALGORITHM_TYPE, name.upper(), None) for name in PYHSS_LMS_TYPES
-}
-HSSLMS_LMOTS_TYPES: Dict[str, Optional[hsslms.LMOTS_ALGORITHM_TYPE]] = {
-    name: getattr(hsslms.LMOTS_ALGORITHM_TYPE, name.upper(), None) for name in PYHSS_LMOTS_TYPES
-}
-
 
 def _build_hss_algorithms() -> Dict[str, Dict[str, int]]:
     """Build metadata for all supported HSS parameter sets."""
@@ -228,8 +220,6 @@ def _build_hss_algorithms() -> Dict[str, Dict[str, int]]:
                 "hash_alg": hash_alg,
                 "lms_type_py": lms_code,
                 "lmots_type_py": lmots_code,
-                "lms_type_hsslms": HSSLMS_LMS_TYPES.get(lms_name),
-                "lmots_type_hsslms": HSSLMS_LMOTS_TYPES.get(lmots_name),
                 "tree_height": h,
                 "word_size": w,
                 "n": n,
@@ -370,29 +360,6 @@ def build_hss_name_from_codes(lms_type: bytes, lmots_type: bytes) -> str:
     if name not in HSS_ALGORITHM_DETAILS:
         raise InvalidKeyData(f"Unsupported HSS parameter combination inside the key data. Got: {name}")
     return name
-
-
-def _convert_hsslms_private_to_pyhsslms(hss_priv: hsslms.HSS_Priv) -> pyhsslms.HssPrivateKey:
-    """Convert an ``hsslms`` private key into the ``pyhsslms`` representation."""
-    py_prvs: List[pyhsslms.LmsPrivateKey] = []
-    for priv in hss_priv.priv:
-        data = (
-            priv.typecode.value.to_bytes(4, "big")
-            + priv.otstypecode.value.to_bytes(4, "big")
-            + priv.SEED
-            + priv.I
-            + priv.q.to_bytes(4, "big")
-        )
-        py_prvs.append(pyhsslms.LmsPrivateKey.deserialize(data))
-    sigs = hss_priv.sig or None
-    return pyhsslms.HssPrivateKey(
-        levels=hss_priv.L,
-        lms_type=py_prvs[0].lms_type,
-        lmots_type=py_prvs[0].lmots_type,
-        remaining_signatures=hss_priv.get_avail_signatures(),
-        prvs=py_prvs,
-        sigs=sigs,
-    )
 
 
 def _xmss_liboqs_sk_to_pk(sk: bytes, name: str = "XMSS-SHA2_10_256") -> bytes:
@@ -1184,25 +1151,11 @@ class HSSPrivateKey(PQHashStatefulSigPrivateKey):
                     "The LMS/LMOTS types encoded in the HSS private key do not match the requested algorithm."
                 )
         else:
-            use_hsslms = self._details["hash_alg"] == "sha256" and self._details["tree_height"] >= 10
-            if use_hsslms:
-                lms_type = self._details.get("lms_type_hsslms")
-                lmots_type = self._details.get("lmots_type_hsslms")
-                if lms_type is None or lmots_type is None:
-                    raise InvalidKeyData(
-                        "The requested HSS parameter set requires SHAKE support which is not available in hsslms."
-                    )
-                hss_priv = hsslms.HSS_Priv([lms_type] * target_levels, lmots_type)
-                self._hss = _convert_hsslms_private_to_pyhsslms(hss_priv)
-
-            else:
-                # Will probably only work with pyhsslms version pyhsslms==2.0.0,
-                # because of error for the raise statement in pyhsslms.
-                self._hss = pyhsslms.HssPrivateKey(
-                    levels=target_levels,
-                    lms_type=self._details["lms_type_py"],
-                    lmots_type=self._details["lmots_type_py"],
-                )
+            self._hss = pyhsslms.HssPrivateKey(
+                levels=target_levels,
+                lms_type=self._details["lms_type_py"],
+                lmots_type=self._details["lmots_type_py"],
+            )
         if self._hss is None:
             raise InvalidKeyData("Failed to initialize the HSS private key.")
 
