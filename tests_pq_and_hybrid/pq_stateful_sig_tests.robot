@@ -402,6 +402,33 @@ CA MUST Issue HSS Certificate With Multiple Hierarchy Levels
     ${pub_key}=    Load Public Key From Cert    ${cert}
     Should Be Equal As Integers   ${pub_key.levels}    3
 
+CA MUST Accept Request with HSS Key used same LMS index But diff key index
+    [Documentation]    According to RFC 8554 the LMS index and HSS key index are independent.
+    ...                We send a valid `ir` PKIMessage protect with a HSS key with level 2 to the CA using the
+    ...                same LMS index but different key indices and expect both requests to be accepted.
+    [Tags]             positive    hss   lms_key_index    leaf_index
+    ${key_sign}=     Generate Unique Key    hss_lms_sha256_m32_h5_lmots_sha256_n32_w8   levels=2
+    ${cm}=   Get Next Common Name
+    ${response}=    Build And Send PKIMessage PQ Stateful    ${key_sign}    ${cm}
+    ${cert_chain}=    Build CMP Chain From PKIMessage    ${response}   for_issued_cert=True
+    # One index is already used to establish the certificate, so only the other 31 keys are
+    # are used up.
+    FOR   ${_}    IN RANGE   31
+        ${_}=     Sign Data   b"DATA"    ${key_sign}
+    END
+    ${cm2}=    Get Next Common Name
+    ${key_new}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${ir}=      Build Ir From Key    ${key_new}   ${cm2}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID
+    ${prot_ir}=    Protect PKIMessage   ${ir}    signature    private_key=${key_sign}    cert_chain=${cert_chain}
+    ${sig}=    Get Asn1 Value As Bytes    ${prot_ir}    protection
+    ${index}=   Get PQ Stateful Sig Index From Sig   ${sig}    ${key_sign}   True
+    # After 31 comes 0 again, the same as the index which is used to establish the certificate.
+    Should Be Equal As Integers    ${index}    0
+    ${response2}=    Exchange PKIMessage PQ Stateful   ${prot_ir}
+    Check PKIMessage Accepted    ${response2}
+
+
 *** Keywords ***
 Protect And Send PKIMessage PQ Stateful
     [Documentation]    Protects and send a PKIMessage which is protected for a PQ Stateful signature algorithm test.
