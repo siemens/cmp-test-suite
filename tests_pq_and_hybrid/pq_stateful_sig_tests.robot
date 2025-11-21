@@ -27,7 +27,7 @@ Test Tags           pq-stateful-sig   pqc  pq-sig   rfc9802
 
 
 *** Variables ***
-# Should not be modfied, unless sha is replaced with shake.
+# Should not be modified, unless sha is replaced with shake.
 # Uses a fast algorithm for testing purposes.
 ${HSS_DEFAULT_ALG}    hss_lms_sha256_m32_h5_lmots_sha256_n32_w8
 
