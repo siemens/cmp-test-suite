@@ -370,6 +370,24 @@ CA MUST Reject A Valid HSS EE Request With keyCertSign KeyUsage
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Rejected    ${response}    ip    badCertTemplate
 
+CA MUST Reject A Exhausted HSS Private Key
+    [Documentation]    According to RFC 8554 and RFC 9802 an HSS private key must track its state
+    ...                and reject requests when the key is exhausted. We send `ir` PKIMessage with an exhausted
+    ...                key. The CA MUST reject the request and may respond with a `failInfo`
+    ...                `badPOP`.
+    [Tags]             negative    hss   exhausted_key
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${cert_request}=    Prepare CertRequest    key=${key}   common_name=${cm}
+    ${der_data}=   Encode To DER   ${cert_request}
+    ${signature}=     Sign Data   ${der_data}    ${key}
+    ${mod_sig}=    Manipulate PQ Stateful Signature Bytes   ${signature}    ${key}   manipulate_sig=${False}
+    ${popo}=     Prepare Signature POPO   ${key}    signature=${mod_sig}
+    ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID    popo=${popo}    cert_request=${cert_request}
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
+    Check PKIMessage Rejected   ${response}    ip    badPOP
+
 *** Keywords ***
 Protect And Send PKIMessage PQ Stateful
     [Documentation]    Protects and send a PKIMessage which is protected for a PQ Stateful signature algorithm test.
