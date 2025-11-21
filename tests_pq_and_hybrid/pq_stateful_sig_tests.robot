@@ -388,6 +388,20 @@ CA MUST Reject A Exhausted HSS Private Key
     ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
     Check PKIMessage Rejected   ${response}    ip    badPOP
 
+CA MUST Issue HSS Certificate With Multiple Hierarchy Levels
+    [Documentation]    According to RFC 8554 HSS supports multi-level hierarchies. We send a valid
+    ...                `ir` PKIMessage to the CA with an HSS key configured for multiple levels and expect
+    ...                it to issue a valid certificate.
+    [Tags]             positive    hss   multi_level
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}   levels=3
+    ${cm}=   Get Next Common Name
+    ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
+    ${cert}=   Check PKIMessage Accepted   ${response}    ip
+    ${pub_key}=    Load Public Key From Cert    ${cert}
+    Should Be Equal As Integers   ${pub_key.levels}    3
+
 *** Keywords ***
 Protect And Send PKIMessage PQ Stateful
     [Documentation]    Protects and send a PKIMessage which is protected for a PQ Stateful signature algorithm test.
