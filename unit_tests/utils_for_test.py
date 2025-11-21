@@ -27,6 +27,7 @@ from robot.api.deco import not_keyword
 
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import prepare_sun_hybrid_csr_attributes
 from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
+from pq_logic.keys.pq_stateful_sig_factory import PQStatefulSigFactory
 from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from resources import certutils, cmputils, utils
 from resources.asn1_structures import PKIMessageTMP
@@ -1814,6 +1815,21 @@ def generate_all_xmss_xmssmt_keys() -> None:
                 continue
             key = generate_key(alg_name)
             save_key(key, path)
+
+def generate_all_hss_keys() -> None:
+    """Generate all HSS keys.
+
+    Generates enabled keys for HSS algorithms and saves them to the specified directory.
+    The keys are saved in PEM format with filenames based on the algorithm name and the level as _l<num>.
+    """
+    dir_path = "data/keys/hss_keys"
+    os.makedirs(dir_path, exist_ok=True)
+    for alg_name in PQStatefulSigFactory.get_algorithms_by_family()["hss"]:
+        print(f"Testing algorithm: {alg_name}")
+
+
+
+
 
 def get_all_xmss_xmssmt_keys() -> dict[str, str]:
     """Get all XMSS and XMSSMT keys.

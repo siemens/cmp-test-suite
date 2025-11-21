@@ -1452,7 +1452,8 @@ def _validate_pq_hash_stateful_sig_pub_key(
                 public_key,
                 hss_allow_diff_hash_and_output_size_per_level=kwargs.get(
                     "hss_allow_diff_hash_and_output_size_per_level", False
-                ) or kwargs.get("enforce_lwcmp", True),
+                )
+                or kwargs.get("enforce_lwcmp", True),
             )
         except InvalidKeyData as err:
             raise BadCertTemplate(err.message, failinfo="badCertTemplate,badDataFormat") from err
@@ -2396,7 +2397,9 @@ def _process_one_cert_request(
     if alt_cert_req is not None:
         alt_cert_template = alt_cert_req["certTemplate"]
 
-    validate_cert_template_public_key(cert_req_msg["certReq"]["certTemplate"], max_key_size=4096 * 2, enforce_lwcmp=kwargs.get("enforce_lwcmp", True))
+    validate_cert_template_public_key(
+        cert_req_msg["certReq"]["certTemplate"], max_key_size=4096 * 2, enforce_lwcmp=kwargs.get("enforce_lwcmp", True)
+    )
     validate_cert_request_controls(
         cert_request=cert_req_msg["certReq"],
         **kwargs,
