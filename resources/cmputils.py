@@ -2040,19 +2040,20 @@ def prepare_sig_popo_structure(
 @keyword(name="Prepare Signature POPO")
 def prepare_signature_popo(  # noqa: D417 undocumented-param
     signing_key: SignKey,
-    cert_request: rfc4211.CertRequest,
+    cert_request: Optional[rfc4211.CertRequest] = None,
     hash_alg: Optional[str] = "sha256",
     bad_pop: bool = False,
     use_rsa_pss: bool = False,
     add_params_rand_val: bool = False,
     sender: Optional[str] = None,
+    signature: Optional[bytes] = None,
 ) -> rfc4211.ProofOfPossession:
     """Prepare Proof-of-Possession for a certificate request.
 
     Arguments:
     ---------
         - `signing_key`: The private key used for signing the certificate request.
-        - `cert_request`: The certificate request to sign.
+        - `cert_request`: The certificate request to sign. Defaults to `None`.
         - `hash_alg`: The hash algorithm used for signing. Defaults to `sha256`.
         - `bad_pop`: If `True`, the first byte of the signature will be modified to create an invalid.
         POP signature.
@@ -2060,6 +2061,7 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
         - `add_params_rand_val`: If `True`, the random value will be added to the parameters field of the signature
         alg id. Defaults to `False`.
         - `sender`: The sender information for `POPOSigningKeyInput`, which **MUST** be absent. Defaults to `None`.
+        - `signature`: The optional signature to be included in the POPO, provided as a bytes. Defaults to `None`.
 
     Returns:
     -------
@@ -2070,13 +2072,17 @@ def prepare_signature_popo(  # noqa: D417 undocumented-param
     | ${popo}= | Prepare Signature POPO | ${signing_key} | ${cert_request} | hash_alg=sha256 |
 
     """
-    der_cert_request = encoder.encode(cert_request)
-    signature = cryptoutils.sign_data(
-        data=der_cert_request,
-        key=signing_key,
-        hash_alg=hash_alg,
-        use_rsa_pss=use_rsa_pss,
-    )
+    if cert_request is None and signature is None:
+        raise ValueError("Either `cert_request` or `signature` must be provided to prepare the signature POPO.")
+
+    if signature is None:
+        der_cert_request = encoder.encode(cert_request)
+        signature = cryptoutils.sign_data(
+            data=der_cert_request,
+            key=signing_key,
+            hash_alg=hash_alg,
+            use_rsa_pss=use_rsa_pss,
+        )
     logging.info("Calculated POPO without manipulation: %s", signature.hex())
 
     alg_id = prepare_alg_ids.prepare_sig_alg_id(

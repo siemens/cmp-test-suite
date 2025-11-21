@@ -53,6 +53,7 @@ from resources.exceptions import (
     SignerNotTrusted,
     WrongIntegrity,
 )
+from resources.keyutils import get_pq_stateful_sig_index_from_sig
 from resources.oid_mapping import may_return_oid_to_name
 from resources.protectionutils import (
     protect_hybrid_pkimessage,
@@ -616,7 +617,7 @@ class ProtectionHandler:
             )
 
         signature = pki_message["protection"].asOctets()
-        index = public_key.get_leaf_index(signature)
+        index = get_pq_stateful_sig_index_from_sig(signature, public_key)
 
         if state.contains_used_index(index):
             raise BadMessageCheck(
@@ -689,7 +690,8 @@ class ProtectionHandler:
                         "The PKIMessage does not contain a valid Stateful signature state. "
                         "The Mock CA does only support Stateful certificates which were issued by the Mock CA."
                     )
-                state.add_used_index(public_key.get_leaf_index(signature))
+                index = get_pq_stateful_sig_index_from_sig(signature, public_key)
+                state.add_used_index(index)
 
         except BadSigAlgID as e:
             raise BadMessageCheck(

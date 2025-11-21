@@ -13,6 +13,8 @@ from pyasn1_alt_modules import rfc5280
 from pq_logic.keys.abstract_key_factory import AbstractKeyFactory
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.stateful_sig_keys import (
+    HSSPrivateKey,
+    HSSPublicKey,
     XMSSMTPrivateKey,
     XMSSMTPublicKey,
     XMSSPrivateKey,
@@ -37,10 +39,12 @@ class PQStatefulSigFactory(AbstractKeyFactory):
     _sig_prefix_2_priv_class: Dict[str, Type[PQHashStatefulSigPrivateKey]] = {
         "xmss": XMSSPrivateKey,
         "xmssmt": XMSSMTPrivateKey,
+        "hss": HSSPrivateKey,
     }
     _sig_prefix_2_pub_class: Dict[str, Type[PQHashStatefulSigPublicKey]] = {
         "xmss": XMSSPublicKey,
         "xmssmt": XMSSMTPublicKey,
+        "hss": HSSPublicKey,
     }
 
     @staticmethod
@@ -51,7 +55,7 @@ class PQStatefulSigFactory(AbstractKeyFactory):
     @staticmethod
     def get_supported_keys() -> List[str]:
         """Return a list of supported stateful PQ keys."""
-        return ["xmss", "xmssmt"]
+        return ["xmss", "xmssmt", "hss"]
 
     @staticmethod
     def supported_algorithms() -> list:
@@ -59,6 +63,7 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         return (
             PQStatefulSigFactory.get_algorithms_by_family()["xmss"]
             + PQStatefulSigFactory.get_algorithms_by_family()["xmssmt"]
+            + PQStatefulSigFactory.get_algorithms_by_family()["hss"]
         )
 
     @classmethod
@@ -72,6 +77,7 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         return {
             "xmss": cls._get_alg_family(algorithms, "xmss-"),
             "xmssmt": cls._get_alg_family(algorithms, "xmssmt-"),
+            "hss": HSSPrivateKey.supported_algorithms(),
         }
 
     @staticmethod
@@ -82,8 +88,12 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         :return: An instance of the specified PQ type.
         """
         prefix = PQStatefulSigFactory._get_matching_prefix(algorithm, PQStatefulSigFactory.get_supported_keys())
+        normalized_algorithm = algorithm
+        params = dict(kwargs)
+        if prefix == "hss":
+            normalized_algorithm = HSSPrivateKey.normalize_algorithm(algorithm)
         algorithms = PQStatefulSigFactory.supported_algorithms() + [prefix]
-        if algorithm not in algorithms:
+        if normalized_algorithm not in algorithms:
             msg = (
                 f"Unsupported {prefix.upper()} algorithm: {algorithm}. "
                 f"Supported algorithms are: {PQStatefulSigFactory.get_algorithms_by_family()[prefix]}"
@@ -92,7 +102,9 @@ class PQStatefulSigFactory(AbstractKeyFactory):
 
         private_key_type = PQStatefulSigFactory._sig_prefix_2_priv_class[prefix]
         if prefix == "hss":
-            return private_key_type(algorithm, length=int(kwargs.get("length", 1)))  # type: ignore
+            length_value = params.get("levels") or 1
+            length_arg = int(length_value)
+            return private_key_type(normalized_algorithm, levels=length_arg)  # type: ignore
         return private_key_type(algorithm)
 
     @staticmethod
@@ -188,8 +200,9 @@ class PQStatefulSigFactory(AbstractKeyFactory):
                 f"The `parameters` field in the AlgorithmIdentifier is not allowed to be set for: {name}"
             )
 
-    @staticmethod
+    @classmethod
     def _load_private_key_from_pkcs8(
+        cls,
         alg_id: rfc5280.AlgorithmIdentifier,
         private_key_bytes: bytes,
         public_key_bytes: Optional[bytes] = None,
@@ -201,17 +214,17 @@ class PQStatefulSigFactory(AbstractKeyFactory):
         :param public_key_bytes: Optional raw bytes of the public key.
         """
         alg_name = PQ_STATEFUL_HASH_SIG_OID_2_NAME[alg_id["algorithm"]]
-        prefix = PQStatefulSigFactory._get_matching_prefix(alg_name, PQStatefulSigFactory.get_supported_keys())
+        prefix = cls._get_matching_prefix(alg_name, cls.get_supported_keys())
 
-        if prefix not in PQStatefulSigFactory._sig_prefix_2_priv_class:
+        if prefix not in cls._sig_prefix_2_priv_class:
             raise NotImplementedError(f"Unsupported PQ STFL algorithm in PKCS#8: {alg_name}")
 
-        private_key_class = PQStatefulSigFactory._sig_prefix_2_priv_class[prefix]
+        private_key_class = cls._sig_prefix_2_priv_class[prefix]
         private_key = private_key_class.from_private_bytes(private_key_bytes)
         if public_key_bytes is None:
             return private_key
 
-        PQStatefulSigFactory._validate_public_key(
+        cls._validate_public_key(
             alg_name,
             private_key,
             public_key_bytes,

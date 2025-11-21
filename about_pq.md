@@ -56,6 +56,10 @@ https://github.com/tprest/falcon.py (reason for not included: deprecated)
 - **SLH-DSA**: Not yet supported, though OIDs are defined. Integration is planned for future versions.
 - **FN-DSA**: Currently unstandardized and thus not considered. Updates will follow as the standard develops.
 - **FrodoKem**: Uses OIDs defined by OQS.
+- **Stateful hash signatures**: XMSS, XMSSMT, and HSS share a common interface in
+  `pq_logic/keys/stateful_sig_keys.py`. HSS support builds on both
+  `pyhsslms` for LMS/LMOTS parameter set handling.
+  Such as `hss_lms_sha256_m32_h5_lmots_sha256_n32_w8`.
 
 #### How to Add a Key
 
@@ -134,6 +138,5 @@ The following post-quantum combined mechanisms are supported:
 ### Example Usage:
 
 Please look at the `SLHDSAPrivate`, which is entirely from a different implementation.
-
 
 
