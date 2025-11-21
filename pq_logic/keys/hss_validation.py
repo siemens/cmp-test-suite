@@ -198,12 +198,18 @@ def _check_winternitz_parameter_mismatch(
 
 def validate_hss_key_levels(
     levels: Sequence[Tuple[str, str]],
-    allow_diff_hash_and_output_size_per_level: bool = False,
+    enforce_lw: bool = False,
 ) -> None:
-    """Raise :class:`InvalidKeyData` if an HSS configuration violates RFC 8554."""
+    """Validate If an HSS configuration violates RFC 8554 or Lightweight constraints.
+
+    :param levels: Iterable of (LMS, LMOTS) parameter names for each hierarchy level.
+    :param enforce_lw: If ``True``, enforce Lightweight constraints that require uniform
+        hash family and output size across all hierarchy levels and winternitz parameters.
+    :raises InvalidKeyData: If the configuration violates any constraints.
+    """
     issues = _validate_hss_configuration(levels)
 
-    if not allow_diff_hash_and_output_size_per_level and len(levels) > 1:
+    if not enforce_lw and len(levels) > 1:
         issues.extend(_check_hash_family_mismatch(levels))
         issues.extend(_check_digest_size_mismatch(levels))
         issues.extend(_check_winternitz_parameter_mismatch(levels))
@@ -226,6 +232,4 @@ def validate_hss_key(
         key = key.public_key()
 
     levels = key.get_level_names()
-    validate_hss_key_levels(
-        levels, allow_diff_hash_and_output_size_per_level=hss_allow_diff_hash_and_output_size_per_level
-    )
+    validate_hss_key_levels(levels, enforce_lw=hss_allow_diff_hash_and_output_size_per_level)
