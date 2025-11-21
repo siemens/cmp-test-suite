@@ -172,6 +172,34 @@ def _check_hash_family_mismatch(
     return issues
 
 
+def _check_winternitz_parameter_mismatch(
+    levels: Sequence[Tuple[str, str]],
+) -> List[str]:
+    """Check for Winternitz parameter mismatches across HSS levels.
+
+    :param levels: Iterable of (LMS, LMOTS) parameter names for each hierarchy level.
+    :return: A list of validation error messages related to Winternitz parameter mismatches.
+    """
+    issues: List[str] = []
+    canonical_levels = _normalise_pairs(levels)
+
+    if not canonical_levels:
+        return issues
+
+    _, first_lmots = canonical_levels[0]
+    _, _, first_w = _parse_lmots(first_lmots)
+
+    for idx, (_, lmots_name) in enumerate(canonical_levels[1:], start=1):
+        _, _, w = _parse_lmots(lmots_name)
+        if w != first_w:
+            issues.append(
+                f"Level {idx}: Winternitz parameter mismatch with level 0: "
+                f"LMOTS uses w={w} while level 0 uses w={first_w}."
+            )
+
+    return issues
+
+
 def validate_hss_key_levels(
     levels: Sequence[Tuple[str, str]],
     allow_diff_hash_and_output_size_per_level: bool = False,
@@ -182,9 +210,10 @@ def validate_hss_key_levels(
     if not allow_diff_hash_and_output_size_per_level and len(levels) > 1:
         issues.extend(_check_hash_family_mismatch(levels))
         issues.extend(_check_digest_size_mismatch(levels))
+        issues.extend(_check_winternitz_parameter_mismatch(levels))
 
     if issues:
-        raise InvalidKeyData("; ".join(issues))
+        raise InvalidKeyData("; ".join(issues), error_details=issues)
 
 
 def validate_hss_key(
