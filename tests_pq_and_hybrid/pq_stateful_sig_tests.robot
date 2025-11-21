@@ -354,6 +354,22 @@ CA MUST Accept CA Certificate Request With HSS KeyUsages
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Accepted    ${response}
 
+CA MUST Reject A Valid HSS EE Request With keyCertSign KeyUsage
+    [Documentation]    According to RFC 9802 Section 6 a End-Entity HSS private key is not
+    ...                allowed to have key usages: keyCertSign. We send a valid `ir` PKIMessage to the CA with
+    ...                this key usage and expect it to reject the request. The CA may respond with the
+    ...                `failInfo` `badCertTemplate`.
+    [Tags]             negative    hss  extensions  key_usage
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${extension}=    Prepare BasicConstraints Extension    False    critical=False
+    ${extension2}=    Prepare KeyUsage Extension    keyCertSign, digitalSignature, nonRepudiation, cRLSign
+    VAR  @{extensions}    ${extension}    ${extension2}
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
+    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
+    Check PKIMessage Rejected    ${response}    ip    badCertTemplate
+
 *** Keywords ***
 Protect And Send PKIMessage PQ Stateful
     [Documentation]    Protects and send a PKIMessage which is protected for a PQ Stateful signature algorithm test.
