@@ -342,16 +342,19 @@ Build And Send PKIMessage PQ Stateful
     ...                | ${response}= | Build And Send PKIMessage PQ Stateful | ${key} | ${cm} | ${params} |
     ...
     [Tags]    ir
-    [Arguments]    ${key}    ${cm}    ${params}={}
-    ${spki}=    Get From Dictionary    ${params}    spki    default=None
+    [Arguments]    ${key}    ${cm}    ${params}=${None}
+    # Set default values if params is not provided
+    IF   $params is None
+        VAR    &{params}   # robocop: off=VAR01
+    END
+    ${spki}=    Get From Dictionary    ${params}    spki    default=${None}
     ${exclude_fields}=    Get From Dictionary    ${params}    exclude_fields    default=sender,senderKID
-    ${extensions}=    Get From Dictionary    ${params}    extensions    default=None
+    ${extensions}=    Get From Dictionary    ${params}    extensions    default=${None}
+    ${implicit_confirm}=    Get From Dictionary    ${params}    implicit_confirm    default=${True}
     ${ir}=    Build Ir From Key    ${key}    ${cm}    spki=${spki}
-    ...    sender=${SENDER}    recipient=${RECIPIENT}
-    ...    exclude_fields=${exclude_fields}
-    ...    extensions=${extensions}
-    ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ...    sender=${SENDER}    recipient=${RECIPIENT}    exclude_fields=${exclude_fields}
+    ...    extensions=${extensions}    implicit_confirm=${implicit_confirm}
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
     RETURN    ${response}
 
 Check PKIMessage Accepted
