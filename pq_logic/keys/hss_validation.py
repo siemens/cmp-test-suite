@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 """Validation helpers for HSS (Hierarchical Signature System) parameters.
 
 The routines implemented here enforce the LMS/LMOTS pairing and hierarchy
