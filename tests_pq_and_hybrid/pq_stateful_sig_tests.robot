@@ -84,7 +84,7 @@ CA MUST Reject Invalid XMSS Public Key Size
 CA MUST Reject Invalid XMSS Request With Parameters set
     [Documentation]    According to RFC 9802 Section 7, the XMSS AlgorithmIdentifier `parameters`
     ...                field must not be set. We send a valid `ir` PKIMessage to the CA with the `parameters` field
-    ...                set to random bytes and expect it to reject the request. The CA may respond with the
+    ...                set to random bytes and expect the CA to reject the request. The CA may respond with the
     ...                `failInfo` `badCertTemplate`.
     [Tags]             negative    xmss   alg_id_parameters
     ${key}=     Generate Unique Key    xmss-sha2_10_256
@@ -214,7 +214,7 @@ CA MUST Reject Invalid XMSSMT Public Key Size
 CA MUST Reject Invalid XMSSMT Request With Parameters Set
     [Documentation]   According to RFC 9802 Section 7, the XMSSMT AlgorithmIdentifier `parameters`
     ...                field must not be set. We send a valid `ir` PKIMessage to the CA with the `parameters` field
-    ...                set to random bytes and expect it to reject the request. The CA may respond with the
+    ...                set to random bytes and expect the CA to reject the request. The CA may respond with the
     ...                `failInfo` `badCertTemplate`.
     [Tags]    negative    xmssmt    alg_id_parameters
     ${key}=    Generate Unique Key    xmssmt-sha2_20/2_256
