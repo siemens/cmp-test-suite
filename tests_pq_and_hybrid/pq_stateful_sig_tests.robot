@@ -292,6 +292,18 @@ CA MUST Issue A Valid HSS Certificate
     ${cert}=   Get Cert From PKIMessage    ${response}
     Certificate Must Be Valid    ${cert}
 
+CA MUST Issue A Valid HSS EE Certificate With KeyUsages
+    [Documentation]    According to RFC 9802 Section 6 a End-Entity HSS private key is allowed to
+    ...                have key usages: digitalSignature, nonRepudiation, cRLSign. We send a valid `ir` PKIMessage to
+    ...                the CA and expect it to issue a valid certificate with these key usages.
+    [Tags]             positive    hss  extensions  key_usage
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${extensions}=    Prepare Extensions    digitalSignature, nonRepudiation, cRLSign
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
+    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
+    Check PKIMessage Accepted    ${response}
 *** Keywords ***
 Protect And Send PKIMessage PQ Stateful
     [Documentation]    Protects and send a PKIMessage which is protected for a PQ Stateful signature algorithm test.
