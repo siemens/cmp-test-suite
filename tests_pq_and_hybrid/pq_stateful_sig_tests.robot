@@ -339,6 +339,21 @@ CA MUST Reject Invalid HSS Request With Parameters Set
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
+CA MUST Accept CA Certificate Request With HSS KeyUsages
+    [Documentation]    According to RFC 9802 Section 6 a CA HSS private key is allowed to have
+    ...                key usages: keyCertSign, digitalSignature, nonRepudiation, cRLSign. We send a valid `ir`
+    ...                PKIMessage to the CA with these key usages and expect it to issue a valid certificate.
+    [Tags]             positive    hss  extensions  key_usage
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${extension}=    Prepare BasicConstraints Extension    True    critical=True
+    ${extension2}=    Prepare KeyUsage Extension    keyCertSign, digitalSignature, nonRepudiation, cRLSign
+    VAR  @{extensions}    ${extension}    ${extension2}
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
+    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
+    Check PKIMessage Accepted    ${response}
+
 *** Keywords ***
 Protect And Send PKIMessage PQ Stateful
     [Documentation]    Protects and send a PKIMessage which is protected for a PQ Stateful signature algorithm test.
