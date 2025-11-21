@@ -322,6 +322,23 @@ CA MUST Reject Invalid HSS Public Key Size
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
 
+CA MUST Reject Invalid HSS Request With Parameters Set
+    [Documentation]    According to RFC 9802 Section 7, the HSS AlgorithmIdentifier `parameters`
+    ...                field must not be set. We send a valid `ir` PKIMessage to the CA with the `parameters` field
+    ...                set to random bytes and expect the CA to reject the request. The CA may respond with the
+    ...                `failInfo` `badCertTemplate`.
+    [Tags]             negative    hss   alg_id_parameters
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}    add_params_rand_bytes=${True}
+    ${ir}=      Build Ir From Key    ${key}   ${cm}    spki=${spki}
+    ...         sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
+
 *** Keywords ***
 Protect And Send PKIMessage PQ Stateful
     [Documentation]    Protects and send a PKIMessage which is protected for a PQ Stateful signature algorithm test.
