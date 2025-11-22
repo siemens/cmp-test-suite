@@ -4,7 +4,7 @@
 
 import unittest
 
-from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
+from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
 from resources.cmputils import build_ir_from_key
 from resources.exceptions import InvalidKeyCombination
 from resources.keyutils import generate_key, prepare_subject_public_key_info
@@ -34,7 +34,7 @@ class TestNegCompositeSigKey(unittest.TestCase):
         THEN should an InvalidKeyCombination exception be raised.
         """
         pq_key = generate_key("ml-dsa-44")
-        comp = CompositeSig07PrivateKey(trad_key=self.bad_rsa_key, pq_key=pq_key)
+        comp = CompositeSig13PrivateKey(trad_key=self.bad_rsa_key, pq_key=pq_key)
 
         sig = comp.sign(data=b"data")
 
@@ -47,7 +47,7 @@ class TestNegCompositeSigKey(unittest.TestCase):
         WHEN the ir is built,
         THEN should a `InvalidKeyCombination` exception be raised.
         """
-        comp = CompositeSig07PrivateKey(trad_key=self.bad_rsa_key, pq_key=self.ml_dsa_44_key)
+        comp = CompositeSig13PrivateKey(trad_key=self.bad_rsa_key, pq_key=self.ml_dsa_44_key)
         with self.assertRaises(InvalidKeyCombination):
             _ = build_ir_from_key(comp)
 
@@ -57,7 +57,7 @@ class TestNegCompositeSigKey(unittest.TestCase):
         WHEN the SPKI is prepared and the ir is built,
         THEN should a valid PKIMessage be returned.
         """
-        comp = CompositeSig07PrivateKey(trad_key=self.bad_rsa_key, pq_key=self.ml_dsa_44_key)
+        comp = CompositeSig13PrivateKey(trad_key=self.bad_rsa_key, pq_key=self.ml_dsa_44_key)
         spki = prepare_subject_public_key_info(comp)
         _ = build_ir_from_key(comp, spki=spki)
 

@@ -35,10 +35,10 @@ from pq_logic.hybrid_sig.certdiscovery import prepare_subject_info_access_syntax
 from pq_logic.hybrid_structures import AltSignatureValueExt
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPublicKey, KEMPublicKey
-from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey, CompositeSig07PublicKey
+from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey, CompositeSig13PublicKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from pq_logic.tmp_oids import (
-    COMPOSITE_SIG07_OID_TO_NAME,
+    COMPOSITE_SIG13_OID_TO_NAME,
     id_altSignatureExt,
     id_ce_deltaCertificateDescriptor,
     id_relatedCert,
@@ -92,7 +92,7 @@ from resources.typingutils import (
 
 def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descriptions in the docstring
     request: PKIMessageTMP,
-    ca_key: CompositeSig07PrivateKey,
+    ca_key: CompositeSig13PrivateKey,
     pub_key_loc: str,
     sig_loc: str,
     serial_number: Optional[int] = None,
@@ -161,7 +161,7 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
         cert_index = cert_index if cert_index is not None else 0
         cert_req_msg: rfc4211.CertReqMsg = request["body"][body_name][cert_index]
         public_key = ca_ra_utils.get_public_key_from_cert_req_msg(cert_req_msg)
-        if isinstance(public_key, CompositeSig07PublicKey):
+        if isinstance(public_key, CompositeSig13PublicKey):
             ca_ra_utils.verify_sig_pop_for_pki_request(request, cert_index)
             cert4, cert1 = sun_lamps_hybrid_scheme_00.sun_cert_template_to_cert(
                 cert_template=cert_req_msg["certReq"]["certTemplate"],
@@ -331,7 +331,7 @@ def build_cert_from_catalyst_request(  # noqa: D417 Missing argument description
 
     popo: rfc4211.ProofOfPossession = cert_req_msg["popo"]
 
-    if cert_req_msg["certReq"]["certTemplate"]["publicKey"]["algorithm"]["algorithm"] in COMPOSITE_SIG07_OID_TO_NAME:
+    if cert_req_msg["certReq"]["certTemplate"]["publicKey"]["algorithm"]["algorithm"] in COMPOSITE_SIG13_OID_TO_NAME:
         raise ValueError("Composite keys are not supported for Catalyst certificates.")
 
     cert_template = cert_req_msg["certReq"]["certTemplate"]
@@ -546,7 +546,7 @@ def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descri
     sig_alg_oid = cert_req_msg["popo"]["signature"]["algorithmIdentifier"]
     oid = sig_alg_oid["algorithm"]
 
-    if oid in COMPOSITE_SIG07_OID_TO_NAME:
+    if oid in COMPOSITE_SIG13_OID_TO_NAME:
         if not isinstance(first_key, PQSignaturePublicKey):
             first_key, alt_pub_key = alt_pub_key, first_key
 
@@ -604,7 +604,7 @@ def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descri
 def _cast_to_composite_sig_private_key(
     first_key: Any,
     alt_key: Any,
-) -> CompositeSig07PrivateKey:
+) -> CompositeSig13PrivateKey:
     """Cast the keys to a composite key.
 
     :param first_key: The first key to cast.
@@ -620,7 +620,7 @@ def _cast_to_composite_sig_private_key(
     if not isinstance(alt_key, (ECSignKey, RSAPrivateKey)):
         raise InvalidKeyCombination("The Composite signature trad-key is not a EC or RSA key.")
 
-    return CompositeSig07PrivateKey(first_key, alt_key)
+    return CompositeSig13PrivateKey(first_key, alt_key)
 
 
 @keyword(name="Prepare Catalyst CertReqMsg Approach")
@@ -1276,8 +1276,8 @@ def is_hybrid_cert(cert: rfc9480.CMPCertificate) -> Optional[str]:
     """
     alg_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
 
-    if alg_oid in COMPOSITE_SIG07_OID_TO_NAME:
-        return "composite-sig-07"
+    if alg_oid in COMPOSITE_SIG13_OID_TO_NAME:
+        return "composite-sig-13"
 
     dcd = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
     if dcd is not None:
