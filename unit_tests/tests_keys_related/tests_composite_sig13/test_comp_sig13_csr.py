@@ -4,7 +4,7 @@
 
 import unittest
 
-from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
+from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from resources.certutils import verify_csr_signature
 from resources.certbuildutils import build_csr
@@ -12,7 +12,7 @@ from resources.exceptions import BadPOP
 from resources.keyutils import load_private_key_from_file, generate_key
 
 
-class TestCompositeSig07CSR(unittest.TestCase):
+class TestCompositeSig13CSR(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -26,7 +26,7 @@ class TestCompositeSig07CSR(unittest.TestCase):
         WHEN generating a CSR,
         THEN the signature is valid.
         """
-        comp_key = CompositeSig07PrivateKey(trad_key=self.ecc, pq_key=self.ml_dsa_65)
+        comp_key = CompositeSig13PrivateKey(trad_key=self.ecc, pq_key=self.ml_dsa_65)
         csr = build_csr(comp_key)
         verify_csr_signature(csr)
 
@@ -36,7 +36,7 @@ class TestCompositeSig07CSR(unittest.TestCase):
         WHEN generating a CSR,
         THEN the signature is valid.
         """
-        comp_key = CompositeSig07PrivateKey(trad_key=self.ecc, pq_key=self.ml_dsa_65)
+        comp_key = CompositeSig13PrivateKey(trad_key=self.ecc, pq_key=self.ml_dsa_65)
         csr = build_csr(comp_key, bad_pop=True)
         with self.assertRaises(BadPOP):
             verify_csr_signature(csr)
