@@ -1,11 +1,10 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
-# robocop: off=SPC11,LEN28,LEN27
+# robocop: off=SPC11
 # To deactivate the rule the next line is used otherwise needs to deactivate
 # (line-too-long LEN08)
 # LEN28:  File is too long.
-# LEN27:  Too-many-test cases.
 
 *** Settings ***
 Documentation    Test cases for Composite Signature Algorithms in all flavors. Supports version 3 and 4.
