@@ -67,10 +67,7 @@ class CompositeSig13PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
     """Composite Signature Implementation for Draft v13."""
 
     _pq_key: MLDSAPublicKey
-    _trad_key: Union[
-        rsa.RSAPublicKey,
-        ECVerifyKey
-    ]
+    _trad_key: Union[rsa.RSAPublicKey, ECVerifyKey]
     _name = "composite-sig-13"
 
     def __init__(
@@ -250,7 +247,8 @@ class CompositeSig13PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey)
     def public_key(self) -> CompositeSig13PublicKey:
         """Generate the public key corresponding to this composite private key."""
         return CompositeSig13PublicKey(
-            self._pq_key.public_key(), self._trad_key.public_key(),
+            self._pq_key.public_key(),
+            self._trad_key.public_key(),
         )
 
     def _get_trad_key_name(self, use_pss: bool = False) -> str:

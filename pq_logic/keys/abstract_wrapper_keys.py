@@ -810,7 +810,8 @@ class AbstractCompositePublicKey(HybridPublicKey, ABC):
         return self._pq_key.public_bytes_raw() + self.encode_trad_part()
 
     def to_spki(
-        self, use_pss: bool = False,
+        self,
+        use_pss: bool = False,
     ) -> rfc5280.SubjectPublicKeyInfo:
         """Convert CompositePublicKey to a SubjectPublicKeyInfo structure.
 

@@ -87,20 +87,18 @@ def verify_cert_hybrid_signature(  # noqa D417 undocumented-param
     alg_id = ee_cert["tbsCertificate"]["signature"]
     spki = other_cert["tbsCertificate"]["subjectPublicKeyInfo"]
     if oid in COMPOSITE_SIG_OID_TO_NAME:
-        name = COMPOSITE_SIG_OID_TO_NAME[oid]
-        composite_cls = CompositeSig13PublicKey
         if other_cert is None and catalyst_key is None:
             composite_key = PQKeyFactory.load_public_key_from_spki(spki)
-            if not isinstance(composite_key, composite_cls):
+            if not isinstance(composite_key, CompositeSig13PublicKey):
                 raise ValueError("The loaded key is not a composite signature key.")
         elif other_cert is not None:
             trad_key = keyutils.load_public_key_from_spki(issuer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
             pq_key = PQKeyFactory.load_public_key_from_spki(other_cert["tbsCertificate"]["subjectPublicKeyInfo"])
-            composite_key = composite_cls(pq_key, trad_key=trad_key)  # type: ignore
+            composite_key = CompositeSig13PublicKey(pq_key, trad_key=trad_key)  # type: ignore
 
         else:
             trad_key = keyutils.load_public_key_from_spki(issuer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
-            composite_key = composite_cls(catalyst_key, trad_key=trad_key)  # type: ignore
+            composite_key = CompositeSig13PublicKey(catalyst_key, trad_key=trad_key)  # type: ignore
 
         data = encoder.encode(ee_cert["tbsCertificate"])
         signature = ee_cert["signature"].asOctets()

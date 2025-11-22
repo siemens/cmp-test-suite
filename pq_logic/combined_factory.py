@@ -823,10 +823,9 @@ class CombinedKeyFactory:
             raise TypeError(f"Unsupported key type: {type(private_key)}. Only PQ keys and hybrid keys are supported.")
 
     @staticmethod
-    def _parse_composite_sig_algorithm(algorithm: str) -> Tuple[str, str, str, str]:
-        """Parse version, prefix, PQ name, and traditional name for composite signatures."""
+    def _parse_composite_sig_algorithm(algorithm: str) -> Tuple[str, str]:
+        """Parse PQ name, and traditional name for composite signatures."""
         alg = algorithm.lower()
-        version = "13"
         if alg.startswith("composite-sig-13-"):
             prefix = "composite-sig-13-"
         elif alg.startswith("composite-sig-"):
@@ -836,7 +835,7 @@ class CombinedKeyFactory:
 
         pq_name = PQKeyFactory.get_pq_alg_name(algorithm=alg)
         trad_name = alg.replace(prefix, "", 1).replace(pq_name + "-", "", 1)
-        return version, prefix, pq_name, trad_name
+        return pq_name, trad_name
 
     @staticmethod
     def _load_composite_sig_key(
@@ -861,22 +860,28 @@ class CombinedKeyFactory:
     @staticmethod
     def _load_composite_sig_from_private_bytes(algorithm: str, private_key: bytes) -> HybridPrivateKey:
         """Load a composite signature key from private bytes."""
-        version, prefix, pq_name, trad_name = CombinedKeyFactory._parse_composite_sig_algorithm(algorithm)
+        pq_name, trad_name = CombinedKeyFactory._parse_composite_sig_algorithm(algorithm)
         seed_size = 32
         pq_bytes, trad_bytes = private_key[:seed_size], private_key[seed_size:]
         pq_key = MLDSAPrivateKey.from_private_bytes(pq_bytes, name=pq_name)
 
         trad_key = CombinedKeyFactory._load_trad_composite_private_key(
-            trad_name=trad_name,
-            trad_key_bytes=trad_bytes,
-            prefix=f"signature v{version}",
+            trad_name=trad_name, trad_key_bytes=trad_bytes, prefix="Sig v13"
         )
 
-        use_pss = trad_name.endswith("-pss") if trad_name.startswith("rsa") else None
-        return CompositeSig13PrivateKey(
+        use_pss = trad_name.endswith("-pss")
+        private_key_obj = CompositeSig13PrivateKey(
             pq_key=pq_key,
             trad_key=trad_key,  # type: ignore
         )
+
+        try:
+            private_key_obj.get_oid(use_pss=use_pss)
+        except InvalidKeyCombination as e:
+            msg = f"Invalid composite signature key combination: {e}"
+            raise InvalidKeyCombination(msg) from e
+
+        return private_key_obj
 
     @staticmethod
     def _try_load_ec_private_from_asn1(
@@ -927,7 +932,7 @@ class CombinedKeyFactory:
 
     @staticmethod
     def _load_trad_composite_private_key(
-        trad_name: str, trad_key_bytes: bytes, prefix: str = "SIG v13"
+        trad_name: str, trad_key_bytes: bytes, prefix: str = "Sig v13"
     ) -> Union[
         RSAPrivateKey, Ed25519PrivateKey, Ed448PrivateKey, X25519PrivateKey, X448PrivateKey, ec.EllipticCurvePrivateKey
     ]:
@@ -979,7 +984,7 @@ class CombinedKeyFactory:
     @staticmethod
     def _load_composite_sig_from_public_bytes(algorithm: str, public_key_bytes: bytes) -> HybridPublicKey:
         """Load a composite signature public key from public bytes."""
-        _version, prefix, pq_name, trad_name = CombinedKeyFactory._parse_composite_sig_algorithm(algorithm)
+        pq_name, trad_name = CombinedKeyFactory._parse_composite_sig_algorithm(algorithm)
         try:
             pq_key, rest = PQKeyFactory.from_public_bytes(pq_name, public_key_bytes, allow_rest=True)
         except ValueError as e:
