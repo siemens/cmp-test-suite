@@ -8,30 +8,30 @@ from cryptography.hazmat.primitives.serialization import PrivateFormat, Encoding
 
 
 from pq_logic.combined_factory import CombinedKeyFactory
-from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
+from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from resources import keyutils
 from resources.utils import manipulate_first_byte
 
 
-class TestLoadCompSig07(unittest.TestCase):
+class TestLoadCompSig13(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         rsa_key = keyutils.generate_key("rsa", length=2048)
         mldsa_key = keyutils.generate_key("ml-dsa-44")
-        cls.comp_rsa_key = CompositeSig07PrivateKey(mldsa_key, rsa_key)
+        cls.comp_rsa_key = CompositeSig13PrivateKey(mldsa_key, rsa_key)
         ed_key = keyutils.generate_key("ed448")
         mldsa_key = keyutils.generate_key("ml-dsa-87")
-        cls.comp_ed_key = CompositeSig07PrivateKey(mldsa_key, ed_key)
+        cls.comp_ed_key = CompositeSig13PrivateKey(mldsa_key, ed_key)
 
         ecc_key = keyutils.generate_key("ecdsa")
         mldsa_key = keyutils.generate_key("ml-dsa-65")
-        cls.comp_ecc_key = CompositeSig07PrivateKey(mldsa_key, ecc_key)
+        cls.comp_ecc_key = CompositeSig13PrivateKey(mldsa_key, ecc_key)
 
     def test_export_and_load_pub_key_rsa(self):
         """
-        GIVEN a composite signature RSA-key in version 7.
+        GIVEN a composite signature RSA-key in version 13.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -45,7 +45,7 @@ class TestLoadCompSig07(unittest.TestCase):
 
     def test_export_and_load_pub_key_ed(self):
         """
-        GIVEN a composite signature Ed-key in version 7.
+        GIVEN a composite signature Ed-key in version 13.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -58,7 +58,7 @@ class TestLoadCompSig07(unittest.TestCase):
 
     def test_export_and_load_pub_key_ecc(self):
         """
-        GIVEN a composite signature ECC-key in version 7.
+        GIVEN a composite signature ECC-key in version 13.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -72,14 +72,14 @@ class TestLoadCompSig07(unittest.TestCase):
 
     def test_export_and_load_priv_key_bad_seed(self):
         """
-        GIVEN a composite signature key in version 7.
+        GIVEN a composite signature key in version 13.
         WHEN exporting the private key and loading it back with a bad ML-DSA seed.
         THEN is the loaded key different from the exported key.
         """
         _seed = manipulate_first_byte(self.comp_rsa_key.pq_key._seed)
         pq_key = MLDSAPrivateKey(seed=self.comp_rsa_key.pq_key._seed,
                                  alg_name=self.comp_rsa_key.pq_key.name)
-        other_key = CompositeSig07PrivateKey(pq_key, trad_key=self.comp_rsa_key.trad_key)
+        other_key = CompositeSig13PrivateKey(pq_key, trad_key=self.comp_rsa_key.trad_key)
 
         other_key.pq_key._seed = _seed
 

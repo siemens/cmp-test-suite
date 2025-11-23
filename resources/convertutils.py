@@ -18,7 +18,7 @@ from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey, KEMPublicKey
-from pq_logic.keys.composite_sig07 import CompositeSig07PublicKey
+from pq_logic.keys.composite_sig13 import CompositeSig13PublicKey
 from resources.copyasn1utils import copy_subject_public_key_info
 from resources.oidutils import PQ_NAME_2_OID
 from resources.typingutils import PublicKey, SignKey, TradSignKey, TradVerifyKey, VerifyKey
@@ -126,7 +126,7 @@ def subject_public_key_info_from_pubkey(
     (some implementations may require two SPKIs for the public key).
     :return: An `rfc5280.SubjectPublicKeyInfo` structure containing the public key information.
     """
-    if isinstance(public_key, CompositeSig07PublicKey):
+    if isinstance(public_key, CompositeSig13PublicKey):
         return public_key.to_spki(use_pss=use_rsa_pss)
 
     oid = None
