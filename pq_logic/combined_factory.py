@@ -158,13 +158,13 @@ class CombinedKeyFactory:
         :return: A generated key object.
         :raises ValueError: If the key type is not supported.
         """
-        algorithm = algorithm.lower()
-        rest = algorithm.replace("chempat-", "", 1)
-        pq_name = PQKeyFactory.get_pq_alg_name(algorithm=rest)
-        rest = rest.replace(f"{pq_name}-", "", 1)
-        trad_name = _any_string_in_string(rest, ["ecdh", "x448", "x25519"])
-        rest = rest.replace(trad_name, "", 1)
+        pq_name, trad_name_with_curve = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(algorithm)
+
+        # Extract trad_name and curve from the remaining part
+        trad_name = _any_string_in_string(trad_name_with_curve, ["ecdh", "x448", "x25519"])
+        rest = trad_name_with_curve.replace(trad_name, "", 1)
         curve = rest.replace("-", "", 1) if rest else None
+
         return HybridKeyFactory.generate_hybrid_key("chempat", pq_name=pq_name, trad_name=trad_name, curve=curve)
 
     @staticmethod
@@ -288,13 +288,8 @@ class CombinedKeyFactory:
         :raises InvalidKeyCombination: If the key is invalid or the combination is not supported.
         """
         orig_name = COMPOSITE_KEM07_OID_2_NAME[oid]
-        algorithm = orig_name
-        algorithm = algorithm.replace("composite-kem07-", "", 1)
-        algorithm = algorithm.replace("composite-kem-07-", "", 1)
-        algorithm = algorithm.replace("composite-dhkem-", "", 1)
 
-        pq_name = PQKeyFactory.get_pq_alg_name(algorithm=algorithm)
-        trad_name = algorithm.replace(f"{pq_name}-", "", 1)
+        pq_name, trad_name = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(orig_name)
         pq_key, rest = PQKeyFactory.from_public_bytes(pq_name, public_key, allow_rest=True)
 
         if trad_name == "x25519":
@@ -456,12 +451,9 @@ class CombinedKeyFactory:
         :param private_key: The private key bytes.
         :return: A CompositeKEM07PublicKey instance.
         """
-        algorithm = algorithm.lower()
-        prefix = "composite-kem07-"
-        tmp_name = algorithm.replace(prefix, "", 1).replace("composite-dhkem-", "", 1)
+        logging.info("Loading composite KEM-07 private key: %s", algorithm)
 
-        logging.info("Loading composite KEM-07 private key: %s", tmp_name)
-        pq_name = PQKeyFactory.get_pq_alg_name(algorithm=algorithm)
+        pq_name, trad_name = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(algorithm)
         tmp_pq_key = PQKeyFactory.generate_pq_key(pq_name)
 
         if hasattr(tmp_pq_key, "private_numbers"):
@@ -473,11 +465,10 @@ class CombinedKeyFactory:
         pq_key = tmp_pq_key.from_private_bytes(pq_data, name=pq_name)
         trad_bytes = private_key[seed_size:]
 
-        trad_name = tmp_name.replace(pq_name + "-", "")
         trad_key = CombinedKeyFactory._load_trad_composite_private_key(
             trad_name=trad_name,
             trad_key_bytes=trad_bytes,
-            prefix="composite v7" if "dhkem" not in algorithm else "dhkem v7",
+            prefix="KEM v7" if "dhkem" not in algorithm.lower() else "dhkem v7",
         )
 
         if not isinstance(trad_key, rsa.RSAPrivateKey):
@@ -823,17 +814,37 @@ class CombinedKeyFactory:
             raise TypeError(f"Unsupported key type: {type(private_key)}. Only PQ keys and hybrid keys are supported.")
 
     @staticmethod
-    def _parse_composite_sig_algorithm(algorithm: str) -> Tuple[str, str]:
-        """Parse PQ name, and traditional name for composite signatures."""
-        alg = algorithm.lower()
-        if alg.startswith("composite-sig-13-"):
+    def get_pq_and_trad_name_form_hybrid_name(hybrid_name: str) -> Tuple[str, str]:
+        """Get the PQ and traditional name for hybrid keys name (e.g., Composite, or Chempat).
+
+        :param hybrid_name: The hybrid algorithm name to parse.
+        :return: Tuple of (pq_name, trad_name).
+        :raises ValueError: If the algorithm name format is not recognized.
+        """
+        alg = hybrid_name.lower()
+
+        # Determine the prefix based on the algorithm name
+        if alg.startswith("chempat-"):
+            prefix = "chempat-"
+        elif alg.startswith("composite-sig-13-"):
             prefix = "composite-sig-13-"
         elif alg.startswith("composite-sig-"):
             prefix = "composite-sig-"
+        elif alg.startswith("composite-kem-07-"):
+            prefix = "composite-kem-07-"
+        elif alg.startswith("composite-kem07-"):
+            prefix = "composite-kem07-"
+        elif alg.startswith("composite-dhkem-"):
+            prefix = "composite-dhkem-"
+        elif alg.startswith("composite-kem-"):
+            prefix = "composite-kem-"
         else:
-            prefix = "composite-sig-13-"
+            raise NotImplementedError(f"Unsupported hybrid algorithm name format: {hybrid_name}")
 
+        # Extract PQ algorithm name
         pq_name = PQKeyFactory.get_pq_alg_name(algorithm=alg)
+
+        # Remove prefix and PQ name to get traditional algorithm name
         trad_name = alg.replace(prefix, "", 1).replace(pq_name + "-", "", 1)
         return pq_name, trad_name
 
@@ -860,7 +871,7 @@ class CombinedKeyFactory:
     @staticmethod
     def _load_composite_sig_from_private_bytes(algorithm: str, private_key: bytes) -> HybridPrivateKey:
         """Load a composite signature key from private bytes."""
-        pq_name, trad_name = CombinedKeyFactory._parse_composite_sig_algorithm(algorithm)
+        pq_name, trad_name = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(algorithm)
         seed_size = 32
         pq_bytes, trad_bytes = private_key[:seed_size], private_key[seed_size:]
         pq_key = MLDSAPrivateKey.from_private_bytes(pq_bytes, name=pq_name)
@@ -940,6 +951,7 @@ class CombinedKeyFactory:
 
         :param trad_name: The name of the algorithm, e.g., "rsa2048-pss".
         :param trad_key_bytes: The traditional key bytes for RSA, ECDH, ECDSA, or EdDSA keys.
+        :param prefix: The prefix for the algorithm, e.g., "Sig v13".
         """
         try:
             if trad_name.startswith("ecdsa") or trad_name.startswith("ecdh"):
@@ -984,7 +996,7 @@ class CombinedKeyFactory:
     @staticmethod
     def _load_composite_sig_from_public_bytes(algorithm: str, public_key_bytes: bytes) -> HybridPublicKey:
         """Load a composite signature public key from public bytes."""
-        pq_name, trad_name = CombinedKeyFactory._parse_composite_sig_algorithm(algorithm)
+        pq_name, trad_name = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(algorithm)
         try:
             pq_key, rest = PQKeyFactory.from_public_bytes(pq_name, public_key_bytes, allow_rest=True)
         except ValueError as e:
