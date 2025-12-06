@@ -712,6 +712,7 @@ ALL_COMPOSITE_SIG_COMBINATIONS = [
     {"pq_name": "ml-dsa-44", "trad_name": "ecdsa", "curve": "secp256r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "rsa", "length": "3072"},
     {"pq_name": "ml-dsa-65", "trad_name": "rsa", "length": "4096"},
+    {"pq_name": "ml-dsa-65", "trad_name": "ecdsa", "curve": "secp256r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "ecdsa", "curve": "secp384r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "ecdsa", "curve": "brainpoolP256r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "ed25519", "curve": None},
@@ -720,6 +721,7 @@ ALL_COMPOSITE_SIG_COMBINATIONS = [
     {"pq_name": "ml-dsa-87", "trad_name": "ed448", "curve": None},
     {"pq_name": "ml-dsa-87", "trad_name": "rsa", "length": "3072"},
     {"pq_name": "ml-dsa-87", "trad_name": "rsa", "length": "4096"},
+    {"pq_name": "ml-dsa-87", "trad_name": "ecdsa", "curve": "secp512r1"},
 ]
 
 
