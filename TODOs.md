@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
 - Figure out why ECMQV fails for KARI with `BouncyCastle`, but the computation is correct,
 RFC5753 says, it also uses ECC_CMS_SHARED_INFO for the KDF.
 - Add test cases for KGA CEK randomness.
-- Add optional test cases for randomness of the CEK and the randomness in Composite-Sig v6.
+- Add optional test cases for randomness of the CEK.
 
 
 ## About CMP:

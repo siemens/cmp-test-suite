@@ -751,31 +751,6 @@ class AbstractCompositePublicKey(HybridPublicKey, ABC):
     _pq_key: PQPublicKey
     _trad_key: Union[ECDHPublicKey, rsa.RSAPublicKey]
 
-    def _prepare_old_spki(self) -> rfc5280.SubjectPublicKeyInfo:
-        """Prepare the old SPKI structure.
-
-        :return: The prepared SPKI structure.
-        """
-        tmp = univ.SequenceOf()
-
-        pq_der_data = self._pq_key.public_bytes(
-            encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-        pq_tmp = decoder.decode(pq_der_data, asn1Spec=rfc5280.SubjectPublicKeyInfo())[0]
-
-        trad_der_data = self._trad_key.public_bytes(
-            encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-        trad_tmp = decoder.decode(trad_der_data, asn1Spec=rfc5280.SubjectPublicKeyInfo())[0]
-
-        tmp.append(pq_tmp)
-        tmp.append(trad_tmp)
-
-        spki = rfc5280.SubjectPublicKeyInfo()
-        spki["algorithm"]["algorithm"] = self.get_oid()
-        spki["subjectPublicKey"] = univ.BitString.fromOctetString(encoder.encode(tmp))
-        return spki
-
     def _get_subject_public_key(self) -> bytes:
         """Get the public key for the `SubjectPublicKeyInfo` structure.
 
@@ -805,7 +780,7 @@ class AbstractCompositePublicKey(HybridPublicKey, ABC):
         return trad_name
 
     @abstractmethod
-    def get_oid(self, use_pss: bool = False, pre_hash: bool = False) -> univ.ObjectIdentifier:
+    def get_oid(self, use_pss: bool = False) -> univ.ObjectIdentifier:
         """Return the Object Identifier for the composite signature algorithm."""
 
     def encode_trad_part(self) -> bytes:
@@ -835,22 +810,17 @@ class AbstractCompositePublicKey(HybridPublicKey, ABC):
         return self._pq_key.public_bytes_raw() + self.encode_trad_part()
 
     def to_spki(
-        self, use_pss: bool = False, pre_hash: bool = False, use_2_spki: bool = False
+        self,
+        use_pss: bool = False,
     ) -> rfc5280.SubjectPublicKeyInfo:
         """Convert CompositePublicKey to a SubjectPublicKeyInfo structure.
 
-        :param use_2_spki: Whether to use `SequenceOf` 2 SPKI structures.
         :param use_pss: Whether RSA-PSS padding was used (if RSA).
-        :param pre_hash: Whether the prehashed version was used.
         :return: `SubjectPublicKeyInfo`.
         """
-        if not use_2_spki:
-            data = self._export_public_key()
-        else:
-            data = encoder.encode(self._prepare_old_spki())
-
+        data = self._export_public_key()
         spki = rfc5280.SubjectPublicKeyInfo()
-        spki["algorithm"]["algorithm"] = self.get_oid(use_pss, pre_hash)
+        spki["algorithm"]["algorithm"] = self.get_oid(use_pss)
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(data)
         return spki
 
