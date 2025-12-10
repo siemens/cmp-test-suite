@@ -479,6 +479,7 @@ ALL_KNOWN_OIDS_2_NAME = {}
 ALL_KNOWN_OIDS_2_NAME.update({rfc6664.id_ecPublicKey: "ecPublicKey"})
 ALL_KNOWN_OIDS_2_NAME.update(RFC9481_OID_2_NAME)
 ALL_KNOWN_OIDS_2_NAME.update(HMAC_NAME_2_OID)
+ALL_KNOWN_OIDS_2_NAME.update(OID_HASH_MAP)
 
 
 ###########################
