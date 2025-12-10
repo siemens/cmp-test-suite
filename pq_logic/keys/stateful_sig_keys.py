@@ -508,6 +508,12 @@ class XMSSPublicKey(PQHashStatefulSigPublicKey):
             return "shake128"
         return XMSS_ALG_DETAILS[self.name.lower()]["hash_alg"]
 
+    @property
+    def key_bit_security(self) -> int:
+        """Return the traditional bit security of the XMSS public key."""
+        # Approximate bit security based on the hash output size
+        return int(self.name.split("_")[-1]) // 2
+
 
 class XMSSPrivateKey(PQHashStatefulSigPrivateKey):
     """Class representing an XMSS private key."""
@@ -771,6 +777,12 @@ class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
     def hash_alg(self) -> str:
         """Return the hash algorithm used by this XMSSMT public key."""
         return XMSSMT_ALG_DETAILS[self.name.lower()]["hash_alg"]
+
+    @property
+    def key_bit_security(self) -> int:
+        """Return the pq bit security of the XMSSMT public key."""
+        # Approximate bit security based on the hash output size
+        return XMSSMT_ALG_DETAILS[self.name.lower()]["n"] * 4
 
 
 class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
@@ -1084,6 +1096,15 @@ class HSSPublicKey(PQHashStatefulSigPublicKey):
         num_levels = self.levels
         levels = [(lms_name, lmots_name)] * num_levels
         return levels
+
+    @property
+    def key_bit_security(self) -> int:
+        """Return the key bit security of this HSS key."""
+        # TODO fix for multiple levels with different parameters.
+        n = self._details["n"]
+        if n == 24:
+            return 96
+        return 128
 
 
 class HSSPrivateKey(PQHashStatefulSigPrivateKey):
