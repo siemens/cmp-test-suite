@@ -43,7 +43,7 @@ from pyasn1_alt_modules import (
 from pq_logic.tmp_oids import (
     CHEMPAT_OID_2_NAME,
     COMPOSITE_KEM07_OID_2_NAME,
-    COMPOSITE_SIG07_OID_TO_NAME,
+    COMPOSITE_SIG_OID_TO_NAME,
     FALCON_NAME_2_OID,
     FRODOKEM_NAME_2_OID,
     MCELIECE_NAME_2_OID,
@@ -712,17 +712,16 @@ ALL_COMPOSITE_SIG_COMBINATIONS = [
     {"pq_name": "ml-dsa-44", "trad_name": "ecdsa", "curve": "secp256r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "rsa", "length": "3072"},
     {"pq_name": "ml-dsa-65", "trad_name": "rsa", "length": "4096"},
+    {"pq_name": "ml-dsa-65", "trad_name": "ecdsa", "curve": "secp256r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "ecdsa", "curve": "secp384r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "ecdsa", "curve": "brainpoolP256r1"},
     {"pq_name": "ml-dsa-65", "trad_name": "ed25519", "curve": None},
     {"pq_name": "ml-dsa-87", "trad_name": "ecdsa", "curve": "secp384r1"},
     {"pq_name": "ml-dsa-87", "trad_name": "ecdsa", "curve": "brainpoolP384r1"},
     {"pq_name": "ml-dsa-87", "trad_name": "ed448", "curve": None},
-]
-
-ALL_COMPOSITE_SIG06_COMBINATIONS = ALL_COMPOSITE_SIG_COMBINATIONS + [
     {"pq_name": "ml-dsa-87", "trad_name": "rsa", "length": "3072"},
     {"pq_name": "ml-dsa-87", "trad_name": "rsa", "length": "4096"},
+    {"pq_name": "ml-dsa-87", "trad_name": "ecdsa", "curve": "secp512r1"},
 ]
 
 
@@ -769,10 +768,10 @@ HYBRID_KEM_OID_2_NAME.update(CHEMPAT_OID_2_NAME)
 HYBRID_KEM_OID_2_NAME.update({univ.ObjectIdentifier(XWING_OID_STR): "xwing"})
 HYBRID_KEM_OID_2_NAME.update(COMPOSITE_KEM07_OID_2_NAME)
 
-COMPOSITE_SIG07_NAME_TO_OID = {y: x for x, y in COMPOSITE_SIG07_OID_TO_NAME.items()}
+COMPOSITE_SIG_NAME_TO_OID = {y: x for x, y in COMPOSITE_SIG_OID_TO_NAME.items()}
 
 HYBRID_SIG_OID_2_NAME = {}
-HYBRID_SIG_OID_2_NAME.update(COMPOSITE_SIG07_OID_TO_NAME)
+HYBRID_SIG_OID_2_NAME.update(COMPOSITE_SIG_OID_TO_NAME)
 
 HYBRID_SIG_NAME_2_OID = {y: x for x, y in HYBRID_SIG_OID_2_NAME.items()}
 

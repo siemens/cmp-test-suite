@@ -26,7 +26,7 @@ from pyasn1_alt_modules import rfc2459, rfc5280, rfc5652, rfc6402, rfc8018, rfc9
 from robot.api.deco import not_keyword
 
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import prepare_sun_hybrid_csr_attributes
-from pq_logic.keys.composite_sig07 import CompositeSig07PrivateKey
+from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
 from pq_logic.keys.pq_stateful_sig_factory import PQStatefulSigFactory
 from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from resources import certutils, cmputils, utils
@@ -883,6 +883,12 @@ def _save_composite_sig():
     cert, _ = build_certificate(private_key=key, common_name="CN=Hybrid Root CompositeSig ED448 ML-DSA-87")
     write_cmp_certificate_to_pem(cert, "data/unittest/pq_root_ca_composite_sig_ed448_ml_dsa_87.pem")
 
+    # Composite Signature CSR's
+    key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
+    csr = build_csr(signing_key=key, common_name="CN=Hybrid CSR CompositeSig RSA2048 ML-DSA-44")
+    save_csr(csr, "data/csrs/hybrid_csr_composite_sig_rsa2048_ml_dsa_44.pem", save_as_pem=True, add_pretty_print=True)
+    print("Generated Composite Signature keys, certificates and CSR.")
+
 
 def _save_xwing():
     """Generate and save two X-Wing keys and certificates for testing."""
@@ -1045,10 +1051,7 @@ def _save_migration_csrs():
     csr = build_csr(signing_key=key, common_name="CN=PQ CSR SLH-DSA-SHAKE-256s")
     save_csr(csr, "data/csrs/pq_csr_slh_dsa_shake_256s.pem", save_as_pem=True, add_pretty_print=True)
 
-    # Composite Signature CSR's
-    key = load_private_key_from_file("data/keys/private-key-composite-sig-rsa2048-ml-dsa-44.pem")
-    csr = build_csr(signing_key=key, common_name="CN=Hybrid CSR CompositeSig RSA2048 ML-DSA-44")
-    save_csr(csr, "data/csrs/hybrid_csr_composite_sig_rsa2048_ml_dsa_44.pem", save_as_pem=True, add_pretty_print=True)
+
 
 
 def _update_ed_x_trad_keys():
@@ -1333,7 +1336,7 @@ def load_ca_cert_and_key() -> Tuple[rfc9480.CMPCertificate, Ed25519PrivateKey]:
 
 
 def build_sun_hybrid_composite_csr(
-    signing_key: Optional[CompositeSig07PrivateKey] = None,
+    signing_key: Optional[CompositeSig13PrivateKey] = None,
     common_name: str = "CN=Hans Mustermann",
     pub_key_hash_alg: Optional[str] = None,
     pub_key_location: Optional[str] = None,
