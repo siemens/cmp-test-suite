@@ -187,6 +187,12 @@ class MLDSAPublicKey(PQSignaturePublicKey):
             )
         return key
 
+    @property
+    def nist_level(self) -> int:
+        """Return the NIST security level of the ML-DSA algorithm."""
+        nist_levels = {"ml-dsa-44": 2, "ml-dsa-65": 3, "ml-dsa-87": 5}
+        return nist_levels[self.name]
+
 
 ML_DSA_PRIVATE_KEY_SIZE = {"ml-dsa-44": 2560, "ml-dsa-65": 4032, "ml-dsa-87": 4896}
 
@@ -561,6 +567,19 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
         if _n != len(data):
             raise ValueError(f"Invalid public key size. Expected: {_n}, got: {len(data)}")
         return key
+
+    @property
+    def nist_level(self) -> int:
+        """Return the nist level."""
+        if oqs is not None:
+            return super().nist_level
+        if self.name.endswith("128s") or self.name.endswith("128f"):
+            return 1
+        if self.name.endswith("192s") or self.name.endswith("192f"):
+            return 3
+        if self.name.endswith("256s") or self.name.endswith("256f"):
+            return 5
+        raise ValueError(f"Cannot determine NIST level for SLH-DSA algorithm: {self.name}")
 
 
 class SLHDSAPrivateKey(PQSignaturePrivateKey):
