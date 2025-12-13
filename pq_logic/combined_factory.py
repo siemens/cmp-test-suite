@@ -32,11 +32,11 @@ from pq_logic.keys.abstract_wrapper_keys import (
     WrapperPrivateKey,
 )
 from pq_logic.keys.chempat_key import ChempatPublicKey
-from pq_logic.keys.composite_kem07 import (
+from pq_logic.keys.composite_kem import (
     CompositeDHKEMRFC9180PrivateKey,
     CompositeDHKEMRFC9180PublicKey,
-    CompositeKEM07PrivateKey,
-    CompositeKEM07PublicKey,
+    CompositeKEMPrivateKey,
+    CompositeKEMPublicKey,
 )
 from pq_logic.keys.composite_sig import (
     CompositeSigPrivateKey,
@@ -316,7 +316,7 @@ class CombinedKeyFactory:
             raise ValueError(f"Unsupported traditional key type: {trad_name}")
 
         if "dhkem" not in orig_name:
-            return CompositeKEM07PublicKey(pq_key, trad_key)  # type: ignore
+            return CompositeKEMPublicKey(pq_key, trad_key)  # type: ignore
         return CompositeDHKEMRFC9180PublicKey(pq_key, trad_key)  # type: ignore
 
     @staticmethod
@@ -444,12 +444,12 @@ class CombinedKeyFactory:
         return trad_key
 
     @staticmethod
-    def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEM07PrivateKey:
+    def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEMPrivateKey:
         """Load a Composite KEM v7 public key from private key bytes.
 
         :param algorithm: The name of the algorithm.
         :param private_key: The private key bytes.
-        :return: A CompositeKEM07PublicKey instance.
+        :return: A CompositeKEMPublicKey instance.
         """
         logging.info("Loading composite KEM-07 private key: %s", algorithm)
 
@@ -486,7 +486,7 @@ class CombinedKeyFactory:
                 trad_key=trad_key,
             )
         else:
-            composite_key = CompositeKEM07PrivateKey(
+            composite_key = CompositeKEMPrivateKey(
                 pq_key=pq_key,
                 trad_key=trad_key,
             )
@@ -500,7 +500,7 @@ class CombinedKeyFactory:
         name: str,
         private_key_bytes: bytes,
         public_key: Optional[bytes],
-    ) -> CompositeKEM07PrivateKey:
+    ) -> CompositeKEMPrivateKey:
         """Decode a composite KEM-07 private key."""
         private_key = CombinedKeyFactory._load_composite_kem07_from_private_bytes(
             algorithm=name,
