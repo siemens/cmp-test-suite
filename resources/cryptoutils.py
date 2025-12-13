@@ -43,7 +43,7 @@ from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQSignaturePrivateKey, PQS
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractHybridRawPublicKey, KEMPrivateKey, KEMPublicKey
 from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey, CompositeKEM07PublicKey
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey, CompositeSig13PublicKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey, CompositeSigPublicKey
 from pq_logic.keys.trad_kem_keys import DHKEMPublicKey, RSADecapKey, RSAEncapKey
 from resources import convertutils, envdatautils, keyutils, oid_mapping
 from resources.asn1_structures import KemCiphertextInfoAsn1
@@ -94,7 +94,7 @@ def sign_data(  # noqa D417 undocumented-param
     elif hash_alg is not None:
         hash_alg = hash_name_to_instance(hash_alg)  # type: ignore
 
-    if isinstance(key, CompositeSig13PrivateKey):
+    if isinstance(key, CompositeSigPrivateKey):
         return key.sign(data=data, use_pss=use_rsa_pss, ctx=ctx)  # type: ignore
 
     if isinstance(
@@ -666,7 +666,7 @@ def verify_signature(  # noqa D417 undocumented-param
         hash_alg = public_key.check_hash_alg(hash_alg)
         public_key.verify(data=data, hash_alg=hash_alg, signature=signature, is_prehashed=use_pre_hash)
 
-    elif isinstance(public_key, CompositeSig13PublicKey):
+    elif isinstance(public_key, CompositeSigPublicKey):
         public_key.verify(signature=signature, data=data, use_pss=use_rsa_pss)
     elif isinstance(public_key, PQHashStatefulSigPublicKey):
         public_key.verify(data=data, signature=signature)

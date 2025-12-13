@@ -37,7 +37,7 @@ from pyasn1_alt_modules import (
 )
 from robot.api.deco import keyword, not_keyword
 
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from resources import convertutils, oid_mapping
 from resources.asn1_structures import KemBMParameterAsn1
 from resources.convertutils import str_to_bytes
@@ -735,7 +735,7 @@ def prepare_sig_alg_id(  # noqa D417 undocumented-param
     """
     alg_id = rfc9480.AlgorithmIdentifier()
 
-    if isinstance(signing_key, CompositeSig13PrivateKey):
+    if isinstance(signing_key, CompositeSigPrivateKey):
         # means an expired key is used.
         domain_oid = signing_key.get_oid(use_pss=use_rsa_pss)
         alg_id["algorithm"] = domain_oid

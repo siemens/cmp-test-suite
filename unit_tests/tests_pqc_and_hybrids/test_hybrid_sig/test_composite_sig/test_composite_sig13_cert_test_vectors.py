@@ -15,9 +15,9 @@ from cryptography.hazmat.primitives.serialization import load_der_private_key, l
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc5915, rfc9480
 
-from pq_logic.keys.composite_sig13 import (
-    CompositeSig13PrivateKey,
-    CompositeSig13PublicKey,
+from pq_logic.keys.composite_sig import (
+    CompositeSigPrivateKey,
+    CompositeSigPublicKey,
 )
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
@@ -50,7 +50,7 @@ COMPOSITE_SIG13_NAME_TO_ORIGINAL_NAME = {
 COMPOSITE_SIG13_ORIGINAL_NAME_TO_NAME = {v: k for k, v in COMPOSITE_SIG13_NAME_TO_ORIGINAL_NAME.items()}
 
 
-def _load_composite_sig13_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeSig13PrivateKey:
+def _load_composite_sig_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeSigPrivateKey:
     """Load a composite signature key from private bytes.
 
     :param algorithm: The name of the algorithm, e.g., "composite-sig-13-ml-dsa-44-rsa2048-pss".
@@ -85,13 +85,13 @@ def _load_composite_sig13_from_private_bytes(algorithm: str, private_key: bytes)
     else:
         trad_key = load_der_private_key(trad_bytes, password=None)
 
-    return CompositeSig13PrivateKey(
+    return CompositeSigPrivateKey(
         pq_key=pq_key,
         trad_key=trad_key,
     )
 
 
-def _load_composite_sig13_from_public_bytes(algorithm: str, public_key: bytes) -> CompositeSig13PublicKey:
+def _load_composite_sig_from_public_bytes(algorithm: str, public_key: bytes) -> CompositeSigPublicKey:
     """Load a composite signature public key from public bytes.
 
     :param algorithm: The name of the algorithm, e.g., "composite-sig-13-ml-dsa-44-rsa2048-pss".
@@ -123,7 +123,7 @@ def _load_composite_sig13_from_public_bytes(algorithm: str, public_key: bytes) -
     except ValueError as e:
         raise InvalidKeyData(f"Failed to load public key for {algorithm}: {e}")
 
-    return CompositeSig13PublicKey(
+    return CompositeSigPublicKey(
         pq_key=pq_key,
         trad_key=trad_key,
     )
@@ -138,7 +138,7 @@ class TestVectorEntry:
     sk_pkcs8: str  # PKCS#8 encoded secret key in hex format.
     s: str  # The signature in hex format.
 
-    _sk_key: Optional[CompositeSig13PrivateKey] = None
+    _sk_key: Optional[CompositeSigPrivateKey] = None
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -147,7 +147,7 @@ class TestVectorEntry:
             tcId=data["tcId"], pk=data["pk"], x5c=data["x5c"], sk=data["sk"], sk_pkcs8=data["sk_pkcs8"], s=data["s"]
         )
 
-    def secret_key(self) -> CompositeSig13PrivateKey:
+    def secret_key(self) -> CompositeSigPrivateKey:
         """Return the secret key as a CompositeSig06PrivateKey."""
         _name = COMPOSITE_SIG13_ORIGINAL_NAME_TO_NAME[self.tcId]
 
@@ -156,10 +156,10 @@ class TestVectorEntry:
 
         sk_bytes = base64.decodebytes(self.sk.encode("ascii"))
 
-        self._sk_key = _load_composite_sig13_from_private_bytes(algorithm=_name, private_key=sk_bytes)
+        self._sk_key = _load_composite_sig_from_private_bytes(algorithm=_name, private_key=sk_bytes)
         return self._sk_key
 
-    def public_key(self) -> CompositeSig13PublicKey:
+    def public_key(self) -> CompositeSigPublicKey:
         """Return the public key as bytes."""
         _name = self.name
         if self._sk_key is None:
@@ -187,7 +187,7 @@ class TestVectorEntry:
         private_key = self.secret_key()  # Ensure the secret key is loaded
         spki = self.certificate["tbsCertificate"]["subjectPublicKeyInfo"]
         public_key_bytes = spki["subjectPublicKey"].asOctets()
-        public_key = _load_composite_sig13_from_public_bytes(self.name, public_key_bytes)
+        public_key = _load_composite_sig_from_public_bytes(self.name, public_key_bytes)
         if public_key != private_key.public_key():
             raise ValueError("Public key does not match the private key's public key.")
 
@@ -206,7 +206,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
         with open(path, "r") as file:
             return json.load(file)
 
-    def test_composite_sig13_cert_from_vectors_rsa(self):
+    def test_composite_sig_cert_from_vectors_rsa(self):
         """
         GIVEN a set of RSA-composite signature test vectors.
         WHEN validating the composite signature certificates,
@@ -231,7 +231,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                 spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
                 test_vec.validate()
 
-                public_key = _load_composite_sig13_from_public_bytes(test_vec.name, spki["subjectPublicKey"].asOctets())
+                public_key = _load_composite_sig_from_public_bytes(test_vec.name, spki["subjectPublicKey"].asOctets())
                 if public_key != private_key.public_key():
                     raise ValueError("Public key does not match the private key's public key.")
 
@@ -251,7 +251,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                     use_pss=use_pss,
                 )
 
-    def test_composite_sig13_cert_from_vectors_ed(self):
+    def test_composite_sig_cert_from_vectors_ed(self):
         """
         GIVEN a set of ED-composite signature test vectors.
         WHEN validating the composite signature certificates,
@@ -274,7 +274,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                 private_key = test_vec.secret_key()
                 spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
                 test_vec.validate()
-                public_key = _load_composite_sig13_from_public_bytes(test_vec.name, spki["subjectPublicKey"].asOctets())
+                public_key = _load_composite_sig_from_public_bytes(test_vec.name, spki["subjectPublicKey"].asOctets())
                 if public_key != private_key.public_key():
                     raise ValueError("Public key does not match the private key's public key.")
                 alg_id = cert["tbsCertificate"]["signature"]
@@ -290,7 +290,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                     ctx=b"",
                 )
 
-    def test_composite_sig13_cert_from_vectors_ecdsa(self):
+    def test_composite_sig_cert_from_vectors_ecdsa(self):
         """
         GIVEN a set of ECDSA-composite signature test vectors.
         WHEN validating the composite signature certificates,
@@ -313,7 +313,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                 private_key = test_vec.secret_key()
                 spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
                 test_vec.validate()
-                public_key = _load_composite_sig13_from_public_bytes(test_vec.name, spki["subjectPublicKey"].asOctets())
+                public_key = _load_composite_sig_from_public_bytes(test_vec.name, spki["subjectPublicKey"].asOctets())
                 if public_key != private_key.public_key():
                     raise ValueError("Public key does not match the private key's public key.")
                 alg_id = cert["tbsCertificate"]["signature"]

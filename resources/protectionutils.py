@@ -34,7 +34,7 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey, CompositeSig13PublicKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey, CompositeSigPublicKey
 from pq_logic.keys.sig_keys import MLDSAPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import (
@@ -2447,7 +2447,7 @@ def sign_data_with_alg_id(  # noqa: D417 Missing argument descriptions in the do
     """
     oid = alg_id["algorithm"]
 
-    if isinstance(key, CompositeSig13PrivateKey):
+    if isinstance(key, CompositeSigPrivateKey):
         name: str = COMPOSITE_SIG_OID_TO_NAME[oid]
         use_pss = name.endswith("-pss")
         return key.sign(data=data, use_pss=use_pss)
@@ -2464,7 +2464,7 @@ def sign_data_with_alg_id(  # noqa: D417 Missing argument descriptions in the do
 
 
 def _verify_composite_sig(
-    public_key: CompositeSig13PublicKey,
+    public_key: CompositeSigPublicKey,
     data: bytes,
     signature: bytes,
     name: str,
@@ -2648,7 +2648,7 @@ def verify_signature_with_alg_id(  # noqa: D417 Missing argument descriptions in
     _validate_sig_alg_id(alg_id)
 
     if oid in COMPOSITE_SIG_OID_TO_NAME:
-        if not isinstance(public_key, CompositeSig13PublicKey):
+        if not isinstance(public_key, CompositeSigPublicKey):
             raise TypeError(f"The public key must be a CompositeSigPublicKey. Got: {keyutils.get_key_name(public_key)}")
         name = COMPOSITE_SIG_OID_TO_NAME[oid]
         use_pss = name.endswith("-pss")
@@ -2846,7 +2846,7 @@ def protect_hybrid_pkimessage(  # noqa: D417 Missing argument descriptions in th
             if isinstance(alt_signing_key, PQSignaturePrivateKey):
                 private_key, alt_signing_key = alt_signing_key, private_key
 
-            private_key = CompositeSig13PrivateKey(
+            private_key = CompositeSigPrivateKey(
                 pq_key=private_key,  # type: ignore
                 trad_key=alt_signing_key,  # type: ignore
             )
@@ -2986,7 +2986,7 @@ def verify_composite_signature_with_keys(
         raise InvalidKeyCombination("The Composite signature trad-key is not a EC or RSA key.")
 
     if alg_id["algorithm"] in COMPOSITE_SIG_OID_TO_NAME:
-        public_key = CompositeSig13PublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
+        public_key = CompositeSigPublicKey(pq_key=first_key, trad_key=second_key)  # type: ignore
     else:
         raise BadAlg(f"Invalid algorithm for composite signature: {alg_id['algorithm']}")
 

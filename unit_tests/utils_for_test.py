@@ -25,7 +25,7 @@ from pyasn1_alt_modules import rfc2459, rfc5280, rfc5652, rfc6402, rfc8018, rfc9
 from robot.api.deco import not_keyword
 
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import prepare_sun_hybrid_csr_attributes
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from resources import certutils, cmputils, utils
 from resources.asn1_structures import PKIMessageTMP
@@ -1330,7 +1330,7 @@ def load_ca_cert_and_key() -> Tuple[rfc9480.CMPCertificate, Ed25519PrivateKey]:
 
 
 def build_sun_hybrid_composite_csr(
-    signing_key: Optional[CompositeSig13PrivateKey] = None,
+    signing_key: Optional[CompositeSigPrivateKey] = None,
     common_name: str = "CN=Hans Mustermann",
     pub_key_hash_alg: Optional[str] = None,
     pub_key_location: Optional[str] = None,

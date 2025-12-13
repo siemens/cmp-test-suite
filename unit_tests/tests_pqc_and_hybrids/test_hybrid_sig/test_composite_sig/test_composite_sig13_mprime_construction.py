@@ -6,7 +6,7 @@ import unittest
 
 from pyasn1.type import univ
 
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey, CompositeSig13PublicKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey, CompositeSigPublicKey
 from resources.keyutils import generate_key
 
 EXPECTED_PHM_HEX = (
@@ -56,7 +56,7 @@ class TestMPrimeConstruction(unittest.TestCase):
         trad_key = generate_key("ecdsa", curve="secp256r1")
         pq_key = generate_key("ml-dsa-65")
 
-        composite_key = CompositeSig13PrivateKey(
+        composite_key = CompositeSigPrivateKey(
             pq_key=pq_key,
             trad_key=trad_key,
         )
@@ -67,7 +67,7 @@ class TestMPrimeConstruction(unittest.TestCase):
             use_pss=False,
         )
         self.assertEqual(m_prime.hex(), expected_mprime_hex)
-        _prepared_input = CompositeSig13PublicKey.prepare_sig_input(domain_oid=self.Domain_oid, data=M, ctx=ctx)[0]
+        _prepared_input = CompositeSigPublicKey.prepare_sig_input(domain_oid=self.Domain_oid, data=M, ctx=ctx)[0]
         self.assertEqual(m_prime.hex(), _prepared_input.hex())
 
     def test_mprime_construction_example2_with_context(self):
@@ -103,7 +103,7 @@ class TestMPrimeConstruction(unittest.TestCase):
 
         trad_key = generate_key("ecdsa", curve="secp256r1")
         pq_key = generate_key("ml-dsa-65")
-        composite_key = CompositeSig13PrivateKey(
+        composite_key = CompositeSigPrivateKey(
             pq_key=pq_key,
             trad_key=trad_key,
         )
@@ -121,7 +121,7 @@ class TestMPrimeConstruction(unittest.TestCase):
             expected_mprime_hex,
             "M' construction does not match expected value.",
         )
-        _prepared_input = CompositeSig13PublicKey.prepare_sig_input(domain_oid=self.Domain_oid, data=M, ctx=ctx)[0]
+        _prepared_input = CompositeSigPublicKey.prepare_sig_input(domain_oid=self.Domain_oid, data=M, ctx=ctx)[0]
         self.assertEqual(expected_mprime_hex, _prepared_input.hex())
 
 

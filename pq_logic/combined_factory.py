@@ -38,9 +38,9 @@ from pq_logic.keys.composite_kem07 import (
     CompositeKEM07PrivateKey,
     CompositeKEM07PublicKey,
 )
-from pq_logic.keys.composite_sig13 import (
-    CompositeSig13PrivateKey,
-    CompositeSig13PublicKey,
+from pq_logic.keys.composite_sig import (
+    CompositeSigPrivateKey,
+    CompositeSigPublicKey,
 )
 from pq_logic.keys.hybrid_key_factory import HybridKeyFactory
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
@@ -140,7 +140,7 @@ class CombinedKeyFactory:
 
         pub_key = key.public_key()
         # RSA is only allowed as PSS for ML-DSA-87 combinations.
-        if isinstance(pub_key, CompositeSig13PublicKey) and trad_name.startswith("rsa"):
+        if isinstance(pub_key, CompositeSigPublicKey) and trad_name.startswith("rsa"):
             _ = pub_key.get_oid(use_pss=True)
             return key
 
@@ -881,7 +881,7 @@ class CombinedKeyFactory:
         )
 
         use_pss = trad_name.endswith("-pss")
-        private_key_obj = CompositeSig13PrivateKey(
+        private_key_obj = CompositeSigPrivateKey(
             pq_key=pq_key,
             trad_key=trad_key,  # type: ignore
         )
@@ -1026,7 +1026,7 @@ class CombinedKeyFactory:
             raise InvalidKeyData(f"Expected ML-DSA public key for {algorithm}, got: {type(pq_key)}")
 
         use_pss = trad_name.endswith("-pss") if trad_name.startswith("rsa") else None
-        public_key = CompositeSig13PublicKey(
+        public_key = CompositeSigPublicKey(
             pq_key=pq_key,
             trad_key=trad_key,  # type: ignore[assignment]
         )
