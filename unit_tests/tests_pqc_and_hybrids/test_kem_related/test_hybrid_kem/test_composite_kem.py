@@ -11,7 +11,7 @@ from pq_logic.keys.pq_key_factory import PQKeyFactory
 from resources.keyutils import generate_key
 
 
-class TestCompositeKEM07(unittest.TestCase):
+class TestCompositeKEM(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):

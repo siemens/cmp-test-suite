@@ -8,8 +8,8 @@ from pq_logic.keys.composite_kem import CompositeKEMPrivateKey, CompositeKEMPubl
 from resources.keyutils import generate_key
 
 
-class CompositeKEM07KEMCombinerTest(unittest.TestCase):
-    """Test the Composite KEM 07 KEM combiner."""
+class CompositeKEMKEMCombinerTest(unittest.TestCase):
+    """Test the Composite KEM KEM combiner."""
 
     def test_kem_combiner_example1(self):
         """Example of id-MLKEM768-ECDH-P256-HMAC-SHA256 Combiner function output."""

@@ -108,9 +108,8 @@ class CompositeKEM07TestVectors:
         return base64.b64decode(self.c)
 
 
-def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEMPrivateKey:
-    """
-    Load a Composite KEM 0.7 public key from private key bytes.
+def _load_composite_kem_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEMPrivateKey:
+    """Load a Composite KEM public key from private key bytes.
 
     :param algorithm: The name of the algorithm.
     :param private_key: The private key bytes.
@@ -162,8 +161,8 @@ def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes)
     )
 
 
-def _load_composite_kem07_from_public_bytes(algorithm: str, public_key: bytes) -> CompositeKEMPublicKey:
-    """Load a Composite KEM 07 public key from public bytes.
+def _load_composite_kem_from_public_bytes(algorithm: str, public_key: bytes) -> CompositeKEMPublicKey:
+    """Load a Composite KEM public key from public bytes.
 
     :param algorithm: The name of the algorithm.
     :param public_key: The public key bytes.
@@ -220,7 +219,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
 
     def test_decaps_composite_rsa_key(self):
         """
-        GIVEN a Composite KEM v7 test vector with RSA keys,
+        GIVEN a Composite KEM test vector with RSA keys,
         WHEN the key is loaded from bytes,
         THEN it should match the expected values.
         """
@@ -229,7 +228,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
                 continue
 
             with self.subTest(tcId=vector.tcId):
-                private_key = _load_composite_kem07_from_private_bytes(
+                private_key = _load_composite_kem_from_private_bytes(
                     algorithm=vector.name, private_key=vector.dk_bytes
                 )
                 self.assertIsInstance(private_key, CompositeKEMPrivateKey)
@@ -241,7 +240,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
 
     def test_decaps_composite_ecdh_key(self):
         """
-        GIVEN a Composite KEM v7 test vector with ECDH keys,
+        GIVEN a Composite KEM test vector with ECDH keys,
         WHEN the key is loaded from bytes,
         THEN it should match the expected values.
         """
@@ -250,7 +249,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
                 continue
 
             with self.subTest(tcId=vector.tcId):
-                private_key = _load_composite_kem07_from_private_bytes(
+                private_key = _load_composite_kem_from_private_bytes(
                     algorithm=vector.name, private_key=vector.dk_bytes
                 )
                 self.assertIsInstance(private_key, CompositeKEMPrivateKey)
@@ -262,7 +261,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
 
     def test_decaps_composite_x_key(self):
         """
-        GIVEN a Composite KEM v7 test vector with X25519/X448 keys,
+        GIVEN a Composite KEM test vector with X25519/X448 keys,
         WHEN the key is loaded from bytes,
         THEN it should match the expected values.
         """
@@ -271,7 +270,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
                 continue
 
             with self.subTest(tcId=vector.tcId):
-                private_key = _load_composite_kem07_from_private_bytes(
+                private_key = _load_composite_kem_from_private_bytes(
                     algorithm=vector.name, private_key=vector.dk_bytes
                 )
                 self.assertIsInstance(private_key, CompositeKEMPrivateKey)
