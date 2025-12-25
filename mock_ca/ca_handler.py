@@ -28,7 +28,7 @@ from mock_ca.challenge_handler import ChallengeHandler
 from mock_ca.db_config_vars import CertConfConfigVars, VerifyState
 from mock_ca.general_msg_handler import GeneralMessageHandler
 from mock_ca.hybrid_handler import HybridIssuingHandler, SunHybridHandler
-from mock_ca.mock_fun import KeySecurityChecker, MockCAState
+from mock_ca.mock_fun import BaseURLData, KeySecurityChecker, MockCAState
 from mock_ca.nested_handler import NestedHandler
 from mock_ca.operation_dbs import MockCAOPCertsAndKeys, StatefulSigState
 from mock_ca.prot_handler import ProtectionHandler
@@ -195,8 +195,9 @@ class CAHandler:
     def _prepare_extensions(
         self,
         ca_cert: rfc9480.CMPCertificate,
-        base_url: str = "http://localhost:5000",
+        base_url: str = "http://localhost",
         cfg_extensions: Optional[Sequence[rfc5280.Extension]] = None,
+        port_num: int = 5000,
     ) -> rfc9480.Extensions:
         """Prepare the extensions for the CA.
 
@@ -205,6 +206,7 @@ class CAHandler:
         :param base_url: The base URL for the CA, so that the OCSP and CRL URLs can be generated.
         :param ca_cert: The CA issuer certificate.
         :param cfg_extensions: Additional extensions to add.
+        :param port_num: The port number for the CA.
         :return: The list of extensions.
         """
         ca_pub_key = load_public_key_from_cert(ca_cert)
@@ -212,9 +214,11 @@ class CAHandler:
         if not isinstance(ca_pub_key, VerifyKey):
             raise BadConfig(f"The CA public key is not a `VerifyKey`. Got: {type(ca_pub_key)}")
 
+        url_data = BaseURLData(bare_url=base_url, port_num=port_num)
+
         aki_extn = prepare_authority_key_identifier_extension(ca_pub_key, critical=False)
-        crl_url = f"{base_url}/crl"
-        self.ocsp_extn = prepare_ocsp_extension(ocsp_url=f"{base_url}/ocsp")
+        crl_url = url_data.crl_url
+        self.ocsp_extn = prepare_ocsp_extension(ocsp_url=url_data.ocsp_url, critical=False)
         dis_point = prepare_distribution_point(
             full_name=crl_url,
             reason_flags="all",
@@ -283,7 +287,7 @@ class CAHandler:
         if ca_cert is None or ca_key is None:
             raise BadConfig("CA certificate and key must be provided.")
 
-        self.base_url = f"{base_url}:{port}"
+        self.url_data = BaseURLData(bare_url=base_url, port_num=port)
 
         config = config or {"ca_alt_key": ca_alt_key}
 
@@ -300,7 +304,9 @@ class CAHandler:
 
         self.config = config
 
-        self.extensions = self._prepare_extensions(self.ca_cert, self.base_url, config.get("extensions"))
+        self.extensions = self._prepare_extensions(
+            self.ca_cert, self.url_data.bare_url, config.get("extensions"), port_num=self.url_data.port_num
+        )
 
         self.comp_key = generate_key("composite-sig")
         self.comp_cert = build_certificate(private_key=self.comp_key, is_ca=True, common_name="CN=Test CA")[0]
@@ -315,8 +321,8 @@ class CAHandler:
             ca_cert=ca_cert,
             ca_key=self.sun_hybrid_key.trad_key,  # type: ignore
             alt_private_key=self.sun_hybrid_key.pq_key,  # type: ignore
-            pub_key_loc=f"{self.base_url}/pubkey/1",
-            sig_loc=f"{self.base_url}/sig/1",
+            pub_key_loc=self.url_data.get_pubkey_url(1),
+            sig_loc=self.url_data.get_sig_url(1),
             serial_number=1,
             extensions=[self.ocsp_extn, self.crl_extn],
         )
@@ -447,7 +453,7 @@ class CAHandler:
             enforce_lwcmp=True,
             prot_enc_cert=prot_enc_cert,
             prot_enc_key=prot_enc_key,
-            crl_url=self.base_url + "/crl",
+            crl_url=self.url_data.crl_url,
         )
 
         self.hybrid_handler = HybridIssuingHandler(
@@ -1077,7 +1083,7 @@ class CAHandler:
         try:
             response, issued_cert, to_be_confirmed = self.sun_hybrid_handler.process_request(
                 request=pki_message,
-                base_url=self.base_url,
+                base_url=self.url_data.base_url,
                 serial_number=serial_number,
                 extensions=self.extensions,
                 bad_alt_sig=bad_alt_sig,
@@ -1162,7 +1168,7 @@ class CAHandler:
             ca_cert=self.ca_cert,
             ca_key=self.ca_key,
             serial_number=serial_number,
-            url=f"http://127.0.0.1:5000/cert/{serial_number}",
+            url=self.url_data.get_cert_url(serial_number=serial_number),
             load_chain=False,
             extensions=[self.ocsp_extn, self.crl_extn],
         )
