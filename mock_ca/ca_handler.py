@@ -1433,8 +1433,6 @@ class CAHandler:
 app = Flask(__name__)
 state = MockCAState()
 
-handler = CAHandler(ca_cert=None, ca_key=None, config={}, mock_ca_state=state)
-
 
 def _build_response(
     pki_message: Union[PKIMessageTMP, bytes, rfc9480.CMPCertificate],
@@ -1642,6 +1640,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=5000, help="The port to run the server on.")
 
     args = parser.parse_args()
+    handler = CAHandler(ca_cert=None, ca_key=None, config={}, mock_ca_state=state, port=args.port)
 
     # import ssl
     # DOMAIN = "mydomain.com"
