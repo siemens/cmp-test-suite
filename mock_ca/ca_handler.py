@@ -275,7 +275,7 @@ class CAHandler:
         :param use_openssl: If OpenSSL should be used for verification. Defaults to `False`.
         :param config: The configuration for the CA Handler.
         :param base_url: The base URL for the CA ONLY used to prepare the extensions (CRL-DP, OCSP, IDP, Sun-Hybrid).
-        Defaults to `http://localhost:5000`.
+        Defaults to `http://localhost`.
         :param enforce_rfc9481: Whether to enforce the RFC 9481 algorithm profile,
         for MAC and traditional protected PKIMessages. Defaults to `False`.
         :param trusted_ras_dir: The directory for the trusted RAs. Defaults to `./data/trusted_ras`.
