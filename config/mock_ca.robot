@@ -10,8 +10,9 @@ Documentation     An example resource file with configuration options that are m
 *** Variables ***
 # the dev-environment always runs the latest version
 # qa - the stable version
-${CA_BASE_URL}   http://127.0.0.1:5000/
-${CA_CMP_URL}    http://127.0.0.1:5000/issuing
+${PORT}    5000
+${CA_BASE_URL}   http://127.0.0.1:${PORT}/
+${CA_CMP_URL}    http://127.0.0.1:${PORT}/issuing
 # the other URL is are down below.
 #${CA_CMP_URL}    https://broker.sdo-dev.siemens.cloud/.well-known/cmp
 
@@ -218,8 +219,8 @@ ${DEFAULT_PQ_SIG_ALG}   ml-dsa-44
 ${INIT_SUFFIX}   issuing
 ${PQ_ISSUING_SUFFIX}   issuing
 ${PQ_STATEFUL_ISSUING_SUFFIX}   issuing
-${URI_RELATED_CERT}   http://127.0.0.1:5000/cert
-${NEG_URI_RELATED_CERT}   http://127.0.0.1:5000/cert_neg
+${URI_RELATED_CERT}   http://127.0.0.1:${PORT}/cert
+${NEG_URI_RELATED_CERT}   http://127.0.0.1:${PORT}/cert_neg
 ${ISSUING_SUFFIX}   issuing
 ${COMPOSITE_URL_PREFIX}   issuing
 ${CATALYST_ISSUING}  catalyst-issuing
