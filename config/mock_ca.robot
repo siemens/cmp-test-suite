@@ -1,6 +1,7 @@
-# Copyright 2024 Siemens AG
+# Copyright 2024 Siemens AG # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
+#
 
 *** Settings ***
 Documentation     An example resource file with configuration options that are meant for use on your local development
