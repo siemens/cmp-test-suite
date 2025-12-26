@@ -20,7 +20,10 @@ ${CA_CMP_URL}    http://127.0.0.1:${PORT}/issuing
 ${ISSUED_KEY}    ${None}
 ${ISSUED_CERT}   ${None}
 ${INIT_SUFFIX}   issuing
-
+# The initial issued certificate and key for running the tests setup.
+${INITIAL_KEY_PATH}    ${None}
+${INITIAL_CERT_PATH}   ${None}
+${INITIAL_KEY_PASSWORD}   ${None}
 
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CN=CloudCA-Integration-Test-User
@@ -28,12 +31,6 @@ ${RECIPIENT}           CN=CloudPKI-Integration-Test
 ${DEFAULT_X509NAME}    CN=CloudCA-Integration-Test-User
 # either signature or an MAC algorithm.
 ${DEFAULT_PROTECTION}   signature
-
-# The initial issued certificate and key for running the tests setup.
-${INIT_SUFFIX}   ${None}
-${INITIAL_KEY_PATH}    ${None}
-${INITIAL_CERT_PATH}   ${None}
-${INITIAL_KEY_PASSWORD}   ${None}
 
 # Test the LWCMP version.
 ${LWCMP}   ${True}
