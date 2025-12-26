@@ -14,8 +14,7 @@ Documentation     An example resource file with configuration options that are m
 ${PORT}    5000
 ${CA_BASE_URL}   http://127.0.0.1:${PORT}/
 ${CA_CMP_URL}    http://127.0.0.1:${PORT}/issuing
-# the other URL is are down below.
-#${CA_CMP_URL}    https://broker.sdo-dev.siemens.cloud/.well-known/cmp
+# The other URL is are down below.
 
 # The initial issued certificate and key for running the tests.
 ${ISSUED_KEY}    ${None}
