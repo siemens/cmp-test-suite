@@ -131,6 +131,7 @@ ${DSA_CERT}        data/unittest/dsa_certificate.pem
 ${DEVICE_CERT_CHAIN}   data/mock_ca/device_cert_ecdsa_cert_chain.pem
 ${DEVICE_KEY}  data/keys/private-key-ecdsa.pem
 ${DEVICE_KEY_PASSWORD}   11111
+${DEVICE_CERT}   ${None}
 
 ##### Section 4
 # If ALLOW_P10CR is enabled, all generic test cases will be done
@@ -165,7 +166,6 @@ ${ALLOW_SUPPORT_MESSAGES}   ${True}
 ${CRL_FILEPATH}    data/mock_ca/current_crl.pem
 ${CRL_CERT_IDP}  data/unittest/dsa_certificate.pem
 
-
 ${OLD_ROOT_CERT}   ${None}
 ${CERT_PROFILE}    base
 
@@ -176,10 +176,6 @@ ${ALLOWED_TIME_INTERVAL}   ${300}
 ${ALLOW_CRL_CHECK}   ${False}
 ${REVOKE_CERT_ON_ERROR}  ${False}
 ${REVOKE_CERT_ON_LATE_CONFIRMATION}  ${False}
-
-# Device certificate and key (None means not provided).
-${DEVICE_CERT}   ${None}
-${DEVICE_KEY}  ${None}
 
 # Section 5.2 and 5.3
 # Other trusted PKI and Key (None means not provided, so test are skipped).
@@ -213,8 +209,6 @@ ${DEFAULT_TRAD_ALG}    rsa
 ${DEFAULT_PQ_SIG_ALG}   ml-dsa-44
 
 # Hybrid Endpoints
-
-${INIT_SUFFIX}   issuing
 ${PQ_ISSUING_SUFFIX}   issuing
 ${PQ_STATEFUL_ISSUING_SUFFIX}   issuing
 ${URI_RELATED_CERT}   http://127.0.0.1:${PORT}/cert
@@ -232,13 +226,8 @@ ${CERT_DISCOVERY_SUFFIX}   cert-discovery
 # CMP and LwCMP certificates and keys
 ${UPDATED_CERT}    ${None}
 ${UPDATED_KEY}     ${None}
-${DSA_KEY}         ${None}
-${DSA_CERT}        ${None}
-
 
 # Hybrid Certificates and Keys
-${ISSUED_KEY}   ${None}
-${ISSUED_CERT}   ${None}
 ${COMPOSITE_KEM_KEY}   ${None}
 ${COMPOSITE_KEM_CERT}   ${None}
 ${REVOKED_COMP_KEM_KEY}   ${None}
