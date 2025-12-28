@@ -30,7 +30,7 @@ class TestIssuingAddedProtRequest(unittest.TestCase):
 
     @classmethod
     def _get_ca_handler(cls) -> CAHandler:
-        """Load CA certificate and key adn return CAHandler instance."""
+        """Load CA certificate and key and return the CAHandler instance."""
         return CAHandler(ca_cert=cls.ca_cert, ca_key=cls.ca_key)
 
     def add_added_protection_cert(self, request: PKIMessageTMP):
