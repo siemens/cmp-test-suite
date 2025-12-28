@@ -96,6 +96,18 @@ suite without needing access to an external CA infrastructure.
 
 For detailed instructions on configuration and usage, please refer to the [Mock CA Documentation](MockCA_readme.md).
 
+Start the server:
+
+```sh
+   make start-mock-ca
+```
+
+Run tests against it (in a new shell):
+
+```sh
+   make test env=mock_ca
+```
+
 # Acknowledgments
 The development of the CMP test suite was partly funded by the German Federal Ministry of Education and Research
 in the project Quoryptan through grant number 16KIS2033.
