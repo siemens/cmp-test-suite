@@ -47,9 +47,7 @@ ${ALLOW_IMPLICIT_CONFIRM}  ${True}
 
 # then send always the ${DEFAULT_X509NAME} inside the `CertTemplate` and csr
 ${ALLOW_ONLY_ONE_SENDER}   ${True}
-# for test cases are only the same keys can be used to save resources.
-# TODO implement have a list maybe called burned_keys and send each time a new one.
-${ALLOW_IR_SAME_KEY}       ${False}
+
 # Could be used to always load the same PKIMessage structure and patch it during testing.
 # TODO implement a one dataclass for the PKIMessage to always patch the same message if allowed,
 # to have some lax test settings and save as much resources as possible.
@@ -140,7 +138,10 @@ ${ALLOW_P10CR_MAC_BASED}   ${True}
 ${ALLOW_CR_MAC_BASED}   ${True}
 ${ALLOW_IR_MAC_BASED}   ${True}
 ${ALLOW_KUR_SAME_KEY}    ${False}
-${ALLOW_IR_SAME_KEY}   ${True}
+# for test cases are only the same keys can be used to save resources.
+# TODO Update burned_keys and send each time a new one if set to False and
+# add functionality to use the same key for multiple requests if set to True.
+${ALLOW_IR_SAME_KEY}   ${False}
 ${LARGE_KEY_SIZE}    ${12800}
 ${ALLOW_CERT_CONF}    ${False}
 
