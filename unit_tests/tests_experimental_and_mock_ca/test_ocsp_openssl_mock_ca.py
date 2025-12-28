@@ -19,7 +19,7 @@ class TestOCSPOpenSSLMockCA(unittest.TestCase):
     def setUpClass(cls):
         # Start the server as a subprocess (adjust command as needed)
         cls.service_process = subprocess.Popen(
-            ["python3", "./mock_ca/ca_handler.py"],
+            ["python3", "./mock_ca/ca_handler.py", "--port", "6000"],
             stdout=subprocess.DEVNULL,  # Avoid blocking
             stderr=subprocess.DEVNULL,
             text=True  # So output is returned as strings instead of bytes
