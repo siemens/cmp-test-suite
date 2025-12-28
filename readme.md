@@ -10,7 +10,7 @@ CMP requests, sends them to the server and checks if responses match expectation
 which includes all the transmitted and received messages in base64 and in human-readable form.
 
 Test cases are written in a domain-specific language (DSL) tailored for PKI and X509 certificate parsing. The provided
-scenarios evaluate *server* implementations of CMP [RFC](https://datatracker.ietf.org/doc/draft-ietf-lamps-rfc4210bis/) and the CMP lightweight profile [RFC 9483](https://datatracker.ietf.org/doc/html/rfc9483). 
+scenarios evaluate *server* implementations of CMP [RFC](https://datatracker.ietf.org/doc/draft-ietf-lamps-rfc4210bis/) and the CMP lightweight profile [RFC 9483](https://datatracker.ietf.org/doc/html/rfc9483).
 
 Several usage scenarios are possible:
 - Run it "as is" and check whether your CMP server conforms to the specification.
@@ -24,7 +24,7 @@ readable not only to software engineers, but also to PKI experts without program
 the emphasis on replicability - a test report is sufficient for someone to understand exactly what was transmitted to
 the server and how the responses were processed.
 
-These instructions assume a Debian-based Linux system, but it is designed to be used with other platforms as well. Occasionally, additional Windows commands are provided. 
+These instructions assume a Debian-based Linux system, but it is designed to be used with other platforms as well. Occasionally, additional Windows commands are provided.
 
 
 The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the project.
@@ -83,6 +83,18 @@ You can run specific tests on specific environments by adjusting command line op
 The [detailed documentation](/cmp-test-suite/doc/index.html) covers test suites and available keywords. 
 If the referenced documentation is not available, run `make docs` to generate it.
 
+
+# Mock CA
+To facilitate easy testing and development, this repository includes a **Mock CA**. 
+This is a simulated Certificate Authority that runs locally, allowing you to execute the test 
+suite without needing access to an external CA infrastructure.
+
+**Why use the Mock CA?**
+- **Instant Setup:** Run tests immediately without configuring complex server software.
+- **Advanced Features:** It includes **Post-Quantum (PQ) cryptography** and **hybrid certificate issuance**, which may not yet be available in a lot of CAs.
+- **Research & Debugging:** Perfect for verifying test logic and experimenting with new CMP features in a controlled environment.
+
+For detailed instructions on configuration and usage, please refer to the [Mock CA Documentation](MockCA_readme.md).
 
 # Acknowledgments
 The development of the CMP test suite was partly funded by the German Federal Ministry of Education and Research
