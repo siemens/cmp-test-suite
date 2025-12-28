@@ -416,6 +416,7 @@ class CAHandler:
             kga_cert_chain=self.kga_cert_chain,
             cmp_protection_cert=self.protection_handler.protection_cert,
             pq_stateful_sig_state=self.pq_stateful_sig_state,
+            ca_cert_chain=self.ca_cert_chain,
         )
 
         self.stfl_validator = STFLPKIMessageValidator(
