@@ -115,8 +115,7 @@ class NestedHandler:
             )
 
         return prot_handler.protect_pkimessage(
-            response=response,
-            request=inner_msg,
+            response=response, request=inner_msg, add_certs=self.cert_req_handler.ca_cert_chain
         )
 
     def process_nested_request(
