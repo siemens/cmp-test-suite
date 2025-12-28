@@ -2014,7 +2014,7 @@ def _prepare_aes_warp_alg_id(
 @keyword(name="Prepare PasswordRecipientInfo")
 def prepare_password_recipient_info(  # noqa D417 undocumented-param
     password: Union[str, bytes],
-    version: Union[str, int] = 0,
+    version: Union[str, int] = 3,
     cek: Optional[bytes] = None,
     kdf_name: str = "pbkdf2",
     bad_encrypted_key: bool = False,
@@ -2030,7 +2030,7 @@ def prepare_password_recipient_info(  # noqa D417 undocumented-param
     Arguments:
     ---------
         - `password`: The password to use for encryption.
-        - `version`: The version number for the `PasswordRecipientInfo` structure. Defaults to `0`.
+        - `version`: The version number for the `PasswordRecipientInfo` structure. Defaults to `3`.
         - `cek`: The content encryption key to encrypt. Defaults to a random 32-byte key.
         - `kdf_name`: The key derivation function to use. Defaults to "pbkdf2".
         (which is the only one allowed for `PasswordRecipientInfo`).
