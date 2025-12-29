@@ -38,7 +38,7 @@ test-friendly responses to CMP requests. It is primarily used to:
 - Does not support `krr` (key recovery request) messages and
   `krp` (key recovery response) messages (requires new state!)
 
-### Features
+## Features
 
 - **General Message Handling:** Supports CMP (Certificate Management Protocol) messages with functionalities like
     key updates, revocation passphrases, and encryption key pair type queries.
