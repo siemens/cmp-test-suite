@@ -189,6 +189,25 @@ A `200 OK` response and a non-empty `/tmp/mockca.crl` confirm the server is resp
 To run an example CMP request against the MockCA, see the
 [OpenSSL Example Usage](#openssl-cli) section below or have a look at the example script: [client.py](mock_ca/client.py).
 
+### Required configuration changes
+
+The test suite selects MockCA by passing the environment variable `environment:mock_ca`, which loads
+`config/mock_ca.robot`. You typically do **not** need to edit any files to use the default MockCA settings.
+
+Key variables in `config/mock_ca.robot` include:
+
+- `${CA_BASE_URL}` and `${CA_CMP_URL}` — base and issuing CMP endpoints.
+- `${PRESHARED_SECRET}` — shared secret for MAC-based protection (`SiemensIT` by default).
+- `${LWCMP}` — enables LwCMP mode.
+
+### Key material and certificates
+
+MockCA uses local test keys and certificates referenced in `config/mock_ca.robot` (for example
+`data/mock_ca/device_cert_ecdsa_cert_chain.pem`, `data/keys/private-key-ecdsa.pem`, and other files
+under `data/`). No external CA material is required for the default configuration.
+
+If you update any paths in `config/mock_ca.robot`, ensure the referenced files exist.
+
 ## Endpoints
 
 The Mock CA exposes several HTTP endpoints. Unless noted otherwise, all POST
