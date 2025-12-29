@@ -30,7 +30,12 @@ test-friendly responses to CMP requests. It is primarily used to:
 - Supports the generation of certificates using various key types, including traditional and post-quantum keys and
   hybrid keys and mechanisms.
 
+### Mock CA Repository Structure
 
+- **Implementation:** [`mock_ca/`](./mock_ca)
+- **MockCA test suites:** [`tests_mock_ca/`](./tests_mock_ca)
+- **MockCA test environment settings:** [`config/mock_ca.robot`](config/mock_ca.robot)
+- **Test documentation (generated):** `doc/test-mock-ca.html` via `make docs`
 
 ## Features
 
