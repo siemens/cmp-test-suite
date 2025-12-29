@@ -152,13 +152,6 @@ The server listens on `127.0.0.1:5000` by default and exposes the following rout
 - **`/sig/<serial_number>`** (`GET`)
   – Returns the alternative signature for the specified Sun‑Hybrid certificate.
 
-## Getting Started
-
-To start using the Mock CA, ensure you have the necessary dependencies installed (e.g., Python version, OpenSSL, etc.).
-Then follow the instructions in the [Start the CA](#start-the-ca) section below.
-
-- The requirements are the same as for the CMP test cases.
-
 ## Example Usage
 
 Examples are defined inside the [client.py](mock_ca/client.py) file.
