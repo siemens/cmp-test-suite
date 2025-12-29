@@ -10,7 +10,7 @@ CMP requests, sends them to the server and checks if responses match expectation
 which includes all the transmitted and received messages in base64 and in human-readable form.
 
 Test cases are written in a domain-specific language (DSL) tailored for PKI and X509 certificate parsing. The provided
-scenarios evaluate *server* implementations of CMP [RFC](https://datatracker.ietf.org/doc/draft-ietf-lamps-rfc4210bis/) and the CMP lightweight profile [RFC 9483](https://datatracker.ietf.org/doc/html/rfc9483).
+scenarios evaluate *server* implementations of CMP [RFC 9810](https://datatracker.ietf.org/doc/rfc9810/) and the CMP lightweight profile [RFC 9483](https://datatracker.ietf.org/doc/html/rfc9483).
 
 Several usage scenarios are possible:
 - Run it "as is" and check whether your CMP server conforms to the specification.
