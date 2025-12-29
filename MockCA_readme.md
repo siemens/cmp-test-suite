@@ -23,10 +23,10 @@ test-friendly responses to CMP requests. It is primarily used to:
 - Run CMP and LwCMP tests without depending on a real CA backend.
 - Exercise CMP features (including PQ and hybrid mechanisms) in a controlled environment.
 - Provide fast iteration during test development.
-## About the Mock CA
 
-- The Mock-CA is currently only supported in
-  the LwCMP fashion (one request at a time.)
+### About the Mock CA
+
+- The Mock-CA is currently only supported in the LwCMP fashion (one request at a time.)
 - Supports the generation of certificates using various key types, including traditional and post-quantum keys and
   hybrid keys and mechanisms.
 
