@@ -68,6 +68,54 @@ test-friendly responses to CMP requests. It is primarily used to:
   `krp` (key recovery response) messages (requires new state!)
 - CMP is not yet supported (only **LwCMP**).
 
+## Prerequisites & Installation
+
+### System Requirements
+
+MockCA uses the same runtime dependencies as the CMP test suite.
+
+- **Python:** Python 3.x (same as the CMP test suite).
+- **Python packages:** Install the shared dependencies with:
+
+```sh
+  pip install -r requirements.txt
+  ```
+
+This includes **Flask** for the MockCA HTTP server.
+- **Requires liboqs-python** for post-quantum and hybrid key support. Can be installed via with the
+  [setup_pq.sh](scripts/setup_pq.sh) file.
+- **OpenSSL** for the example CLI requests and for certificate validation helpers.
+- **Optional:**
+  - **Robot Framework** is included in [requirements.txt](requirements.txt) and is needed to run the test suites, but not the MockCA itself.
+
+### Installation Steps
+
+#### Install dependencies
+
+From the repository root:
+
+```sh
+python3 -m venv venv-cmp-tests
+source venv-cmp-tests/bin/activate
+pip install -r requirements.txt
+```
+
+Verify the key runtime tools:
+
+```sh
+python3 --version
+flask --version
+```
+
+If you plan to use OpenSSL for the example CMP requests:
+
+```sh
+openssl version
+openssl cmp -help
+```
+
+To build the docker container, have a look at the **[Dockerfile.mockca](data/dockerfiles/Dockerfile.mockca)**.
+
 
 ## Endpoints
 
