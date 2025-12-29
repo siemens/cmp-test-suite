@@ -147,6 +147,47 @@ All CMP requests are sent to `${CA_CMP_URL}` (default `/issuing`).
 Specialized endpoints used by certain tests are configured via the suffix variables in
 `config/mock_ca.robot` (for example `${SUN_HYBRID_SUFFIX}`, `${CHAMELEON_SUFFIX}`, `${CATALYST_ISSUING}`).
 
+### Start the CA
+
+To start the CA, run the following command:
+
+```sh
+    make start-mock-ca
+```
+
+Alternative python command:
+
+```sh
+    python3 mock_ca/ca_handler.py --port 5000
+```
+
+To test the CMP test cases, run the following command
+in a second shell:
+
+```sh
+    make test env=mock_ca
+```
+
+#### Expected output
+
+You should see Flask startup output similar to:
+
+- Serving Flask app 'mock_ca.ca_handler'
+- Debug mode: on
+- Running on <http://127.0.0.1:5000>
+
+### Verify MockCA is running
+
+The simplest verification is checking the CRL endpoint:
+
+```sh
+curl -v http://127.0.0.1:5000/crl -o /tmp/mockca.crl
+```
+
+A `200 OK` response and a non-empty `/tmp/mockca.crl` confirm the server is responding.
+
+To run an example CMP request against the MockCA, see the
+[OpenSSL Example Usage](#openssl-cli) section below or have a look at the example script: [client.py](mock_ca/client.py).
 
 ## Endpoints
 
@@ -212,26 +253,14 @@ openssl cmp -cmd ir \
 ```
 
 
-### Start the CA
-
-To start the CA, run the following command:
-
 ```sh
-    make start-mock-ca
 ```
 
-Alternative python command:
 
 ```sh
-    python3 mock_ca/ca_handler.py
 ```
 
-To test the CMP test cases, run the following command
-in a second shell:
 
-```sh
-    make mock-ca-tests
-```
 ## Troubleshooting & Debugging
 
 - **Checking for errors:**
