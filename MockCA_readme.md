@@ -104,18 +104,6 @@ The server listens on `127.0.0.1:5000` by default and exposes the following rout
 - **`/sig/<serial_number>`** (`GET`)
   – Returns the alternative signature for the specified Sun‑Hybrid certificate.
 
-## Debug Error handler:
-
-1. If the Exchange PKIMessage
-   The `Exchange PKIMessage` keyword contains the error message is set there.
-   Otherwise, the error message is set in the `PKIMessage` itself, it is advised to use the
-   `PKIStatus Must Be` keyword to see the logged PKIStatusInfo, in human-readable format.
-
-2. The Mock-CA runs in the `Debug` mode. But there are better not yet
-   implemented methods, which are better for logging or debugging.
-
-3. Some tests require a state and will fail, the second time, the tests are executed.
-
 ## Getting Started
 
 To start using the Mock CA, ensure you have the necessary dependencies installed (e.g., Python version, OpenSSL, etc.).
@@ -172,3 +160,18 @@ in a second shell:
 ```sh
     make mock-ca-tests
 ```
+## Troubleshooting & Debugging
+
+- **Checking for errors:**
+  - When using the `Exchange PKIMessage` keyword, any error message is typically returned there.
+  - If inspecting the `PKIMessage` directly, use the `PKIStatus Must Be` keyword to view the `PKIStatusInfo`
+    in a human-readable format.
+- **Logging:**
+  - The Mock-CA runs in `Debug` mode by default. However, more advanced logging and debugging methods are planned
+    but not yet implemented.
+- **Stateful tests failing on re-run:** Some tests depend on state (e.g., issuance and revocation); re‑running the
+   same test without resetting state can cause failures. **Restart** the MockCA to reset its in‑memory state.
+- **`Connection refused`**: Mock CA is not running, or the host/port does not match `config/mock_ca.robot`.
+- **`Address already in use`**: Another process is using port 5000. Stop it or start Mock CA on another port.
+- **Unexpected 404 responses:** Confirm the request is sent to `/issuing` or the configured endpoint suffix.
+   The list of supported endpoints is documented above.
