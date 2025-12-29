@@ -284,8 +284,31 @@ Which are located in `tests_mock_ca/`, use this command:
 robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable environment:mock_ca tests_mock_ca
 ```
 
+#### End-to-end usage example
 
+1. Install dependencies:
 
+   ```sh
+   python3 -m venv venv-cmp-tests
+   source venv-cmp-tests/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. Start MockCA:
+
+   ```sh
+   make start-mock-ca
+   ```
+
+3. In a new shell, run a MockCA test case:
+
+   ```sh
+   robot --pythonpath=./ --outputdir=reports --variable environment:mock_ca tests_mock_ca
+   ```
+
+4. Review the output report:
+   - `reports/report.html`
+   - `reports/log.html`
 
 ## Troubleshooting & Debugging
 
