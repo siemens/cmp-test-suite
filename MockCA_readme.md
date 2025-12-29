@@ -271,13 +271,20 @@ openssl cmp -cmd ir \
   -unprotected_errors
 ```
 
+### Robot Framework Test
 
 ```sh
+robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable environment:mock_ca tests
+```
+
+To only run the MockCA tests. Those tests are supposed to be experimental and supposed to help with new features.
+Which are located in `tests_mock_ca/`, use this command:
+
+```sh
+robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable environment:mock_ca tests_mock_ca
 ```
 
 
-```sh
-```
 
 
 ## Troubleshooting & Debugging
