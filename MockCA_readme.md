@@ -17,6 +17,12 @@ research purposes, particularly focusing on post-quantum (PQ) cryptography and h
 issuance. The project enables the issuance, management, and revocation of certificates using a
 combination of traditional and PQ cryptographic mechanisms.
 
+As a Python/Flask-based component of the CMP Test Suite, MockCA (mainly) provides deterministic,
+test-friendly responses to CMP requests. It is primarily used to:
+
+- Run CMP and LwCMP tests without depending on a real CA backend.
+- Exercise CMP features (including PQ and hybrid mechanisms) in a controlled environment.
+- Provide fast iteration during test development.
 ## About the Mock CA
 
 - The Mock-CA is currently only supported in
