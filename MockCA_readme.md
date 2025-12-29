@@ -245,6 +245,8 @@ The server listens on `127.0.0.1:5000` by default and exposes the following rout
 
 ## Example Usage
 
+### OpenSSL CMP Request Example
+
 Examples are defined inside the [client.py](mock_ca/client.py) file.
 If Python is not to be used, the OpenSSL command can be used instead:
 
