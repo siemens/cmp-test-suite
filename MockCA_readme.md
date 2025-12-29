@@ -10,6 +10,38 @@ SPDX-License-Identifier: Apache-2.0
 > testing purposes. It is not a real CA and does not provide
 > sufficient validation.*
 
+## Table of Contents
+
+<!--TOC-->
+
+- [Mock CA](#mock-ca)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+    - [About the Mock CA](#about-the-mock-ca)
+    - [Mock CA Repository Structure](#mock-ca-repository-structure)
+  - [Features](#features)
+    - [Missing Features](#missing-features)
+  - [Prerequisites & Installation](#prerequisites--installation)
+    - [System Requirements](#system-requirements)
+    - [Installation Steps](#installation-steps)
+      - [Install dependencies](#install-dependencies)
+  - [Running the Mock CA](#running-the-mock-ca)
+    - [Configuration assumptions](#configuration-assumptions)
+      - [Request routing](#request-routing)
+    - [Start the CA](#start-the-ca)
+      - [Expected output](#expected-output)
+    - [Verify MockCA is running](#verify-mockca-is-running)
+    - [Required configuration changes](#required-configuration-changes)
+    - [Key material and certificates](#key-material-and-certificates)
+  - [Endpoints](#endpoints)
+  - [Example Usage](#example-usage)
+    - [OpenSSL CLI](#openssl-cmp-request-example)
+    - [Robot Framework Test](#robot-framework-test)
+      - [End-to-end usage example](#end-to-end-usage-example)
+  - [Troubleshooting & Debugging](#troubleshooting--debugging)
+
+<!--TOC-->
+
 ## Overview
 
 Mock CA is a simulated certificate authority designed for testing and
