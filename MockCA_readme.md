@@ -30,13 +30,7 @@ test-friendly responses to CMP requests. It is primarily used to:
 - Supports the generation of certificates using various key types, including traditional and post-quantum keys and
   hybrid keys and mechanisms.
 
-### Missing Features
 
-- Does not support **CRS** attributes, beside the one for extensions.
-- Does only support **CA** `ccp` Cross-Certification Response.
-- Does not support Announcement messages yet (python logic is present).
-- Does not support `krr` (key recovery request) messages and
-  `krp` (key recovery response) messages (requires new state!)
 
 ## Features
 
@@ -59,6 +53,15 @@ test-friendly responses to CMP requests. It is primarily used to:
 - **Certificate Revocation Handling:** Manages certificate revocation lists (CRLs) and supports passphrase-based revocation.
 - **Added Protection Requests:** Implements LwCMP (Lightweight CMP) protection mechanisms, including password-based MAC
   and hybrid protection.
+
+### Missing Features
+
+- Does not support **CRS** attributes, besides the one for extensions.
+- Only supports **CA** `ccp` Cross-Certification Response.
+- Does not support Announcement messages yet (Python logic is present).
+- Does not support `krr` (key recovery request) messages and
+  `krp` (key recovery response) messages (requires new state!)
+- CMP is not yet supported (only **LwCMP**).
 
 
 ## Endpoints
