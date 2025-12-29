@@ -6,7 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 
 # Mock CA
 
-> **Note:** *This mock CA is a simple tool to generate certificates for testing purposes. It is not a real CA and does not provide sufficient validation.*
+> **Note:** *This mock CA is a simple tool to generate certificates for
+> testing purposes. It is not a real CA and does not provide
+> sufficient validation.*
 
 ## Overview
 
@@ -32,7 +34,8 @@ combination of traditional and PQ cryptographic mechanisms.
 
 ### Features
 
-- **General Message Handling:** Supports CMP (Certificate Management Protocol) messages with functionalities like key updates, revocation passphrases, and encryption key pair type queries.
+- **General Message Handling:** Supports CMP (Certificate Management Protocol) messages with functionalities like
+    key updates, revocation passphrases, and encryption key pair type queries.
 - **Certificate Request Processing:** Handles various certificate request types, including:
   - `ir` (initial registration)
   - `cr` (certificate request)
@@ -48,7 +51,9 @@ combination of traditional and PQ cryptographic mechanisms.
 - **Nested and Batch Processing:** Supports nested PKI messages and batch processing
   for multiple certificate requests (`ir`, `cr`, `p10cr`, `kur`, `ccr`).
 - **Certificate Revocation Handling:** Manages certificate revocation lists (CRLs) and supports passphrase-based revocation.
-- **Added Protection Requests:** Implements LwCMP (Lightweight CMP) protection mechanisms, including password-based MAC and hybrid protection.
+- **Added Protection Requests:** Implements LwCMP (Lightweight CMP) protection mechanisms, including password-based MAC
+  and hybrid protection.
+
 
 ## Endpoints
 
