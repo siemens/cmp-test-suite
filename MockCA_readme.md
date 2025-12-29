@@ -116,6 +116,37 @@ openssl cmp -help
 
 To build the docker container, have a look at the **[Dockerfile.mockca](data/dockerfiles/Dockerfile.mockca)**.
 
+## Running the Mock CA
+
+### Configuration assumptions
+
+> Note: Https is not supported yet, for the easiness of the test suite. This would be needed to be set
+> up by the user himself.
+
+The default configuration assumes:
+
+- MockCA listens on `http://127.0.0.1:5000` by default.
+- The CMP issuing endpoint is `http://127.0.0.1:5000/issuing`.
+- The Robot Framework tests select MockCA via `--variable environment:mock_ca`, which loads
+  `config/mock_ca.robot`.
+
+These defaults are defined in `mock_ca/ca_handler.py` (host/port defaults) and `config/mock_ca.robot` (CMP URLs and
+shared secret). Update the config or pass `--host`/`--port` as needed.
+
+You can verify the default URLs in `config/mock_ca.robot`:
+
+```robot
+${PORT}    5000
+${CA_BASE_URL}   http://127.0.0.1:${PORT}/
+${CA_CMP_URL}    http://127.0.0.1:${PORT}/issuing
+```
+
+#### Request routing
+
+All CMP requests are sent to `${CA_CMP_URL}` (default `/issuing`).
+Specialized endpoints used by certain tests are configured via the suffix variables in
+`config/mock_ca.robot` (for example `${SUN_HYBRID_SUFFIX}`, `${CHAMELEON_SUFFIX}`, `${CATALYST_ISSUING}`).
+
 
 ## Endpoints
 
