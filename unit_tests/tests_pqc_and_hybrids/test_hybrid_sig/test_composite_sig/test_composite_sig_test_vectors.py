@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.serialization import load_der_private_key, l
 from pyasn1_alt_modules import rfc9480, rfc5958
 
 from pq_logic.combined_factory import CombinedKeyFactory
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey, CompositeSig13PublicKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey, CompositeSigPublicKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG_NAME_TO_OID
@@ -47,12 +47,12 @@ COMPOSITE_SIG13_NAME_TO_ORIGINAL_NAME = {
 COMPOSITE_SIG13_ORIGINAL_NAME_TO_NAME = {v: k for k, v in COMPOSITE_SIG13_NAME_TO_ORIGINAL_NAME.items()}
 
 
-def _load_composite_sig13_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeSig13PrivateKey:
+def _load_composite_sig_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeSigPrivateKey:
     """Load a composite signature key from private bytes.
 
     :param algorithm: The name of the algorithm, e.g., "composite-sig-13-ml-dsa-44-rsa2048-pss".
     :param private_key: The private key bytes, which should be 64 bytes for ML-DSA keys and 32 bytes for traditional keys.
-    :return: A CompositeSig13PrivateKey instance.
+    :return: A CompositeSigPrivateKey instance.
     """
 
     oid = COMPOSITE_SIG_NAME_TO_OID[algorithm]
@@ -61,8 +61,8 @@ def _load_composite_sig13_from_private_bytes(algorithm: str, private_key: bytes)
     one_asym_key["version"] = 0
     one_asym_key["privateKey"]= private_key
     key = CombinedKeyFactory.load_private_key_from_one_asym_key(one_asym_key)
-    if not isinstance(key, CompositeSig13PrivateKey):
-        raise ValueError(f"Key is not a CompositeSig13PrivateKey: {key}")
+    if not isinstance(key, CompositeSigPrivateKey):
+        raise ValueError(f"Key is not a CompositeSigPrivateKey: {key}")
     return key
 
     algorithm = algorithm.lower()
@@ -79,7 +79,7 @@ def _load_composite_sig13_from_private_bytes(algorithm: str, private_key: bytes)
     else:
         trad_key = load_der_private_key(trad_bytes, password=None)
 
-    return CompositeSig13PrivateKey(
+    return CompositeSigPrivateKey(
         pq_key=pq_key,
         trad_key=trad_key,
     )
@@ -93,7 +93,7 @@ class TestVectorEntry:
     sk_pkcs8: str  # PKCS#8 encoded secret key in hex format.
     s: str  # The signature in hex format.
 
-    _sk_key: Optional[CompositeSig13PrivateKey] = None
+    _sk_key: Optional[CompositeSigPrivateKey] = None
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -102,8 +102,8 @@ class TestVectorEntry:
             tcId=data["tcId"], pk=data["pk"], x5c=data["x5c"], sk=data["sk"], sk_pkcs8=data["sk_pkcs8"], s=data["s"]
         )
 
-    def secret_key(self) -> CompositeSig13PrivateKey:
-        """Return the secret key as a CompositeSig13PrivateKey."""
+    def secret_key(self) -> CompositeSigPrivateKey:
+        """Return the secret key as a CompositeSigPrivateKey."""
         _name = COMPOSITE_SIG13_ORIGINAL_NAME_TO_NAME[self.tcId]
 
         if self._sk_key is not None:
@@ -111,10 +111,10 @@ class TestVectorEntry:
 
         sk_bytes = base64.decodebytes(self.sk.encode("ascii"))
 
-        self._sk_key = _load_composite_sig13_from_private_bytes(algorithm=_name, private_key=sk_bytes)
+        self._sk_key = _load_composite_sig_from_private_bytes(algorithm=_name, private_key=sk_bytes)
         return self._sk_key
 
-    def public_key(self) -> CompositeSig13PublicKey:
+    def public_key(self) -> CompositeSigPublicKey:
         """Return the public key as bytes."""
         _name = self.name
         if self._sk_key is None:
@@ -160,7 +160,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
         with open(path, "r") as file:
             return json.load(file)
 
-    def test_composite_sig13_vectors_ed(self):
+    def test_composite_sig_vectors_ed(self):
         """
         GIVEN a set of composite signature test vectors for EdDSA.
         WHEN the vectors are tested,
@@ -185,7 +185,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                 _ = test_vec.certificate
                 public_key = test_vec.public_key()
                 self.assertIsInstance(
-                    public_key, CompositeSig13PublicKey, "Public key should be of type CompositeSig13PublicKey"
+                    public_key, CompositeSigPublicKey, "Public key should be of type CompositeSigPublicKey"
                 )
                 use_pss = False
                 if "pss" in test_vec.name:
@@ -193,7 +193,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                 test_vec.validate()
                 public_key.verify(data=self.m, signature=test_vec.signature, use_pss=use_pss)
 
-    def test_composite_sig13_vectors_ecc(self):
+    def test_composite_sig_vectors_ecc(self):
         """
         GIVEN a set of composite signature test vectors for ECDSA.
         WHEN the vectors are tested,
@@ -214,12 +214,12 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                 _ = test_vec.certificate
                 public_key = test_vec.public_key()
                 self.assertIsInstance(
-                    public_key, CompositeSig13PublicKey, "Public key should be of type CompositeSig13PublicKey"
+                    public_key, CompositeSigPublicKey, "Public key should be of type CompositeSigPublicKey"
                 )
                 test_vec.validate()
                 public_key.verify(data=self.m, signature=test_vec.signature)
 
-    def test_composite_sig13_vectors_rsa(self):
+    def test_composite_sig_vectors_rsa(self):
         """
         GIVEN a set of composite signature test vectors for RSA.
         WHEN the vectors are tested,
@@ -240,7 +240,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                 _ = test_vec.certificate
                 public_key = test_vec.public_key()
                 self.assertIsInstance(
-                    public_key, CompositeSig13PublicKey, "Public key should be of type CompositeSig13PublicKey"
+                    public_key, CompositeSigPublicKey, "Public key should be of type CompositeSigPublicKey"
                 )
                 use_pss = False
                 if "pss" in test_vec.name:

@@ -35,8 +35,8 @@ from robot.api.deco import keyword, not_keyword
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPublicKey, KEMPublicKey
-from pq_logic.keys.composite_kem07 import CompositeKEM07PublicKey
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey, CompositeSig13PublicKey
+from pq_logic.keys.composite_kem import CompositeKEMPublicKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey, CompositeSigPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from pq_logic.tmp_oids import COMPOSITE_SIG_PREHASH_OID_2_HASH
 from resources import (
@@ -1469,7 +1469,7 @@ def _handle_kem_encapsulation(
 
     kem_pub_key = ensure_is_kem_pub_key(kem_pub_key)
 
-    if isinstance(kem_pub_key, CompositeKEM07PublicKey):
+    if isinstance(kem_pub_key, CompositeKEMPublicKey):
         shared_secret, kemct = kem_pub_key.encaps(private_key=hybrid_key_recip, use_in_cms=True)
     elif hybrid_key_recip is None:
         shared_secret, kemct = kem_pub_key.encaps()
@@ -2211,7 +2211,7 @@ def get_digest_from_key_hash(
     if isinstance(key, (ed448.Ed448PrivateKey, ed448.Ed448PublicKey)):
         return "shake256"
 
-    if isinstance(key, (CompositeSig13PrivateKey, CompositeSig13PublicKey)):
+    if isinstance(key, (CompositeSigPrivateKey, CompositeSigPublicKey)):
         try:
             oid = key.get_oid(use_pss=False)
         except InvalidKeyCombination:

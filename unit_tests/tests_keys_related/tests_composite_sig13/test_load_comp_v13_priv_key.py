@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives.serialization import PrivateFormat, Encoding
 
 
 from pq_logic.combined_factory import CombinedKeyFactory
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from resources import keyutils
 from resources.utils import manipulate_first_byte
@@ -20,14 +20,14 @@ class TestLoadCompSig13(unittest.TestCase):
     def setUpClass(cls):
         rsa_key = keyutils.generate_key("rsa", length=2048)
         mldsa_key = keyutils.generate_key("ml-dsa-44")
-        cls.comp_rsa_key = CompositeSig13PrivateKey(mldsa_key, rsa_key)
+        cls.comp_rsa_key = CompositeSigPrivateKey(mldsa_key, rsa_key)
         ed_key = keyutils.generate_key("ed448")
         mldsa_key = keyutils.generate_key("ml-dsa-87")
-        cls.comp_ed_key = CompositeSig13PrivateKey(mldsa_key, ed_key)
+        cls.comp_ed_key = CompositeSigPrivateKey(mldsa_key, ed_key)
 
         ecc_key = keyutils.generate_key("ecdsa")
         mldsa_key = keyutils.generate_key("ml-dsa-65")
-        cls.comp_ecc_key = CompositeSig13PrivateKey(mldsa_key, ecc_key)
+        cls.comp_ecc_key = CompositeSigPrivateKey(mldsa_key, ecc_key)
 
     def test_export_and_load_pub_key_rsa(self):
         """
@@ -79,7 +79,7 @@ class TestLoadCompSig13(unittest.TestCase):
         _seed = manipulate_first_byte(self.comp_rsa_key.pq_key._seed)
         pq_key = MLDSAPrivateKey(seed=self.comp_rsa_key.pq_key._seed,
                                  alg_name=self.comp_rsa_key.pq_key.name)
-        other_key = CompositeSig13PrivateKey(pq_key, trad_key=self.comp_rsa_key.trad_key)
+        other_key = CompositeSigPrivateKey(pq_key, trad_key=self.comp_rsa_key.trad_key)
 
         other_key.pq_key._seed = _seed
 

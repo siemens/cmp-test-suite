@@ -4,7 +4,7 @@
 
 import unittest
 
-from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
+from pq_logic.keys.composite_kem import CompositeKEMPrivateKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc4211
@@ -36,7 +36,7 @@ class TestValidateEnvDataPOP(unittest.TestCase):
         rsa_key = generate_key("rsa", length=2048)
         pq_key = generate_key("ml-kem-768")
 
-        cls.private_key_rsa_1 = CompositeKEM07PrivateKey(pq_key, rsa_key)
+        cls.private_key_rsa_1 = CompositeKEMPrivateKey(pq_key, rsa_key)
         cls.comp_cert = build_certificate(private_key=cls.private_key_rsa_1, ca_key=generate_key("rsa"))[0]
 
     def test_prepare_kem_env_data_for_popo(self):

@@ -15,7 +15,7 @@ class TestCompositeKem07PublicKeyLoading(unittest.TestCase):
 
     def test_comp_kem07_load_x25519(self):
         """
-        GIVEN a CompositeKEM07PublicKey.
+        GIVEN a CompositeKEMPublicKey.
         WHEN loading the public key from a SPKI.
         THEN the key is loaded correctly.
         """
@@ -33,7 +33,7 @@ class TestCompositeKem07PublicKeyLoading(unittest.TestCase):
 
     def test_comp_kem07_load_ecc(self):
         """
-        GIVEN a CompositeKEM07PublicKey.
+        GIVEN a CompositeKEMPublicKey.
         WHEN loading the public key from a SPKI.
         THEN the key is loaded correctly.
         """
@@ -52,7 +52,7 @@ class TestCompositeKem07PublicKeyLoading(unittest.TestCase):
 
     def test_comp_kem07_load_rsa(self):
         """
-        GIVEN a CompositeKEM07PublicKey.
+        GIVEN a CompositeKEMPublicKey.
         WHEN loading the public key from a SPKI.
         THEN the key is loaded correctly.
         """

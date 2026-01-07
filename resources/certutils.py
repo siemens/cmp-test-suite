@@ -34,7 +34,7 @@ from robot.api.deco import keyword, not_keyword
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
-from pq_logic.keys.composite_sig13 import CompositeSig13PublicKey
+from pq_logic.keys.composite_sig import CompositeSigPublicKey
 from pq_logic.pq_utils import is_kem_public_key
 from resources import (
     asn1utils,
@@ -2073,7 +2073,7 @@ def validate_migration_certificate_key_usage(  # noqa: D417 Missing argument des
 
     sig_usages = {"digitalSignature", "nonRepudiation", "keyCertSign", "cRLSign"}
 
-    if isinstance(public_key, (PQSignaturePublicKey, CompositeSig13PublicKey)):
+    if isinstance(public_key, (PQSignaturePublicKey, CompositeSigPublicKey)):
         ml_dsa_disallowed = {"keyEncipherment", "dataEncipherment", "keyAgreement", "encipherOnly", "decipherOnly"}
 
         if not set(key_usage).issubset(sig_usages):
