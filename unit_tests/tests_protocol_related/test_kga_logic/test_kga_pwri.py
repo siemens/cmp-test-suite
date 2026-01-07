@@ -36,9 +36,9 @@ class TestValidationPWRI(unittest.TestCase):
 
     def test_pwri_invalid_version(self):
         """
-        GIVEN a PWRI structure with an invalid version (not 0).
+        GIVEN a PWRI structure with an invalid version (not 3).
         WHEN validate_password_recipient_info is called.
-        THEN it should raise a ValueError indicating the version field must be 0.
+        THEN it should raise a ValueError indicating the version field must be 3.
         """
         pwri = prepare_pwri_structure(version=1)
 

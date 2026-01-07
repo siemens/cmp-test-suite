@@ -1128,7 +1128,7 @@ def _prepare_pbkdf2() -> rfc8018.PBKDF2_params:
 
 @not_keyword
 def prepare_pwri_structure(
-    version: int = 0,
+    version: int = 3,
     kdf_oid: univ.ObjectIdentifier = rfc9481.id_PBKDF2,
     key_enc_alg_id: univ.ObjectIdentifier = rfc9481.id_aes256_wrap,
     enc_key: bool = True,
@@ -1139,7 +1139,7 @@ def prepare_pwri_structure(
 
     Prepares a default `PBKDF2_params` structure with the fixed salt b"AAAAAAAAAAAAAAAA".
 
-    :param version: The version number for the `PasswordRecipientInfo` structure. Defaults to 0.
+    :param version: The version number for the `PasswordRecipientInfo` structure. Defaults to 3.
     :param kdf_oid: The Object Identifier (OID) for the key derivation algorithm.
     :param key_enc_alg_id: The OID for the key encryption algorithm.
     :param enc_key:  Flag indicating whether to include the encrypted key in the `PasswordRecipientInfo`.

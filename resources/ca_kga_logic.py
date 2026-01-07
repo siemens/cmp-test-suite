@@ -1560,7 +1560,7 @@ def validate_password_recipient_info(pwri_structure: rfc5652.PasswordRecipientIn
                                 which must not be reused here.
     :return: A dictionary containing the PBKDF2 parameters (`parameters`) and the encrypted key (`encrypted_key`).
     :raises ValueError: If any of the following conditions are violated:
-        The `version` field is missing or not equal to `0`.
+        The `version` field is missing or not equal to `3`.
         The `keyDerivationAlgorithm` field is missing or not one of the allowed algorithms.
         The `keyEncryptionAlgorithm` field is missing or not one of the allowed algorithms.
         The `encryptedKey` field is missing.
@@ -1570,8 +1570,9 @@ def validate_password_recipient_info(pwri_structure: rfc5652.PasswordRecipientIn
             The AES key wrap `parameters` field is present (must be absent).
     """
     if pwri_structure["version"].isValue:
-        if int(pwri_structure["version"]) != 0:
-            raise ValueError("The `version` field of the `PasswordRecipientInfo` structure must be 0!")
+        # According to RFC9483 Errata ID: 7833, must the `PasswordRecipientInfo` version be 3.
+        if int(pwri_structure["version"]) != 3:
+            raise ValueError("The `version` field of the `PasswordRecipientInfo` structure must be 3!")
     else:
         raise ValueError("The `version` field of the `PasswordRecipientInfo` structure was absent!")
 
