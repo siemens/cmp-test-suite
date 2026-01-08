@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright 2025 Siemens AG
+# SPDX-FileCopyrightText: Copyright 2025 Siemens AG   # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -48,7 +48,6 @@ IR 01 - Valid IR CMP Request Should Pass
     ...                The OpenSSL client output should not contain any errors,
     ...                and a certificate should be written to the specified path.
     [Tags]    ir    valid    positive
-
     ${args}=    Get CMP Command
     ...    ${CMP_CLIENT}
     ...    cmd=${INITIATION_REQUEST}
