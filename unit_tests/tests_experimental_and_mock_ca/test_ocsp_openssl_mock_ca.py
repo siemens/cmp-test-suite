@@ -30,6 +30,14 @@ class TestOCSPOpenSSLMockCA(unittest.TestCase):
         if cls.service_process.poll() is not None:
             raise RuntimeError("Mock CA service did not start successfully.")
 
+    def _get_ocsp_url(self) -> str:
+        """Return the OCSP URL for the mock CA."""
+        return f"http://127.0.0.1:{self.port_num}/ocsp"
+
+    def _get_issuing_url(self) -> str:
+        """Return the issuing URL for the mock CA."""
+        return f"http://127.0.0.1:{self.port_num}/issuing"
+
     def test_ocsp_openssl_mock_ca(self):
         """
         GIVEN an OpenSSL mock CA.
@@ -41,7 +49,7 @@ class TestOCSPOpenSSLMockCA(unittest.TestCase):
 
         response = send_pkimessage_to_mock_ca(
             req,
-            url=f"http://127.0.0.1:{self.port_num}/issuing",
+            url=self._get_issuing_url(),
         )
         self.assertIsNotNone(response, "The response should not be None")
 
@@ -60,7 +68,7 @@ class TestOCSPOpenSSLMockCA(unittest.TestCase):
         validate_ocsp_status_openssl(
             cert=cert_chain[1],
             ca_cert=cert_chain[1],
-            ocsp_url=f"http://127.0.0.1:{self.port_num}/ocsp",
+            ocsp_url=self._get_ocsp_url(),
             expected_status="good",
             use_nonce=True,
         )
@@ -75,7 +83,7 @@ class TestOCSPOpenSSLMockCA(unittest.TestCase):
         self.assertIsNotNone(req, "Request should not be None")
         response = send_pkimessage_to_mock_ca(
             req,
-            url=f"http://localhost:{self.port_num}/issuing",
+            url=self._get_issuing_url(),
         )
         self.assertIsNotNone(response, "The response should not be None")
 
@@ -96,7 +104,7 @@ class TestOCSPOpenSSLMockCA(unittest.TestCase):
         )
         response = send_pkimessage_to_mock_ca(
             prot_rr,
-            url=f"http://localhost:{self.port_num}/issuing",
+            url=self._get_issuing_url(),
         )
         status = get_pkistatusinfo(response)
         self.assertEqual(status["status"].prettyPrint(), "accepted", display_pki_status_info(response))
@@ -112,7 +120,7 @@ class TestOCSPOpenSSLMockCA(unittest.TestCase):
         validate_ocsp_status_openssl(
             cert=cert_chain[1],
             ca_cert=cert_chain[1],
-            ocsp_url=f"http://localhost:{self.port_num}/ocsp",
+            ocsp_url=self._get_ocsp_url(),
             expected_status="good",
             use_nonce=True,
         )
