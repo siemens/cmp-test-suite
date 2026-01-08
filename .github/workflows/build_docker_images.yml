@@ -66,3 +66,16 @@ jobs:
             --build-arg BASE_IMAGE=ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.tests .
+
+      - name: Build and push MockCA Docker image
+      # This one is meant to be used for testing the MockCA functionality or to just use the MockCA for experimentation.
+      # For the functionality and its usage, please refer to the documentation (MockCA_readme.md).
+      # Please note that this image cannot be used for testing. Because it is static and would need to be rebuilt every time
+      # the test suite is updated.
+      # Additionally, note that the MockCA is not meant to be used in production.
+        run:    |    
+            docker buildx build \
+                --tag ghcr.io/${REPO_OWNER_LC}/cmp-test-mockca:latest \
+                --build-arg BASE_IMAGE=ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
+                --push \
+                -f data/dockerfiles/Dockerfile.mockca .
