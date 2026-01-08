@@ -4,13 +4,14 @@
 
 cryptography==46.0.3
 pyasn1==0.6.1
-pyasn1-alt-modules==0.4.6
+pyasn1-alt-modules==0.4.7
 robotframework==7.3.2
-pkilint==0.12.13
+pkilint==0.13.0
 robotframework-requests==0.9.7
 pycryptodome==3.23.0
 tinyec==0.4.0
 bitstring==4.3.1
+pyhsslms==2.0.0
 # relevant for the Mock-CA.
 Flask==3.1.2
 # relevant for the CMP client tests.
