@@ -6,11 +6,9 @@
 
 import enum
 import logging
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Set, Tuple, Union
-from urllib.parse import urlsplit, urlunsplit
 
 from cryptography import x509
 from cryptography.x509 import CertificateRevocationList, ExtensionNotFound, ocsp
