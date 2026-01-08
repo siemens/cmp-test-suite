@@ -6,9 +6,11 @@
 
 import enum
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Set, Tuple, Union
+from urllib.parse import urlsplit, urlunsplit
 
 from cryptography import x509
 from cryptography.x509 import CertificateRevocationList, ExtensionNotFound, ocsp
@@ -1544,37 +1546,36 @@ class BaseURLData:
 
     Arguments:
     ---------
-    - `bare_url`: The bare URL without port.
+    - `base_url`: The base URL without port.
     - `port_num`: The port number.
 
     """
 
-    bare_url: str
+    base_url: str
     port_num: int
 
-    @property
-    def base_url(self) -> str:
+    def get_base_url(self) -> str:
         """Return the base URL with port."""
-        return f"{self.bare_url}:{self.port_num}"
+        return f"{self.base_url}:{self.port_num}"
 
     @property
     def ocsp_url(self) -> str:
         """Return the OCSP URL path."""
-        return f"{self.base_url}/ocsp"
+        return f"{self.get_base_url()}/ocsp"
 
     @property
     def crl_url(self) -> str:
         """Return the CRL URL path."""
-        return f"{self.base_url}/crl"
+        return f"{self.get_base_url()}/crl"
 
     def get_cert_url(self, serial_number: int):
         """Return the certificate URL path."""
-        return f"{self.base_url}/cert/{serial_number}"
+        return f"{self.get_base_url()}/cert/{serial_number}"
 
     def get_sig_url(self, serial_number: int):
         """Return the signature URL path."""
-        return f"{self.base_url}/sig/{serial_number}"
+        return f"{self.get_base_url()}/sig/{serial_number}"
 
     def get_pubkey_url(self, serial_number: int):
         """Return the public key URL path."""
-        return f"{self.base_url}/pubkey/{serial_number}"
+        return f"{self.get_base_url()}/pubkey/{serial_number}"

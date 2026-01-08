@@ -214,7 +214,7 @@ class CAHandler:
         if not isinstance(ca_pub_key, VerifyKey):
             raise BadConfig(f"The CA public key is not a `VerifyKey`. Got: {type(ca_pub_key)}")
 
-        url_data = BaseURLData(bare_url=base_url, port_num=port_num)
+        url_data = BaseURLData(base_url=base_url, port_num=port_num)
 
         aki_extn = prepare_authority_key_identifier_extension(ca_pub_key, critical=False)
         crl_url = url_data.crl_url
@@ -287,7 +287,7 @@ class CAHandler:
         if ca_cert is None or ca_key is None:
             raise BadConfig("CA certificate and key must be provided.")
 
-        self.url_data = BaseURLData(bare_url=base_url, port_num=port)
+        self.url_data = BaseURLData(base_url=base_url, port_num=port)
 
         config = config or {"ca_alt_key": ca_alt_key}
 
@@ -305,7 +305,7 @@ class CAHandler:
         self.config = config
 
         self.extensions = self._prepare_extensions(
-            self.ca_cert, self.url_data.bare_url, config.get("extensions"), port_num=self.url_data.port_num
+            self.ca_cert, self.url_data.base_url, config.get("extensions"), port_num=self.url_data.port_num
         )
 
         self.comp_key = generate_key("composite-sig")
@@ -1084,7 +1084,7 @@ class CAHandler:
         try:
             response, issued_cert, to_be_confirmed = self.sun_hybrid_handler.process_request(
                 request=pki_message,
-                base_url=self.url_data.base_url,
+                base_url=self.url_data.get_base_url(),
                 serial_number=serial_number,
                 extensions=self.extensions,
                 bad_alt_sig=bad_alt_sig,
