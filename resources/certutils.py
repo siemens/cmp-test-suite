@@ -36,7 +36,7 @@ from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
 from pq_logic.keys.composite_sig import CompositeSigPublicKey
 from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.tmp_oids import COMPOSITE_SIG07_OID_TO_NAME
+from pq_logic.tmp_oids import COMPOSITE_SIG_OID_TO_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -1014,7 +1014,7 @@ def pqc_algs_cannot_be_validated_with_openssl(
     """
     for cert in certs:
         spki_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
-        if spki_oid in COMPOSITE_SIG07_OID_TO_NAME:
+        if spki_oid in COMPOSITE_SIG_OID_TO_NAME:
             return True
         if spki_oid in PQ_SIG_OID_2_NAME:
             if spki_oid not in SLH_DSA_OID_2_NAME and spki_oid not in ML_DSA_OID_2_NAME:
