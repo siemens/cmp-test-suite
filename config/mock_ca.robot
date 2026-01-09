@@ -1,6 +1,7 @@
-# Copyright 2024 Siemens AG
+# Copyright 2024 Siemens AG # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
+#
 
 *** Settings ***
 Documentation     An example resource file with configuration options that are meant for use on your local development
@@ -10,16 +11,19 @@ Documentation     An example resource file with configuration options that are m
 *** Variables ***
 # the dev-environment always runs the latest version
 # qa - the stable version
-${CA_BASE_URL}   http://127.0.0.1:5000/
-${CA_CMP_URL}    http://127.0.0.1:5000/issuing
-# the other URL is are down below.
-#${CA_CMP_URL}    https://broker.sdo-dev.siemens.cloud/.well-known/cmp
+${PORT}    5000
+${CA_BASE_URL}   http://127.0.0.1:${PORT}/
+${CA_CMP_URL}    http://127.0.0.1:${PORT}/issuing
+# The other URL is are down below.
 
 # The initial issued certificate and key for running the tests.
 ${ISSUED_KEY}    ${None}
 ${ISSUED_CERT}   ${None}
 ${INIT_SUFFIX}   issuing
-
+# The initial issued certificate and key for running the tests setup.
+${INITIAL_KEY_PATH}    ${None}
+${INITIAL_CERT_PATH}   ${None}
+${INITIAL_KEY_PASSWORD}   ${None}
 
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CN=CloudCA-Integration-Test-User
@@ -27,12 +31,6 @@ ${RECIPIENT}           CN=CloudPKI-Integration-Test
 ${DEFAULT_X509NAME}    CN=CloudCA-Integration-Test-User
 # either signature or an MAC algorithm.
 ${DEFAULT_PROTECTION}   signature
-
-# The initial issued certificate and key for running the tests setup.
-${INIT_SUFFIX}   ${None}
-${INITIAL_KEY_PATH}    ${None}
-${INITIAL_CERT_PATH}   ${None}
-${INITIAL_KEY_PASSWORD}   ${None}
 
 # Test the LWCMP version.
 ${LWCMP}   ${True}
@@ -49,9 +47,7 @@ ${ALLOW_IMPLICIT_CONFIRM}  ${True}
 
 # then send always the ${DEFAULT_X509NAME} inside the `CertTemplate` and csr
 ${ALLOW_ONLY_ONE_SENDER}   ${True}
-# for test cases are only the same keys can be used to save resources.
-# TODO implement have a list maybe called burned_keys and send each time a new one.
-${ALLOW_IR_SAME_KEY}       ${False}
+
 # Could be used to always load the same PKIMessage structure and patch it during testing.
 # TODO implement a one dataclass for the PKIMessage to always patch the same message if allowed,
 # to have some lax test settings and save as much resources as possible.
@@ -118,7 +114,7 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
 ##### Section 3
-#Indicating if the PKIFailInfo must be set correctly.
+# Indicating if the PKIFailInfo must be set correctly.
 ${FAILINFO_MUST_BE_CORRECT}   ${True}
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-501}
@@ -132,6 +128,7 @@ ${DSA_CERT}        data/unittest/dsa_certificate.pem
 ${DEVICE_CERT_CHAIN}   data/mock_ca/device_cert_ecdsa_cert_chain.pem
 ${DEVICE_KEY}  data/keys/private-key-ecdsa.pem
 ${DEVICE_KEY_PASSWORD}   11111
+${DEVICE_CERT}   ${None}
 
 ##### Section 4
 # If ALLOW_P10CR is enabled, all generic test cases will be done
@@ -141,7 +138,10 @@ ${ALLOW_P10CR_MAC_BASED}   ${True}
 ${ALLOW_CR_MAC_BASED}   ${True}
 ${ALLOW_IR_MAC_BASED}   ${True}
 ${ALLOW_KUR_SAME_KEY}    ${False}
-${ALLOW_IR_SAME_KEY}   ${True}
+# for test cases are only the same keys can be used to save resources.
+# TODO Update burned_keys and send each time a new one if set to False and
+# add functionality to use the same key for multiple requests if set to True.
+${ALLOW_IR_SAME_KEY}   ${False}
 ${LARGE_KEY_SIZE}    ${12800}
 ${ALLOW_CERT_CONF}    ${False}
 
@@ -166,7 +166,6 @@ ${ALLOW_SUPPORT_MESSAGES}   ${True}
 ${CRL_FILEPATH}    data/mock_ca/current_crl.pem
 ${CRL_CERT_IDP}  data/unittest/dsa_certificate.pem
 
-
 ${OLD_ROOT_CERT}   ${None}
 ${CERT_PROFILE}    base
 
@@ -177,10 +176,6 @@ ${ALLOWED_TIME_INTERVAL}   ${300}
 ${ALLOW_CRL_CHECK}   ${False}
 ${REVOKE_CERT_ON_ERROR}  ${False}
 ${REVOKE_CERT_ON_LATE_CONFIRMATION}  ${False}
-
-# Device certificate and key (None means not provided).
-${DEVICE_CERT}   ${None}
-${DEVICE_KEY}  ${None}
 
 # Section 5.2 and 5.3
 # Other trusted PKI and Key (None means not provided, so test are skipped).
@@ -214,12 +209,10 @@ ${DEFAULT_TRAD_ALG}    rsa
 ${DEFAULT_PQ_SIG_ALG}   ml-dsa-44
 
 # Hybrid Endpoints
-
-${INIT_SUFFIX}   issuing
 ${PQ_ISSUING_SUFFIX}   issuing
 ${PQ_STATEFUL_ISSUING_SUFFIX}   issuing
-${URI_RELATED_CERT}   http://127.0.0.1:5000/cert
-${NEG_URI_RELATED_CERT}   http://127.0.0.1:5000/cert_neg
+${URI_RELATED_CERT}   http://127.0.0.1:${PORT}/cert
+${NEG_URI_RELATED_CERT}   http://127.0.0.1:${PORT}/cert_neg
 ${ISSUING_SUFFIX}   issuing
 ${COMPOSITE_URL_PREFIX}   issuing
 ${CATALYST_ISSUING}  catalyst-issuing
@@ -233,13 +226,8 @@ ${CERT_DISCOVERY_SUFFIX}   cert-discovery
 # CMP and LwCMP certificates and keys
 ${UPDATED_CERT}    ${None}
 ${UPDATED_KEY}     ${None}
-${DSA_KEY}         ${None}
-${DSA_CERT}        ${None}
-
 
 # Hybrid Certificates and Keys
-${ISSUED_KEY}   ${None}
-${ISSUED_CERT}   ${None}
 ${COMPOSITE_KEM_KEY}   ${None}
 ${COMPOSITE_KEM_CERT}   ${None}
 ${REVOKED_COMP_KEM_KEY}   ${None}
@@ -257,4 +245,3 @@ ${RELATED_CERT}   ${None}
 ${RELATED_KEY}   ${None}
 ${RELATED_CERT_SEC}   ${None}
 ${RELATED_KEY_SEC}   ${None}
-
