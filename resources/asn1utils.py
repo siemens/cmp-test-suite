@@ -198,9 +198,12 @@ def set_asn1_value(asn1_obj: base.Asn1Item, path:str, value: base.Asn1Item):
     logging.debug('Current type %s, desired type %s', type(current_value), type(value))
 
     # if we got this far, it means that the value exists and we can work with it.
-    if type(current_value) != type(value):  # noqa: E721 for now, will leverage pyasn1's built-in coercion features
-        # TODO consider the situations when the value can be transformed into the needed type (e.g., integer ->asn1int)
-        raise ValueError("Type mismatch between what existing and desired value")
+
+    # There are situations when the value can be safely transformed into the needed type (e.g., integer -> univ.Integer)
+    # by pyasn1. This check is not good because it crashes even when things should still work.
+    # TODO improve it, consider serializing/deserializing in the end
+    # if type(current_value) != type(value):  # noqa: E721 for now, will leverage pyasn1's built-in coercion features
+    #     raise ValueError("Type mismatch between what existing and desired value")
 
 
     parent_path, child_path = _split_last_parent(path)
