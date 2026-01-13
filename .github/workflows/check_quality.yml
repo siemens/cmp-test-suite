@@ -17,68 +17,71 @@ jobs:
   # Stage 1: fast and basic checks, we run them in parallel to provide more feedback to the contributor at once,
   # instead of running them sequentially and giving feedback one piece at a time, requiring more iterations.
   ruff_lint:
+    needs: prepare_env
     runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Code style
-        run: ruff check
+      - uses: actions/checkout@v4
+      - name: Code style (ruff)
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" ruff check
 
   license_check:
+    needs: prepare_env
     runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: License check
-        run: reuse lint
+      - uses: actions/checkout@v4
+      - name: License check (reuse)
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" reuse lint
 
   rf_style_check:
+    needs: prepare_env
     runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: RobotFramework style check
-        run: robocop check --ignore VAR04
     # We haven't settled on a style for RobotFramework yet, enforce check when consensus is reached
     continue-on-error: true
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: RobotFramework style check (robocop)
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" robocop check --ignore VAR04
 
   spelling_check:
+    needs: prepare_env
     runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Spelling checker
-        run: codespell . --check-filenames --skip *.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py,./data/rfc_test_vectors/*
+      - uses: actions/checkout@v4
+      - name: Spelling checker (codespell)
+        run: |
+          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" \
+            codespell . --check-filenames --skip "*.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py,./data/rfc_test_vectors/*"
 
   dependency_check:
     # See if newer versions of our Python dependencies are available. This does
     # not enforce anything, and only has an informational character.
+    needs: prepare_env
     runs-on: ubuntu-22.04
     continue-on-error: true
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
       - name: Check for outdated dependencies
         run: |
-          echo "Checking for outdated packages..."
-          OUTDATED=$(pip list --outdated --format=columns)
-          if [ -z "$OUTDATED" ]; then
-            echo "All packages are up to date!"
-            exit 0
-          else
-            echo "Outdated packages detected, think about it:"
-            echo "$OUTDATED"
-            exit 1
-          fi
+          docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" bash -c '
+            echo "Checking for outdated packages..."
+            OUTDATED=$(pip list --outdated --format=columns)
+            if [ -z "$OUTDATED" ]; then
+              echo "All packages are up to date!"
+              exit 0
+            else
+              echo "Outdated packages detected, think about it:"
+              echo "$OUTDATED"
+              exit 1
+            fi'
 
   version_check:
     runs-on: ubuntu-22.04
@@ -98,41 +101,40 @@ jobs:
   # Stage 2: these checks are more expensive and do more with the code, e.g., attempt to import dependencies,
   # execute some logic, etc.
   pylint:
-    needs: [ruff_lint, license_check, rf_style_check, spelling_check]
+    # needs must include prepare_env, as it is used to set the image name.
+    needs: [prepare_env, ruff_lint, license_check, rf_style_check, spelling_check]
     runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - name: Pylint check
-        run: pylint --fail-under=9.4 resources
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" pylint --fail-under=9.4 resources
 
   unit_test:
-    needs: [ruff_lint, license_check, rf_style_check, spelling_check]
+    # needs must include prepare_env, as it is used to set the image name.
+    needs: [prepare_env, ruff_lint, license_check, rf_style_check, spelling_check]
     runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
-      env:
-        OQS_INSTALL_PATH: "/root/_oqs"
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Unit tests
-        run:  python3 -m unittest discover -s unit_tests
+      - uses: actions/checkout@v4
+      - name: Run unit tests
+        run: |
+          docker run --rm -v "$PWD:/workspace" -w /workspace -e OQS_INSTALL_PATH=/root/_oqs "$IMAGE" \
+            python3 -m unittest discover -s unit_tests
 
   type_check:
+    needs: prepare_env
     runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Pyright check
-        run: pyright
-    # not enforced yet, but it is still executed to provide some info
+    # not enforced yet, but it is still executed to provide some info.
     continue-on-error: true
+    env:
+      IMAGE: ${{ needs.prepare_env.outputs.image_lc }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pyright type check
+        run: docker run --rm -v "$PWD:/workspace" -w /workspace "$IMAGE" pyright
 
   prepare_env:
     runs-on: ubuntu-22.04
