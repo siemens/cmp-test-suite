@@ -101,5 +101,32 @@ class TestASN1Utils(unittest.TestCase):
 
 
 
+
+class TestASN1UtilsSet(unittest.TestCase):
+    """Test the asn1path setting logic"""
+    @classmethod
+    def setUpClass(cls):
+        cls.raw = load_and_decode_pem_file("data/cmp-sample-reject.pem")
+
+    def setUp(self):
+        # We do this for every test, because the asn1_object will be mutated by
+        # the setter; while we want to have a fresh start in each test
+        self.pkimessage = parse_pkimessage(self.raw)
+
+    def test_set_asn1_value_coerced_integer_primitive(self):
+        """
+        GIVEN a pyasn1 PKIMessage, an asn1path that points to a univ.Integer according to the schema
+        WHEN we set the member of the structure given by asn1path to a Python integer
+        THEN the integer becomes univ.Integer and the entire structure is updated correctly
+        """
+        # pvno is univ.Integer, but we pass a Python primitive integer
+        asn1utils.set_asn1_value(self.pkimessage, "header.pvno", 2)
+        # TODO consider encoding the whole thing
+
+        updated_val = asn1utils.get_asn1_value(pkimessage, "header.pvno")
+        self.assertEqual(int(updated_val), 2)
+
+
+
 if __name__ == "__main__":
     unittest.main()
