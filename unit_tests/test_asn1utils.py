@@ -123,7 +123,7 @@ class TestASN1UtilsSet(unittest.TestCase):
         asn1utils.set_asn1_value(self.pkimessage, "header.pvno", 2)
         # TODO consider encoding the whole thing
 
-        updated_val = asn1utils.get_asn1_value(pkimessage, "header.pvno")
+        updated_val = asn1utils.get_asn1_value(self.pkimessage, "header.pvno")
         self.assertEqual(int(updated_val), 2)
 
 
