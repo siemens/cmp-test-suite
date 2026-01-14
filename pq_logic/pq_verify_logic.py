@@ -27,7 +27,7 @@ from pq_logic.hybrid_sig import (
     sun_lamps_hybrid_scheme_00,
 )
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
-from pq_logic.keys.composite_sig13 import CompositeSig13PublicKey
+from pq_logic.keys.composite_sig import CompositeSigPublicKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_oids import (
     COMPOSITE_SIG_OID_TO_NAME,
@@ -89,16 +89,16 @@ def verify_cert_hybrid_signature(  # noqa D417 undocumented-param
     if oid in COMPOSITE_SIG_OID_TO_NAME:
         if other_cert is None and catalyst_key is None:
             composite_key = PQKeyFactory.load_public_key_from_spki(spki)
-            if not isinstance(composite_key, CompositeSig13PublicKey):
+            if not isinstance(composite_key, CompositeSigPublicKey):
                 raise ValueError("The loaded key is not a composite signature key.")
         elif other_cert is not None:
             trad_key = keyutils.load_public_key_from_spki(issuer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
             pq_key = PQKeyFactory.load_public_key_from_spki(other_cert["tbsCertificate"]["subjectPublicKeyInfo"])
-            composite_key = CompositeSig13PublicKey(pq_key, trad_key=trad_key)  # type: ignore
+            composite_key = CompositeSigPublicKey(pq_key, trad_key=trad_key)  # type: ignore
 
         else:
             trad_key = keyutils.load_public_key_from_spki(issuer_cert["tbsCertificate"]["subjectPublicKeyInfo"])
-            composite_key = CompositeSig13PublicKey(catalyst_key, trad_key=trad_key)  # type: ignore
+            composite_key = CompositeSigPublicKey(catalyst_key, trad_key=trad_key)  # type: ignore
 
         data = encoder.encode(ee_cert["tbsCertificate"])
         signature = ee_cert["signature"].asOctets()
@@ -544,7 +544,7 @@ def verify_hybrid_pkimessage_protection(  # noqa D417 undocumented-param
 
     oid = prot_alg_id["algorithm"]
 
-    if isinstance(public_key, CompositeSig13PublicKey) and (oid in COMPOSITE_SIG_OID_TO_NAME):
+    if isinstance(public_key, CompositeSigPublicKey) and (oid in COMPOSITE_SIG_OID_TO_NAME):
         protectionutils.verify_signature_with_alg_id(
             public_key=public_key,
             alg_id=prot_alg_id,

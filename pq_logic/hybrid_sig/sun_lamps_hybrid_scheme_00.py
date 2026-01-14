@@ -27,7 +27,7 @@ import resources.prepare_alg_ids
 import resources.protectionutils
 from pq_logic.hybrid_structures import AltSignatureExt, AltSubPubKeyExt, UniformResourceIdentifier
 from pq_logic.keys.abstract_wrapper_keys import HybridPublicKey
-from pq_logic.keys.composite_sig13 import CompositeSig13PublicKey
+from pq_logic.keys.composite_sig import CompositeSigPublicKey
 from pq_logic.tmp_oids import (
     COMPOSITE_SIG_PREHASH_OID_2_HASH,
     id_altSignatureExt,
@@ -393,7 +393,7 @@ def sun_csr_to_cert(  # noqa: D417 Missing argument descriptions in the docstrin
     """
     public_key = keyutils.load_public_key_from_spki(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
 
-    if not isinstance(public_key, CompositeSig13PublicKey):
+    if not isinstance(public_key, CompositeSigPublicKey):
         raise ValueError("The public key must be a CompositeSigCMSPublicKey.")
 
     oid = csr["signatureAlgorithm"]["algorithm"]

@@ -26,7 +26,7 @@ from pyasn1_alt_modules import rfc2459, rfc5280, rfc5652, rfc6402, rfc8018, rfc9
 from robot.api.deco import not_keyword
 
 from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import prepare_sun_hybrid_csr_attributes
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.keys.pq_stateful_sig_factory import PQStatefulSigFactory
 from pq_logic.tmp_oids import FRODOKEM_NAME_2_OID
 from resources import certutils, cmputils, utils
@@ -1134,7 +1134,7 @@ def _prepare_pbkdf2() -> rfc8018.PBKDF2_params:
 
 @not_keyword
 def prepare_pwri_structure(
-    version: int = 0,
+    version: int = 3,
     kdf_oid: univ.ObjectIdentifier = rfc9481.id_PBKDF2,
     key_enc_alg_id: univ.ObjectIdentifier = rfc9481.id_aes256_wrap,
     enc_key: bool = True,
@@ -1145,7 +1145,7 @@ def prepare_pwri_structure(
 
     Prepares a default `PBKDF2_params` structure with the fixed salt b"AAAAAAAAAAAAAAAA".
 
-    :param version: The version number for the `PasswordRecipientInfo` structure. Defaults to 0.
+    :param version: The version number for the `PasswordRecipientInfo` structure. Defaults to 3.
     :param kdf_oid: The Object Identifier (OID) for the key derivation algorithm.
     :param key_enc_alg_id: The OID for the key encryption algorithm.
     :param enc_key:  Flag indicating whether to include the encrypted key in the `PasswordRecipientInfo`.
@@ -1336,7 +1336,7 @@ def load_ca_cert_and_key() -> Tuple[rfc9480.CMPCertificate, Ed25519PrivateKey]:
 
 
 def build_sun_hybrid_composite_csr(
-    signing_key: Optional[CompositeSig13PrivateKey] = None,
+    signing_key: Optional[CompositeSigPrivateKey] = None,
     common_name: str = "CN=Hans Mustermann",
     pub_key_hash_alg: Optional[str] = None,
     pub_key_location: Optional[str] = None,

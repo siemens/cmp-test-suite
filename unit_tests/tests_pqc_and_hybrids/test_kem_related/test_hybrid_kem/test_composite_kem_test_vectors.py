@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives.asymmetric.x448 import X448PrivateKey, X448P
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_private_key, load_der_public_key
 
-from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey, CompositeKEM07PublicKey
+from pq_logic.keys.composite_kem import CompositeKEMPrivateKey, CompositeKEMPublicKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, RSADecapKey, RSAEncapKey
@@ -108,13 +108,12 @@ class CompositeKEM07TestVectors:
         return base64.b64decode(self.c)
 
 
-def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEM07PrivateKey:
-    """
-    Load a Composite KEM 0.7 public key from private key bytes.
+def _load_composite_kem_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEMPrivateKey:
+    """Load a Composite KEM public key from private key bytes.
 
     :param algorithm: The name of the algorithm.
     :param private_key: The private key bytes.
-    :return: A CompositeKEM07PublicKey instance.
+    :return: A CompositeKEMPublicKey instance.
     """
     algorithm = algorithm.lower()
     prefix = "composite-kem07-"
@@ -156,18 +155,18 @@ def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes)
     if not isinstance(trad_key, rsa.RSAPrivateKey):
         trad_key = DHKEMPrivateKey(private_key=trad_key, use_rfc9180=False)
 
-    return CompositeKEM07PrivateKey(
+    return CompositeKEMPrivateKey(
         pq_key=pq_key,
         trad_key=trad_key,
     )
 
 
-def _load_composite_kem07_from_public_bytes(algorithm: str, public_key: bytes) -> CompositeKEM07PublicKey:
-    """Load a Composite KEM 07 public key from public bytes.
+def _load_composite_kem_from_public_bytes(algorithm: str, public_key: bytes) -> CompositeKEMPublicKey:
+    """Load a Composite KEM public key from public bytes.
 
     :param algorithm: The name of the algorithm.
     :param public_key: The public key bytes.
-    :return: A CompositeKEM07PublicKey instance.
+    :return: A CompositeKEMPublicKey instance.
     """
     algorithm = algorithm.lower()
     prefix = "composite-kem-07-"
@@ -191,7 +190,7 @@ def _load_composite_kem07_from_public_bytes(algorithm: str, public_key: bytes) -
     else:
         raise ValueError(f"Unsupported traditional key type: {trad_name}")
 
-    return CompositeKEM07PublicKey(
+    return CompositeKEMPublicKey(
         pq_key=pq_key,
         trad_key=trad_key,
     )
@@ -220,7 +219,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
 
     def test_decaps_composite_rsa_key(self):
         """
-        GIVEN a Composite KEM v7 test vector with RSA keys,
+        GIVEN a Composite KEM test vector with RSA keys,
         WHEN the key is loaded from bytes,
         THEN it should match the expected values.
         """
@@ -229,10 +228,10 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
                 continue
 
             with self.subTest(tcId=vector.tcId):
-                private_key = _load_composite_kem07_from_private_bytes(
+                private_key = _load_composite_kem_from_private_bytes(
                     algorithm=vector.name, private_key=vector.dk_bytes
                 )
-                self.assertIsInstance(private_key, CompositeKEM07PrivateKey)
+                self.assertIsInstance(private_key, CompositeKEMPrivateKey)
                 self.assertIsInstance(private_key.pq_key, MLKEMPrivateKey)
                 self.assertIsInstance(private_key.trad_key, RSADecapKey)
                 self.assertEqual(private_key.pq_key.name, PQKeyFactory.get_pq_alg_name(vector.name))
@@ -241,7 +240,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
 
     def test_decaps_composite_ecdh_key(self):
         """
-        GIVEN a Composite KEM v7 test vector with ECDH keys,
+        GIVEN a Composite KEM test vector with ECDH keys,
         WHEN the key is loaded from bytes,
         THEN it should match the expected values.
         """
@@ -250,10 +249,10 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
                 continue
 
             with self.subTest(tcId=vector.tcId):
-                private_key = _load_composite_kem07_from_private_bytes(
+                private_key = _load_composite_kem_from_private_bytes(
                     algorithm=vector.name, private_key=vector.dk_bytes
                 )
-                self.assertIsInstance(private_key, CompositeKEM07PrivateKey)
+                self.assertIsInstance(private_key, CompositeKEMPrivateKey)
                 self.assertIsInstance(private_key.pq_key, MLKEMPrivateKey)
                 self.assertIsInstance(private_key.trad_key, DHKEMPrivateKey)
                 self.assertEqual(private_key.pq_key.name, PQKeyFactory.get_pq_alg_name(vector.name))
@@ -262,7 +261,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
 
     def test_decaps_composite_x_key(self):
         """
-        GIVEN a Composite KEM v7 test vector with X25519/X448 keys,
+        GIVEN a Composite KEM test vector with X25519/X448 keys,
         WHEN the key is loaded from bytes,
         THEN it should match the expected values.
         """
@@ -271,10 +270,10 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
                 continue
 
             with self.subTest(tcId=vector.tcId):
-                private_key = _load_composite_kem07_from_private_bytes(
+                private_key = _load_composite_kem_from_private_bytes(
                     algorithm=vector.name, private_key=vector.dk_bytes
                 )
-                self.assertIsInstance(private_key, CompositeKEM07PrivateKey)
+                self.assertIsInstance(private_key, CompositeKEMPrivateKey)
                 self.assertIsInstance(private_key.pq_key, MLKEMPrivateKey)
                 self.assertIsInstance(private_key.trad_key, DHKEMPrivateKey)
                 ss_out = private_key.decaps(vector.ct_bytes, use_in_cms=False)

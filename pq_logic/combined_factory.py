@@ -32,15 +32,15 @@ from pq_logic.keys.abstract_wrapper_keys import (
     WrapperPrivateKey,
 )
 from pq_logic.keys.chempat_key import ChempatPublicKey
-from pq_logic.keys.composite_kem07 import (
+from pq_logic.keys.composite_kem import (
     CompositeDHKEMRFC9180PrivateKey,
     CompositeDHKEMRFC9180PublicKey,
-    CompositeKEM07PrivateKey,
-    CompositeKEM07PublicKey,
+    CompositeKEMPrivateKey,
+    CompositeKEMPublicKey,
 )
-from pq_logic.keys.composite_sig13 import (
-    CompositeSig13PrivateKey,
-    CompositeSig13PublicKey,
+from pq_logic.keys.composite_sig import (
+    CompositeSigPrivateKey,
+    CompositeSigPublicKey,
 )
 from pq_logic.keys.hybrid_key_factory import HybridKeyFactory
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
@@ -140,7 +140,7 @@ class CombinedKeyFactory:
 
         pub_key = key.public_key()
         # RSA is only allowed as PSS for ML-DSA-87 combinations.
-        if isinstance(pub_key, CompositeSig13PublicKey) and trad_name.startswith("rsa"):
+        if isinstance(pub_key, CompositeSigPublicKey) and trad_name.startswith("rsa"):
             _ = pub_key.get_oid(use_pss=True)
             return key
 
@@ -316,7 +316,7 @@ class CombinedKeyFactory:
             raise ValueError(f"Unsupported traditional key type: {trad_name}")
 
         if "dhkem" not in orig_name:
-            return CompositeKEM07PublicKey(pq_key, trad_key)  # type: ignore
+            return CompositeKEMPublicKey(pq_key, trad_key)  # type: ignore
         return CompositeDHKEMRFC9180PublicKey(pq_key, trad_key)  # type: ignore
 
     @staticmethod
@@ -444,12 +444,12 @@ class CombinedKeyFactory:
         return trad_key
 
     @staticmethod
-    def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEM07PrivateKey:
+    def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEMPrivateKey:
         """Load a Composite KEM v7 public key from private key bytes.
 
         :param algorithm: The name of the algorithm.
         :param private_key: The private key bytes.
-        :return: A CompositeKEM07PublicKey instance.
+        :return: A CompositeKEMPublicKey instance.
         """
         logging.info("Loading composite KEM-07 private key: %s", algorithm)
 
@@ -486,7 +486,7 @@ class CombinedKeyFactory:
                 trad_key=trad_key,
             )
         else:
-            composite_key = CompositeKEM07PrivateKey(
+            composite_key = CompositeKEMPrivateKey(
                 pq_key=pq_key,
                 trad_key=trad_key,
             )
@@ -500,7 +500,7 @@ class CombinedKeyFactory:
         name: str,
         private_key_bytes: bytes,
         public_key: Optional[bytes],
-    ) -> CompositeKEM07PrivateKey:
+    ) -> CompositeKEMPrivateKey:
         """Decode a composite KEM-07 private key."""
         private_key = CombinedKeyFactory._load_composite_kem07_from_private_bytes(
             algorithm=name,
@@ -881,7 +881,7 @@ class CombinedKeyFactory:
         )
 
         use_pss = trad_name.endswith("-pss")
-        private_key_obj = CompositeSig13PrivateKey(
+        private_key_obj = CompositeSigPrivateKey(
             pq_key=pq_key,
             trad_key=trad_key,  # type: ignore
         )
@@ -1026,7 +1026,7 @@ class CombinedKeyFactory:
             raise InvalidKeyData(f"Expected ML-DSA public key for {algorithm}, got: {type(pq_key)}")
 
         use_pss = trad_name.endswith("-pss") if trad_name.startswith("rsa") else None
-        public_key = CompositeSig13PublicKey(
+        public_key = CompositeSigPublicKey(
             pq_key=pq_key,
             trad_key=trad_key,  # type: ignore[assignment]
         )

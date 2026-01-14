@@ -44,7 +44,7 @@ from pq_logic.keys import serialize_utils
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import AbstractCompositePrivateKey
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
@@ -1125,7 +1125,7 @@ def prepare_subject_public_key_info(  # noqa D417 undocumented-param
         spki = rfc5280.SubjectPublicKeyInfo()
         pub_key = pub_key if not invalid_key_size else pub_key + b"\x00"
         spki["subjectPublicKey"] = univ.BitString.fromOctetString(pub_key)
-        if isinstance(key, CompositeSig13PrivateKey):
+        if isinstance(key, CompositeSigPrivateKey):
             oid = key.get_oid(use_pss=use_rsa_pss)
         else:
             oid = key.get_oid()

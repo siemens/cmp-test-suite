@@ -1536,3 +1536,44 @@ class PQStatefulSigKeyConfig:
 
     allow_stfl_ccr: bool = True
     saved_bad_message_check_stfl_key: bool = True
+
+
+@dataclass
+class BaseURLData:
+    """Data class to hold base URL information.
+
+    Arguments:
+    ---------
+    - `base_url`: The base URL without port.
+    - `port_num`: The port number.
+
+    """
+
+    base_url: str
+    port_num: int
+
+    def get_base_url(self) -> str:
+        """Return the base URL with port."""
+        return f"{self.base_url}:{self.port_num}"
+
+    @property
+    def ocsp_url(self) -> str:
+        """Return the OCSP URL path."""
+        return f"{self.get_base_url()}/ocsp"
+
+    @property
+    def crl_url(self) -> str:
+        """Return the CRL URL path."""
+        return f"{self.get_base_url()}/crl"
+
+    def get_cert_url(self, serial_number: int):
+        """Return the certificate URL path."""
+        return f"{self.get_base_url()}/cert/{serial_number}"
+
+    def get_sig_url(self, serial_number: int):
+        """Return the signature URL path."""
+        return f"{self.get_base_url()}/sig/{serial_number}"
+
+    def get_pubkey_url(self, serial_number: int):
+        """Return the public key URL path."""
+        return f"{self.get_base_url()}/pubkey/{serial_number}"

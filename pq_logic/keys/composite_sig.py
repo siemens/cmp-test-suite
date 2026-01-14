@@ -37,8 +37,8 @@ from resources.typingutils import ECVerifyKey
 PREFIX = b"CompositeAlgorithmSignatures2025"
 
 __ALL__ = [
-    "CompositeSig13PublicKey",
-    "CompositeSig13PrivateKey",
+    "CompositeSigPublicKey",
+    "CompositeSigPrivateKey",
 ]
 
 
@@ -63,7 +63,7 @@ def _get_label(oid: univ.ObjectIdentifier) -> bytes:
     return label
 
 
-class CompositeSig13PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
+class CompositeSigPublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
     """Composite Signature Implementation for Draft v13."""
 
     _pq_key: MLDSAPublicKey
@@ -75,7 +75,7 @@ class CompositeSig13PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
         pq_key: MLDSAPublicKey,
         trad_key: Union[rsa.RSAPublicKey, ECVerifyKey],
     ) -> None:
-        """Initialize the CompositeSig13PublicKey.
+        """Initialize the CompositeSigPublicKey.
 
         :param pq_key: The ML-DSA public key.
         :param trad_key: The traditional public key.
@@ -208,7 +208,7 @@ class CompositeSig13PublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
         return alg_id
 
 
-class CompositeSig13PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
+class CompositeSigPrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
     """Composite Signature Implementation for Draft v13."""
 
     _pq_key: MLDSAPrivateKey
@@ -227,7 +227,7 @@ class CompositeSig13PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey)
             rsa.RSAPrivateKey, ec.EllipticCurvePrivateKey, ed25519.Ed25519PrivateKey, ed448.Ed448PrivateKey
         ],
     ) -> None:
-        """Initialize the CompositeSig13PrivateKey."""
+        """Initialize the CompositeSigPrivateKey."""
         super().__init__(pq_key, trad_key)
         self._pq_key = pq_key
         self._trad_key = trad_key
@@ -244,9 +244,9 @@ class CompositeSig13PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey)
             )
         return self._trad_key.private_bytes_raw()
 
-    def public_key(self) -> CompositeSig13PublicKey:
+    def public_key(self) -> CompositeSigPublicKey:
         """Generate the public key corresponding to this composite private key."""
-        return CompositeSig13PublicKey(
+        return CompositeSigPublicKey(
             self._pq_key.public_key(),
             self._trad_key.public_key(),
         )
@@ -288,7 +288,7 @@ class CompositeSig13PrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey)
             raise InvalidSignature("Context length exceeds 255 bytes")
 
         domain_oid = self.get_oid(use_pss=use_pss)
-        return CompositeSig13PublicKey.prepare_sig_input(domain_oid=domain_oid, data=data, ctx=ctx)
+        return CompositeSigPublicKey.prepare_sig_input(domain_oid=domain_oid, data=data, ctx=ctx)
 
     def _sign_trad(self, data: bytes, use_pss: bool) -> bytes:
         """Sign the traditional part of the composite signature."""

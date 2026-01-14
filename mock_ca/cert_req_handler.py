@@ -107,6 +107,7 @@ class CertReqHandler:
         issuing_db: Optional[NonSigningKeyCertsAndKeys] = None,
         pq_stateful_sig_state: Optional[StatefulSigState] = None,
         stfl_validator: Optional[STFLPKIMessageValidator] = None,
+        ca_cert_chain: Optional[List[rfc9480.CMPCertificate]] = None,
     ):
         """Initialize the certificate request handler.
 
@@ -121,9 +122,13 @@ class CertReqHandler:
         :param kga_cert_chain: The certificate chain for the key agreement key.
         :param issuing_db: The database for issuing non-signing keys and certificates.
         :param pq_stateful_sig_state: The state for post-quantum stateful signatures.
+        :param stfl_validator: The validator for the pqc-stateful (e.g., HSS, XMSS) PKIMessage.
+        :param ca_cert_chain: The certificate chain for the CA certificate.
         """
         self.ca_cert = ca_cert
+        self._ca_cert_chain = ca_cert_chain or [self.ca_cert]
         self.ca_key = ca_key
+
         self.state = state
         self.cert_conf_handler = cert_conf_handler
         self.extensions = extensions  # Now a unified list of extensions
@@ -174,6 +179,11 @@ class CertReqHandler:
     def get_cross_signed_certs(self) -> List[rfc9480.CMPCertificate]:
         """Get the list of cross-signed certificates."""
         return self.cross_signed_certs
+
+    @property
+    def ca_cert_chain(self) -> List[rfc9480.CMPCertificate]:
+        """Get the certificate chain."""
+        return self._ca_cert_chain
 
     @staticmethod
     def is_certificate_in_list(cert_template: rfc9480.CertTemplate, cert_list: List[rfc9480.CMPCertificate]) -> bool:

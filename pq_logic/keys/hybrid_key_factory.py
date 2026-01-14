@@ -16,11 +16,11 @@ from pyasn1_alt_modules import rfc5280, rfc5958
 
 from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey, HybridPublicKey, PQPrivateKey, TradKEMPrivateKey
 from pq_logic.keys.chempat_key import ChempatPrivateKey, ChempatPublicKey
-from pq_logic.keys.composite_kem07 import (
+from pq_logic.keys.composite_kem import (
     CompositeDHKEMRFC9180PrivateKey,
-    CompositeKEM07PrivateKey,
+    CompositeKEMPrivateKey,
 )
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.serialize_utils import prepare_ec_private_key
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, RSADecapKey
@@ -206,12 +206,12 @@ def _parse_private_keys(hybrid_type: str, pq_key, trad_key) -> HybridPrivateKey:
 
     hybrid_type = hybrid_type.replace("composite-", "")
     key_class_mappings = {
-        "kem": CompositeKEM07PrivateKey,  # always the latest version
-        "kem-07": CompositeKEM07PrivateKey,
-        "kem07": CompositeKEM07PrivateKey,
+        "kem": CompositeKEMPrivateKey,  # always the latest version
+        "kem-07": CompositeKEMPrivateKey,
+        "kem07": CompositeKEMPrivateKey,
         "dhkem": CompositeDHKEMRFC9180PrivateKey,  # always the latest version
-        "sig": CompositeSig13PrivateKey,  # always the latest version
-        "sig-13": CompositeSig13PrivateKey,
+        "sig": CompositeSigPrivateKey,  # always the latest version
+        "sig-13": CompositeSigPrivateKey,
     }
     key_class = key_class_mappings[hybrid_type]
     return key_class(pq_key, trad_key)
@@ -569,7 +569,7 @@ class HybridKeyFactory:
             key_type=key_type,
         )
 
-        if isinstance(private_key, (CompositeKEM07PrivateKey, CompositeSig13PrivateKey)):
+        if isinstance(private_key, (CompositeKEMPrivateKey, CompositeSigPrivateKey)):
             if key_type == KeySaveType.SEED and hasattr(private_key.pq_key, "private_numbers"):
                 pq_key_bytes = private_key.pq_key.private_numbers()
             elif key_type == KeySaveType.SEED_AND_RAW and hasattr(private_key.pq_key, "private_numbers"):

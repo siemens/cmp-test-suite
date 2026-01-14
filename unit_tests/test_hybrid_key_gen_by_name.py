@@ -25,7 +25,7 @@ class TestGenerateKeyByName(unittest.TestCase):
             self.assertEqual(name, key.name + "-" + hash_alg)
 
 
-    def test_composite_sig13(self):
+    def test_composite_sig(self):
         """
         GIVEN all known composite signature version 13 algorithms.
         WHEN generating keys by name,

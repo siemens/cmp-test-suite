@@ -8,8 +8,8 @@ from pq_logic.hybrid_issuing import build_sun_hybrid_cert_from_request
 from pyasn1.type import tag
 from pyasn1_alt_modules import rfc9480
 
-from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey
+from pq_logic.keys.composite_kem import CompositeKEMPrivateKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from resources.ca_kga_logic import validate_kemri_enveloped_data
 from resources.certbuildutils import build_certificate
 from resources.certutils import parse_certificate
@@ -23,7 +23,7 @@ class TestBuildSunHybridCertFromRequest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ca_key = generate_key("composite-sig") # type: ignore
-        cls.ca_key: CompositeSig13PrivateKey
+        cls.ca_key: CompositeSigPrivateKey
         cls.ca_cert, _ = build_certificate(cls.ca_key, "CN=Test CA")
 
     def test_build_with_composite_sig(self):
@@ -53,7 +53,7 @@ class TestBuildSunHybridCertFromRequest(unittest.TestCase):
         THEN the public key is extracted correctly.
         """
         comp_kem = generate_key("composite-kem", trad_name="rsa") # type: ignore
-        comp_kem: CompositeKEM07PrivateKey
+        comp_kem: CompositeKEMPrivateKey
         ir = build_ir_from_key(comp_kem, "CN=Hans the Tester")
         response, cert4, cert1 = build_sun_hybrid_cert_from_request(
             request=ir,

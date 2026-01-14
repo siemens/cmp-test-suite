@@ -35,7 +35,7 @@ from pq_logic.hybrid_sig.certdiscovery import prepare_subject_info_access_syntax
 from pq_logic.hybrid_structures import AltSignatureValueExt
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPublicKey, KEMPublicKey
-from pq_logic.keys.composite_sig13 import CompositeSig13PrivateKey, CompositeSig13PublicKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey, CompositeSigPublicKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from pq_logic.tmp_oids import (
     COMPOSITE_SIG13_OID_TO_NAME,
@@ -92,7 +92,7 @@ from resources.typingutils import (
 
 def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descriptions in the docstring
     request: PKIMessageTMP,
-    ca_key: CompositeSig13PrivateKey,
+    ca_key: CompositeSigPrivateKey,
     pub_key_loc: str,
     sig_loc: str,
     serial_number: Optional[int] = None,
@@ -161,7 +161,7 @@ def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descripti
         cert_index = cert_index if cert_index is not None else 0
         cert_req_msg: rfc4211.CertReqMsg = request["body"][body_name][cert_index]
         public_key = ca_ra_utils.get_public_key_from_cert_req_msg(cert_req_msg)
-        if isinstance(public_key, CompositeSig13PublicKey):
+        if isinstance(public_key, CompositeSigPublicKey):
             ca_ra_utils.verify_sig_pop_for_pki_request(request, cert_index)
             cert4, cert1 = sun_lamps_hybrid_scheme_00.sun_cert_template_to_cert(
                 cert_template=cert_req_msg["certReq"]["certTemplate"],
@@ -604,7 +604,7 @@ def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descri
 def _cast_to_composite_sig_private_key(
     first_key: Any,
     alt_key: Any,
-) -> CompositeSig13PrivateKey:
+) -> CompositeSigPrivateKey:
     """Cast the keys to a composite key.
 
     :param first_key: The first key to cast.
@@ -620,7 +620,7 @@ def _cast_to_composite_sig_private_key(
     if not isinstance(alt_key, (ECSignKey, RSAPrivateKey)):
         raise InvalidKeyCombination("The Composite signature trad-key is not a EC or RSA key.")
 
-    return CompositeSig13PrivateKey(first_key, alt_key)
+    return CompositeSigPrivateKey(first_key, alt_key)
 
 
 @keyword(name="Prepare Catalyst CertReqMsg Approach")

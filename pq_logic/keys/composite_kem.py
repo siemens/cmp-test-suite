@@ -46,7 +46,7 @@ def _get_kdf_algorithm(pq_name: str, trad_key: TradKEMPublicKey) -> str:
     return "hmac-sha512"
 
 
-class CompositeKEM07PublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
+class CompositeKEMPublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
     """A Composite KEM public key for the Composite KEM 07."""
 
     _trad_key: TradKEMPublicKey
@@ -184,7 +184,7 @@ class CompositeKEM07PublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
         return self._export_public_key()
 
 
-class CompositeKEM07PrivateKey(HybridKEMPrivateKey, AbstractCompositePrivateKey):
+class CompositeKEMPrivateKey(HybridKEMPrivateKey, AbstractCompositePrivateKey):
     """A Composite KEM private key for the Composite KEM 07."""
 
     _trad_key: TradKEMPrivateKey
@@ -254,9 +254,9 @@ class CompositeKEM07PrivateKey(HybridKEMPrivateKey, AbstractCompositePrivateKey)
             raise InvalidKeyCombination(f"Unsupported composite KEM combination: {name}")
         return COMPOSITE_KEM07_NAME_2_OID[name]
 
-    def public_key(self) -> CompositeKEM07PublicKey:
+    def public_key(self) -> CompositeKEMPublicKey:
         """Return the public key associated with this private key."""
-        return CompositeKEM07PublicKey(self.pq_key.public_key(), self.trad_key.public_key())
+        return CompositeKEMPublicKey(self.pq_key.public_key(), self.trad_key.public_key())
 
     def kem_combiner(
         self, mlkem_ss: bytes, trad_ss: bytes, trad_ct: bytes, trad_pk: bytes, use_in_cms: bool = False
@@ -291,7 +291,7 @@ class CompositeKEM07PrivateKey(HybridKEMPrivateKey, AbstractCompositePrivateKey)
         return combined_ss
 
 
-class CompositeDHKEMRFC9180PublicKey(CompositeKEM07PublicKey):
+class CompositeDHKEMRFC9180PublicKey(CompositeKEMPublicKey):
     """Composite DHKEMRFC9180 public key."""
 
     _name = "composite-dhkem"
@@ -303,7 +303,7 @@ class CompositeDHKEMRFC9180PublicKey(CompositeKEM07PublicKey):
         self._trad_key = DHKEMPublicKey(trad_key, use_rfc9180=True)
 
 
-class CompositeDHKEMRFC9180PrivateKey(CompositeKEM07PrivateKey):
+class CompositeDHKEMRFC9180PrivateKey(CompositeKEMPrivateKey):
     """Composite DHKEMRFC9180 private key."""
 
     _name = "composite-dhkem"

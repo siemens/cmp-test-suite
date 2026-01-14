@@ -34,7 +34,7 @@ from robot.api.deco import keyword, not_keyword
 import pq_logic.combined_factory
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPrivateKey
-from pq_logic.keys.composite_kem07 import CompositeKEM07PrivateKey
+from pq_logic.keys.composite_kem import CompositeKEMPrivateKey
 from pq_logic.keys.trad_kem_keys import RSADecapKey
 from pq_logic.pq_utils import get_kem_oid_from_key
 from pq_logic.tmp_oids import COMPOSITE_SIG_OID_TO_NAME
@@ -1560,7 +1560,7 @@ def validate_password_recipient_info(pwri_structure: rfc5652.PasswordRecipientIn
                                 which must not be reused here.
     :return: A dictionary containing the PBKDF2 parameters (`parameters`) and the encrypted key (`encrypted_key`).
     :raises ValueError: If any of the following conditions are violated:
-        The `version` field is missing or not equal to `0`.
+        The `version` field is missing or not equal to `3`.
         The `keyDerivationAlgorithm` field is missing or not one of the allowed algorithms.
         The `keyEncryptionAlgorithm` field is missing or not one of the allowed algorithms.
         The `encryptedKey` field is missing.
@@ -1570,8 +1570,9 @@ def validate_password_recipient_info(pwri_structure: rfc5652.PasswordRecipientIn
             The AES key wrap `parameters` field is present (must be absent).
     """
     if pwri_structure["version"].isValue:
-        if int(pwri_structure["version"]) != 0:
-            raise ValueError("The `version` field of the `PasswordRecipientInfo` structure must be 0!")
+        # According to RFC9483 Errata ID: 7833, must the `PasswordRecipientInfo` version be 3.
+        if int(pwri_structure["version"]) != 3:
+            raise ValueError("The `version` field of the `PasswordRecipientInfo` structure must be 3!")
     else:
         raise ValueError("The `version` field of the `PasswordRecipientInfo` structure was absent!")
 
@@ -2241,7 +2242,7 @@ def process_kem_recip_info(
         is_sun_hybrid=is_sun_hybrid,
     )
 
-    if isinstance(private_key, CompositeKEM07PrivateKey):
+    if isinstance(private_key, CompositeKEMPrivateKey):
         shared_secret = private_key.decaps(validated_info["kemct"], use_in_cms=True)
     elif not isinstance(private_key, (RSAPrivateKey, RSADecapKey)):
         shared_secret = private_key.decaps(validated_info["kemct"])
