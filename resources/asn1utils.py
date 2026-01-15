@@ -130,11 +130,12 @@ def asn1_must_contain_fields(data: base.Asn1Type, fields: str):  # noqa D417 und
 
 
 
-
 def _split_last_parent(s: str) -> tuple[str, str]:
-    """Split an asn1path query into the last parent and child.
+    """Split an asn1path query into parent and child.
 
-    Examples of inputs and outputs:
+    The returned value is a tuple, where the first element is the "prefix parent", i.e. the path leading to and
+    including the last parent; the second element is the last part of the query. The latter can be an object or an
+    index.  Examples of inputs and outputs:
     a.b.c         ->  a.b, c
     a.b.c/0       ->  a.b.c, 0
     a.b.c/0/0/1   ->  a.b.c/0/0, 1
@@ -152,77 +153,46 @@ def _split_last_parent(s: str) -> tuple[str, str]:
 
 def set_asn1_value(asn1_obj: base.Asn1Item, path:str, value: base.Asn1Item):
     """Update an ASN1 structure in-place by setting the attribute at path to value."""
-    # traverse structure with get_asn1_value to ensure the path we need exists
-    # find the parent of the thing we're trying to change
-    # extract the targeted child
-    # check if its type matches that of `value` - bail out early if not
-    # set new value
-    # optional - encode the final structure completely to see if it still works
-
-    # things to think about
-    # - what if the types are not the same, but `value` can be coerced to the thing we need? (e.g., integer ->asn1int)
-    # - dealing with sequences
-    # - optional values that aren't there yet
-    # - optional values, for which the parent path isn't complete yet
-
-
-    # examples of inputs
-    # header.pvno               mandatory, primitive
-    # header.messageTime        optional, primitive
-    # header.sender.directoryName.rdnSequence/0         mandatory, complex, sequence
-    # header.sender.directoryName.rdnSequence/0/0.value nested
-
-
-
     # There are some easy cases where we can figure out that the inputs are bad and there's nothing for us to set,
     # handle those and bail out early.
-
-    #  No path was given; although we could interpret this as "overwrite the root object", this is probably not
-    #  what the caller wanted, so we better fail in an obvious way
     if not path or path.strip() == "":
         raise ValueError("Cannot set root object. Specify a path to a child element.")
 
     if path.endswith("/") or path.endswith("."):
-        raise ValueError("Path incomplete, it cannot end with `/` or `.`")
+        raise ValueError("Path incomplete: it cannot end with '/' or '.'")
 
+    if "." not in path and "/" not in path:
+        raise ValueError(f"Path '{path}' is too shallow; specify a child element.")
 
-    keys = path.split(".")
+    parent_path, child_key = _split_last_parent(path)
 
-    if len(keys) < 2 and '/' not in path:
-        # it is not something like `item/1`, so it is not a useful type of input
-        raise ValueError("Path seems to be incomplete, check your inputs")
+    # Traverse to parent. If parent_path is empty (e.g. path was "a.b"), parent is the root object
+    try:
+        parent = get_asn1_value(asn1_obj, parent_path) if parent_path else asn1_obj
+    except Exception as e:
+        raise ValueError(f"Could not reach parent structure at '{parent_path}': {e}")
 
-    # this will raise ValueError if the object doesn't exist, we'll let it crash if there's an issue, the error message
-    # will contain useful information about what went wrong.
-    current_value = get_asn1_value(asn1_obj, path)
-    logging.debug('Current type %s, desired type %s', type(current_value), type(value))
+    # Perform assignment
+    try:
+        if child_key.isdigit() and isinstance(parent, (univ.SequenceOf, univ.SetOf)):
+            idx = int(child_key)
 
-    # if we got this far, it means that the value exists and we can work with it.
-
-    # There are situations when the value can be safely transformed into the needed type (e.g., integer -> univ.Integer)
-    # by pyasn1. This check is not good because it crashes even when things should still work.
-    # TODO improve it, consider serializing/deserializing in the end
-    # if type(current_value) != type(value):  # noqa: E721 for now, will leverage pyasn1's built-in coercion features
-    #     raise ValueError("Type mismatch between what existing and desired value")
-
-
-    parent_path, child_path = _split_last_parent(path)
-    parent = get_asn1_value(asn1_obj, parent_path)
-
-    if isinstance(parent, (univ.SequenceOf, univ.SetOf)):
-        # this is a number, so we're dealing with an item in an indexed collection
-        child_path_int = int(child_path)
-        if len(parent) < child_path_int:
-            parent[child_path_int] = value
+            # Bound check for SequenceOf
+            if idx > len(parent):
+                raise ValueError(
+                    f"Index {idx} out of range. Current {type(parent).__name__} size is {len(parent)}. "
+                    "Manual expansion of preceding indices is required."
+                )
+            parent[idx] = value
         else:
-            # TODO expand its size, append to the current list
-            pass
-    else:
-        # the easy case, just set the value
-        parent[child_path] = value
+            # Sequence/Set: pyasn1 handles name-to-index mapping and type coercion here
+            parent[child_key] = value
+
+    except Exception as e:
+        # This catches type mismatches, unknown component names, etc.
+        raise ValueError(f"Assignment failed for path '{path}': {e}")
 
     return asn1_obj
-
 
 def get_asn1_value(asn1_obj: base.Asn1Item, query: str) -> base.Asn1Item:  # noqa D417 undocumented-param
     """Extract a value from a complex `pyasn1` structure by specifying its path in ASN1Path notation.

@@ -7,6 +7,7 @@ import unittest
 from resources import asn1utils
 from resources.cmputils import parse_pkimessage
 from resources.utils import load_and_decode_pem_file
+from resources.prepareutils import prepare_relative_distinguished_name
 
 from unit_tests.utils_for_test import build_pkimessage
 
@@ -113,19 +114,115 @@ class TestASN1UtilsSet(unittest.TestCase):
         # the setter; while we want to have a fresh start in each test
         self.pkimessage = parse_pkimessage(self.raw)
 
+    def test_set_asn1_value_invalid_paths(self):
+        """
+        GIVEN invalid asn1paths
+        WHEN we try to set a value at that path
+        THEN ValueError is raised
+        """
+        bad_paths = ["", "rootonly", "header.", "header/"]
+
+        for path in bad_paths:
+            with self.subTest(path=path):
+                with self.assertRaises(ValueError):
+                    asn1utils.set_asn1_value(self.pkimessage, path, "val")
+
     def test_set_asn1_value_coerced_integer_primitive(self):
         """
-        GIVEN a pyasn1 PKIMessage, an asn1path that points to a univ.Integer according to the schema
+        GIVEN a pyasn1 object, an asn1path that points to a univ.Integer according to the schema
         WHEN we set the member of the structure given by asn1path to a Python integer
         THEN the integer becomes univ.Integer and the entire structure is updated correctly
         """
         # pvno is univ.Integer, but we pass a Python primitive integer
         asn1utils.set_asn1_value(self.pkimessage, "header.pvno", 2)
-        # TODO consider encoding the whole thing
-
         updated_val = asn1utils.get_asn1_value(self.pkimessage, "header.pvno")
         self.assertEqual(int(updated_val), 2)
 
+
+    def test_set_asn1_value_type_good_constraints_bad(self):
+        """
+        GIVEN a pyasn1 object, an asn1path that points to a univ.Integer with NamedValues in the schema
+        WHEN we set the member of the structure to a number outside the defined NamedValues range
+        THEN the structure is updated correctly
+        """
+        # pvno is univ.Integer with predefined names: ('cmp1999', 1), ('cmp2000', 2), ('cmp2021', 3))
+        # but we give it a number that is not defined. It should still work, because named values are not constraints.
+        asn1utils.set_asn1_value(self.pkimessage, "header.pvno", 45)
+
+        updated_val = asn1utils.get_asn1_value(self.pkimessage, "header.pvno")
+        self.assertEqual(int(updated_val), 45)
+
+
+    def test_set_asn1_value_complex(self):
+        """
+        GIVEN a pyasn1 object, an asn1path that points to a complex object
+        WHEN we set that inner object to a valid value
+        THEN the parent pyasn1 object is updated correctly
+        """
+        # The test structure we try it with has header.sender.directoryName.rdnSequence with 2 entries,
+        # we modify the element at index 0
+        new_rdn = prepare_relative_distinguished_name("CN=Joe Zeroth")
+        asn1utils.set_asn1_value(self.pkimessage, "header.sender.directoryName.rdnSequence/0", new_rdn)
+
+
+    def test_set_asn1_value_within_bounds(self):
+        """
+        GIVEN a pyasn1 object, an asn1path that points to a set or sequence
+        WHEN we set a value at an index that does not exceed the length of the container
+        THEN the structure is updated correctly
+        """
+        # the dummy pkimessage we deal with has 2 rdns, so indices 0 and 1 are valid. It must work for 0 or 1,
+        # i.e. if we overwrite it; and for 2 when we expand the list. All higher indices should fail
+
+        new_rdn_1 = prepare_relative_distinguished_name("CN=Joe Primus")
+        new_rdn_2 = prepare_relative_distinguished_name("CN=Joe Secundos")
+
+        # this should work
+        asn1utils.set_asn1_value(self.pkimessage, "header.sender.directoryName.rdnSequence/0", new_rdn_1)
+        asn1utils.set_asn1_value(self.pkimessage, "header.sender.directoryName.rdnSequence/1", new_rdn_2)
+
+
+    def test_set_asn1_value_edge_bounds(self):
+        """
+        GIVEN a pyasn1 object, an asn1path that points to a set or sequence
+        WHEN we set a value at the index that is +1 the length of the container
+        THEN the container is extended and the new value is appended to it
+        """
+        # the dummy pkimessage we deal with has 2 rdns, only indices 0 and 1 exist. If we set a value at index 2,
+        # the structure is automatically extended.
+        self.assertEqual(len(self.pkimessage['header']['sender']['directoryName']['rdnSequence']), 2)
+
+        new_rdn = prepare_relative_distinguished_name("CN=Joe Dritter")
+        asn1utils.set_asn1_value(self.pkimessage, "header.sender.directoryName.rdnSequence/2", new_rdn)
+
+        self.assertEqual(len(self.pkimessage['header']['sender']['directoryName']['rdnSequence']), 3)
+
+
+
+
+    def test_set_asn1_value_outside_bounds(self):
+        """
+        GIVEN a pyasn1 object, an asn1path that points to a set or sequence
+        WHEN we set a value at the index that is > +1 the length of the container
+        THEN an error is thrown
+        """
+        new_rdn = prepare_relative_distinguished_name("CN=Joe Outsider")
+        with self.assertRaises(ValueError):
+            asn1utils.set_asn1_value(self.pkimessage, "header.sender.directoryName.rdnSequence/4", new_rdn)
+
+
+    def test_set_asn1_value_bad_value(self):
+        """
+        GIVEN a pyasn1 object, and a valid asn1path
+        WHEN we set a value at the path to a type that violates the schema
+        THEN an error is thrown
+        """
+        # pvno is univ.Integer, but we pass it something completely different
+        with self.assertRaises(ValueError):
+            asn1utils.set_asn1_value(self.pkimessage, "header.pvno", "haha")
+
+        with self.assertRaises(ValueError):
+            asn1utils.set_asn1_value(self.pkimessage, "header.pvno", [1, 2, "haha"])
 
 
 if __name__ == "__main__":
