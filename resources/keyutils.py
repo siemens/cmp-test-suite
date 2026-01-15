@@ -48,7 +48,15 @@ from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.key_pyasn1_utils import load_enc_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, SLHDSAPrivateKey
-from pq_logic.keys.stateful_sig_keys import XMSSMTPrivateKey, XMSSPrivateKey
+from pq_logic.keys.stateful_sig_keys import (
+    HSSPrivateKey,
+    HSSPublicKey,
+    XMSSMTPrivateKey,
+    XMSSMTPublicKey,
+    XMSSPrivateKey,
+    XMSSPublicKey,
+    compute_hss_signature_index,
+)
 from pq_logic.keys.trad_kem_keys import RSAEncapKey
 from pq_logic.keys.xwing import XWingPrivateKey
 from pq_logic.tmp_oids import COMPOSITE_SIG_OID_TO_NAME, id_rsa_kem_spki
@@ -285,6 +293,10 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
         `ecdsa` for composite-sig.
         - pq_key (PQPrivateKey): The post-quantum private key.
         - trad_key (ECDHPrivateKey or RSA): The traditional private key.
+
+    Additional PQ parameters:
+    ------------------------
+        - `levels`(int): To set the levels for an HSS private key.
 
     Returns:
     -------
@@ -1297,7 +1309,53 @@ def modify_pq_stateful_sig_private_key(  # noqa: D417 undocumented-param
             return XMSSPrivateKey(alg_name=key.name, private_bytes=key_bytes, public_key=public_key_bytes)
         return XMSSMTPrivateKey(alg_name=key.name, private_bytes=key_bytes, public_key=public_key_bytes)
 
-    raise NotImplementedError("Exhausting PQ stateful signature keys is only implemented for XMSS keys.")
+    if isinstance(key, HSSPrivateKey):
+        # For HSS keys, we need to manipulate the internal state by modifying the q index
+        # of the LMS private keys at each level
+        private_bytes = key.private_bytes_raw()
+
+        # Deserialize to get access to the internal structure
+        modified_key = key.from_private_bytes(private_bytes)
+
+        # Access the internal HSS structure (modified_key._hss)
+        hss_internal = modified_key._hss
+
+        if hss_internal is None:
+            raise ValueError("HSS private key is not properly initialized.")
+
+        # Determine which index to set based on parameters
+        if index is not None and last_index:
+            # Set to the last valid index (max - 1)
+            target_index = hss_internal.maxSignatures() - 1
+        elif index is not None:
+            # Set to a specific index
+            target_index = index
+        else:
+            # Exhaust all indices by setting to max
+            target_index = hss_internal.maxSignatures()
+
+        # For HSS, we need to exhaust all levels to make the key unusable
+        # The bottom level (leaf) LMS tree index controls the current state
+        if target_index >= hss_internal.maxSignatures():
+            # Exhaust all levels
+            for level_key in hss_internal.prv:
+                level_key.q = level_key.maxSignatures()
+        else:
+            # Set the bottom level to the target index
+            # Calculate which level and position based on the hierarchical structure
+            if hss_internal.levels > 0 and len(hss_internal.prv) > 0:
+                hss_internal.prv[0].q = target_index
+
+        logging.debug(
+            f"Modified HSS key: {key.name}, target_index: {target_index}, "
+            f"max_sigs: {hss_internal.maxSignatures()}, is_exhausted: {hss_internal.is_exhausted()}"
+        )
+
+        # Serialize the modified key back
+        modified_bytes = hss_internal.serialize()
+        return HSSPrivateKey.from_private_bytes(modified_bytes)
+
+    raise NotImplementedError("Exhausting PQ stateful signature keys is only implemented for XMSS and HSS keys.")
 
 
 @keyword(name="Get Digest Alg For CMP")
@@ -1348,3 +1406,51 @@ def get_digest_alg_for_cmp(  # noqa D417 undocumented-param
         return pub_key.hash_alg
 
     return get_digest_hash_alg_from_alg_id(alg_id)
+
+
+@keyword(name="Get PQ Stateful Sig Index From Sig")
+def get_pq_stateful_sig_index_from_sig(  # noqa D417 undocumented-params
+    signature: bytes,
+    key: Union[PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey],
+    return_lms_index: bool = False,
+) -> int:
+    """Extract the signature index from a PQ stateful signature.
+
+    Note:
+    ----
+    - For HSS signatures, the index is computed which matches the actual used index for
+    the private key (not the LMS leaf index).
+
+    Arguments:
+    ---------
+    - `signature`: The signature bytes from which to extract the index.
+    - `key`: The PQ stateful signature key (private or public) associated with the signature.
+    - `return_lms_index`: If `True` and the key is an HSS key, return the LMS leaf index instead \
+    of the HSS signature index.
+
+    Returns:
+    -------
+    - The extracted signature index as an integer.
+
+    Raises:
+    ------
+    - `NotImplementedError`: If the key type is unsupported for signature index extraction.
+
+    Examples:
+    --------
+    | ${sig_index}= | Get PQ Stateful Sig Index From Sig | ${signature} | ${pq_stateful_sig_key} |
+    | ${sig_index}= | Get PQ Stateful Sig Index From Sig | ${signature} | ${pq_stateful_sig_key} | True |
+
+    """
+    if isinstance(key, PQHashStatefulSigPrivateKey):
+        key = key.public_key()
+
+    if isinstance(key, HSSPublicKey):
+        if return_lms_index:
+            return key.get_leaf_index(signature=signature)
+        return compute_hss_signature_index(signature, key)
+
+    if isinstance(key, (XMSSPublicKey, XMSSMTPublicKey)):
+        return key.get_leaf_index(signature)
+
+    raise NotImplementedError(f"Unsupported key type for signature index extraction. Got: {type(key).__name__}")

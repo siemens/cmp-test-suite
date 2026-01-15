@@ -4,7 +4,7 @@
 
 import unittest
 
-from pq_logic.keys.stateful_sig_keys import XMSSMTPrivateKey, XMSSPrivateKey
+from pq_logic.keys.stateful_sig_keys import XMSSMTPrivateKey, XMSSPrivateKey, HSSPrivateKey
 from resources.keyutils import modify_pq_stateful_sig_private_key, load_private_key_from_file
 from unit_tests.utils_for_test import get_all_xmss_xmssmt_keys
 
@@ -63,6 +63,18 @@ class TestExhaustStflKeys(unittest.TestCase):
                 exhausted_key = modify_pq_stateful_sig_private_key(loaded_key)
                 self.assertIsInstance(exhausted_key, XMSSMTPrivateKey)
                 self.assertEqual(0, exhausted_key.sigs_remaining)
+
+    def test_exhaust_hss_key(self):
+        """
+        GIVEN an HSS key.
+        WHEN the key is exhausted,
+        THEN should the key have no more signatures left.
+        """
+        key = load_private_key_from_file("data/keys/hss_keys/hss_lms_sha256_m24_h10_lmots_sha256_n24_w1_l9.pem")
+        self.assertIsInstance(key, HSSPrivateKey)
+        exhausted_key = modify_pq_stateful_sig_private_key(key)
+        self.assertEqual(0, exhausted_key.sigs_remaining)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,6 +26,7 @@ from robot.api.deco import keyword, not_keyword
 
 from pq_logic import pq_verify_logic
 from pq_logic.combined_factory import CombinedKeyFactory
+from pq_logic.keys import hss_validation
 from pq_logic.keys.abstract_pq import PQKEMPublicKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import (
@@ -36,6 +37,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
     KEMPublicKey,
     PQPublicKey,
 )
+from pq_logic.keys.stateful_sig_keys import HSSPublicKey
 from pq_logic.pq_utils import get_kem_oid_from_key, is_kem_public_key
 from resources import (
     ca_kga_logic,
@@ -1439,30 +1441,22 @@ def _validate_pq_hash_stateful_sig_pub_key(
                 failinfo="badAlg,badCertTemplate",
             )
     elif public_key.name.startswith("hss"):
-        data = public_key.public_bytes_raw()
-        _length = int.from_bytes(data[:4], "big")
-        msg = None
-        if _length == 0:
-            msg = "The HSS public key is empty, which is not allowed.Got a public key with length 0."
-
-        elif _length > 8:
-            msg = (
-                "The HSS public key is too long, which is not allowed."
-                f"Got a public key with length {_length}. The maximum length is 8."
-            )
-
-        if msg is not None:
-            raise BadCertTemplate(
-                msg,
+        if not isinstance(public_key, HSSPublicKey):
+            raise InvalidKeyData(
+                "The HSS public key is not of type HSSPublicKey.",
                 failinfo="badCertTemplate,badDataFormat",
             )
 
-        if "," in public_key.hash_alg:
-            raise BadCertTemplate(
-                "The HSS public key hash algorithm is not valid, "
-                "it should use the same hash algorithm as the LMOTS key.",
-                failinfo="badCertTemplate,badAlg",
+        try:
+            hss_validation.validate_hss_key(
+                public_key,
+                hss_allow_diff_hash_and_output_size_per_level=kwargs.get(
+                    "hss_allow_diff_hash_and_output_size_per_level", False
+                )
+                or kwargs.get("enforce_lwcmp", True),
             )
+        except InvalidKeyData as err:
+            raise BadCertTemplate(err.message, failinfo="badCertTemplate,badDataFormat") from err
 
     else:
         raise NotImplementedError(
@@ -1476,12 +1470,16 @@ def validate_cert_template_public_key(
     cert_template: rfc9480.CertTemplate,
     sig_popo_alg_id: Optional[rfc9480.AlgorithmIdentifier] = None,
     max_key_size: Optional[int] = None,
+    enforce_lwcmp: bool = True,
 ):
     """Validate that the certificate template has set the correct fields.
 
     :param cert_template: The certificate template to validate.
     :param sig_popo_alg_id: The signature POP algorithm identifier to validate against. Defaults to `None`.
     :param max_key_size: The maximum key size for RSA, to validate against, skipped if `None`. Defaults to `None`.
+    :param enforce_lwcmp: Whether to enforce strict rules for HSS keys. Defaults to `True`.
+    :raises BadCertTemplate: If the certificate template is not valid.
+    :raises BadAlg: If the public key algorithm is not valid.
     """
     if compareutils.is_null_dn(cert_template["subject"]):
         if get_extension(cert_template["extensions"], rfc5280.id_ce_subjectAltName) is None:
@@ -1540,6 +1538,7 @@ def validate_cert_template_public_key(
                 _validate_pq_hash_stateful_sig_pub_key(
                     public_key=public_key,
                     alg_id=alg_id,
+                    enforce_lwcmp=enforce_lwcmp,
                 )
 
             elif isinstance(public_key, (PQPublicKey, HybridPublicKey)):
@@ -2398,7 +2397,9 @@ def _process_one_cert_request(
     if alt_cert_req is not None:
         alt_cert_template = alt_cert_req["certTemplate"]
 
-    validate_cert_template_public_key(cert_req_msg["certReq"]["certTemplate"], max_key_size=4096 * 2)
+    validate_cert_template_public_key(
+        cert_req_msg["certReq"]["certTemplate"], max_key_size=4096 * 2, enforce_lwcmp=kwargs.get("enforce_lwcmp", True)
+    )
     validate_cert_request_controls(
         cert_request=cert_req_msg["certReq"],
         **kwargs,

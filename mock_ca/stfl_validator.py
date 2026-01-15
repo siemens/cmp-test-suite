@@ -18,7 +18,7 @@ from resources.ca_ra_utils import get_cert_template_from_pkimessage, get_popo_fr
 from resources.certutils import load_public_key_from_cert
 from resources.cmputils import get_cmp_message_type
 from resources.exceptions import BadMessageCheck, BadRequest, InvalidKeyData
-from resources.keyutils import load_public_key_from_spki
+from resources.keyutils import get_pq_stateful_sig_index_from_sig, load_public_key_from_spki
 from resources.oidutils import PQ_STATEFUL_HASH_SIG_OID_2_NAME
 from resources.suiteenums import ProtectedType
 
@@ -55,7 +55,7 @@ class STFLPKIMessageValidator:
         public_key = load_public_key_from_cert(ee_cert)  # type: ignore[assignment]
         public_key: PQHashStatefulSigPublicKey
         signature = pki_message["protection"].asOctets()
-        index = public_key.get_leaf_index(signature)
+        index = get_pq_stateful_sig_index_from_sig(signature, public_key)
         state.add_used_index(index)
 
     def validate_pq_stateful_pki_message(self, pki_message: PKIMessageTMP) -> None:
@@ -98,7 +98,7 @@ class STFLPKIMessageValidator:
             )
 
         signature = pki_message["protection"].asOctets()
-        index = public_key.get_leaf_index(signature)
+        index = get_pq_stateful_sig_index_from_sig(signature, public_key)
 
         if state.contains_used_index(index):
             raise BadMessageCheck(
@@ -139,7 +139,7 @@ class STFLPKIMessageValidator:
         public_key = load_public_key_from_spki(spki)
         if not isinstance(public_key, PQHashStatefulSigPublicKey):
             raise ValueError("The public key in the request is not a valid Stateful signature public key.")
-        index = public_key.get_leaf_index(signature)
+        index = get_pq_stateful_sig_index_from_sig(signature, public_key)
         state = StatefulSigKeyState(used_indices=[index])
         return state
 
@@ -161,7 +161,7 @@ class STFLPKIMessageValidator:
                 "The public key in the delta certificate is not a valid Stateful signature public key."
             )
 
-        index = public_key.get_leaf_index(signature)
+        index = get_pq_stateful_sig_index_from_sig(signature, public_key)
         tmp_state = StatefulSigKeyState(used_indices=[index])
         self._stfl_state.add_state(delta_cert, tmp_state)
 
@@ -178,7 +178,7 @@ class STFLPKIMessageValidator:
             )
 
         signature = csr["signature"].asOctets()
-        index = public_key.get_leaf_index(signature)
+        index = get_pq_stateful_sig_index_from_sig(signature, public_key)
         tmp_state = StatefulSigKeyState(used_indices=[index])
         self._stfl_state.add_state(paired_cert, tmp_state)
 

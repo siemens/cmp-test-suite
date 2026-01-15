@@ -1,10 +1,15 @@
 # SPDX-FileCopyrightText: Copyright 2025 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
-
+#
+# robocop: off=LEN28
+#
 *** Settings ***
-Documentation    Test cases for XMSS and XMSSMT stateful hash-based signature algorithms,
-...              based on RFC 8391 and the RFC 9802 document.
+Documentation    Test cases for XMSS, XMSSMT, and HSS stateful hash-based signature algorithms,
+...              based on RFC 8391, RFC 8554, and RFC 9802. Tests cover certificate issuance,
+...              key usage validation for EE and CA certificates, public key format validation,
+...              algorithm identifier parameter handling, exhausted key detection,
+...              HSS multi-level hierarchies, and LMS/LMOTS index management.
 Resource            ../resources/keywords.resource
 Library             Collections
 Library             OperatingSystem
@@ -19,6 +24,12 @@ Library             ../pq_logic/pq_verify_logic.py
 
 Suite Setup         Set Up Test Suite
 Test Tags           pq-stateful-sig   pqc  pq-sig   rfc9802
+
+
+*** Variables ***
+# Should not be modified, unless sha is replaced with shake.
+# Uses a fast algorithm for testing purposes.
+${HSS_DEFAULT_ALG}    hss_lms_sha256_m32_h5_lmots_sha256_n32_w8
 
 
 *** Test Cases ***
@@ -73,7 +84,7 @@ CA MUST Reject Invalid XMSS Public Key Size
 CA MUST Reject Invalid XMSS Request With Parameters set
     [Documentation]    According to RFC 9802 Section 7, the XMSS AlgorithmIdentifier `parameters`
     ...                field must not be set. We send a valid `ir` PKIMessage to the CA with the `parameters` field
-    ...                set to random bytes and expect it to reject the request. The CA may respond with the
+    ...                set to random bytes and expect the CA to reject the request. The CA may respond with the
     ...                `failInfo` `badCertTemplate`.
     [Tags]             negative    xmss   alg_id_parameters
     ${key}=     Generate Unique Key    xmss-sha2_10_256
@@ -203,7 +214,7 @@ CA MUST Reject Invalid XMSSMT Public Key Size
 CA MUST Reject Invalid XMSSMT Request With Parameters Set
     [Documentation]   According to RFC 9802 Section 7, the XMSSMT AlgorithmIdentifier `parameters`
     ...                field must not be set. We send a valid `ir` PKIMessage to the CA with the `parameters` field
-    ...                set to random bytes and expect it to reject the request. The CA may respond with the
+    ...                set to random bytes and expect the CA to reject the request. The CA may respond with the
     ...                `failInfo` `badCertTemplate`.
     [Tags]    negative    xmssmt    alg_id_parameters
     ${key}=    Generate Unique Key    xmssmt-sha2_20/2_256
@@ -261,14 +272,187 @@ CA MUST Reject A Exhausted XMSSMT Private Key
     ${key}=   Modify PQ Stateful Sig Private Key    ${key}
     ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
     ...         exclude_fields=sender,senderKID
-    ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP,badCertTemplate   False
 
+CA MUST Issue A Valid HSS Certificate
+    [Documentation]    According to RFC 8554 and RFC 9802 an HSS private key with LMS/LMOTS parameters
+    ...                is a valid stateful signature algorithm. We send a valid `ir` PKIMessage to the CA
+    ...                and expect it to issue a valid certificate using the default HSS algorithm.
+    [Tags]             positive    hss
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    accepted
+    ${cert}=   Get Cert From PKIMessage    ${response}
+    Certificate Must Be Valid    ${cert}
+
+CA MUST Issue A Valid HSS EE Certificate With KeyUsages
+    [Documentation]    According to RFC 9802 Section 6 a End-Entity HSS private key is allowed to
+    ...                have key usages: digitalSignature, nonRepudiation, cRLSign. We send a valid `ir` PKIMessage to
+    ...                the CA and expect it to issue a valid certificate with these key usages.
+    [Tags]             positive    hss  extensions  key_usage
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${extensions}=    Prepare Extensions    digitalSignature, nonRepudiation, cRLSign
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
+    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
+    Check PKIMessage Accepted    ${response}
+
+CA MUST Reject Invalid HSS Public Key Size
+    [Documentation]    According to RFC 8554 and RFC 9802 an HSS public key must have a specific
+    ...                size based on the LMS parameters. We send a valid `ir` PKIMessage to the CA with an
+    ...                invalid key size and expect it to reject the request. The CA may respond with the
+    ...                `failInfo` `badCertTemplate`.
+    [Tags]             negative    hss   invalid_key_size
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}    invalid_key_size=${True}
+    ${ir}=      Build Ir From Key    ${key}   ${cm}    spki=${spki}
+    ...         sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
+
+CA MUST Reject Invalid HSS Request With Parameters Set
+    [Documentation]    According to RFC 9802 Section 7, the HSS AlgorithmIdentifier `parameters`
+    ...                field must not be set. We send a valid `ir` PKIMessage to the CA with the `parameters` field
+    ...                set to random bytes and expect the CA to reject the request. The CA may respond with the
+    ...                `failInfo` `badCertTemplate`.
+    [Tags]             negative    hss   alg_id_parameters
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}    add_params_rand_bytes=${True}
+    ${ir}=      Build Ir From Key    ${key}   ${cm}    spki=${spki}
+    ...         sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
+    PKIMessage Body Type Must Be    ${response}    ip
+    PKIStatus Must Be    ${response}    rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
+
+CA MUST Accept CA Certificate Request With HSS KeyUsages
+    [Documentation]    According to RFC 9802 Section 6 a CA HSS private key is allowed to have
+    ...                key usages: keyCertSign, digitalSignature, nonRepudiation, cRLSign. We send a valid `ir`
+    ...                PKIMessage to the CA with these key usages and expect it to issue a valid certificate.
+    [Tags]             positive    hss  extensions  key_usage
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${extension}=    Prepare BasicConstraints Extension    True    critical=True
+    ${extension2}=    Prepare KeyUsage Extension    keyCertSign, digitalSignature, nonRepudiation, cRLSign
+    VAR  @{extensions}    ${extension}    ${extension2}
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
+    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
+    Check PKIMessage Accepted    ${response}
+
+CA MUST Reject A Valid HSS EE Request With keyCertSign KeyUsage
+    [Documentation]    According to RFC 9802 Section 6 a End-Entity HSS private key is not
+    ...                allowed to have key usages: keyCertSign. We send a valid `ir` PKIMessage to the CA with
+    ...                this key usage and expect it to reject the request. The CA may respond with the
+    ...                `failInfo` `badCertTemplate`.
+    [Tags]             negative    hss  extensions  key_usage
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${extension}=    Prepare BasicConstraints Extension    False    critical=False
+    ${extension2}=    Prepare KeyUsage Extension    keyCertSign, digitalSignature, nonRepudiation, cRLSign
+    VAR  @{extensions}    ${extension}    ${extension2}
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
+    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
+    Check PKIMessage Rejected    ${response}    ip    badCertTemplate
+
+CA MUST Reject A Exhausted HSS Private Key
+    [Documentation]    According to RFC 8554 and RFC 9802 an HSS private key must track its state
+    ...                and reject requests when the key is exhausted. We send `ir` PKIMessage with an exhausted
+    ...                key. The CA MUST reject the request and may respond with a `failInfo`
+    ...                `badPOP`.
+    [Tags]             negative    hss   exhausted_key
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${cm}=   Get Next Common Name
+    ${cert_request}=    Prepare CertRequest    key=${key}   common_name=${cm}
+    ${der_data}=   Encode To DER   ${cert_request}
+    ${signature}=     Sign Data   ${der_data}    ${key}
+    ${mod_sig}=    Manipulate PQ Stateful Signature Bytes   ${signature}    ${key}   manipulate_sig=${False}
+    ${popo}=     Prepare Signature POPO   ${key}    signature=${mod_sig}
+    ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID    popo=${popo}    cert_request=${cert_request}
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
+    Check PKIMessage Rejected   ${response}    ip    badPOP
+
+CA MUST Issue HSS Certificate With Multiple Hierarchy Levels
+    [Documentation]    According to RFC 8554 HSS supports multi-level hierarchies. We send a valid
+    ...                `ir` PKIMessage to the CA with an HSS key configured for multiple levels and expect
+    ...                it to issue a valid certificate.
+    [Tags]             positive    hss   multi_level
+    ${key}=     Generate Unique Key    ${HSS_DEFAULT_ALG}   levels=3
+    ${cm}=   Get Next Common Name
+    ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
+    ${cert}=   Check PKIMessage Accepted   ${response}    ip
+    ${pub_key}=    Load Public Key From Cert    ${cert}
+    Should Be Equal As Integers   ${pub_key.levels}    3
+
+CA MUST Accept Request with HSS Key used same LMS index But diff key index
+    [Documentation]    According to RFC 8554 the LMS index and HSS key index are independent.
+    ...                We send a valid `ir` PKIMessage protect with a HSS key with level 2 to the CA using the
+    ...                same LMS index but different key indices and expect both requests to be accepted.
+    [Tags]             positive    hss   lms_key_index    leaf_index
+    ${key_sign}=     Generate Unique Key    hss_lms_sha256_m32_h5_lmots_sha256_n32_w8   levels=2
+    ${cm}=   Get Next Common Name
+    ${response}=    Build And Send PKIMessage PQ Stateful    ${key_sign}    ${cm}
+    ${cert_chain}=    Build CMP Chain From PKIMessage    ${response}   for_issued_cert=True
+    # One index is already used to establish the certificate, so only the other 31 keys are
+    # are used up.
+    FOR   ${_}    IN RANGE   31
+        ${_}=     Sign Data   b"DATA"    ${key_sign}
+    END
+    ${cm2}=    Get Next Common Name
+    ${key_new}=     Generate Unique Key    ${HSS_DEFAULT_ALG}
+    ${ir}=      Build Ir From Key    ${key_new}   ${cm2}    sender=${SENDER}    recipient=${RECIPIENT}
+    ...         exclude_fields=sender,senderKID
+    ${prot_ir}=    Protect PKIMessage   ${ir}    signature    private_key=${key_sign}    cert_chain=${cert_chain}
+    ${sig}=    Get Asn1 Value As Bytes    ${prot_ir}    protection
+    ${index}=   Get PQ Stateful Sig Index From Sig   ${sig}    ${key_sign}   True
+    # After 31 comes 0 again, the same as the index which is used to establish the certificate.
+    Should Be Equal As Integers    ${index}    0
+    ${response2}=    Exchange PKIMessage PQ Stateful   ${prot_ir}
+    Check PKIMessage Accepted    ${response2}
+
 
 *** Keywords ***
+Protect And Send PKIMessage PQ Stateful
+    [Documentation]    Protects and send a PKIMessage which is protected for a PQ Stateful signature algorithm test.
+    ...
+    ...                A default protection mechanism is applied to the provided PKIMessage.
+    ...
+    ...                Arguments:
+    ...                ---------
+    ...                - `pki_message`: The PKIMessage object to protect and send.
+    ...
+    ...                Returns:
+    ...                -------
+    ...                - The PKIMessage response from the CMP server.
+    ...
+    ...                Examples:
+    ...                --------
+    ...                | ${response}= | Protect And Send PKIMessage PQ Stateful | ${pki_message} |
+    ...
+    [Tags]    exchange
+    [Arguments]    ${pki_message}
+    ${prot_pki_message}=    Default Protect PKIMessage    ${pki_message}
+    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_pki_message}
+    RETURN    ${response}
+
 Build And Send PKIMessage PQ Stateful
     [Documentation]    Build and send a protected PKIMessage for PQ Stateful signature tests.
     ...                This keyword constructs a PKIMessage using the provided key and subject (common name),
@@ -295,16 +479,19 @@ Build And Send PKIMessage PQ Stateful
     ...                | ${response}= | Build And Send PKIMessage PQ Stateful | ${key} | ${cm} | ${params} |
     ...
     [Tags]    ir
-    [Arguments]    ${key}    ${cm}    ${params}={}
-    ${spki}=    Get From Dictionary    ${params}    spki    default=None
+    [Arguments]    ${key}    ${cm}    ${params}=${None}
+    # Set default values if params is not provided
+    IF   $params is None
+        VAR    &{params}   # robocop: off=VAR01
+    END
+    ${spki}=    Get From Dictionary    ${params}    spki    default=${None}
     ${exclude_fields}=    Get From Dictionary    ${params}    exclude_fields    default=sender,senderKID
-    ${extensions}=    Get From Dictionary    ${params}    extensions    default=None
+    ${extensions}=    Get From Dictionary    ${params}    extensions    default=${None}
+    ${implicit_confirm}=    Get From Dictionary    ${params}    implicit_confirm    default=${True}
     ${ir}=    Build Ir From Key    ${key}    ${cm}    spki=${spki}
-    ...    sender=${SENDER}    recipient=${RECIPIENT}
-    ...    exclude_fields=${exclude_fields}
-    ...    extensions=${extensions}
-    ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ...    sender=${SENDER}    recipient=${RECIPIENT}    exclude_fields=${exclude_fields}
+    ...    extensions=${extensions}    implicit_confirm=${implicit_confirm}
+    ${response}=    Protect And Send PKIMessage PQ Stateful   ${ir}
     RETURN    ${response}
 
 Check PKIMessage Accepted
@@ -318,6 +505,10 @@ Check PKIMessage Accepted
     ...                - `response`: The PKIMessage response object to check.
     ...                - `expected_pkibody`: The expected PKIBody type. Defaults to 'ip' (initialization response).
     ...
+    ...                Returns:
+    ...                ------------
+    ...                - The valid certificate extracted from the PKIMessage.
+    ...
     ...                Examples:
     ...                --------
     ...                | Check PKIMessage Accepted | ${response} |
@@ -328,6 +519,7 @@ Check PKIMessage Accepted
     PKIStatus Must Be    ${response}    accepted
     ${cert}=    Get Cert From PKIMessage    ${response}
     Certificate Must Be Valid    ${cert}
+    RETURN    ${cert}
 
 Check PKIMessage Rejected
     [Documentation]    Verifies that a PKIMessage response is correctly rejected.

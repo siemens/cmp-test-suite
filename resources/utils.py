@@ -6,13 +6,14 @@
 
 import base64
 import logging
+import math
 import os
 import re
 import textwrap
 from base64 import b64decode, b64encode
 from collections import Counter
 from itertools import combinations
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import pyasn1
 import requests
@@ -21,7 +22,9 @@ from pyasn1.type import base, char, univ
 from pyasn1_alt_modules import rfc2986, rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey
 from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey
+from pq_logic.keys.stateful_sig_keys import HSS_ALGORITHM_DETAILS, HSSPrivateKey, XMSSMTPrivateKey, XMSSPrivateKey
 from resources import asn1utils, certutils, cmputils, keyutils
 from resources.asn1_structures import PKIMessageTMP
 from resources.convertutils import str_to_bytes
@@ -803,7 +806,139 @@ def manipulate_bytes_based_on_key(  # noqa D417 Missing argument description in 
     if key is None:
         return manipulate_first_byte(data)
 
+    if isinstance(key, PQHashStatefulSigPrivateKey):
+        return manipulate_pq_stateful_signature_bytes(data, key, manipulate_sig=True)
+
     return manipulate_first_byte(data)
+
+
+@keyword(name="Manipulate PQ Stateful signature Bytes")
+def manipulate_pq_stateful_signature_bytes(  # noqa D417 Missing argument description in the docstring
+    data: bytes,
+    key: PQHashStatefulSigPrivateKey,
+    manipulate_sig: bool = True,
+    index: Optional[int] = None,
+) -> bytes:
+    """Manipulate XMSS, XMSSMT, or HSS signature bytes.
+
+    The helper mutates the LMS leaf index prefix or the remaining signature
+    payload depending on ``manipulate_sig``. The data is expected to be a raw
+    signature blob that starts with the stateful index for the provided key
+    type.
+
+    Notes:
+    -----
+         - For HSS signatures the helper updates the LMS index that belongs to
+           the lowest level in the hierarchy, leaving the level counter and
+           upper-level signatures untouched.
+
+    Arguments:
+    ---------
+       - `data`: The data to manipulate.
+       - `key`: The PQHash stateful signature private key to used to identify how to manipulate the data.
+       - `manipulate_sig`: Whether to manipulate the signature part or the index
+         part of the signature structure. Defaults to `True` (manipulate
+         signature).
+        - `index`: Optional explicit index value to write into the signature
+          prefix when ``manipulate_sig`` is ``False``. When omitted the helper
+          writes the maximum LMS leaf count for the affected tree using the
+          appropriate byte order for the key type.
+
+    Returns:
+    -------
+       - The manipulated data.
+
+    Raises:
+    ------
+         - `ValueError`: If the signature data is shorter than the expected
+           stateful index prefix or if there are no signature bytes left to
+           mutate when ``manipulate_sig`` is ``True``.
+         - `NotImplementedError`: If a key other than XMSS, XMSSMT, or HSS is
+           provided.
+
+    Examples:
+    --------
+    | ${manipulated_data}= | Manipulate PQ Stateful signature Bytes | data=${data} |
+
+    """
+    index_start = 0
+    alg_details: Optional[Dict[str, int]] = None
+    if isinstance(key, XMSSPrivateKey):
+        index_length = 4
+    elif isinstance(key, XMSSMTPrivateKey):
+        index_length = math.ceil(key.tree_height / 8)
+    elif isinstance(key, HSSPrivateKey):
+        index_length = 4
+        alg_details = HSS_ALGORITHM_DETAILS.get(key.name)
+        if alg_details is None:
+            raise ValueError(f"Unsupported HSS algorithm for manipulation: {key.name}")
+        if key.levels < 1:
+            raise ValueError("HSS keys must declare at least one LMS level.")
+        header_length = 4
+        per_level_span = alg_details["lms_signature_length"] + alg_details["lms_public_key_length"]
+        index_start = header_length + max(0, key.levels - 1) * per_level_span
+    else:
+        raise NotImplementedError(
+            "Manipulating PQ stateful signature bytes is only implemented for XMSS, XMSSMT, and HSS private keys."
+        )
+
+    signature_start = index_start + index_length
+    required_length = index_start + index_length
+    if len(data) < required_length:
+        raise ValueError("Signature data is too short to contain the LMS leaf index prefix.")
+
+    if manipulate_sig:
+        if len(data) == signature_start:
+            raise ValueError("No signature payload available after the index prefix to manipulate.")
+        mutated_suffix = _manipulate_stateful_signature_payload(key, data[signature_start:])
+        return data[:signature_start] + mutated_suffix
+
+    index_end = index_start + index_length
+
+    if index is None:
+        index = _get_default_lms_max_sig_size(key, alg_details)
+
+    if index < 0:
+        raise ValueError("The signature index must be non-negative.")
+    max_value = (1 << (index_length * 8)) - 1
+    if index > max_value:
+        raise ValueError(f"The provided index {index} does not fit in {index_length} bytes.")
+    index_bytes = index.to_bytes(index_length, "little")
+
+    return data[:index_start] + index_bytes + data[index_end:]
+
+
+def _get_default_lms_max_sig_size(key: PQHashStatefulSigPrivateKey, details: Optional[Dict[str, int]] = None) -> int:
+    """Return the default LMS index to inject for the supported key types."""
+    if isinstance(key, HSSPrivateKey):
+        info = details or HSS_ALGORITHM_DETAILS.get(key.name)
+        if info is None:
+            raise ValueError(f"Unsupported HSS algorithm for manipulation: {key.name}")
+        return info["max_per_tree"]
+
+    return key.max_sig_size
+
+
+def _manipulate_stateful_signature_payload(key: PQHashStatefulSigPrivateKey, payload: bytes) -> bytes:
+    """Mutate the signature payload for the supported key types."""
+    if isinstance(key, HSSPrivateKey):
+        return _manipulate_hss_lms_signature(key, payload)
+
+    return manipulate_first_byte(payload)
+
+
+def _manipulate_hss_lms_signature(key: HSSPrivateKey, payload: bytes) -> bytes:
+    """Corrupt the LMOTS signature portion while leaving the auth path intact."""
+    details = HSS_ALGORITHM_DETAILS.get(key.name)
+    if details is None:
+        raise ValueError(f"Unsupported HSS algorithm for manipulation: {key.name}")
+
+    lmots_length = details["lmots_signature_length"]
+    if len(payload) < lmots_length:
+        raise ValueError("Signature payload is too short to contain the LMOTS portion.")
+
+    mutated_lmots = manipulate_first_byte(payload[:lmots_length])
+    return mutated_lmots + payload[lmots_length:]
 
 
 @not_keyword
