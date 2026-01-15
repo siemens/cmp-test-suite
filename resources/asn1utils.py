@@ -186,7 +186,8 @@ def set_asn1_value(asn1_obj: base.Asn1Item, path:str, value: base.Asn1Item):
             parent[idx] = value
         else:
             # Sequence/Set: pyasn1 handles name-to-index mapping and type coercion here
-            parent[child_key] = value
+            # We also suppress pyright's concern here, the set and sequence objects do have __setitem__
+            parent[child_key] = value  # type: ignore
 
     except Exception as e:
         # This catches type mismatches, unknown component names, etc.
