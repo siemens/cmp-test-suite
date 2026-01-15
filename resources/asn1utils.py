@@ -129,6 +129,72 @@ def asn1_must_contain_fields(data: base.Asn1Type, fields: str):  # noqa D417 und
         raise ValueError(f"The following required fields were absent: {absent_fields}")
 
 
+
+def _split_last_parent(s: str) -> tuple[str, str]:
+    """Split an asn1path query into parent and child.
+
+    The returned value is a tuple, where the first element is the "prefix parent", i.e. the path leading to and
+    including the last parent; the second element is the last part of the query. The latter can be an object or an
+    index.  Examples of inputs and outputs:
+    a.b.c         ->  a.b, c
+    a.b.c/0       ->  a.b.c, 0
+    a.b.c/0/0/1   ->  a.b.c/0/0, 1
+    a.b/0.c       ->  a.b/0, c
+    """
+    upper_bound = max(s.rfind('.'), s.rfind('/'))
+
+    if upper_bound == -1:
+        return "", s  # No parent, entire string is the child
+
+    parent = s[:upper_bound]
+    child = s[upper_bound + 1:]
+    return parent, child
+
+
+def set_asn1_value(asn1_obj: base.Asn1Item, path:str, value: base.Asn1Item):
+    """Update an ASN1 structure in-place by setting the attribute at path to value."""
+    # There are some easy cases where we can figure out that the inputs are bad and there's nothing for us to set,
+    # handle those and bail out early.
+    if not path or path.strip() == "":
+        raise ValueError("Cannot set root object. Specify a path to a child element.")
+
+    if path.endswith("/") or path.endswith("."):
+        raise ValueError("Path incomplete: it cannot end with '/' or '.'")
+
+    if "." not in path and "/" not in path:
+        raise ValueError(f"Path '{path}' is too shallow; specify a child element.")
+
+    parent_path, child_key = _split_last_parent(path)
+
+    # Traverse to parent. If parent_path is empty (e.g. path was "a.b"), parent is the root object
+    try:
+        parent = get_asn1_value(asn1_obj, parent_path) if parent_path else asn1_obj
+    except Exception as e:
+        raise ValueError(f"Could not reach parent structure at '{parent_path}': {e}")
+
+    # Perform assignment
+    try:
+        if child_key.isdigit() and isinstance(parent, (univ.SequenceOf, univ.SetOf)):
+            idx = int(child_key)
+
+            # Bound check for SequenceOf
+            if idx > len(parent):
+                raise ValueError(
+                    f"Index {idx} out of range. Current {type(parent).__name__} size is {len(parent)}. "
+                    "Manual expansion of preceding indices is required."
+                )
+            parent[idx] = value
+        else:
+            # Sequence/Set: pyasn1 handles name-to-index mapping and type coercion here
+            # We also suppress pyright's concern here, the set and sequence objects do have __setitem__
+            parent[child_key] = value  # type: ignore
+
+    except Exception as e:
+        # This catches type mismatches, unknown component names, etc.
+        raise ValueError(f"Assignment failed for path '{path}': {e}")
+
+    return asn1_obj
+
 def get_asn1_value(asn1_obj: base.Asn1Item, query: str) -> base.Asn1Item:  # noqa D417 undocumented-param
     """Extract a value from a complex `pyasn1` structure by specifying its path in ASN1Path notation.
 
