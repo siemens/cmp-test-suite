@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 from urllib.parse import urlparse
 
 log = logging.getLogger("cmptest")
@@ -69,6 +70,34 @@ def run_robot_command(command, verbose=False):
     except OSError as e:
         log.error("Error executing command: %s", e)
         return 1
+
+
+def start_mock_ca(port: int, verbose: bool) -> Optional[subprocess.CompletedProcess[bytes]]:
+    """Start the Mock CA server with the provided port.
+
+    :param port: The port to use for the Mock CA server.
+    :param verbose: Whether to display additional information.
+    :return: The subprocess object if successful, None otherwise.
+    """
+    command = [
+        sys.executable,
+        "mock_ca/ca_handler.py",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        str(port),
+    ]
+    if verbose:
+        log.info("Starting Mock CA: %s", " ".join(command))
+    try:
+        return subprocess.run(command, check=False)
+
+    except KeyboardInterrupt:
+        return None
+
+    except OSError as e:
+        log.error("Error starting Mock CA: %s", e)
+        return None
 
 
 class CustomConfigAction(argparse.Action):
