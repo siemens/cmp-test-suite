@@ -22,10 +22,22 @@ Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags           kem   pqc
 
-Suite Setup          Set Up Test Suite
+Suite Setup          Set Up PQ KEM Suite
 
 
 *** Keywords ***
+Set Up PQ KEM Suite
+    [Documentation]    Initializes the test suite for PQ KEM (Key Encapsulation Mechanism) tests.
+    ...
+    ...                Executes the shared suite setup and configures the CMP URL to point to the
+    ...                PQ issuing endpoint for certificate requests using PQ KEM algorithms
+    ...                (e.g., ML-KEM).
+    ...
+    ...                The CA_CMP_URL suite variable is updated to the PQ-specific endpoint.
+    Set Up Test Suite
+    ${url}=   Get PQ Issuing URL
+    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
+
 Request With PQ KEM Key
     [Documentation]  Send a valid Initialization Request for a PQ KEM key.
     [Arguments]    ${alg_name}     ${invalid_key_size}
