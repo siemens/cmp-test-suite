@@ -43,7 +43,7 @@ CA MUST Issue A Valid XMSS Certificate
     ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
     ...         exclude_fields=sender,senderKID
     ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
@@ -76,7 +76,7 @@ CA MUST Reject Invalid XMSS Public Key Size
     ...         sender=${SENDER}    recipient=${RECIPIENT}
     ...         exclude_fields=sender,senderKID
     ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -94,7 +94,7 @@ CA MUST Reject Invalid XMSS Request With Parameters set
     ...         sender=${SENDER}    recipient=${RECIPIENT}
     ...         exclude_fields=sender,senderKID
     ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -142,7 +142,7 @@ CA MUST Reject A Exhausted XMSS Private Key
     ${ir}=      Build Ir From Key    ${key}   ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
     ...         exclude_fields=sender,senderKID
     ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP,badCertTemplate   False
@@ -158,7 +158,7 @@ CA MUST Reject A XMSS-SHA2_10_512 Key
     ...         sender=${SENDER}    recipient=${RECIPIENT}
     ...         exclude_fields=sender,senderKID
     ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -173,7 +173,7 @@ CA MUST Issue A Valid XMSSMT Certificate
     ${ir}=    Build Ir From Key    ${key}    ${cm}    sender=${SENDER}    recipient=${RECIPIENT}
     ...       exclude_fields=sender,senderKID
     ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${cert}=    Get Cert From PKIMessage    ${response}
@@ -206,7 +206,7 @@ CA MUST Reject Invalid XMSSMT Public Key Size
     ...       sender=${SENDER}    recipient=${RECIPIENT}
     ...       exclude_fields=sender,senderKID
     ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -224,7 +224,7 @@ CA MUST Reject Invalid XMSSMT Request With Parameters Set
     ...       sender=${SENDER}    recipient=${RECIPIENT}
     ...       exclude_fields=sender,senderKID
     ${prot_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
@@ -425,7 +425,7 @@ CA MUST Accept Request with HSS Key used same LMS index But diff key index
     ${index}=   Get PQ Stateful Sig Index From Sig   ${sig}    ${key_sign}   True
     # After 31 comes 0 again, the same as the index which is used to establish the certificate.
     Should Be Equal As Integers    ${index}    0
-    ${response2}=    Exchange PKIMessage PQ Stateful   ${prot_ir}
+    ${response2}=    Exchange PKIMessage   ${prot_ir}
     Check PKIMessage Accepted    ${response2}
 
 
@@ -450,7 +450,7 @@ Protect And Send PKIMessage PQ Stateful
     [Tags]    exchange
     [Arguments]    ${pki_message}
     ${prot_pki_message}=    Default Protect PKIMessage    ${pki_message}
-    ${response}=    Exchange PKIMessage PQ Stateful    ${prot_pki_message}
+    ${response}=    Exchange PKIMessage    ${prot_pki_message}
     RETURN    ${response}
 
 Build And Send PKIMessage PQ Stateful
