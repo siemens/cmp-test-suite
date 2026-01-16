@@ -20,11 +20,23 @@ Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/hybrid_prepare.py
 Library             ../pq_logic/pq_verify_logic.py
 
-Test Tags           pq-stateful-sig   pqc  pq-sig  verbose-alg   verbose-tests
-Suite Setup         Set Up Test Suite
+Test Tags           pq-stateful-sig   pqc  pq-sig  verbose-alg   verbose-tests   deterministic-fail
+Suite Setup         Set Up PQ Stateful Sig Suite
 Suite Teardown      Clean Verbose STFL Mappings
 
+
 *** Keywords ***
+Set Up PQ Stateful Sig Suite
+    [Documentation]    Initializes the test suite for PQ stateful signature algorithm tests.
+    ...
+    ...                Executes the shared suite setup and configures the CMP URL to point to the
+    ...                PQ stateful issuing endpoint for certificate requests using XMSS, XMSSMT, or HSS algorithms.
+    ...
+    ...                The CA_CMP_URL suite variable is updated to the PQ stateful-specific endpoint.
+    Set Up Test Suite
+    ${url}=   Get PQ Stateful Issuing URL
+    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
+
 Clean Verbose STFL Mappings
     [Documentation]   Remove all verbose mappings for stateful signature algorithms, to save
     ...                memory and avoid conflicts in the test suite.
