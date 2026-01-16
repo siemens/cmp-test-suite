@@ -125,7 +125,7 @@ Request For PQ Stateful Sig Key
     END
     ${protected_ir}=   Default Protect PKIMessage    ${request_body}
     ${url}=  Get PQ Stateful Issuing URL
-    ${response}=   Exchange PKIMessage PQ Stateful    ${protected_ir}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
     Validate Response For PQ Stateful Sig Key    ${response}   ${body_name}   ${alg_name}
     ...      ${bad_pop}   ${exhausted}
     ...     ${already_in_use}   ${invalid_param}   ${invalid_key_size}
@@ -184,7 +184,7 @@ Request For NIST Disapproved PQ Stateful Sig Key
     ...      recipient=${RECIPIENT}
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
     ${url}=  Get PQ Stateful Issuing URL
-    ${response}=   Exchange PKIMessage PQ Stateful    ${protected_ir}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badAlg,badCertTemplate   False
 
@@ -301,7 +301,7 @@ Request With PKIProtected Stateful Sig Key
     ...       exclude_fields=sender,senderKID    recipient=${RECIPIENT}
     ${protected_ir}=   Protect PKIMessage    ${ir}   signature   bad_message_check=${bad_message_check}
     ...                add_params_rand_val=${invalid_parameters}   private_key=${pq_key}   cert=${pq_cert}
-    ${response}=   Exchange PKIMessage PQ Stateful    ${protected_ir}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
     Validate PKIProtected Response    ${response}   ${bad_message_check}   ${invalid_parameters}   ${exhausted}   ${used_index}   ${popo_exhausted_key}
 
 Build Certificate Confirmation Test
@@ -318,12 +318,12 @@ Build Certificate Confirmation Test
     ${ir}=   Build Ir From Key    ${new_key}
         ...       exclude_fields=sender,senderKID    recipient=${RECIPIENT}   implicit_confirm=False
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange PKIMessage PQ Stateful    ${protected_ir}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    accepted
     ${cert}=  Get Cert From PKIMessage    ${response}
     ${cert_conf}=  Build Cert Conf From Resp    ${response}
     ${prot_cert_conf}=   Default Protect PKIMessage    ${cert_conf}
-    ${exchange_conf}=   Exchange PKIMessage PQ Stateful    ${cert_conf}
+    ${exchange_conf}=   Exchange PKIMessage    ${cert_conf}
     PKIMessage Body Type Must Be    ${exchange_conf}    pkiconf
     ${name}=  Set Variable    ${algorithm}_${body_name}
     Set To Dictionary    ${PQ_STATEFUL_SIG_CERT_CONF_CERTS}   ${name}=${cert}
@@ -352,7 +352,7 @@ Build Certificate Confirmation Used Key Test
     ${exhausted_key}=   Modify PQ Stateful Sig Private Key    ${new_key}   used_index=0
     ${protected_ir}=   Protect PKIMessage    ${ir}   signature
     ...                private_key=${exhausted_key}   cert=${pq_cert}
-    ${response}=   Exchange PKIMessage PQ Stateful    ${protected_ir}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badMessageCheck,badRequest   False
 
