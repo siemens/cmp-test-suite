@@ -146,7 +146,7 @@ openssl version
 openssl cmp -help
 ```
 
-To build the docker container, have a look at the **[Dockerfile.mockca](data/dockerfiles/Dockerfile.mockca)**.
+To build the docker container, have a look at the **[docker_entrypoint.py](scripts/docker_entrypoint.py)** script.
 
 ## Running the Mock CA
 
