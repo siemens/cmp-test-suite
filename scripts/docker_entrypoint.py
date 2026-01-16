@@ -152,6 +152,12 @@ def prepare_parser():
         metavar="DIR",
         action=CustomConfigAction,
     )
+    group.add_argument(
+        "--mockca",
+        type=int,
+        metavar="PORT",
+        help="Start the Mock CA server on the given port",
+    )
     parser.add_argument("--tags", help="Run only tests with the given tags", type=str, nargs="+", default=[])
     parser.add_argument(
         "--ephemeral",
@@ -209,6 +215,12 @@ def main():
 
     if args.verbose:
         log.debug(args)
+
+    if args.mockca is not None:
+        result = start_mock_ca(args.mockca, args.verbose)
+        if result is None:
+            sys.exit(1)
+        return
 
     verify_report_directory(args.ephemeral, args.smoke, args.verbose)
 
