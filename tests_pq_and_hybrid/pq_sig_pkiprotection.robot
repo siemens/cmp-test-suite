@@ -234,7 +234,7 @@ CA Reject Invalid FALCON-PADDED-1024 Protected Request    falcon-padded-1024    
 
 *** Keywords ***
 Set Up PQ Sig Suite
-    [Documentation]    Initializes the test suite for PQ signature algorithm tests.
+    [Documentation]    Initializes the test suite for PQ PKIProtection signature tests.
     ...
     ...                Executes the shared suite setup and configures the CMP URL to point to the
     ...                PQ issuing endpoint for certificate requests using stateless PQ signature algorithms
