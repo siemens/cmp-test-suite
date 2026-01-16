@@ -10,7 +10,7 @@ sys.path.append(".")
 
 from pq_logic.tmp_oids import (
     CHEMPAT_NAME_2_OID,
-    COMPOSITE_KEM07_NAME_2_OID,
+    COMPOSITE_KEM_NAME_2_OID,
     COMPOSITE_SIG_NAME_TO_OID,
 )
 from resources.oidutils import PQ_KEM_NAME_2_OID, PQ_SIG_NAME_2_OID, PQ_SIG_PRE_HASH_NAME_2_OID
@@ -212,7 +212,7 @@ def _generate_hybrid_kem_tests():
     for hybrid_type, name_list in {
         "xwing": {"xwing"},
         "chempat": CHEMPAT_NAME_2_OID,
-        "composite-kem07": COMPOSITE_KEM07_NAME_2_OID,
+        "composite-kem": COMPOSITE_KEM_NAME_2_OID,
     }.items():
         for name in name_list:
             if "composite-dhkem" in name:

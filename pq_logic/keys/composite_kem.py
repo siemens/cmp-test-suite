@@ -29,7 +29,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
     TradKEMPublicKey,
 )
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey, RSADecapKey, RSAEncapKey
-from pq_logic.tmp_oids import COMPOSITE_KEM07_NAME_2_OID
+from pq_logic.tmp_oids import COMPOSITE_KEM_NAME_2_OID
 from resources.exceptions import InvalidKeyCombination
 from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 
@@ -88,9 +88,9 @@ class CompositeKEMPublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
-        if COMPOSITE_KEM07_NAME_2_OID.get(self.name) is None:
+        if COMPOSITE_KEM_NAME_2_OID.get(self.name) is None:
             raise InvalidKeyCombination(f"Unsupported composite KEM combination: {self.name}")
-        return COMPOSITE_KEM07_NAME_2_OID[self.name]
+        return COMPOSITE_KEM_NAME_2_OID[self.name]
 
     def kem_combiner(
         self, mlkem_ss: bytes, trad_ss: bytes, trad_ct: bytes, trad_pk: bytes, use_in_cms: bool = False
@@ -250,9 +250,9 @@ class CompositeKEMPrivateKey(HybridKEMPrivateKey, AbstractCompositePrivateKey):
             name = f"{self._name}-{self.pq_key.name}-rsa{value}"
         else:
             name = self.name
-        if COMPOSITE_KEM07_NAME_2_OID.get(name) is None:
+        if COMPOSITE_KEM_NAME_2_OID.get(name) is None:
             raise InvalidKeyCombination(f"Unsupported composite KEM combination: {name}")
-        return COMPOSITE_KEM07_NAME_2_OID[name]
+        return COMPOSITE_KEM_NAME_2_OID[name]
 
     def public_key(self) -> CompositeKEMPublicKey:
         """Return the public key associated with this private key."""

@@ -57,8 +57,8 @@ from pq_logic.keys.trad_key_factory import (
 from pq_logic.keys.xwing import XWingPrivateKey, XWingPublicKey
 from pq_logic.tmp_oids import (
     CHEMPAT_OID_2_NAME,
-    COMPOSITE_KEM07_NAME_2_OID,
-    COMPOSITE_KEM07_OID_2_NAME,
+    COMPOSITE_KEM_NAME_2_OID,
+    COMPOSITE_KEM_OID_2_NAME,
     COMPOSITE_SIG_OID_TO_NAME,
     id_rsa_kem_spki,
     COMPOSITE_KEM_VERSION,
@@ -289,7 +289,7 @@ class CombinedKeyFactory:
         :raises BadAsn1Data: If the public key structure is invalid or cannot be decoded.
         :raises InvalidKeyCombination: If the key is invalid or the combination is not supported.
         """
-        orig_name = COMPOSITE_KEM07_OID_2_NAME[oid]
+        orig_name = COMPOSITE_KEM_OID_2_NAME[oid]
 
         pq_name, trad_name = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(orig_name)
         pq_key, rest = PQKeyFactory.from_public_bytes(pq_name, public_key, allow_rest=True)
@@ -340,7 +340,7 @@ class CombinedKeyFactory:
                 public_key_bytes=spki["subjectPublicKey"].asOctets(),
             )
 
-        if oid in COMPOSITE_KEM07_OID_2_NAME:
+        if oid in COMPOSITE_KEM_OID_2_NAME:
             return CombinedKeyFactory._load_composite_kem07_public_key(oid, spki["subjectPublicKey"].asOctets())
 
         if oid in CHEMPAT_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
@@ -365,7 +365,7 @@ class CombinedKeyFactory:
         if str(oid) == XWING_OID_STR:
             return XWingPublicKey.from_public_bytes(spki["subjectPublicKey"].asOctets())
 
-        if oid in COMPOSITE_SIG_OID_TO_NAME or oid in COMPOSITE_KEM07_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
+        if oid in COMPOSITE_SIG_OID_TO_NAME or oid in COMPOSITE_KEM_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
             return CombinedKeyFactory._load_hybrid_key_from_spki(spki)
 
         if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
@@ -511,7 +511,7 @@ class CombinedKeyFactory:
 
         if public_key is not None:
             spki = rfc5280.SubjectPublicKeyInfo()
-            spki["algorithm"]["algorithm"] = COMPOSITE_KEM07_NAME_2_OID[name]
+            spki["algorithm"]["algorithm"] = COMPOSITE_KEM_NAME_2_OID[name]
             spki["subjectPublicKey"] = univ.BitString.fromOctetString(public_key)
             try:
                 pub_key = CombinedKeyFactory.load_public_key_from_spki(spki)
@@ -577,8 +577,8 @@ class CombinedKeyFactory:
             name = COMPOSITE_SIG_OID_TO_NAME[oid]
             return CombinedKeyFactory._load_composite_sig_key(name, private_bytes, public_bytes)
 
-        if oid in COMPOSITE_KEM07_OID_2_NAME:
-            _name = COMPOSITE_KEM07_OID_2_NAME[oid]
+        if oid in COMPOSITE_KEM_OID_2_NAME:
+            _name = COMPOSITE_KEM_OID_2_NAME[oid]
             return CombinedKeyFactory._decode_composite_kem07(_name, private_bytes, public_bytes)
 
         if oid == id_rsa_kem_spki:
