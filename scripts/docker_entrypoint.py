@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 from urllib.parse import urlparse
 
 log = logging.getLogger("cmptest")
@@ -71,6 +72,34 @@ def run_robot_command(command, verbose=False):
         return 1
 
 
+def start_mock_ca(port: int, verbose: bool) -> Optional[subprocess.CompletedProcess[bytes]]:
+    """Start the Mock CA server with the provided port.
+
+    :param port: The port to use for the Mock CA server.
+    :param verbose: Whether to display additional information.
+    :return: The subprocess object if successful, None otherwise.
+    """
+    command = [
+        sys.executable,
+        "mock_ca/ca_handler.py",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        str(port),
+    ]
+    if verbose:
+        log.info("Starting Mock CA: %s", " ".join(command))
+    try:
+        return subprocess.run(command, check=False)
+
+    except KeyboardInterrupt:
+        return None
+
+    except OSError as e:
+        log.error("Error starting Mock CA: %s", e)
+        return None
+
+
 class CustomConfigAction(argparse.Action):
     """
     Custom argparse action to handle the --customconfig argument.
@@ -104,7 +133,16 @@ def prepare_parser():
    docker run --rm -it ghcr.io/siemens/cmp-test -v ./reports:/report -v ./config:/config image --customconfig
    Runs all tests with the custom configuration given in a directory mounted to config/, will save reports to /reports.
 
-4. Passing arbitrary arguments to robot (note the `--`):
+4. Running Mock CA from a locally built container:
+   docker build -t cmp-test -f data/dockerfiles/Dockerfile.tests .
+   docker run --rm -it -p 5000:5000 cmp-test --mockca 5000
+   Runs: python mock_ca/ca_handler.py --host 0.0.0.0 --port 5000
+
+5. Running Mock CA from the remote container image:
+   docker run --rm -it -p 5000:5000 ghcr.io/siemens/cmp-test --mockca 5000
+   Runs: python mock_ca/ca_handler.py --host 0.0.0.0 --port 5000
+
+6. Passing arbitrary arguments to robot (note the `--`):
    docker run --rm -it ghcr.io/siemens/cmp-test --minimal http://example.com -- --dryrun
    Runs: robot --pythonpath=./ --outputdir=/report --include minimal --variable SERVER_URL:http://example.com tests/ \
     --dryrun
@@ -122,6 +160,12 @@ def prepare_parser():
         default=Path("config/"),
         metavar="DIR",
         action=CustomConfigAction,
+    )
+    group.add_argument(
+        "--mockca",
+        type=int,
+        metavar="PORT",
+        help="Start the Mock CA server on the given port",
     )
     parser.add_argument("--tags", help="Run only tests with the given tags", type=str, nargs="+", default=[])
     parser.add_argument(
@@ -180,6 +224,12 @@ def main():
 
     if args.verbose:
         log.debug(args)
+
+    if args.mockca is not None:
+        result = start_mock_ca(args.mockca, args.verbose)
+        if result is None:
+            sys.exit(1)
+        return
 
     verify_report_directory(args.ephemeral, args.smoke, args.verbose)
 
