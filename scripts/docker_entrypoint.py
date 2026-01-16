@@ -133,7 +133,16 @@ def prepare_parser():
    docker run --rm -it ghcr.io/siemens/cmp-test -v ./reports:/report -v ./config:/config image --customconfig
    Runs all tests with the custom configuration given in a directory mounted to config/, will save reports to /reports.
 
-4. Passing arbitrary arguments to robot (note the `--`):
+4. Running Mock CA from a locally built container:
+   docker build -t cmp-test -f data/dockerfiles/Dockerfile.tests .
+   docker run --rm -it -p 5000:5000 cmp-test --mockca 5000
+   Runs: python mock_ca/ca_handler.py --host 0.0.0.0 --port 5000
+
+5. Running Mock CA from the remote container image:
+   docker run --rm -it -p 5000:5000 ghcr.io/siemens/cmp-test --mockca 5000
+   Runs: python mock_ca/ca_handler.py --host 0.0.0.0 --port 5000
+
+6. Passing arbitrary arguments to robot (note the `--`):
    docker run --rm -it ghcr.io/siemens/cmp-test --minimal http://example.com -- --dryrun
    Runs: robot --pythonpath=./ --outputdir=/report --include minimal --variable SERVER_URL:http://example.com tests/ \
     --dryrun
