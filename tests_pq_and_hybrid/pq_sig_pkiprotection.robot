@@ -244,8 +244,7 @@ Validate PQ PKIProtection Response
     ...
     [Tags]    PKIProtection
     [Arguments]    ${request}    ${bad_message_check}
-    ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
-    ${response}=   Exchange PKIMessage    ${request}  ${url}
+    ${response}=   Exchange PKIMessage    ${request}
     IF   ${bad_message_check}
         PKIStatus Must Be    ${response}    rejection
         PKIStatusInfo Failinfo Bit Must Be    ${response}    badMessageCheck
