@@ -18,11 +18,22 @@ Library             ../resources/checkutils.py
 Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags           pq-sig   pqc
-
-Suite Setup         Set Up Test Suite
+Suite Setup         Set Up PQ Sig Suite
 
 
 *** Keywords ***
+Set Up PQ Sig Suite
+    [Documentation]    Initializes the test suite for PQ signature algorithm tests.
+    ...
+    ...                Executes the shared suite setup and configures the CMP URL to point to the
+    ...                PQ issuing endpoint for certificate requests using stateless PQ signature algorithms
+    ...                (e.g., ML-DSA).
+    ...
+    ...                The CA_CMP_URL suite variable is updated to the PQ-specific endpoint.
+    Set Up Test Suite
+    ${url}=   Get PQ Issuing URL
+    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
+
 Initialize Global Variables
     [Documentation]    Initialize global variables for the test suite.
     ${cert}   ${key}=   May Load Cert And Key    data/unittest/ca1_cert_ecdsa.pem   data/keys/private-key-ecdsa.pem
