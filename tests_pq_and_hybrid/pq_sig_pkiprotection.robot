@@ -22,8 +22,7 @@ Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags            pq-sig  pqc  verbose-alg   pqc-sig-verbose-alg  PKIProtection  verbose-tests
 
-Suite Setup         Set Up Test Suite
-
+Suite Setup         Set Up PQ Sig Suite
 Test Template     Request With PQ Sig Key
 
 
@@ -234,6 +233,18 @@ CA Reject Invalid FALCON-PADDED-1024 Protected Request    falcon-padded-1024    
 
 
 *** Keywords ***
+Set Up PQ Sig Suite
+    [Documentation]    Initializes the test suite for PQ signature algorithm tests.
+    ...
+    ...                Executes the shared suite setup and configures the CMP URL to point to the
+    ...                PQ issuing endpoint for certificate requests using stateless PQ signature algorithms
+    ...                (e.g., ML-DSA).
+    ...
+    ...                The CA_CMP_URL suite variable is updated to the PQ-specific endpoint.
+    Set Up Test Suite
+    ${url}=   Get PQ Issuing URL
+    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
+
 Validate PQ PKIProtection Response
     [Documentation]  Validate the PKIProtection response from the CA.
     ...
