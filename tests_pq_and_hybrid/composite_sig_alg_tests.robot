@@ -176,11 +176,17 @@ Valid COMPOSITE-SIG-13-ML-DSA-87-ECDSA-SECP521R1 Request
 
 
 *** Keywords ***
-Exchange Composite Sig Request
-    [Documentation]    Exchange a composite signature request with the CA.
-    [Arguments]    ${request}
-    ${response}=    Exchange Migration PKIMessage    ${request}  ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
-    RETURN    ${response}
+Set Up Composite Sig Suite
+    [Documentation]    Initializes the test suite for composite signature algorithm tests.
+    ...
+    ...                Executes the shared suite setup and configures the CMP URL to point to the
+    ...                composite issuing endpoint for certificate requests using composite signature algorithms
+    ...                (combinations of PQ and traditional algorithms).
+    ...
+    ...                The CA_CMP_URL suite variable is updated to the composite-specific endpoint.
+    Set Up Test Suite
+    ${url}=   Get Composite Issuing URL
+    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
 
 Validate BadPOP Or Cert
     [Documentation]    Validate the response for a bad POP or certificate.
@@ -204,5 +210,5 @@ Request With Composite Sig
     ...        use_rsa_pss=${use_rsa_pss}
     ${ir}=   Build Ir From Key    ${comp_key}   cert_request=${cert_request}  popo=${popo}
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange Composite Sig Request  ${protected_ir}
+    ${response}=   Exchange PKIMessage  ${protected_ir}
     Validate BadPOP Or Cert  ${response}   ${bad_pop}   ${alg_name}
