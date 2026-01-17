@@ -6,6 +6,8 @@ help:
 	@echo  'Commands:'
 	@echo  '  test         - Run all compliance tests (results will be in reports/)'
 	@echo  '  test-verbose - Run all compliance tests, including verbose tests (results will be in reports/)'
+	@echo  '  test-pq-hybrid         - Run all PQ and Hybrid compliance tests (results will be in reports/)'
+	@echo  '  test-pq-hybrid-verbose - Run all PQ and Hybrid compliance tests, including verbose tests (results will be in reports/)'
 	@echo  '  teslog       - Run all compliance tests, store results in timestamped subirectories in reports/'
 	@echo  '  docs          - Produce documentation files and store them in doc/'
 	@echo  '  unittest     - Run unit tests for the test suite itself '
