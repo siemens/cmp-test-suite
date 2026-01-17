@@ -10,6 +10,8 @@ help:
 	@echo  '  docs          - Produce documentation files and store them in doc/'
 	@echo  '  unittest     - Run unit tests for the test suite itself '
 	@echo  '  unittest-docker    - Run unit tests in a docker container'
+	@echo  '  build-unittest    - Build the unittest docker image'
+	@echo  '  dryrun    - Test whether all CMP tests can be loaded without errors, but it does not execute them'
 	@echo  '  autoformat   - Run ruff on all the source files, to resolve all issues automatically '
 	@echo  '  verify  - Run a bunch of checks, to see if there are any obvious deficiencies in the code '
 	@echo  '  verifyformat   -  Check formatting only '
