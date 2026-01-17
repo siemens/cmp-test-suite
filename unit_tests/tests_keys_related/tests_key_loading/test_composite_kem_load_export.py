@@ -10,16 +10,16 @@ from pq_logic.combined_factory import CombinedKeyFactory
 from resources.keyutils import generate_key
 
 
-class TestCompositeKem07PublicKeyLoading(unittest.TestCase):
+class TestCompositeKemPublicKeyLoading(unittest.TestCase):
 
 
-    def test_comp_kem07_load_x25519(self):
+    def test_comp_kem_load_x25519(self):
         """
         GIVEN a CompositeKEMPublicKey.
         WHEN loading the public key from a SPKI.
         THEN the key is loaded correctly.
         """
-        key = generate_key("composite-kem-07", trad_name="x25519", pq_name="ml-kem-768")
+        key = generate_key("composite-kem", trad_name="x25519", pq_name="ml-kem-768")
         spki = key.public_key().public_bytes(
             encoding=serialization.Encoding.DER,
             format=serialization.PublicFormat.SubjectPublicKeyInfo,
@@ -31,13 +31,13 @@ class TestCompositeKem07PublicKeyLoading(unittest.TestCase):
         self.assertEqual(loaded_key.name, key.name)
         self.assertEqual(loaded_key, key.public_key())
 
-    def test_comp_kem07_load_ecc(self):
+    def test_comp_kem_load_ecc(self):
         """
         GIVEN a CompositeKEMPublicKey.
         WHEN loading the public key from a SPKI.
         THEN the key is loaded correctly.
         """
-        key = generate_key("composite-kem-07", trad_name="ecdh",
+        key = generate_key("composite-kem", trad_name="ecdh",
                            pq_name="ml-kem-768", curve="secp256r1")
         spki = key.public_key().public_bytes(
             encoding=serialization.Encoding.DER,
@@ -50,13 +50,13 @@ class TestCompositeKem07PublicKeyLoading(unittest.TestCase):
         self.assertEqual(loaded_key.name, key.name)
         self.assertEqual(loaded_key, key.public_key())
 
-    def test_comp_kem07_load_rsa(self):
+    def test_comp_kem_load_rsa(self):
         """
         GIVEN a CompositeKEMPublicKey.
         WHEN loading the public key from a SPKI.
         THEN the key is loaded correctly.
         """
-        key = generate_key("composite-kem-07", trad_name="rsa",
+        key = generate_key("composite-kem", trad_name="rsa",
                           )
         spki = key.public_key().public_bytes(
             encoding=serialization.Encoding.DER,
