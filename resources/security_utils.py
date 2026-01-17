@@ -55,3 +55,29 @@ def _rsa_security_strength(key_size: int) -> int:
         return 256
 
     return 256
+
+
+def _ecc_security_strength(key_size: int) -> int:
+    """Return the security strength (in bits) for an ECC-style curve size.
+
+    Mapping follows NIST SP 800-57 Part 1 Rev. 5 Table 2.
+    """
+    # Table 2 (ECC column: f is the field size in bits):
+    # - f = 160–223  -> strength 80
+    # - f = 224–255  -> strength 112
+    # - f = 256–383  -> strength 128
+    # - f = 384–511  -> strength 192
+    # - f = 512+     -> strength 256
+    if key_size <= 223:
+        return 80
+
+    if key_size <= 255:
+        return 112
+
+    if key_size <= 383:
+        return 128
+
+    if key_size <= 511:
+        return 192
+
+    return 256
