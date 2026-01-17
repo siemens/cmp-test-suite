@@ -94,6 +94,7 @@ verify:
 	pylint . --ignore-paths="^venv"
 	PYTHONPATH=./resources pyright
 	# on Windows Powershell: `$env:PYTHONPATH = "./resources"; pyright`
+	codespell . --check-filenames --skip *.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py,./data/rfc_test_vectors/*,./liboqs-python/*,./liboqs-python-stateful-sig/*
 
 verifyformat:
 	ruff check .
