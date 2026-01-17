@@ -5,10 +5,16 @@
 
 """Contain security-related utility functions, like getting the bit string of a used key."""
 
-from typing import Optional
+from typing import Optional, Union
 
+from cryptography.hazmat.primitives.asymmetric import ed448, x448, ed25519, x25519, dsa, rsa
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+
+from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
+from pq_logic.keys.abstract_wrapper_keys import HybridPublicKey, TradKEMPublicKey
 from pq_logic.keys.stateful_sig_keys import HSSPublicKey, XMSSMTPublicKey, XMSSPublicKey
+from resources.typingutils import PrivateKey, PublicKey
 
 # Security strength values follow NIST SP 800-57 Part 1 Revision 5, Tables 2 and 4.
 # Table 2 provides the traditional key equivalence for RSA/DSA and ECC key sizes,
@@ -120,3 +126,67 @@ def _nist_level_strength(level: Optional[int]) -> int:
         return 0
 
     return _NIST_LEVEL_TO_STRENGTH.get(int(level), 0)
+
+
+def estimate_key_security_strength(key: Union[PrivateKey, PublicKey]) -> int:
+    """Estimate the security strength of a key in bits.
+
+    :param key: The key to estimate the security strength for.
+    :return: The estimated security strength in bits.
+    :raises NotImplementedError: If the key type is not supported for security strength estimation.
+    """
+    if isinstance(key, PrivateKey):
+        key = key.public_key()
+
+    if isinstance(key, PQHashStatefulSigPublicKey):
+        return _get_pq_stfl_nist_security_strength(key)
+
+    if isinstance(
+        key,
+        (
+            PQKEMPublicKey,
+            PQSignaturePublicKey,
+        ),
+    ):
+        return _nist_level_strength(key.nist_level)
+
+    if hasattr(key, "nist_level"):
+        return _nist_level_strength(getattr(key, "nist_level"))
+
+    if isinstance(key, rsa.RSAPublicKey):
+        return _rsa_security_strength(key.key_size)
+
+    if isinstance(key, dsa.DSAPublicKey):
+        return _rsa_security_strength(key.key_size)
+
+    if isinstance(key, EllipticCurvePublicKey):
+        return _ecc_security_strength(key.curve.key_size)
+
+    if isinstance(
+        key,
+        (
+            ed25519.Ed25519PublicKey,
+            x25519.X25519PublicKey,
+        ),
+    ):
+        return 128
+
+    if isinstance(
+        key,
+        (
+            ed448.Ed448PublicKey,
+            x448.X448PublicKey,
+        ),
+    ):
+        return 224
+
+    if isinstance(key, TradKEMPublicKey):
+        return estimate_key_security_strength(key._public_key)
+
+    if isinstance(key, HybridPublicKey):
+        pq_strength = estimate_key_security_strength(getattr(key, "pq_key"))
+        trad_strength = estimate_key_security_strength(getattr(key, "trad_key"))
+        return min(pq_strength, trad_strength)
+
+    else:
+        raise NotImplementedError(f"Security strength estimation not implemented for key type: {type(key)}")
