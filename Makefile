@@ -42,7 +42,7 @@ testlog:
 	robot --pythonpath=./ --exclude verbose-tests --outputdir=reports/`date +%Y-%m-%d_%H-%M_%B-%d` --variable environment:$(env) tests
 
 
-DOCKERFILE_UNITTEST = data/dockerfiles/Dockerfile.unittest
+DOCKERFILE_UNITTEST = data/dockerfiles/Dockerfile.base
 
 build-unittest:
 	@echo "Building unittest Docker image..."
@@ -50,7 +50,8 @@ build-unittest:
 
 unittest-docker: build-unittest
 	@echo "Running unittest Docker container..."
-	docker run --rm -t --workdir=/app unittest-image
+	docker run --rm -v $(shell pwd):/app -w /app unittest-image \
+		python3 -m unittest discover -s unit_tests
 
 unittest:
 	# adjust path such that the unit tests can be started from the root directory, to make it easier to load
