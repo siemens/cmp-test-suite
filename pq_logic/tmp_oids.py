@@ -124,25 +124,27 @@ id_compSig13_mldsa87_rsa3072_pss = id_compSig13_base + (52,)
 id_compSig13_mldsa87_rsa4096_pss = id_compSig13_base + (53,)
 id_compSig13_mldsa87_ecdsa_p521 = id_compSig13_base + (54,)
 
+COMPOSITE_SIG_VERSION = "13"
+
 COMPOSITE_SIG13_NAME_TO_OID = {
-    "composite-sig-13-ml-dsa-44-rsa2048-pss": id_compSig13_mldsa44_rsa2048_pss,
-    "composite-sig-13-ml-dsa-44-rsa2048": id_compSig13_mldsa44_rsa2048_pkcs15,
-    "composite-sig-13-ml-dsa-44-ed25519": id_compSig13_mldsa44_ed25519,
-    "composite-sig-13-ml-dsa-44-ecdsa-secp256r1": id_compSig13_mldsa44_ecdsa_p256,
-    "composite-sig-13-ml-dsa-65-rsa3072-pss": id_compSig13_mldsa65_rsa3072_pss,
-    "composite-sig-13-ml-dsa-65-rsa3072": id_compSig13_mldsa65_rsa3072_pkcs15,
-    "composite-sig-13-ml-dsa-65-rsa4096-pss": id_compSig13_mldsa65_rsa4096_pss,
-    "composite-sig-13-ml-dsa-65-rsa4096": id_compSig13_mldsa65_rsa4096_pkcs15,
-    "composite-sig-13-ml-dsa-65-ecdsa-secp256r1": id_compSig13_mldsa65_ecdsa_p256,
-    "composite-sig-13-ml-dsa-65-ecdsa-secp384r1": id_compSig13_mldsa65_ecdsa_p384,
-    "composite-sig-13-ml-dsa-65-ecdsa-brainpoolP256r1": id_compSig13_mldsa65_ecdsa_brainpool_p256r1,
-    "composite-sig-13-ml-dsa-65-ed25519": id_compSig13_mldsa65_ed25519,
-    "composite-sig-13-ml-dsa-87-ecdsa-secp384r1": id_compSig13_mldsa87_ecdsa_p384,
-    "composite-sig-13-ml-dsa-87-ecdsa-brainpoolP384r1": id_compSig13_mldsa87_ecdsa_brainpool_p384r1,
-    "composite-sig-13-ml-dsa-87-ed448": id_compSig13_mldsa87_ed448,
-    "composite-sig-13-ml-dsa-87-rsa3072-pss": id_compSig13_mldsa87_rsa3072_pss,
-    "composite-sig-13-ml-dsa-87-rsa4096-pss": id_compSig13_mldsa87_rsa4096_pss,
-    "composite-sig-13-ml-dsa-87-ecdsa-secp521r1": id_compSig13_mldsa87_ecdsa_p521,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-44-rsa2048-pss": id_compSig13_mldsa44_rsa2048_pss,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-44-rsa2048": id_compSig13_mldsa44_rsa2048_pkcs15,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-44-ed25519": id_compSig13_mldsa44_ed25519,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-44-ecdsa-secp256r1": id_compSig13_mldsa44_ecdsa_p256,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-rsa3072-pss": id_compSig13_mldsa65_rsa3072_pss,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-rsa3072": id_compSig13_mldsa65_rsa3072_pkcs15,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-rsa4096-pss": id_compSig13_mldsa65_rsa4096_pss,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-rsa4096": id_compSig13_mldsa65_rsa4096_pkcs15,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-secp256r1": id_compSig13_mldsa65_ecdsa_p256,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-secp384r1": id_compSig13_mldsa65_ecdsa_p384,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-brainpoolP256r1": id_compSig13_mldsa65_ecdsa_brainpool_p256r1,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ed25519": id_compSig13_mldsa65_ed25519,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ecdsa-secp384r1": id_compSig13_mldsa87_ecdsa_p384,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ecdsa-brainpoolP384r1": id_compSig13_mldsa87_ecdsa_brainpool_p384r1,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ed448": id_compSig13_mldsa87_ed448,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-rsa3072-pss": id_compSig13_mldsa87_rsa3072_pss,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-rsa4096-pss": id_compSig13_mldsa87_rsa4096_pss,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ecdsa-secp521r1": id_compSig13_mldsa87_ecdsa_p521,
 }
 COMPOSITE_SIG13_OID_TO_NAME = {v: k for k, v in COMPOSITE_SIG13_NAME_TO_OID.items()}
 
