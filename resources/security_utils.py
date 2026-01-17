@@ -5,7 +5,6 @@
 
 """Contain security-related utility functions, like getting the bit string of a used key."""
 
-
 # Security strength values follow NIST SP 800-57 Part 1 Revision 5, Tables 2 and 4.
 # Table 2 provides the traditional key equivalence for RSA/DSA and ECC key sizes,
 # while Table 4 lists the target security strengths for the NIST PQC levels.
@@ -30,3 +29,29 @@ HASH_ALG_TO_STRENGTH = {
     "shake128": 128,  # Uses in CMP 32 Byte as output size. According to RFC 9481.
     "shake256": 256,  # Uses in CMP 64 Byte as output size. According to RFC 9481.
 }
+
+
+def _rsa_security_strength(key_size: int) -> int:
+    """Return an approximate security strength (in bits) for an RSA key size.
+
+    Mapping follows NIST SP 800-57 Part 1 Rev. 5 Table 2.
+    """
+    if key_size < 1024:
+        return 64
+
+    if key_size <= 1024:
+        return 80
+
+    if key_size <= 2048:
+        return 112
+
+    if key_size <= 3072:
+        return 128
+
+    if key_size <= 7680:
+        return 192
+
+    if key_size <= 15360:
+        return 256
+
+    return 256
