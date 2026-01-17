@@ -7,7 +7,7 @@
 
 from typing import Optional, Union
 
-from cryptography.hazmat.primitives.asymmetric import ed448, x448, ed25519, x25519, dsa, rsa
+from cryptography.hazmat.primitives.asymmetric import dsa, ed448, ed25519, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQSignaturePublicKey
