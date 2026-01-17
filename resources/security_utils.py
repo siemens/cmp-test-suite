@@ -5,6 +5,11 @@
 
 """Contain security-related utility functions, like getting the bit string of a used key."""
 
+from typing import Optional
+
+from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
+from pq_logic.keys.stateful_sig_keys import HSSPublicKey, XMSSMTPublicKey, XMSSPublicKey
+
 # Security strength values follow NIST SP 800-57 Part 1 Revision 5, Tables 2 and 4.
 # Table 2 provides the traditional key equivalence for RSA/DSA and ECC key sizes,
 # while Table 4 lists the target security strengths for the NIST PQC levels.
@@ -81,3 +86,37 @@ def _ecc_security_strength(key_size: int) -> int:
         return 192
 
     return 256
+
+
+def _get_pq_stfl_nist_security_strength(key: PQHashStatefulSigPublicKey) -> int:
+    """Return the PQ security strength (in bits) for a PQ stateful signature key.
+
+    XMSS and XMSS^MT security strength is determined by the hash function output size.
+    According to RFC 8391 Section 5. Parameter Sets.
+    The security strength is halved when considering PQ security strength, because of the `Grover` algorithm.
+
+    :param key: The PQ stateful signature public key.
+    :return: The security strength in bits.
+    :raises NotImplementedError: If the key type is not supported.
+    """
+    if isinstance(key, XMSSPublicKey):
+        return key.key_bit_security
+    if isinstance(key, XMSSMTPublicKey):
+        return key.key_bit_security
+    if isinstance(key, HSSPublicKey):
+        return key.key_bit_security
+
+    raise NotImplementedError(
+        f"Security strength estimation is only implemented for XMSS and XMSSMT keys. Got: {type(key)}"
+    )
+
+
+def _nist_level_strength(level: Optional[int]) -> int:
+    """Translate a claimed NIST level into an approximate security strength.
+
+    Mapping follows NIST SP 800-57 Part 1 Rev. 5 Table 4.
+    """
+    if level is None:
+        return 0
+
+    return _NIST_LEVEL_TO_STRENGTH.get(int(level), 0)
