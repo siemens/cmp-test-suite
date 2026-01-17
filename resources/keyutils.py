@@ -81,6 +81,7 @@ from resources.oidutils import (
     TRAD_SIG_NAME_2_OID,
     TRAD_STR_OID_TO_KEY_NAME,
 )
+from resources.security_utils import estimate_key_security_strength
 from resources.suiteenums import KeySaveType
 from resources.typingutils import PrivateKey, PublicKey, SignKey, TradPrivateKey, TradSignKey, TradVerifyKey, VerifyKey
 
@@ -1453,3 +1454,33 @@ def get_pq_stateful_sig_index_from_sig(  # noqa D417 undocumented-params
         return key.get_leaf_index(signature)
 
     raise NotImplementedError(f"Unsupported key type for signature index extraction. Got: {type(key).__name__}")
+
+
+@keyword(name="Get Key Security Strength")
+def get_key_security_strength(  # noqa D417 undocumented-params
+    key: Union[PrivateKey, PublicKey],
+) -> int:
+    """Return the estimated security strength (in bits) for the provided key.
+
+    Arguments:
+    ---------
+        - `key`: The key instance to estimate the security strength for.
+
+    Returns:
+    -------
+        - The estimated security strength in bits.
+
+    Raises:
+    ------
+        - `ValueError`: If the security strength cannot be estimated for the given key type.
+        - `NotImplementedError`: If the key type is not supported for security strength estimation.
+
+    Examples:
+    --------
+    | ${strength}= | Get Key Security Strength | ${public_key} |
+
+    """
+    strength = estimate_key_security_strength(key)
+    if strength == 0:
+        raise ValueError(f"Could not estimate security strength for key type: {type(key)}")
+    return strength
