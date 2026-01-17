@@ -61,6 +61,8 @@ from pq_logic.tmp_oids import (
     COMPOSITE_KEM07_OID_2_NAME,
     COMPOSITE_SIG_OID_TO_NAME,
     id_rsa_kem_spki,
+    COMPOSITE_KEM_VERSION,
+    COMPOSITE_SIG_VERSION,
 )
 from resources.asn1utils import try_decode_pyasn1
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData, MismatchingKey
@@ -94,7 +96,7 @@ def _any_string_in_string(string: str, options: List[str]) -> str:
 class CombinedKeyFactory:
     """Factory for creating all known key types."""
 
-    _composite_prefixes = ["sig-13", "kem-07", "kem07", "dhkem", "kem", "sig"]
+    _composite_prefixes = [f"sig-{COMPOSITE_SIG_VERSION}", f"kem-{COMPOSITE_KEM_VERSION}", f"kem{COMPOSITE_KEM_VERSION}", "dhkem", "kem", "sig"]
 
     @staticmethod
     def get_stateful_sig_algorithms() -> Dict[str, List[str]]:
@@ -451,7 +453,7 @@ class CombinedKeyFactory:
         :param private_key: The private key bytes.
         :return: A CompositeKEMPublicKey instance.
         """
-        logging.info("Loading composite KEM-07 private key: %s", algorithm)
+        logging.info("Loading composite KEM-%s private key: %s", COMPOSITE_KEM_VERSION, algorithm)
 
         pq_name, trad_name = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(algorithm)
         tmp_pq_key = PQKeyFactory.generate_pq_key(pq_name)
@@ -468,7 +470,7 @@ class CombinedKeyFactory:
         trad_key = CombinedKeyFactory._load_trad_composite_private_key(
             trad_name=trad_name,
             trad_key_bytes=trad_bytes,
-            prefix="KEM v7" if "dhkem" not in algorithm.lower() else "dhkem v7",
+            prefix=f"KEM v{COMPOSITE_KEM_VERSION}" if "dhkem" not in algorithm.lower() else f"dhkem v{COMPOSITE_KEM_VERSION}",
         )
 
         if not isinstance(trad_key, rsa.RSAPrivateKey):
@@ -826,14 +828,14 @@ class CombinedKeyFactory:
         # Determine the prefix based on the algorithm name
         if alg.startswith("chempat-"):
             prefix = "chempat-"
-        elif alg.startswith("composite-sig-13-"):
-            prefix = "composite-sig-13-"
+        elif alg.startswith(f"composite-sig-{COMPOSITE_SIG_VERSION}-"):
+            prefix = f"composite-sig-{COMPOSITE_SIG_VERSION}-"
         elif alg.startswith("composite-sig-"):
             prefix = "composite-sig-"
-        elif alg.startswith("composite-kem-07-"):
-            prefix = "composite-kem-07-"
-        elif alg.startswith("composite-kem07-"):
-            prefix = "composite-kem07-"
+        elif alg.startswith(f"composite-kem-{COMPOSITE_KEM_VERSION}-"):
+            prefix = f"composite-kem-{COMPOSITE_KEM_VERSION}-"
+        elif alg.startswith(f"composite-kem{COMPOSITE_KEM_VERSION}-"):
+            prefix = f"composite-kem{COMPOSITE_KEM_VERSION}-"
         elif alg.startswith("composite-dhkem-"):
             prefix = "composite-dhkem-"
         elif alg.startswith("composite-kem-"):

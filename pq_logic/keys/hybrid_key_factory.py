@@ -26,7 +26,7 @@ from pq_logic.keys.serialize_utils import prepare_ec_private_key
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, RSADecapKey
 from pq_logic.keys.trad_key_factory import generate_trad_key
 from pq_logic.keys.xwing import XWingPrivateKey
-from pq_logic.tmp_oids import CHEMPAT_OID_2_NAME
+from pq_logic.tmp_oids import CHEMPAT_OID_2_NAME, COMPOSITE_KEM_VERSION, COMPOSITE_SIG_VERSION
 from resources.exceptions import BadAlg, InvalidKeyCombination, InvalidKeyData, MismatchingKey
 from resources.oid_mapping import KEY_CLASS_MAPPING, may_return_oid_to_name
 from resources.oidutils import (
@@ -207,11 +207,11 @@ def _parse_private_keys(hybrid_type: str, pq_key, trad_key) -> HybridPrivateKey:
     hybrid_type = hybrid_type.replace("composite-", "")
     key_class_mappings = {
         "kem": CompositeKEMPrivateKey,  # always the latest version
-        "kem-07": CompositeKEMPrivateKey,
-        "kem07": CompositeKEMPrivateKey,
+        f"kem-{COMPOSITE_KEM_VERSION}": CompositeKEMPrivateKey,
+        f"kem{COMPOSITE_KEM_VERSION}": CompositeKEMPrivateKey,
         "dhkem": CompositeDHKEMRFC9180PrivateKey,  # always the latest version
         "sig": CompositeSigPrivateKey,  # always the latest version
-        "sig-13": CompositeSigPrivateKey,
+        f"sig-{COMPOSITE_SIG_VERSION}": CompositeSigPrivateKey,
     }
     key_class = key_class_mappings[hybrid_type]
     return key_class(pq_key, trad_key)
@@ -221,12 +221,11 @@ class HybridKeyFactory:
     """Factory for creating hybrid keys based on traditional and post-quantum (PQ) key types."""
 
     hybrid_mappings = {
-        "sig-13": ALL_COMPOSITE_SIG_COMBINATIONS,
+        f"sig-{COMPOSITE_SIG_VERSION}": ALL_COMPOSITE_SIG_COMBINATIONS,
         "sig": ALL_COMPOSITE_SIG_COMBINATIONS,
-        "kem-05": ALL_COMPOSITE_KEM05_COMBINATIONS,
         "kem": ALL_COMPOSITE_KEM07_COMBINATIONS,
-        "kem-07": ALL_COMPOSITE_KEM07_COMBINATIONS,
-        "kem07": ALL_COMPOSITE_KEM07_COMBINATIONS,
+        f"kem-{COMPOSITE_KEM_VERSION}": ALL_COMPOSITE_KEM07_COMBINATIONS,
+        f"kem{COMPOSITE_KEM_VERSION}": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "chempat": ALL_CHEMPAT_COMBINATIONS,
         "dhkem": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "xwing": [],
@@ -234,10 +233,10 @@ class HybridKeyFactory:
 
     default_comb = {
         "sig": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
-        "sig-13": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
+        f"sig-{COMPOSITE_SIG_VERSION}": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "kem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
-        "kem07": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
-        "kem-07": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
+        f"kem{COMPOSITE_KEM_VERSION}": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
+        f"kem-{COMPOSITE_KEM_VERSION}": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "chempat": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "dhkem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
     }
@@ -303,7 +302,7 @@ class HybridKeyFactory:
                 "chempat": ["ecdh", "x25519", "x448"],
                 "composite-kem": ["rsa", "ecdh", "x25519", "x448"],
                 "composite-sig": ["rsa", "ecdsa", "ed25519", "ed448"],
-                "composite-sig-13": ["rsa", "ecdsa", "ed25519", "ed448"],
+                f"composite-sig-{COMPOSITE_SIG_VERSION}": ["rsa", "ecdsa", "ed25519", "ed448"],
                 "xwing": ["x25519"],
             }.get(algo, [])
 
@@ -345,11 +344,11 @@ class HybridKeyFactory:
         return [
             "xwing",
             "composite-sig",
-            "composite-sig-13",
+            f"composite-sig-{COMPOSITE_SIG_VERSION}",
             "composite-dhkem",
             "composite-kem",
-            "composite-kem-07",
-            "composite-kem07",
+            f"composite-kem-{COMPOSITE_KEM_VERSION}",
+            f"composite-kem{COMPOSITE_KEM_VERSION}",
             "chempat",
         ]
 
