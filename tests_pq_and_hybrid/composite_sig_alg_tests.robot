@@ -11,6 +11,7 @@ Documentation    Test cases for Composite Signature Algorithms in all flavors. S
 
 Resource            ../config/${environment}.robot
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -25,7 +26,7 @@ Library             ../pq_logic/hybrid_prepare.py
 Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags           hybrid   hybrid-sig  composite-sig  verbose-alg  verbose-tests   pre_hash
-Suite Setup    Set Up Test Suite
+Suite Setup    Set Up Composite Sig Suite
 Test Template     Request With Composite Sig
 
 
@@ -176,18 +177,6 @@ Valid COMPOSITE-SIG-13-ML-DSA-87-ECDSA-SECP521R1 Request
 
 
 *** Keywords ***
-Set Up Composite Sig Suite
-    [Documentation]    Initializes the test suite for composite signature algorithm tests.
-    ...
-    ...                Executes the shared suite setup and configures the CMP URL to point to the
-    ...                composite issuing endpoint for certificate requests using composite signature algorithms
-    ...                (combinations of PQ and traditional algorithms).
-    ...
-    ...                The CA_CMP_URL suite variable is updated to the composite-specific endpoint.
-    Set Up Test Suite
-    ${url}=   Get Composite Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
-
 Validate BadPOP Or Cert
     [Documentation]    Validate the response for a bad POP or certificate.
     [Arguments]    ${response}   ${bad_pop}   ${alg_name}

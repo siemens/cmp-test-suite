@@ -8,6 +8,7 @@
 Documentation    Test cases for PQ Sig algorithms to check all algorithm combinations.
 
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -21,10 +22,11 @@ Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/hybrid_prepare.py
 Library             ../pq_logic/pq_verify_logic.py
 
-Test Tags           pq-sig   pqc  verbose-alg   verbose-tests
+Test Tags           pq-sig   pqc  verbose-alg   verbose-tests  verbose-pq-sig-alg
 
 Suite Setup         Set Up PQ Sig Suite
 Test Template     Request With PQ Sig Key
+
 
 *** Test Cases ***     ALGORITHM    HASH_ALG    badPOP
 Invalid PQ Sig ML-DSA-44 Request   ml-dsa-44    ${None}    True
@@ -233,18 +235,6 @@ Valid PQ Sig FALCON-PADDED-1024 Request    falcon-padded-1024    ${None}    Fals
 
 
 *** Keywords ***
-Set Up PQ Sig Suite
-    [Documentation]    Initializes the test suite for PQ signature algorithm tests.
-    ...
-    ...                Executes the shared suite setup and configures the CMP URL to point to the
-    ...                PQ issuing endpoint for certificate requests using stateless PQ signature algorithms
-    ...                (e.g., ML-DSA).
-    ...
-    ...                The CA_CMP_URL suite variable is updated to the PQ-specific endpoint.
-    Set Up Test Suite
-    ${url}=   Get PQ Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
-
 Request With PQ Sig Key
     [Documentation]  Build a PKIMessage with a PQ signature key and send it to the CA.
     ...

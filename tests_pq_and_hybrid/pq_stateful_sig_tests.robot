@@ -11,6 +11,7 @@ Documentation    Test cases for XMSS, XMSSMT, and HSS stateful hash-based signat
 ...              algorithm identifier parameter handling, exhausted key detection,
 ...              HSS multi-level hierarchies, and LMS/LMOTS index management.
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -31,18 +32,6 @@ Test Tags           pq-stateful-sig   pqc  pq-sig   rfc9802
 # Uses a fast algorithm for testing purposes.
 ${HSS_DEFAULT_ALG}    hss_lms_sha256_m32_h5_lmots_sha256_n32_w8
 
-
-*** Keywords ***
-Set Up PQ Stateful Sig Suite
-    [Documentation]    Initializes the test suite for PQ stateful signature tests.
-    ...
-    ...                Executes the shared suite setup and configures the CMP URL to point to the
-    ...                PQ stateful issuing endpoint for certificate requests using XMSS, XMSSMT, or HSS algorithms.
-    ...
-    ...                The CA_CMP_URL suite variable is updated to the PQ stateful-specific endpoint.
-    Set Up Test Suite
-    ${url}=   Get PQ Stateful Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
 
 *** Test Cases ***
 CA MUST Issue A Valid XMSS Certificate

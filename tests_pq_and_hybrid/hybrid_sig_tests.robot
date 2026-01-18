@@ -6,6 +6,7 @@
 Documentation       General tests for CMP logic, not necessarily specific to the lightweight profile
 
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -195,17 +196,3 @@ CA MUST Reject Issuing Already in use Traditional Key
     ${response}=       Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badRequest
-
-
-*** Keywords ***
-Set Up Hybrid Sig Suite
-    [Documentation]    Initializes the test suite for hybrid/composite signature algorithm tests.
-    ...
-    ...                Executes the shared suite setup and configures the CMP URL to point to the
-    ...                composite issuing endpoint for certificate requests using hybrid signature algorithms
-    ...                (combinations of PQ and traditional algorithms).
-    ...
-    ...                The CA_CMP_URL suite variable is updated to the composite-specific endpoint.
-    Set Up Test Suite
-    ${url}=   Get Composite Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE

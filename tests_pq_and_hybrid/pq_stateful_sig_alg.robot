@@ -7,6 +7,7 @@
 Documentation    Test cases for PQ Sig algorithms to check all algorithm combinations.
 
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -26,17 +27,6 @@ Suite Teardown      Clean Verbose STFL Mappings
 
 
 *** Keywords ***
-Set Up PQ Stateful Sig Suite
-    [Documentation]    Initializes the test suite for PQ stateful signature algorithm tests.
-    ...
-    ...                Executes the shared suite setup and configures the CMP URL to point to the
-    ...                PQ stateful issuing endpoint for certificate requests using XMSS, XMSSMT, or HSS algorithms.
-    ...
-    ...                The CA_CMP_URL suite variable is updated to the PQ stateful-specific endpoint.
-    Set Up Test Suite
-    ${url}=   Get PQ Stateful Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
-
 Clean Verbose STFL Mappings
     [Documentation]   Remove all verbose mappings for stateful signature algorithms, to save
     ...                memory and avoid conflicts in the test suite.

@@ -7,6 +7,7 @@
 Documentation    Test cases for PQ Sig algorithms to check all algorithm combinations.
 
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -233,18 +234,6 @@ CA Reject Invalid FALCON-PADDED-1024 Protected Request    falcon-padded-1024    
 
 
 *** Keywords ***
-Set Up PQ Sig Suite
-    [Documentation]    Initializes the test suite for PQ PKIProtection signature tests.
-    ...
-    ...                Executes the shared suite setup and configures the CMP URL to point to the
-    ...                PQ issuing endpoint for certificate requests using stateless PQ signature algorithms
-    ...                (e.g., ML-DSA).
-    ...
-    ...                The CA_CMP_URL suite variable is updated to the PQ-specific endpoint.
-    Set Up Test Suite
-    ${url}=   Get PQ Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
-
 Validate PQ PKIProtection Response
     [Documentation]  Validate the PKIProtection response from the CA.
     ...
