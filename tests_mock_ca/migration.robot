@@ -1232,7 +1232,8 @@ Establish New Composite KEM SS
     [Tags]    composite-kem
     [Arguments]    ${kem_key}   ${kem_cert}
     ${genm}=   Build KEMBasedMAC General Message   ${kem_key}    ${kem_cert}
-    ${genp}=   Exchange PKIMessage PQ    ${genm}
+    ${url}=   Get PQ Issuing URL
+    ${genp}=   Exchange PKIMessage    ${genm}   ${url}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${kem_key}
     ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
     RETURN  ${ss}  ${tx_id}

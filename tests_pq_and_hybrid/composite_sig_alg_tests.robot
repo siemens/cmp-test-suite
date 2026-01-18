@@ -11,6 +11,7 @@ Documentation    Test cases for Composite Signature Algorithms in all flavors. S
 
 Resource            ../config/${environment}.robot
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -25,7 +26,7 @@ Library             ../pq_logic/hybrid_prepare.py
 Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags           hybrid   hybrid-sig  composite-sig  verbose-alg  verbose-tests   pre_hash
-Suite Setup    Set Up Test Suite
+Suite Setup    Set Up Composite Sig Suite
 Test Template     Request With Composite Sig
 
 
@@ -176,12 +177,6 @@ Valid COMPOSITE-SIG-13-ML-DSA-87-ECDSA-SECP521R1 Request
 
 
 *** Keywords ***
-Exchange Composite Sig Request
-    [Documentation]    Exchange a composite signature request with the CA.
-    [Arguments]    ${request}
-    ${response}=    Exchange Migration PKIMessage    ${request}  ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
-    RETURN    ${response}
-
 Validate BadPOP Or Cert
     [Documentation]    Validate the response for a bad POP or certificate.
     [Arguments]    ${response}   ${bad_pop}   ${alg_name}
@@ -204,5 +199,5 @@ Request With Composite Sig
     ...        use_rsa_pss=${use_rsa_pss}
     ${ir}=   Build Ir From Key    ${comp_key}   cert_request=${cert_request}  popo=${popo}
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange Composite Sig Request  ${protected_ir}
+    ${response}=   Exchange PKIMessage  ${protected_ir}
     Validate BadPOP Or Cert  ${response}   ${bad_pop}   ${alg_name}
