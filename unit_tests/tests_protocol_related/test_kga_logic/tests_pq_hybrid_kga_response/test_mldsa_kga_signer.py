@@ -20,7 +20,7 @@ from resources.certbuildutils import (
 from resources.cmputils import build_ir_from_key
 from resources.keyutils import generate_key
 from resources.protectionutils import protect_pkimessage
-from unit_tests.utils_for_test import load_ca_cert_and_key, print_extensions
+from unit_tests.utils_for_test import load_ca_cert_and_key, pretty_print_extensions
 
 
 class TestMLDSAKGASigner(unittest.TestCase):

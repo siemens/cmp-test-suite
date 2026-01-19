@@ -423,17 +423,23 @@ def pretty_print_chain_subject_and_issuer(cert_or_chain: Union[rfc9480.CMPCertif
 
     return [get_subject_and_issuer(cert) for cert in cert_or_chain]
 
-def print_extensions(extensions: rfc9480.Extensions) -> None:
+def pretty_print_extensions(extensions: rfc9480.Extensions) -> List[str]:
     """Print the extensions in a human-readable format.
 
     :param extensions: The `Extensions` object to print.
+    :return: A list of strings containing the extension details.
     """
+
+    out: List[str] = []
+
     for ext in extensions:
         extn_id = ext["extnID"]
         name = EXTENSION_OID_2_NAME.get(extn_id)
         critical = ext["critical"]
         extn_value = ext["extnValue"].prettyPrint()
-        print(f"Extension {name} ID: {extn_id}, Critical: {critical}, Value: {extn_value}")
+        entry = f"Extension {name} ID: {extn_id}, Critical: {critical}, Value: {extn_value}"
+        out.append(entry)
+    return out
 
 def compare_pyasn1_objects(first: base.Asn1Type, second: base.Asn1Type) -> bool:
     """Compare if two pyasn1 structures, by first encoding them and then compare the bytes.
