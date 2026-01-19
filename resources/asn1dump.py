@@ -101,20 +101,32 @@ class ASN1Styler:
         return self.dim("┆")
 
 def get_tag_info(obj):
-    """Extract tag class and value."""
+    """Extract all tag info in the order base tag, super tag1, super tag2....
+
+    Example: "Ⓣ UNI/2p+CTX/0c" to be interpreted left-to-right as
+    - the base tag is Universal 2, primitive; contains actual data
+    - followed by Context 0, constructed; contains other TLVs
+    """
     tag_set = obj.tagSet
     if not tag_set:
         return ""
 
-    t = tag_set[0]  # Get the most specific (base) tag
-
-    t_class = {
+    class_map = {
         tag.tagClassUniversal: "UNI",
         tag.tagClassApplication: "APP",
         tag.tagClassContext: "CTX",
         tag.tagClassPrivate: "PRI"
-    }.get(t.tagClass, "???")
-    return f"Ⓣ {t_class}[{t.tagId}]"
+    }
+
+    layers = []
+    # pyasn1 stores BaseTag at 0, subsequently added tags follow:
+    for t in tag_set:
+        t_class = class_map.get(t.tagClass, "???")
+        # bit 6: 0 = primitive, 32 = constructed
+        t_fmt = "c" if t.tagFormat == 32 else "p"
+        layers.append(f"{t_class}/{t.tagId}{t_fmt}")
+
+    return f"Ⓣ {'+'.join(layers)}"
 
 
 def parse_constraints(c_obj, is_coll=False):
