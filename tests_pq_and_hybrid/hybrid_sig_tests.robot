@@ -6,6 +6,7 @@
 Documentation       General tests for CMP logic, not necessarily specific to the lightweight profile
 
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -16,7 +17,7 @@ Library             ../resources/certbuildutils.py
 Library             ../resources/protectionutils.py
 Library             ../resources/checkutils.py
 
-Suite Setup         Set Up Test Suite
+Suite Setup         Set Up Hybrid Sig Suite
 Test Tags           pqc  hybrid-sig
 
 
@@ -155,7 +156,7 @@ CA MUST Reject Composite RSA with invalid RSA key length
     ${ir}=    Build Ir From Key    ${key}  ${cm}
     ...         spki=${spki}  recipient=${RECIPIENT}  exclude_fields=sender,senderKID
     ${protected_ir}=  Default Protect PKIMessage   ${ir}
-    ${response}=       Exchange Composite Request    ${protected_ir}
+    ${response}=       Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badDataFormat
@@ -177,7 +178,7 @@ CA MUST Reject Composite Sig with Traditional Revoked key Due Compromise
     ...                protection=signature
     ...                private_key=${revoked_key}
     ...                cert=${revoked_cert}
-    ${response}=       Exchange Composite Request    ${protected_ir}
+    ${response}=       Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    rejection
 
@@ -192,15 +193,6 @@ CA MUST Reject Issuing Already in use Traditional Key
     ${ir}=    Build Ir From Key    ${key}   cert_template=${cert_template}
     ...       recipient=${RECIPIENT}   exclude_fields=senderKID,sender
     ${protected_ir}=  Default Protect PKIMessage    ${ir}
-    ${response}=       Exchange Composite Request    ${protected_ir}
+    ${response}=       Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badRequest
-
-
-*** Keywords ***
-Exchange Composite Request
-    [Arguments]    ${pki_message}
-    [Documentation]    Exchanges a PKIMessage for a composite algorithm with the CA and return the response.
-    ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
-    ${response}=       Exchange PKIMessage    ${pki_message}  ${url}
-    RETURN   ${response}

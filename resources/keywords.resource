@@ -1657,34 +1657,6 @@ Get Composite Issuing URL
     ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${COMPOSITE_URL_PREFIX}
     RETURN  ${url}
 
-Exchange PKIMessage PQ
-    [Documentation]    Exchange a PKIMessage with the PQ issuing endpoint.
-    ...
-    ...                Arguments:
-    ...                ---------
-    ...                - `pki_message` (PKIMessage): The PKIMessage to be exchanged.
-    ...
-    ...                Returns:
-    ...                -------
-    ...                - The response PKIMessage from the PQ issuing endpoint.
-    ...
-    ...                Examples:
-    ...                --------
-    ...                | ${response}= |    Exchange PKIMessage PQ    | ${pki_message} |
-    ...
-    [Tags]    pqc
-    [Arguments]    ${pki_message}
-    ${url}=   Get PQ Issuing URL
-    ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
-    RETURN   ${response}
-
-Exchange PKIMessage PQ Stateful
-    [Documentation]    Exchange a PKIMessage with the PQ stateful issuing endpoint.
-    [Arguments]    ${pki_message}
-    ${url}=   Get PQ Stateful Issuing URL
-    ${response}=   Exchange PKIMessage    ${pki_message}    ${url}
-    RETURN   ${response}
-
 Prepare Related Cert URL
     [Documentation]    Prepare the URL for the related certificate, by adding the serial number to the URL.
     ...
@@ -1739,10 +1711,10 @@ Setup PQ Sig Cert
         ...     recipient=${RECIPIENT}   exclude_fields=sender,senderKID
         ${prot_ir}=    Default Protect PKIMessage    ${ir}
     END
-    ${response}=    Exchange PKIMessage PQ    ${prot_ir}
+    ${url}=  Get PQ Issuing URL
+    ${response}=    Exchange PKIMessage    ${prot_ir}   url=${url}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
-    ${url}=  Get PQ Issuing URL
     ${pq_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
     ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${pq_cert}
     Write Certs To Dir    ${cert_chain}  pq_sig_chain
@@ -1769,10 +1741,9 @@ Setup Composite Sig Cert
         ...     recipient=${RECIPIENT}   exclude_fields=sender,senderKID
         ${prot_ir}=    Default Protect PKIMessage    ${ir}
     END
-    ${response}=    Exchange PKIMessage PQ    ${prot_ir}
+    ${response}=    Exchange PKIMessage    ${prot_ir}   url=${url}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
-    ${url}=  Get PQ Issuing URL
     ${comp_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
     ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${comp_cert}
     Write Certs To Dir    ${cert_chain}  composite_sig_chain
