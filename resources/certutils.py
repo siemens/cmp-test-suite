@@ -1024,7 +1024,7 @@ def pqc_algs_cannot_be_validated_with_openssl(
     return False
 
 
-def _get_algs(certs: List[rfc9480.CMPCertificate]) -> str:
+def _get_algs(certs: List[rfc9480.CMPCertificate]) -> List[str]:
     """Get the signature algorithms from the certificate chain.
 
     :param certs: A list of CMPCertificate's.
@@ -1036,7 +1036,7 @@ def _get_algs(certs: List[rfc9480.CMPCertificate]) -> str:
         oid_name = oid_mapping.may_return_oid_to_name(spki_oid)
         subject = utils.get_openssl_name_notation(cert["tbsCertificate"]["subject"])
         algs.append(f"Subject={subject} OID:{oid_name} ")
-    return "\n".join(algs)
+    return algs
 
 
 @keyword(name="Verify Cert Chain OpenSSL PQC")
