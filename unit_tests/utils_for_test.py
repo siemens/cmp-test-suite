@@ -409,7 +409,7 @@ def get_subject_and_issuer(cert: Union[rfc9480.CMPCertificate, rfc5652.Certifica
     return f"subject={subject_name}, issuer={issuer_name}"
 
 
-def print_chain_subject_and_issuer(cert_or_chain: Union[rfc9480.CMPCertificate, List[rfc9480.CMPCertificate]]):
+def pretty_print_chain_subject_and_issuer(cert_or_chain: Union[rfc9480.CMPCertificate, List[rfc9480.CMPCertificate]]):
     """Log the subject and issuer details of a certificate or a chain of certificates.
 
     Used for Debugging. Accepts a single `CMPCertificate` or a list of `CMPCertificate` objects. For each
@@ -421,8 +421,7 @@ def print_chain_subject_and_issuer(cert_or_chain: Union[rfc9480.CMPCertificate, 
     if isinstance(cert_or_chain, rfc9480.CMPCertificate):
         cert_or_chain = [cert_or_chain]
 
-    for cert in cert_or_chain:
-        print(get_subject_and_issuer(cert))
+    return [get_subject_and_issuer(cert) for cert in cert_or_chain]
 
 def print_extensions(extensions: rfc9480.Extensions) -> None:
     """Print the extensions in a human-readable format.
