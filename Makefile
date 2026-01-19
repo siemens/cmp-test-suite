@@ -6,15 +6,17 @@ help:
 	@echo  'Commands:'
 	@echo  '  test         - Run all compliance tests (results will be in reports/)'
 	@echo  '  test-verbose - Run all compliance tests, including verbose tests (results will be in reports/)'
+	@echo  '  test-pq-hybrid         - Run all PQ and Hybrid compliance tests (results will be in reports/)'
+	@echo  '  test-pq-hybrid-verbose - Run all PQ and Hybrid compliance tests, including verbose tests (results will be in reports/)'
 	@echo  '  teslog       - Run all compliance tests, store results in timestamped subirectories in reports/'
 	@echo  '  docs          - Produce documentation files and store them in doc/'
 	@echo  '  unittest     - Run unit tests for the test suite itself '
 	@echo  '  unittest-docker    - Run unit tests in a docker container'
+	@echo  '  build-unittest    - Build the unittest docker image'
+	@echo  '  dryrun    - Test whether all CMP tests can be loaded without errors, but it does not execute them'
 	@echo  '  autoformat   - Run ruff on all the source files, to resolve all issues automatically '
 	@echo  '  verify  - Run a bunch of checks, to see if there are any obvious deficiencies in the code '
 	@echo  '  verifyformat   -  Check formatting only '
-	@echo  '  stats   -  Write the key encapsulation statistics to a data/stats/ directory '
-	@echo  '  invalid-sig   -  Verify all pqc-certificates in data/pqc-certificates/ and show all invalid signatures '
 	@echo  '  start-mock-ca   -  Start the mock CA server, so that it can listens to requests '
 	@echo  '  test-mock-ca   -  Run the test against the mock CA server '
 	@echo  '  test-mock-ca-verbose   -  Run all tests against the mock CA server '
@@ -44,7 +46,7 @@ testlog:
 	robot --pythonpath=./ --exclude verbose-tests --outputdir=reports/`date +%Y-%m-%d_%H-%M_%B-%d` --variable environment:$(env) tests
 
 
-DOCKERFILE_UNITTEST = data/dockerfiles/Dockerfile.unittest
+DOCKERFILE_UNITTEST = data/dockerfiles/Dockerfile.base
 
 build-unittest:
 	@echo "Building unittest Docker image..."
@@ -52,7 +54,8 @@ build-unittest:
 
 unittest-docker: build-unittest
 	@echo "Running unittest Docker container..."
-	docker run --rm -t --workdir=/app unittest-image
+	docker run --rm -v $(shell pwd):/app -w /app unittest-image \
+		python3 -m unittest discover -s unit_tests
 
 unittest:
 	# adjust path such that the unit tests can be started from the root directory, to make it easier to load
@@ -96,16 +99,13 @@ verify:
 	pylint . --ignore-paths="^venv"
 	PYTHONPATH=./resources pyright
 	# on Windows Powershell: `$env:PYTHONPATH = "./resources"; pyright`
+	codespell . --check-filenames --skip *.html,*.pem,*.xml,*venv*,*fips/*.py,*/announcement.py,./data/rfc_test_vectors/*,./liboqs-python/*,./liboqs-python-stateful-sig/*
 
 verifyformat:
 	ruff check .
 
 dryrun:
 	robot --dryrun --pythonpath=./ --variable environment:$(env) tests tests_pq_and_hybrid  tests_mock_ca
-
-check-sigs:
-	python test_load_pqc.py
-	python vis_pqc_verify.py
 
 test-pq-hybrid:
     # Start the tests for PQ and Hybrid algorithms/mechanisms.
