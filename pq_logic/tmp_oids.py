@@ -238,19 +238,21 @@ id_comp_kem07_mlkem1024_x448 = univ.ObjectIdentifier(f"{id_new_compKEM}.59")
 id_comp_kem07_mlkem1024_ecdh_p521 = univ.ObjectIdentifier(f"{id_new_compKEM}.60")
 id_comp_kem07_mlkem1024_rsa3072 = univ.ObjectIdentifier(f"{id_new_compKEM}.61")
 
+COMPOSITE_KEM_VERSION = "07"
+
 COMPOSITE_KEM07_MLKEM_NAME_2_OID = {
-    "composite-kem07-ml-kem-768-rsa2048": id_comp_kem07_mlkem768_rsa2048,
-    "composite-kem07-ml-kem-768-rsa3072": id_comp_kem07_mlkem768_rsa3072,
-    "composite-kem07-ml-kem-768-rsa4096": id_comp_kem07_mlkem768_rsa4096,
-    "composite-kem07-ml-kem-768-x25519": id_comp_kem07_mlkem768_x25519,
-    "composite-kem07-ml-kem-768-ecdh-secp256r1": id_comp_kem07_mlkem768_ecdh_p256,
-    "composite-kem07-ml-kem-768-ecdh-secp384r1": id_comp_kem07_mlkem768_ecdh_p384,
-    "composite-kem07-ml-kem-768-ecdh-brainpoolP256r1": id_comp_kem07_mlkem768_ecdh_brainpool_p256r1,
-    "composite-kem07-ml-kem-1024-ecdh-secp384r1": id_comp_kem07_mlkem1024_ecdh_p384,
-    "composite-kem07-ml-kem-1024-ecdh-brainpoolP384r1": id_comp_kem07_mlkem1024_ecdh_brainpool_p384r1,
-    "composite-kem07-ml-kem-1024-x448": id_comp_kem07_mlkem1024_x448,
-    "composite-kem07-ml-kem-1024-ecdh-secp521r1": id_comp_kem07_mlkem1024_ecdh_p521,
-    "composite-kem07-ml-kem-1024-rsa3072": id_comp_kem07_mlkem1024_rsa3072,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa2048": id_comp_kem07_mlkem768_rsa2048,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa3072": id_comp_kem07_mlkem768_rsa3072,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa4096": id_comp_kem07_mlkem768_rsa4096,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-x25519": id_comp_kem07_mlkem768_x25519,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-secp256r1": id_comp_kem07_mlkem768_ecdh_p256,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-secp384r1": id_comp_kem07_mlkem768_ecdh_p384,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-brainpoolP256r1": id_comp_kem07_mlkem768_ecdh_brainpool_p256r1,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-secp384r1": id_comp_kem07_mlkem1024_ecdh_p384,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-brainpoolP384r1": id_comp_kem07_mlkem1024_ecdh_brainpool_p384r1,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-x448": id_comp_kem07_mlkem1024_x448,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-secp521r1": id_comp_kem07_mlkem1024_ecdh_p521,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-rsa3072": id_comp_kem07_mlkem1024_rsa3072,
 }
 
 id_composite_frodokem = f"{id_composite_kem_test_suite}.1"
@@ -283,28 +285,26 @@ id_frodokem_1344_shake_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodoke
 id_frodokem_1344_shake_ecdh_brainpoolP384r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.17")
 id_frodokem_1344_shake_x448 = univ.ObjectIdentifier(f"{id_composite_frodokem}.18")
 
-composite_kem_version = "composite-kem07"
-
 # Always added to the last version of the draft.
 COMPOSITE_FRODOKEM_NAME_2_OID = {
-    f"{composite_kem_version}-frodokem-976-aes-rsa2048": id_frodokem_976_aes_rsa2048,
-    f"{composite_kem_version}-frodokem-976-aes-rsa3072": id_frodokem_976_aes_rsa3072,
-    f"{composite_kem_version}-frodokem-976-aes-rsa4096": id_frodokem_976_aes_rsa4096,
-    f"{composite_kem_version}-frodokem-976-aes-x25519": id_frodokem_976_aes_x25519,
-    f"{composite_kem_version}-frodokem-976-aes-ecdh-secp384r1": id_frodokem_976_aes_ecdh_p384,
-    f"{composite_kem_version}-frodokem-976-aes-ecdh-brainpoolP256r1": id_frodokem_976_aes_brainpoolP256r1,
-    f"{composite_kem_version}-frodokem-976-shake-rsa2048": id_frodokem_976_shake_rsa2048,
-    f"{composite_kem_version}-frodokem-976-shake-rsa3072": id_frodokem_976_shake_rsa3072,
-    f"{composite_kem_version}-frodokem-976-shake-rsa4096": id_frodokem_976_shake_rsa4096,
-    f"{composite_kem_version}-frodokem-976-shake-x25519": id_frodokem_976_shake_x25519,
-    f"{composite_kem_version}-frodokem-976-shake-ecdh-secp384r1": id_frodokem_976_shake_ecdh_p384,
-    f"{composite_kem_version}-frodokem-976-shake-ecdh-brainpoolP256r1": id_frodokem_976_shake_brainpoolP256r1,
-    f"{composite_kem_version}-frodokem-1344-aes-ecdh-secp384r1": id_frodokem_1344_aes_ecdh_p384,
-    f"{composite_kem_version}-frodokem-1344-aes-ecdh-brainpoolP384r1": id_frodokem_1344_aes_ecdh_brainpoolP384r1,
-    f"{composite_kem_version}-frodokem-1344-aes-x448": id_frodokem_1344_aes_x448,
-    f"{composite_kem_version}-frodokem-1344-shake-ecdh-secp384r1": id_frodokem_1344_shake_ecdh_p384,
-    f"{composite_kem_version}-frodokem-1344-shake-ecdh-brainpoolP384r1": id_frodokem_1344_shake_ecdh_brainpoolP384r1,
-    f"{composite_kem_version}-frodokem-1344-shake-x448": id_frodokem_1344_shake_x448,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-aes-rsa2048": id_frodokem_976_aes_rsa2048,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-aes-rsa3072": id_frodokem_976_aes_rsa3072,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-aes-rsa4096": id_frodokem_976_aes_rsa4096,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-aes-x25519": id_frodokem_976_aes_x25519,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-aes-ecdh-secp384r1": id_frodokem_976_aes_ecdh_p384,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-aes-ecdh-brainpoolP256r1": id_frodokem_976_aes_brainpoolP256r1,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-rsa2048": id_frodokem_976_shake_rsa2048,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-rsa3072": id_frodokem_976_shake_rsa3072,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-rsa4096": id_frodokem_976_shake_rsa4096,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-x25519": id_frodokem_976_shake_x25519,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-ecdh-secp384r1": id_frodokem_976_shake_ecdh_p384,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-ecdh-brainpoolP256r1": id_frodokem_976_shake_brainpoolP256r1,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-aes-ecdh-secp384r1": id_frodokem_1344_aes_ecdh_p384,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-aes-ecdh-brainpoolP384r1": id_frodokem_1344_aes_ecdh_brainpoolP384r1,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-aes-x448": id_frodokem_1344_aes_x448,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-shake-ecdh-secp384r1": id_frodokem_1344_shake_ecdh_p384,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-shake-ecdh-brainpoolP384r1": id_frodokem_1344_shake_ecdh_brainpoolP384r1,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-shake-x448": id_frodokem_1344_shake_x448,
 }
 
 ##################################
