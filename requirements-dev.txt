@@ -5,7 +5,7 @@
 safety>= 3.7.0, < 4.0.0
 pylint>= 4.0.4, < 5.0.0
 black>= 25.11.0, < 26.0.0
-ruff>= 0.14.10, < 1.0.0
+ruff>= 0.14.13, < 1.0.0
 robotframework-robocop==7.2.0
 robotframework-tidy==4.18.0
 pyright[nodejs]==1.1.408
