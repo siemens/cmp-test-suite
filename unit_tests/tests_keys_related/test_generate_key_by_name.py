@@ -6,6 +6,7 @@ import unittest
 
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from pq_logic.combined_factory import CombinedKeyFactory
+from pq_logic.tmp_oids import COMPOSITE_KEM_VERSION
 from resources.exceptions import InvalidKeyCombination
 
 
@@ -32,21 +33,25 @@ class TestGenerateKeyByName(unittest.TestCase):
 
     def test_generate_key_by_name_composite_kem(self):
         """
-        GIVEN the key name="composite-kem-07-ml-kem-768-ecdh-secp384r1".
+        GIVEN the key name="composite-kem<num>-ml-kem-768-ecdh-secp384r1".
         WHEN the key is generated,
         THEN the key is correctly generated.
         """
-        algorithm = "composite-kem07-ml-kem-768-ecdh-secp384r1"
+        algorithm = f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-secp384r1"
         key = CombinedKeyFactory.generate_key_from_name(algorithm)
         self.assertEqual(key.name, algorithm)
 
     def test_generate_key_by_name_invalid_algorithm(self):
         """
-        GIVEN the key name="composite-kem-07-ml-kem-1024-ecdh-secp256r1".
+        GIVEN the key name="composite-kem<num>-ml-kem-1024-ecdh-secp256r1".
         WHEN the key is generated,
         THEN the InvalidKeyCombination exception is raised,
         because this combination is not allowed.
         """
-        algorithm = "composite-kem07-ml-kem-1024-ecdh-secp256r1"
+        algorithm = f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-secp256r1"
         with self.assertRaises(InvalidKeyCombination):
             CombinedKeyFactory.generate_key_from_name(algorithm)
+
+
+if __name__ == "__main__":
+    unittest.main()
