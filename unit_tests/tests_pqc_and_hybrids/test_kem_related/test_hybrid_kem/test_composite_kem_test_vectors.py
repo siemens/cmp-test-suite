@@ -15,38 +15,28 @@ from pq_logic.keys.composite_kem import CompositeKEMPrivateKey, CompositeKEMPubl
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, RSADecapKey, RSAEncapKey
+from pq_logic.tmp_oids import COMPOSITE_KEM_VERSION
 from resources.certutils import parse_certificate
 from resources.exceptions import InvalidKeyData
 from resources.oidutils import CURVE_NAMES_TO_INSTANCES
 
-COMPOSITE_KEM07_NAME_TO_ORIGINAL_OID = {
-    "composite-kem07-ml-kem-768-rsa2048": "id-MLKEM768‑RSA2048‑HMAC‑SHA256",
-    "composite-kem07-ml-kem-768-rsa3072": "id-MLKEM768‑RSA3072‑HMAC‑SHA256",
-    "composite-kem07-ml-kem-768-rsa4096": "id-MLKEM768‑RSA4096‑HMAC‑SHA256",
-    "composite-kem07-ml-kem-768-x25519": "id-MLKEM768‑X25519‑SHA3‑256",
-    "composite-kem07-ml-kem-768-ecdh-secp256r1": "id-MLKEM768‑ECDH‑P256‑HMAC‑SHA256",
-    "composite-kem07-ml-kem-768-ecdh-secp384r1": "id-MLKEM768‑ECDH‑P384‑HMAC‑SHA256",
-    "composite-kem07-ml-kem-768-ecdh-brainpoolP256r1": "id-MLKEM768‑ECDH‑brainpoolP256r1‑HMAC‑SHA256",
-    "composite-kem07-ml-kem-1024-rsa3072": "id-MLKEM1024‑RSA3072‑HMAC‑SHA512",
-    "composite-kem07-ml-kem-1024-ecdh-secp384r1": "id-MLKEM1024‑ECDH‑P384‑HMAC‑SHA512",
-    "composite-kem07-ml-kem-1024-ecdh-brainpoolP384r1": "id-MLKEM1024‑ECDH‑brainpoolP384r1‑HMAC‑SHA512",
-    "composite-kem07-ml-kem-1024-x448": "id-MLKEM1024‑X448‑SHA3‑256",
-    "composite-kem07-ml-kem-1024-ecdh-p521": "id-MLKEM1024‑ECDH‑P521‑HMAC‑SHA512",
+COMPOSITE_KEM_ORIGINAL_NAME_TO_NAME = {
+    "id-MLKEM768-RSA3072-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa3072",
+    "id-MLKEM768-RSA4096-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa4096",
+    "id-MLKEM768-RSA2048-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa2048",
+    "id-MLKEM768-X25519-SHA3-256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-x25519",
+    "id-MLKEM768-ECDH-P256-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-secp256r1",
+    "id-MLKEM768-ECDH-P384-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-secp384r1",
+    "id-MLKEM768-ECDH-brainpoolP256r1-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-brainpoolP256r1",
+    "id-MLKEM1024-RSA3072-HMAC-SHA512": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-rsa3072",
+    "id-MLKEM1024-ECDH-P384-HMAC-SHA512": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-secp384r1",
+    "id-MLKEM1024-ECDH-brainpoolP384r1-HMAC-SHA512": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-brainpoolP384r1",
+    "id-MLKEM1024-X448-SHA3-256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-x448",
+    "id-MLKEM1024-ECDH-P521-HMAC-SHA512": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-secp521r1",
 }
 
-COMPOSITE_KEM07_ORIGINAL_NAME_TO_NAME = {
-    "id-MLKEM768-RSA3072-HMAC-SHA256": "composite-kem07-ml-kem-768-rsa3072",
-    "id-MLKEM768-RSA4096-HMAC-SHA256": "composite-kem07-ml-kem-768-rsa4096",
-    "id-MLKEM768-RSA2048-HMAC-SHA256": "composite-kem07-ml-kem-768-rsa2048",
-    "id-MLKEM768-X25519-SHA3-256": "composite-kem07-ml-kem-768-x25519",
-    "id-MLKEM768-ECDH-P256-HMAC-SHA256": "composite-kem07-ml-kem-768-ecdh-secp256r1",
-    "id-MLKEM768-ECDH-P384-HMAC-SHA256": "composite-kem07-ml-kem-768-ecdh-secp384r1",
-    "id-MLKEM768-ECDH-brainpoolP256r1-HMAC-SHA256": "composite-kem07-ml-kem-768-ecdh-brainpoolP256r1",
-    "id-MLKEM1024-RSA3072-HMAC-SHA512": "composite-kem07-ml-kem-1024-rsa3072",
-    "id-MLKEM1024-ECDH-P384-HMAC-SHA512": "composite-kem07-ml-kem-1024-ecdh-secp384r1",
-    "id-MLKEM1024-ECDH-brainpoolP384r1-HMAC-SHA512": "composite-kem07-ml-kem-1024-ecdh-brainpoolP384r1",
-    "id-MLKEM1024-X448-SHA3-256": "composite-kem07-ml-kem-1024-x448",
-    "id-MLKEM1024-ECDH-P521-HMAC-SHA512": "composite-kem07-ml-kem-1024-ecdh-secp521r1",
+COMPOSITE_KEM_NAME_TO_ORIGINAL_OID = {
+    v: k for k, v in COMPOSITE_KEM_ORIGINAL_NAME_TO_NAME.items()
 }
 
 
@@ -100,7 +90,7 @@ class CompositeKEM07TestVectors:
     @property
     def name(self):
         """Get the name of the algorithm."""
-        return COMPOSITE_KEM07_ORIGINAL_NAME_TO_NAME[self.tcId]
+        return COMPOSITE_KEM_ORIGINAL_NAME_TO_NAME[self.tcId]
 
     @property
     def ct_bytes(self):
@@ -116,7 +106,7 @@ def _load_composite_kem_from_private_bytes(algorithm: str, private_key: bytes) -
     :return: A CompositeKEMPublicKey instance.
     """
     algorithm = algorithm.lower()
-    prefix = "composite-kem07-"
+    prefix = f"composite-kem{COMPOSITE_KEM_VERSION}-"
     pq_name = PQKeyFactory.get_pq_alg_name(algorithm=algorithm)
     tmp_pq_key = PQKeyFactory.generate_pq_key(pq_name)
 
@@ -169,7 +159,7 @@ def _load_composite_kem_from_public_bytes(algorithm: str, public_key: bytes) -> 
     :return: A CompositeKEMPublicKey instance.
     """
     algorithm = algorithm.lower()
-    prefix = "composite-kem-07-"
+    prefix = f"composite-kem{COMPOSITE_KEM_VERSION}-"
     pq_name = PQKeyFactory.get_pq_alg_name(algorithm=algorithm)
     trad_name = algorithm.replace(prefix, "").replace(pq_name + "-", "")
     pq_key, rest = PQKeyFactory.from_public_bytes(pq_name, public_key, allow_rest=True)
