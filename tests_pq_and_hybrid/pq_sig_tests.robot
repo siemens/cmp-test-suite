@@ -6,6 +6,7 @@
 Documentation       General tests for CMP logic, not necessarily specific to the lightweight profile
 
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -18,8 +19,7 @@ Library             ../resources/checkutils.py
 Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags           pq-sig   pqc
-
-Suite Setup         Set Up Test Suite
+Suite Setup         Set Up PQ Sig Suite
 
 
 *** Keywords ***
@@ -48,6 +48,7 @@ Exchange PQ Signature PKIMessage
     ...                Returns:
     ...                - The response PKIMessage.
     ...
+
     ...                Examples:
     ...                | Exchange PQ Signature PKIMessage | ml-dsa-44 |
     ...                | Exchange PQ Signature PKIMessage | ml-dsa-44 | sha512 |
@@ -63,7 +64,7 @@ Exchange PQ Signature PKIMessage
     ...       recipient=${RECIPIENT}
     ...       exclude_fields=senderKID,sender
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
     RETURN    ${response}
 
 Exchange PQ Signature PKIMessage With Extensions
@@ -90,7 +91,7 @@ Exchange PQ Signature PKIMessage With Extensions
     ...       recipient=${RECIPIENT}
     ...       exclude_fields=senderKID,sender
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
     RETURN    ${response}
 
 Validate BadPOP
@@ -179,7 +180,7 @@ CA MUST Reject a ML-DSA-44 with SHA512 certificate for non-EE
     ...       recipient=${RECIPIENT}
     ...       exclude_fields=senderKID,sender
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    status=rejection
     ${status_info}=    Get PKIStatusInfo    ${response}
     Is Bit Set        ${status_info['failInfo']}    badCertTemplate
@@ -710,7 +711,7 @@ CA MUST Reject SLH-DSA-SHA2-256S with Sha512 certificate for non-EE
     ...       recipient=${RECIPIENT}
     ...       exclude_fields=senderKID,sender
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
+    ${response}=   Exchange PKIMessage   ${protected_ir}
     PKIStatus Must Be    ${response}    status=rejection
     ${status_info}=    Get PKIStatusInfo    ${response}
     Is Bit Set        ${status_info['failInfo']}    badCertTemplate

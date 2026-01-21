@@ -7,6 +7,7 @@
 Documentation    Test cases for PQ Sig algorithms to check all algorithm combinations.
 
 Resource            ../resources/keywords.resource
+Resource            ../resources/setup_keywords.resource
 Library             Collections
 Library             OperatingSystem
 Library             ../resources/utils.py
@@ -22,8 +23,7 @@ Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags            pq-sig  pqc  verbose-alg   pqc-sig-verbose-alg  PKIProtection  verbose-tests
 
-Suite Setup         Set Up Test Suite
-
+Suite Setup         Set Up PQ Sig Suite
 Test Template     Request With PQ Sig Key
 
 
@@ -244,8 +244,7 @@ Validate PQ PKIProtection Response
     ...
     [Tags]    PKIProtection
     [Arguments]    ${request}    ${bad_message_check}
-    ${url}=   Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
-    ${response}=   Exchange PKIMessage    ${request}  ${url}
+    ${response}=   Exchange PKIMessage    ${request}
     IF   ${bad_message_check}
         PKIStatus Must Be    ${response}    rejection
         PKIStatusInfo Failinfo Bit Must Be    ${response}    badMessageCheck
