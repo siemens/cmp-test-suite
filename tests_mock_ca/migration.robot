@@ -511,7 +511,7 @@ CA MUST Issue a valid Chameleon Cert
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
     ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
-    ${extracted_delta_cert}=   Get From List    ${response["extraCerts"]}    1
+    VAR    ${extracted_delta_cert}   ${response["extraCerts"][1]}
     ${der_delta}=   Encode To Der    ${delta_cert}
     ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
     Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
