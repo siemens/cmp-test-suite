@@ -240,7 +240,7 @@ id_comp_kem07_mlkem1024_rsa3072 = univ.ObjectIdentifier(f"{id_new_compKEM}.61")
 
 COMPOSITE_KEM_VERSION = "07"
 
-COMPOSITE_KEM07_MLKEM_NAME_2_OID = {
+COMPOSITE_KEM_MLKEM_NAME_2_OID = {
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa2048": id_comp_kem07_mlkem768_rsa2048,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa3072": id_comp_kem07_mlkem768_rsa3072,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa4096": id_comp_kem07_mlkem768_rsa4096,
@@ -463,7 +463,7 @@ id_altSignatureExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.7")
 
 # Composite KEM OIDs
 COMPOSITE_KEM07_NAME_2_OID = {}
-COMPOSITE_KEM07_NAME_2_OID.update(COMPOSITE_KEM07_MLKEM_NAME_2_OID)
+COMPOSITE_KEM07_NAME_2_OID.update(COMPOSITE_KEM_MLKEM_NAME_2_OID)
 COMPOSITE_KEM07_NAME_2_OID.update(COMPOSITE_FRODOKEM_NAME_2_OID)
 COMPOSITE_KEM07_NAME_2_OID.update(COMPOSITE_KEM_DHKEMRFC9180_NAME_2_OID)
 
