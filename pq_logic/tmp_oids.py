@@ -137,10 +137,12 @@ COMPOSITE_SIG13_NAME_TO_OID = {
     f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-rsa4096": id_compSig13_mldsa65_rsa4096_pkcs15,
     f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-secp256r1": id_compSig13_mldsa65_ecdsa_p256,
     f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-secp384r1": id_compSig13_mldsa65_ecdsa_p384,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-brainpoolP256r1": id_compSig13_mldsa65_ecdsa_brainpool_p256r1,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-brainpoolP256r1":  # line too long.
+        id_compSig13_mldsa65_ecdsa_brainpool_p256r1,
     f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ed25519": id_compSig13_mldsa65_ed25519,
     f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ecdsa-secp384r1": id_compSig13_mldsa87_ecdsa_p384,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ecdsa-brainpoolP384r1": id_compSig13_mldsa87_ecdsa_brainpool_p384r1,
+    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ecdsa-brainpoolP384r1":  # line too long.
+        id_compSig13_mldsa87_ecdsa_brainpool_p384r1,
     f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ed448": id_compSig13_mldsa87_ed448,
     f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-rsa3072-pss": id_compSig13_mldsa87_rsa3072_pss,
     f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-rsa4096-pss": id_compSig13_mldsa87_rsa4096_pss,
@@ -240,20 +242,23 @@ id_comp_kem_mlkem1024_rsa3072 = univ.ObjectIdentifier(f"{id_new_compKEM}.61")
 
 COMPOSITE_KEM_VERSION = "07"
 
-COMPOSITE_KEM_MLKEM_NAME_2_OID = {
+COMPOSITE_KEM_MLKEM_NAME_2_OID =  {
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa2048": id_comp_kem_mlkem768_rsa2048,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa3072": id_comp_kem_mlkem768_rsa3072,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa4096": id_comp_kem_mlkem768_rsa4096,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-x25519": id_comp_kem_mlkem768_x25519,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-secp256r1": id_comp_kem_mlkem768_ecdh_p256,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-secp384r1": id_comp_kem_mlkem768_ecdh_p384,
-    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-brainpoolP256r1": id_comp_kem_mlkem768_ecdh_brainpool_p256r1,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-brainpoolP256r1":  # line too long
+        id_comp_kem_mlkem768_ecdh_brainpool_p256r1,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-rsa3072": id_comp_kem_mlkem1024_rsa3072,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-secp384r1": id_comp_kem_mlkem1024_ecdh_p384,
-    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-brainpoolP384r1": id_comp_kem_mlkem1024_ecdh_brainpool_p384r1,
+    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-brainpoolP384r1":  # line too long
+        id_comp_kem_mlkem1024_ecdh_brainpool_p384r1,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-x448": id_comp_kem_mlkem1024_x448,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-secp521r1": id_comp_kem_mlkem1024_ecdh_p521,
-    f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-rsa3072": id_comp_kem_mlkem1024_rsa3072,
 }
+
 
 id_composite_frodokem = f"{id_composite_kem_test_suite}.1"
 id_composite_mlkem_dhkemrfc9180 = f"{id_composite_kem_test_suite}.2"
