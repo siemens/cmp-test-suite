@@ -11,7 +11,9 @@ sys.path.append(".")
 from pq_logic.tmp_oids import (
     CHEMPAT_NAME_2_OID,
     COMPOSITE_KEM_NAME_2_OID,
+    COMPOSITE_KEM_VERSION,
     COMPOSITE_SIG_NAME_TO_OID,
+    COMPOSITE_SIG_VERSION,
 )
 from resources.oidutils import PQ_KEM_NAME_2_OID, PQ_SIG_NAME_2_OID, PQ_SIG_PRE_HASH_NAME_2_OID
 
@@ -89,6 +91,7 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
         use_pss = name.endswith("-pss")
 
         # Replace part of name dynamically
+        alg_name = name.replace(f"composite-sig-{COMPOSITE_SIG_VERSION}", "composite-sig")
         base_name = name.replace(replace_name, name_to_replace).replace("ml-dsa", "ML-DSA").upper()
 
         # Generate test case names
@@ -138,7 +141,7 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
         test_cases.append(
             {
                 "test_name": invalid_test_name.strip(),
-                "arguments": {"algorithm": name, "use_pss": use_pss, "invalid": True},
+                "arguments": {"algorithm": alg_name, "use_pss": use_pss, "invalid": True},
                 "tags": generate_tags("negative"),
             }
         )
@@ -147,7 +150,7 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
         test_cases.append(
             {
                 "test_name": valid_test_name.strip(),
-                "arguments": {"algorithm": name, "use_pss": use_pss, "invalid": False},
+                "arguments": {"algorithm": alg_name, "use_pss": use_pss, "invalid": False},
                 "tags": generate_tags("positive"),
             }
         )
@@ -218,6 +221,7 @@ def _generate_hybrid_kem_tests():
             if "composite-dhkem" in name:
                 continue
 
+            alg_name = name.replace(f"composite-kem{COMPOSITE_KEM_VERSION}", "composite-kem")
             base_name = name.upper()
             # Generate test case names
             invalid_test_name = f"Invalid {base_name} Key Size"
@@ -259,7 +263,7 @@ def _generate_hybrid_kem_tests():
             test_cases.append(
                 {
                     "test_name": invalid_test_name.strip(),
-                    "arguments": {"algorithm": name, "invalid_key_size": "True"},
+                    "arguments": {"algorithm": alg_name, "invalid_key_size": "True"},
                     "tags": generate_tags("negative"),
                 }
             )
@@ -268,7 +272,7 @@ def _generate_hybrid_kem_tests():
             test_cases.append(
                 {
                     "test_name": valid_test_name.strip(),
-                    "arguments": {"algorithm": name, "invalid_key_size": "False"},
+                    "arguments": {"algorithm": alg_name, "invalid_key_size": "False"},
                     "tags": generate_tags("positive"),
                 }
             )
