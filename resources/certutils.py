@@ -28,6 +28,7 @@ from pkilint import loader, report
 from pkilint.pkix import certificate, extension, name
 from pkilint.validation import ValidationFindingSeverity
 from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
@@ -36,6 +37,7 @@ from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
 from pq_logic.keys.composite_sig import CompositeSigPublicKey
 from pq_logic.pq_utils import is_kem_public_key
+from pq_logic.tmp_oids import COMPOSITE_KEM_VERSION, COMPOSITE_SIG_VERSION
 from resources import (
     asn1utils,
     certextractutils,
@@ -2109,6 +2111,32 @@ def _validate_oid_in_cert_stfl(
         )
 
 
+def _correct_composite_names(alg_name: str) -> Optional[str]:
+    """Correct the algorithm name for Composite Signature keys.
+
+    To also allow the names without the version number for better usability.
+
+    :param alg_name: The algorithm name without the version number.
+    :return The corrected algorithm name.
+    """
+    if alg_name.startswith("composite-kem"):
+        return alg_name.replace("composite-kem", f"composite-kem{COMPOSITE_KEM_VERSION}")
+    if alg_name.startswith("composite-sig"):
+        return alg_name.replace("composite-sig", f"composite-sig-{COMPOSITE_SIG_VERSION}")
+    return None
+
+
+def _create_mismatch_oid_error_message(oid: univ.ObjectIdentifier, alg_name: str) -> str:
+    """Create an error message for an unknown OID."""
+    _add = may_return_oid_to_name(oid)
+    if "." not in _add:
+        _add = f" ({_add})"
+    else:
+        _add = ""
+
+    return f"The OID {oid}{_add} does not match the name {alg_name}."
+
+
 @keyword(name="Validate Migration OID In Certificate")
 def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descriptions in the docstring
     cert: rfc9480.CMPCertificate, alg_name: str
@@ -2133,7 +2161,11 @@ def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descri
     """
     pub_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
 
-    name_oid = PQ_NAME_2_OID.get(alg_name) or HYBRID_NAME_2_OID.get(alg_name)
+    name_oid = (
+        PQ_NAME_2_OID.get(alg_name)
+        or HYBRID_NAME_2_OID.get(alg_name)
+        or HYBRID_NAME_2_OID.get(_correct_composite_names(alg_name))
+    )
 
     if alg_name.startswith("xmss") or alg_name.startswith("xmssmt") or alg_name.startswith("hss"):
         _validate_oid_in_cert_stfl(alg_name, cert)
@@ -2147,21 +2179,19 @@ def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descri
 
     if PQ_NAME_2_OID.get(alg_name) is not None:
         if str(pub_oid) != str(PQ_NAME_2_OID[alg_name]):
-            _add = may_return_oid_to_name(pub_oid)
-            if "." not in _add:
-                _add = f" ({_add})"
-            else:
-                _add = ""
-            raise ValueError(f"The OID {pub_oid}{_add} does not match the name {alg_name}.")
+            error_msg = _create_mismatch_oid_error_message(pub_oid, alg_name)
+            raise ValueError(error_msg)
 
     elif HYBRID_NAME_2_OID.get(alg_name) is not None:
         if str(pub_oid) != str(HYBRID_NAME_2_OID[alg_name]):
-            _add = may_return_oid_to_name(pub_oid)
-            if "." not in _add:
-                _add = f" ({_add})"
-            else:
-                _add = ""
-            raise ValueError(f"The OID {pub_oid}{_add} does not match the name {alg_name}.")
+            error_msg = _create_mismatch_oid_error_message(pub_oid, alg_name)
+            raise ValueError(error_msg)
+
+    elif alg_name.startswith("composite"):
+        corrected_name = _correct_composite_names(alg_name)
+        if str(pub_oid) != str(HYBRID_NAME_2_OID[corrected_name]):
+            error_msg = _create_mismatch_oid_error_message(pub_oid, alg_name)
+            raise ValueError(error_msg)
     else:
         raise UnknownOID(pub_oid)
 
