@@ -59,10 +59,10 @@ from pq_logic.tmp_oids import (
     CHEMPAT_OID_2_NAME,
     COMPOSITE_KEM_NAME_2_OID,
     COMPOSITE_KEM_OID_2_NAME,
-    COMPOSITE_SIG_OID_TO_NAME,
-    id_rsa_kem_spki,
     COMPOSITE_KEM_VERSION,
+    COMPOSITE_SIG_OID_TO_NAME,
     COMPOSITE_SIG_VERSION,
+    id_rsa_kem_spki,
 )
 from resources.asn1utils import try_decode_pyasn1
 from resources.exceptions import BadAlg, BadAsn1Data, InvalidKeyCombination, InvalidKeyData, MismatchingKey
@@ -96,7 +96,14 @@ def _any_string_in_string(string: str, options: List[str]) -> str:
 class CombinedKeyFactory:
     """Factory for creating all known key types."""
 
-    _composite_prefixes = [f"sig-{COMPOSITE_SIG_VERSION}", f"kem-{COMPOSITE_KEM_VERSION}", f"kem{COMPOSITE_KEM_VERSION}", "dhkem", "kem", "sig"]
+    _composite_prefixes = [
+        f"sig-{COMPOSITE_SIG_VERSION}",
+        f"kem-{COMPOSITE_KEM_VERSION}",
+        f"kem{COMPOSITE_KEM_VERSION}",
+        "dhkem",
+        "kem",
+        "sig",
+    ]
 
     @staticmethod
     def get_stateful_sig_algorithms() -> Dict[str, List[str]]:
@@ -470,7 +477,9 @@ class CombinedKeyFactory:
         trad_key = CombinedKeyFactory._load_trad_composite_private_key(
             trad_name=trad_name,
             trad_key_bytes=trad_bytes,
-            prefix=f"KEM v{COMPOSITE_KEM_VERSION}" if "dhkem" not in algorithm.lower() else f"dhkem v{COMPOSITE_KEM_VERSION}",
+            prefix=f"KEM v{COMPOSITE_KEM_VERSION}"
+            if "dhkem" not in algorithm.lower()
+            else f"dhkem v{COMPOSITE_KEM_VERSION}",
         )
 
         if not isinstance(trad_key, rsa.RSAPrivateKey):
