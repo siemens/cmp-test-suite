@@ -302,17 +302,17 @@ COMPOSITE_FRODOKEM_NAME_2_OID = {
     f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-rsa3072": id_frodokem_976_shake_rsa3072,
     f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-rsa4096": id_frodokem_976_shake_rsa4096,
     f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-x25519": id_frodokem_976_shake_x25519,
-    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-ecdh-secp384r1":   # line too long.
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-ecdh-secp384r1":  # line too long.
     id_frodokem_976_shake_ecdh_p384,
-    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-ecdh-brainpoolP256r1":   # line too long.
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-976-shake-ecdh-brainpoolP256r1":  # line too long.
     id_frodokem_976_shake_brainpoolP256r1,
     f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-aes-ecdh-secp384r1": id_frodokem_1344_aes_ecdh_p384,
-    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-aes-ecdh-brainpoolP384r1":   # line too long.
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-aes-ecdh-brainpoolP384r1":  # line too long.
     id_frodokem_1344_aes_ecdh_brainpoolP384r1,
-    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-aes-x448":   # line too long.
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-aes-x448":  # line too long.
     id_frodokem_1344_aes_x448,
     f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-shake-ecdh-secp384r1": id_frodokem_1344_shake_ecdh_p384,
-    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-shake-ecdh-brainpoolP384r1":   # line too long.
+    f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-shake-ecdh-brainpoolP384r1":  # line too long.
     id_frodokem_1344_shake_ecdh_brainpoolP384r1,
     f"composite-kem{COMPOSITE_KEM_VERSION}-frodokem-1344-shake-x448": id_frodokem_1344_shake_x448,
 }
