@@ -200,185 +200,185 @@ Invalid CHEMPAT-FRODOKEM-1344-SHAKE-X448 Key Size    chempat-frodokem-1344-shake
 Valid CHEMPAT-FRODOKEM-1344-SHAKE-X448 Request    chempat-frodokem-1344-shake-x448    False
      [Tags]    positive  chempat  frodokem  x448
 
-Invalid COMPOSITE-KEM07-ML-KEM-768-RSA2048 Key Size    composite-kem07-ml-kem-768-rsa2048    True
-     [Tags]    negative  composite-kem07  ml-kem  rsa
+Invalid COMPOSITE-KEM07-ML-KEM-768-RSA2048 Key Size    composite-kem-ml-kem-768-rsa2048    True
+     [Tags]    negative  composite-kem  ml-kem  rsa
 
-Valid COMPOSITE-KEM07-ML-KEM-768-RSA2048 Request    composite-kem07-ml-kem-768-rsa2048    False
-     [Tags]    positive  composite-kem07  ml-kem  rsa
+Valid COMPOSITE-KEM07-ML-KEM-768-RSA2048 Request    composite-kem-ml-kem-768-rsa2048    False
+     [Tags]    positive  composite-kem  ml-kem  rsa
 
-Invalid COMPOSITE-KEM07-ML-KEM-768-RSA3072 Key Size    composite-kem07-ml-kem-768-rsa3072    True
-     [Tags]    negative  composite-kem07  ml-kem  rsa
+Invalid COMPOSITE-KEM07-ML-KEM-768-RSA3072 Key Size    composite-kem-ml-kem-768-rsa3072    True
+     [Tags]    negative  composite-kem  ml-kem  rsa
 
-Valid COMPOSITE-KEM07-ML-KEM-768-RSA3072 Request    composite-kem07-ml-kem-768-rsa3072    False
-     [Tags]    positive  composite-kem07  ml-kem  rsa
+Valid COMPOSITE-KEM07-ML-KEM-768-RSA3072 Request    composite-kem-ml-kem-768-rsa3072    False
+     [Tags]    positive  composite-kem  ml-kem  rsa
 
-Invalid COMPOSITE-KEM07-ML-KEM-768-RSA4096 Key Size    composite-kem07-ml-kem-768-rsa4096    True
-     [Tags]    negative  composite-kem07  ml-kem  rsa
+Invalid COMPOSITE-KEM07-ML-KEM-768-RSA4096 Key Size    composite-kem-ml-kem-768-rsa4096    True
+     [Tags]    negative  composite-kem  ml-kem  rsa
 
-Valid COMPOSITE-KEM07-ML-KEM-768-RSA4096 Request    composite-kem07-ml-kem-768-rsa4096    False
-     [Tags]    positive  composite-kem07  ml-kem  rsa
+Valid COMPOSITE-KEM07-ML-KEM-768-RSA4096 Request    composite-kem-ml-kem-768-rsa4096    False
+     [Tags]    positive  composite-kem  ml-kem  rsa
 
-Invalid COMPOSITE-KEM07-ML-KEM-768-X25519 Key Size    composite-kem07-ml-kem-768-x25519    True
-     [Tags]    negative  composite-kem07  ml-kem  x25519
+Invalid COMPOSITE-KEM07-ML-KEM-768-X25519 Key Size    composite-kem-ml-kem-768-x25519    True
+     [Tags]    negative  composite-kem  ml-kem  x25519
 
-Valid COMPOSITE-KEM07-ML-KEM-768-X25519 Request    composite-kem07-ml-kem-768-x25519    False
-     [Tags]    positive  composite-kem07  ml-kem  x25519
+Valid COMPOSITE-KEM07-ML-KEM-768-X25519 Request    composite-kem-ml-kem-768-x25519    False
+     [Tags]    positive  composite-kem  ml-kem  x25519
 
-Invalid COMPOSITE-KEM07-ML-KEM-768-ECDH-SECP256R1 Key Size    composite-kem07-ml-kem-768-ecdh-secp256r1    True
-     [Tags]    negative  composite-kem07  ml-kem  ecdh  secp256r1
+Invalid COMPOSITE-KEM07-ML-KEM-768-ECDH-SECP256R1 Key Size    composite-kem-ml-kem-768-ecdh-secp256r1    True
+     [Tags]    negative  composite-kem  ml-kem  ecdh  secp256r1
 
-Valid COMPOSITE-KEM07-ML-KEM-768-ECDH-SECP256R1 Request    composite-kem07-ml-kem-768-ecdh-secp256r1    False
-     [Tags]    positive  composite-kem07  ml-kem  ecdh  secp256r1
+Valid COMPOSITE-KEM07-ML-KEM-768-ECDH-SECP256R1 Request    composite-kem-ml-kem-768-ecdh-secp256r1    False
+     [Tags]    positive  composite-kem  ml-kem  ecdh  secp256r1
 
-Invalid COMPOSITE-KEM07-ML-KEM-768-ECDH-SECP384R1 Key Size    composite-kem07-ml-kem-768-ecdh-secp384r1    True
-     [Tags]    negative  composite-kem07  ml-kem  ecdh  secp384r1
+Invalid COMPOSITE-KEM07-ML-KEM-768-ECDH-SECP384R1 Key Size    composite-kem-ml-kem-768-ecdh-secp384r1    True
+     [Tags]    negative  composite-kem  ml-kem  ecdh  secp384r1
 
-Valid COMPOSITE-KEM07-ML-KEM-768-ECDH-SECP384R1 Request    composite-kem07-ml-kem-768-ecdh-secp384r1    False
-     [Tags]    positive  composite-kem07  ml-kem  ecdh  secp384r1
+Valid COMPOSITE-KEM07-ML-KEM-768-ECDH-SECP384R1 Request    composite-kem-ml-kem-768-ecdh-secp384r1    False
+     [Tags]    positive  composite-kem  ml-kem  ecdh  secp384r1
 
-Invalid COMPOSITE-KEM07-ML-KEM-768-ECDH-BRAINPOOLP256R1 Key Size    composite-kem07-ml-kem-768-ecdh-brainpoolP256r1    True
-     [Tags]    negative  composite-kem07  ml-kem  ecdh  brainpoolP256r1
+Invalid COMPOSITE-KEM07-ML-KEM-768-ECDH-BRAINPOOLP256R1 Key Size    composite-kem-ml-kem-768-ecdh-brainpoolP256r1    True
+     [Tags]    negative  composite-kem  ml-kem  ecdh  brainpoolP256r1
 
-Valid COMPOSITE-KEM07-ML-KEM-768-ECDH-BRAINPOOLP256R1 Request    composite-kem07-ml-kem-768-ecdh-brainpoolP256r1    False
-     [Tags]    positive  composite-kem07  ml-kem  ecdh  brainpoolP256r1
+Valid COMPOSITE-KEM07-ML-KEM-768-ECDH-BRAINPOOLP256R1 Request    composite-kem-ml-kem-768-ecdh-brainpoolP256r1    False
+     [Tags]    positive  composite-kem  ml-kem  ecdh  brainpoolP256r1
 
-Invalid COMPOSITE-KEM07-ML-KEM-1024-ECDH-SECP384R1 Key Size    composite-kem07-ml-kem-1024-ecdh-secp384r1    True
-     [Tags]    negative  composite-kem07  ml-kem  ecdh  secp384r1
+Invalid COMPOSITE-KEM07-ML-KEM-1024-RSA3072 Key Size    composite-kem-ml-kem-1024-rsa3072    True
+     [Tags]    negative  composite-kem  ml-kem  rsa
 
-Valid COMPOSITE-KEM07-ML-KEM-1024-ECDH-SECP384R1 Request    composite-kem07-ml-kem-1024-ecdh-secp384r1    False
-     [Tags]    positive  composite-kem07  ml-kem  ecdh  secp384r1
+Valid COMPOSITE-KEM07-ML-KEM-1024-RSA3072 Request    composite-kem-ml-kem-1024-rsa3072    False
+     [Tags]    positive  composite-kem  ml-kem  rsa
 
-Invalid COMPOSITE-KEM07-ML-KEM-1024-ECDH-BRAINPOOLP384R1 Key Size    composite-kem07-ml-kem-1024-ecdh-brainpoolP384r1    True
-     [Tags]    negative  composite-kem07  ml-kem  ecdh  brainpoolP384r1
+Invalid COMPOSITE-KEM07-ML-KEM-1024-ECDH-SECP384R1 Key Size    composite-kem-ml-kem-1024-ecdh-secp384r1    True
+     [Tags]    negative  composite-kem  ml-kem  ecdh  secp384r1
 
-Valid COMPOSITE-KEM07-ML-KEM-1024-ECDH-BRAINPOOLP384R1 Request    composite-kem07-ml-kem-1024-ecdh-brainpoolP384r1    False
-     [Tags]    positive  composite-kem07  ml-kem  ecdh  brainpoolP384r1
+Valid COMPOSITE-KEM07-ML-KEM-1024-ECDH-SECP384R1 Request    composite-kem-ml-kem-1024-ecdh-secp384r1    False
+     [Tags]    positive  composite-kem  ml-kem  ecdh  secp384r1
 
-Invalid COMPOSITE-KEM07-ML-KEM-1024-X448 Key Size    composite-kem07-ml-kem-1024-x448    True
-     [Tags]    negative  composite-kem07  ml-kem  x448
+Invalid COMPOSITE-KEM07-ML-KEM-1024-ECDH-BRAINPOOLP384R1 Key Size    composite-kem-ml-kem-1024-ecdh-brainpoolP384r1    True
+     [Tags]    negative  composite-kem  ml-kem  ecdh  brainpoolP384r1
 
-Valid COMPOSITE-KEM07-ML-KEM-1024-X448 Request    composite-kem07-ml-kem-1024-x448    False
-     [Tags]    positive  composite-kem07  ml-kem  x448
+Valid COMPOSITE-KEM07-ML-KEM-1024-ECDH-BRAINPOOLP384R1 Request    composite-kem-ml-kem-1024-ecdh-brainpoolP384r1    False
+     [Tags]    positive  composite-kem  ml-kem  ecdh  brainpoolP384r1
 
-Invalid COMPOSITE-KEM07-ML-KEM-1024-ECDH-SECP521R1 Key Size    composite-kem07-ml-kem-1024-ecdh-secp521r1    True
-     [Tags]    negative  composite-kem07  ml-kem  ecdh  secp521r1
+Invalid COMPOSITE-KEM07-ML-KEM-1024-X448 Key Size    composite-kem-ml-kem-1024-x448    True
+     [Tags]    negative  composite-kem  ml-kem  x448
 
-Valid COMPOSITE-KEM07-ML-KEM-1024-ECDH-SECP521R1 Request    composite-kem07-ml-kem-1024-ecdh-secp521r1    False
-     [Tags]    positive  composite-kem07  ml-kem  ecdh  secp521r1
+Valid COMPOSITE-KEM07-ML-KEM-1024-X448 Request    composite-kem-ml-kem-1024-x448    False
+     [Tags]    positive  composite-kem  ml-kem  x448
 
-Invalid COMPOSITE-KEM07-ML-KEM-1024-RSA3072 Key Size    composite-kem07-ml-kem-1024-rsa3072    True
-     [Tags]    negative  composite-kem07  ml-kem  rsa
+Invalid COMPOSITE-KEM07-ML-KEM-1024-ECDH-SECP521R1 Key Size    composite-kem-ml-kem-1024-ecdh-secp521r1    True
+     [Tags]    negative  composite-kem  ml-kem  ecdh  secp521r1
 
-Valid COMPOSITE-KEM07-ML-KEM-1024-RSA3072 Request    composite-kem07-ml-kem-1024-rsa3072    False
-     [Tags]    positive  composite-kem07  ml-kem  rsa
+Valid COMPOSITE-KEM07-ML-KEM-1024-ECDH-SECP521R1 Request    composite-kem-ml-kem-1024-ecdh-secp521r1    False
+     [Tags]    positive  composite-kem  ml-kem  ecdh  secp521r1
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA2048 Key Size    composite-kem07-frodokem-976-aes-rsa2048    True
-     [Tags]    negative  composite-kem07  frodokem  rsa
+Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA2048 Key Size    composite-kem-frodokem-976-aes-rsa2048    True
+     [Tags]    negative  composite-kem  frodokem  rsa
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA2048 Request    composite-kem07-frodokem-976-aes-rsa2048    False
-     [Tags]    positive  composite-kem07  frodokem  rsa
+Valid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA2048 Request    composite-kem-frodokem-976-aes-rsa2048    False
+     [Tags]    positive  composite-kem  frodokem  rsa
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA3072 Key Size    composite-kem07-frodokem-976-aes-rsa3072    True
-     [Tags]    negative  composite-kem07  frodokem  rsa
+Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA3072 Key Size    composite-kem-frodokem-976-aes-rsa3072    True
+     [Tags]    negative  composite-kem  frodokem  rsa
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA3072 Request    composite-kem07-frodokem-976-aes-rsa3072    False
-     [Tags]    positive  composite-kem07  frodokem  rsa
+Valid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA3072 Request    composite-kem-frodokem-976-aes-rsa3072    False
+     [Tags]    positive  composite-kem  frodokem  rsa
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA4096 Key Size    composite-kem07-frodokem-976-aes-rsa4096    True
-     [Tags]    negative  composite-kem07  frodokem  rsa
+Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA4096 Key Size    composite-kem-frodokem-976-aes-rsa4096    True
+     [Tags]    negative  composite-kem  frodokem  rsa
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA4096 Request    composite-kem07-frodokem-976-aes-rsa4096    False
-     [Tags]    positive  composite-kem07  frodokem  rsa
+Valid COMPOSITE-KEM07-FRODOKEM-976-AES-RSA4096 Request    composite-kem-frodokem-976-aes-rsa4096    False
+     [Tags]    positive  composite-kem  frodokem  rsa
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-X25519 Key Size    composite-kem07-frodokem-976-aes-x25519    True
-     [Tags]    negative  composite-kem07  frodokem  x25519
+Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-X25519 Key Size    composite-kem-frodokem-976-aes-x25519    True
+     [Tags]    negative  composite-kem  frodokem  x25519
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-AES-X25519 Request    composite-kem07-frodokem-976-aes-x25519    False
-     [Tags]    positive  composite-kem07  frodokem  x25519
+Valid COMPOSITE-KEM07-FRODOKEM-976-AES-X25519 Request    composite-kem-frodokem-976-aes-x25519    False
+     [Tags]    positive  composite-kem  frodokem  x25519
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-ECDH-SECP384R1 Key Size    composite-kem07-frodokem-976-aes-ecdh-secp384r1    True
-     [Tags]    negative  composite-kem07  frodokem  ecdh  secp384r1
+Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-ECDH-SECP384R1 Key Size    composite-kem-frodokem-976-aes-ecdh-secp384r1    True
+     [Tags]    negative  composite-kem  frodokem  ecdh  secp384r1
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-AES-ECDH-SECP384R1 Request    composite-kem07-frodokem-976-aes-ecdh-secp384r1    False
-     [Tags]    positive  composite-kem07  frodokem  ecdh  secp384r1
+Valid COMPOSITE-KEM07-FRODOKEM-976-AES-ECDH-SECP384R1 Request    composite-kem-frodokem-976-aes-ecdh-secp384r1    False
+     [Tags]    positive  composite-kem  frodokem  ecdh  secp384r1
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-ECDH-BRAINPOOLP256R1 Key Size    composite-kem07-frodokem-976-aes-ecdh-brainpoolP256r1    True
-     [Tags]    negative  composite-kem07  frodokem  ecdh  brainpoolP256r1
+Invalid COMPOSITE-KEM07-FRODOKEM-976-AES-ECDH-BRAINPOOLP256R1 Key Size    composite-kem-frodokem-976-aes-ecdh-brainpoolP256r1    True
+     [Tags]    negative  composite-kem  frodokem  ecdh  brainpoolP256r1
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-AES-ECDH-BRAINPOOLP256R1 Request    composite-kem07-frodokem-976-aes-ecdh-brainpoolP256r1    False
-     [Tags]    positive  composite-kem07  frodokem  ecdh  brainpoolP256r1
+Valid COMPOSITE-KEM07-FRODOKEM-976-AES-ECDH-BRAINPOOLP256R1 Request    composite-kem-frodokem-976-aes-ecdh-brainpoolP256r1    False
+     [Tags]    positive  composite-kem  frodokem  ecdh  brainpoolP256r1
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA2048 Key Size    composite-kem07-frodokem-976-shake-rsa2048    True
-     [Tags]    negative  composite-kem07  frodokem  rsa
+Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA2048 Key Size    composite-kem-frodokem-976-shake-rsa2048    True
+     [Tags]    negative  composite-kem  frodokem  rsa
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA2048 Request    composite-kem07-frodokem-976-shake-rsa2048    False
-     [Tags]    positive  composite-kem07  frodokem  rsa
+Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA2048 Request    composite-kem-frodokem-976-shake-rsa2048    False
+     [Tags]    positive  composite-kem  frodokem  rsa
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA3072 Key Size    composite-kem07-frodokem-976-shake-rsa3072    True
-     [Tags]    negative  composite-kem07  frodokem  rsa
+Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA3072 Key Size    composite-kem-frodokem-976-shake-rsa3072    True
+     [Tags]    negative  composite-kem  frodokem  rsa
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA3072 Request    composite-kem07-frodokem-976-shake-rsa3072    False
-     [Tags]    positive  composite-kem07  frodokem  rsa
+Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA3072 Request    composite-kem-frodokem-976-shake-rsa3072    False
+     [Tags]    positive  composite-kem  frodokem  rsa
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA4096 Key Size    composite-kem07-frodokem-976-shake-rsa4096    True
-     [Tags]    negative  composite-kem07  frodokem  rsa
+Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA4096 Key Size    composite-kem-frodokem-976-shake-rsa4096    True
+     [Tags]    negative  composite-kem  frodokem  rsa
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA4096 Request    composite-kem07-frodokem-976-shake-rsa4096    False
-     [Tags]    positive  composite-kem07  frodokem  rsa
+Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-RSA4096 Request    composite-kem-frodokem-976-shake-rsa4096    False
+     [Tags]    positive  composite-kem  frodokem  rsa
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-X25519 Key Size    composite-kem07-frodokem-976-shake-x25519    True
-     [Tags]    negative  composite-kem07  frodokem  x25519
+Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-X25519 Key Size    composite-kem-frodokem-976-shake-x25519    True
+     [Tags]    negative  composite-kem  frodokem  x25519
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-X25519 Request    composite-kem07-frodokem-976-shake-x25519    False
-     [Tags]    positive  composite-kem07  frodokem  x25519
+Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-X25519 Request    composite-kem-frodokem-976-shake-x25519    False
+     [Tags]    positive  composite-kem  frodokem  x25519
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-ECDH-SECP384R1 Key Size    composite-kem07-frodokem-976-shake-ecdh-secp384r1    True
-     [Tags]    negative  composite-kem07  frodokem  ecdh  secp384r1
+Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-ECDH-SECP384R1 Key Size    composite-kem-frodokem-976-shake-ecdh-secp384r1    True
+     [Tags]    negative  composite-kem  frodokem  ecdh  secp384r1
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-ECDH-SECP384R1 Request    composite-kem07-frodokem-976-shake-ecdh-secp384r1    False
-     [Tags]    positive  composite-kem07  frodokem  ecdh  secp384r1
+Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-ECDH-SECP384R1 Request    composite-kem-frodokem-976-shake-ecdh-secp384r1    False
+     [Tags]    positive  composite-kem  frodokem  ecdh  secp384r1
 
-Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-ECDH-BRAINPOOLP256R1 Key Size    composite-kem07-frodokem-976-shake-ecdh-brainpoolP256r1    True
-     [Tags]    negative  composite-kem07  frodokem  ecdh  brainpoolP256r1
+Invalid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-ECDH-BRAINPOOLP256R1 Key Size    composite-kem-frodokem-976-shake-ecdh-brainpoolP256r1    True
+     [Tags]    negative  composite-kem  frodokem  ecdh  brainpoolP256r1
 
-Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-ECDH-BRAINPOOLP256R1 Request    composite-kem07-frodokem-976-shake-ecdh-brainpoolP256r1    False
-     [Tags]    positive  composite-kem07  frodokem  ecdh  brainpoolP256r1
+Valid COMPOSITE-KEM07-FRODOKEM-976-SHAKE-ECDH-BRAINPOOLP256R1 Request    composite-kem-frodokem-976-shake-ecdh-brainpoolP256r1    False
+     [Tags]    positive  composite-kem  frodokem  ecdh  brainpoolP256r1
 
-Invalid COMPOSITE-KEM07-FRODOKEM-1344-AES-ECDH-SECP384R1 Key Size    composite-kem07-frodokem-1344-aes-ecdh-secp384r1    True
-     [Tags]    negative  composite-kem07  frodokem  ecdh  secp384r1
+Invalid COMPOSITE-KEM07-FRODOKEM-1344-AES-ECDH-SECP384R1 Key Size    composite-kem-frodokem-1344-aes-ecdh-secp384r1    True
+     [Tags]    negative  composite-kem  frodokem  ecdh  secp384r1
 
-Valid COMPOSITE-KEM07-FRODOKEM-1344-AES-ECDH-SECP384R1 Request    composite-kem07-frodokem-1344-aes-ecdh-secp384r1    False
-     [Tags]    positive  composite-kem07  frodokem  ecdh  secp384r1
+Valid COMPOSITE-KEM07-FRODOKEM-1344-AES-ECDH-SECP384R1 Request    composite-kem-frodokem-1344-aes-ecdh-secp384r1    False
+     [Tags]    positive  composite-kem  frodokem  ecdh  secp384r1
 
-Invalid COMPOSITE-KEM07-FRODOKEM-1344-AES-ECDH-BRAINPOOLP384R1 Key Size    composite-kem07-frodokem-1344-aes-ecdh-brainpoolP384r1    True
-     [Tags]    negative  composite-kem07  frodokem  ecdh  brainpoolP384r1
+Invalid COMPOSITE-KEM07-FRODOKEM-1344-AES-ECDH-BRAINPOOLP384R1 Key Size    composite-kem-frodokem-1344-aes-ecdh-brainpoolP384r1    True
+     [Tags]    negative  composite-kem  frodokem  ecdh  brainpoolP384r1
 
-Valid COMPOSITE-KEM07-FRODOKEM-1344-AES-ECDH-BRAINPOOLP384R1 Request    composite-kem07-frodokem-1344-aes-ecdh-brainpoolP384r1    False
-     [Tags]    positive  composite-kem07  frodokem  ecdh  brainpoolP384r1
+Valid COMPOSITE-KEM07-FRODOKEM-1344-AES-ECDH-BRAINPOOLP384R1 Request    composite-kem-frodokem-1344-aes-ecdh-brainpoolP384r1    False
+     [Tags]    positive  composite-kem  frodokem  ecdh  brainpoolP384r1
 
-Invalid COMPOSITE-KEM07-FRODOKEM-1344-AES-X448 Key Size    composite-kem07-frodokem-1344-aes-x448    True
-     [Tags]    negative  composite-kem07  frodokem  x448
+Invalid COMPOSITE-KEM07-FRODOKEM-1344-AES-X448 Key Size    composite-kem-frodokem-1344-aes-x448    True
+     [Tags]    negative  composite-kem  frodokem  x448
 
-Valid COMPOSITE-KEM07-FRODOKEM-1344-AES-X448 Request    composite-kem07-frodokem-1344-aes-x448    False
-     [Tags]    positive  composite-kem07  frodokem  x448
+Valid COMPOSITE-KEM07-FRODOKEM-1344-AES-X448 Request    composite-kem-frodokem-1344-aes-x448    False
+     [Tags]    positive  composite-kem  frodokem  x448
 
-Invalid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-ECDH-SECP384R1 Key Size    composite-kem07-frodokem-1344-shake-ecdh-secp384r1    True
-     [Tags]    negative  composite-kem07  frodokem  ecdh  secp384r1
+Invalid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-ECDH-SECP384R1 Key Size    composite-kem-frodokem-1344-shake-ecdh-secp384r1    True
+     [Tags]    negative  composite-kem  frodokem  ecdh  secp384r1
 
-Valid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-ECDH-SECP384R1 Request    composite-kem07-frodokem-1344-shake-ecdh-secp384r1    False
-     [Tags]    positive  composite-kem07  frodokem  ecdh  secp384r1
+Valid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-ECDH-SECP384R1 Request    composite-kem-frodokem-1344-shake-ecdh-secp384r1    False
+     [Tags]    positive  composite-kem  frodokem  ecdh  secp384r1
 
-Invalid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-ECDH-BRAINPOOLP384R1 Key Size    composite-kem07-frodokem-1344-shake-ecdh-brainpoolP384r1    True
-     [Tags]    negative  composite-kem07  frodokem  ecdh  brainpoolP384r1
+Invalid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-ECDH-BRAINPOOLP384R1 Key Size    composite-kem-frodokem-1344-shake-ecdh-brainpoolP384r1    True
+     [Tags]    negative  composite-kem  frodokem  ecdh  brainpoolP384r1
 
-Valid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-ECDH-BRAINPOOLP384R1 Request    composite-kem07-frodokem-1344-shake-ecdh-brainpoolP384r1    False
-     [Tags]    positive  composite-kem07  frodokem  ecdh  brainpoolP384r1
+Valid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-ECDH-BRAINPOOLP384R1 Request    composite-kem-frodokem-1344-shake-ecdh-brainpoolP384r1    False
+     [Tags]    positive  composite-kem  frodokem  ecdh  brainpoolP384r1
 
-Invalid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-X448 Key Size    composite-kem07-frodokem-1344-shake-x448    True
-     [Tags]    negative  composite-kem07  frodokem  x448
+Invalid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-X448 Key Size    composite-kem-frodokem-1344-shake-x448    True
+     [Tags]    negative  composite-kem  frodokem  x448
 
-Valid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-X448 Request    composite-kem07-frodokem-1344-shake-x448    False
-     [Tags]    positive  composite-kem07  frodokem  x448
+Valid COMPOSITE-KEM07-FRODOKEM-1344-SHAKE-X448 Request    composite-kem-frodokem-1344-shake-x448    False
+     [Tags]    positive  composite-kem  frodokem  x448
 
 
 *** Keywords ***
