@@ -1014,6 +1014,12 @@ def pqc_algs_cannot_be_validated_with_openssl(
     """
     for cert in certs:
         spki_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+
+        # To skip traditional algorithm and not store them into a new mapping,
+        # so that OpenSSL can complain.
+        if spki_oid not in HYBRID_OID_2_NAME and spki_oid not in PQ_OID_2_NAME:
+            continue
+
         if spki_oid in COMPOSITE_SIG_OID_TO_NAME:
             return True
         if spki_oid in PQ_SIG_OID_2_NAME:
@@ -1052,72 +1058,30 @@ def _get_algs(certs: List[rfc9480.CMPCertificate]) -> List[str]:
     return algs
 
 
-@keyword(name="Verify Cert Chain OpenSSL PQC")
-def verify_cert_chain_openssl_pqc(  # noqa D417 undocumented-param
+def _validate_cert_chain_algs_for_verification(
     cert_chain: List[rfc9480.CMPCertificate],
-    crl_check: bool = False,
-    verbose: bool = True,
-    timeout: typingutils.Strint = 60,
-    crl_path: Optional[str] = None,
-    crl_check_all: bool = False,
-) -> None:
-    """Verify a certificate chain using OpenSSL with PQC support.
+) -> bool:
+    """Validate that the certificate chain can be verified with OpenSSL.
 
-    The certificate chain has to start from the end-entity certificate and ends with the Root certificate.
-
-    Note:
-    ----
-    - Should only be used if OpenSSL PQC support is not surely enabled, otherwise \
-    use the `Verify Cert Chain OpenSSL` keyword. Because it will skip the certificate \
-    checks, if PQC support is not enabled.
-
-    Arguments:
-    ---------
-        - `cert_chain`: A list of untrusted certificate objects to verify against the root certificate.
-        - `crl_check`: Whether to perform CRL checks to verify if any certificate was revoked.
-        Defaults to `False`.
-        - `verbose`: Whether to use the verbose output flag for the OpenSSL `verify` command.
-        Defaults to `True`.
-        - `timeout`: The timeout of the verify command in seconds. Defaults to `60`.
-        - `crl_path`: The path to the CRL file to use for verification. Defaults to `None`.
-        - `crl_check_all`: Whether to check all certificates in the chain against the CRL(s).
-
-    Raises:
-    ------
-        - `SignerNotTrusted`: If the certificate validation fails, according to the OpenSSL `verify` command.
-        - `SignerNotTrusted`: If the verification took too long.
-
-    Examples:
-    --------
-    | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} |
-    | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} | crl_check=True | verbose=False |
-    | Verify Cert Chain OpenSSL PQC | cert_chain=${cert_chain} | crl_check_all=True | timeout=120 |
-
+    :param cert_chain: A list of `rfc9480.CMPCertificate` objects representing the certificate chain.
+    :raises ValueError: If the certificate chain contains unsupported algorithms for OpenSSL verification.
+    :return: `True` if the certificate chain can be verified with OpenSSL, `False` otherwise.
     """
-    # TODO: maybe allow or change the setup to use the `oqsprovider` to validate all PQC algorithms.
+    if not _is_pqc_or_hybrid_cert_chain(cert_chain):
+        return True
 
-    if verbose:
-        utils.log_certificates(certs=cert_chain, msg_suffix="Untrusted Certificates:\n")
-
-    if not check_openssl_pqc_support():
+    if not check_openssl_pqc_support() and not pqc_algs_cannot_be_validated_with_openssl(certs=cert_chain):
         logging.warning("OpenSSL PQC support is not enabled.")
+        return False
 
-    else:
-        if pqc_algs_cannot_be_validated_with_openssl(certs=cert_chain):
-            raise ValueError(
-                "The provided PQC certificate chain can not be validated with OpenSSL."
-                "Supported PQC algorithms are: ML-DSA, ML-KEM, SLH-DSA."
-                f"Found the following algorithms:\n{_get_algs(certs=cert_chain)}"
-            )
-
-        verify_cert_chain_openssl(
-            cert_chain=cert_chain,
-            crl_check=crl_check,
-            verbose=verbose,
-            timeout=timeout,
-            crl_path=crl_path,
-            crl_check_all=crl_check_all,
+    if pqc_algs_cannot_be_validated_with_openssl(certs=cert_chain):
+        raise ValueError(
+            "The provided PQC certificate chain can not be validated with OpenSSL."
+            "Supported PQC algorithms are: ML-DSA, ML-KEM, SLH-DSA."
+            f"Found the following algorithms:\n{_get_algs(certs=cert_chain)}"
         )
+
+    return True
 
 
 @keyword(name="Verify Cert Chain OpenSSL")
@@ -1191,6 +1155,8 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     if verbose:
         command.append("-verbose")
 
+    if not _validate_cert_chain_algs_for_verification(cert_chain=cert_chain):
+        return
     _verify_certificate_chain(command=command, cert_chain=cert_chain, timeout=int(timeout))
 
 

@@ -10,7 +10,7 @@ from typing import List
 
 from pyasn1_alt_modules import rfc9480
 
-from resources.certutils import verify_cert_chain_openssl, verify_cert_chain_openssl_pqc
+from resources.certutils import verify_cert_chain_openssl
 from resources.exceptions import SignerNotTrusted
 from resources.keyutils import generate_key
 from unit_tests.utils_for_test import build_certificate_chain
@@ -62,7 +62,7 @@ class TestVerifyPQCertChainOpenSSL(unittest.TestCase):
     def _verify_or_skip(self, chain: List[rfc9480.CMPCertificate], name: str) -> None:
         """Verify the chain with OpenSSL or skip if not supported."""
         try:
-            verify_cert_chain_openssl_pqc(chain)
+            verify_cert_chain_openssl(chain)
         except SignerNotTrusted as exc:
             self.skipTest(f"OpenSSL does not support {name}: {exc}")
 
@@ -101,7 +101,7 @@ class TestVerifyPQCertChainOpenSSL(unittest.TestCase):
         """
         chain = self._build_chain(["ml-dsa-44", "ml-dsa-44", "falcon-1024"])
         with self.assertRaises(ValueError):
-            verify_cert_chain_openssl_pqc(chain)
+            verify_cert_chain_openssl(chain)
 
 
 if __name__ == "__main__":
