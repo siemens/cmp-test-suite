@@ -1024,6 +1024,19 @@ def pqc_algs_cannot_be_validated_with_openssl(
     return False
 
 
+def _is_pqc_or_hybrid_cert_chain(certs: List[rfc9480.CMPCertificate]) -> bool:
+    """Check if the certificate chain contains hybrid or PQC certificates.
+
+    :param certs: A list of CMPCertificate's.
+    :return: `True` if the certificate chain contains hybrid or PQC certificates, `False` otherwise.
+    """
+    return any(
+        cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"] in HYBRID_OID_2_NAME
+        or cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"] in PQ_OID_2_NAME
+        for cert in certs
+    )
+
+
 def _get_algs(certs: List[rfc9480.CMPCertificate]) -> List[str]:
     """Get the signature algorithms from the certificate chain.
 
