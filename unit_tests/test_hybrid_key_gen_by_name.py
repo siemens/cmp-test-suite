@@ -27,7 +27,7 @@ class TestGenerateKeyByName(unittest.TestCase):
 
     def test_composite_sig(self):
         """
-        GIVEN all known composite signature version 13 algorithms.
+        GIVEN all known composite signature current version algorithms.
         WHEN generating keys by name,
         THEN is the correct key generated.
         """
