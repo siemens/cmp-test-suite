@@ -20,18 +20,18 @@ from resources.exceptions import InvalidKeyData
 from resources.oidutils import CURVE_NAMES_TO_INSTANCES
 
 COMPOSITE_KEM_ORIGINAL_NAME_TO_NAME = {
-    "id-MLKEM768-RSA3072-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa3072",
-    "id-MLKEM768-RSA4096-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa4096",
-    "id-MLKEM768-RSA2048-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa2048",
-    "id-MLKEM768-X25519-SHA3-256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-x25519",
-    "id-MLKEM768-ECDH-P256-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-secp256r1",
-    "id-MLKEM768-ECDH-P384-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-secp384r1",
-    "id-MLKEM768-ECDH-brainpoolP256r1-HMAC-SHA256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-ecdh-brainpoolP256r1",
-    "id-MLKEM1024-RSA3072-HMAC-SHA512": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-rsa3072",
-    "id-MLKEM1024-ECDH-P384-HMAC-SHA512": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-secp384r1",
-    "id-MLKEM1024-ECDH-brainpoolP384r1-HMAC-SHA512": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-brainpoolP384r1",
-    "id-MLKEM1024-X448-SHA3-256": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-x448",
-    "id-MLKEM1024-ECDH-P521-HMAC-SHA512": f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-1024-ecdh-secp521r1",
+    "id-MLKEM768-RSA3072-HMAC-SHA256": "composite-kem-ml-kem-768-rsa3072",
+    "id-MLKEM768-RSA4096-HMAC-SHA256": "composite-kem-ml-kem-768-rsa4096",
+    "id-MLKEM768-RSA2048-HMAC-SHA256": "composite-kem-ml-kem-768-rsa2048",
+    "id-MLKEM768-X25519-SHA3-256": "composite-kem-ml-kem-768-x25519",
+    "id-MLKEM768-ECDH-P256-HMAC-SHA256": "composite-kem-ml-kem-768-ecdh-secp256r1",
+    "id-MLKEM768-ECDH-P384-HMAC-SHA256": "composite-kem-ml-kem-768-ecdh-secp384r1",
+    "id-MLKEM768-ECDH-brainpoolP256r1-HMAC-SHA256": "composite-kem-ml-kem-768-ecdh-brainpoolP256r1",
+    "id-MLKEM1024-RSA3072-HMAC-SHA512": "composite-kem-ml-kem-1024-rsa3072",
+    "id-MLKEM1024-ECDH-P384-HMAC-SHA512": "composite-kem-ml-kem-1024-ecdh-secp384r1",
+    "id-MLKEM1024-ECDH-brainpoolP384r1-HMAC-SHA512": "composite-kem-ml-kem-1024-ecdh-brainpoolP384r1",
+    "id-MLKEM1024-X448-SHA3-256": "composite-kem-ml-kem-1024-x448",
+    "id-MLKEM1024-ECDH-P521-HMAC-SHA512": "composite-kem-ml-kem-1024-ecdh-secp521r1",
 }
 
 COMPOSITE_KEM_NAME_TO_ORIGINAL_OID = {
@@ -40,10 +40,8 @@ COMPOSITE_KEM_NAME_TO_ORIGINAL_OID = {
 
 
 @dataclass
-class CompositeKEM07TestVectors:
-    """
-    Test vectors for Composite KEM 0.7.
-    """
+class CompositeKEMTestVectors:
+    """Test vectors for the Composite KEM current draft."""
 
     tcId: str
     ek: str
@@ -54,7 +52,7 @@ class CompositeKEM07TestVectors:
     k: str
 
     @classmethod
-    def from_dict(cls, data: dict) -> "CompositeKEM07TestVectors":
+    def from_dict(cls, data: dict) -> "CompositeKEMTestVectors":
         return cls(
             tcId=data["tcId"],
             ek=data["ek"],
@@ -105,7 +103,7 @@ def _load_composite_kem_from_private_bytes(algorithm: str, private_key: bytes) -
     :return: A CompositeKEMPublicKey instance.
     """
     algorithm = algorithm.lower()
-    prefix = f"composite-kem{COMPOSITE_KEM_VERSION}-"
+    prefix = "composite-kem-"
     pq_name = PQKeyFactory.get_pq_alg_name(algorithm=algorithm)
     tmp_pq_key = PQKeyFactory.generate_pq_key(pq_name)
 
@@ -158,7 +156,7 @@ def _load_composite_kem_from_public_bytes(algorithm: str, public_key: bytes) -> 
     :return: A CompositeKEMPublicKey instance.
     """
     algorithm = algorithm.lower()
-    prefix = f"composite-kem{COMPOSITE_KEM_VERSION}-"
+    prefix = "composite-kem-"
     pq_name = PQKeyFactory.get_pq_alg_name(algorithm=algorithm)
     trad_name = algorithm.replace(prefix, "").replace(pq_name + "-", "")
     pq_key, rest = PQKeyFactory.from_public_bytes(pq_name, public_key, allow_rest=True)
@@ -185,14 +183,14 @@ def _load_composite_kem_from_public_bytes(algorithm: str, public_key: bytes) -> 
     )
 
 
-class TestCompositeKEM07TestVectors(unittest.TestCase):
+class TestCompositeKEMTestVectors(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.path = "./data/rfc_test_vectors/composite_kem07_testvectors.json"
+        cls.path = "./data/rfc_test_vectors/composite_kem_testvectors.json"
         cls.test_vectors = cls.load_test_vectors(cls.path)
 
     @staticmethod
-    def load_test_vectors(path: str) -> list[CompositeKEM07TestVectors]:
+    def load_test_vectors(path: str) -> list[CompositeKEMTestVectors]:
         import json
 
         with open(path, "r") as file:
@@ -202,7 +200,7 @@ class TestCompositeKEM07TestVectors(unittest.TestCase):
         for test in data["tests"]:
             if test["tcId"] in ["id-alg-ml-kem-768", "id-alg-ml-kem-1024"]:
                 continue
-            tests_vectors.append(CompositeKEM07TestVectors.from_dict(test))
+            tests_vectors.append(CompositeKEMTestVectors.from_dict(test))
 
         return tests_vectors
 
