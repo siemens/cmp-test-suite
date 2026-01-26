@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Composite Signature Implementation for Draft v13.
+"""Composite Signature Implementation for the latest draft.
 
-Specification: https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-13.html
+Specification: https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-sigs/
 """
 
 from typing import Optional, Union
@@ -64,11 +64,11 @@ def _get_label(oid: univ.ObjectIdentifier) -> bytes:
 
 
 class CompositeSigPublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
-    """Composite Signature Implementation for Draft v13."""
+    """Composite Signature Implementation for the Draft."""
 
     _pq_key: MLDSAPublicKey
     _trad_key: Union[rsa.RSAPublicKey, ECVerifyKey]
-    _name = "composite-sig-13"
+    _name = "composite-sig"
 
     def __init__(
         self,
@@ -108,7 +108,7 @@ class CompositeSigPublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
         _name = self._get_name(use_pss=use_pss)
         oid = COMPOSITE_SIG13_NAME_TO_OID.get(_name)
         if oid is None:
-            raise InvalidKeyCombination(f"Unsupported composite signature v13 combination: {_name}")
+            raise InvalidKeyCombination(f"Unsupported composite signature combination: {_name}")
         return oid
 
     @property
@@ -209,7 +209,7 @@ class CompositeSigPublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
 
 
 class CompositeSigPrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
-    """Composite Signature Implementation for Draft v13."""
+    """Composite Signature Implementation for the Draft."""
 
     _pq_key: MLDSAPrivateKey
     _trad_key: Union[
@@ -218,7 +218,7 @@ class CompositeSigPrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
         ed25519.Ed25519PrivateKey,
         ed448.Ed448PrivateKey,
     ]
-    _name = "composite-sig-13"
+    _name = "composite-sig"
 
     def __init__(
         self,
