@@ -27,24 +27,24 @@ from resources.exceptions import InvalidKeyData
 from resources.oidutils import CURVE_NAMES_TO_INSTANCES
 
 COMPOSITE_SIG13_NAME_TO_ORIGINAL_NAME = {
-    "composite-sig-13-ml-dsa-44-rsa2048-pss": "id-MLDSA44-RSA2048-PSS-SHA256",
-    "composite-sig-13-ml-dsa-44-rsa2048": "id-MLDSA44-RSA2048-PKCS15-SHA256",
-    "composite-sig-13-ml-dsa-44-ed25519": "id-MLDSA44-Ed25519-SHA512",
-    "composite-sig-13-ml-dsa-44-ecdsa-secp256r1": "id-MLDSA44-ECDSA-P256-SHA256",
-    "composite-sig-13-ml-dsa-65-rsa3072-pss": "id-MLDSA65-RSA3072-PSS-SHA512",
-    "composite-sig-13-ml-dsa-65-rsa3072": "id-MLDSA65-RSA3072-PKCS15-SHA512",
-    "composite-sig-13-ml-dsa-65-rsa4096-pss": "id-MLDSA65-RSA4096-PSS-SHA512",
-    "composite-sig-13-ml-dsa-65-rsa4096": "id-MLDSA65-RSA4096-PKCS15-SHA512",
-    "composite-sig-13-ml-dsa-65-ecdsa-secp256r1": "id-MLDSA65-ECDSA-P256-SHA512",
-    "composite-sig-13-ml-dsa-65-ecdsa-secp384r1": "id-MLDSA65-ECDSA-P384-SHA512",
-    "composite-sig-13-ml-dsa-65-ecdsa-brainpoolP256r1": "id-MLDSA65-ECDSA-brainpoolP256r1-SHA512",
-    "composite-sig-13-ml-dsa-65-ed25519": "id-MLDSA65-Ed25519-SHA512",
-    "composite-sig-13-ml-dsa-87-ecdsa-secp384r1": "id-MLDSA87-ECDSA-P384-SHA512",
-    "composite-sig-13-ml-dsa-87-ecdsa-brainpoolP384r1": "id-MLDSA87-ECDSA-brainpoolP384r1-SHA512",
-    "composite-sig-13-ml-dsa-87-ed448": "id-MLDSA87-Ed448-SHAKE256",
-    "composite-sig-13-ml-dsa-87-rsa3072-pss": "id-MLDSA87-RSA3072-PSS-SHA512",
-    "composite-sig-13-ml-dsa-87-rsa4096-pss": "id-MLDSA87-RSA4096-PSS-SHA512",
-    "composite-sig-13-ml-dsa-87-ecdsa-secp521r1": "id-MLDSA87-ECDSA-P521-SHA512",
+    "composite-sig-ml-dsa-44-rsa2048-pss": "id-MLDSA44-RSA2048-PSS-SHA256",
+    "composite-sig-ml-dsa-44-rsa2048": "id-MLDSA44-RSA2048-PKCS15-SHA256",
+    "composite-sig-ml-dsa-44-ed25519": "id-MLDSA44-Ed25519-SHA512",
+    "composite-sig-ml-dsa-44-ecdsa-secp256r1": "id-MLDSA44-ECDSA-P256-SHA256",
+    "composite-sig-ml-dsa-65-rsa3072-pss": "id-MLDSA65-RSA3072-PSS-SHA512",
+    "composite-sig-ml-dsa-65-rsa3072": "id-MLDSA65-RSA3072-PKCS15-SHA512",
+    "composite-sig-ml-dsa-65-rsa4096-pss": "id-MLDSA65-RSA4096-PSS-SHA512",
+    "composite-sig-ml-dsa-65-rsa4096": "id-MLDSA65-RSA4096-PKCS15-SHA512",
+    "composite-sig-ml-dsa-65-ecdsa-secp256r1": "id-MLDSA65-ECDSA-P256-SHA512",
+    "composite-sig-ml-dsa-65-ecdsa-secp384r1": "id-MLDSA65-ECDSA-P384-SHA512",
+    "composite-sig-ml-dsa-65-ecdsa-brainpoolP256r1": "id-MLDSA65-ECDSA-brainpoolP256r1-SHA512",
+    "composite-sig-ml-dsa-65-ed25519": "id-MLDSA65-Ed25519-SHA512",
+    "composite-sig-ml-dsa-87-ecdsa-secp384r1": "id-MLDSA87-ECDSA-P384-SHA512",
+    "composite-sig-ml-dsa-87-ecdsa-brainpoolP384r1": "id-MLDSA87-ECDSA-brainpoolP384r1-SHA512",
+    "composite-sig-ml-dsa-87-ed448": "id-MLDSA87-Ed448-SHAKE256",
+    "composite-sig-ml-dsa-87-rsa3072-pss": "id-MLDSA87-RSA3072-PSS-SHA512",
+    "composite-sig-ml-dsa-87-rsa4096-pss": "id-MLDSA87-RSA4096-PSS-SHA512",
+    "composite-sig-ml-dsa-87-ecdsa-secp521r1": "id-MLDSA87-ECDSA-P521-SHA512",
 }
 
 COMPOSITE_SIG13_ORIGINAL_NAME_TO_NAME = {v: k for k, v in COMPOSITE_SIG13_NAME_TO_ORIGINAL_NAME.items()}
@@ -53,12 +53,12 @@ COMPOSITE_SIG13_ORIGINAL_NAME_TO_NAME = {v: k for k, v in COMPOSITE_SIG13_NAME_T
 def _load_composite_sig_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeSigPrivateKey:
     """Load a composite signature key from private bytes.
 
-    :param algorithm: The name of the algorithm, e.g., "composite-sig-13-ml-dsa-44-rsa2048-pss".
+    :param algorithm: The name of the algorithm, e.g., "composite-sig-ml-dsa-44-rsa2048-pss".
     :param private_key: The private key bytes, which should be 64 bytes for ML-DSA keys and 32 bytes for traditional keys.
     :return: A CompositeSig06PrivateKey instance.
     """
     algorithm = algorithm.lower()
-    prefix = "composite-sig-13-"
+    prefix = "composite-sig-"
     pq_name = PQKeyFactory.get_pq_alg_name(algorithm=algorithm)
     seed_size = 32
     pq_key, trad_bytes = private_key[:seed_size], private_key[seed_size:]
@@ -94,12 +94,12 @@ def _load_composite_sig_from_private_bytes(algorithm: str, private_key: bytes) -
 def _load_composite_sig_from_public_bytes(algorithm: str, public_key: bytes) -> CompositeSigPublicKey:
     """Load a composite signature public key from public bytes.
 
-    :param algorithm: The name of the algorithm, e.g., "composite-sig-13-ml-dsa-44-rsa2048-pss".
+    :param algorithm: The name of the algorithm, e.g., "composite-sig-ml-dsa-44-rsa2048-pss".
     :param public_key: The public key bytes.
     :return: A CompositeSig06PublicKey instance.
     """
     algorithm = algorithm.lower()
-    prefix = "composite-sig-13-"
+    prefix = "composite-sig-"
     pq_name = PQKeyFactory.get_pq_alg_name(algorithm=algorithm)
     trad_name = algorithm.replace(prefix, "").replace(pq_name + "-", "")
     try:
@@ -195,7 +195,7 @@ class TestVectorEntry:
 class TestCompositeSig13TestVectors(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.path = "./data/rfc_test_vectors/composite_sig13_testvectors.json"
+        cls.path = "./data/rfc_test_vectors/composite_sig_testvectors.json"
         cls.test_vectors = cls.load_test_vectors(cls.path)
         cls.m = base64.decodebytes(cls.test_vectors["m"].encode("ascii"))
         cls.test_cases = cls.test_vectors["tests"]
