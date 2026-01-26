@@ -217,7 +217,6 @@ def _generate_hybrid_kem_tests():
             if "composite-dhkem" in name:
                 continue
 
-            alg_name = name.replace(f"composite-kem{COMPOSITE_KEM_VERSION}", "composite-kem")
             base_name = name.upper()
             # Generate test case names
             invalid_test_name = f"Invalid {base_name} Key Size"
@@ -259,7 +258,7 @@ def _generate_hybrid_kem_tests():
             test_cases.append(
                 {
                     "test_name": invalid_test_name.strip(),
-                    "arguments": {"algorithm": alg_name, "invalid_key_size": "True"},
+                    "arguments": {"algorithm": name, "invalid_key_size": "True"},
                     "tags": generate_tags("negative"),
                 }
             )
@@ -268,7 +267,7 @@ def _generate_hybrid_kem_tests():
             test_cases.append(
                 {
                     "test_name": valid_test_name.strip(),
-                    "arguments": {"algorithm": alg_name, "invalid_key_size": "False"},
+                    "arguments": {"algorithm": name, "invalid_key_size": "False"},
                     "tags": generate_tags("positive"),
                 }
             )
