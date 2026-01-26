@@ -102,118 +102,116 @@ id_rsa_kem_spki = univ.ObjectIdentifier("1.2.840.113549.1.9.16.3")
 ######################
 # Composite SIG
 ######################
-# Composite SIG v13 OIDs (Composite-MLDSA-2025)
-id_compSig13_base = univ.ObjectIdentifier("1.3.6.1.5.5.7.6")
+# Composite SIG OIDs
+id_compSig_base = univ.ObjectIdentifier("1.3.6.1.5.5.7.6")
 
-id_compSig13_mldsa44_rsa2048_pss = id_compSig13_base + (37,)
-id_compSig13_mldsa44_rsa2048_pkcs15 = id_compSig13_base + (38,)
-id_compSig13_mldsa44_ed25519 = id_compSig13_base + (39,)
-id_compSig13_mldsa44_ecdsa_p256 = id_compSig13_base + (40,)
-id_compSig13_mldsa65_rsa3072_pss = id_compSig13_base + (41,)
-id_compSig13_mldsa65_rsa3072_pkcs15 = id_compSig13_base + (42,)
-id_compSig13_mldsa65_rsa4096_pss = id_compSig13_base + (43,)
-id_compSig13_mldsa65_rsa4096_pkcs15 = id_compSig13_base + (44,)
-id_compSig13_mldsa65_ecdsa_p256 = id_compSig13_base + (45,)
-id_compSig13_mldsa65_ecdsa_p384 = id_compSig13_base + (46,)
-id_compSig13_mldsa65_ecdsa_brainpool_p256r1 = id_compSig13_base + (47,)
-id_compSig13_mldsa65_ed25519 = id_compSig13_base + (48,)
-id_compSig13_mldsa87_ecdsa_p384 = id_compSig13_base + (49,)
-id_compSig13_mldsa87_ecdsa_brainpool_p384r1 = id_compSig13_base + (50,)
-id_compSig13_mldsa87_ed448 = id_compSig13_base + (51,)
-id_compSig13_mldsa87_rsa3072_pss = id_compSig13_base + (52,)
-id_compSig13_mldsa87_rsa4096_pss = id_compSig13_base + (53,)
-id_compSig13_mldsa87_ecdsa_p521 = id_compSig13_base + (54,)
-
-COMPOSITE_SIG_VERSION = "13"
+id_compSig_mldsa44_rsa2048_pss = id_compSig_base + (37,)
+id_compSig_mldsa44_rsa2048_pkcs15 = id_compSig_base + (38,)
+id_compSig_mldsa44_ed25519 = id_compSig_base + (39,)
+id_compSig_mldsa44_ecdsa_p256 = id_compSig_base + (40,)
+id_compSig_mldsa65_rsa3072_pss = id_compSig_base + (41,)
+id_compSig_mldsa65_rsa3072_pkcs15 = id_compSig_base + (42,)
+id_compSig_mldsa65_rsa4096_pss = id_compSig_base + (43,)
+id_compSig_mldsa65_rsa4096_pkcs15 = id_compSig_base + (44,)
+id_compSig_mldsa65_ecdsa_p256 = id_compSig_base + (45,)
+id_compSig_mldsa65_ecdsa_p384 = id_compSig_base + (46,)
+id_compSig_mldsa65_ecdsa_brainpool_p256r1 = id_compSig_base + (47,)
+id_compSig_mldsa65_ed25519 = id_compSig_base + (48,)
+id_compSig_mldsa87_ecdsa_p384 = id_compSig_base + (49,)
+id_compSig_mldsa87_ecdsa_brainpool_p384r1 = id_compSig_base + (50,)
+id_compSig_mldsa87_ed448 = id_compSig_base + (51,)
+id_compSig_mldsa87_rsa3072_pss = id_compSig_base + (52,)
+id_compSig_mldsa87_rsa4096_pss = id_compSig_base + (53,)
+id_compSig_mldsa87_ecdsa_p521 = id_compSig_base + (54,)
 
 COMPOSITE_SIG13_NAME_TO_OID = {
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-44-rsa2048-pss": id_compSig13_mldsa44_rsa2048_pss,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-44-rsa2048": id_compSig13_mldsa44_rsa2048_pkcs15,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-44-ed25519": id_compSig13_mldsa44_ed25519,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-44-ecdsa-secp256r1": id_compSig13_mldsa44_ecdsa_p256,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-rsa3072-pss": id_compSig13_mldsa65_rsa3072_pss,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-rsa3072": id_compSig13_mldsa65_rsa3072_pkcs15,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-rsa4096-pss": id_compSig13_mldsa65_rsa4096_pss,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-rsa4096": id_compSig13_mldsa65_rsa4096_pkcs15,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-secp256r1": id_compSig13_mldsa65_ecdsa_p256,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-secp384r1": id_compSig13_mldsa65_ecdsa_p384,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ecdsa-brainpoolP256r1":  # line too long.
-    id_compSig13_mldsa65_ecdsa_brainpool_p256r1,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-65-ed25519": id_compSig13_mldsa65_ed25519,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ecdsa-secp384r1": id_compSig13_mldsa87_ecdsa_p384,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ecdsa-brainpoolP384r1":  # line too long.
-    id_compSig13_mldsa87_ecdsa_brainpool_p384r1,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ed448": id_compSig13_mldsa87_ed448,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-rsa3072-pss": id_compSig13_mldsa87_rsa3072_pss,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-rsa4096-pss": id_compSig13_mldsa87_rsa4096_pss,
-    f"composite-sig-{COMPOSITE_SIG_VERSION}-ml-dsa-87-ecdsa-secp521r1": id_compSig13_mldsa87_ecdsa_p521,
+    f"composite-sig-ml-dsa-44-rsa2048-pss": id_compSig_mldsa44_rsa2048_pss,
+    f"composite-sig-ml-dsa-44-rsa2048": id_compSig_mldsa44_rsa2048_pkcs15,
+    f"composite-sig-ml-dsa-44-ed25519": id_compSig_mldsa44_ed25519,
+    f"composite-sig-ml-dsa-44-ecdsa-secp256r1": id_compSig_mldsa44_ecdsa_p256,
+    f"composite-sig-ml-dsa-65-rsa3072-pss": id_compSig_mldsa65_rsa3072_pss,
+    f"composite-sig-ml-dsa-65-rsa3072": id_compSig_mldsa65_rsa3072_pkcs15,
+    f"composite-sig-ml-dsa-65-rsa4096-pss": id_compSig_mldsa65_rsa4096_pss,
+    f"composite-sig-ml-dsa-65-rsa4096": id_compSig_mldsa65_rsa4096_pkcs15,
+    f"composite-sig-ml-dsa-65-ecdsa-secp256r1": id_compSig_mldsa65_ecdsa_p256,
+    f"composite-sig-ml-dsa-65-ecdsa-secp384r1": id_compSig_mldsa65_ecdsa_p384,
+    f"composite-sig-ml-dsa-65-ecdsa-brainpoolP256r1":  # line too long.
+    id_compSig_mldsa65_ecdsa_brainpool_p256r1,
+    f"composite-sig-ml-dsa-65-ed25519": id_compSig_mldsa65_ed25519,
+    f"composite-sig-ml-dsa-87-ecdsa-secp384r1": id_compSig_mldsa87_ecdsa_p384,
+    f"composite-sig-ml-dsa-87-ecdsa-brainpoolP384r1":  # line too long.
+    id_compSig_mldsa87_ecdsa_brainpool_p384r1,
+    f"composite-sig-ml-dsa-87-ed448": id_compSig_mldsa87_ed448,
+    f"composite-sig-ml-dsa-87-rsa3072-pss": id_compSig_mldsa87_rsa3072_pss,
+    f"composite-sig-ml-dsa-87-rsa4096-pss": id_compSig_mldsa87_rsa4096_pss,
+    f"composite-sig-ml-dsa-87-ecdsa-secp521r1": id_compSig_mldsa87_ecdsa_p521,
 }
 COMPOSITE_SIG13_OID_TO_NAME = {v: k for k, v in COMPOSITE_SIG13_NAME_TO_OID.items()}
 
 COMPOSITE_SIG13_LABELS = {
-    id_compSig13_mldsa44_rsa2048_pss: b"COMPSIG-MLDSA44-RSA2048-PSS-SHA256",
-    id_compSig13_mldsa44_rsa2048_pkcs15: b"COMPSIG-MLDSA44-RSA2048-PKCS15-SHA256",
-    id_compSig13_mldsa44_ed25519: b"COMPSIG-MLDSA44-Ed25519-SHA512",
-    id_compSig13_mldsa44_ecdsa_p256: b"COMPSIG-MLDSA44-ECDSA-P256-SHA256",
-    id_compSig13_mldsa65_rsa3072_pss: b"COMPSIG-MLDSA65-RSA3072-PSS-SHA512",
-    id_compSig13_mldsa65_rsa3072_pkcs15: b"COMPSIG-MLDSA65-RSA3072-PKCS15-SHA512",
-    id_compSig13_mldsa65_rsa4096_pss: b"COMPSIG-MLDSA65-RSA4096-PSS-SHA512",
-    id_compSig13_mldsa65_rsa4096_pkcs15: b"COMPSIG-MLDSA65-RSA4096-PKCS15-SHA512",
-    id_compSig13_mldsa65_ecdsa_p256: b"COMPSIG-MLDSA65-ECDSA-P256-SHA512",
-    id_compSig13_mldsa65_ecdsa_p384: b"COMPSIG-MLDSA65-ECDSA-P384-SHA512",
-    id_compSig13_mldsa65_ecdsa_brainpool_p256r1: b"COMPSIG-MLDSA65-ECDSA-BP256-SHA512",
-    id_compSig13_mldsa65_ed25519: b"COMPSIG-MLDSA65-Ed25519-SHA512",
-    id_compSig13_mldsa87_ecdsa_p384: b"COMPSIG-MLDSA87-ECDSA-P384-SHA512",
-    id_compSig13_mldsa87_ecdsa_brainpool_p384r1: b"COMPSIG-MLDSA87-ECDSA-BP384-SHA512",
-    id_compSig13_mldsa87_ed448: b"COMPSIG-MLDSA87-Ed448-SHAKE256",
-    id_compSig13_mldsa87_rsa3072_pss: b"COMPSIG-MLDSA87-RSA3072-PSS-SHA512",
-    id_compSig13_mldsa87_rsa4096_pss: b"COMPSIG-MLDSA87-RSA4096-PSS-SHA512",
-    id_compSig13_mldsa87_ecdsa_p521: b"COMPSIG-MLDSA87-ECDSA-P521-SHA512",
+    id_compSig_mldsa44_rsa2048_pss: b"COMPSIG-MLDSA44-RSA2048-PSS-SHA256",
+    id_compSig_mldsa44_rsa2048_pkcs15: b"COMPSIG-MLDSA44-RSA2048-PKCS15-SHA256",
+    id_compSig_mldsa44_ed25519: b"COMPSIG-MLDSA44-Ed25519-SHA512",
+    id_compSig_mldsa44_ecdsa_p256: b"COMPSIG-MLDSA44-ECDSA-P256-SHA256",
+    id_compSig_mldsa65_rsa3072_pss: b"COMPSIG-MLDSA65-RSA3072-PSS-SHA512",
+    id_compSig_mldsa65_rsa3072_pkcs15: b"COMPSIG-MLDSA65-RSA3072-PKCS15-SHA512",
+    id_compSig_mldsa65_rsa4096_pss: b"COMPSIG-MLDSA65-RSA4096-PSS-SHA512",
+    id_compSig_mldsa65_rsa4096_pkcs15: b"COMPSIG-MLDSA65-RSA4096-PKCS15-SHA512",
+    id_compSig_mldsa65_ecdsa_p256: b"COMPSIG-MLDSA65-ECDSA-P256-SHA512",
+    id_compSig_mldsa65_ecdsa_p384: b"COMPSIG-MLDSA65-ECDSA-P384-SHA512",
+    id_compSig_mldsa65_ecdsa_brainpool_p256r1: b"COMPSIG-MLDSA65-ECDSA-BP256-SHA512",
+    id_compSig_mldsa65_ed25519: b"COMPSIG-MLDSA65-Ed25519-SHA512",
+    id_compSig_mldsa87_ecdsa_p384: b"COMPSIG-MLDSA87-ECDSA-P384-SHA512",
+    id_compSig_mldsa87_ecdsa_brainpool_p384r1: b"COMPSIG-MLDSA87-ECDSA-BP384-SHA512",
+    id_compSig_mldsa87_ed448: b"COMPSIG-MLDSA87-Ed448-SHAKE256",
+    id_compSig_mldsa87_rsa3072_pss: b"COMPSIG-MLDSA87-RSA3072-PSS-SHA512",
+    id_compSig_mldsa87_rsa4096_pss: b"COMPSIG-MLDSA87-RSA4096-PSS-SHA512",
+    id_compSig_mldsa87_ecdsa_p521: b"COMPSIG-MLDSA87-ECDSA-P521-SHA512",
 }
 
 COMPOSITE_SIG13_INNER_HASH_OID_2_NAME = {
-    id_compSig13_mldsa44_rsa2048_pss: "sha256",
-    id_compSig13_mldsa44_rsa2048_pkcs15: "sha256",
-    id_compSig13_mldsa44_ed25519: None,
-    id_compSig13_mldsa44_ecdsa_p256: "sha256",
-    id_compSig13_mldsa65_rsa3072_pss: "sha256",
-    id_compSig13_mldsa65_rsa3072_pkcs15: "sha256",
-    id_compSig13_mldsa65_rsa4096_pss: "sha384",
-    id_compSig13_mldsa65_rsa4096_pkcs15: "sha384",
-    id_compSig13_mldsa65_ecdsa_p256: "sha256",
-    id_compSig13_mldsa65_ecdsa_p384: "sha384",
-    id_compSig13_mldsa65_ecdsa_brainpool_p256r1: "sha256",
-    id_compSig13_mldsa65_ed25519: None,
-    id_compSig13_mldsa87_ecdsa_p384: "sha384",
-    id_compSig13_mldsa87_ecdsa_brainpool_p384r1: "sha384",
-    id_compSig13_mldsa87_ed448: None,
-    id_compSig13_mldsa87_rsa3072_pss: "sha256",
-    id_compSig13_mldsa87_rsa4096_pss: "sha384",
-    id_compSig13_mldsa87_ecdsa_p521: "sha512",
+    id_compSig_mldsa44_rsa2048_pss: "sha256",
+    id_compSig_mldsa44_rsa2048_pkcs15: "sha256",
+    id_compSig_mldsa44_ed25519: None,
+    id_compSig_mldsa44_ecdsa_p256: "sha256",
+    id_compSig_mldsa65_rsa3072_pss: "sha256",
+    id_compSig_mldsa65_rsa3072_pkcs15: "sha256",
+    id_compSig_mldsa65_rsa4096_pss: "sha384",
+    id_compSig_mldsa65_rsa4096_pkcs15: "sha384",
+    id_compSig_mldsa65_ecdsa_p256: "sha256",
+    id_compSig_mldsa65_ecdsa_p384: "sha384",
+    id_compSig_mldsa65_ecdsa_brainpool_p256r1: "sha256",
+    id_compSig_mldsa65_ed25519: None,
+    id_compSig_mldsa87_ecdsa_p384: "sha384",
+    id_compSig_mldsa87_ecdsa_brainpool_p384r1: "sha384",
+    id_compSig_mldsa87_ed448: None,
+    id_compSig_mldsa87_rsa3072_pss: "sha256",
+    id_compSig_mldsa87_rsa4096_pss: "sha384",
+    id_compSig_mldsa87_ecdsa_p521: "sha512",
 }
 
 COMPOSITE_SIG13_PREHASH_OID_2_HASH = {
-    id_compSig13_mldsa44_rsa2048_pss: "sha256",
-    id_compSig13_mldsa44_rsa2048_pkcs15: "sha256",
-    id_compSig13_mldsa44_ed25519: "sha512",
-    id_compSig13_mldsa44_ecdsa_p256: "sha256",
-    id_compSig13_mldsa65_rsa3072_pss: "sha512",
-    id_compSig13_mldsa65_rsa3072_pkcs15: "sha512",
-    id_compSig13_mldsa65_rsa4096_pss: "sha512",
-    id_compSig13_mldsa65_rsa4096_pkcs15: "sha512",
-    id_compSig13_mldsa65_ecdsa_p256: "sha512",
-    id_compSig13_mldsa65_ecdsa_p384: "sha512",
-    id_compSig13_mldsa65_ecdsa_brainpool_p256r1: "sha512",
-    id_compSig13_mldsa65_ed25519: "sha512",
-    id_compSig13_mldsa87_ecdsa_p384: "sha512",
-    id_compSig13_mldsa87_ecdsa_brainpool_p384r1: "sha512",
-    id_compSig13_mldsa87_ed448: "shake256",
-    id_compSig13_mldsa87_rsa3072_pss: "sha512",
-    id_compSig13_mldsa87_rsa4096_pss: "sha512",
-    id_compSig13_mldsa87_ecdsa_p521: "sha512",
+    id_compSig_mldsa44_rsa2048_pss: "sha256",
+    id_compSig_mldsa44_rsa2048_pkcs15: "sha256",
+    id_compSig_mldsa44_ed25519: "sha512",
+    id_compSig_mldsa44_ecdsa_p256: "sha256",
+    id_compSig_mldsa65_rsa3072_pss: "sha512",
+    id_compSig_mldsa65_rsa3072_pkcs15: "sha512",
+    id_compSig_mldsa65_rsa4096_pss: "sha512",
+    id_compSig_mldsa65_rsa4096_pkcs15: "sha512",
+    id_compSig_mldsa65_ecdsa_p256: "sha512",
+    id_compSig_mldsa65_ecdsa_p384: "sha512",
+    id_compSig_mldsa65_ecdsa_brainpool_p256r1: "sha512",
+    id_compSig_mldsa65_ed25519: "sha512",
+    id_compSig_mldsa87_ecdsa_p384: "sha512",
+    id_compSig_mldsa87_ecdsa_brainpool_p384r1: "sha512",
+    id_compSig_mldsa87_ed448: "shake256",
+    id_compSig_mldsa87_rsa3072_pss: "sha512",
+    id_compSig_mldsa87_rsa4096_pss: "sha512",
+    id_compSig_mldsa87_ecdsa_p521: "sha512",
 }
 
-# This is supposed to be the last version of the draft.
+# This is supposed to be the current draft.
 # To already keep the correct names, inside the code base.
 COMPOSITE_SIG_NAME_TO_OID = COMPOSITE_SIG13_NAME_TO_OID
 COMPOSITE_SIG_OID_TO_NAME = COMPOSITE_SIG13_OID_TO_NAME
