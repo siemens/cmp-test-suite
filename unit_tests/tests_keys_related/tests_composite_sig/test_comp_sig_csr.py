@@ -12,7 +12,7 @@ from resources.exceptions import BadPOP
 from resources.keyutils import load_private_key_from_file, generate_key
 
 
-class TestCompositeSig13CSR(unittest.TestCase):
+class TestCompositeSigCSR(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
