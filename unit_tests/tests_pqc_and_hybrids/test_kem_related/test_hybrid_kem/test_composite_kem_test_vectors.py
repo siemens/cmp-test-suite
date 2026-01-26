@@ -15,7 +15,6 @@ from pq_logic.keys.composite_kem import CompositeKEMPrivateKey, CompositeKEMPubl
 from pq_logic.keys.kem_keys import MLKEMPrivateKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, RSADecapKey, RSAEncapKey
-from pq_logic.tmp_oids import COMPOSITE_KEM_VERSION
 from resources.certutils import parse_certificate
 from resources.exceptions import InvalidKeyData
 from resources.oidutils import CURVE_NAMES_TO_INSTANCES

@@ -230,8 +230,6 @@ id_comp_kem_mlkem1024_x448 = univ.ObjectIdentifier(f"{id_new_compKEM}.59")
 id_comp_kem_mlkem1024_ecdh_p521 = univ.ObjectIdentifier(f"{id_new_compKEM}.60")
 id_comp_kem_mlkem1024_rsa3072 = univ.ObjectIdentifier(f"{id_new_compKEM}.61")
 
-COMPOSITE_KEM_VERSION = "07"
-
 COMPOSITE_KEM_MLKEM_NAME_2_OID = {
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa2048": id_comp_kem_mlkem768_rsa2048,
     f"composite-kem{COMPOSITE_KEM_VERSION}-ml-kem-768-rsa3072": id_comp_kem_mlkem768_rsa3072,

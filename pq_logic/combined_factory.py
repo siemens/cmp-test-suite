@@ -59,7 +59,6 @@ from pq_logic.tmp_oids import (
     CHEMPAT_OID_2_NAME,
     COMPOSITE_KEM_NAME_2_OID,
     COMPOSITE_KEM_OID_2_NAME,
-    COMPOSITE_KEM_VERSION,
     COMPOSITE_SIG_OID_TO_NAME,
     id_rsa_kem_spki,
 )
