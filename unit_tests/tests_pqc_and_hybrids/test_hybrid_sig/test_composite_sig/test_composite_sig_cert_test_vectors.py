@@ -21,7 +21,7 @@ from pq_logic.keys.composite_sig import (
 )
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
-from pq_logic.tmp_oids import COMPOSITE_SIG13_OID_TO_NAME
+from pq_logic.tmp_oids import COMPOSITE_SIG_OID_TO_NAME
 from resources.certutils import parse_certificate
 from resources.exceptions import InvalidKeyData
 from resources.oidutils import CURVE_NAMES_TO_INSTANCES
@@ -237,7 +237,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
 
                 alg_id = cert["tbsCertificate"]["signature"]
 
-                _name = COMPOSITE_SIG13_OID_TO_NAME[alg_id["algorithm"]]
+                _name = COMPOSITE_SIG_OID_TO_NAME[alg_id["algorithm"]]
                 use_pss = False
                 if "pss" in _name:
                     use_pss = True
@@ -278,7 +278,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                 if public_key != private_key.public_key():
                     raise ValueError("Public key does not match the private key's public key.")
                 alg_id = cert["tbsCertificate"]["signature"]
-                _name = COMPOSITE_SIG13_OID_TO_NAME[alg_id["algorithm"]]
+                _name = COMPOSITE_SIG_OID_TO_NAME[alg_id["algorithm"]]
 
                 if _name != test_vec.name:
                     raise ValueError(f"Algorithm name mismatch: expected {test_vec.name}, got {_name}")
@@ -317,7 +317,7 @@ class TestCompositeSig13TestVectors(unittest.TestCase):
                 if public_key != private_key.public_key():
                     raise ValueError("Public key does not match the private key's public key.")
                 alg_id = cert["tbsCertificate"]["signature"]
-                _name = COMPOSITE_SIG13_OID_TO_NAME[alg_id["algorithm"]]
+                _name = COMPOSITE_SIG_OID_TO_NAME[alg_id["algorithm"]]
 
                 if _name != test_vec.name:
                     raise ValueError(f"Algorithm name mismatch: expected {test_vec.name}, got {_name}")
