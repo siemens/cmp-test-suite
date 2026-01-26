@@ -207,8 +207,6 @@ def _parse_private_keys(hybrid_type: str, pq_key, trad_key) -> HybridPrivateKey:
     hybrid_type = hybrid_type.replace("composite-", "")
     key_class_mappings = {
         "kem": CompositeKEMPrivateKey,  # always the latest version
-        f"kem-{COMPOSITE_KEM_VERSION}": CompositeKEMPrivateKey,
-        f"kem{COMPOSITE_KEM_VERSION}": CompositeKEMPrivateKey,
         "dhkem": CompositeDHKEMRFC9180PrivateKey,  # always the latest version
         "sig": CompositeSigPrivateKey,  # always the latest version
     }
@@ -222,8 +220,6 @@ class HybridKeyFactory:
     hybrid_mappings = {
         "sig": ALL_COMPOSITE_SIG_COMBINATIONS,
         "kem": ALL_COMPOSITE_KEM07_COMBINATIONS,
-        f"kem-{COMPOSITE_KEM_VERSION}": ALL_COMPOSITE_KEM07_COMBINATIONS,
-        f"kem{COMPOSITE_KEM_VERSION}": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "chempat": ALL_CHEMPAT_COMBINATIONS,
         "dhkem": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "xwing": [],
@@ -232,8 +228,6 @@ class HybridKeyFactory:
     default_comb = {
         "sig": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "kem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
-        f"kem{COMPOSITE_KEM_VERSION}": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
-        f"kem-{COMPOSITE_KEM_VERSION}": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "chempat": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "dhkem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
     }
@@ -342,8 +336,6 @@ class HybridKeyFactory:
             "composite-sig",
             "composite-dhkem",
             "composite-kem",
-            f"composite-kem-{COMPOSITE_KEM_VERSION}",
-            f"composite-kem{COMPOSITE_KEM_VERSION}",
             "chempat",
         ]
 
