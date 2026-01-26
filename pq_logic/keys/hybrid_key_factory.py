@@ -164,7 +164,7 @@ def get_valid_hybrid_combination(
     """Return the first valid matching combination based on provided criteria.
 
     :param combinations: A list of dictionaries representing valid combinations.
-    :param algorithm:    The hybrid algorithm name (e.g., 'composite-sig-13', 'composite-kem', etc.).
+    :param algorithm:    The hybrid algorithm name (e.g., 'composite-sig', 'composite-kem', etc.).
     :param pq_name:      The post-quantum algorithm name.
     :param trad_name:    The traditional algorithm name.
     :param length:       The length of the traditional key. If `None`, the first length is chosen.
@@ -211,7 +211,6 @@ def _parse_private_keys(hybrid_type: str, pq_key, trad_key) -> HybridPrivateKey:
         f"kem{COMPOSITE_KEM_VERSION}": CompositeKEMPrivateKey,
         "dhkem": CompositeDHKEMRFC9180PrivateKey,  # always the latest version
         "sig": CompositeSigPrivateKey,  # always the latest version
-        f"sig-{COMPOSITE_SIG_VERSION}": CompositeSigPrivateKey,
     }
     key_class = key_class_mappings[hybrid_type]
     return key_class(pq_key, trad_key)
@@ -221,7 +220,6 @@ class HybridKeyFactory:
     """Factory for creating hybrid keys based on traditional and post-quantum (PQ) key types."""
 
     hybrid_mappings = {
-        f"sig-{COMPOSITE_SIG_VERSION}": ALL_COMPOSITE_SIG_COMBINATIONS,
         "sig": ALL_COMPOSITE_SIG_COMBINATIONS,
         "kem": ALL_COMPOSITE_KEM07_COMBINATIONS,
         f"kem-{COMPOSITE_KEM_VERSION}": ALL_COMPOSITE_KEM07_COMBINATIONS,
@@ -233,7 +231,6 @@ class HybridKeyFactory:
 
     default_comb = {
         "sig": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
-        f"sig-{COMPOSITE_SIG_VERSION}": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "kem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         f"kem{COMPOSITE_KEM_VERSION}": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         f"kem-{COMPOSITE_KEM_VERSION}": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
@@ -302,7 +299,6 @@ class HybridKeyFactory:
                 "chempat": ["ecdh", "x25519", "x448"],
                 "composite-kem": ["rsa", "ecdh", "x25519", "x448"],
                 "composite-sig": ["rsa", "ecdsa", "ed25519", "ed448"],
-                f"composite-sig-{COMPOSITE_SIG_VERSION}": ["rsa", "ecdsa", "ed25519", "ed448"],
                 "xwing": ["x25519"],
             }.get(algo, [])
 
@@ -344,7 +340,6 @@ class HybridKeyFactory:
         return [
             "xwing",
             "composite-sig",
-            f"composite-sig-{COMPOSITE_SIG_VERSION}",
             "composite-dhkem",
             "composite-kem",
             f"composite-kem-{COMPOSITE_KEM_VERSION}",

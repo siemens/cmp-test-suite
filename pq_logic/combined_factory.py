@@ -97,7 +97,6 @@ class CombinedKeyFactory:
     """Factory for creating all known key types."""
 
     _composite_prefixes = [
-        f"sig-{COMPOSITE_SIG_VERSION}",
         f"kem-{COMPOSITE_KEM_VERSION}",
         f"kem{COMPOSITE_KEM_VERSION}",
         "dhkem",
@@ -837,8 +836,6 @@ class CombinedKeyFactory:
         # Determine the prefix based on the algorithm name
         if alg.startswith("chempat-"):
             prefix = "chempat-"
-        elif alg.startswith(f"composite-sig-{COMPOSITE_SIG_VERSION}-"):
-            prefix = f"composite-sig-{COMPOSITE_SIG_VERSION}-"
         elif alg.startswith("composite-sig-"):
             prefix = "composite-sig-"
         elif alg.startswith(f"composite-kem-{COMPOSITE_KEM_VERSION}-"):
@@ -888,7 +885,7 @@ class CombinedKeyFactory:
         pq_key = MLDSAPrivateKey.from_private_bytes(pq_bytes, name=pq_name)
 
         trad_key = CombinedKeyFactory._load_trad_composite_private_key(
-            trad_name=trad_name, trad_key_bytes=trad_bytes, prefix="Sig v13"
+            trad_name=trad_name, trad_key_bytes=trad_bytes, prefix="Sig"
         )
 
         use_pss = trad_name.endswith("-pss")
@@ -954,7 +951,7 @@ class CombinedKeyFactory:
 
     @staticmethod
     def _load_trad_composite_private_key(
-        trad_name: str, trad_key_bytes: bytes, prefix: str = "Sig v13"
+        trad_name: str, trad_key_bytes: bytes, prefix: str = "Sig"
     ) -> Union[
         RSAPrivateKey, Ed25519PrivateKey, Ed448PrivateKey, X25519PrivateKey, X448PrivateKey, ec.EllipticCurvePrivateKey
     ]:
@@ -962,7 +959,7 @@ class CombinedKeyFactory:
 
         :param trad_name: The name of the algorithm, e.g., "rsa2048-pss".
         :param trad_key_bytes: The traditional key bytes for RSA, ECDH, ECDSA, or EdDSA keys.
-        :param prefix: The prefix for the algorithm, e.g., "Sig v13".
+        :param prefix: The prefix for the algorithm, e.g., "Sig".
         """
         try:
             if trad_name.startswith("ecdsa") or trad_name.startswith("ecdh"):
