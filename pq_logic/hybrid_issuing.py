@@ -1277,7 +1277,7 @@ def is_hybrid_cert(cert: rfc9480.CMPCertificate) -> Optional[str]:
     alg_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
 
     if alg_oid in COMPOSITE_SIG13_OID_TO_NAME:
-        return "composite-sig-13"
+        return "composite-sig"
 
     dcd = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
     if dcd is not None:
