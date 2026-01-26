@@ -37,7 +37,6 @@ from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
 from pq_logic.keys.composite_sig import CompositeSigPublicKey
 from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.tmp_oids import COMPOSITE_KEM_VERSION
 from resources import (
     asn1utils,
     certextractutils,
@@ -2111,21 +2110,6 @@ def _validate_oid_in_cert_stfl(
         )
 
 
-def _correct_composite_names(alg_name: str) -> Optional[str]:
-    """Correct the algorithm name for Composite Signature keys.
-
-    To also allow the names without the version number for better usability.
-
-    :param alg_name: The algorithm name without the version number.
-    :return The corrected algorithm name.
-    """
-    if alg_name.startswith("composite-kem"):
-        return alg_name.replace("composite-kem", f"composite-kem{COMPOSITE_KEM_VERSION}")
-    if alg_name.startswith("composite-sig"):
-        return alg_name.replace("composite-sig", f"composite-sig-{COMPOSITE_SIG_VERSION}")
-    return None
-
-
 def _create_mismatch_oid_error_message(oid: univ.ObjectIdentifier, alg_name: str) -> str:
     """Create an error message for an unknown OID."""
     _add = may_return_oid_to_name(oid)
@@ -2164,7 +2148,6 @@ def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descri
     name_oid = (
         PQ_NAME_2_OID.get(alg_name)
         or HYBRID_NAME_2_OID.get(alg_name)
-        or HYBRID_NAME_2_OID.get(_correct_composite_names(alg_name))
     )
 
     if alg_name.startswith("xmss") or alg_name.startswith("xmssmt") or alg_name.startswith("hss"):
@@ -2184,12 +2167,6 @@ def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descri
 
     elif HYBRID_NAME_2_OID.get(alg_name) is not None:
         if str(pub_oid) != str(HYBRID_NAME_2_OID[alg_name]):
-            error_msg = _create_mismatch_oid_error_message(pub_oid, alg_name)
-            raise ValueError(error_msg)
-
-    elif alg_name.startswith("composite"):
-        corrected_name = _correct_composite_names(alg_name)
-        if str(pub_oid) != str(HYBRID_NAME_2_OID[corrected_name]):
             error_msg = _create_mismatch_oid_error_message(pub_oid, alg_name)
             raise ValueError(error_msg)
     else:
