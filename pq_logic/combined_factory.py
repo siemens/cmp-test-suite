@@ -95,8 +95,6 @@ class CombinedKeyFactory:
     """Factory for creating all known key types."""
 
     _composite_prefixes = [
-        f"kem-{COMPOSITE_KEM_VERSION}",
-        f"kem{COMPOSITE_KEM_VERSION}",
         "dhkem",
         "kem",
         "sig",
@@ -284,8 +282,8 @@ class CombinedKeyFactory:
         return pq_name, trad_name, curve, length
 
     @staticmethod
-    def _load_composite_kem07_public_key(oid: univ.ObjectIdentifier, public_key: bytes):
-        """Load a composite KEM 06 public key from the provided OID and public key bytes.
+    def _load_composite_kem_public_key(oid: univ.ObjectIdentifier, public_key: bytes):
+        """Load a composite KEM public key from the provided OID and public key bytes.
 
         :param oid: The OID of the key.
         :param public_key: The public key bytes.
@@ -345,7 +343,7 @@ class CombinedKeyFactory:
             )
 
         if oid in COMPOSITE_KEM_OID_2_NAME:
-            return CombinedKeyFactory._load_composite_kem07_public_key(oid, spki["subjectPublicKey"].asOctets())
+            return CombinedKeyFactory._load_composite_kem_public_key(oid, spki["subjectPublicKey"].asOctets())
 
         if oid in CHEMPAT_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
             return CombinedKeyFactory.load_chempat_key(spki)
@@ -450,14 +448,14 @@ class CombinedKeyFactory:
         return trad_key
 
     @staticmethod
-    def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEMPrivateKey:
-        """Load a Composite KEM v7 public key from private key bytes.
+    def _load_composite_kem_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEMPrivateKey:
+        """Load a Composite KEM public key from private key bytes.
 
         :param algorithm: The name of the algorithm.
         :param private_key: The private key bytes.
         :return: A CompositeKEMPublicKey instance.
         """
-        logging.info("Loading composite KEM-%s private key: %s", COMPOSITE_KEM_VERSION, algorithm)
+        logging.info("Loading composite KEM private key: %s", algorithm)
 
         pq_name, trad_name = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(algorithm)
         tmp_pq_key = PQKeyFactory.generate_pq_key(pq_name)
@@ -474,9 +472,7 @@ class CombinedKeyFactory:
         trad_key = CombinedKeyFactory._load_trad_composite_private_key(
             trad_name=trad_name,
             trad_key_bytes=trad_bytes,
-            prefix=f"KEM v{COMPOSITE_KEM_VERSION}"
-            if "dhkem" not in algorithm.lower()
-            else f"dhkem v{COMPOSITE_KEM_VERSION}",
+            prefix="KEM" if "dhkem" not in algorithm.lower() else "DHKEM",
         )
 
         if not isinstance(trad_key, rsa.RSAPrivateKey):
@@ -504,13 +500,13 @@ class CombinedKeyFactory:
         return composite_key
 
     @staticmethod
-    def _decode_composite_kem07(
+    def _decode_composite_kem(
         name: str,
         private_key_bytes: bytes,
         public_key: Optional[bytes],
     ) -> CompositeKEMPrivateKey:
-        """Decode a composite KEM-07 private key."""
-        private_key = CombinedKeyFactory._load_composite_kem07_from_private_bytes(
+        """Decode a composite KEM private key."""
+        private_key = CombinedKeyFactory._load_composite_kem_from_private_bytes(
             algorithm=name,
             private_key=private_key_bytes,
         )
@@ -585,7 +581,7 @@ class CombinedKeyFactory:
 
         if oid in COMPOSITE_KEM_OID_2_NAME:
             _name = COMPOSITE_KEM_OID_2_NAME[oid]
-            return CombinedKeyFactory._decode_composite_kem07(_name, private_bytes, public_bytes)
+            return CombinedKeyFactory._decode_composite_kem(_name, private_bytes, public_bytes)
 
         if oid == id_rsa_kem_spki:
             return RSADecapKey.from_pkcs8(one_asym_key)
@@ -836,10 +832,6 @@ class CombinedKeyFactory:
             prefix = "chempat-"
         elif alg.startswith("composite-sig-"):
             prefix = "composite-sig-"
-        elif alg.startswith(f"composite-kem-{COMPOSITE_KEM_VERSION}-"):
-            prefix = f"composite-kem-{COMPOSITE_KEM_VERSION}-"
-        elif alg.startswith(f"composite-kem{COMPOSITE_KEM_VERSION}-"):
-            prefix = f"composite-kem{COMPOSITE_KEM_VERSION}-"
         elif alg.startswith("composite-dhkem-"):
             prefix = "composite-dhkem-"
         elif alg.startswith("composite-kem-"):
