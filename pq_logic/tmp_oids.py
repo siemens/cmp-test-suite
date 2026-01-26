@@ -124,7 +124,7 @@ id_compSig_mldsa87_rsa3072_pss = id_compSig_base + (52,)
 id_compSig_mldsa87_rsa4096_pss = id_compSig_base + (53,)
 id_compSig_mldsa87_ecdsa_p521 = id_compSig_base + (54,)
 
-COMPOSITE_SIG13_NAME_TO_OID = {
+COMPOSITE_SIG_NAME_TO_OID = {
     f"composite-sig-ml-dsa-44-rsa2048-pss": id_compSig_mldsa44_rsa2048_pss,
     f"composite-sig-ml-dsa-44-rsa2048": id_compSig_mldsa44_rsa2048_pkcs15,
     f"composite-sig-ml-dsa-44-ed25519": id_compSig_mldsa44_ed25519,
@@ -146,9 +146,9 @@ COMPOSITE_SIG13_NAME_TO_OID = {
     f"composite-sig-ml-dsa-87-rsa4096-pss": id_compSig_mldsa87_rsa4096_pss,
     f"composite-sig-ml-dsa-87-ecdsa-secp521r1": id_compSig_mldsa87_ecdsa_p521,
 }
-COMPOSITE_SIG13_OID_TO_NAME = {v: k for k, v in COMPOSITE_SIG13_NAME_TO_OID.items()}
+COMPOSITE_SIG_OID_TO_NAME = {v: k for k, v in COMPOSITE_SIG_NAME_TO_OID.items()}
 
-COMPOSITE_SIG13_LABELS = {
+COMPOSITE_SIG_LABELS = {
     id_compSig_mldsa44_rsa2048_pss: b"COMPSIG-MLDSA44-RSA2048-PSS-SHA256",
     id_compSig_mldsa44_rsa2048_pkcs15: b"COMPSIG-MLDSA44-RSA2048-PKCS15-SHA256",
     id_compSig_mldsa44_ed25519: b"COMPSIG-MLDSA44-Ed25519-SHA512",
@@ -169,7 +169,7 @@ COMPOSITE_SIG13_LABELS = {
     id_compSig_mldsa87_ecdsa_p521: b"COMPSIG-MLDSA87-ECDSA-P521-SHA512",
 }
 
-COMPOSITE_SIG13_INNER_HASH_OID_2_NAME = {
+COMPOSITE_SIG_INNER_HASH_OID_2_NAME = {
     id_compSig_mldsa44_rsa2048_pss: "sha256",
     id_compSig_mldsa44_rsa2048_pkcs15: "sha256",
     id_compSig_mldsa44_ed25519: None,
@@ -190,7 +190,7 @@ COMPOSITE_SIG13_INNER_HASH_OID_2_NAME = {
     id_compSig_mldsa87_ecdsa_p521: "sha512",
 }
 
-COMPOSITE_SIG13_PREHASH_OID_2_HASH = {
+COMPOSITE_SIG_PREHASH_OID_2_HASH = {
     id_compSig_mldsa44_rsa2048_pss: "sha256",
     id_compSig_mldsa44_rsa2048_pkcs15: "sha256",
     id_compSig_mldsa44_ed25519: "sha512",
@@ -210,14 +210,6 @@ COMPOSITE_SIG13_PREHASH_OID_2_HASH = {
     id_compSig_mldsa87_rsa4096_pss: "sha512",
     id_compSig_mldsa87_ecdsa_p521: "sha512",
 }
-
-# This is supposed to be the current draft.
-# To already keep the correct names, inside the code base.
-COMPOSITE_SIG_NAME_TO_OID = COMPOSITE_SIG13_NAME_TO_OID
-COMPOSITE_SIG_OID_TO_NAME = COMPOSITE_SIG13_OID_TO_NAME
-COMPOSITE_SIG_INNER_HASH_OID_2_NAME = COMPOSITE_SIG13_INNER_HASH_OID_2_NAME
-COMPOSITE_SIG_PREHASH_OID_2_HASH = COMPOSITE_SIG13_PREHASH_OID_2_HASH
-COMPOSITE_SIG_LABELS = COMPOSITE_SIG13_LABELS
 
 ######################
 # Composite KEM
