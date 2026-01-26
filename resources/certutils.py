@@ -2145,10 +2145,7 @@ def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descri
     """
     pub_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
 
-    name_oid = (
-        PQ_NAME_2_OID.get(alg_name)
-        or HYBRID_NAME_2_OID.get(alg_name)
-    )
+    name_oid = PQ_NAME_2_OID.get(alg_name) or HYBRID_NAME_2_OID.get(alg_name)
 
     if alg_name.startswith("xmss") or alg_name.startswith("xmssmt") or alg_name.startswith("hss"):
         _validate_oid_in_cert_stfl(alg_name, cert)

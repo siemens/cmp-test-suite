@@ -125,26 +125,26 @@ id_compSig_mldsa87_rsa4096_pss = id_compSig_base + (53,)
 id_compSig_mldsa87_ecdsa_p521 = id_compSig_base + (54,)
 
 COMPOSITE_SIG_NAME_TO_OID = {
-    f"composite-sig-ml-dsa-44-rsa2048-pss": id_compSig_mldsa44_rsa2048_pss,
-    f"composite-sig-ml-dsa-44-rsa2048": id_compSig_mldsa44_rsa2048_pkcs15,
-    f"composite-sig-ml-dsa-44-ed25519": id_compSig_mldsa44_ed25519,
-    f"composite-sig-ml-dsa-44-ecdsa-secp256r1": id_compSig_mldsa44_ecdsa_p256,
-    f"composite-sig-ml-dsa-65-rsa3072-pss": id_compSig_mldsa65_rsa3072_pss,
-    f"composite-sig-ml-dsa-65-rsa3072": id_compSig_mldsa65_rsa3072_pkcs15,
-    f"composite-sig-ml-dsa-65-rsa4096-pss": id_compSig_mldsa65_rsa4096_pss,
-    f"composite-sig-ml-dsa-65-rsa4096": id_compSig_mldsa65_rsa4096_pkcs15,
-    f"composite-sig-ml-dsa-65-ecdsa-secp256r1": id_compSig_mldsa65_ecdsa_p256,
-    f"composite-sig-ml-dsa-65-ecdsa-secp384r1": id_compSig_mldsa65_ecdsa_p384,
-    f"composite-sig-ml-dsa-65-ecdsa-brainpoolP256r1":  # line too long.
+    "composite-sig-ml-dsa-44-rsa2048-pss": id_compSig_mldsa44_rsa2048_pss,
+    "composite-sig-ml-dsa-44-rsa2048": id_compSig_mldsa44_rsa2048_pkcs15,
+    "composite-sig-ml-dsa-44-ed25519": id_compSig_mldsa44_ed25519,
+    "composite-sig-ml-dsa-44-ecdsa-secp256r1": id_compSig_mldsa44_ecdsa_p256,
+    "composite-sig-ml-dsa-65-rsa3072-pss": id_compSig_mldsa65_rsa3072_pss,
+    "composite-sig-ml-dsa-65-rsa3072": id_compSig_mldsa65_rsa3072_pkcs15,
+    "composite-sig-ml-dsa-65-rsa4096-pss": id_compSig_mldsa65_rsa4096_pss,
+    "composite-sig-ml-dsa-65-rsa4096": id_compSig_mldsa65_rsa4096_pkcs15,
+    "composite-sig-ml-dsa-65-ecdsa-secp256r1": id_compSig_mldsa65_ecdsa_p256,
+    "composite-sig-ml-dsa-65-ecdsa-secp384r1": id_compSig_mldsa65_ecdsa_p384,
+    "composite-sig-ml-dsa-65-ecdsa-brainpoolP256r1":  # line too long.
     id_compSig_mldsa65_ecdsa_brainpool_p256r1,
-    f"composite-sig-ml-dsa-65-ed25519": id_compSig_mldsa65_ed25519,
-    f"composite-sig-ml-dsa-87-ecdsa-secp384r1": id_compSig_mldsa87_ecdsa_p384,
-    f"composite-sig-ml-dsa-87-ecdsa-brainpoolP384r1":  # line too long.
+    "composite-sig-ml-dsa-65-ed25519": id_compSig_mldsa65_ed25519,
+    "composite-sig-ml-dsa-87-ecdsa-secp384r1": id_compSig_mldsa87_ecdsa_p384,
+    "composite-sig-ml-dsa-87-ecdsa-brainpoolP384r1":  # line too long.
     id_compSig_mldsa87_ecdsa_brainpool_p384r1,
-    f"composite-sig-ml-dsa-87-ed448": id_compSig_mldsa87_ed448,
-    f"composite-sig-ml-dsa-87-rsa3072-pss": id_compSig_mldsa87_rsa3072_pss,
-    f"composite-sig-ml-dsa-87-rsa4096-pss": id_compSig_mldsa87_rsa4096_pss,
-    f"composite-sig-ml-dsa-87-ecdsa-secp521r1": id_compSig_mldsa87_ecdsa_p521,
+    "composite-sig-ml-dsa-87-ed448": id_compSig_mldsa87_ed448,
+    "composite-sig-ml-dsa-87-rsa3072-pss": id_compSig_mldsa87_rsa3072_pss,
+    "composite-sig-ml-dsa-87-rsa4096-pss": id_compSig_mldsa87_rsa4096_pss,
+    "composite-sig-ml-dsa-87-ecdsa-secp521r1": id_compSig_mldsa87_ecdsa_p521,
 }
 COMPOSITE_SIG_OID_TO_NAME = {v: k for k, v in COMPOSITE_SIG_NAME_TO_OID.items()}
 
