@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Composite Signature Implementation for the latest draft.
+"""Composite Signature Implementation for the latest draft v14.
 
 Specification: https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-sigs/
 """
