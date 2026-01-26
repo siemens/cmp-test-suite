@@ -38,7 +38,7 @@ class TestGenerateKeyByName(unittest.TestCase):
             err_msg = f"Expected: {name} Got: {may_return_oid_to_name(_oid)}"
             self.assertEqual(COMPOSITE_SIG_OID_TO_NAME.get(_oid), name, err_msg)
 
-    def test_composite_kem07(self):
+    def test_composite_kem(self):
         """
         GIVEN all known composite KEM algorithms.
         WHEN generating keys by name,
