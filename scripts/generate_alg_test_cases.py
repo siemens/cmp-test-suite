@@ -14,7 +14,6 @@ from pq_logic.tmp_oids import (
     COMPOSITE_KEM_NAME_2_OID,
     COMPOSITE_KEM_VERSION,
     COMPOSITE_SIG_NAME_TO_OID,
-    COMPOSITE_SIG_VERSION,
 )
 from resources.oidutils import PQ_KEM_NAME_2_OID, PQ_SIG_NAME_2_OID, PQ_SIG_PRE_HASH_NAME_2_OID
 

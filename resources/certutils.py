@@ -37,7 +37,7 @@ from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
 from pq_logic.keys.composite_sig import CompositeSigPublicKey
 from pq_logic.pq_utils import is_kem_public_key
-from pq_logic.tmp_oids import COMPOSITE_KEM_VERSION, COMPOSITE_SIG_VERSION
+from pq_logic.tmp_oids import COMPOSITE_KEM_VERSION
 from resources import (
     asn1utils,
     certextractutils,

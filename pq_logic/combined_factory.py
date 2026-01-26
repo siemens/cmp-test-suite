@@ -61,7 +61,6 @@ from pq_logic.tmp_oids import (
     COMPOSITE_KEM_OID_2_NAME,
     COMPOSITE_KEM_VERSION,
     COMPOSITE_SIG_OID_TO_NAME,
-    COMPOSITE_SIG_VERSION,
     id_rsa_kem_spki,
 )
 from resources.asn1utils import try_decode_pyasn1
