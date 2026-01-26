@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
+from typing import List
 
 sys.path.append(".")
 
@@ -76,12 +77,12 @@ def generate_pq_sig_tests():
     return test_cases
 
 
-def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: str):
+def generate_composite_sig_tests(name_list: List[str], replace_name: str, name_to_replace: str):
     """Generalized test case generator for composite signatures.
 
     :param name_list: List of algorithm names (strings).
-    :param replace_name: The string to replace (e.g., 'composite-sig-13-').
-    :param name_to_replace: The string to replace with (e.g., 'Composite Sig13 ').
+    :param replace_name: The string to replace (e.g., 'composite-sig-').
+    :param name_to_replace: The string to replace with (e.g., 'Composite Sig ').
     :return: List of test case dictionaries.
     """
     test_cases = []
@@ -89,9 +90,6 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
 
     for name in name_list:
         use_pss = name.endswith("-pss")
-
-        # Replace part of name dynamically
-        alg_name = name.replace(f"composite-sig-{COMPOSITE_SIG_VERSION}", "composite-sig")
         base_name = name.replace(replace_name, name_to_replace).replace("ml-dsa", "ML-DSA").upper()
 
         # Generate test case names
@@ -141,7 +139,7 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
         test_cases.append(
             {
                 "test_name": invalid_test_name.strip(),
-                "arguments": {"algorithm": alg_name, "use_pss": use_pss, "invalid": True},
+                "arguments": {"algorithm": name, "use_pss": use_pss, "invalid": True},
                 "tags": generate_tags("negative"),
             }
         )
@@ -150,7 +148,7 @@ def generate_composite_sig_tests(name_list, replace_name: str, name_to_replace: 
         test_cases.append(
             {
                 "test_name": valid_test_name.strip(),
-                "arguments": {"algorithm": alg_name, "use_pss": use_pss, "invalid": False},
+                "arguments": {"algorithm": name, "use_pss": use_pss, "invalid": False},
                 "tags": generate_tags("positive"),
             }
         )
