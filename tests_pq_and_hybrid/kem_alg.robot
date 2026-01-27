@@ -24,7 +24,7 @@ Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/hybrid_prepare.py
 Library             ../pq_logic/pq_verify_logic.py
 
-Test Tags           pq-sig   pqc  verbose-alg   verbose-tests
+Test Tags           pqc  verbose-alg   verbose-tests   verbose-kem-tests
 
 Suite Setup         Set Up Test Suite
 
