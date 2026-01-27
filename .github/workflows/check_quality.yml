@@ -14,23 +14,38 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Stage 1: fast and basic checks, we run them in parallel to provide more feedback to the contributor at once,
-  # instead of running them sequentially and giving feedback one piece at a time, requiring more iterations.
+  # Generate a docker image URL where all the characters are lower-case, for situations where an external contributor
+  # has a username that begins with a capital letter. This is a limitation of GHCR, which only allows lower-case
+  # characters. Subsequent jobs use this URL.
+  prepare_env:
+    runs-on: ubuntu-22.04
+    outputs:
+      image_url: ${{ steps.setenv.outputs.image_url }}
+    steps:
+      - name: Set lowercase image name
+        id: setenv
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image_url=ghcr.io/${OWNER_LC}/cmp-test-dev:latest" >> $GITHUB_OUTPUT
+
+# Stage 1: fast and basic checks, we run them in parallel to provide more feedback to the contributor at once,
+# instead of running them sequentially and giving feedback one piece at a time, requiring more iterations.
   ruff_lint:
+    needs: prepare_env
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+      image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Code style
         run: ruff check
 
   license_check:
+    needs: prepare_env
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+      image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,9 +53,10 @@ jobs:
         run: reuse lint
 
   rf_style_check:
+    needs: prepare_env
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+      image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -50,9 +66,10 @@ jobs:
     continue-on-error: true
 
   spelling_check:
+    needs: prepare_env
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+      image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,10 +79,11 @@ jobs:
   dependency_check:
     # See if newer versions of our Python dependencies are available. This does
     # not enforce anything, and only has an informational character.
+    needs: prepare_env
     runs-on: ubuntu-22.04
     continue-on-error: true
     container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+      image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
       - name: Check for outdated dependencies
         run: |
@@ -98,10 +116,10 @@ jobs:
   # Stage 2: these checks are more expensive and do more with the code, e.g., attempt to import dependencies,
   # execute some logic, etc.
   pylint:
-    needs: [ruff_lint, license_check, rf_style_check, spelling_check]
+    needs: [prepare_env, ruff_lint, license_check, rf_style_check, spelling_check]
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+      image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -109,10 +127,10 @@ jobs:
         run: pylint --fail-under=9.4 resources
 
   unit_test:
-    needs: [ruff_lint, license_check, rf_style_check, spelling_check]
+    needs: [prepare_env, ruff_lint, license_check, rf_style_check, spelling_check]
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
+      image: ${{ needs.prepare_env.outputs.image_url }}
       env:
         OQS_INSTALL_PATH: "/root/_oqs"
     steps:
@@ -122,26 +140,13 @@ jobs:
         run:  python3 -m unittest discover -s unit_tests
 
   type_check:
+    needs: prepare_env
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/${{ github.repository_owner }}/cmp-test-dev:latest
-
+      image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Pyright check
         run: pyright
-    # not enforced yet, but it is still executed to provide some info
     continue-on-error: true
-
-  prepare_env:
-    runs-on: ubuntu-22.04
-    outputs:
-      image_lc: ${{ steps.setenv.outputs.image_lc }}
-    steps:
-      - name: Set lowercase image name
-        id: setenv
-        run: |
-          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          IMAGE_LC="ghcr.io/${OWNER_LC}/cmp-test-dev:latest"
-          echo "image_lc=$IMAGE_LC" >> $GITHUB_OUTPUT
