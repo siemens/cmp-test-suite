@@ -31,6 +31,49 @@ Suite Setup         Set Up Test Suite
 Test Template     Request With PQ KEM Key
 
 
+*** Keywords ***
+Request With PQ KEM Key
+    [Documentation]  Send a valid Initialization Request for a PQ KEM key.
+    [Arguments]    ${alg_name}     ${invalid_key_size}   ${extensions}=${None}    ${add_params_rand}=${False}
+    ${response}    ${key}=   Build And Exchange KEM Certificate Request    ${alg_name}    ${invalid_key_size}
+    ...          ${extensions}    ${add_params_rand}
+    IF   ${invalid_key_size}
+        PKIStatus Must Be   ${response}   rejection
+        PKIStatusInfo Failinfo Bit Must Be  ${response}  badCertTemplate,badDataFormat  exclusive=False
+    ELSE
+        PKIStatus Must Be  ${response}   accepted
+        ${cert}=   Validate EncrCert For KEM    ${response}    ${key}
+        Certificate Must Be Valid    ${cert}
+    END
+
+Build And Exchange KEM Certificate Request
+    [Documentation]    Build a KEM certificate request and exchange it with the CA to get a certificate.
+    ...
+    ...                Only builds the Initialization Request for the encrypted cert mechanism request.
+    ...
+    ...                Arguments:
+    ...                - ${key_alg}: The key algorithm to use for the key generation (e.g. `ml-kem-768`).
+    ...                - ${invalid_key_size}: Whether to use an invalid key size. Defaults to `False`.
+    ...
+    ...                Returns:
+    ...                - The response from the CA.
+    ...                - The key used for the certificate generation.
+    ...
+    ...                Examples:
+    ...                | ${response}= | Build and Exchange KEM Certificate Request | ml-kem-768 |
+    ...                | ${response}= | Build and Exchange KEM Certificate Request | ml-kem-768 | False |
+    [Arguments]    ${key_alg}    ${invalid_key_size}=False   ${extensions}=${None}   ${add_params_rand}=${False}
+    ${key}=    Generate Key    ${key_alg}   by_name=True
+    ${cm}=    Get Next Common Name
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}      invalid_key_size=${invalid_key_size}
+    ...         add_params_rand_bytes=${add_params_rand}
+    ${cert_req_msg}=    Prepare CertReqMsg  ${key}  spki=${spki}   common_name=${cm}   extensions=${extensions}
+    ${ir}=    Build Ir From Key    ${key}   cert_req_msg=${cert_req_msg}   exclude_fields=senderKID,sender
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}    ${PQ_ISSUING_SUFFIX}
+    RETURN    ${response}   ${key}
+
+
 *** Test Cases ***     ALGORITHM    INVALID_KEY_SIZE
 Invalid XWING Key Size    xwing    True
      [Tags]    negative  xwing
@@ -381,44 +424,3 @@ Valid COMPOSITE-KEM-FRODOKEM-1344-SHAKE-X448 Request    composite-kem-frodokem-1
      [Tags]    positive  composite-kem  frodokem  x448
 
 
-*** Keywords ***
-Request With PQ KEM Key
-    [Documentation]  Send a valid Initialization Request for a PQ KEM key.
-    [Arguments]    ${alg_name}     ${invalid_key_size}   ${extensions}=${None}    ${add_params_rand}=${False}
-    ${response}    ${key}=   Build And Exchange KEM Certificate Request    ${alg_name}    ${invalid_key_size}
-    ...          ${extensions}    ${add_params_rand}
-    IF   ${invalid_key_size}
-        PKIStatus Must Be   ${response}   rejection
-        PKIStatusInfo Failinfo Bit Must Be  ${response}  badCertTemplate,badDataFormat  exclusive=False
-    ELSE
-        PKIStatus Must Be  ${response}   accepted
-        ${cert}=   Validate EncrCert For KEM    ${response}    ${key}
-        Certificate Must Be Valid    ${cert}
-    END
-
-Build And Exchange KEM Certificate Request
-    [Documentation]    Build a KEM certificate request and exchange it with the CA to get a certificate.
-    ...
-    ...                Only builds the Initialization Request for the encrypted cert mechanism request.
-    ...
-    ...                Arguments:
-    ...                - ${key_alg}: The key algorithm to use for the key generation (e.g. `ml-kem-768`).
-    ...                - ${invalid_key_size}: Whether to use an invalid key size. Defaults to `False`.
-    ...
-    ...                Returns:
-    ...                - The response from the CA.
-    ...                - The key used for the certificate generation.
-    ...
-    ...                Examples:
-    ...                | ${response}= | Build and Exchange KEM Certificate Request | ml-kem-768 |
-    ...                | ${response}= | Build and Exchange KEM Certificate Request | ml-kem-768 | False |
-    [Arguments]    ${key_alg}    ${invalid_key_size}=False   ${extensions}=${None}   ${add_params_rand}=${False}
-    ${key}=    Generate Key    ${key_alg}   by_name=True
-    ${cm}=    Get Next Common Name
-    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}      invalid_key_size=${invalid_key_size}
-    ...         add_params_rand_bytes=${add_params_rand}
-    ${cert_req_msg}=    Prepare CertReqMsg  ${key}  spki=${spki}   common_name=${cm}   extensions=${extensions}
-    ${ir}=    Build Ir From Key    ${key}   cert_req_msg=${cert_req_msg}   exclude_fields=senderKID,sender
-    ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}    ${PQ_ISSUING_SUFFIX}
-    RETURN    ${response}   ${key}
