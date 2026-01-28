@@ -15,14 +15,14 @@ class TestCompositeMLKEM(unittest.TestCase):
 
     def setUp(self):
         # RSA-based composite keys
-        self.private_key_rsa_1: CompositeKEMPrivateKey = generate_key("composite-kem-07", pq_name="ml-kem-768", trad_name="rsa")
+        self.private_key_rsa_1: CompositeKEMPrivateKey = generate_key("composite-kem", pq_name="ml-kem-768", trad_name="rsa")
 
         # EC-based composite keys
-        self.private_key_ec_1: CompositeKEMPrivateKey = generate_key("composite-kem-07", pq_name="ml-kem-768", curve="secp384r1")
+        self.private_key_ec_1: CompositeKEMPrivateKey = generate_key("composite-kem", pq_name="ml-kem-768", curve="secp384r1")
         self.private_key_ec_2 = generate_key("ecc", curve="secp384r1")
 
         # X-based composite keys
-        self.private_key_x_1: CompositeKEMPrivateKey = generate_key("composite-kem-07",pq_name="ml-kem-768", trad_name="x25519")
+        self.private_key_x_1: CompositeKEMPrivateKey = generate_key("composite-kem",pq_name="ml-kem-768", trad_name="x25519")
         self.private_key_x_2 =  generate_key("x25519")
 
     def test_encaps_and_decaps_rsa(self):
@@ -62,7 +62,7 @@ class TestCompositeMLKEM(unittest.TestCase):
         THEN the shared secret should be equal.
         """
         comp_key = HybridKeyFactory.generate_hybrid_key(algorithm="composite-kem",   # type: ignore
-                                                    pq_name="ml-kem-1024", trad_name="x448")
+                                                        pq_name="ml-kem-1024", trad_name="x448")
 
         comp_key: CompositeKEMPrivateKey
         key2 = generate_key("x448")
@@ -71,3 +71,5 @@ class TestCompositeMLKEM(unittest.TestCase):
         self.assertEqual(shared_secret, decaps_ss, "Shared secret mismatch for X448-based keys.")
 
 
+if __name__ == '__main__':
+    unittest.main()

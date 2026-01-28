@@ -12,7 +12,7 @@ from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from resources import keyutils
 
 
-class TestLoadCompSig13(unittest.TestCase):
+class TestLoadCompSig(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -29,7 +29,7 @@ class TestLoadCompSig13(unittest.TestCase):
 
     def test_export_and_load_private_key_rsa(self):
         """
-        GIVEN a composite signature RSA private key in version 13.
+        GIVEN a composite signature RSA private key in current version.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -46,7 +46,7 @@ class TestLoadCompSig13(unittest.TestCase):
 
     def test_export_and_load_private_key_ed(self):
         """
-        GIVEN a composite signature Ed private key in version 13.
+        GIVEN a composite signature Ed private key in current version.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -62,7 +62,7 @@ class TestLoadCompSig13(unittest.TestCase):
 
     def test_export_and_load_private_key_ecc(self):
         """
-        GIVEN a composite signature ECC private key in version 13.
+        GIVEN a composite signature ECC private key in current version.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """

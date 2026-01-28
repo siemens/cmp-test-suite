@@ -129,7 +129,6 @@ def asn1_must_contain_fields(data: base.Asn1Type, fields: str):  # noqa D417 und
         raise ValueError(f"The following required fields were absent: {absent_fields}")
 
 
-
 def _split_last_parent(s: str) -> tuple[str, str]:
     """Split an asn1path query into parent and child.
 
@@ -141,17 +140,17 @@ def _split_last_parent(s: str) -> tuple[str, str]:
     a.b.c/0/0/1   ->  a.b.c/0/0, 1
     a.b/0.c       ->  a.b/0, c
     """
-    upper_bound = max(s.rfind('.'), s.rfind('/'))
+    upper_bound = max(s.rfind("."), s.rfind("/"))
 
     if upper_bound == -1:
         return "", s  # No parent, entire string is the child
 
     parent = s[:upper_bound]
-    child = s[upper_bound + 1:]
+    child = s[upper_bound + 1 :]
     return parent, child
 
 
-def set_asn1_value(asn1_obj: base.Asn1Item, path:str, value: base.Asn1Item):
+def set_asn1_value(asn1_obj: base.Asn1Item, path: str, value: base.Asn1Item):
     """Update an ASN1 structure in-place by setting the attribute at path to value."""
     # There are some easy cases where we can figure out that the inputs are bad and there's nothing for us to set,
     # handle those and bail out early.
@@ -194,6 +193,7 @@ def set_asn1_value(asn1_obj: base.Asn1Item, path:str, value: base.Asn1Item):
         raise ValueError(f"Assignment failed for path '{path}': {e}")
 
     return asn1_obj
+
 
 def get_asn1_value(asn1_obj: base.Asn1Item, query: str) -> base.Asn1Item:  # noqa D417 undocumented-param
     """Extract a value from a complex `pyasn1` structure by specifying its path in ASN1Path notation.

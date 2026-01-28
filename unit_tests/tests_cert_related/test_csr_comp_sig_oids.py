@@ -4,7 +4,7 @@
 
 import unittest
 
-from pq_logic.tmp_oids import (id_compSig13_mldsa44_rsa2048_pss, id_compSig13_mldsa44_rsa2048_pkcs15)
+from pq_logic.tmp_oids import (id_compSig_mldsa44_rsa2048_pss, id_compSig_mldsa44_rsa2048_pkcs15)
 from resources.certbuildutils import build_csr
 from resources.keyutils import generate_key
 
@@ -28,9 +28,9 @@ class TestSigOidForCompositeSig(unittest.TestCase):
                         use_pre_hash=False,
                         )
 
-        self.assertEqual(str(csr["signatureAlgorithm"]["algorithm"]), str(id_compSig13_mldsa44_rsa2048_pkcs15))
+        self.assertEqual(str(csr["signatureAlgorithm"]["algorithm"]), str(id_compSig_mldsa44_rsa2048_pkcs15))
         self.assertEqual(str(csr["certificationRequestInfo"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]),
-                         str(id_compSig13_mldsa44_rsa2048_pkcs15))
+                         str(id_compSig_mldsa44_rsa2048_pkcs15))
 
 
     def test_csr_with_composite_sig_rsa_pss(self):
@@ -46,7 +46,7 @@ class TestSigOidForCompositeSig(unittest.TestCase):
                         )
 
 
-        self.assertEqual(str(csr["signatureAlgorithm"]["algorithm"]), str(id_compSig13_mldsa44_rsa2048_pss))
+        self.assertEqual(str(csr["signatureAlgorithm"]["algorithm"]), str(id_compSig_mldsa44_rsa2048_pss))
         self.assertEqual(str(csr["certificationRequestInfo"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]),
-                         str(id_compSig13_mldsa44_rsa2048_pss))
+                         str(id_compSig_mldsa44_rsa2048_pss))
 

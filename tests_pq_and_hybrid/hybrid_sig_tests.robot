@@ -34,7 +34,7 @@ Test Tags           pqc  hybrid-sig
 # Normally, you would use `ir` as usual; this is just to demonstrate that csr can be used in almost the same way.
 
 CA MUST Issue A Valid Composite RSA-PSS Certificate From CSR
-    [Documentation]    Verifies compliance with Composite Sig Draft 06 by sending a valid CSR with a POP for the
+    [Documentation]    Verifies compliance with Composite-Sig draft by sending a valid CSR with a POP for the
     ...                composite signature version. The traditional algorithm used is RSA-PSS and ML-DSA-44 as pq
     ...                algorithm. The CA MUST process the valid request and issue a valid certificate.
     [Tags]             composite-sig   positive   rsa-pss   pre_hash
@@ -55,7 +55,7 @@ CA MUST Issue A Valid Composite RSA-PSS Certificate From CSR
     Validate Migration Certificate KeyUsage   ${cert}
 
 CA MUST Issue a Valid Composite-Sig RSA Certificate
-    [Documentation]    Verifies compliance with omposite Sig Draft 06 by sending a valid IR with a POP for the
+    [Documentation]    Verifies compliance with Composite-Sig draft by sending a valid IR with a POP for the
     ...                composite signature version. The traditional algorithm used is RSA and ML-DSA-44 as pq algorithm.
     ...                The CA MUST process the valid request and issue a valid certificate.
     [Tags]             composite-sig   positive   rsa   pre_hash
@@ -69,7 +69,7 @@ CA MUST Issue a Valid Composite-Sig RSA Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 CA MUST Issue A Valid Composite EC Certificate
-    [Documentation]    Verifies compliance with Composite Sig Draft 06 by sending a valid IR with a POP for the
+    [Documentation]    Verifies compliance with Composite-Sig draft by sending a valid IR with a POP for the
     ...                composite signature version. The traditional algorithm used is EC key on the secp256r1 curve
     ...                and ML-DSA-44 as pq algorithm. The CA MUST process the valid request and issue a valid
     ...                certificate.
@@ -87,7 +87,7 @@ CA MUST Issue A Valid Composite EC Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 CA MUST Issue a Valid Composite EC-brainpool Certificate
-    [Documentation]    Verifies compliance with omposite Sig Draft 06 by sending a valid IR with a POP for the
+    [Documentation]    Verifies compliance with Composite-Sig draft by sending a valid IR with a POP for the
     ...                composite signature version. The traditional algorithm used is EC key on the brainpoolP256r1
     ...                curve and ML-DSA-65 as pq algorithm. The CA MUST process the valid request and issue a valid
     ...                certificate.
@@ -106,7 +106,7 @@ CA MUST Issue a Valid Composite EC-brainpool Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 CA MUST Issue a Valid Composite ED25519 Certificate
-    [Documentation]   Verifies compliance with omposite Sig Draft 06 by sending a valid IR with a POP for the
+    [Documentation]   Verifies compliance with Composite-Sig draft by sending a valid IR with a POP for the
     ...               composite signature version. The traditional algorithm used is ED25519 and ML-DSA-65 as pq
     ...               algorithm. The CA MUST process the valid request and issue a valid certificate.
     [Tags]            composite-sig   positive   ed25519   pre_hash
@@ -123,7 +123,7 @@ CA MUST Issue a Valid Composite ED25519 Certificate
     PKIStatus Must Be    ${response}    status=accepted
 
 CA MUST Issue a Valid Composite ED448 Certificate
-    [Documentation]    Verifies compliance with omposite Sig Draft 06 by sending a valid IR with a POP for the
+    [Documentation]    Verifies compliance with Composite-Sig draft by sending a valid IR with a POP for the
     ...                composite signature version. The traditional algorithm used is ED448 and ML-DSA-87 as pq
     ...                algorithm. The CA MUST process the valid request and issue a valid certificate.
     [Tags]             composite-sig   positive   ed448   pre_hash
@@ -142,7 +142,7 @@ CA MUST Issue a Valid Composite ED448 Certificate
 #### Composite Signature Mixed/Security Tests ####
 
 CA MUST Reject Composite RSA with invalid RSA key length
-    [Documentation]    As defined in omposite Sig Draft 06, we send a valid IR with a POP for composite signature.
+    [Documentation]    As defined in Composite-Sig draft, we send a valid IR with a POP for composite signature.
     ...                The traditional algorithm is RSA key with an invalid length (512-bits) and ML-DSA-44 as pq
     ...                algorithm. The CA MUST reject the request and MAY respond with the optional failInfo
     ...                `badCertTemplate` or `badRequest`.
@@ -164,7 +164,7 @@ CA MUST Reject Composite RSA with invalid RSA key length
 #### Security Related #####
 
 CA MUST Reject Composite Sig with Traditional Revoked key Due Compromise
-    [Documentation]    As defined in omposite Sig Draft 06 Section 11.2, we generate a CSR with a composite
+    [Documentation]    As defined in Composite-Sig draft Section Section 9.3, we generate a CSR with a composite
     ...                signature. The CSR is signed with a RSA key as traditional algorithm and a ML-DSA as pq
     ...                algorithm. The CA MUST reject the request and MAY respond with the optional failInfo
     ...                `badCertTemplate`.
@@ -183,7 +183,7 @@ CA MUST Reject Composite Sig with Traditional Revoked key Due Compromise
     PKIStatus Must Be    ${response}    rejection
 
 CA MUST Reject Issuing Already in use Traditional Key
-    [Documentation]    As defined in omposite Sig Draft 06 Section 11.3, we generate a valid IR with a composite
+    [Documentation]    As defined in Composite-Sig draft Section 9.3, we generate a valid IR with a composite
     ...                signature algorithm. The traditional algorithm is already in use and a matching ML-DSA key is
     ...                generated. The CA MUST reject the request and MAY respond with the optional failInfo
     ...                `badCertTemplate` or `badRequest`.
