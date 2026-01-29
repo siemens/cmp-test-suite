@@ -270,7 +270,6 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
         - "xwing"
         - "composite-sig"
         - "composite-kem"
-        - "composite-dhkem" (uses DHKEM: RFC9180)
         - "chempat"
 
     Additional Parameters:
@@ -288,7 +287,7 @@ def generate_key(algorithm: str = "rsa", **params) -> PrivateKey:  # noqa: D417 
     ----------------------------
         - pq_name (str): The name of the post-quantum algorithm.
         - trad_param (str): The name of the traditional algorithm. needs to be `ecdh` for
-        composite-kem/composite-dhkem/chempat and
+        composite-kem/chempat and
         `ecdsa` for composite-sig.
         - pq_key (PQPrivateKey): The post-quantum private key.
         - trad_key (ECDHPrivateKey or RSA): The traditional private key.
