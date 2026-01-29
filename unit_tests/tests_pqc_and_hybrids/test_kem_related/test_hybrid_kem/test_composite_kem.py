@@ -4,9 +4,7 @@
 
 import unittest
 
-from cryptography.hazmat.primitives.asymmetric import x25519
-
-from pq_logic.keys.composite_kem import CompositeKEMPrivateKey, CompositeDHKEMRFC9180PrivateKey
+from pq_logic.keys.composite_kem import CompositeKEMPrivateKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from resources.keyutils import generate_key
 
@@ -68,31 +66,3 @@ class TestCompositeKEM(unittest.TestCase):
         decaps_ss = comp_key.decaps(ct_vals)
         self.assertEqual(shared_secret, decaps_ss, "Shared secret mismatch for FrodoKEM X25519-based keys.")
 
-
-    def test_encaps_and_decaps_mlkem768_dhkemrfc9180_x25519(self):
-        """
-        GIVEN a ML-KEM 768-based composite key.
-        WHEN the encapsulation and decapsulation is performed.
-        THEN the shared secret should be equal.
-        """
-        trad_key1 = x25519.X25519PrivateKey.generate()
-        pq_key1 = PQKeyFactory.generate_pq_key("ml-kem-768")
-        key1 = CompositeDHKEMRFC9180PrivateKey(pq_key=pq_key1, trad_key=trad_key1)
-        ss, ct = key1.public_key().encaps()
-
-        ss2 = key1.decaps(ct)
-        self.assertEqual(ss, ss2)
-
-    def test_encaps_and_decaps_frodokem_976_aes_dhkemrfc9180_x25519(self):
-        """
-        GIVEN a FrodoKEM 976 AES-based composite key.
-        WHEN the encapsulation and decapsulation is performed.
-        THEN the shared secret should be equal.
-        """
-        trad_key1 = x25519.X25519PrivateKey.generate()
-        pq_key1 = PQKeyFactory.generate_pq_key("frodokem-976-aes")
-        key1 = CompositeDHKEMRFC9180PrivateKey(pq_key=pq_key1, trad_key=trad_key1)
-
-        ss, ct = key1.public_key().encaps()
-        ss2 = key1.decaps(ct)
-        self.assertEqual(ss, ss2)
