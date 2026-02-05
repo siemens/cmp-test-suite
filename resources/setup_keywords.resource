@@ -72,3 +72,15 @@ Set Up Composite Sig Suite
     Set Up Test Suite
     ${url}=   Get Composite Issuing URL
     VAR   ${CA_CMP_URL}    ${url}   scope=SUITE   # robocop: off=VAR05
+
+Set Up Related Certificates Suite
+    [Documentation]    Initializes the test suite for related certificate tests as defined in RFC 9763.
+    ...
+    ...                Executes the shared suite setup and configures the CMP URL to point to the
+    ...                related certificate issuing endpoint for certificate requests that involve multiple certificates
+    ...                (e.g., a traditional certificate and a PQ certificate issued together).
+    ...
+    ...                The CA_CMP_URL suite variable is updated to the related certificate-specific endpoint.
+    Set Up Test Suite
+    ${url}=   Add URL Suffix   ${CA_BASE_URL}    ${RELATED_CERT_SUFFIX}
+    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE   # robocop: off=VAR05
