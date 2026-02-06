@@ -28,6 +28,7 @@ from pkilint import loader, report
 from pkilint.pkix import certificate, extension, name
 from pkilint.validation import ValidationFindingSeverity
 from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5280, rfc6402, rfc9480
 from robot.api.deco import keyword, not_keyword
 
@@ -2222,6 +2223,17 @@ def _validate_oid_in_cert_stfl(
         )
 
 
+def _create_mismatch_oid_error_message(oid: univ.ObjectIdentifier, alg_name: str) -> str:
+    """Create an error message for an unknown OID."""
+    _add = may_return_oid_to_name(oid)
+    if "." not in _add:
+        _add = f" ({_add})"
+    else:
+        _add = ""
+
+    return f"The OID {oid}{_add} does not match the name {alg_name}."
+
+
 @keyword(name="Validate Migration OID In Certificate")
 def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descriptions in the docstring
     cert: rfc9480.CMPCertificate, alg_name: str
@@ -2260,21 +2272,13 @@ def validate_migration_oid_in_certificate(  # noqa: D417 Missing argument descri
 
     if PQ_NAME_2_OID.get(alg_name) is not None:
         if str(pub_oid) != str(PQ_NAME_2_OID[alg_name]):
-            _add = may_return_oid_to_name(pub_oid)
-            if "." not in _add:
-                _add = f" ({_add})"
-            else:
-                _add = ""
-            raise ValueError(f"The OID {pub_oid}{_add} does not match the name {alg_name}.")
+            error_msg = _create_mismatch_oid_error_message(pub_oid, alg_name)
+            raise ValueError(error_msg)
 
     elif HYBRID_NAME_2_OID.get(alg_name) is not None:
         if str(pub_oid) != str(HYBRID_NAME_2_OID[alg_name]):
-            _add = may_return_oid_to_name(pub_oid)
-            if "." not in _add:
-                _add = f" ({_add})"
-            else:
-                _add = ""
-            raise ValueError(f"The OID {pub_oid}{_add} does not match the name {alg_name}.")
+            error_msg = _create_mismatch_oid_error_message(pub_oid, alg_name)
+            raise ValueError(error_msg)
     else:
         raise UnknownOID(pub_oid)
 

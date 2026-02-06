@@ -14,7 +14,7 @@ from resources import keyutils
 from resources.utils import manipulate_first_byte
 
 
-class TestLoadCompSig13(unittest.TestCase):
+class TestLoadCompSig(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -31,7 +31,7 @@ class TestLoadCompSig13(unittest.TestCase):
 
     def test_export_and_load_pub_key_rsa(self):
         """
-        GIVEN a composite signature RSA-key in version 13.
+        GIVEN a composite signature RSA-key in current version.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -45,7 +45,7 @@ class TestLoadCompSig13(unittest.TestCase):
 
     def test_export_and_load_pub_key_ed(self):
         """
-        GIVEN a composite signature Ed-key in version 13.
+        GIVEN a composite signature Ed-key in current version.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -58,7 +58,7 @@ class TestLoadCompSig13(unittest.TestCase):
 
     def test_export_and_load_pub_key_ecc(self):
         """
-        GIVEN a composite signature ECC-key in version 13.
+        GIVEN a composite signature ECC-key in current version.
         WHEN exporting the public key and loading it back.
         THEN the loaded key is the same as the exported key.
         """
@@ -72,7 +72,7 @@ class TestLoadCompSig13(unittest.TestCase):
 
     def test_export_and_load_priv_key_bad_seed(self):
         """
-        GIVEN a composite signature key in version 13.
+        GIVEN a composite signature key in current version.
         WHEN exporting the private key and loading it back with a bad ML-DSA seed.
         THEN is the loaded key different from the exported key.
         """

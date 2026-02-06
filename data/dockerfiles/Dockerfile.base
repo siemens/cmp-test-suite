@@ -22,8 +22,8 @@ RUN pip3 install --upgrade pip && \
     pip3 install -r /app/requirements.txt
 
 # Build and install liboqs-python
-RUN git clone --depth=1 https://github.com/open-quantum-safe/liboqs-python && \
-    pip3 install ./liboqs-python && \
+RUN git clone --depth=1 https://github.com/Guiliano99/liboqs-python-stateful-sig.git && \
+    pip3 install ./liboqs-python-stateful-sig && \
     python3 -c "import oqs"  # Trigger the build of liboqs, by importing it
 
 # Remove unnecessary packages after we're done

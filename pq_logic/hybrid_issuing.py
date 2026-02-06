@@ -38,7 +38,7 @@ from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPu
 from pq_logic.keys.composite_sig import CompositeSigPrivateKey, CompositeSigPublicKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from pq_logic.tmp_oids import (
-    COMPOSITE_SIG13_OID_TO_NAME,
+    COMPOSITE_SIG_OID_TO_NAME,
     id_altSignatureExt,
     id_ce_deltaCertificateDescriptor,
     id_relatedCert,
@@ -331,7 +331,7 @@ def build_cert_from_catalyst_request(  # noqa: D417 Missing argument description
 
     popo: rfc4211.ProofOfPossession = cert_req_msg["popo"]
 
-    if cert_req_msg["certReq"]["certTemplate"]["publicKey"]["algorithm"]["algorithm"] in COMPOSITE_SIG13_OID_TO_NAME:
+    if cert_req_msg["certReq"]["certTemplate"]["publicKey"]["algorithm"]["algorithm"] in COMPOSITE_SIG_OID_TO_NAME:
         raise ValueError("Composite keys are not supported for Catalyst certificates.")
 
     cert_template = cert_req_msg["certReq"]["certTemplate"]
@@ -546,7 +546,7 @@ def verify_sig_popo_catalyst_cert_req_msg(  # noqa: D417 Missing argument descri
     sig_alg_oid = cert_req_msg["popo"]["signature"]["algorithmIdentifier"]
     oid = sig_alg_oid["algorithm"]
 
-    if oid in COMPOSITE_SIG13_OID_TO_NAME:
+    if oid in COMPOSITE_SIG_OID_TO_NAME:
         if not isinstance(first_key, PQSignaturePublicKey):
             first_key, alt_pub_key = alt_pub_key, first_key
 
@@ -1276,8 +1276,8 @@ def is_hybrid_cert(cert: rfc9480.CMPCertificate) -> Optional[str]:
     """
     alg_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
 
-    if alg_oid in COMPOSITE_SIG13_OID_TO_NAME:
-        return "composite-sig-13"
+    if alg_oid in COMPOSITE_SIG_OID_TO_NAME:
+        return "composite-sig"
 
     dcd = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
     if dcd is not None:

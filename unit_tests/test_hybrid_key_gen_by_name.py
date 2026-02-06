@@ -5,7 +5,7 @@
 import unittest
 from pq_logic.tmp_oids import \
     CHEMPAT_NAME_2_OID, CHEMPAT_OID_2_NAME, \
-    COMPOSITE_KEM07_NAME_2_OID, COMPOSITE_KEM07_OID_2_NAME, COMPOSITE_SIG_OID_TO_NAME
+    COMPOSITE_KEM_NAME_2_OID, COMPOSITE_KEM_OID_2_NAME, COMPOSITE_SIG_OID_TO_NAME
 from resources.keyutils import generate_key, get_key_name
 from resources.oid_mapping import may_return_oid_to_name
 from resources.oidutils import PQ_SIG_PRE_HASH_NAME_2_OID, COMPOSITE_SIG_NAME_TO_OID
@@ -27,7 +27,7 @@ class TestGenerateKeyByName(unittest.TestCase):
 
     def test_composite_sig(self):
         """
-        GIVEN all known composite signature version 13 algorithms.
+        GIVEN all known composite signature current version algorithms.
         WHEN generating keys by name,
         THEN is the correct key generated.
         """
@@ -38,17 +38,17 @@ class TestGenerateKeyByName(unittest.TestCase):
             err_msg = f"Expected: {name} Got: {may_return_oid_to_name(_oid)}"
             self.assertEqual(COMPOSITE_SIG_OID_TO_NAME.get(_oid), name, err_msg)
 
-    def test_composite_kem07(self):
+    def test_composite_kem(self):
         """
         GIVEN all known composite KEM algorithms.
         WHEN generating keys by name,
         THEN is the correct key generated.
         """
-        for name in COMPOSITE_KEM07_NAME_2_OID:
+        for name in COMPOSITE_KEM_NAME_2_OID:
             key = generate_key(name, by_name=True)
             _oid = key.public_key().get_oid()
             err_msg = f"Expected: {name} Got: {may_return_oid_to_name(_oid)}"
-            self.assertEqual(COMPOSITE_KEM07_OID_2_NAME.get(_oid), name, err_msg)
+            self.assertEqual(COMPOSITE_KEM_OID_2_NAME.get(_oid), name, err_msg)
 
     def test_chempat(self):
         """

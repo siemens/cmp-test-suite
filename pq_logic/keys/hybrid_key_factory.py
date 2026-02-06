@@ -164,7 +164,7 @@ def get_valid_hybrid_combination(
     """Return the first valid matching combination based on provided criteria.
 
     :param combinations: A list of dictionaries representing valid combinations.
-    :param algorithm:    The hybrid algorithm name (e.g., 'composite-sig-13', 'composite-kem', etc.).
+    :param algorithm:    The hybrid algorithm name (e.g., 'composite-sig', 'composite-kem', etc.).
     :param pq_name:      The post-quantum algorithm name.
     :param trad_name:    The traditional algorithm name.
     :param length:       The length of the traditional key. If `None`, the first length is chosen.
@@ -207,11 +207,8 @@ def _parse_private_keys(hybrid_type: str, pq_key, trad_key) -> HybridPrivateKey:
     hybrid_type = hybrid_type.replace("composite-", "")
     key_class_mappings = {
         "kem": CompositeKEMPrivateKey,  # always the latest version
-        "kem-07": CompositeKEMPrivateKey,
-        "kem07": CompositeKEMPrivateKey,
         "dhkem": CompositeDHKEMRFC9180PrivateKey,  # always the latest version
         "sig": CompositeSigPrivateKey,  # always the latest version
-        "sig-13": CompositeSigPrivateKey,
     }
     key_class = key_class_mappings[hybrid_type]
     return key_class(pq_key, trad_key)
@@ -221,12 +218,8 @@ class HybridKeyFactory:
     """Factory for creating hybrid keys based on traditional and post-quantum (PQ) key types."""
 
     hybrid_mappings = {
-        "sig-13": ALL_COMPOSITE_SIG_COMBINATIONS,
         "sig": ALL_COMPOSITE_SIG_COMBINATIONS,
-        "kem-05": ALL_COMPOSITE_KEM05_COMBINATIONS,
         "kem": ALL_COMPOSITE_KEM07_COMBINATIONS,
-        "kem-07": ALL_COMPOSITE_KEM07_COMBINATIONS,
-        "kem07": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "chempat": ALL_CHEMPAT_COMBINATIONS,
         "dhkem": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "xwing": [],
@@ -234,10 +227,7 @@ class HybridKeyFactory:
 
     default_comb = {
         "sig": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
-        "sig-13": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "kem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
-        "kem07": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
-        "kem-07": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "chempat": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "dhkem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
     }
@@ -303,7 +293,6 @@ class HybridKeyFactory:
                 "chempat": ["ecdh", "x25519", "x448"],
                 "composite-kem": ["rsa", "ecdh", "x25519", "x448"],
                 "composite-sig": ["rsa", "ecdsa", "ed25519", "ed448"],
-                "composite-sig-13": ["rsa", "ecdsa", "ed25519", "ed448"],
                 "xwing": ["x25519"],
             }.get(algo, [])
 
@@ -345,11 +334,8 @@ class HybridKeyFactory:
         return [
             "xwing",
             "composite-sig",
-            "composite-sig-13",
             "composite-dhkem",
             "composite-kem",
-            "composite-kem-07",
-            "composite-kem07",
             "chempat",
         ]
 

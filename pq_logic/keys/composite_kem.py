@@ -29,7 +29,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
     TradKEMPublicKey,
 )
 from pq_logic.keys.trad_kem_keys import DHKEMPrivateKey, DHKEMPublicKey, RSADecapKey, RSAEncapKey
-from pq_logic.tmp_oids import COMPOSITE_KEM07_NAME_2_OID
+from pq_logic.tmp_oids import COMPOSITE_KEM_NAME_2_OID
 from resources.exceptions import InvalidKeyCombination
 from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 
@@ -47,11 +47,11 @@ def _get_kdf_algorithm(pq_name: str, trad_key: TradKEMPublicKey) -> str:
 
 
 class CompositeKEMPublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
-    """A Composite KEM public key for the Composite KEM 07."""
+    """A Composite KEM public key for the current draft."""
 
     _trad_key: TradKEMPublicKey
     _pq_key: PQKEMPublicKey
-    _name = "composite-kem07"
+    _name = "composite-kem"
 
     def __init__(self, pq_key: PQKEMPublicKey, trad_key: Union[TradKEMPublicKey, ECDHPublicKey, RSAPublicKey]):
         """Initialize the composite KEM public key."""
@@ -88,9 +88,9 @@ class CompositeKEMPublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
 
     def get_oid(self) -> univ.ObjectIdentifier:
         """Return the OID of the composite KEM."""
-        if COMPOSITE_KEM07_NAME_2_OID.get(self.name) is None:
+        if COMPOSITE_KEM_NAME_2_OID.get(self.name) is None:
             raise InvalidKeyCombination(f"Unsupported composite KEM combination: {self.name}")
-        return COMPOSITE_KEM07_NAME_2_OID[self.name]
+        return COMPOSITE_KEM_NAME_2_OID[self.name]
 
     def kem_combiner(
         self, mlkem_ss: bytes, trad_ss: bytes, trad_ct: bytes, trad_pk: bytes, use_in_cms: bool = False
@@ -185,11 +185,11 @@ class CompositeKEMPublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
 
 
 class CompositeKEMPrivateKey(HybridKEMPrivateKey, AbstractCompositePrivateKey):
-    """A Composite KEM private key for the Composite KEM 07."""
+    """A Composite KEM private key for the current draft."""
 
     _trad_key: TradKEMPrivateKey
     _pq_key: PQKEMPrivateKey
-    _name = "composite-kem07"
+    _name = "composite-kem"
 
     def __init__(self, pq_key: PQKEMPrivateKey, trad_key: Union[TradKEMPrivateKey, ECDHPrivateKey, RSAPrivateKey]):
         """Initialize the composite KEM private key."""
@@ -250,9 +250,9 @@ class CompositeKEMPrivateKey(HybridKEMPrivateKey, AbstractCompositePrivateKey):
             name = f"{self._name}-{self.pq_key.name}-rsa{value}"
         else:
             name = self.name
-        if COMPOSITE_KEM07_NAME_2_OID.get(name) is None:
+        if COMPOSITE_KEM_NAME_2_OID.get(name) is None:
             raise InvalidKeyCombination(f"Unsupported composite KEM combination: {name}")
-        return COMPOSITE_KEM07_NAME_2_OID[name]
+        return COMPOSITE_KEM_NAME_2_OID[name]
 
     def public_key(self) -> CompositeKEMPublicKey:
         """Return the public key associated with this private key."""

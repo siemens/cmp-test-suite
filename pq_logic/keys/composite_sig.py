@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Composite Signature Implementation for Draft v13.
+"""Composite Signature Implementation for the latest draft v14.
 
-Specification: https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-13.html
+Specification: https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-sigs/
 """
 
 from typing import Optional, Union
@@ -25,10 +25,10 @@ from pq_logic.keys.abstract_wrapper_keys import (
 from pq_logic.keys.serialize_utils import prepare_rsa_private_key
 from pq_logic.keys.sig_keys import MLDSAPrivateKey, MLDSAPublicKey
 from pq_logic.tmp_oids import (
-    COMPOSITE_SIG13_INNER_HASH_OID_2_NAME,
-    COMPOSITE_SIG13_LABELS,
-    COMPOSITE_SIG13_NAME_TO_OID,
-    COMPOSITE_SIG13_PREHASH_OID_2_HASH,
+    COMPOSITE_SIG_INNER_HASH_OID_2_NAME,
+    COMPOSITE_SIG_LABELS,
+    COMPOSITE_SIG_NAME_TO_OID,
+    COMPOSITE_SIG_PREHASH_OID_2_HASH,
 )
 from resources.exceptions import InvalidKeyCombination
 from resources.oid_mapping import hash_name_to_instance
@@ -51,24 +51,24 @@ def _compute_hash(alg_name: str, data: bytes) -> bytes:
 
 def _compute_prehash(oid: univ.ObjectIdentifier, data: bytes) -> bytes:
     """Compute the pre-hash of the data."""
-    hash_alg = COMPOSITE_SIG13_PREHASH_OID_2_HASH[oid]
+    hash_alg = COMPOSITE_SIG_PREHASH_OID_2_HASH[oid]
     return _compute_hash(alg_name=hash_alg, data=data)
 
 
 def _get_label(oid: univ.ObjectIdentifier) -> bytes:
     """Return the label bound to the composite algorithm."""
-    label = COMPOSITE_SIG13_LABELS.get(oid)
+    label = COMPOSITE_SIG_LABELS.get(oid)
     if label is None:
         raise InvalidKeyCombination(f"No label defined for OID: {oid}")
     return label
 
 
 class CompositeSigPublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
-    """Composite Signature Implementation for Draft v13."""
+    """Composite Signature Implementation for the Draft."""
 
     _pq_key: MLDSAPublicKey
     _trad_key: Union[rsa.RSAPublicKey, ECVerifyKey]
-    _name = "composite-sig-13"
+    _name = "composite-sig"
 
     def __init__(
         self,
@@ -106,9 +106,9 @@ class CompositeSigPublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
         """Get the OID for the composite signature."""
         # The default is `True` because of RSA keys with ML-DSA-87.
         _name = self._get_name(use_pss=use_pss)
-        oid = COMPOSITE_SIG13_NAME_TO_OID.get(_name)
+        oid = COMPOSITE_SIG_NAME_TO_OID.get(_name)
         if oid is None:
-            raise InvalidKeyCombination(f"Unsupported composite signature v13 combination: {_name}")
+            raise InvalidKeyCombination(f"Unsupported composite signature combination: {_name}")
         return oid
 
     @property
@@ -150,7 +150,7 @@ class CompositeSigPublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
     def _get_rsa_inner_hash(self, use_pss: bool) -> hashes.HashAlgorithm:
         """Get the inner hash algorithm for RSA signatures."""
         oid = self.get_oid(use_pss=use_pss)
-        hash_alg = COMPOSITE_SIG13_INNER_HASH_OID_2_NAME.get(oid)
+        hash_alg = COMPOSITE_SIG_INNER_HASH_OID_2_NAME.get(oid)
         if hash_alg is None:
             raise InvalidKeyCombination(f"Unsupported OID for composite signature: {oid}")
         return hash_name_to_instance(hash_alg)
@@ -158,7 +158,7 @@ class CompositeSigPublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
     def _verify_trad(self, data: bytes, signature: bytes, use_pss: bool) -> None:
         """Verify the traditional signature."""
         oid = self.get_oid(use_pss=use_pss)
-        hash_alg_name = COMPOSITE_SIG13_INNER_HASH_OID_2_NAME.get(oid)
+        hash_alg_name = COMPOSITE_SIG_INNER_HASH_OID_2_NAME.get(oid)
         hash_alg = hash_name_to_instance(hash_alg_name) if hash_alg_name else None
 
         if isinstance(self._trad_key, rsa.RSAPublicKey):
@@ -209,7 +209,7 @@ class CompositeSigPublicKey(AbstractCompositePublicKey, HybridSigPublicKey):
 
 
 class CompositeSigPrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
-    """Composite Signature Implementation for Draft v13."""
+    """Composite Signature Implementation for the Draft."""
 
     _pq_key: MLDSAPrivateKey
     _trad_key: Union[
@@ -218,7 +218,7 @@ class CompositeSigPrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
         ed25519.Ed25519PrivateKey,
         ed448.Ed448PrivateKey,
     ]
-    _name = "composite-sig-13"
+    _name = "composite-sig"
 
     def __init__(
         self,
@@ -278,9 +278,9 @@ class CompositeSigPrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
     def get_oid(self, use_pss: bool = True) -> univ.ObjectIdentifier:
         """Get the OID for the composite signature."""
         _name = self._get_name(use_pss=use_pss)
-        if COMPOSITE_SIG13_NAME_TO_OID.get(_name) is None:
+        if COMPOSITE_SIG_NAME_TO_OID.get(_name) is None:
             raise InvalidKeyCombination(f"Unsupported composite signature combination: {_name}")
-        return COMPOSITE_SIG13_NAME_TO_OID[_name]
+        return COMPOSITE_SIG_NAME_TO_OID[_name]
 
     def _prepare_input(self, data: bytes, ctx: bytes, use_pss: bool) -> tuple[bytes, bytes]:
         """Prepare the input for the composite signature."""
@@ -293,7 +293,7 @@ class CompositeSigPrivateKey(AbstractCompositePrivateKey, HybridSigPrivateKey):
     def _sign_trad(self, data: bytes, use_pss: bool) -> bytes:
         """Sign the traditional part of the composite signature."""
         oid = self.get_oid(use_pss=use_pss)
-        hash_alg = COMPOSITE_SIG13_INNER_HASH_OID_2_NAME.get(oid)
+        hash_alg = COMPOSITE_SIG_INNER_HASH_OID_2_NAME.get(oid)
         hash_alg_instance = hash_name_to_instance(hash_alg) if hash_alg is not None else None
 
         if isinstance(self._trad_key, rsa.RSAPrivateKey):

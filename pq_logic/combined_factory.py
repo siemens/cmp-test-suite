@@ -57,8 +57,8 @@ from pq_logic.keys.trad_key_factory import (
 from pq_logic.keys.xwing import XWingPrivateKey, XWingPublicKey
 from pq_logic.tmp_oids import (
     CHEMPAT_OID_2_NAME,
-    COMPOSITE_KEM07_NAME_2_OID,
-    COMPOSITE_KEM07_OID_2_NAME,
+    COMPOSITE_KEM_NAME_2_OID,
+    COMPOSITE_KEM_OID_2_NAME,
     COMPOSITE_SIG_OID_TO_NAME,
     id_rsa_kem_spki,
 )
@@ -94,7 +94,11 @@ def _any_string_in_string(string: str, options: List[str]) -> str:
 class CombinedKeyFactory:
     """Factory for creating all known key types."""
 
-    _composite_prefixes = ["sig-13", "kem-07", "kem07", "dhkem", "kem", "sig"]
+    _composite_prefixes = [
+        "dhkem",
+        "kem",
+        "sig",
+    ]
 
     @staticmethod
     def get_stateful_sig_algorithms() -> Dict[str, List[str]]:
@@ -278,8 +282,8 @@ class CombinedKeyFactory:
         return pq_name, trad_name, curve, length
 
     @staticmethod
-    def _load_composite_kem07_public_key(oid: univ.ObjectIdentifier, public_key: bytes):
-        """Load a composite KEM 06 public key from the provided OID and public key bytes.
+    def _load_composite_kem_public_key(oid: univ.ObjectIdentifier, public_key: bytes):
+        """Load a composite KEM public key from the provided OID and public key bytes.
 
         :param oid: The OID of the key.
         :param public_key: The public key bytes.
@@ -287,7 +291,7 @@ class CombinedKeyFactory:
         :raises BadAsn1Data: If the public key structure is invalid or cannot be decoded.
         :raises InvalidKeyCombination: If the key is invalid or the combination is not supported.
         """
-        orig_name = COMPOSITE_KEM07_OID_2_NAME[oid]
+        orig_name = COMPOSITE_KEM_OID_2_NAME[oid]
 
         pq_name, trad_name = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(orig_name)
         pq_key, rest = PQKeyFactory.from_public_bytes(pq_name, public_key, allow_rest=True)
@@ -338,8 +342,8 @@ class CombinedKeyFactory:
                 public_key_bytes=spki["subjectPublicKey"].asOctets(),
             )
 
-        if oid in COMPOSITE_KEM07_OID_2_NAME:
-            return CombinedKeyFactory._load_composite_kem07_public_key(oid, spki["subjectPublicKey"].asOctets())
+        if oid in COMPOSITE_KEM_OID_2_NAME:
+            return CombinedKeyFactory._load_composite_kem_public_key(oid, spki["subjectPublicKey"].asOctets())
 
         if oid in CHEMPAT_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
             return CombinedKeyFactory.load_chempat_key(spki)
@@ -363,7 +367,7 @@ class CombinedKeyFactory:
         if str(oid) == XWING_OID_STR:
             return XWingPublicKey.from_public_bytes(spki["subjectPublicKey"].asOctets())
 
-        if oid in COMPOSITE_SIG_OID_TO_NAME or oid in COMPOSITE_KEM07_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
+        if oid in COMPOSITE_SIG_OID_TO_NAME or oid in COMPOSITE_KEM_OID_2_NAME or oid in CHEMPAT_OID_2_NAME:
             return CombinedKeyFactory._load_hybrid_key_from_spki(spki)
 
         if oid in PQ_STATEFUL_HASH_SIG_OID_2_NAME:
@@ -444,14 +448,14 @@ class CombinedKeyFactory:
         return trad_key
 
     @staticmethod
-    def _load_composite_kem07_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEMPrivateKey:
-        """Load a Composite KEM v7 public key from private key bytes.
+    def _load_composite_kem_from_private_bytes(algorithm: str, private_key: bytes) -> CompositeKEMPrivateKey:
+        """Load a Composite KEM public key from private key bytes.
 
         :param algorithm: The name of the algorithm.
         :param private_key: The private key bytes.
         :return: A CompositeKEMPublicKey instance.
         """
-        logging.info("Loading composite KEM-07 private key: %s", algorithm)
+        logging.info("Loading composite KEM private key: %s", algorithm)
 
         pq_name, trad_name = CombinedKeyFactory.get_pq_and_trad_name_form_hybrid_name(algorithm)
         tmp_pq_key = PQKeyFactory.generate_pq_key(pq_name)
@@ -468,7 +472,7 @@ class CombinedKeyFactory:
         trad_key = CombinedKeyFactory._load_trad_composite_private_key(
             trad_name=trad_name,
             trad_key_bytes=trad_bytes,
-            prefix="KEM v7" if "dhkem" not in algorithm.lower() else "dhkem v7",
+            prefix="KEM" if "dhkem" not in algorithm.lower() else "DHKEM",
         )
 
         if not isinstance(trad_key, rsa.RSAPrivateKey):
@@ -496,20 +500,20 @@ class CombinedKeyFactory:
         return composite_key
 
     @staticmethod
-    def _decode_composite_kem07(
+    def _decode_composite_kem(
         name: str,
         private_key_bytes: bytes,
         public_key: Optional[bytes],
     ) -> CompositeKEMPrivateKey:
-        """Decode a composite KEM-07 private key."""
-        private_key = CombinedKeyFactory._load_composite_kem07_from_private_bytes(
+        """Decode a composite KEM private key."""
+        private_key = CombinedKeyFactory._load_composite_kem_from_private_bytes(
             algorithm=name,
             private_key=private_key_bytes,
         )
 
         if public_key is not None:
             spki = rfc5280.SubjectPublicKeyInfo()
-            spki["algorithm"]["algorithm"] = COMPOSITE_KEM07_NAME_2_OID[name]
+            spki["algorithm"]["algorithm"] = COMPOSITE_KEM_NAME_2_OID[name]
             spki["subjectPublicKey"] = univ.BitString.fromOctetString(public_key)
             try:
                 pub_key = CombinedKeyFactory.load_public_key_from_spki(spki)
@@ -575,9 +579,9 @@ class CombinedKeyFactory:
             name = COMPOSITE_SIG_OID_TO_NAME[oid]
             return CombinedKeyFactory._load_composite_sig_key(name, private_bytes, public_bytes)
 
-        if oid in COMPOSITE_KEM07_OID_2_NAME:
-            _name = COMPOSITE_KEM07_OID_2_NAME[oid]
-            return CombinedKeyFactory._decode_composite_kem07(_name, private_bytes, public_bytes)
+        if oid in COMPOSITE_KEM_OID_2_NAME:
+            _name = COMPOSITE_KEM_OID_2_NAME[oid]
+            return CombinedKeyFactory._decode_composite_kem(_name, private_bytes, public_bytes)
 
         if oid == id_rsa_kem_spki:
             return RSADecapKey.from_pkcs8(one_asym_key)
@@ -826,14 +830,8 @@ class CombinedKeyFactory:
         # Determine the prefix based on the algorithm name
         if alg.startswith("chempat-"):
             prefix = "chempat-"
-        elif alg.startswith("composite-sig-13-"):
-            prefix = "composite-sig-13-"
         elif alg.startswith("composite-sig-"):
             prefix = "composite-sig-"
-        elif alg.startswith("composite-kem-07-"):
-            prefix = "composite-kem-07-"
-        elif alg.startswith("composite-kem07-"):
-            prefix = "composite-kem07-"
         elif alg.startswith("composite-dhkem-"):
             prefix = "composite-dhkem-"
         elif alg.startswith("composite-kem-"):
@@ -877,7 +875,7 @@ class CombinedKeyFactory:
         pq_key = MLDSAPrivateKey.from_private_bytes(pq_bytes, name=pq_name)
 
         trad_key = CombinedKeyFactory._load_trad_composite_private_key(
-            trad_name=trad_name, trad_key_bytes=trad_bytes, prefix="Sig v13"
+            trad_name=trad_name, trad_key_bytes=trad_bytes, prefix="Sig"
         )
 
         use_pss = trad_name.endswith("-pss")
@@ -943,7 +941,7 @@ class CombinedKeyFactory:
 
     @staticmethod
     def _load_trad_composite_private_key(
-        trad_name: str, trad_key_bytes: bytes, prefix: str = "Sig v13"
+        trad_name: str, trad_key_bytes: bytes, prefix: str = "Sig"
     ) -> Union[
         RSAPrivateKey, Ed25519PrivateKey, Ed448PrivateKey, X25519PrivateKey, X448PrivateKey, ec.EllipticCurvePrivateKey
     ]:
@@ -951,7 +949,7 @@ class CombinedKeyFactory:
 
         :param trad_name: The name of the algorithm, e.g., "rsa2048-pss".
         :param trad_key_bytes: The traditional key bytes for RSA, ECDH, ECDSA, or EdDSA keys.
-        :param prefix: The prefix for the algorithm, e.g., "Sig v13".
+        :param prefix: The prefix for the algorithm, e.g., "Sig".
         """
         try:
             if trad_name.startswith("ecdsa") or trad_name.startswith("ecdh"):

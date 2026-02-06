@@ -1383,7 +1383,7 @@ def _is_signature_alg_id(alg_id: rfc5652.SignatureAlgorithmIdentifier) -> None:
         logging.info("Thea Signature algorithm is a MSG_SIG_ALG algorithm. Sig name: %s", MSG_SIG_ALG[oid])
     elif oid in COMPOSITE_SIG_OID_TO_NAME:
         logging.info(
-            "The Signature algorithm is a Composite-Sig13 algorithm. Sig name: %s", COMPOSITE_SIG_OID_TO_NAME[oid]
+            "The Signature algorithm is a Composite-Sig algorithm. Sig name: %s", COMPOSITE_SIG_OID_TO_NAME[oid]
         )
     elif oid in PQ_SIG_OID_2_NAME:
         logging.info("The Signature algorithm is a PQ_SIG algorithm. Sig name: %s", PQ_SIG_OID_2_NAME[oid])

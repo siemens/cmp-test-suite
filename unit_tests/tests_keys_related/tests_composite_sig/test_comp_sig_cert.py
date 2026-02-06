@@ -13,7 +13,7 @@ from resources.exceptions import InvalidKeyCombination
 from resources.keyutils import generate_key, load_private_key_from_file
 
 
-class TestCompositeSig13Cert(unittest.TestCase):
+class TestCompositeSigCert(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
