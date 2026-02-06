@@ -47,7 +47,7 @@ Set Up PQ KEM Suite
     ...                The CA_CMP_URL suite variable is updated to the PQ-specific endpoint.
     Set Up Test Suite
     ${url}=   Get PQ Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE
+    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE   # robocop: off=VAR05
 
 Set Up Hybrid Sig Suite
     [Documentation]    Initializes the test suite for hybrid/composite signature algorithm tests.
@@ -100,8 +100,8 @@ Issue New PQ Sig Cert For Testing
     ${pq_key}=   Generate Default PQ SIG Key
     ${pq_url}=  Get PQ Issuing URL
     ${pq_cert}  ${_}=   Issue New Cert For Testing    ${pq_url}   ${pq_key}
-    VAR   ${PQ_SIG_CERT}   ${pq_cert}   scope=Suite
-    VAR   ${PQ_SIG_KEY}    ${pq_key}    scope=Suite
+    VAR   ${PQ_SIG_CERT}   ${pq_cert}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${PQ_SIG_KEY}    ${pq_key}    scope=SUITE   # robocop: off=VAR05
 
 Revoked New PQ Sig Cert
     [Documentation]    This keyword revokes the current PQ signature certificate and issues a new one, to be used in
@@ -117,8 +117,8 @@ Revoked New PQ Sig Cert
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}    accepted
     Wait Until Server Revoked Cert
-    VAR   ${REVOKED_PQ_CERT}   ${pq_cert}   scope=Suite
-    VAR   ${REVOKED_PQ_KEY}   ${pq_key}   scope=Suite
+    VAR   ${REVOKED_PQ_CERT}   ${pq_cert}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${REVOKED_PQ_KEY}   ${pq_key}   scope=SUITE   # robocop: off=VAR05
 
 Update New PQ Sig Cert
     [Documentation]    This keyword updates the current PQ signature certificate, to be used in the related cert tests.
@@ -136,8 +136,8 @@ Update New PQ Sig Cert
     PKIStatus Must Be    ${response}    accepted
     Confirm Certificate If Needed  ${response}    url=${pq_url}
     Wait Until Server Updated Cert
-    VAR   ${UPDATED_PQ_CERT}   ${pq_cert}   scope=Suite
-    VAR   ${UPDATED_PQ_KEY}   ${pq_key}   scope=Suite
+    VAR   ${UPDATED_PQ_CERT}   ${pq_cert}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${UPDATED_PQ_KEY}   ${pq_key}   scope=SUITE   # robocop: off=VAR05
 
 Issue New PQ CA Cert For Testing
     [Documentation]    This keyword issues a new CA certificate, to be used in the related cert tests.
@@ -152,5 +152,5 @@ Issue New PQ CA Cert For Testing
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${ca_cert}=   Confirm Certificate If Needed    ${response}   url=${pq_url}
-    VAR   ${PQ_CA_CERT}   ${ca_cert}   scope=Suite
-    VAR   ${PQ_CA_KEY}   ${ca_key}   scope=Suite
+    VAR   ${PQ_CA_CERT}   ${ca_cert}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${PQ_CA_KEY}   ${ca_key}   scope=SUITE   # robocop: off=VAR05
