@@ -37,12 +37,12 @@ Suite Setup         Set Up Related Certificates Suite
 # variables are used in the tests and to avoid any issues with variable scope.
 ${PQ_SIG_CERT}         ${None}
 ${PQ_SIG_KEY}          ${None}
-${REVOKED_CERT}        ${None}
-${REVOKED_KEY}         ${None}
-${UPDATED_CERT}        ${None}
-${UPDATED_KEY}         ${None}
-${CA_CERT}             ${None}
-${CA_KEY}              ${None}
+${REVOKED_PQ_CERT}        ${None}
+${REVOKED_PQ_KEY}         ${None}
+${UPDATED_PQ_CERT}        ${None}
+${UPDATED_PQ_KEY}         ${None}
+${PQ_CA_CERT}             ${None}
+${PQ_CA_KEY}              ${None}
 ${RELATED_KEY}         ${None}
 ${RELATED_CERT}        ${None}
 ${RELATED_KEY_SEC}     ${None}
@@ -174,9 +174,9 @@ CA MUST Check If The Related Certificate Is Not Revoked.
     [Tags]         multiple-auth   csr   negative   rr
     Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     Revoked New PQ Sig Cert
-    ${cert_url}=  Prepare Related Cert URL    ${REVOKED_CERT}
-    ${req_cert}=   Prepare RequesterCertificate  cert_a=${REVOKED_CERT}
-    ...            cert_a_key=${REVOKED_KEY}   uri=${cert_url}
+    ${cert_url}=  Prepare Related Cert URL    ${REVOKED_PQ_CERT}
+    ${req_cert}=   Prepare RequesterCertificate  cert_a=${REVOKED_PQ_CERT}
+    ...            cert_a_key=${REVOKED_PQ_KEY}   uri=${cert_url}
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
@@ -199,9 +199,9 @@ CA MUST Check If The Related Certificate Is Not Updated
     [Tags]         multiple-auth   csr   negative   rr
     Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     Update New PQ Sig Cert
-    ${cert_url}=  Prepare Related Cert URL    ${UPDATED_CERT}
-    ${req_cert}=   Prepare RequesterCertificate  cert_a=${UPDATED_CERT}
-    ...            cert_a_key=${UPDATED_KEY}   uri=${cert_url}
+    ${cert_url}=  Prepare Related Cert URL    ${UPDATED_PQ_CERT}
+    ${req_cert}=   Prepare RequesterCertificate  cert_a=${UPDATED_PQ_CERT}
+    ...            cert_a_key=${UPDATED_PQ_KEY}   uri=${cert_url}
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
@@ -224,9 +224,9 @@ CA MUST Reject Related Cert With Non-EE Cert
     [Tags]         multiple-auth   csr   negative
     Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     Issue New PQ CA Cert For Testing
-    ${cert_url}=  Prepare Related Cert URL    ${CA_CERT}
-    ${req_cert}=   Prepare RequesterCertificate  cert_a=${CA_CERT}
-    ...            cert_a_key=${CA_KEY}   uri=${cert_url}
+    ${cert_url}=  Prepare Related Cert URL    ${PQ_CA_CERT}
+    ${req_cert}=   Prepare RequesterCertificate  cert_a=${PQ_CA_CERT}
+    ...            cert_a_key=${PQ_CA_KEY}   uri=${cert_url}
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
@@ -282,64 +282,3 @@ CA Could Support Composite Signature with Related Cert
     ${response}=   Exchange Migration PKIMessage    ${protected_ir}   ${CA_BASE_URL}    ${MULTI_AUTH_SUFFIX}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
-
-
-*** Keywords ***
-Issue New PQ Sig Cert For Testing
-    [Documentation]    This keyword issues a new PQ signature certificate, to be used in the related cert tests.
-    ...                It is used to test the scenario where the related certificate is valid, and the CA must accept the request.
-    ${pq_key}=   Generate Default PQ SIG Key
-    ${pq_url}=  Get PQ Issuing URL
-    ${pq_cert}  ${_}=   Issue New Cert For Testing    ${pq_url}   ${pq_key}
-    VAR   ${PQ_SIG_CERT}   ${pq_cert}   scope=Suite
-    VAR   ${PQ_SIG_KEY}    ${pq_key}    scope=Suite
-
-Revoked New PQ Sig Cert
-    [Documentation]    This keyword revokes the current PQ signature certificate and issues a new one, to be used in the related cert tests.
-    ...                It is used to test the scenario where the related certificate is revoked, and the CA must reject the request.
-    ${pq_key}=   Generate Default PQ SIG Key
-    ${pq_url}=  Get PQ Issuing URL
-    ${pq_cert}  ${_}=   Issue New Cert For Testing    ${pq_url}   ${pq_key}
-    ${rr}=   Build CMP Revoke Request   cert=${pq_cert}   reason=keyCompromise
-    ...           recipient=${RECIPIENT}
-    ${prot_rr}=  Protect PKIMessage    ${rr}   signature   private_key=${pq_key}   cert=${pq_cert}
-    ${response}=  Exchange PKIMessage    ${prot_rr}   ${pq_url}
-    PKIMessage Body Type Must Be    ${response}    rp
-    PKIStatus Must Be    ${response}    accepted
-    Wait Until Server Revoked Cert
-    VAR   ${REVOKED_CERT}   ${pq_cert}   scope=Suite
-    VAR   ${REVOKED_KEY}   ${pq_key}   scope=Suite
-
-Update New PQ Sig Cert
-    [Documentation]    This keyword updates the current PQ signature certificate, to be used in the related cert tests.
-    ...                It is used to test the scenario where the related certificate is updated, and the CA must reject the request.
-    ${pq_key}=   Generate Default PQ SIG Key
-    ${pq_url}=  Get PQ Issuing URL
-    ${pq_cert}  ${_}=   Issue New Cert For Testing    ${pq_url}   ${pq_key}
-    ${new_pq_key}=    Generate Default PQ SIG Key
-    ${rr}=   Build Key Update Request   ${new_pq_key}
-    ...           recipient=${RECIPIENT}   implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${prot_rr}=  Protect PKIMessage    ${rr}   signature   private_key=${pq_key}   cert=${pq_cert}
-    ${response}=  Exchange PKIMessage    ${prot_rr}   ${pq_url}
-    PKIMessage Body Type Must Be    ${response}    kup
-    PKIStatus Must Be    ${response}    accepted
-    Confirm Certificate If Needed  ${response}    url=${pq_url}
-    Wait Until Server Updated Cert
-    VAR   ${UPDATED_CERT}   ${pq_cert}   scope=Suite
-    VAR   ${UPDATED_KEY}   ${pq_key}   scope=Suite
-
-Issue New PQ CA Cert For Testing
-    [Documentation]    This keyword issues a new CA certificate, to be used in the related cert tests.
-    ...                It is used to test the scenario where the related certificate is not an end entity certificate.
-    ${ca_key}=   Generate Default PQ SIG Key
-    ${extns}=   Prepare Extensions    is_ca=True
-    ${ir}=   Build Ir From Key    ${ca_key}   recipient=${RECIPIENT}   extensions=${extns}
-    ...      exclude_fields=senderKID,sender   implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${prot_ir}=  Default Protect PKIMessage    ${ir}
-    ${pq_url}=   Get PQ Issuing URL
-    ${response}=  Exchange PKIMessage    ${prot_ir}   ${pq_url}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    accepted
-    ${ca_cert}=   Confirm Certificate If Needed    ${response}   url=${pq_url}
-    VAR   ${CA_CERT}   ${ca_cert}   scope=Suite
-    VAR   ${CA_KEY}   ${ca_key}   scope=Suite
