@@ -54,6 +54,7 @@ from resources.asn1_structures import PKIMessageTMP
 from resources.convertutils import ensure_is_kem_pub_key, ensure_is_verify_key
 from resources.exceptions import (
     BadAsn1Data,
+    BadConfig,
     BadKeyUsage,
     BadPOP,
     BadSigAlgID,
@@ -1065,14 +1066,14 @@ def _validate_cert_chain_algs_for_verification(
 
     :param cert_chain: A list of `rfc9480.CMPCertificate` objects representing the certificate chain.
     :raises ValueError: If the certificate chain contains unsupported algorithms for OpenSSL verification.
+    :raises BadConfig: If OpenSSL PQC support is not enabled.
     :return: `True` if the certificate chain can be verified with OpenSSL, `False` otherwise.
     """
     if not _is_pqc_or_hybrid_cert_chain(cert_chain):
         return True
 
-    if not check_openssl_pqc_support() and not pqc_algs_cannot_be_validated_with_openssl(certs=cert_chain):
-        logging.warning("OpenSSL PQC support is not enabled.")
-        return False
+    if not check_openssl_pqc_support():
+        raise BadConfig("OpenSSL PQC support is not enabled. The test-suite requires OpenSSL 3.5 or later.")
 
     if pqc_algs_cannot_be_validated_with_openssl(certs=cert_chain):
         raise ValueError(
