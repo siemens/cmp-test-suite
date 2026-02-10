@@ -90,7 +90,7 @@ class PQSignaturePublicKey(PQPublicKey, ABC):
 
     @property
     def nist_level(self) -> int:
-        """Return the claimed NIST security level as string."""
+        """Return the claimed NIST security level as int."""
         return int(self._sig_method.details["claimed_nist_level"])
 
 
@@ -169,7 +169,7 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
 
     @property
     def nist_level(self) -> int:
-        """Return the claimed NIST security level as string."""
+        """Return the claimed NIST security level as int."""
         return self.public_key().nist_level
 
 
@@ -214,7 +214,7 @@ class PQKEMPublicKey(PQPublicKey, KEMPublicKey, ABC):
 
     @property
     def nist_level(self) -> int:
-        """Return the claimed NIST security level as string."""
+        """Return the claimed NIST security level as int."""
         return int(self._kem_method.details["claimed_nist_level"])
 
 
@@ -282,7 +282,7 @@ class PQKEMPrivateKey(PQPrivateKey, KEMPrivateKey, ABC):
 
     @property
     def nist_level(self) -> int:
-        """Return the claimed NIST security level as string."""
+        """Return the claimed NIST security level as int."""
         return self.public_key().nist_level
 
     @staticmethod
