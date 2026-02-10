@@ -43,7 +43,7 @@ HASH_ALG_TO_STRENGTH = {
 
 
 def _rsa_security_strength(key_size: int) -> int:
-    """Return an approximate security strength (in bits) for an RSA key size.
+    """Return an approximate security strength (in bits) for an RSA and DSA key size.
 
     Mapping follows NIST SP 800-57 Part 1 Rev. 5 Table 2.
     """
@@ -69,7 +69,7 @@ def _rsa_security_strength(key_size: int) -> int:
 
 
 def _ecc_security_strength(key_size: int) -> int:
-    """Return the security strength (in bits) for an ECC-style curve size.
+    """Return the security strength (in bits) for an ECC curve size.
 
     Mapping follows NIST SP 800-57 Part 1 Rev. 5 Table 2.
     """
@@ -100,6 +100,7 @@ def _get_pq_stfl_nist_security_strength(key: PQHashStatefulSigPublicKey) -> int:
     XMSS and XMSS^MT security strength is determined by the hash function output size.
     According to RFC 8391 Section 5. Parameter Sets.
     The security strength is halved when considering PQ security strength, because of the `Grover` algorithm.
+    The HSS key size is determined by the used parameter sets.
 
     :param key: The PQ stateful signature public key.
     :return: The security strength in bits.
@@ -113,12 +114,12 @@ def _get_pq_stfl_nist_security_strength(key: PQHashStatefulSigPublicKey) -> int:
         return key.key_bit_security
 
     raise NotImplementedError(
-        f"Security strength estimation is only implemented for XMSS and XMSSMT keys. Got: {type(key)}"
+        f"Security strength estimation is only implemented for XMSS, XMSSMT and HSS keys. Got: {type(key)}"
     )
 
 
 def _nist_level_strength(level: Optional[int]) -> int:
-    """Translate a claimed NIST level into an approximate security strength.
+    """Convert a claimed NIST level into an approximate security strength.
 
     Mapping follows NIST SP 800-57 Part 1 Rev. 5 Table 4.
     """
