@@ -9,6 +9,7 @@ from typing import Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import dsa, ed448, ed25519, rsa, x448, x25519
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_pq import PQKEMPublicKey, PQSignaturePublicKey
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
@@ -129,6 +130,7 @@ def _nist_level_strength(level: Optional[int]) -> int:
     return _NIST_LEVEL_TO_STRENGTH.get(int(level), 0)
 
 
+@not_keyword
 def estimate_key_security_strength(key: Union[PrivateKey, PublicKey]) -> int:
     """Estimate the security strength of a key in bits.
 
