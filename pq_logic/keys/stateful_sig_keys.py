@@ -20,6 +20,7 @@ from cryptography.exceptions import InvalidSignature
 from pyhsslms.pyhsslms import LenI
 from pyhsslms.pyhsslms import lmots_params as PYHSSLMS_LMOTS_PARAMS
 from pyhsslms.pyhsslms import lms_params as PYHSSLMS_LMS_PARAMS
+from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from resources.exceptions import InvalidKeyData
@@ -284,6 +285,7 @@ def _compute_hss_signature_length(details: Dict[str, int], levels: int) -> int:
     return 4 + max(levels - 1, 0) * (per_sig + per_pub) + per_sig
 
 
+@not_keyword
 def compute_hss_signature_index(signature: bytes, key: Union["HSSPrivateKey", "HSSPublicKey"]) -> int:
     """Return the global HSS signature index and the encoded depth."""
     # TODO fix, if needed for different LMS and LMOTS key types.
