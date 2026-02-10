@@ -832,6 +832,7 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
         """Return the NIST security level of the SLH-DSA algorithm."""
         return self.public_key().nist_level
 
+
 ##########################
 # Falcon
 ##########################
