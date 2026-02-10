@@ -411,6 +411,10 @@ class MLDSAPrivateKey(PQSignaturePrivateKey):
         """Return the size of the seed used for ML-DSA key generation."""
         return self._seed_size(name=self.name)
 
+    def nist_level(self) -> int:
+        """Return the NIST security level of the ML-DSA algorithm."""
+        return self.public_key().nist_level
+
 
 ##########################
 # SLH-DSA
@@ -570,7 +574,7 @@ class SLHDSAPublicKey(PQSignaturePublicKey):
 
     @property
     def nist_level(self) -> int:
-        """Return the nist level."""
+        """Return the NIST security level of the SLH-DSA algorithm."""
         if oqs is not None:
             return super().nist_level
         if self.name.endswith("128s") or self.name.endswith("128f"):
@@ -824,6 +828,9 @@ class SLHDSAPrivateKey(PQSignaturePrivateKey):
         """Return the size of the seed used for SLH-DSA key generation."""
         return self._seed_size(name=self.name)
 
+    def nist_level(self) -> int:
+        """Return the NIST security level of the SLH-DSA algorithm."""
+        return self.public_key().nist_level
 
 ##########################
 # Falcon
