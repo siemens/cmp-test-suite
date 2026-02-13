@@ -317,16 +317,6 @@ CURVE_NAMES_TO_INSTANCES: Dict[str, ec.EllipticCurve] = {
     "secp384r1": ec.SECP384R1(),  # NIST P-384
     "secp521r1": ec.SECP521R1(),  # NIST P-521
     "secp256k1": ec.SECP256K1(),  # SECG curve over a 256 bit prime field (used in Bitcoin)
-    "sect163k1": ec.SECT163K1(),  # SECG/WTLS curve over a 163 bit binary field
-    "sect163r2": ec.SECT163R2(),  # SECG curve over a 163 bit binary field
-    "sect233k1": ec.SECT233K1(),  # SECG curve over a 233 bit binary field
-    "sect233r1": ec.SECT233R1(),  # SECG curve over a 233 bit binary field
-    "sect283k1": ec.SECT283K1(),  # SECG curve over a 283 bit binary field
-    "sect283r1": ec.SECT283R1(),  # SECG curve over a 283 bit binary field
-    "sect409k1": ec.SECT409K1(),  # SECG curve over a 409 bit binary field
-    "sect409r1": ec.SECT409R1(),  # SECG curve over a 409 bit binary field
-    "sect571k1": ec.SECT571K1(),  # SECG curve over a 571 bit binary field
-    "sect571r1": ec.SECT571R1(),  # SECG curve over a 571 bit binary field
     "brainpoolP256r1": ec.BrainpoolP256R1(),  # Brainpool curve over a 256 bit prime field
     "brainpoolP384r1": ec.BrainpoolP384R1(),  # Brainpool curve over a 384 bit prime field
     "brainpoolP512r1": ec.BrainpoolP512R1(),  # Brainpool curve over a 512 bit prime field
