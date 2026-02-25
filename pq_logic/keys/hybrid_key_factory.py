@@ -16,10 +16,7 @@ from pyasn1_alt_modules import rfc5280, rfc5958
 
 from pq_logic.keys.abstract_wrapper_keys import HybridPrivateKey, HybridPublicKey, PQPrivateKey, TradKEMPrivateKey
 from pq_logic.keys.chempat_key import ChempatPrivateKey, ChempatPublicKey
-from pq_logic.keys.composite_kem import (
-    CompositeDHKEMRFC9180PrivateKey,
-    CompositeKEMPrivateKey,
-)
+from pq_logic.keys.composite_kem import CompositeKEMPrivateKey
 from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.keys.serialize_utils import prepare_ec_private_key
@@ -207,7 +204,6 @@ def _parse_private_keys(hybrid_type: str, pq_key, trad_key) -> HybridPrivateKey:
     hybrid_type = hybrid_type.replace("composite-", "")
     key_class_mappings = {
         "kem": CompositeKEMPrivateKey,  # always the latest version
-        "dhkem": CompositeDHKEMRFC9180PrivateKey,  # always the latest version
         "sig": CompositeSigPrivateKey,  # always the latest version
     }
     key_class = key_class_mappings[hybrid_type]
@@ -221,7 +217,6 @@ class HybridKeyFactory:
         "sig": ALL_COMPOSITE_SIG_COMBINATIONS,
         "kem": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "chempat": ALL_CHEMPAT_COMBINATIONS,
-        "dhkem": ALL_COMPOSITE_KEM07_COMBINATIONS,
         "xwing": [],
     }
 
@@ -229,7 +224,6 @@ class HybridKeyFactory:
         "sig": {"pq_name": "ml-dsa-44", "trad_name": "rsa", "length": "2048"},
         "kem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
         "chempat": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
-        "dhkem": {"pq_name": "ml-kem-768", "trad_name": "x25519"},
     }
 
     @staticmethod
@@ -334,7 +328,6 @@ class HybridKeyFactory:
         return [
             "xwing",
             "composite-sig",
-            "composite-dhkem",
             "composite-kem",
             "chempat",
         ]
@@ -355,7 +348,7 @@ class HybridKeyFactory:
 
         valid_combinations = HybridKeyFactory.hybrid_mappings[hybrid_type]
 
-        if hybrid_type in ["dhkem", "kem"] and pq_name in ["frodokem-aes-640", "frodokem-shake-640"]:
+        if hybrid_type == "kem" and pq_name in ["frodokem-aes-640", "frodokem-shake-640"]:
             raise InvalidKeyCombination("FrodoKEM-640 is not supported (the claimed NIST level is only `1`).")
 
         params = get_valid_hybrid_combination(
