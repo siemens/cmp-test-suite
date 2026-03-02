@@ -642,6 +642,12 @@ Exchange PKIMessage
     ...                - `request_pki_message` (PKIMessage): The PKIMessage to send.
     ...                - `url` (str): The URL of the CA or RA server to send the PKIMessage to. Defaults to
     ...                  `CA_CMP_URL`.
+    ...                - `pkibody_type` (str): Overwrites the PKIBody type appended to the URL when
+    ...                  body-type appending is enabled. Defaults to `None`, which means the type is
+    ...                  extracted automatically from `request_pki_message`.
+    ...                - `add_pkibody_prefix` (bool): Overrides the global `ADD_PKIBODY_TYPE_2_URL` config
+    ...                  variable for this call. Set to `${True}` to force appending the PKIBody type, or
+    ...                  `${False}` to force omitting it. Defaults to the `${ADD_PKIBODY_TYPE_2_URL}` config variable.
     ...
     ...                Returns:
     ...                -------
@@ -651,12 +657,21 @@ Exchange PKIMessage
     ...                --------
     ...                | ${response_pki_message}= | Exchange PKIMessage | ${request_pki_message} | ${url} |
     ...                | ${response_pki_message}= | Exchange PKIMessage | ${request_pki_message} |
+    ...                | ${response_pki_message}= | Exchange PKIMessage | ${request_pki_message} | cr |
+    ...                | ${response_pki_message}= | Exchange PKIMessage | ${request_pki_message} | add_pkibody_prefix=${False} |
     ...
     [Tags]    exchange    http
-    [Arguments]    ${request_pki_message}   ${url}=${CA_CMP_URL}
+    [Arguments]    ${request_pki_message}    ${url}=${CA_CMP_URL}    ${pkibody_type}=${None}    ${add_pkibody_prefix}=${ADD_PKIBODY_TYPE_2_URL}
+    ${effective_url}=    Set Variable    ${url}
+    IF    '${pkibody_type}' != '${None}'
+        ${effective_url}=    Set Variable    ${url}/${pkibody_type}
+    ELSE IF    ${ADD_PKIBODY_TYPE_2_URL}
+        ${body_name}=    Get Cmp Message Type    ${request_pki_message}
+        ${effective_url}=    Set Variable    ${url}/${body_name}
+    END
     ${encoded_request}=    Encode To Der    ${request_pki_message}
     Log Base64    ${encoded_request}
-    ${response}=    Exchange Data With CA    ${encoded_request}   ${url}
+    ${response}=    Exchange Data With CA    ${encoded_request}    ${effective_url}
     Log Base64    ${response.content}
     ${response_pki_message}=    Parse PKIMessage    ${response.content}
     Collect Nonce From PKIMessage    ${response_pki_message}
@@ -1398,6 +1413,7 @@ Exchange Migration PKIMessage
     [Documentation]    Exchange a PKIMessage with the Mock CA
     [Arguments]    ${ir}    ${ca_base_url}=${CA_BASE_URL}    ${suffix}=${NONE}
     ${url}=    Add URL Suffix    ${ca_base_url}    ${suffix}
+    VAR     ${ADD_PKIBODY_TYPE_2_URL}    ${False}     scope=TEST
     ${response}=    Exchange PKIMessage    ${ir}    ${url}
     RETURN    ${response}
 
