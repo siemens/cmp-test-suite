@@ -1527,6 +1527,21 @@ def get_signature(serial_number):
     return Response(alt_sig, content_type="application/octet-stream")
 
 
+def _check_pkimessage_can_be_parsed(data: bytes) -> Tuple[PKIMessageTMP, bool]:
+    """Check if the PKIMessage can be parsed.
+
+    :param data: The data to check.
+    :return: The PKIMessage and `True` if it can be parsed, otherwise the error response and `False`.
+    """
+    try:
+        pki_message = parse_pkimessage(data)
+        return pki_message, True
+    except ValueError:
+        e = BadAsn1Data("Error: Could not decode the request", overwrite=True)
+        pki_message = handler.build_error_from_exception(e)
+        return pki_message, False
+
+
 @app.route("/issuing", methods=["POST"])
 def handle_issuing() -> Response:
     """Handle the issuing request.
