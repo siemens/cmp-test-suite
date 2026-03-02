@@ -1704,6 +1704,7 @@ def handle_issuing_by_name(body_name: str) -> Response:
         pki_message = handler.process_normal_request(pki_message)
         return _build_response(pki_message, for_msg=True)
 
+
 # TODO: Add more endpoints for the general messages.
 def _register_routes(flask_app: Flask) -> None:
     """Register the CMP endpoints with the Flask app."""
