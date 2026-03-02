@@ -14,6 +14,8 @@ Documentation     An example resource file with configuration options that are m
 ${PORT}    5000
 ${CA_BASE_URL}   http://127.0.0.1:${PORT}/
 ${CA_CMP_URL}    http://127.0.0.1:${PORT}/issuing
+# If set to True, the PKIBody type is appended to the URL (e.g. /issuing/ir).
+${ADD_PKIBODY_TYPE_2_URL}    ${True}
 # The other URL is are down below.
 
 # The initial issued certificate and key for running the tests.
