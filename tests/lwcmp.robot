@@ -59,9 +59,9 @@ CA Must Issue Certificate Via P10cr Without implicitConfirm
     PKIMessage Body Type Must Be    ${response}    cp
     PKIStatus Must Be    ${response}  accepted
     # prepare confirmation message by extracting the certificate and getting the needed
-    # data from it cert_req_id must be also `0` for P10cr.
+    # data from it cert_req_id must be `-1` for P10cr (RFC Errata 8806).
     ${conf_message}=   Build Cert Conf From Resp    ${response}   for_mac=True
-    ...    cert_req_id=0
+    ...    cert_req_id=-1
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    for_mac=True
