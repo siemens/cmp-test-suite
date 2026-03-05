@@ -3533,13 +3533,12 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
         entry: rfc9480.CertResponse
         cert_chain = certutils.build_cmp_chain_from_pkimessage(ca_message, for_issued_cert=True)
         for i, entry in enumerate(cert_resp_msg):
-            # remove the tagging.
             cert_req_id = _get_cert_req_id(
                 cert_resp=entry,
                 length=len(cert_resp_msg),
                 cert_req_id=cert_req_id,
             )
-
+            # remove the tagging
             tmp_cert = get_cert_from_pkimessage(ca_message, cert_number=i)
 
             cert_status = _process_single_cert_conf_cert(
