@@ -160,3 +160,27 @@ class TestBuildCertConf(unittest.TestCase):
         self.assertNotEqual(pki_message["header"]["senderNonce"].asOctets(), b"C" * 16)
         self.assertEqual(pki_message["header"]["transactionID"].asOctets(), b"B" * 16)
         self.assertEqual(pki_message["header"]["recipNonce"].asOctets(), b"A" * 16)
+
+    def test_build_cert_conf_from_resp_keeps_negative_cert_req_id(self):
+        """
+        GIVEN a valid certConf PKIMessage for a P10CR request.
+        WHEN the certConf PKIMessage is built,
+        THEN should the certificate confirmation message have the `certReqId` set to -1.
+        """
+        ca_message = build_ca_pki_message(cert=self.cert, cert_req_id=-1)
+        ca_message["extraCerts"].append(self.ca_cert)
+        ca_message = patch_sendernonce(ca_message, sender_nonce=b"A" * 16)
+        ca_message = patch_transaction_id(ca_message, new_id=b"B" * 16)
+        ca_message = patch_recipnonce(ca_message, recip_nonce=b"C" * 16)
+
+        pki_message = build_cert_conf_from_resp(
+            ca_message=ca_message,
+            sender=self.sender,
+            recipient=self.recipient,
+        )
+
+        self.assertEqual(int(pki_message["body"]["certConf"][0]["certReqId"]), -1)
+
+
+if __name__ == "__main__":
+    unittest.main()
