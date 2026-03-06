@@ -48,7 +48,11 @@ Create a Python virtual environment by installing the dependencies from `require
 2. Activate the environment:
    - on Linux or cygwin: `source venv-cmp-tests/bin/activate`
    - on Windows with Powershell: `.\venv-cmp-tests\Scripts\Activate.ps1`
-3. Install the dependencies: `pip install -r requirements.txt` or `pip install uv` and then `uv sync`
+3. Install the dependencies: 
+   - `pip install .` or 
+   - `pip install uv` and then `uv sync`
+4. (Optional) Install the pq dependencies (after installing `libssl-dev, cmake`): `uv sync --extra pq`
+5. (Optional) Install the development dependencies: `uv sync --all-extras`
 
 
 ## Usage
