@@ -20,6 +20,8 @@ COPY pyproject.toml .
 
 RUN pip3 install uv
 # Install liboqs and its Python wrapper and other dependencies.
+# UV_PROJECT_ENVIRONMENT ensures uv uses /opt/venv instead of creating a new .venv
+ENV UV_PROJECT_ENVIRONMENT="$VENV_PATH"
 RUN uv sync --extra pq
 
 RUN python3 -c "import oqs"  # Trigger the build of liboqs, by importing it
