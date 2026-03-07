@@ -11,8 +11,7 @@ FROM ${BASE_IMAGE}
 
 WORKDIR /app
 
-COPY requirements-dev.txt /app/requirements-dev.txt
-RUN pip3 install -r /app/requirements-dev.txt
+RUN uv sync --all-extras
 
 # By default we just print some environment information, which might be useful
 # for troubleshooting.
