@@ -16,6 +16,7 @@ RUN python3 -m venv "$VENV_PATH"
 ENV PATH="$VENV_PATH/bin:$PATH"
 
 WORKDIR /app
+COPY pyproject.toml .
 
 RUN pip3 install uv
 # Install liboqs and its Python wrapper and other dependencies.
