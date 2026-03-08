@@ -47,6 +47,7 @@ from resources.envdatautils import (
 from resources.exceptions import BadAsn1Data, MismatchingKey
 from resources.keyutils import generate_key, load_private_key_from_file, save_key
 from resources.oid_mapping import may_return_oid_to_name
+from resources.oidutils import EXTENSION_OID_2_NAME
 from resources.prepare_alg_ids import prepare_pbkdf2_alg_id
 from resources.typingutils import PrivateKey, SignKey
 from resources.utils import (
@@ -408,7 +409,7 @@ def get_subject_and_issuer(cert: Union[rfc9480.CMPCertificate, rfc5652.Certifica
     return f"subject={subject_name}, issuer={issuer_name}"
 
 
-def print_chain_subject_and_issuer(cert_or_chain: Union[rfc9480.CMPCertificate, List[rfc9480.CMPCertificate]]):
+def pretty_print_chain_subject_and_issuer(cert_or_chain: Union[rfc9480.CMPCertificate, List[rfc9480.CMPCertificate]]):
     """Log the subject and issuer details of a certificate or a chain of certificates.
 
     Used for Debugging. Accepts a single `CMPCertificate` or a list of `CMPCertificate` objects. For each
@@ -420,24 +421,40 @@ def print_chain_subject_and_issuer(cert_or_chain: Union[rfc9480.CMPCertificate, 
     if isinstance(cert_or_chain, rfc9480.CMPCertificate):
         cert_or_chain = [cert_or_chain]
 
-    for cert in cert_or_chain:
-        print(get_subject_and_issuer(cert))
+    return [get_subject_and_issuer(cert) for cert in cert_or_chain]
 
+def pretty_print_extensions(extensions: rfc9480.Extensions) -> List[str]:
+    """Print the extensions in a human-readable format.
 
-def compare_pyasn1_objects(first: base.Asn1Type, second: base.Asn1Type) -> bool:
+    :param extensions: The `Extensions` object to print.
+    :return: A list of strings containing the extension details.
+    """
+
+    out: List[str] = []
+
+    for ext in extensions:
+        extn_id = ext["extnID"]
+        name = EXTENSION_OID_2_NAME.get(extn_id)
+        critical = ext["critical"]
+        extn_value = ext["extnValue"].prettyPrint()
+        entry = f"Extension {name} ID: {extn_id}, Critical: {critical}, Value: {extn_value}"
+        out.append(entry)
+    return out
+
+def compare_pyasn1_objects(first: base.Asn1Type, second: base.Asn1Type) -> Tuple[bool, List[str]]:
     """Compare if two pyasn1 structures, by first encoding them and then compare the bytes.
 
-    :param first: The first object to compare.
-    :param second: The second object to compare.
-    :return: True if the structures are identical; False otherwise.
+    :param first: The first object to compare with the second.
+    :param second: The second object to compare with the first.
+    :return: `True` if the structures are identical; `False` otherwise which includes a list of differences.
     """
     result = encoder.encode(first) == encoder.encode(second)
+    out: List[str] = []
     if not result:
         for field in first.keys():  # type: ignore
             if encoder.encode(first[field]) != encoder.encode(first[field]):  # type: ignore
-                print(f"{field}: {first[field].prettyPrint()} != {second[field].prettyPrint()}")  # type: ignore
-
-    return result
+                out.append(f"{field}: {first[field].prettyPrint()} != {second[field].prettyPrint()}")  # type: ignore
+    return result, out
 
 
 @not_keyword
