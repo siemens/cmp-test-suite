@@ -645,9 +645,9 @@ Exchange PKIMessage
     ...                - `pkibody_type` (str): Overwrites the PKIBody type appended to the URL when
     ...                  body-type appending is enabled. Defaults to `None`, which means the type is
     ...                  extracted automatically from `request_pki_message`.
-    ...                - `add_pkibody_prefix` (bool): Overrides the global `ADD_PKIBODY_TYPE_2_URL` config
+    ...                - `add_pkibody_prefix` (bool): Overrides the global `APPEND_PKIBODY_URL_SUFFIX` config
     ...                  variable for this call. Set to `${True}` to force appending the PKIBody type, or
-    ...                  `${False}` to force omitting it. Defaults to the `${ADD_PKIBODY_TYPE_2_URL}` config variable.
+    ...                  `${False}` to force omitting it. Defaults to the `${APPEND_PKIBODY_URL_SUFFIX}` config variable.
     ...
     ...                Returns:
     ...                -------
@@ -661,11 +661,11 @@ Exchange PKIMessage
     ...                | ${response_pki_message}= | Exchange PKIMessage | ${request_pki_message} | add_pkibody_prefix=${False} |
     ...
     [Tags]    exchange    http
-    [Arguments]    ${request_pki_message}    ${url}=${CA_CMP_URL}    ${pkibody_type}=${None}    ${add_pkibody_prefix}=${ADD_PKIBODY_TYPE_2_URL}
+    [Arguments]    ${request_pki_message}    ${url}=${CA_CMP_URL}    ${pkibody_type}=${None}    ${add_pkibody_prefix}=${APPEND_PKIBODY_URL_SUFFIX}
     ${effective_url}=    Set Variable    ${url}
     IF    '${pkibody_type}' != '${None}'
         ${effective_url}=    Set Variable    ${url}/${pkibody_type}
-    ELSE IF    ${ADD_PKIBODY_TYPE_2_URL}
+    ELSE IF    ${APPEND_PKIBODY_URL_SUFFIX}
         ${body_name}=    Get Cmp Message Type    ${request_pki_message}
         ${effective_url}=    Set Variable    ${url}/${body_name}
     END
@@ -1413,7 +1413,7 @@ Exchange Migration PKIMessage
     [Documentation]    Exchange a PKIMessage with the Mock CA
     [Arguments]    ${ir}    ${ca_base_url}=${CA_BASE_URL}    ${suffix}=${NONE}
     ${url}=    Add URL Suffix    ${ca_base_url}    ${suffix}
-    VAR     ${ADD_PKIBODY_TYPE_2_URL}    ${False}     scope=TEST
+    VAR     ${APPEND_PKIBODY_URL_SUFFIX}    ${False}     scope=TEST
     ${response}=    Exchange PKIMessage    ${ir}    ${url}
     RETURN    ${response}
 

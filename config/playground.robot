@@ -9,7 +9,7 @@ Documentation     Config file for running tests on the PKI playground.
 ${CA_CMP_URL}    https://signservice-playground.ct.siemens.com/ejbca/publicweb/cmp/PlaygroundMdcNameExtension
 ${CA_BASE_URL}    https://signservice-playground.ct.siemens.com/ejbca/publicweb/cmp/PlaygroundMdcNameExtension
 # If set to True, the PKIBody type is appended to the URL (e.g. .../PlaygroundMdcNameExtension/ir).
-${ADD_PKIBODY_TYPE_2_URL}    ${False}
+${APPEND_PKIBODY_URL_SUFFIX}    ${False}
 
 # The initial issued certificate and key for running the tests.
 ${ISSUED_KEY}    ${None}

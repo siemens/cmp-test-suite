@@ -10,7 +10,7 @@ Documentation     An example resource file with configuration options that are m
 ${CA_CMP_URL}    http://139.25.105.164:5556/lraserver/default/
 ${CA_BASE_URL}    http://139.25.105.164:5556/lraserver/default/
 # If set to True, the PKIBody type is appended to the URL (e.g. /default/ir).
-${ADD_PKIBODY_TYPE_2_URL}    ${False}
+${APPEND_PKIBODY_URL_SUFFIX}    ${False}
 
 # The initial issued certificate and key for running the tests.
 ${ISSUED_KEY}    ${None}
