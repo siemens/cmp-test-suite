@@ -1527,6 +1527,21 @@ def get_signature(serial_number):
     return Response(alt_sig, content_type="application/octet-stream")
 
 
+def _check_pkimessage_can_be_parsed(data: bytes) -> Tuple[PKIMessageTMP, bool]:
+    """Check if the PKIMessage can be parsed.
+
+    :param data: The data to check.
+    :return: The PKIMessage and `True` if it can be parsed, otherwise the error response and `False`.
+    """
+    try:
+        pki_message = parse_pkimessage(data)
+        return pki_message, True
+    except ValueError:
+        e = BadAsn1Data("Error: Could not decode the request", overwrite=True)
+        pki_message = handler.build_error_from_exception(e)
+        return pki_message, False
+
+
 @app.route("/issuing", methods=["POST"])
 def handle_issuing() -> Response:
     """Handle the issuing request.
@@ -1641,6 +1656,73 @@ def handle_catalyst_issuing():
     return _build_response(pki_message)
 
 
+BODY_NAMES_2_EXPECTED_NAME: dict[str, List[str]] = {
+    "ir": ["ir", "cr"],
+    "cr": ["cr"],
+    "p10cr": ["p10cr"],
+    "kur": ["kur"],
+    "ccr": ["ccr"],
+    "rr": ["rr"],
+    "certConf": ["certConf"],
+    "genm": ["genm"],
+    "nested": ["nested"],
+    "popdecr": ["popdecr"],
+}
+
+
+def handle_issuing_by_name(body_name: str) -> Response:
+    """Handle the issuing request by name.
+
+    :param body_name: The name of the body.
+    :return: The Flask `Response`, which contains the CA response.
+    """
+    data = request.get_data()
+    pki_message, ca_be_parsed = _check_pkimessage_can_be_parsed(data)
+    if not ca_be_parsed:
+        return _build_response(pki_message, status=400, for_msg=True)
+
+    parsed_body_name = get_cmp_message_type(pki_message)
+    allowed_body_names = BODY_NAMES_2_EXPECTED_NAME.get(body_name)
+    if allowed_body_names is None:
+        err_msg = (
+            f"Unexpected body name {parsed_body_name}. "
+            f"Expected one of {list(BODY_NAMES_2_EXPECTED_NAME.keys())} body names, "
+            f"for endpoint: {body_name}."
+        )
+        response = handler.build_error_from_exception(BadRequest(err_msg), pki_message)
+        return _build_response(response, status=400, for_msg=True)
+
+    elif parsed_body_name not in allowed_body_names:
+        err_msg = (
+            f"Body name {parsed_body_name} is not allowed. "
+            f"Expected one of {allowed_body_names} body names, "
+            f"for endpoint: {body_name}."
+        )
+        response = handler.build_error_from_exception(BadRequest(err_msg), pki_message)
+        return _build_response(response, status=400, for_msg=True)
+    else:
+        pki_message = handler.process_normal_request(pki_message)
+        return _build_response(pki_message, for_msg=True)
+
+
+# TODO: Add more endpoints for the general messages.
+def _register_routes(flask_app: Flask) -> None:
+    """Register the CMP endpoints with the Flask app."""
+    for endpoints in ["/", "/issuing/", "/.well-known/cmp/p/"]:
+        for body_name in BODY_NAMES_2_EXPECTED_NAME.keys():
+            # See RFC 9483 for the endpoints.
+            # OpenSSL automatically adds the name of the body to the URL.
+            # So we allow either using the direct endpoint of the body name
+            # or the endpoint with the body name appended to it.
+            unique_endpoint = f"{endpoints}{body_name}"
+            flask_app.add_url_rule(
+                f"{endpoints}{body_name}",
+                endpoint=unique_endpoint,
+                view_func=lambda name=body_name: handle_issuing_by_name(name),
+                methods=["POST"],
+            )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Mock CA server")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="The host address, is set to 0.0.0.0 for docker.")
@@ -1648,6 +1730,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     handler = CAHandler(ca_cert=None, ca_key=None, config={}, mock_ca_state=state, port=args.port)
+    _register_routes(app)
 
     # import ssl
     # DOMAIN = "mydomain.com"
