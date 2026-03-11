@@ -82,6 +82,7 @@ class TestProcessBatchMessage(unittest.TestCase):
             transaction_id=trans_id[2],
             sender_nonce=sender_nonce[2],
             recip_nonce=recip_nonce[2] if include_recip_nonce else None,
+            pvno=3
         )
         return protect_pkimessage(
             pki_message=nested,
@@ -93,6 +94,7 @@ class TestProcessBatchMessage(unittest.TestCase):
     def test_process_batch_message(self):
         """Test processing a batch message."""
         nested = self._generate_nested_message(False, False)
+        self.assertEqual(3, int(nested["header"]["pvno"]))
         self.assertEqual(nested["body"].getName(), "nested")
         self.assertEqual(len(nested["body"]["nested"]), 2)
         self.assertEqual(nested["body"]["nested"][0]["body"].getName(), "ir")
@@ -105,6 +107,7 @@ class TestProcessBatchMessage(unittest.TestCase):
 
         self.assertEqual(response["body"]["nested"][0]["header"]["protectionAlg"]["algorithm"], rfc9481.id_PBMAC1)
         self.assertEqual(response["body"]["nested"][1]["header"]["protectionAlg"]["algorithm"], rfc9481.id_PBMAC1)
+        self.assertEqual(3, int(response["header"]["pvno"]))
 
     def test_process_batch_message_bad_message_check(self):
         """Test processing a batch message with bad message check."""
@@ -118,3 +121,7 @@ class TestProcessBatchMessage(unittest.TestCase):
         texts = [x.prettyPrint() for x in pki_status_info["statusString"]]
 
         self.assertIn("Invalid inner batch PKIMessage protection at index 1.", texts)
+
+
+if __name__ == "__main__":
+    unittest.main()
