@@ -319,5 +319,6 @@ class NestedHandler:
             recip_nonce=request["header"]["senderNonce"].asOctets(),
             sender=prot_handler.sender,
             recipient=request["header"]["sender"],
+            pvno=request["header"]["pvno"],
         )
         return prot_handler.protect_pkimessage(response=pki_message, request=request)
