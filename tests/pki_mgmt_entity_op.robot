@@ -355,6 +355,42 @@ CA MUST Respond With Correct PVNO For Outer And Inner Batch Message Reversed
         Should Be Equal As Integers    ${inner_pvno}    3
     END
 
+CA MUST Respond With Correct PVNO For Outer And Inner Batch Message Mixed
+    [Documentation]    According to RFC 9483 Section 3.1 and RFC 9480 Section 7, the `pvno` field in the
+    ...    response MUST match the `pvno` of the corresponding request. We send a nested batch PKIMessage
+    ...    where the outer message has `pvno` set to 3 and three inner IR messages have `pvno` set to 2, 3, and 2.
+    ...    The CA MUST respond with a nested message where the outer response has `pvno` 3 and each inner
+    ...    `ip` response has the corresponding `pvno` (2, 3, 2).
+    [Tags]    batching    nested    positive    batch    pvno
+    Skip If Cert Or Key Not Set
+    ${nonces}=    Generate Unique Byte Values    length=4
+    ${ids}=    Generate Unique Byte Values    length=4
+    VAR    @{inner_irs}
+    VAR    @{expected_pvnos}    ${2}    ${3}    ${2}
+    FOR    ${i}    IN RANGE    3
+        ${ir}=    Default Build Inner IR Message
+        ...    pvno=${expected_pvnos}[${i}]
+        ...    transaction_id=${ids}[${i}]
+        ...    sender_nonce=${nonces}[${i}]
+        Append To List    ${inner_irs}    ${ir}
+    END
+    ${nested}=    Build Nested PKIMessage
+    ...    recipient=${RECIPIENT}
+    ...    other_messages=${inner_irs}
+    ...    sender_nonce=${nonces}[3]
+    ...    transaction_id=${ids}[3]
+    ...    pvno=3
+    ${prot_nested}=    Default Protect With Trusted Cert    ${nested}
+    ${response}=    Exchange PKIMessage    ${prot_nested}
+    PKIMessage Body Type Must Be    ${response}    nested
+    ${outer_pvno}=    Get Asn1 Value As Number    ${response}    header.pvno
+    Should Be Equal As Integers    ${outer_pvno}    3
+    FOR    ${i}    IN RANGE    3
+        ${inner_response}=    Get Inner PKIMessage    ${response}    index=${i}
+        ${inner_pvno}=    Get Asn1 Value As Number    ${inner_response}    header.pvno
+        Should Be Equal As Integers    ${inner_pvno}    ${expected_pvnos}[${i}]
+    END
+
 ### Section 5.2.3 Replacing Protection
 
 # According to Section 5.2.3, when an intermediate PKI management entity modifies a message,
