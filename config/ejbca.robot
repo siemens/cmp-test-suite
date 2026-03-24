@@ -8,6 +8,8 @@ Documentation    Resource file to access local docker EJBCA .
 *** Variables ***
 ${CA_CMP_URL}          http://127.0.0.1:6080/ejbca/publicweb/cmp/cmp_imprint_RA
 ${CA_BASE_URL}         http://127.0.0.1:6080/ejbca/publicweb/cmp/cmp_imprint_RA
+# If set to True, the PKIBody type is appended to the URL (e.g. .../cmp_imprint_RA/ir).
+${APPEND_PKIBODY_URL_SUFFIX}    ${False}
 ${PRESHARED_SECRET}    SecretCmp
 
 ${SENDER}      CN=CUSTOMER_ISSUING_CA
