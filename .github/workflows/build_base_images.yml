@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# This produces base image that contains the dependencies required for the test
-# suite, including the build environment for liboqs; and a dev image, which is
-# used to run code quality checks in the CI pipeline. It also builds the
-# production image, which is meant to be invoked by end-users who want to test
-# their CAs.
+# This produces the base image that contains the dependencies required for the
+# test suite, including the build environment for liboqs; and the dev image,
+# which is used to run code quality checks in the CI pipeline.
+# The production test suite image is built and published separately by
+# build_suite_image.yml.
 
 name: Build and push base docker images
 
@@ -55,14 +55,3 @@ jobs:
             --build-arg BASE_IMAGE=ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
             --push \
             -f data/dockerfiles/Dockerfile.dev .
-
-      - name: Build and push the production test suite Docker image
-      # This one is meant to be directly invoked by end-users who don't want to get into the details
-      # of how the test suite works, they just want to run it to test their CA. For their convenience,
-      # we give it a short name, to be invoked as `docker run --rm -it ghcr.io/siemens/cmp-test`
-        run: |
-          docker buildx build \
-            --tag ghcr.io/${REPO_OWNER_LC}/cmp-test:latest \
-            --build-arg BASE_IMAGE=ghcr.io/${REPO_OWNER_LC}/cmp-test-base:latest \
-            --push \
-            -f data/dockerfiles/Dockerfile.tests .
