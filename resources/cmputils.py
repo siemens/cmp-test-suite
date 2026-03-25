@@ -3385,7 +3385,6 @@ def _process_single_cert_conf_cert(
 
 def _get_cert_req_id(
     cert_resp: rfc9480.CertResponse,
-    length: int = 0,
     cert_req_id: Optional[Strint] = None,
 ) -> Strint:
     """Get the certificate request ID from the response message.
@@ -3394,9 +3393,6 @@ def _get_cert_req_id(
     :param length: The length of the certificate request ID. Defaults to `0`.
     :param cert_req_id: The certificate request ID to use. If not provided, it will be extracted from the response.
     """
-    if length == 1 and cert_req_id is None:
-        # To fix for `p10cr` response were the certReqId is `-1`.
-        return max(int(cert_resp["certReqId"]), 0)
     return int(cert_req_id) if cert_req_id is not None else int(cert_resp["certReqId"])
 
 
@@ -3533,13 +3529,11 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
         entry: rfc9480.CertResponse
         cert_chain = certutils.build_cmp_chain_from_pkimessage(ca_message, for_issued_cert=True)
         for i, entry in enumerate(cert_resp_msg):
-            # remove the tagging.
             cert_req_id = _get_cert_req_id(
                 cert_resp=entry,
-                length=len(cert_resp_msg),
                 cert_req_id=cert_req_id,
             )
-
+            # remove the tagging
             tmp_cert = get_cert_from_pkimessage(ca_message, cert_number=i)
 
             cert_status = _process_single_cert_conf_cert(

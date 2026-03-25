@@ -9,6 +9,8 @@ Documentation     An example resource file with configuration options that are m
 *** Variables ***
 ${CA_CMP_URL}    http://127.0.0.1:8000/pkix
 ${CA_BASE_URL}   http://127.0.0.1:8000/pkix
+# If set to True, the PKIBody type is appended to the URL (e.g. /pkix/ir).
+${APPEND_PKIBODY_URL_SUFFIX}    ${False}
 
 ${CERT_PATH}        config/cert
 ${CA_CLIENT_CERT}   ${CERT_PATH}/PPKI_Playground_CMP.p12
