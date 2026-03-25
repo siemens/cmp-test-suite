@@ -247,14 +247,15 @@ Each entry below represents a template that expands to multiple Robot‑Framewor
 
 ## Section 4.1.4
 
-| Test Case                                                                    | File        |
-| ---------------------------------------------------------------------------- | ----------- |
-| CA MUST Issue A Certificate Upon Receiving A Valid P10CR                     | basic.robot |
-| CA MUST Reject Request With Invalid CSR Signature                            | basic.robot |
-| CA MUST Issue A Valid Certificate Upon Receiving A Valid MAC-Protected P10CR | basic.robot |
-| CA MUST Issue A Valid Certificate Upon Receiving A Valid SIG-Protected P10CR | basic.robot |
-| CA MUST Issue Certificate Via P10CR Without ImplicitConfirm                  | lwcmp.robot |
-| CA MUST Send A Valid CP After Receiving Valid P10CR                          | basic.robot |
+| Test Case                                                                    | File                  |
+| ---------------------------------------------------------------------------- |-----------------------|
+| CA MUST Issue A Certificate Upon Receiving A Valid P10CR                     | basic.robot           |
+| CA MUST Reject Request With Invalid CSR Signature                            | basic.robot           |
+| CA MUST Issue A Valid Certificate Upon Receiving A Valid MAC-Protected P10CR | basic.robot           |
+| CA MUST Issue A Valid Certificate Upon Receiving A Valid SIG-Protected P10CR | basic.robot           |
+| CA MUST Issue Certificate Via P10CR Without ImplicitConfirm                  | lwcmp.robot           |
+| CA MUST Send A Valid CP After Receiving Valid P10CR                          | basic.robot           |
+| CA MUST Reject certConf For P10cr With certReqId Set To Zero                 | cert_conf_tests.robot |
 
 ### Section 4.1.5 MAC-Based Enrollment
 
