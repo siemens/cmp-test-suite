@@ -29,10 +29,6 @@ Build CertConf For Implicit Test
     ...                If the implicit confirmation is `True`, the confirmation will include an implicit confirmation.
     ...                If `False`, it will not include an implicit confirmation.
     [Arguments]    ${body_name}    ${response}   &{params}
-    VAR   ${cert_req_id}   ${None}
-    IF  'p10cr' in '${body_name}'
-        VAR   ${cert_req_id}   0
-    END
     ${old_cert}=   Get From Dictionary    ${params}    old_cert    ${None}
     ${old_key}=   Get From Dictionary    ${params}    old_key    ${None}
     ${for_mac}=   Get From Dictionary    ${params}    for_mac    False
@@ -41,7 +37,7 @@ Build CertConf For Implicit Test
     ELSE
         VAR   ${exclude_fields}   sender,senderKID
     END
-    ${cert_conf}=   Build Cert Conf From Resp    ${response}    cert_req_id=${cert_req_id}
+    ${cert_conf}=   Build Cert Conf From Resp    ${response}
     ...             recipient=${RECIPIENT}   for_mac=${for_mac}    exclude_fields=${exclude_fields}
     ...             sender=${SENDER}   recipient=${RECIPIENT}
     IF  'added-protection-inner' in '${body_name}'
