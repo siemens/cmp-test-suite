@@ -121,6 +121,33 @@ CA MUST Reject Invalid certReqId Inside The certConf
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
 
+CA MUST Reject certConf For P10cr With certReqId Set To Zero
+    [Documentation]    According to RFC 9483 Section 4.1.4 and Errata 8806, certificate confirmation for
+    ...    a p10cr transaction uses certReqId -1. We send a valid p10cr request, then a certConf with
+    ...    certReqId set to 0. The CA MUST reject the confirmation and respond with an error, optionally
+    ...    including the failInfo `badRequest`.
+    [Tags]    p10cr    negative    certReqId
+    ${cm}=  Get Next Common Name
+    ${key}=     Generate Default Key
+    ${p10cr}=    Build P10cr From Key
+    ...    key=${key}
+    ...    common_name=${cm}
+    ...    sender=${SENDER}
+    ...    recipient=${RECIPIENT}
+    ${protected_p10cr}=    Default Protect PKIMessage    ${p10cr}
+    ${response}=   Exchange PKIMessage    ${protected_p10cr}
+    PKIMessage Body Type Must Be    ${response}    cp
+    PKIStatus Must Be    ${response}  accepted
+    ${cert_conf}=    Build Cert Conf From Resp
+    ...    ${response}
+    ...    sender=${SENDER}
+    ...    recipient=${RECIPIENT}
+    ...    cert_req_id=0
+    ${protected_cert_conf}=    Default Protect PKIMessage   ${cert_conf}
+    ${error_resp}=   Exchange PKIMessage    ${protected_cert_conf}
+    PKIMessage Body Type Must Be    ${error_resp}    error
+    PKIStatus Must Be    ${error_resp}    rejection
+
 CA MUST Reject failInfo With Status Accepted Inside The certConf
     [Documentation]    According to RFC 9483 Section 4.1, the certConf message must have a consistent `status`
     ...    and failInfo. A `status` "accepted" indicates no error, making the inclusion of a failInfo

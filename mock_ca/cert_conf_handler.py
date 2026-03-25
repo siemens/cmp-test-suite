@@ -351,6 +351,8 @@ class CertConfHandler:
             allow_failure_sender=False,
             time_interval=None,
         )
+        request = self.conf_state.get_request(pki_message)
+        was_p10cr = get_cmp_message_type(request) == "p10cr"
 
         issued_certs = self.conf_state.get_confirmable_certs(pki_message)
 
@@ -361,6 +363,7 @@ class CertConfHandler:
             request=pki_message,
             issued_certs=issued_certs,
             allow_auto_ed=self.config_vars.allow_auto_ed,
+            was_p10cr=was_p10cr,
         )
 
         requests = self.conf_state.get_request(pki_message)

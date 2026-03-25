@@ -359,3 +359,26 @@ robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable env
 - **`Address already in use`**: Another process is using port 5000. Stop it or start Mock CA on another port.
 - **Unexpected 404 responses:** Confirm the request is sent to `/issuing` or the configured endpoint suffix.
    The list of supported endpoints is documented above.
+- **Expired root certificate / all certificate validation failures after ~1 year:**
+  The test certificates are issued with a one-year validity period to remain compatible with
+  validation setups that reject long-lived certificates. Once they expire every signature and
+  chain check will fail. Call `load_or_generate_cert_chain()` (defined in
+  `unit_tests/utils_for_test.py`) to trigger automatic regeneration:
+  ```python
+  from unit_tests.utils_for_test import load_or_generate_cert_chain
+  load_or_generate_cert_chain()
+  ```
+  The function detects the expired chain and writes fresh
+  certificates to `data/unittest/`, `data/trustanchors/`, `data/mock_ca/trustanchors/`, and
+  `data/cert_logs/`. After this call the MockCA can be restarted and all tests should pass again.
+- **`signerNotTrusted`: "Subject=CN=Root CA is not a trust anchor!"** after certificate renewal:
+  This occurs when `data/cert_logs/CN=Root CA.pem` holds a stale root certificate from a previous
+  run. When `protect_pkimessage` builds a certificate chain it searches `data/cert_logs/` before
+  `data/trustanchors/`. Because the old and new root share the same key the stale file is accepted
+  as the issuer, but its DER bytes no longer match the updated trust anchor, so the CA rejects the
+  signer. **Fix:** delete the stale file or replace it with the current trust anchor:
+  ```sh
+  cp data/trustanchors/root_cert_ed25519.pem "data/cert_logs/CN=Root CA.pem"
+  ```
+  For a clean setup, removing all files inside `data/cert_logs/` before the first run is also
+  sufficient. From that point on, `_gen_new_certs()` keeps the file in sync automatically.

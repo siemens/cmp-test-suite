@@ -4,9 +4,9 @@
 
 import unittest
 
-from resources.ca_ra_utils import build_cp_cmp_message, build_pki_conf_from_cert_conf
+from resources.ca_ra_utils import build_cp_cmp_message, build_cp_from_p10cr, build_pki_conf_from_cert_conf
 from resources.certutils import parse_certificate
-from resources.cmputils import build_cr_from_key, build_cert_conf_from_resp, prepare_certstatus
+from resources.cmputils import build_cert_conf_from_resp, build_cr_from_key, build_p10cr_from_key, prepare_certstatus
 from resources.exceptions import BadRequest, BadCertId
 from resources.keyutils import load_private_key_from_file
 from resources.utils import load_and_decode_pem_file
@@ -123,3 +123,37 @@ class TestBuildPkiConfFromCertConf(unittest.TestCase):
                 request=cert_conf,
                 issued_certs=self.certs,
             )
+
+    def test_correct_p10cr_validation(self):
+        """
+        GIVEN a valid certificate confirmation for a P10CR request with certReqId set to -1.
+        WHEN building a pkiConf from the certificate confirmation with was_p10cr=True,
+        THEN the pkiConf is built correctly without raising an exception.
+        """
+        p10cr_request = build_p10cr_from_key(
+            key=self.comp_key,
+            pvno=3,
+        )
+        response, cert = build_cp_from_p10cr(
+            request=p10cr_request,
+            ca_key=self.ca_key,
+            ca_cert=self.ca_cert,
+        )
+        response["extraCerts"].append(self.ca_cert)
+        cert_conf = build_cert_conf_from_resp(
+            ca_message=response,
+            pvno=3,
+            hash_alg="sha256",
+            cert_req_id=-1,
+        )
+
+        pki_conf = build_pki_conf_from_cert_conf(
+            request=cert_conf,
+            issued_certs=[cert],
+            was_p10cr=True,
+        )
+        self.assertEqual(pki_conf["body"].getName(), "pkiconf")
+
+
+if __name__ == "__main__":
+    unittest.main()
