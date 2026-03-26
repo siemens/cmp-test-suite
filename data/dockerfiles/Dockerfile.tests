@@ -16,5 +16,7 @@ COPY . /app
 
 # Run the entry point script, it takes care of command line argument parsing and
 # displaying documentation.
-ENTRYPOINT ["scripts/docker_entrypoint.py"]
+# Must include python3 in the entry point to ensure that the virtual environment is properly
+# activated, and that the correct Python interpreter is used.
+ENTRYPOINT ["python3", "scripts/docker_entrypoint.py"]
 CMD ["--smoke"]
