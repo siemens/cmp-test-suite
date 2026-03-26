@@ -242,8 +242,8 @@ def main():
         additional_args = ""
 
     if args.smoke:
-        # Run the smoke test in scripts/smoke.robot, as well as any other test with the `smoke` tag
-        command = "robot --pythonpath=./ --outputdir=/report --include smoke scripts/smoke.robot"
+        # Run the smoke test in tests/smoke.robot, as well as any other test with the `smoke` tag
+        command = "robot --pythonpath=./ --outputdir=/report --include smoke tests/smoke.robot"
     elif args.minimal:
         # A minimal batch of tests that only need to know the server's address and nothing else, it is the easiest
         # way to get a taste of what the test suite can do while still doing some actual work with a real server.
