@@ -121,7 +121,7 @@ def prepare_parser():
 
 1. Default behavior (no additional arguments):
    docker run --rm -it ghcr.io/siemens/cmp-test
-   Executes: robot --pythonpath=./ --outputdir=/report --include smoke scripts/smoke.robot tests/
+   Executes: robot --pythonpath=./ --outputdir=/report --include smoke tests/smoke.robot tests/
    Does not require any configuration, runs the smoke test and any other test with the `smoke` tag.
 
 2. Passing a minimal URL:
