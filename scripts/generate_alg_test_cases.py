@@ -154,7 +154,7 @@ def generate_composite_sig_tests(name_list: List[str], replace_name: str, name_t
     return test_cases
 
 
-def generate_pq_kem_tests():
+def _generate_pq_kem_tests():
     """Generalized test case generator for pq kem."""
     test_cases = []
 
@@ -169,6 +169,7 @@ def generate_pq_kem_tests():
         def generate_tags(test_type: str):
             tags = []
             tags.append(test_type)
+            tags.append("pq-kem")
             if name.startswith("ml-kem"):
                 tags.append("ml-kem")
 
@@ -227,6 +228,7 @@ def _generate_hybrid_kem_tests():
                 tags = []
                 tags.append(test_type)
                 tags.append(hybrid_type)
+                tags.extend(["hybrid", "hybrid-kem"])
                 if "ml-kem" in name:
                     tags.append("ml-kem")
 
@@ -323,7 +325,7 @@ def _write_pq_test():
 
 def _write_pq_kem_tests():
     """Write pq kem tests to a file."""
-    test_cases = generate_pq_kem_tests()
+    test_cases = _generate_pq_kem_tests()
     f = open("pq_kem_test_cases.txt", "w", encoding="utf-8")
     _spacer = " " * 4  # 4 spaces between columns as per your requirement
     extra = f"ALGORITHM{_spacer}INVALID_KEY_SIZE\n"
@@ -344,6 +346,16 @@ def _write_hybrid_kem_tests():
         tmp = _write_to_file_pq(test)
         f.write(tmp)
 
+def _write_kem_tests():
+    """Write pqc and hybrid kem tests to a file."""
+    test_cases = _generate_pq_kem_tests() + _generate_hybrid_kem_tests()
+    f = open("kem_test_cases.txt", "w", encoding="utf-8")
+    _spacer = " " * 4  # 4 spaces between columns as per your requirement
+    extra = f"ALGORITHM{_spacer}INVALID_KEY_SIZE\n"
+    f.write(f"*** Test Cases *** {_spacer}{extra}")
+    for test in test_cases:
+        tmp = _write_to_file_pq(test)
+        f.write(tmp)
 
 _write_comp_sig_to_txt_file()
-_write_hybrid_kem_tests()
+_write_kem_tests()
