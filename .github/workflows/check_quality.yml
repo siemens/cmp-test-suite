@@ -18,7 +18,7 @@ jobs:
   # has a username that begins with a capital letter. This is a limitation of GHCR, which only allows lower-case
   # characters. Subsequent jobs use this URL.
   prepare_env:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       image_url: ${{ steps.setenv.outputs.image_url }}
     steps:
@@ -32,7 +32,7 @@ jobs:
 # instead of running them sequentially and giving feedback one piece at a time, requiring more iterations.
   ruff_lint:
     needs: prepare_env
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
@@ -43,7 +43,7 @@ jobs:
 
   license_check:
     needs: prepare_env
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
@@ -54,7 +54,7 @@ jobs:
 
   rf_style_check:
     needs: prepare_env
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
@@ -67,7 +67,7 @@ jobs:
 
   spelling_check:
     needs: prepare_env
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
@@ -80,7 +80,7 @@ jobs:
     # See if newer versions of our Python dependencies are available. This does
     # not enforce anything, and only has an informational character.
     needs: prepare_env
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     continue-on-error: true
     container:
       image: ${{ needs.prepare_env.outputs.image_url }}
@@ -99,7 +99,7 @@ jobs:
           fi
 
   version_check:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
   # execute some logic, etc.
   pylint:
     needs: [prepare_env, ruff_lint, license_check, rf_style_check, spelling_check]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
@@ -128,7 +128,7 @@ jobs:
 
   unit_test:
     needs: [prepare_env, ruff_lint, license_check, rf_style_check, spelling_check]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ${{ needs.prepare_env.outputs.image_url }}
       env:
@@ -141,7 +141,7 @@ jobs:
 
   type_check:
     needs: prepare_env
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     container:
       image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
