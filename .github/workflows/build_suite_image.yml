@@ -14,10 +14,18 @@ on:
   push:
     branches:
       - main
+  workflow_run:
+    workflows: [ "Build and push base docker images" ]
+    types: [ completed ]
   workflow_dispatch:
 
 jobs:
   build_and_push:
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
