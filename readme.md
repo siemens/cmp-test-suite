@@ -41,16 +41,16 @@ While the Docker-based approach makes it easy to get started, it essentially tre
 
 
 ## Configuration
-Create a Python virtual environment by installing the dependencies from `requirements.txt` as follows:
+Create a Python virtual environment and install the dependencies as follows:
 
 1. Create a virtual environment: `python3 -m venv venv-cmp-tests`
    - If you use WSL 2.0, run `apt install libpython3-dev python3-venv` if the command above fails.
 2. Activate the environment:
    - on Linux or cygwin: `source venv-cmp-tests/bin/activate`
    - on Windows with Powershell: `.\venv-cmp-tests\Scripts\Activate.ps1`
-3. Install the dependencies: 
-   - `pip install .` or 
-   - `pip install uv` and then `uv sync`
+3. Install the dependencies:
+   - `pip install uv`
+   - `uv sync`
 4. (Optional) Install the pq dependencies (after installing `libssl-dev, cmake`): `uv sync --extra pq`
 5. (Optional) Install the development dependencies: `uv sync --all-extras`
 
