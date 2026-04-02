@@ -25,7 +25,7 @@ Contributions are made through pull requests, or by filing an issue in the repos
 - `doc` - generated documentation of the test suite and its keywords
 
 ## Preparing the development environment
-1. Install the dependencies: `pip install -r requirements-dev.txt` to use tools for linting, type checking, etc.
+1. Install `uv` and sync all dependencies: `pip install uv && uv sync --all-extras` to use the runtime and development tools.
 2. If using IntelliJ or PyCharm, set the source directory: `File/Project Structure/Modules`, click on the `resources`
    folder, select `Source` and apply.
 3. You can also do this in the code, e.g., if not using an IDE `import sys; sys.path.append("./resources")`

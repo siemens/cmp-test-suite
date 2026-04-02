@@ -11,8 +11,9 @@ variables:
 
 
 before_script:
-  - pip install -r requirements.txt
-  - pip install ruff pylint reuse
+  - pip install uv
+  - uv sync
+  - uv sync --all-extras
 
 
 stages:
