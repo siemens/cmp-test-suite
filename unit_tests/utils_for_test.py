@@ -1633,7 +1633,7 @@ def _generate_mock_ca_certs():
         agree_key=x448_key,
         common_name="CN=CA Encr Cert X448",
     )
-    write_cmp_certificate_to_pem(ca_encr_cert, "data/unittest/ca_encr_cert_x448.pem")
+    write_cmp_certificate_to_pem(x448_cert, "data/unittest/ca_encr_cert_x448.pem")
     print("Updated X448 CA Encr Cert")
 
     _generate_mock_ca_kem_certs()
