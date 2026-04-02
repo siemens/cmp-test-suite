@@ -5,7 +5,7 @@
 name = "cmp-test-suite"
 version = "0.0.2"
 description = "CMP Protocol Compliance Test Suite"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "cryptography==46.0.5",
     "pyasn1==0.6.2",
