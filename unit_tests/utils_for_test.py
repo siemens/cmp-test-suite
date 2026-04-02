@@ -247,11 +247,13 @@ def _gen_new_certs() -> None:
     _build_kga_cert_signed_by_root()
     # needs to be valid during OpenSSL verification.
     _generate_crl()
+    _generate_mock_ca_certs()
     _generate_other_trusted_pki_certs()
     _generate_other_trusted_ca_and_device_certs()
     utils.write_cmp_certificate_to_pem(cert_chain[0], "data/mock_ca/trustanchors/root_cert_ed25519.pem")
     utils.write_cmp_certificate_to_pem(cert_chain[0], "data/trustanchors/root_cert_ed25519.pem")
-    utils.write_cmp_certificate_to_pem(cert_chain[0], "data/cert_logs/CN=Root CA.pem")
+    if os.path.exists("data/cert_logs/CN=Root CA.pem"):
+        utils.write_cmp_certificate_to_pem(cert_chain[0], "data/cert_logs/CN=Root CA.pem")
 
 
 def _generate_crl() -> None:
