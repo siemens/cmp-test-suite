@@ -110,15 +110,16 @@ MockCA uses the same runtime dependencies as the CMP test suite.
 - **Python packages:** Install the shared dependencies with:
 
 ```sh
-  pip install -r requirements.txt
-  ```
+pip install uv
+uv sync
+```
 
 This includes **Flask** for the MockCA HTTP server.
 - **Requires liboqs-python** for post-quantum and hybrid key support. Can be installed via with the
   [setup_pq.sh](scripts/setup_pq.sh) file.
 - **OpenSSL** for the example CLI requests and for certificate validation helpers.
 - **Optional:**
-  - **Robot Framework** is included in [requirements.txt](requirements.txt) and is needed to run the test suites, but not the MockCA itself.
+  - **Robot Framework** is installed by `uv sync` and is needed to run the test suites, but not the MockCA itself.
 
 ### Installation Steps
 
@@ -129,7 +130,8 @@ From the repository root:
 ```sh
 python3 -m venv venv-cmp-tests
 source venv-cmp-tests/bin/activate
-pip install -r requirements.txt
+pip install uv
+uv sync
 ```
 
 Verify the key runtime tools:
@@ -325,7 +327,8 @@ robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable env
    ```sh
    python3 -m venv venv-cmp-tests
    source venv-cmp-tests/bin/activate
-   pip install -r requirements.txt
+   pip install uv
+   uv sync
    ```
 
 2. Start MockCA:
