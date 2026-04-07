@@ -91,12 +91,13 @@ jobs:
       - name: Check for outdated dependencies
         run: |
           echo "Checking for outdated packages..."
-          if uv tree --outdated --depth 1 | grep -q 'latest:'; then
-            echo "Updates available"
-            uv tree --outdated --depth 1
+          OUTDATED=$(uv tree --outdated --depth 1)
+          if echo "$OUTDATED" | grep -q 'latest:'; then
+            echo "Outdated packages detected, think about it:"
+            echo "$OUTDATED"
             exit 1
           else
-            echo "No updates"
+            echo "All packages are up to date!"
             exit 0
           fi
 
