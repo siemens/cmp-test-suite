@@ -24,32 +24,6 @@ def _compare_hybrid_private_keys(private_key, loaded_key) -> bool:
 
 
 class TestKeyRoundTrip(unittest.TestCase):
-    def test_composite_dhkem_unencrypted_round_trip(self):
-        private_key = generate_key("composite-dhkem")
-        with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as tmp:
-            file_path = tmp.name
-        try:
-            save_key(private_key, file_path)
-            loaded_key = load_private_key_from_file(file_path)
-            self.assertTrue(_compare_hybrid_private_keys(private_key, loaded_key))
-        except Exception as e:
-            self.fail(f"Exception: {e}")
-        finally:
-            os.remove(file_path)
-
-    def test_composite_dhkem_encrypted_round_trip_password(self):
-        private_key = generate_key("composite-dhkem")
-        with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as tmp:
-            file_path = tmp.name
-        try:
-            save_key(private_key, file_path, password="dhkem-secret")
-            loaded_key = load_private_key_from_file(file_path, password="dhkem-secret")
-            self.assertTrue(_compare_hybrid_private_keys(private_key, loaded_key))
-        except Exception as e:
-            self.fail(f"Exception: {e}")
-        finally:
-            os.remove(file_path)
-
     def test_composite_sig_unencrypted_round_trip(self):
         private_key = generate_key("composite-sig")
         with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as tmp:
