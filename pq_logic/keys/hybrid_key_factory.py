@@ -90,32 +90,6 @@ ALL_COMPOSITE_KEM07_COMBINATIONS = [
 ]
 ALL_COMPOSITE_KEM07_COMBINATIONS += ALL_COMPOSITE_KEM05_COMBINATIONS
 
-ALL_COMPOSITE_KEM_FRODOKEM_COMBINATIONS = [
-    # Claimed NIST level 3
-    {"pq_name": "frodokem-976-aes", "trad_name": "x25519"},
-    {"pq_name": "frodokem-976-aes", "trad_name": "rsa", "length": "2048"},
-    {"pq_name": "frodokem-976-aes", "trad_name": "rsa", "length": "3072"},
-    {"pq_name": "frodokem-976-aes", "trad_name": "rsa", "length": "4096"},
-    {"pq_name": "frodokem-976-aes", "trad_name": "ecdh", "curve": "secp256r1"},
-    {"pq_name": "frodokem-976-aes", "trad_name": "ecdh", "curve": "secp384r1"},
-    {"pq_name": "frodokem-976-aes", "trad_name": "ecdh", "curve": "brainpoolp256r1"},
-    {"pq_name": "frodokem-976-shake", "trad_name": "x25519"},
-    {"pq_name": "frodokem-976-shake", "trad_name": "rsa", "length": "2048"},
-    {"pq_name": "frodokem-976-shake", "trad_name": "rsa", "length": "3072"},
-    {"pq_name": "frodokem-976-shake", "trad_name": "rsa", "length": "4096"},
-    {"pq_name": "frodokem-976-shake", "trad_name": "ecdh", "curve": "secp256r1"},
-    {"pq_name": "frodokem-976-shake", "trad_name": "ecdh", "curve": "secp384r1"},
-    {"pq_name": "frodokem-976-shake", "trad_name": "ecdh", "curve": "brainpoolp256r1"},
-    # Claimed NIST level 5
-    {"pq_name": "frodokem-1344-aes", "trad_name": "ecdh", "curve": "secp384r1"},
-    {"pq_name": "frodokem-1344-aes", "trad_name": "ecdh", "curve": "brainpoolp384r1"},
-    {"pq_name": "frodokem-1344-aes", "trad_name": "x448"},
-    {"pq_name": "frodokem-1344-shake", "trad_name": "ecdh", "curve": "secp384r1"},
-    {"pq_name": "frodokem-1344-shake", "trad_name": "ecdh", "curve": "brainpoolp384r1"},
-    {"pq_name": "frodokem-1344-shake", "trad_name": "x448"},
-]
-
-ALL_COMPOSITE_KEM07_COMBINATIONS += ALL_COMPOSITE_KEM_FRODOKEM_COMBINATIONS
 
 
 def _get_trad_key_from_pq_key(

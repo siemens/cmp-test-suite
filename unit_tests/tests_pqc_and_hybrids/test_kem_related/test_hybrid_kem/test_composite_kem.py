@@ -5,7 +5,6 @@
 import unittest
 
 from pq_logic.keys.composite_kem import CompositeKEMPrivateKey
-from pq_logic.keys.pq_key_factory import PQKeyFactory
 from resources.keyutils import generate_key
 
 
@@ -53,16 +52,4 @@ class TestCompositeKEM(unittest.TestCase):
         ss2 = key.decaps(ct)
         self.assertEqual(ss, ss2)
 
-    def test_encaps_and_decaps_frodokem_x25519(self):
-        """
-        GIVEN two FrodoKEM 976 AES-based composite keys.
-        WHEN the encapsulation and decapsulation is performed.
-        THEN the shared secret should be equal.
-        """
-        trad_key = generate_key("x25519")
-        pq_key = PQKeyFactory.generate_pq_key("frodokem-976-aes")
-        comp_key = CompositeKEMPrivateKey(pq_key, trad_key)
-        shared_secret, ct_vals = comp_key.public_key().encaps()
-        decaps_ss = comp_key.decaps(ct_vals)
-        self.assertEqual(shared_secret, decaps_ss, "Shared secret mismatch for FrodoKEM X25519-based keys.")
 

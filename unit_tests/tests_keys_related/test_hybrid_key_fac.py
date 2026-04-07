@@ -81,15 +81,3 @@ class TestHybridKeyFactory(unittest.TestCase):
         self.assertIsInstance(key.trad_key, RSADecapKey)
 
 
-    def test_hybrid_key_factory_comp_kem_frodokem(self):
-        """
-        GIVEN a hybrid key factory and the composite-kem algorithm.
-        WHEN a hybrid key is generated with the pq_name frodokem-976-aes.
-        THEN the pq_key should be frodokem-976-aes, and the trad_key should be x25519.
-        """
-        key = HybridKeyFactory.generate_hybrid_key(algorithm="composite-kem",
-                                                   pq_name="frodokem-976-aes",
-                                                )
-
-        self.assertEqual(key.pq_key.name, "frodokem-976-aes")
-        self.assertIsInstance(key.trad_key, DHKEMPrivateKey)
