@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 
 # SPDX-FileCopyrightText: Copyright 2025 Siemens AG
 #
