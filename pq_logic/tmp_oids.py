@@ -215,38 +215,26 @@ COMPOSITE_SIG_PREHASH_OID_2_HASH = {
 # Composite KEM
 ######################
 
-id_new_compKEM = univ.ObjectIdentifier("2.16.840.1.114027.80.5.2")
-# Composite KEM OIDs
-id_comp_kem_mlkem768_rsa2048 = univ.ObjectIdentifier(f"{id_new_compKEM}.50")
-id_comp_kem_mlkem768_rsa3072 = univ.ObjectIdentifier(f"{id_new_compKEM}.51")
-id_comp_kem_mlkem768_rsa4096 = univ.ObjectIdentifier(f"{id_new_compKEM}.52")
-id_comp_kem_mlkem768_x25519 = univ.ObjectIdentifier(f"{id_new_compKEM}.53")
-id_comp_kem_mlkem768_ecdh_p256 = univ.ObjectIdentifier(f"{id_new_compKEM}.54")
-id_comp_kem_mlkem768_ecdh_p384 = univ.ObjectIdentifier(f"{id_new_compKEM}.55")
-id_comp_kem_mlkem768_ecdh_brainpool_p256r1 = univ.ObjectIdentifier(f"{id_new_compKEM}.56")
-id_comp_kem_mlkem1024_ecdh_p384 = univ.ObjectIdentifier(f"{id_new_compKEM}.57")
-id_comp_kem_mlkem1024_ecdh_brainpool_p384r1 = univ.ObjectIdentifier(f"{id_new_compKEM}.58")
-id_comp_kem_mlkem1024_x448 = univ.ObjectIdentifier(f"{id_new_compKEM}.59")
-id_comp_kem_mlkem1024_ecdh_p521 = univ.ObjectIdentifier(f"{id_new_compKEM}.60")
-id_comp_kem_mlkem1024_rsa3072 = univ.ObjectIdentifier(f"{id_new_compKEM}.61")
+# Composite KEM OIDs (draft-ietf-lamps-pq-composite-kem-14, arc: 1.3.6.1.5.5.7.6.55-66)
+_COMPOSITE_KEM_MLKEM_NAMES = [
+    "composite-kem-ml-kem-768-rsa2048",
+    "composite-kem-ml-kem-768-rsa3072",
+    "composite-kem-ml-kem-768-rsa4096",
+    "composite-kem-ml-kem-768-x25519",
+    "composite-kem-ml-kem-768-ecdh-secp256r1",
+    "composite-kem-ml-kem-768-ecdh-secp384r1",
+    "composite-kem-ml-kem-768-ecdh-brainpoolP256r1",
+    "composite-kem-ml-kem-1024-rsa3072",
+    "composite-kem-ml-kem-1024-ecdh-secp384r1",
+    "composite-kem-ml-kem-1024-ecdh-brainpoolP384r1",
+    "composite-kem-ml-kem-1024-x448",
+    "composite-kem-ml-kem-1024-ecdh-secp521r1",
+]
 
 COMPOSITE_KEM_MLKEM_NAME_2_OID = {
-    "composite-kem-ml-kem-768-rsa2048": id_comp_kem_mlkem768_rsa2048,
-    "composite-kem-ml-kem-768-rsa3072": id_comp_kem_mlkem768_rsa3072,
-    "composite-kem-ml-kem-768-rsa4096": id_comp_kem_mlkem768_rsa4096,
-    "composite-kem-ml-kem-768-x25519": id_comp_kem_mlkem768_x25519,
-    "composite-kem-ml-kem-768-ecdh-secp256r1": id_comp_kem_mlkem768_ecdh_p256,
-    "composite-kem-ml-kem-768-ecdh-secp384r1": id_comp_kem_mlkem768_ecdh_p384,
-    "composite-kem-ml-kem-768-ecdh-brainpoolP256r1":  # line too long
-    id_comp_kem_mlkem768_ecdh_brainpool_p256r1,
-    "composite-kem-ml-kem-1024-rsa3072": id_comp_kem_mlkem1024_rsa3072,
-    "composite-kem-ml-kem-1024-ecdh-secp384r1": id_comp_kem_mlkem1024_ecdh_p384,
-    "composite-kem-ml-kem-1024-ecdh-brainpoolP384r1":  # line too long
-    id_comp_kem_mlkem1024_ecdh_brainpool_p384r1,
-    "composite-kem-ml-kem-1024-x448": id_comp_kem_mlkem1024_x448,
-    "composite-kem-ml-kem-1024-ecdh-secp521r1": id_comp_kem_mlkem1024_ecdh_p521,
+    name: id_compSig_base + (i,)
+    for i, name in enumerate(_COMPOSITE_KEM_MLKEM_NAMES, start=55)
 }
-
 
 id_ce_deltaCertificateDescriptor = univ.ObjectIdentifier("2.16.840.1.114027.80.6.1")
 id_at_deltaCertificateRequestSignature = univ.ObjectIdentifier("2.16.840.1.114027.80.6.3")
