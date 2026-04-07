@@ -91,7 +91,6 @@ ALL_COMPOSITE_KEM07_COMBINATIONS = [
 ALL_COMPOSITE_KEM07_COMBINATIONS += ALL_COMPOSITE_KEM05_COMBINATIONS
 
 
-
 def _get_trad_key_from_pq_key(
     trad_key, allowed_key: List[str], comb_name: str
 ) -> Tuple[str, Optional[str], Optional[str]]:

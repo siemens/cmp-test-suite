@@ -232,8 +232,7 @@ _COMPOSITE_KEM_MLKEM_NAMES = [
 ]
 
 COMPOSITE_KEM_MLKEM_NAME_2_OID = {
-    name: id_compSig_base + (i,)
-    for i, name in enumerate(_COMPOSITE_KEM_MLKEM_NAMES, start=55)
+    name: id_compSig_base + (i,) for i, name in enumerate(_COMPOSITE_KEM_MLKEM_NAMES, start=55)
 }
 
 id_ce_deltaCertificateDescriptor = univ.ObjectIdentifier("2.16.840.1.114027.80.6.1")
