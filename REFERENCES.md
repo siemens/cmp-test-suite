@@ -127,6 +127,7 @@ when working with the Mock CA.
 - [draft-connolly-cfrg-xwing-kem](https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem/)
 - [draft-ietf-lamps-pq-composite-kem](https://datatracker.ietf.org/doc/draft-ietf-lamps-pq-composite-kem/)
 - [draft-josefsson-chempat](https://datatracker.ietf.org/doc/draft-josefsson-chempat/)
+- [draft-ietf-lamps-cms-composite-kem](https://datatracker.ietf.org/doc/draft-ietf-lamps-cms-composite-kem/)
 
 ## Hybrid Signature
 
