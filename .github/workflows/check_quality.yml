@@ -88,7 +88,7 @@ jobs:
       - name: Check for outdated dependencies
         run: |
           echo "Checking for outdated packages..."
-          uv tree --outdated --depth 1
+          /opt/venv/bin/uv tree --outdated --depth 1
 
   version_check:
     runs-on: ubuntu-24.04
