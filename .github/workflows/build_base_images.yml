@@ -16,7 +16,7 @@ on:
   push:
     paths:
     - 'data/dockerfiles/Dockerfile.*'
-    - 'requirements*.txt'
+    - 'pyproject.toml'
   workflow_dispatch:
 
 jobs:

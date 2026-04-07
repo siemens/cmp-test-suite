@@ -16,15 +16,15 @@ RUN python3 -m venv "$VENV_PATH"
 ENV PATH="$VENV_PATH/bin:$PATH"
 
 WORKDIR /app
+COPY pyproject.toml .
 
-COPY requirements.txt /app/requirements.txt
-RUN pip3 install --upgrade pip && \
-    pip3 install -r /app/requirements.txt
+RUN pip3 install uv
+# Install liboqs and its Python wrapper and other dependencies.
+# UV_PROJECT_ENVIRONMENT ensures uv uses /opt/venv instead of creating a new .venv
+ENV UV_PROJECT_ENVIRONMENT="$VENV_PATH"
+RUN uv sync --extra pq
 
-# Build and install liboqs-python
-RUN git clone --depth=1 https://github.com/Guiliano99/liboqs-python-stateful-sig.git && \
-    pip3 install ./liboqs-python-stateful-sig && \
-    python3 -c "import oqs"  # Trigger the build of liboqs, by importing it
+RUN python3 -c "import oqs"  # Trigger the build of liboqs, by importing it
 
 # Remove unnecessary packages after we're done
 RUN apt-get remove -y cmake git build-essential && \
