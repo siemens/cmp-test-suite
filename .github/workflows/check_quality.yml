@@ -88,15 +88,7 @@ jobs:
       - name: Check for outdated dependencies
         run: |
           echo "Checking for outdated packages..."
-          OUTDATED=$(pip list --outdated --format=columns)
-          if [ -z "$OUTDATED" ]; then
-            echo "All packages are up to date!"
-            exit 0
-          else
-            echo "Outdated packages detected, think about it:"
-            echo "$OUTDATED"
-            exit 1
-          fi
+          uv tree --outdated --depth 1
 
   version_check:
     runs-on: ubuntu-24.04
