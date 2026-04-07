@@ -75,7 +75,6 @@ CUSTOM_KEY_TYPES = [
     b"SLH-DSA",
     b"COMPOSITE-SIG",
     b"COMPOSITE-KEM",
-    b"COMPOSITE-DHKEM",
     b"FrodoKEM",
     b"XWING",
     b"ML-DSA",

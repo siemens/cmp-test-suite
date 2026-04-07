@@ -32,12 +32,7 @@ from pq_logic.keys.abstract_wrapper_keys import (
     WrapperPrivateKey,
 )
 from pq_logic.keys.chempat_key import ChempatPublicKey
-from pq_logic.keys.composite_kem import (
-    CompositeDHKEMRFC9180PrivateKey,
-    CompositeDHKEMRFC9180PublicKey,
-    CompositeKEMPrivateKey,
-    CompositeKEMPublicKey,
-)
+from pq_logic.keys.composite_kem import CompositeKEMPrivateKey, CompositeKEMPublicKey
 from pq_logic.keys.composite_sig import (
     CompositeSigPrivateKey,
     CompositeSigPublicKey,
@@ -95,7 +90,6 @@ class CombinedKeyFactory:
     """Factory for creating all known key types."""
 
     _composite_prefixes = [
-        "dhkem",
         "kem",
         "sig",
     ]
@@ -112,7 +106,7 @@ class CombinedKeyFactory:
     def _generate_composite_key_by_name(algorithm: str):
         """Generate a composite key based on the provided key type.
 
-        :param algorithm: The type of key to generate (e.g., "composite-kem", "composite-sig", "composite-dhkem").
+        :param algorithm: The type of key to generate (e.g., "composite-kem", "composite-sig").
         :return: A generated key object.
         :raises InvalidKeyCombination: If the key type is not supported.
         """
@@ -319,9 +313,7 @@ class CombinedKeyFactory:
         else:
             raise ValueError(f"Unsupported traditional key type: {trad_name}")
 
-        if "dhkem" not in orig_name:
-            return CompositeKEMPublicKey(pq_key, trad_key)  # type: ignore
-        return CompositeDHKEMRFC9180PublicKey(pq_key, trad_key)  # type: ignore
+        return CompositeKEMPublicKey(pq_key, trad_key)  # type: ignore
 
     @staticmethod
     def _load_hybrid_key_from_spki(spki: rfc5280.SubjectPublicKeyInfo):
@@ -472,7 +464,7 @@ class CombinedKeyFactory:
         trad_key = CombinedKeyFactory._load_trad_composite_private_key(
             trad_name=trad_name,
             trad_key_bytes=trad_bytes,
-            prefix="KEM" if "dhkem" not in algorithm.lower() else "DHKEM",
+            prefix="KEM",
         )
 
         if not isinstance(trad_key, rsa.RSAPrivateKey):
@@ -481,19 +473,10 @@ class CombinedKeyFactory:
         if not isinstance(pq_key, PQKEMPrivateKey):
             raise InvalidKeyCombination("The composite post-quantum key is not a valid PQKEMPrivateKey.")
 
-        if algorithm.startswith("composite-dhkem"):
-            if isinstance(trad_key, RSAPrivateKey):
-                raise InvalidKeyCombination("Composite-DHKEM with RSA is not supported.")
-
-            composite_key = CompositeDHKEMRFC9180PrivateKey(
-                pq_key=pq_key,
-                trad_key=trad_key,
-            )
-        else:
-            composite_key = CompositeKEMPrivateKey(
-                pq_key=pq_key,
-                trad_key=trad_key,
-            )
+        composite_key = CompositeKEMPrivateKey(
+            pq_key=pq_key,
+            trad_key=trad_key,
+        )
 
         # Check if the key is valid.
         composite_key.get_oid()
@@ -832,8 +815,6 @@ class CombinedKeyFactory:
             prefix = "chempat-"
         elif alg.startswith("composite-sig-"):
             prefix = "composite-sig-"
-        elif alg.startswith("composite-dhkem-"):
-            prefix = "composite-dhkem-"
         elif alg.startswith("composite-kem-"):
             prefix = "composite-kem-"
         else:

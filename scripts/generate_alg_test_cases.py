@@ -214,9 +214,6 @@ def _generate_hybrid_kem_tests():
         "composite-kem": COMPOSITE_KEM_NAME_2_OID,
     }.items():
         for name in name_list:
-            if "composite-dhkem" in name:
-                continue
-
             base_name = name.upper()
             # Generate test case names
             invalid_test_name = f"Invalid {base_name} Key Size"

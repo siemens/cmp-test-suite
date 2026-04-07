@@ -6,8 +6,7 @@ import unittest
 
 from pyasn1_alt_modules import rfc5280
 
-from pq_logic.tmp_oids import COMPOSITE_KEM_DHKEMRFC9180_NAME_2_OID, id_chempat_x25519_sntrup761, \
-    id_comp_kem_mlkem768_rsa2048
+from pq_logic.tmp_oids import id_chempat_x25519_sntrup761, id_comp_kem_mlkem768_rsa2048
 from resources.ca_ra_utils import get_popo_from_pkimessage, get_cert_template_from_pkimessage
 from resources.cmputils import build_ir_from_key
 from resources.keyutils import generate_key, load_public_key_from_spki
@@ -102,30 +101,6 @@ class TestBuildPKIMessageNonSigKeys(unittest.TestCase):
         self.assertEqual(str(popo["keyEncipherment"]["subsequentMessage"]), "encrCert")
 
 
-    def test_build_composite_dhkem(self):
-        """
-        GIVEN a key of type composite-dhkem.
-        WHEN a PKIMessage is built from the key.
-        THEN the PKIMessage should contain the correct SubjectPublicKeyInfo and POPO.
-        """
-        key = generate_key("composite-dhkem")
-        ir = build_ir_from_key(key)
-        obj = de_and_encode_pkimessage(ir)
-        spki = get_cert_template_from_pkimessage(obj)["publicKey"]
-        spki_new = rfc5280.SubjectPublicKeyInfo()
-
-        spki_new["algorithm"] = spki["algorithm"]
-        spki_new["subjectPublicKey"] = spki["subjectPublicKey"]
-        oid = COMPOSITE_KEM_DHKEMRFC9180_NAME_2_OID["composite-dhkem-ml-kem-768-x25519"]
-        self.assertEqual(str(spki["algorithm"]["algorithm"]), str(oid))
-        pub_key = load_public_key_from_spki(spki_new)
-        self.assertEqual(pub_key, key.public_key())
-        popo = get_popo_from_pkimessage(obj)
-        self.assertTrue(popo["keyEncipherment"].isValue)
-        self.assertTrue(popo["keyEncipherment"]["subsequentMessage"].isValue)
-        self.assertEqual(str(popo["keyEncipherment"]["subsequentMessage"]), "encrCert")
-
-
     def test_build_chempat(self):
         """
         GIVEN a key of type chempat.
@@ -148,4 +123,3 @@ class TestBuildPKIMessageNonSigKeys(unittest.TestCase):
         self.assertTrue(popo["keyEncipherment"].isValue)
         self.assertTrue(popo["keyEncipherment"]["subsequentMessage"].isValue)
         self.assertEqual(str(popo["keyEncipherment"]["subsequentMessage"]), "encrCert")
-
