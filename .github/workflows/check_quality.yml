@@ -88,16 +88,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Debug uv path
-        run: |
-          echo "$PATH"
-          which uv || true
-          ls -l /opt/venv/bin/uv || true
-
       - name: Check for outdated dependencies
         run: |
           echo "Checking for outdated packages..."
-          /opt/venv/bin/uv tree --outdated --depth 1
+          if uv tree --outdated --depth 1 | grep -q 'latest:'; then
+            echo "Updates available"
+            uv tree --outdated --depth 1
+            exit 1
+          else
+            echo "No updates"
+            exit 0
+          fi
 
   version_check:
     runs-on: ubuntu-24.04
