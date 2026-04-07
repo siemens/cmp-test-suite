@@ -85,6 +85,15 @@ jobs:
     container:
       image: ${{ needs.prepare_env.outputs.image_url }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Debug uv path
+        run: |
+          echo "$PATH"
+          which uv || true
+          ls -l /opt/venv/bin/uv || true
+
       - name: Check for outdated dependencies
         run: |
           echo "Checking for outdated packages..."
