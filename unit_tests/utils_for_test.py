@@ -950,36 +950,6 @@ def _save_composite_kem():
 
     write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_ml_kem_1024_x448.pem")
 
-    key = generate_key(algorithm="composite-kem", pq_name="frodokem-976-aes", trad_name="rsa", length="2048")
-    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-rsa2048-seed.pem", save_type="seed")
-    cert, _ = build_certificate(
-        private_key=key,
-        ca_key=mldsa_key,
-        ca_cert=ml_dsa_cert,
-        common_name="CN=Hybrid CompositeKEM FrodoKEM-976-AES RSA2048",
-    )
-    write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_frodokem_976_aes_rsa2048.pem")
-
-    key = generate_key(algorithm="composite-kem", pq_name="frodokem-976-aes", trad_name="x25519")
-    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-aes-x25519-seed.pem", save_type="seed")
-    cert, _ = build_certificate(
-        private_key=key,
-        ca_key=mldsa_key,
-        ca_cert=ml_dsa_cert,
-        common_name="CN=Hybrid CompositeKEM FrodoKEM-976-AES x25519",
-    )
-    write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_frodokem_976_aes_x25519.pem")
-
-    key = generate_key(algorithm="composite-kem", pq_name="frodokem-976-shake", trad_name="x25519")
-    save_key(key, "data/keys/private-key-composite-kem-frodokem-976-shake-x25519-seed.pem", save_type="seed")
-    cert, _ = build_certificate(
-        private_key=key,
-        ca_key=mldsa_key,
-        ca_cert=ml_dsa_cert,
-        common_name="CN=Hybrid CompositeKEM FrodoKEM-976-SHAKE x25519",
-    )
-    write_cmp_certificate_to_pem(cert, "data/unittest/hybrid_cert_composite_kem_frodokem_976_shake_x25519.pem")
-
     print("Finished generating composite keys and certificates.")
 
     # Chempat

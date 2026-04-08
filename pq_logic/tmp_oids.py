@@ -248,61 +248,6 @@ COMPOSITE_KEM_MLKEM_NAME_2_OID = {
 }
 
 
-id_composite_frodokem = f"{id_composite_kem_test_suite}.1"
-
-
-# FrodoKEM-976-AES, FrodoKEM-976-SHAKE are Claimed NIST Level 3
-# So define eq to ML-KEM-768
-id_frodokem_976_aes_rsa2048 = univ.ObjectIdentifier(f"{id_composite_frodokem}.1")
-id_frodokem_976_aes_rsa3072 = univ.ObjectIdentifier(f"{id_composite_frodokem}.2")
-id_frodokem_976_aes_rsa4096 = univ.ObjectIdentifier(f"{id_composite_frodokem}.3")
-id_frodokem_976_aes_x25519 = univ.ObjectIdentifier(f"{id_composite_frodokem}.4")
-id_frodokem_976_aes_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodokem}.5")
-id_frodokem_976_aes_brainpoolP256r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.6")
-
-id_frodokem_976_shake_rsa2048 = univ.ObjectIdentifier(f"{id_composite_frodokem}.7")
-id_frodokem_976_shake_rsa3072 = univ.ObjectIdentifier(f"{id_composite_frodokem}.8")
-id_frodokem_976_shake_rsa4096 = univ.ObjectIdentifier(f"{id_composite_frodokem}.9")
-id_frodokem_976_shake_x25519 = univ.ObjectIdentifier(f"{id_composite_frodokem}.10")
-id_frodokem_976_shake_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodokem}.11")
-id_frodokem_976_shake_brainpoolP256r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.12")
-
-# FrodoKEM-1344-AES and FrodoKEM-1344-SHAKE are Claimed NIST Level 5.
-# So define eq to ML-KEM-1024
-id_frodokem_1344_aes_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodokem}.13")
-id_frodokem_1344_aes_ecdh_brainpoolP384r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.14")
-id_frodokem_1344_aes_x448 = univ.ObjectIdentifier(f"{id_composite_frodokem}.15")
-id_frodokem_1344_shake_ecdh_p384 = univ.ObjectIdentifier(f"{id_composite_frodokem}.16")
-id_frodokem_1344_shake_ecdh_brainpoolP384r1 = univ.ObjectIdentifier(f"{id_composite_frodokem}.17")
-id_frodokem_1344_shake_x448 = univ.ObjectIdentifier(f"{id_composite_frodokem}.18")
-
-# Always added to the last version of the draft.
-COMPOSITE_FRODOKEM_NAME_2_OID = {
-    "composite-kem-frodokem-976-aes-rsa2048": id_frodokem_976_aes_rsa2048,
-    "composite-kem-frodokem-976-aes-rsa3072": id_frodokem_976_aes_rsa3072,
-    "composite-kem-frodokem-976-aes-rsa4096": id_frodokem_976_aes_rsa4096,
-    "composite-kem-frodokem-976-aes-x25519": id_frodokem_976_aes_x25519,
-    "composite-kem-frodokem-976-aes-ecdh-secp384r1": id_frodokem_976_aes_ecdh_p384,
-    "composite-kem-frodokem-976-aes-ecdh-brainpoolP256r1": id_frodokem_976_aes_brainpoolP256r1,
-    "composite-kem-frodokem-976-shake-rsa2048": id_frodokem_976_shake_rsa2048,
-    "composite-kem-frodokem-976-shake-rsa3072": id_frodokem_976_shake_rsa3072,
-    "composite-kem-frodokem-976-shake-rsa4096": id_frodokem_976_shake_rsa4096,
-    "composite-kem-frodokem-976-shake-x25519": id_frodokem_976_shake_x25519,
-    "composite-kem-frodokem-976-shake-ecdh-secp384r1":  # line too long.
-    id_frodokem_976_shake_ecdh_p384,
-    "composite-kem-frodokem-976-shake-ecdh-brainpoolP256r1":  # line too long.
-    id_frodokem_976_shake_brainpoolP256r1,
-    "composite-kem-frodokem-1344-aes-ecdh-secp384r1": id_frodokem_1344_aes_ecdh_p384,
-    "composite-kem-frodokem-1344-aes-ecdh-brainpoolP384r1":  # line too long.
-    id_frodokem_1344_aes_ecdh_brainpoolP384r1,
-    "composite-kem-frodokem-1344-aes-x448":  # line too long.
-    id_frodokem_1344_aes_x448,
-    "composite-kem-frodokem-1344-shake-ecdh-secp384r1": id_frodokem_1344_shake_ecdh_p384,
-    "composite-kem-frodokem-1344-shake-ecdh-brainpoolP384r1":  # line too long.
-    id_frodokem_1344_shake_ecdh_brainpoolP384r1,
-    "composite-kem-frodokem-1344-shake-x448": id_frodokem_1344_shake_x448,
-}
-
 id_ce_deltaCertificateDescriptor = univ.ObjectIdentifier("2.16.840.1.114027.80.6.1")
 id_at_deltaCertificateRequestSignature = univ.ObjectIdentifier("2.16.840.1.114027.80.6.3")
 id_at_deltaCertificateRequest = univ.ObjectIdentifier("2.16.840.1.114027.80.6.2")
@@ -403,6 +348,5 @@ id_altSignatureExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.7")
 # Composite KEM OIDs
 COMPOSITE_KEM_NAME_2_OID = {}
 COMPOSITE_KEM_NAME_2_OID.update(COMPOSITE_KEM_MLKEM_NAME_2_OID)
-COMPOSITE_KEM_NAME_2_OID.update(COMPOSITE_FRODOKEM_NAME_2_OID)
 
 COMPOSITE_KEM_OID_2_NAME = {oid: name for name, oid in COMPOSITE_KEM_NAME_2_OID.items()}
