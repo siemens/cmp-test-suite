@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Composite KEM 07 implementation.
+"""Composite KEM 14 implementation.
 
-Based on:https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-kem-07.html
+Based on: https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-kem-14.txt
 """
 
 import logging
@@ -13,10 +13,7 @@ from typing import Optional, Tuple, Union
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives._serialization import NoEncryption
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
-from cryptography.hazmat.primitives.hmac import HMAC
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat
-from pyasn1.codec.der import encoder
 from pyasn1.type import univ
 
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey
@@ -33,17 +30,21 @@ from pq_logic.tmp_oids import COMPOSITE_KEM_NAME_2_OID
 from resources.exceptions import InvalidKeyCombination
 from resources.typingutils import ECDHPrivateKey, ECDHPublicKey
 
-
-def _get_kdf_algorithm(pq_name: str, trad_key: TradKEMPublicKey) -> str:
-    """Get the KDF algorithm based on the post-quantum and traditional key names."""
-    trad_name = trad_key.get_trad_name
-    if pq_name in ["ml-kem-768", "frodokem-976-aes", "frodokem-976-shake"] and trad_name == "x25519":
-        return "sha3_256"
-    if pq_name in ["ml-kem-768", "frodokem-976-aes", "frodokem-976-shake"]:
-        return "hmac-sha256"
-    if trad_name == "x448":
-        return "sha3_256"
-    return "hmac-sha512"
+# KEM combiner labels per algorithm (draft-ietf-lamps-pq-composite-kem-14, Section 6)
+COMPOSITE_KEM_LABELS = {
+    "composite-kem-ml-kem-768-rsa2048": b"MLKEM768-RSAOAEP2048",
+    "composite-kem-ml-kem-768-rsa3072": b"MLKEM768-RSAOAEP3072",
+    "composite-kem-ml-kem-768-rsa4096": b"MLKEM768-RSAOAEP4096",
+    "composite-kem-ml-kem-768-x25519": bytes.fromhex("5c2e2f2f5e5c"),  # \.//^\
+    "composite-kem-ml-kem-768-ecdh-secp256r1": b"MLKEM768-P256",
+    "composite-kem-ml-kem-768-ecdh-secp384r1": b"MLKEM768-P384",
+    "composite-kem-ml-kem-768-ecdh-brainpoolP256r1": b"MLKEM768-BP256",
+    "composite-kem-ml-kem-1024-rsa3072": b"MLKEM1024-RSAOAEP3072",
+    "composite-kem-ml-kem-1024-ecdh-secp384r1": b"MLKEM1024-P384",
+    "composite-kem-ml-kem-1024-ecdh-brainpoolP384r1": b"MLKEM1024-BP384",
+    "composite-kem-ml-kem-1024-x448": b"MLKEM1024-X448",
+    "composite-kem-ml-kem-1024-ecdh-secp521r1": b"MLKEM1024-P521",
+}
 
 
 class CompositeKEMPublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
@@ -97,51 +98,18 @@ class CompositeKEMPublicKey(HybridKEMPublicKey, AbstractCompositePublicKey):
     ) -> bytes:
         """Combine the shared secrets from the post-quantum and traditional parts.
 
+        ss = SHA3-256(mlkemSS || tradSS || tradCT || tradPK || Label)
+
         :param mlkem_ss: The shared secret from the post-quantum part.
         :param trad_ss: The shared secret from the traditional part.
         :param trad_ct: The traditional ciphertext.
         :param trad_pk: The traditional public key.
-        :param use_in_cms: Whether to use the combined secret in a CMS context.
+        :param use_in_cms: Unused; kept for API compatibility.
         :return: The combined shared secret.
         """
-        der_oid = encoder.encode(self.get_oid())
-        concatenated_inputs = mlkem_ss + trad_ss + trad_ct + trad_pk + der_oid
+        label = COMPOSITE_KEM_LABELS[self.name]
+        concatenated_inputs = mlkem_ss + trad_ss + trad_ct + trad_pk + label
         logging.info("CompositeKEM concatenated inputs: %s", concatenated_inputs.hex())
-        kdf_name = _get_kdf_algorithm(self.pq_key.name, self.trad_key)
-        logging.debug("KDF Name: %s", kdf_name)
-
-        if use_in_cms:
-            if kdf_name.startswith("hkdf-"):
-                hash_alg = kdf_name.split("-")[1]
-                if hash_alg == "sha512":
-                    h = hashes.SHA512()
-                elif hash_alg == "sha256":
-                    h = hashes.SHA256()
-                else:
-                    raise NotImplementedError(f"Unsupported hash algorithm for KDF: {hash_alg}")
-
-                hkdf = HKDF(algorithm=h, length=32, salt=None, info=None)
-                hashed_output = hkdf.derive(concatenated_inputs)
-                logging.debug("COMPOSITE KEM HKDF output: %s", hashed_output.hex())
-                return hashed_output
-
-        elif kdf_name.startswith("hmac-"):
-            hash_alg = kdf_name.split("-")[1]
-            if hash_alg == "sha256":
-                h = hashes.SHA256()
-                zero_bytes = b"\x00" * 32
-            elif hash_alg == "sha512":
-                h = hashes.SHA512()
-                zero_bytes = b"\x00" * 64
-            else:
-                raise NotImplementedError(f"Unsupported hash algorithm for KDF: {hash_alg}")
-
-            hmac_inst = HMAC(key=zero_bytes, algorithm=h)
-            hmac_inst.update(concatenated_inputs)
-            hashed_output = hmac_inst.finalize()[:32]  # Use the first 32 bytes
-            logging.debug("COMPOSITE KEM HMAC output: %s", hashed_output.hex())
-            return hashed_output
-
         h = hashes.Hash(hashes.SHA3_256())
         h.update(concatenated_inputs)
         ss = h.finalize()

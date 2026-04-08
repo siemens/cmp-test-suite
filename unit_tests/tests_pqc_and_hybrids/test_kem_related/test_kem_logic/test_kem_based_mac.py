@@ -142,9 +142,8 @@ class TestKEMBasedMac(unittest.TestCase):
         der_data = encoder.encode(protected_ir)
         protected_ir = parse_pkimessage(der_data)
 
-        with self.assertRaises(BadMessageCheck):
-            # This should raise an error because the private key is not a KEM key
-            verify_kem_based_mac_protection(pki_message=protected_ir, private_key=composite_kem)
+        # TODO: Remove or update if the draft-ietf-lamps-cms-composite-kem is finished.
+        verify_kem_based_mac_protection(pki_message=protected_ir, private_key=composite_kem)
 
     def test_verify_composite_kem_kem_based_mac_use_in_cms(self):
         """
