@@ -202,6 +202,12 @@ in a second shell:
     make test env=mock_ca
 ```
 
+Or via the docker container:
+
+```sh
+  docker run --rm -it ghcr.io/siemens/cmp-test-base:latest --mockca 5000
+```
+
 #### Expected output
 
 You should see Flask startup output similar to:
@@ -305,6 +311,16 @@ openssl cmp -cmd ir \
   -newkey "$OUTDIR/new-private-key-rsa.pem" \
   -reqout "$OUTDIR/req-ir.pkimessage" \
   -unprotected_errors
+```
+
+```bash
+docker run --rm -it \
+  --network host \
+  --entrypoint python \
+  ghcr.io/siemens/cmp-test \
+  -m mock_ca.client request kem-cert \
+  --algorithm composite-kem-ml-kem-768-ecdh-secp256r1\
+  --url http://127.0.0.1:5000/issuing
 ```
 
 ### Robot Framework Test
