@@ -227,7 +227,7 @@ def _prepare_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
-    """Main entry point for the CLI."""
+    """Entry point for the CLI."""
     parser = _prepare_parser()
     args = parser.parse_args()
 
