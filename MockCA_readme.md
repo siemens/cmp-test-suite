@@ -313,6 +313,16 @@ openssl cmp -cmd ir \
   -unprotected_errors
 ```
 
+```bash
+docker run --rm -it \
+  --network host \
+  --entrypoint python \
+  ghcr.io/siemens/cmp-test \
+  -m mock_ca.client request kem-cert \
+  --algorithm ml-kem-768 \
+  --url http://127.0.0.1:5000/issuing
+```
+
 ### Robot Framework Test
 
 ```sh
