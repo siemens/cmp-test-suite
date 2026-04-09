@@ -49,7 +49,14 @@ from resources import (
     protectionutils,
     utils,
 )
-from resources.asn1_structures import CertProfileValueAsn1, KemCiphertextInfoAsn1, PKIMessagesTMP, PKIMessageTMP
+from resources.asn1_structures import (
+    CertConfirmContent,
+    CertProfileValueAsn1,
+    CertStatus,
+    KemCiphertextInfoAsn1,
+    PKIMessagesTMP,
+    PKIMessageTMP,
+)
 from resources.asn1utils import try_decode_pyasn1
 from resources.convertutils import copy_asn1_certificate, str_to_bytes
 from resources.exceptions import BadAsn1Data, BadCertTemplate, BadDataFormat, BadRequest
@@ -3034,7 +3041,7 @@ def prepare_certstatus(  # noqa D417 undocumented-param
     cert: Optional[rfc9480.CMPCertificate] = None,
     bad_cert_id: bool = False,
     different_hash: bool = False,
-) -> rfc9480.CertStatus:
+) -> CertStatus:
     """Prepare a `CertStatus` structure for a certificate confirmation `certConf` PKIMessage.
 
     Generates a CertStatus pyasn1 structure used in certificate confirmation messages to prove that the
@@ -3069,7 +3076,7 @@ def prepare_certstatus(  # noqa D417 undocumented-param
     | status=rejection | text=Certificate issued with modifications |
 
     """
-    cert_status = rfc9480.CertStatus()
+    cert_status = CertStatus()
 
     cert_status["certReqId"] = int(cert_req_id)
 
@@ -3107,16 +3114,16 @@ def prepare_certstatus(  # noqa D417 undocumented-param
     return cert_status
 
 
-def _prepare_cert_conf(cert_status: Union[List[rfc9480.CertStatus], rfc9480.CertStatus]) -> rfc9480.CertConfirmContent:
+def _prepare_cert_conf(cert_status: Union[List[CertStatus], CertStatus]) -> CertConfirmContent:
     """Create a `CertConfirmContent` structure for certificate confirmation.
 
     :param cert_status: A single or a list of `CertStatus` objects to include in the `CertConfirmContent` object.
     :return: A `CertConfirmContent` structure containing the certificate confirmation status(es).
     """
-    if isinstance(cert_status, rfc9480.CertStatus):
+    if isinstance(cert_status, CertStatus):
         cert_status = [cert_status]
 
-    cert_conf = rfc9480.CertConfirmContent().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 24))
+    cert_conf = CertConfirmContent().subtype(explicitTag=Tag(tagClassContext, tagFormatSimple, 24))
     cert_conf.extend(cert_status)
     return cert_conf
 
@@ -3350,7 +3357,7 @@ def _process_single_cert_conf_cert(
     *,
     pvno: int = 2,
     hash_for_v3: bool = True,
-) -> rfc9480.CertStatus:
+) -> CertStatus:
     """Process a single certificate for `certConf` PKIMessage.
 
     :param tmp_cert: The certificate to process.
@@ -3413,7 +3420,7 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
     ca_message: PKIMessageTMP,
     recipient: str = "testr@example.com",
     sender: str = "tests@example.com",
-    cert_status: Union[rfc9480.CertStatus, List[rfc9480.CertStatus], None] = None,
+    cert_status: Union[CertStatus, List[CertStatus], None] = None,
     exclude_fields: Optional[str] = None,
     hash_alg: Optional[str] = None,
     cert_req_id: Optional[Strint] = None,
@@ -3548,7 +3555,7 @@ def build_cert_conf_from_resp(  # noqa D417 undocumented-param
             )
             cert_status_list.append(cert_status)
     else:
-        if isinstance(cert_status, rfc9480.CertStatus):
+        if isinstance(cert_status, CertStatus):
             cert_status = [cert_status]
 
         cert_status_list.extend(cert_status)
@@ -3582,7 +3589,7 @@ def build_cert_conf(  # noqa D417 undocumented-param
     exclude_fields: Optional[str] = None,
     hash_alg: Optional[str] = None,
     cert_hash: Optional[bytes] = None,
-    cert_status: Optional[rfc9480.CertStatus] = None,
+    cert_status: Optional[CertStatus] = None,
     status_info: Optional[rfc9480.PKIStatusInfo] = None,
     **params,
 ) -> PKIMessageTMP:

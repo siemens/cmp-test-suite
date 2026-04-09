@@ -54,7 +54,14 @@ from resources import (
     protectionutils,
     utils,
 )
-from resources.asn1_structures import CertResponseTMP, ChallengeASN1, PKIBodyTMP, PKIMessageTMP
+from resources.asn1_structures import (
+    CertConfirmContent,
+    CertResponseTMP,
+    CertStatus,
+    ChallengeASN1,
+    PKIBodyTMP,
+    PKIMessageTMP,
+)
 from resources.asn1utils import get_set_bitstring_names, try_decode_pyasn1
 from resources.certextractutils import get_extension
 from resources.convertutils import (
@@ -3135,7 +3142,7 @@ def _validate_cert_status(
 
 
 def _process_cert_hash_alg(
-    entry: rfc9480.CertStatus,
+    entry: CertStatus,
     pvno: int,
     issued_cert: rfc9480.CMPCertificate,
     hash_alg: Optional[str] = None,
@@ -3225,7 +3232,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
     if request["body"].getName() != "certConf":
         raise ValueError("Request must be a `certConf` to build a `PKIConf` message from it.")
 
-    cert_conf: rfc9480.CertConfirmContent = request["body"]["certConf"]
+    cert_conf: CertConfirmContent = request["body"]["certConf"]
 
     if len(cert_conf) != 1 and enforce_lwcmp:
         raise BadRequest(f"Invalid number of entries in CertConf message.Expected 1 for LwCMP, got {len(cert_conf)}")
@@ -3233,7 +3240,7 @@ def build_pki_conf_from_cert_conf(  # noqa: D417 Missing argument descriptions i
     if len(cert_conf) != len(issued_certs):
         raise ValueError("Number of CertConf entries does not match the number of issued certificates.")
 
-    entry: rfc9480.CertStatus
+    entry: CertStatus
     hash_alg = kwargs.get("hash_alg")
     for entry, issued_cert in zip(cert_conf, issued_certs):
         if kwargs.get("was_p10cr"):

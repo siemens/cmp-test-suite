@@ -8,6 +8,7 @@ from pyasn1.codec.der import decoder, encoder
 from pyasn1.type import univ
 from pyasn1_alt_modules import rfc9480
 from resources import oid_mapping
+from resources.asn1_structures import CertStatus
 from resources.cmputils import prepare_certstatus
 
 
@@ -32,7 +33,7 @@ class TestPrepareCertStatus(unittest.TestCase):
             cert_hash=self.cert_hash, cert_req_id=self.cert_req_id, status=self.valid_status
         )
         encoded_cert_status = encoder.encode(cert_status)
-        decoded_cert_status, rest = decoder.decode(encoded_cert_status, asn1Spec=rfc9480.CertStatus())
+        decoded_cert_status, rest = decoder.decode(encoded_cert_status, asn1Spec=CertStatus())
         self.assertEqual(rest, b"")
         self.assertEqual(decoded_cert_status["certHash"], univ.OctetString(self.cert_hash))
         self.assertEqual(decoded_cert_status["certReqId"], self.cert_req_id)
@@ -68,7 +69,7 @@ class TestPrepareCertStatus(unittest.TestCase):
             cert_hash=self.cert_hash, cert_req_id=self.cert_req_id, status=self.valid_status, hash_alg=self.hash_alg
         )
         encoded_cert_status = encoder.encode(cert_status)
-        decoded_cert_status, rest = decoder.decode(encoded_cert_status, asn1Spec=rfc9480.CertStatus())
+        decoded_cert_status, rest = decoder.decode(encoded_cert_status, asn1Spec=CertStatus())
         self.assertEqual(rest, b"")
         self.assertTrue(decoded_cert_status["hashAlg"].isValue)
         self.assertEqual(decoded_cert_status["hashAlg"]["algorithm"], oid_mapping.sha_alg_name_to_oid(self.hash_alg))
@@ -83,7 +84,7 @@ class TestPrepareCertStatus(unittest.TestCase):
             cert_hash=self.cert_hash, cert_req_id=self.cert_req_id, status=self.valid_status, hash_alg=None
         )
         encoded_cert_status = encoder.encode(cert_status)
-        decoded_cert_status, rest = decoder.decode(encoded_cert_status, asn1Spec=rfc9480.CertStatus())
+        decoded_cert_status, rest = decoder.decode(encoded_cert_status, asn1Spec=CertStatus())
         self.assertEqual(rest, b"")
         self.assertFalse(decoded_cert_status["hashAlg"].isValue)
 

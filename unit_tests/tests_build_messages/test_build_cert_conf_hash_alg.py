@@ -7,7 +7,7 @@ import unittest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from pyasn1_alt_modules import rfc9480
 
-from resources.asn1_structures import PKIMessageTMP
+from resources.asn1_structures import PKIMessageTMP, CertStatus
 from resources.ca_ra_utils import build_ip_cmp_message, build_pki_conf_from_cert_conf
 from resources.certbuildutils import build_certificate
 from resources.cmputils import build_cert_conf_from_resp
@@ -41,7 +41,7 @@ class TestCertConfHashAlgByVersion(unittest.TestCase):
         ip_msg["extraCerts"].append(self.ca_cert)
         return ip_msg
 
-    def _first_cert_status(self, cert_conf_msg: PKIMessageTMP) -> rfc9480.CertStatus:
+    def _first_cert_status(self, cert_conf_msg: PKIMessageTMP) -> CertStatus:
         """Extract the first CertStatus from a CertConf message."""
         self.assertEqual(cert_conf_msg["body"].getName(), "certConf")
         content = cert_conf_msg["body"]["certConf"]
