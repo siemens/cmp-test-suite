@@ -15,14 +15,23 @@ from pyasn1_alt_modules import rfc9480
 
 sys.path.append(".")
 
+from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey
 from resources import cmputils, keyutils, protectionutils
 from resources.asn1_structures import PKIMessageTMP
 from resources.certutils import build_cmp_chain_from_pkimessage
-from resources.cmputils import build_cmp_revoke_request, parse_pkimessage
+from resources.cmputils import (
+    build_cert_conf_from_resp,
+    build_cmp_revoke_request,
+    get_cmp_message_type,
+    get_status_from_pkimessage,
+    parse_pkimessage,
+)
 from resources.convertutils import ensure_is_sign_key
+from resources.extra_issuing_logic import get_enc_cert_from_pkimessage
+from resources.keyutils import save_key
 from resources.protectionutils import protect_pkimessage
 from resources.typingutils import SignKey
-from resources.utils import display_pki_status_info
+from resources.utils import display_pki_status_info, pyasn1_cert_to_pem, write_cmp_certificate_to_pem
 
 
 def send_request_to_static_cert1() -> None:
@@ -146,10 +155,27 @@ def build_example_revoked_cert(
     return cert_chain, key
 
 
+def _check_response(response: Optional[PKIMessageTMP], for_pkiconf: bool) -> bool:
+    if response is None:
+        print("Failed to receive a response from the server.")
+        return False
+    if for_pkiconf:
+        if get_cmp_message_type(response) != "pkiconf":
+            print("Expected pkiconf response, but got a different message type.")
+            print(display_pki_status_info(response))
+            return False
+    else:
+        if get_status_from_pkimessage(response) != "accepted":
+            print("Request was not accepted by the server.")
+            print(display_pki_status_info(response))
+            return False
+    return True
+
+
 def build_kem_cert_request(
     algorithm: str = "ml-kem-768",
     url: str = "http://127.0.0.1:5000/issuing",
-) -> Optional[PKIMessageTMP]:
+) -> Optional[Tuple[list[rfc9480.CMPCertificate], KEMPrivateKey]]:
     """Build and send a KEM certificate request to the Mock CA using password-based MAC protection.
 
     Supports pure PQ KEM (ml-kem-768) and composite KEM
@@ -170,7 +196,6 @@ def build_kem_cert_request(
         sender="CN=Hans The Tester",
         sender_kid=b"CN=Hans The Tester",
         for_mac=True,
-        implicit_confirm=True,
     )
 
     protected_cr = protectionutils.protect_pkimessage(
@@ -179,7 +204,29 @@ def build_kem_cert_request(
         password="SiemensIT",
     )
 
-    return send_pkimessage_to_mock_ca(pki_message=protected_cr, url=url, verify=False)
+    response = send_pkimessage_to_mock_ca(pki_message=protected_cr, url=url, verify=False)
+    if not _check_response(response, for_pkiconf=False):
+        return None
+
+    kem_cert = get_enc_cert_from_pkimessage(response, ee_private_key=key, exclude_rid_check=True)
+
+    cert_conf = build_cert_conf_from_resp(
+        response,
+        cert=kem_cert,
+        for_mac=True,
+        sender="CN=Hans The Tester",
+        sender_kid=b"CN=Hans The Tester",
+    )
+    protected_cert = protectionutils.protect_pkimessage(
+        cert_conf,
+        protection="password_based_mac",
+        password="SiemensIT",
+    )
+    response_pkiconf = send_pkimessage_to_mock_ca(pki_message=protected_cert, url=url, verify=False)
+    if not _check_response(response_pkiconf, for_pkiconf=True):
+        return None
+
+    return build_cmp_chain_from_pkimessage(response, kem_cert), key
 
 
 def _prepare_parser() -> argparse.ArgumentParser:
@@ -237,8 +284,13 @@ def main() -> int:
             url=args.url,
         )
         if response is not None:
-            print(response.prettyPrint())
+            save_key(response[1], f"{args.algorithm}_private_key.pem", password=None)
+            cert_chain = response[0]
+            pem_certs = "\n".join([pyasn1_cert_to_pem(cert_chain[i]) for i in range(len(cert_chain))])
+            print(pem_certs)
+            write_cmp_certificate_to_pem(cert_chain[0], f"{args.algorithm}_cert_chain.pem")
             return 0
+
         return 1
 
     return 0
