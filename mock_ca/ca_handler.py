@@ -280,7 +280,7 @@ class CAHandler:
         :param enforce_rfc9481: Whether to enforce the RFC 9481 algorithm profile,
         for MAC and traditional protected PKIMessages. Defaults to `False`.
         :param trusted_ras_dir: The directory for the trusted RAs. Defaults to `./data/trusted_ras`.
-        :param allow_same_key_cert_req: Whether to allow re-issuing a certificate with the same
+        :param allow_same_key_cert_req: Whether to allow issuing a certificate with the same
             public key for the same CN (ir/cr/p10cr/ccr). Defaults to `False`.
         :raises BadConfig: If the CA certificate and key are not provided.
         """

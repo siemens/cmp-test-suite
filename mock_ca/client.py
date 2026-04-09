@@ -13,16 +13,16 @@ import requests
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc9480
 
+sys.path.append(".")
+
+from resources import cmputils, keyutils, protectionutils
+from resources.asn1_structures import PKIMessageTMP
 from resources.certutils import build_cmp_chain_from_pkimessage
+from resources.cmputils import build_cmp_revoke_request, parse_pkimessage
 from resources.convertutils import ensure_is_sign_key
 from resources.protectionutils import protect_pkimessage
 from resources.typingutils import SignKey
 from resources.utils import display_pki_status_info
-
-sys.path.append(".")
-from resources import cmputils, keyutils, protectionutils
-from resources.asn1_structures import PKIMessageTMP
-from resources.cmputils import build_cmp_revoke_request, parse_pkimessage
 
 
 def send_request_to_static_cert1() -> None:
@@ -144,6 +144,42 @@ def build_example_revoked_cert(
         raise ValueError("No response received from the server.")
     time.sleep(3)
     return cert_chain, key
+
+
+def build_kem_cert_request(
+    algorithm: str = "ml-kem-768",
+    url: str = "http://127.0.0.1:5000/issuing",
+) -> Optional[PKIMessageTMP]:
+    """Build and send a KEM certificate request to the Mock CA using password-based MAC protection.
+
+    Supports pure PQ KEM (ml-kem-768) and composite KEM
+    (composite-kem-ml-kem-768-ecdh-secp256r1 / SecP256r1MLKEM768) as an example.
+
+    :param algorithm: The KEM algorithm to use. Valid options:
+        - ``"ml-kem-768"``: Pure ML-KEM-768 (Post-Quantum).
+        - ``"composite-kem-ml-kem-768-ecdh-secp256r1"``: Composite KEM SecP256r1MLKEM768
+          (hybrid: ML-KEM-768 + ECDH secp256r1 / P256).
+    :param url: The URL of the Mock CA server.
+    :return: The response PKIMessage from the server, or None if the request failed.
+    """
+    key = keyutils.generate_key(algorithm, by_name=True)
+
+    pki_message = cmputils.build_cr_from_key(
+        key,
+        common_name="CN=Hans The Tester",
+        sender="CN=Hans The Tester",
+        sender_kid=b"CN=Hans The Tester",
+        for_mac=True,
+        implicit_confirm=True,
+    )
+
+    protected_cr = protectionutils.protect_pkimessage(
+        pki_message,
+        protection="password_based_mac",
+        password="SiemensIT",
+    )
+
+    return send_pkimessage_to_mock_ca(pki_message=protected_cr, url=url, verify=False)
 
 
 def _prepare_parser() -> argparse.ArgumentParser:
