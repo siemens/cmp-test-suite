@@ -5,6 +5,7 @@
 """Contains the CA Handler for the Mock CA."""
 
 import argparse
+import base64
 import logging
 import os
 import sys
@@ -1491,6 +1492,13 @@ def handle_crl_request():
     return Response(data, content_type="application/pkix-crl")
 
 
+@app.route("/root-cert", methods=["GET"])
+def handle_root_cert():
+    """Return the Root CA certificate as Base64-encoded DER."""
+    der = asn1utils.encode_to_der(handler.ca_cert)
+    return Response(base64.b64encode(der), content_type="text/plain")
+
+
 @app.route("/cert/<serial_number>", methods=["GET"])
 def get_cert(serial_number):
     """Get the Sun-Hybrid certificate for the specified serial number."""
@@ -1749,13 +1757,7 @@ if __name__ == "__main__":
     )
     _register_routes(app)
 
-    # import ssl
-    # DOMAIN = "mydomain.com"
-    # CERT_DIR = f"/etc/letsencrypt/live/{DOMAIN}"
-    # CERT_FILE = os.path.join(CERT_DIR, "fullchain.pem")
-    # KEY_FILE = os.path.join(CERT_DIR, "privkey.pem")
-    # context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    # context.load_cert_chain(certfile=CERT_FILE, keyfile=KEY_FILE)
-    # context = "adhoc"
-    # app.run(port=5000, debug=True, ssl_context=context)
+    root_cert_der = asn1utils.encode_to_der(handler.ca_cert)
+    print(f"Root CA certificate (Base64 DER): {base64.b64encode(root_cert_der).decode('ascii')}") # noqa: T201
+
     app.run(host=args.host, port=args.port, debug=True)
