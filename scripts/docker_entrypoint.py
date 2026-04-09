@@ -72,11 +72,14 @@ def run_robot_command(command, verbose=False):
         return 1
 
 
-def start_mock_ca(port: int, verbose: bool) -> Optional[subprocess.CompletedProcess[bytes]]:
+def start_mock_ca(
+    port: int, verbose: bool, allow_same_key: bool = False
+) -> Optional[subprocess.CompletedProcess[bytes]]:
     """Start the Mock CA server with the provided port.
 
     :param port: The port to use for the Mock CA server.
     :param verbose: Whether to display additional information.
+    :param allow_same_key: Whether to allow re-issuing a certificate with the same public key.
     :return: The subprocess object if successful, None otherwise.
     """
     command = [
@@ -87,6 +90,8 @@ def start_mock_ca(port: int, verbose: bool) -> Optional[subprocess.CompletedProc
         "--port",
         str(port),
     ]
+    if allow_same_key:
+        command.append("--allow-same-key")
     if verbose:
         log.info("Starting Mock CA: %s", " ".join(command))
     try:
@@ -175,6 +180,13 @@ def prepare_parser():
         default=False,
     )
     parser.add_argument(
+        "--allow-the-same-key",
+        help="Allow the Mock CA to re-issue a certificate with the same public key (for testing purposes)",
+        action="store_true",
+        default=False,
+        dest="allow_the_same_key",
+    )
+    parser.add_argument(
         "--verbose", help="Display additional debugging information", action="store_true", default=False
     )
 
@@ -226,7 +238,7 @@ def main():
         log.debug(args)
 
     if args.mockca is not None:
-        result = start_mock_ca(args.mockca, args.verbose)
+        result = start_mock_ca(args.mockca, args.verbose, args.allow_the_same_key)
         if result is None:
             sys.exit(1)
         return
