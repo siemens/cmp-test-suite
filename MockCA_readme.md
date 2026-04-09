@@ -202,6 +202,12 @@ in a second shell:
     make test env=mock_ca
 ```
 
+Or via the docker container:
+
+```sh
+  docker run --rm -it ghcr.io/siemens/cmp-test-base:latest --mockca 5000
+```
+
 #### Expected output
 
 You should see Flask startup output similar to:
