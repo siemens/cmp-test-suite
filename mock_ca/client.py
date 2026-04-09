@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Client to send requests to the Mock CA."""
 
+import argparse
 import logging
 import sys
 import time
@@ -12,16 +13,25 @@ import requests
 from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc9480
 
-from resources.certutils import build_cmp_chain_from_pkimessage
-from resources.convertutils import ensure_is_sign_key
-from resources.protectionutils import protect_pkimessage
-from resources.typingutils import SignKey
-from resources.utils import display_pki_status_info
-
 sys.path.append(".")
+
+from pq_logic.keys.abstract_wrapper_keys import KEMPrivateKey
 from resources import cmputils, keyutils, protectionutils
 from resources.asn1_structures import PKIMessageTMP
-from resources.cmputils import build_cmp_revoke_request, parse_pkimessage
+from resources.certutils import build_cmp_chain_from_pkimessage
+from resources.cmputils import (
+    build_cert_conf_from_resp,
+    build_cmp_revoke_request,
+    get_cmp_message_type,
+    get_status_from_pkimessage,
+    parse_pkimessage,
+)
+from resources.convertutils import ensure_is_sign_key
+from resources.extra_issuing_logic import get_enc_cert_from_pkimessage
+from resources.keyutils import save_key
+from resources.protectionutils import protect_pkimessage
+from resources.typingutils import SignKey
+from resources.utils import display_pki_status_info, pyasn1_cert_to_pem, write_cmp_certificate_to_pem
 
 
 def send_request_to_static_cert1() -> None:
@@ -145,5 +155,150 @@ def build_example_revoked_cert(
     return cert_chain, key
 
 
+def _check_response(response: Optional[PKIMessageTMP], for_pkiconf: bool) -> PKIMessageTMP | None:
+    if response is None:
+        print("Failed to receive a response from the server.")
+        return None
+    if for_pkiconf:
+        if get_cmp_message_type(response) != "pkiconf":
+            print("Expected pkiconf response, but got a different message type.")
+            print(display_pki_status_info(response))
+            return None
+    else:
+        if get_status_from_pkimessage(response) != "accepted":
+            print("Request was not accepted by the server.")
+            print(display_pki_status_info(response))
+            return None
+    return response
+
+
+def build_kem_cert_request(
+    algorithm: str = "ml-kem-768",
+    url: str = "http://127.0.0.1:5000/issuing",
+) -> Optional[Tuple[list[rfc9480.CMPCertificate], KEMPrivateKey]]:
+    """Build and send a KEM certificate request to the Mock CA using password-based MAC protection.
+
+    Supports pure PQ KEM (ml-kem-768) and composite KEM
+    (composite-kem-ml-kem-768-ecdh-secp256r1 / SecP256r1MLKEM768) as an example.
+
+    :param algorithm: The KEM algorithm to use. Valid options:
+        - ``"ml-kem-768"``: Pure ML-KEM-768 (Post-Quantum).
+        - ``"composite-kem-ml-kem-768-ecdh-secp256r1"``: Composite KEM SecP256r1MLKEM768
+          (hybrid: ML-KEM-768 + ECDH secp256r1 / P256).
+    :param url: The URL of the Mock CA server.
+    :return: The response PKIMessage from the server, or None if the request failed.
+    """
+    key = keyutils.generate_key(algorithm, by_name=True) # type: ignore
+    key: KEMPrivateKey
+
+
+    pki_message = cmputils.build_cr_from_key(
+        key,
+        common_name="CN=Hans The Tester",
+        sender="CN=Hans The Tester",
+        sender_kid=b"CN=Hans The Tester",
+        for_mac=True,
+    )
+
+    protected_cr = protectionutils.protect_pkimessage(
+        pki_message,
+        protection="password_based_mac",
+        password="SiemensIT",
+    )
+
+    response = send_pkimessage_to_mock_ca(pki_message=protected_cr, url=url, verify=False)
+    response = _check_response(response, for_pkiconf=False)
+    if response is None:
+        return None
+
+    kem_cert = get_enc_cert_from_pkimessage(response, ee_private_key=key, exclude_rid_check=True)
+
+    cert_conf = build_cert_conf_from_resp(
+        response,
+        cert=kem_cert,
+        for_mac=True,
+        sender="CN=Hans The Tester",
+        sender_kid=b"CN=Hans The Tester",
+    )
+    protected_cert = protectionutils.protect_pkimessage(
+        cert_conf,
+        protection="password_based_mac",
+        password="SiemensIT",
+    )
+    response_pkiconf = send_pkimessage_to_mock_ca(pki_message=protected_cert, url=url, verify=False)
+    response_pkiconf =  _check_response(response_pkiconf, for_pkiconf=True)
+    if response_pkiconf is None:
+        return None
+
+    return build_cmp_chain_from_pkimessage(response, kem_cert), key
+
+
+def _prepare_parser() -> argparse.ArgumentParser:
+    """Prepare the argument parser for the CLI."""
+    parser = argparse.ArgumentParser(
+        description="CMP Test Suite Mock CA Client",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
+
+    request_parser = subparsers.add_parser(
+        "request",
+        help="Send requests to the Mock CA",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    request_subparsers = request_parser.add_subparsers(dest="request_type", required=True, help="Request types")
+
+    kem_cert_parser = request_subparsers.add_parser(
+        "kem-cert",
+        help=(
+            "Request a KEM-based certificate using password-based MAC protection. "
+            "Supports ml-kem-768 (pure PQ) and composite-kem with SecP256r1MLKEM768 "
+            "(composite-kem-ml-kem-768-ecdh-secp256r1)."
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    kem_cert_parser.add_argument(
+        "--algorithm",
+        "-alg",
+        type=str,
+        default="ml-kem-768",
+        help=(
+            "KEM algorithm to use: ml-kem-768 (pure ML-KEM-768) or "
+            "composite-kem-ml-kem-768-ecdh-secp256r1 (SecP256r1MLKEM768 hybrid)."
+        ),
+    )
+    kem_cert_parser.add_argument(
+        "--url",
+        type=str,
+        default="http://127.0.0.1:5000/issuing",
+        help="URL of the Mock CA server.",
+    )
+    return parser
+
+
+def main() -> int:
+    """Entry point for the CLI."""
+    parser = _prepare_parser()
+    args = parser.parse_args()
+
+    if args.command == "request" and args.request_type == "kem-cert":
+        response = build_kem_cert_request(
+            algorithm=args.algorithm,
+            url=args.url,
+        )
+        if response is not None:
+            save_key(response[1], f"{args.algorithm}_private_key.pem", password=None)
+            cert_chain = response[0]
+            pem_certs = "".join([pyasn1_cert_to_pem(cert_chain[i]) for i in range(len(cert_chain))])
+            print(pem_certs)
+            write_cmp_certificate_to_pem(cert_chain[0], f"{args.algorithm}_cert_chain.pem")
+            return 0
+
+        return 1
+
+    return 0
+
+
 if __name__ == "__main__":
-    send_request_to_static_cert1()
+    sys.exit(main())

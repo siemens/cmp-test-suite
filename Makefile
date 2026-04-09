@@ -17,6 +17,7 @@ help:
 	@echo  '  autoformat   - Run ruff on all the source files, to resolve all issues automatically '
 	@echo  '  verify  - Run a bunch of checks, to see if there are any obvious deficiencies in the code '
 	@echo  '  verifyformat   -  Check formatting only '
+	@echo  '  show-outdated - Show outdated packages (depth 1)'
 	@echo  '  start-mock-ca   -  Start the mock CA server, so that it can listens to requests '
 	@echo  '  test-mock-ca   -  Run the test against the mock CA server '
 	@echo  '  test-mock-ca-verbose   -  Run all tests against the mock CA server '
@@ -103,6 +104,9 @@ verify:
 
 verifyformat:
 	ruff check .
+
+show-outdated:
+	uv tree --outdated --depth 1
 
 dryrun:
 	robot --dryrun --pythonpath=./ --variable environment:$(env) tests tests_pq_and_hybrid  tests_mock_ca
