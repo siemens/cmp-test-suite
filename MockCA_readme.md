@@ -319,7 +319,7 @@ docker run --rm -it \
   --entrypoint python \
   ghcr.io/siemens/cmp-test \
   -m mock_ca.client request kem-cert \
-  --algorithm ml-kem-768 \
+  --algorithm composite-kem-ml-kem-768-ecdh-secp256r1\
   --url http://127.0.0.1:5000/issuing
 ```
 
