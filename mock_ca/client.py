@@ -155,21 +155,21 @@ def build_example_revoked_cert(
     return cert_chain, key
 
 
-def _check_response(response: Optional[PKIMessageTMP], for_pkiconf: bool) -> bool:
+def _check_response(response: Optional[PKIMessageTMP], for_pkiconf: bool) -> PKIMessageTMP | None:
     if response is None:
         print("Failed to receive a response from the server.")
-        return False
+        return None
     if for_pkiconf:
         if get_cmp_message_type(response) != "pkiconf":
             print("Expected pkiconf response, but got a different message type.")
             print(display_pki_status_info(response))
-            return False
+            return None
     else:
         if get_status_from_pkimessage(response) != "accepted":
             print("Request was not accepted by the server.")
             print(display_pki_status_info(response))
-            return False
-    return True
+            return None
+    return response
 
 
 def build_kem_cert_request(
@@ -188,7 +188,9 @@ def build_kem_cert_request(
     :param url: The URL of the Mock CA server.
     :return: The response PKIMessage from the server, or None if the request failed.
     """
-    key = keyutils.generate_key(algorithm, by_name=True)
+    key = keyutils.generate_key(algorithm, by_name=True) # type: ignore
+    key: KEMPrivateKey
+
 
     pki_message = cmputils.build_cr_from_key(
         key,
@@ -205,7 +207,8 @@ def build_kem_cert_request(
     )
 
     response = send_pkimessage_to_mock_ca(pki_message=protected_cr, url=url, verify=False)
-    if not _check_response(response, for_pkiconf=False):
+    response = _check_response(response, for_pkiconf=False)
+    if response is None:
         return None
 
     kem_cert = get_enc_cert_from_pkimessage(response, ee_private_key=key, exclude_rid_check=True)
@@ -223,7 +226,8 @@ def build_kem_cert_request(
         password="SiemensIT",
     )
     response_pkiconf = send_pkimessage_to_mock_ca(pki_message=protected_cert, url=url, verify=False)
-    if not _check_response(response_pkiconf, for_pkiconf=True):
+    response_pkiconf =  _check_response(response_pkiconf, for_pkiconf=True)
+    if response_pkiconf is None:
         return None
 
     return build_cmp_chain_from_pkimessage(response, kem_cert), key
