@@ -290,7 +290,7 @@ def main() -> int:
         if response is not None:
             save_key(response[1], f"{args.algorithm}_private_key.pem", password=None)
             cert_chain = response[0]
-            pem_certs = "\n".join([pyasn1_cert_to_pem(cert_chain[i]) for i in range(len(cert_chain))])
+            pem_certs = "".join([pyasn1_cert_to_pem(cert_chain[i]) for i in range(len(cert_chain))])
             print(pem_certs)
             write_cmp_certificate_to_pem(cert_chain[0], f"{args.algorithm}_cert_chain.pem")
             return 0
