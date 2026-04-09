@@ -224,6 +224,26 @@ nestedMessageContent = NestedMessageContentTMP().subtype(
 )
 
 
+class CertStatus(univ.Sequence):
+    """RFC 9480-compliant CertStatus: hashAlg placed last."""
+
+    componentType = namedtype.NamedTypes(
+        namedtype.NamedType("certHash", univ.OctetString()),
+        namedtype.NamedType("certReqId", univ.Integer()),
+        namedtype.OptionalNamedType("statusInfo", rfc9480.PKIStatusInfo()),
+        namedtype.OptionalNamedType(
+            "hashAlg",
+            rfc5280.AlgorithmIdentifier().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 0)),
+        ),
+    )
+
+
+class CertConfirmContent(univ.SequenceOf):
+    """Defines the ASN.1 structure for the `CertConfirmContent`."""
+
+    componentType = CertStatus()
+
+
 # The challenge change, so that the PKIBody needs to be overwritten.
 # So the only difference is the `popdecc: POPODecKeyChallContentAsn1`
 # body. The rest is the same as the `PKIBody` class.
@@ -317,7 +337,7 @@ class PKIBodyTMP(univ.Choice):
         ),
         namedtype.NamedType(
             "certConf",
-            rfc9480.CertConfirmContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 24)),
+            CertConfirmContent().subtype(explicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatSimple, 24)),
         ),
         namedtype.NamedType(
             "pollReq",
