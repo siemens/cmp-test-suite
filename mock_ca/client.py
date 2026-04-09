@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Client to send requests to the Mock CA."""
 
+import argparse
 import logging
 import sys
 import time
@@ -145,5 +146,67 @@ def build_example_revoked_cert(
     return cert_chain, key
 
 
+def _prepare_parser() -> argparse.ArgumentParser:
+    """Prepare the argument parser for the CLI."""
+    parser = argparse.ArgumentParser(
+        description="CMP Test Suite Mock CA Client",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
+
+    request_parser = subparsers.add_parser(
+        "request",
+        help="Send requests to the Mock CA",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    request_subparsers = request_parser.add_subparsers(dest="request_type", required=True, help="Request types")
+
+    kem_cert_parser = request_subparsers.add_parser(
+        "kem-cert",
+        help=(
+            "Request a KEM-based certificate using password-based MAC protection. "
+            "Supports ml-kem-768 (pure PQ) and composite-kem with SecP256r1MLKEM768 "
+            "(composite-kem-ml-kem-768-ecdh-secp256r1)."
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    kem_cert_parser.add_argument(
+        "--algorithm",
+        "-alg",
+        type=str,
+        default="ml-kem-768",
+        help=(
+            "KEM algorithm to use: ml-kem-768 (pure ML-KEM-768) or "
+            "composite-kem-ml-kem-768-ecdh-secp256r1 (SecP256r1MLKEM768 hybrid)."
+        ),
+    )
+    kem_cert_parser.add_argument(
+        "--url",
+        type=str,
+        default="http://127.0.0.1:5000/issuing",
+        help="URL of the Mock CA server.",
+    )
+    return parser
+
+
+def main() -> int:
+    """Main entry point for the CLI."""
+    parser = _prepare_parser()
+    args = parser.parse_args()
+
+    if args.command == "request" and args.request_type == "kem-cert":
+        response = build_kem_cert_request(
+            algorithm=args.algorithm,
+            url=args.url,
+        )
+        if response is not None:
+            print(response.prettyPrint())
+            return 0
+        return 1
+
+    return 0
+
+
 if __name__ == "__main__":
-    send_request_to_static_cert1()
+    sys.exit(main())
