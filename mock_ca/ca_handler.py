@@ -263,6 +263,7 @@ class CAHandler:
         base_url: str = "http://127.0.0.1",
         enforce_rfc9481: bool = False,
         trusted_ras_dir: str = "./data/trusted_ras",
+        allow_same_key_cert_req: bool = False,
     ):
         """Initialize the CA Handler.
 
@@ -279,6 +280,8 @@ class CAHandler:
         :param enforce_rfc9481: Whether to enforce the RFC 9481 algorithm profile,
         for MAC and traditional protected PKIMessages. Defaults to `False`.
         :param trusted_ras_dir: The directory for the trusted RAs. Defaults to `./data/trusted_ras`.
+        :param allow_same_key_cert_req: Whether to allow re-issuing a certificate with the same
+            public key for the same CN (ir/cr/p10cr/ccr). Defaults to `False`.
         :raises BadConfig: If the CA certificate and key are not provided.
         """
         if ca_cert is None and ca_key is None:
@@ -417,6 +420,7 @@ class CAHandler:
             cmp_protection_cert=self.protection_handler.protection_cert,
             pq_stateful_sig_state=self.pq_stateful_sig_state,
             ca_cert_chain=self.ca_cert_chain,
+            allow_same_key_cert_req=allow_same_key_cert_req,
         )
 
         self.stfl_validator = STFLPKIMessageValidator(
@@ -1727,9 +1731,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Mock CA server")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="The host address, is set to 0.0.0.0 for docker.")
     parser.add_argument("--port", type=int, default=5000, help="The port to run the server on.")
+    parser.add_argument(
+        "--allow-same-key",
+        action="store_true",
+        default=False,
+        help="Allow re-issuing a certificate with the same public key for the same CN (ir/cr/p10cr/ccr).",
+    )
 
     args = parser.parse_args()
-    handler = CAHandler(ca_cert=None, ca_key=None, config={}, mock_ca_state=state, port=args.port)
+    handler = CAHandler(
+        ca_cert=None,
+        ca_key=None,
+        config={},
+        mock_ca_state=state,
+        port=args.port,
+        allow_same_key_cert_req=args.allow_same_key,
+    )
     _register_routes(app)
 
     # import ssl

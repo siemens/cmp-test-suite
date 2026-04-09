@@ -108,6 +108,7 @@ class CertReqHandler:
         pq_stateful_sig_state: Optional[StatefulSigState] = None,
         stfl_validator: Optional[STFLPKIMessageValidator] = None,
         ca_cert_chain: Optional[List[rfc9480.CMPCertificate]] = None,
+        allow_same_key_cert_req: bool = False,
     ):
         """Initialize the certificate request handler.
 
@@ -124,6 +125,8 @@ class CertReqHandler:
         :param pq_stateful_sig_state: The state for post-quantum stateful signatures.
         :param stfl_validator: The validator for the pqc-stateful (e.g., HSS, XMSS) PKIMessage.
         :param ca_cert_chain: The certificate chain for the CA certificate.
+        :param allow_same_key_cert_req: Whether to allow re-issuing a certificate with the same
+            public key for the same CN (ir/cr/p10cr/ccr). Defaults to `False`.
         """
         self.ca_cert = ca_cert
         self._ca_cert_chain = ca_cert_chain or [self.ca_cert]
@@ -142,7 +145,7 @@ class CertReqHandler:
         self.must_be_protected = True
         self.check_time = True
         self.allowed_interval = 500
-        self.allow_same_key_cert_req = False
+        self.allow_same_key_cert_req = allow_same_key_cert_req
         self.allow_same_key_kur = False
         self.sender = "CN=Mock-CA"
         self.kga_key = kga_key
