@@ -8,7 +8,7 @@ description = "CMP Protocol Compliance Test Suite"
 requires-python = ">=3.13"
 dependencies = [
     "cryptography==46.0.7",
-    "pyasn1==0.6.3",
+    "pyasn1==0.6.2",
     "pyasn1-alt-modules==0.4.9",
     "robotframework==7.4.2",
     "pkilint==0.13.2",
