@@ -205,7 +205,7 @@ in a second shell:
 Or via the docker container:
 
 ```sh
-  docker run --rm -it ghcr.io/siemens/cmp-test-base:latest --mockca 5000
+  docker run --rm -it ghcr.io/siemens/cmp-test:latest --mockca 5000
 ```
 
 #### Expected output
