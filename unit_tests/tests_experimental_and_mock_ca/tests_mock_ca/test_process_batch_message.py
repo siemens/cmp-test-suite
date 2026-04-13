@@ -55,6 +55,7 @@ class TestProcessBatchMessage(unittest.TestCase):
             sender_nonce=sender_nonce[0],
             recip_nonce=recip_nonce[0] if include_recip_nonce else None,
             for_mac=True,
+            pvno=2
         )
 
         ir = build_ir_from_key(
