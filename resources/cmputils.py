@@ -183,7 +183,7 @@ def prepare_pki_message(
     implicit_confirm: bool = False,
     recip_kid: Optional[bytes] = None,
     sender_kid: Optional[bytes] = None,
-    message_time: Optional[useful.GeneralizedTime] = None,
+    message_time: Optional[Union[useful.GeneralizedTime, datetime]] = None,
     pki_free_text: Optional[Union[List[str], str]] = None,
     pvno: Optional[Strint] = 2,
     **kwargs,
