@@ -183,7 +183,7 @@ def prepare_pki_message(
     implicit_confirm: bool = False,
     recip_kid: Optional[bytes] = None,
     sender_kid: Optional[bytes] = None,
-    message_time: Optional[useful.GeneralizedTime] = None,
+    message_time: Optional[Union[useful.GeneralizedTime, datetime]] = None,
     pki_free_text: Optional[Union[List[str], str]] = None,
     pvno: Optional[Strint] = 2,
     **kwargs,
@@ -234,8 +234,7 @@ def prepare_pki_message(
         if message_time is None:
             # the date is not correctly converted, so that it could happen for test cases,
             # that the messageTime is in the future. So a slightly older time is used
-            date_time = datetime.now(timezone.utc) - timedelta(seconds=3)
-            message_time = useful.GeneralizedTime().fromDateTime(date_time)
+            message_time = datetime.now(timezone.utc) - timedelta(seconds=3)
 
         msg_time_obj = prepareutils.convert_to_generalized_time(
             message_time,
@@ -4134,9 +4133,9 @@ def _prepare_generalinfo(
         new_time = datetime.now(timezone.utc)
         new_time = new_time + timedelta(seconds=int(confirm_wait_time))
         if negative_value:
-            new_time = useful.UTCTime().fromDateTime(new_time)
+            new_time = prepareutils.prepare_utc_time(new_time)
         else:
-            new_time = useful.GeneralizedTime().fromDateTime(new_time)
+            new_time = prepareutils.prepare_generalized_time(new_time)
 
         confirm_wait_time_obj["infoValue"] = new_time
         general_info_wrapper.append(confirm_wait_time_obj)
