@@ -555,7 +555,7 @@ def _prepare_time_for_crl_update_retrieval(negative: bool, crl_filepath: Union[s
     :return: A `rfc9480.Time` object populated with the calculated `thisUpdate` time.
     """
     if crl_filepath is None:
-        dt_object = datetime.datetime.now()
+        dt_object = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
     else:
         crl_object = utils.load_crl_from_file(crl_filepath)
         last_update = crl_object["tbsCertList"]["thisUpdate"]
