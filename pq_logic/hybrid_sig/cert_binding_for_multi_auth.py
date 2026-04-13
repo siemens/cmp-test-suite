@@ -15,7 +15,7 @@ https://datatracker.ietf.org/doc/draft-ietf-lamps-cert-binding-for-multi-auth/
 import email
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from cryptography import x509
@@ -612,7 +612,7 @@ def server_side_validate_cert_binding_for_multi_auth(ee_cert, related_cert) -> N
     # SHOULD determine that all certificates are valid at the time of issuance.
     # The usable overlap of validity periods is a Subscriber concern.
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc).replace(microsecond=0)
 
     val_cert_a = related_cert["tbsCertificate"]["validity"]
     cert_b = ee_cert["tbsCertificate"]["validity"]
