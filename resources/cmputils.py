@@ -235,7 +235,7 @@ def prepare_pki_message(
             # the date is not correctly converted, so that it could happen for test cases,
             # that the messageTime is in the future. So a slightly older time is used
             date_time = datetime.now(timezone.utc) - timedelta(seconds=3)
-            message_time = useful.GeneralizedTime().fromDateTime(date_time)
+            message_time = prepareutils.prepare_generalized_time(date_time)
 
         msg_time_obj = prepareutils.convert_to_generalized_time(
             message_time,
