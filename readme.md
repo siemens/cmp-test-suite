@@ -112,6 +112,12 @@ Run tests against it (in a new shell):
    make test env=mock_ca
 ```
 
+Or via the docker container:
+
+```sh
+  docker run --rm -it ghcr.io/siemens/cmp-test:latest --mockca 5000
+```
+
 # Acknowledgments
 The development of the CMP test suite was partly funded by the German Federal Ministry of Education and Research
 in the project Quoryptan through grant number 16KIS2033.
