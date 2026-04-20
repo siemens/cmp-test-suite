@@ -37,6 +37,7 @@ from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPublicKey
 from pq_logic.keys.abstract_wrapper_keys import KEMPublicKey, PQPublicKey
 from pq_logic.keys.composite_sig import CompositeSigPublicKey
 from pq_logic.pq_utils import is_kem_public_key
+from pq_logic.tmp_oids import COMPOSITE_SIG_OID_TO_NAME
 from resources import (
     asn1utils,
     certextractutils,
@@ -54,6 +55,7 @@ from resources.asn1_structures import PKIMessageTMP
 from resources.convertutils import ensure_is_kem_pub_key, ensure_is_verify_key
 from resources.exceptions import (
     BadAsn1Data,
+    BadConfig,
     BadKeyUsage,
     BadPOP,
     BadSigAlgID,
@@ -66,9 +68,13 @@ from resources.oidutils import (
     CMP_EKU_OID_2_NAME,
     HYBRID_NAME_2_OID,
     HYBRID_OID_2_NAME,
+    ML_DSA_OID_2_NAME,
+    ML_KEM_OID_2_NAME,
     PQ_NAME_2_OID,
     PQ_OID_2_NAME,
+    PQ_SIG_OID_2_NAME,
     RSASSA_PSS_OID_2_NAME,
+    SLH_DSA_OID_2_NAME,
 )
 from resources.suiteenums import KeyUsageStrictness
 from resources.typingutils import SignKey, Strint, VerifyKey
@@ -975,6 +981,111 @@ def _get_crl_filepath_for_verification(
     _concatenate_crls(crl_files=crl_files)
 
 
+@not_keyword
+def check_openssl_pqc_support() -> bool:
+    """Check if OpenSSL PQC support is enabled.
+
+    Only OpenSSL 3.5 and later versions support PQC.
+
+    :return: `True` if OpenSSL PQC support is enabled, `False` otherwise.
+    """
+    try:
+        result = subprocess.run(["openssl", "version"], capture_output=True, text=True, check=True)
+        ver_str = result.stdout.strip().split()[1]
+        ver_num = ver_str.split("-")[0].split("+")[0]
+        version_tuple = tuple(int(part) for part in ver_num.split(".")[:3])
+        return version_tuple >= (3, 5, 0)
+    except subprocess.CalledProcessError as e:
+        logging.error("OpenSSL PQC support check failed: %s", e.stderr)
+    except Exception as e:  # pylint: disable=broad-except
+        logging.error("An unexpected error occurred while checking OpenSSL PQC support: %s", str(e))
+    return False
+
+
+@not_keyword
+def pqc_algs_cannot_be_validated_with_openssl(
+    certs: List[rfc9480.CMPCertificate],
+) -> bool:
+    """Check if the PQ certificate chain can not be validated with OpenSSL.
+
+    OpenSSL only supports ML-DSA, ML-KEM and SLH-DSA signatures, so if the certificate chain contains
+    any other signature algorithm, it can not be validated with OpenSSL.
+
+    :param certs: A list of CMPCertificate's.
+    :return: `True` if the certificate chain can not be validated with OpenSSL, `False` otherwise.
+    """
+    for cert in certs:
+        spki_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+
+        # To skip traditional algorithm and not store them into a new mapping,
+        # so that OpenSSL can complain.
+        if spki_oid not in HYBRID_OID_2_NAME and spki_oid not in PQ_OID_2_NAME:
+            continue
+
+        if spki_oid in COMPOSITE_SIG_OID_TO_NAME:
+            return True
+        if spki_oid in PQ_SIG_OID_2_NAME:
+            if spki_oid not in SLH_DSA_OID_2_NAME and spki_oid not in ML_DSA_OID_2_NAME:
+                return True
+        elif spki_oid not in ML_KEM_OID_2_NAME:
+            return True
+    return False
+
+
+def _is_pqc_or_hybrid_cert_chain(certs: List[rfc9480.CMPCertificate]) -> bool:
+    """Check if the certificate chain contains hybrid or PQC certificates.
+
+    :param certs: A list of CMPCertificate's.
+    :return: `True` if the certificate chain contains hybrid or PQC certificates, `False` otherwise.
+    """
+    return any(
+        cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"] in HYBRID_OID_2_NAME
+        or cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"] in PQ_OID_2_NAME
+        for cert in certs
+    )
+
+
+def _get_algs(certs: List[rfc9480.CMPCertificate]) -> List[str]:
+    """Get the signature algorithms from the certificate chain.
+
+    :param certs: A list of CMPCertificate's.
+    :return: The signature algorithms in a human-readable format.
+    """
+    algs = []
+    for cert in certs:
+        spki_oid = cert["tbsCertificate"]["subjectPublicKeyInfo"]["algorithm"]["algorithm"]
+        oid_name = oid_mapping.may_return_oid_to_name(spki_oid)
+        subject = utils.get_openssl_name_notation(cert["tbsCertificate"]["subject"])
+        algs.append(f"Subject={subject} OID:{oid_name} ")
+    return algs
+
+
+def _validate_cert_chain_algs_for_verification(
+    cert_chain: List[rfc9480.CMPCertificate],
+) -> bool:
+    """Validate that the certificate chain can be verified with OpenSSL.
+
+    :param cert_chain: A list of `rfc9480.CMPCertificate` objects representing the certificate chain.
+    :raises ValueError: If the certificate chain contains unsupported algorithms for OpenSSL verification.
+    :raises BadConfig: If OpenSSL PQC support is not enabled.
+    :return: `True` if the certificate chain can be verified with OpenSSL, `False` otherwise.
+    """
+    if not _is_pqc_or_hybrid_cert_chain(cert_chain):
+        return True
+
+    if not check_openssl_pqc_support():
+        raise BadConfig("OpenSSL PQC support is not enabled. The test-suite requires OpenSSL 3.5 or later.")
+
+    if pqc_algs_cannot_be_validated_with_openssl(certs=cert_chain):
+        raise ValueError(
+            "The provided PQC certificate chain can not be validated with OpenSSL."
+            "Supported PQC algorithms are: ML-DSA, ML-KEM, SLH-DSA."
+            f"Found the following algorithms:\n{_get_algs(certs=cert_chain)}"
+        )
+
+    return True
+
+
 @keyword(name="Verify Cert Chain OpenSSL")
 def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     cert_chain: List[rfc9480.CMPCertificate],
@@ -1013,9 +1124,9 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
 
     Examples:
     --------
-    | Verify Cert Chain OpenSSL | root_cert=${root_cert} | untrusted=${untrusted} | crl_check=True | verbose=False |
-    | Verify Cert Chain OpenSSL | root_cert=${root_cert} | untrusted=${untrusted} | crl_check=False | verbose=True |
-    | Verify Cert Chain OpenSSL | untrusted=${untrusted} | crl_check=False | verbose=True |
+    | Verify Cert Chain OpenSSL | cert_chain=${cert_chain} |
+    | Verify Cert Chain OpenSSL | cert_chain=${cert_chain} | crl_check=True | verbose=False |
+    | Verify Cert Chain OpenSSL | cert_chain=${cert_chain} | crl_check_all=True |
 
     """
     if verbose:
@@ -1046,6 +1157,8 @@ def verify_cert_chain_openssl(  # noqa D417 undocumented-param
     if verbose:
         command.append("-verbose")
 
+    if not _validate_cert_chain_algs_for_verification(cert_chain=cert_chain):
+        return
     _verify_certificate_chain(command=command, cert_chain=cert_chain, timeout=int(timeout))
 
 
