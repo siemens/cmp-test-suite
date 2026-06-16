@@ -88,6 +88,11 @@ class PQSignaturePublicKey(PQPublicKey, ABC):
         """Return the size of the signature."""
         return self._sig_method.details["length_signature"]
 
+    @property
+    def nist_level(self) -> int:
+        """Return the claimed NIST security level as int."""
+        return int(self._sig_method.details["claimed_nist_level"])
+
 
 class PQSignaturePrivateKey(PQPrivateKey, ABC):
     """Abstract base class for Post-Quantum Signature Private Keys."""
@@ -162,6 +167,11 @@ class PQSignaturePrivateKey(PQPrivateKey, ABC):
             raise ValueError(f"Invalid key size expected {key.key_size}, but got: {len(data)}")
         return key
 
+    @property
+    def nist_level(self) -> int:
+        """Return the claimed NIST security level as int."""
+        return self.public_key().nist_level
+
 
 class PQKEMPublicKey(PQPublicKey, KEMPublicKey, ABC):
     """Abstract base class for Post-Quantum KEM Public Keys."""
@@ -204,7 +214,7 @@ class PQKEMPublicKey(PQPublicKey, KEMPublicKey, ABC):
 
     @property
     def nist_level(self) -> int:
-        """Return the claimed NIST security level as string."""
+        """Return the claimed NIST security level as int."""
         return int(self._kem_method.details["claimed_nist_level"])
 
 
@@ -272,7 +282,7 @@ class PQKEMPrivateKey(PQPrivateKey, KEMPrivateKey, ABC):
 
     @property
     def nist_level(self) -> int:
-        """Return the claimed NIST security level as string."""
+        """Return the claimed NIST security level as int."""
         return self.public_key().nist_level
 
     @staticmethod
