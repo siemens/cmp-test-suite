@@ -29,6 +29,12 @@ These instructions assume a Debian-based Linux system, but it is designed to be 
 
 The [contribution guidelines](CONTRIBUTING.md) explain how to contribute to the project.
 
+# Requirements
+
+- The test suite requires OpenSSL 3.5 or higher to be installed on the system or inside the docker container.
+- For most post-quantum algorithms is liboqs-python (https://github.com/open-quantum-safe/liboqs-python) or the fork 
+used (https://github.com/Guiliano99/liboqs-python-stateful-sig).
+
 # Quick start with Docker
 On a system where [Docker is available](https://docs.docker.com/engine/install/), the easiest way to run the test suite is `docker run --rm -it ghcr.io/siemens/cmp-test`. This will invoke a smoke test just to confirm that the basics are in place. Add `--help` to learn about what other commands are available.
 
