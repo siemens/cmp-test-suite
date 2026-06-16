@@ -343,7 +343,7 @@ class CombinedKeyFactory:
         raise BadAlg(f"Unsupported hybrid key OID: {oid}")
 
     @staticmethod
-    def load_public_key_from_spki(spki: Union[rfc5280.SubjectPublicKeyInfo, bytes]):  # type: ignore
+    def load_public_key_from_spki(spki: Union[rfc5280.SubjectPublicKeyInfo, bytes]) -> PublicKey:  # type: ignore
         """Load a public key from an SPKI structure.
 
         :param spki: rfc5280.SubjectPublicKeyInfo structure.
@@ -371,7 +371,7 @@ class CombinedKeyFactory:
         if oid == id_rsa_kem_spki:
             return RSAEncapKey.from_spki(spki)
 
-        return serialization.load_der_public_key(encoder.encode(spki))
+        return serialization.load_der_public_key(encoder.encode(spki))# type: ignore
 
     @staticmethod
     def supported_algorithms():
@@ -610,7 +610,7 @@ class CombinedKeyFactory:
             return XWingPrivateKey.from_seed(seed)
 
         if algorithm == "rsa":
-            return serialization.load_der_private_key(seed, password=None)
+            return serialization.load_der_private_key(seed, password=None) # type: ignore
 
         if algorithm == "rsa-kem":
             key = serialization.load_der_private_key(seed, password=None)
@@ -1013,7 +1013,7 @@ class CombinedKeyFactory:
         return public_key
 
 
-def _load_traditional_ecc_private_key(name: str, private_data: bytes, curve: Optional[str] = None):
+def _load_traditional_ecc_private_key(name: str, private_data: bytes, curve: Optional[str] = None) -> PrivateKey:
     """Load a traditional private key from the given private key data."""
     if name in ["x25519", "x448", "ecdh"]:
         tmp_key = DHKEMPrivateKey.from_private_bytes(name, private_data, curve=curve)
@@ -1023,4 +1023,4 @@ def _load_traditional_ecc_private_key(name: str, private_data: bytes, curve: Opt
     if name == "ed448":
         return Ed448PrivateKey.from_private_bytes(private_data)
 
-    return serialization.load_der_private_key(private_data, password=None)
+    return serialization.load_der_private_key(private_data, password=None) # type: ignore

@@ -497,7 +497,7 @@ def load_private_key_from_file(  # noqa: D417 for RF docs
         pem_data,
         password=password,  # type: ignore
     )
-    return private_key
+    return private_key  # type: ignore
 
 
 def load_public_key_from_file(filepath: str) -> PublicKey:  # noqa: D417 for RF docs
@@ -564,7 +564,7 @@ def load_public_key_from_spki(data: Union[bytes, rfc5280.SubjectPublicKeyInfo]) 
         if rest != b"":
             raise BadAsn1Data("SubjectPublicKeyInfo")
 
-    return pq_logic.combined_factory.CombinedKeyFactory.load_public_key_from_spki(spki=data)
+    return pq_logic.combined_factory.CombinedKeyFactory.load_public_key_from_spki(spki=data)  # type: ignore
 
 
 @not_keyword

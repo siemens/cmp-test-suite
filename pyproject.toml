@@ -7,11 +7,11 @@ version = "0.0.2"
 description = "CMP Protocol Compliance Test Suite"
 requires-python = ">=3.13"
 dependencies = [
-    "cryptography==46.0.7",
+    "cryptography==48.0.0",
     "pyasn1==0.6.3",
     "pyasn1-alt-modules==0.4.10",
     "robotframework==7.4.2",
-    "pkilint==0.13.2",
+    "pkilint==0.13.3",
     "robotframework-requests==0.9.7",
     "pycryptodome==3.23.0",
     "tinyec==0.4.0",
@@ -27,9 +27,9 @@ dependencies = [
 dev = [
     "safety>=3.7.0,<4.0.0",
     "pylint>=4.0.4,<5.0.0",
-    "ruff>=0.15.10,<1.0.0",
-    "robotframework-robocop==8.2.6",
-    "pyright[nodejs]==1.1.408",
+    "ruff>=0.15.12,<1.0.0",
+    "robotframework-robocop==8.2.11",
+    "pyright[nodejs]==1.1.410",
     "codespell==2.4.2",
     "reuse==6.2.0",
 ]
