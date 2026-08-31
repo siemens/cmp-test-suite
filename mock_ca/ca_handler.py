@@ -1765,4 +1765,4 @@ if __name__ == "__main__":
     root_cert_der = asn1utils.encode_to_der(handler.ca_cert)
     print(f"Root CA certificate (Base64 DER): {base64.b64encode(root_cert_der).decode('ascii')}") # noqa: T201
 
-    app.run(host=args.host, port=args.port, debug=True)
+    app.run(host=args.host, port=args.port, debug=False)
