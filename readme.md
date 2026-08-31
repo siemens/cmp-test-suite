@@ -10,14 +10,11 @@ CMP requests, sends them to the server and checks if responses match expectation
 which includes all the transmitted and received messages in base64 and in human-readable form.
 
 Test cases are written in a domain-specific language (DSL) tailored for PKI and X509 certificate parsing. The provided
-scenarios evaluate *server* implementations of CMP [RFC 9810](https://datatracker.ietf.org/doc/rfc9810/) and the CMP lightweight profile [RFC 9483](https://datatracker.ietf.org/doc/html/rfc9483).
+test scenarios evaluate *server* implementations of CMP [RFC 9810](https://datatracker.ietf.org/doc/rfc9810/) and the CMP lightweight profile [RFC 9483](https://datatracker.ietf.org/doc/html/rfc9483).
 
 Several usage scenarios are possible:
 - Run it "as is" and check whether your CMP server conforms to the specification.
 - Adapt the test suite to your needs, by writing test scenarios using the provided DSL.
-
-Additionally, the DSL can also be used for writing client-oriented tests. A usage scenario could be: 
-- Extend the DSL, adding new keywords and correcting errors in existing ones.
 
 What makes this test suite unique is the high-level notation it is written in, making the reports and test scenarios
 readable not only to software engineers, but also to PKI experts without programming experience. Another key benefit is
@@ -56,16 +53,15 @@ Create a Python virtual environment and install the dependencies as follows:
 
 
 ## Usage
-Note that if you have not activated the environment yet, do so now.
 
-1. Navigate into the test suite: `cd cmp-test-suite`
-2. Adjust the settings in the config/local.robot file to match your environment.
+1. Activate the virtual environment.
+2. Navigate into the test suite: `cd cmp-test-suite`.
+3. Adjust the settings in the config/local.robot file to match your environment.
    - To run the smoke test, this step is not necessary. 
-3. Run the test:
+4. Run the test:
    - Run `robot tests/smoke.robot` to run the smoke test, that checks if everything works so far.
    - Run `robot --variable environment:local tests` to run everything in `tests/` against the `local` environment. 
-4. In your directory in the folder of cmp-test-suite you will find `report.html`.
-  - [Detailed explanation of the output](output.md)
+5. In your directory in the folder of cmp-test-suite you will find `report.html` (see [explanation of the output](output.md)).
 
 ### Additional RobotFramework commands
 You can run specific tests on specific environments by adjusting command line options. Consider this example:
@@ -89,34 +85,14 @@ If the referenced documentation is not available, run `make docs` to generate it
 
 
 # Mock CA
-To facilitate easy testing and development, this repository includes a **Mock CA**. 
+To facilitate easy testing and development, this repository includes a [Mock CA](MockCA_readme.md). 
 This is a simulated Certificate Authority that runs locally, allowing you to execute the test 
-suite without needing access to an external CA infrastructure.
+suite without needing access to an external CA infrastructure. It is not a production-ready CA.
 
-**Why use the Mock CA?**
-- **Instant Setup:** Run tests immediately without configuring complex server software.
-- **Advanced Features:** It includes **Post-Quantum (PQ) cryptography** and **hybrid certificate issuance**, which may not yet be available in a lot of CAs.
-- **Research & Debugging:** Perfect for verifying test logic and experimenting with new CMP features in a controlled environment.
+## Usage
 
-For detailed instructions on configuration and usage, please refer to the [Mock CA Documentation](MockCA_readme.md).
-
-Start the server:
-
-```sh
-   make start-mock-ca
-```
-
-Run tests against it (in a new shell):
-
-```sh
-   make test env=mock_ca
-```
-
-Or via the docker container:
-
-```sh
-  docker run --rm -it ghcr.io/siemens/cmp-test:latest --mockca 5000
-```
+- Start the server: `make start-mock-ca`, or via docker: `docker run --rm -it ghcr.io/siemens/cmp-test:latest --mockca 5000`.
+- Run the test suite against the mock CA: `make test env=mock_ca`.
 
 # Acknowledgments
 The development of the CMP test suite was partly funded by the German Federal Ministry of Education and Research
