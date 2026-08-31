@@ -97,6 +97,7 @@ from resources.exceptions import (
     InvalidAltSignature,
     InvalidKeyData,
     NotAuthorized,
+    UnsupportedVersion,
     UnknownOID,
 )
 from resources.general_msg_utils import build_genp_kem_ct_info_from_genm
@@ -711,7 +712,11 @@ class CAHandler:
         :return: The PKI message containing the response.
         """
         logging.debug("Processing request with body: %s", pki_message["body"].getName())
+
         try:
+            if pki_message["header"]["pvno"] not in (1,2,3):
+                raise UnsupportedVersion(f"Unsupported CMP version: {pki_message['header']['pvno']}")
+
             if pki_message["extraCerts"].isValue:
                 self.rev_handler.is_not_allowed_to_request(
                     pki_message,
