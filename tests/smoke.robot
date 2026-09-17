@@ -19,14 +19,14 @@ The smoke test must pass
     [Documentation]    A basic hello world test case.
     [Tags]    smoke
     Log       Hello, world!
-    ${rc} 	  ${output} = 	Run and Return RC and Output 	uname -a
+    ${rc} 	  ${output} = 	Run And Return RC And Output 	uname -a
     Log       ${output}
 
 OQS dependencies must be available
     [Documentation]    Checks if the OQS (openquantumsafe) dependencies are available https://github.com/open-quantum-safe/liboqs-python
     [Tags]    smoke
-    ${rc} 	  ${output} = 	Run and Return RC and Output 	python -c "import oqs"
-    Should be Equal    ${rc}    ${0}
+    ${rc} 	  ${output} = 	Run And Return RC And Output 	python -c "import oqs"
+    Should Be Equal    ${rc}    ${0}
 
 
 

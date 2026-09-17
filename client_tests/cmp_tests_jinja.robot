@@ -59,7 +59,7 @@ IR 01 - Valid IR CMP Request Should Pass
     ...    recipient=${CMP_RECIPIENT}
     ...    newkey=${CMP_KEY}
     ...    certout=${CERT_OUT}
-    log    CMP Request Args: ${args}
+    Log    CMP Request Args: ${args}
     Run Process    @{args}    stdout=PIPE    stderr=STDOUT    alias=cmp_run
     ${output}=    Wait For Process    cmp_run
     LOG    CMP Request Output: ${output.stdout}
@@ -89,7 +89,7 @@ IR 02 - IR Request With Wrong Secret Should Fail
     ...    recipient=${CMP_RECIPIENT}
     ...    newkey=${CMP_KEY}
     ...    certout=${CERT_OUT}
-    log    CMP Request Args: ${args}
+    Log    CMP Request Args: ${args}
     Run Process    @{args}    stdout=PIPE    stderr=STDOUT    alias=cmp_run
     ${output}=    Wait For Process    cmp_run
     LOG    CMP Request Output: ${output.stdout}

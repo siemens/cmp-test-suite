@@ -225,7 +225,7 @@ CA Could support Hybrid KEM issuing with Catalyst First Key being RSA and second
     ...                and the second key is a KEM-key. The CA should issue a certificate, which contains the two keys.
     ...                The CA response should contain the encrypted certificate.
     [Tags]    catalyst-issuing  positive
-    ${key1}=   Generate key   rsa   length=2048
+    ${key1}=   Generate Key   rsa   length=2048
     ${alt_key}=   Generate Default PQ KEM Key
     ${cert_req_msg}=   Prepare Catalyst CertReqMsg Approach  ${key1}    ${alt_key}
     ${ir}=   Build Ir From Key    ${None}   cert_req_msg=${cert_req_msg}
@@ -245,7 +245,7 @@ CA Could support Hybrid KEM issuing with Catalyst First Key being KEM and second
     ...                keys. The CA response should contain the encrypted certificate.
     [Tags]    catalyst-issuing  positive
     ${key1}=   Generate Default PQ KEM Key
-    ${alt_key}=   Generate key   rsa   length=2048
+    ${alt_key}=   Generate Key   rsa   length=2048
     ${cert_req_msg}=   Prepare Catalyst CertReqMsg Approach  ${key1}    ${alt_key}
     ${ir}=   Build Ir From Key    ${key1}   cert_req_msg=${cert_req_msg}
     ...       exclude_fields=senderKID,sender   recipient=${RECIPIENT}
@@ -572,7 +572,7 @@ CA MUST Accept valid Request with CSR with related Cert
     ...                certificate attribute. We send a valid CSR, with an valid POP, and an valid related certificate
     ...                from the same CA. The CA MUST accept the request and issue a valid certificate.
     [Tags]         multiple-auth   csr   positive
-    Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
+    Skip If   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     ${cert_url}=  Prepare Related Cert URL    ${PQ_SIG_CERT}
     ${req_cert}=   Prepare RequesterCertificate  cert_a=${PQ_SIG_CERT}
     ...            cert_a_key=${PQ_SIG_KEY}   uri=${cert_url}
@@ -972,7 +972,7 @@ Issue Relevant Certs
     VAR   ${CA_CERT}   ${ca_cert}   scope=Global
     VAR   ${CA_KEY}   ${ca_key}   scope=Global
 
-Protect PKIMessage with Composite Sig
+Protect PKIMessage With Composite Sig
     [Documentation]    Protect a PKIMessage with a composite signature key and certificate.
     ...                The PKIMessage is protected with the composite signature.
     [Tags]    composite-sig  protection
@@ -1016,7 +1016,7 @@ Protect And Exchange Composite Sig
 Setup Composite KEM Certs
     [Documentation]    Issue new composite KEM certificates for the tests.
     [Tags]    composite-kem
-    ${comp_kem_cert}  ${comp_kem_key}=  Issue new Composite KEM Cert
+    ${comp_kem_cert}  ${comp_kem_key}=  Issue New Composite KEM Cert
     VAR   ${COMPOSITE_KEM_CERT}   ${comp_kem_cert}   scope=Global
     VAR   ${COMPOSITE_KEM_KEY}   ${comp_kem_key}   scope=Global
     Setup Revoke Composite KEM Cert
@@ -1038,7 +1038,7 @@ Establish New Composite KEM SS
     ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
     RETURN  ${ss}  ${tx_id}
 
-Issue new Composite KEM Cert
+Issue New Composite KEM Cert
     [Documentation]    Issue new composite KEM certificates for the tests.
     ...                The PKIMessage is protected with the composite KEM signature and exchanged with the CA.
     ...
@@ -1065,7 +1065,7 @@ Setup Update Composite KEM Cert
     ...                - ${comp_kem_cert}  The updated composite KEM certificate.
     ...                - ${comp_kem_key}   The updated composite KEM key.
     [Tags]    kem
-    ${comp_kem_cert}  ${comp_kem_key}=  Issue new Composite KEM Cert
+    ${comp_kem_cert}  ${comp_kem_key}=  Issue New Composite KEM Cert
     ${ss}  ${tx_id}=   Establish New Composite KEM SS   ${comp_kem_key}  ${comp_kem_cert}
     ${comp_kem_key2}=  Generate Unique Key    composite-kem
     ${kur}=  Build Key Update Request    ${comp_kem_key2}   recipient=${RECIPIENT}   for_mac=True
@@ -1085,7 +1085,7 @@ Setup Update Composite KEM Cert
 
 Setup Revoke Composite KEM Cert
     [Documentation]    Revoke a composite KEM certificate.
-    ${comp_kem_cert3}  ${comp_kem_key3}=  Issue new Composite KEM Cert
+    ${comp_kem_cert3}  ${comp_kem_key3}=  Issue New Composite KEM Cert
     ${composite_url}=  Get Composite Issuing URL
     ${ss}  ${tx_id}=   Establish New Composite KEM SS   ${comp_kem_key3}  ${comp_kem_cert3}
     ${ir}=  Build CMP Revoke Request    ${comp_kem_cert3}   reason=keyCompromise   sender=${SENDER}
