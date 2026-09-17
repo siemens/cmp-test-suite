@@ -554,7 +554,7 @@ CA pkiconf MUST Use the Same Signature Protection
     ${pki_conf}=   Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     Signature Protection Must Match     ${response}    ${pki_conf}
-    
+
 
 *** Keywords ***
 Generate Default IR And Exchange For Cert Conf

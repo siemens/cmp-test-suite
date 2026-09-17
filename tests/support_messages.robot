@@ -207,7 +207,7 @@ CA MUST Respond To Valid Protected CRL Update Retrieval With CRL File
     ...    the provided CRL is outdated or leave the `infoValue` field absent if no update is available.
     [Tags]    positive    robot:skip-on-failure
     Skip If    '${CRL_FILEPATH}' == 'None'    Skipped because the CRL_FILEPATH variable is not set.
-    ${info_val}=   Prepare CRL Update Retrieval    crl_filepath=${CRL_FILEPATH}    exclude_this_update=True    
+    ${info_val}=   Prepare CRL Update Retrieval    crl_filepath=${CRL_FILEPATH}    exclude_this_update=True
     ${genm}=    Build CMP General Message
     ...    info_values=${info_val}
     ...    recipient=${RECIPIENT}

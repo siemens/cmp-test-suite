@@ -139,7 +139,7 @@ CA MUST Support KEMBasedMAC Until Certificate Is Confirmed
     ${cert_conf}=  Protect PKIMessage KEMBasedMAC    ${cert_conf}    shared_secret=${ss}
     ${response}=   Exchange PKIMessage    ${cert_conf}
     PKIMessage Body Type Must Be    ${response}    pkiconf
-    
+
 CA Should Respond with the a valid KEMBasedMAC Protected Message
     [Documentation]    According to rfc4210bis16 Section 5.1.3.4. Key Encapsulation,
     ...                the CA MUST perform the encapsulation of the shared secret and

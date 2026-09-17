@@ -1158,8 +1158,8 @@ CA MAY Issue A RSA Certificate With A Valid IR
     ${public_key}=   Load Public Key From Cert    ${cert}
     ${key_name}=   Get Key Name   ${public_key}
     Should Be Equal    ${key_name}    rsa
-    VAR    ${RSA_CERT}    ${cert}    scope=Global     # robocop: off=VAR07
-    VAR    ${RSA_KEY}    ${rsa_key}    scope=Global   # robocop: off=VAR07
+    VAR    ${RSA_CERT}    ${cert}    scope=Global
+    VAR    ${RSA_KEY}    ${rsa_key}    scope=Global
 
 CA MUST Reject IR With Invalid Algorithm
     [Documentation]    We Send a initialization request (ir) using Diffie-Hellman (DH) as the certificate algorithm

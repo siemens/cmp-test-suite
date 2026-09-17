@@ -78,8 +78,8 @@ Set Up Test Suite
         ${response}=   Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}    ${INIT_SUFFIX}
         PKIStatus Must Be    ${response}   accepted
         ${issued_cert}=    Confirm Certificate If Needed    ${response}
-        VAR    ${ISSUED_KEY}    ${issued_key}    scope=Global     # robocop: off=VAR04
-        VAR    ${ISSUED_CERT}    ${issued_cert}    scope=Global   # robocop: off=VAR04
+        VAR    ${ISSUED_KEY}    ${issued_key}    scope=Global
+        VAR    ${ISSUED_CERT}    ${issued_cert}    scope=Global
         LOG    Initial certificate issued, with `MAC` protection.
         ${cert_chain}=   Build CMP Chain From PKIMessage  ${response}   ee_cert=${ISSUED_CERT}
         Write Certs To Dir    ${cert_chain}
@@ -87,13 +87,13 @@ Set Up Test Suite
         Write Cmp Certificate To Pem    ${root_cert}  data/trustanchors/issued_cert_root.pem
         VAR    &{CERT_CONF_DEF_VALS}    sender=${SENDER}    recipient=${RECIPIENT}
         ...    private_key=${ISSUED_KEY}    cert=${ISSUED_CERT}    password=${PRESHARED_SECRET}
-        ...    protection=signature   scope=Global   # robocop: off=VAR04
+        ...    protection=signature   scope=Global
         VAR    &{DEFAULT_PROTECTION_VALS}    protection=signature   private_key=${ISSUED_KEY}
-        ...    cert=${ISSUED_CERT}   password=${PRESHARED_SECRET}  scope=Global  # robocop: off=VAR04
+        ...    cert=${ISSUED_CERT}   password=${PRESHARED_SECRET}  scope=Global
     END
     ${cert}  ${key}=   May Load Cert And Key    ${OTHER_TRUSTED_PKI_CERT}    ${OTHER_TRUSTED_PKI_KEY}
-    VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global  # robocop: off=VAR04
-    VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global    # robocop: off=VAR04
+    VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global
+    VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global
     TRY
         Set Up CRR Test Cases
     EXCEPT
@@ -134,7 +134,7 @@ Get PQ Stateful Sig Key
         Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS}    ${algorithm}=${key}
     END
     RETURN   ${key}
-    
+
 Get PQ Stateful Sig Key Verbose
     [Documentation]    Get the stateful PQ signature key from the global variable in verbose mode.
     ...                If the key is not set, it will be generated and returned.
@@ -143,7 +143,7 @@ Get PQ Stateful Sig Key Verbose
     ${name}=    Set Variable    ${algorithm}_${body_name}_${reason}
     ${key}=    Get From Dictionary   ${PQ_STATEFUL_SIG_KEYS_VERBOSE}   ${name}   ${None}
     IF  '${key}' == '${None}'
-        Fail    The verbose ${body_name} PQ stateful signature key for algorithm '${algorithm}' is not set, for 
+        Fail    The verbose ${body_name} PQ stateful signature key for algorithm '${algorithm}' is not set, for
         ...     the reason ${reason}.
     END
     RETURN    ${key}
@@ -169,7 +169,7 @@ Load PQ Stateful Sig Keys
             Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS}    ${algorithm}=${key}
         END
     END
-    
+
 Load Verbose PQ Stateful Sig Keys
     [Documentation]    Load every stateful PQ-signature private key in the `data/keys/xmss_xmssmt_keys` directory.
     ...                Keys are appended to the global list `${BURNED_KEYS}` and
@@ -265,7 +265,7 @@ Increase TestIndex
     [Documentation]    Perform the incrementation of the `TestIndex` to update the sender name inside the PKIMessage,
     ...                for each test case.
     ${NUMBER}=    Evaluate    ${TEST_INDEX} + 1
-    VAR    ${TEST_INDEX}    ${NUMBER}    scope=Global   # robocop: off=VAR04
+    VAR    ${TEST_INDEX}    ${NUMBER}    scope=Global
 
 Try To Log PKIMessage As ASN1
     [Documentation]    Tentatively parse a buffer, assuming it is a DER-encoded PKIMessage, and log its contents.
@@ -881,7 +881,7 @@ Confirm Certificate If Needed
         ELSE
             ${args}=    May Patch Params   ${params}    &{CERT_CONF_DEF_VALS}
         END
-        ${params}=    May Patch Params    ${params}    pvno=3   # robocop: off=VAR08
+        ${params}=    May Patch Params    ${params}    pvno=3
         ${cert}=    Get Cert From PKIMessage    ${response}
         ${protection}=   Get From Dictionary    ${args}    protection
         IF  '${protection}' == 'signature'
@@ -1514,8 +1514,8 @@ Issued NEG RSA KTRI CERT
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
     Must Not Contain KeyUsage    ${cert}   keyEncipherment
-    VAR   ${NEG_KTRI_CERT}     ${cert}  scope=Global  # robocop: off=VAR04
-    VAR   ${NEG_KTRI_KEY}      ${key}   scope=Global  # robocop: off=VAR04
+    VAR   ${NEG_KTRI_CERT}     ${cert}  scope=Global
+    VAR   ${NEG_KTRI_KEY}      ${key}   scope=Global
 
 ISSUE POS RSA KTRI Cert
     [Documentation]    Issue a new RSA positive KTRI certificate for the EnvelopedData tests.
@@ -1544,8 +1544,8 @@ ISSUE POS RSA KTRI Cert
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
-    VAR   ${KGA_KTRI_CERT}     ${cert}  scope=Global  # robocop: off=VAR04
-    VAR   ${KGA_KTRI_KEY}      ${key}   scope=Global  # robocop: off=VAR04
+    VAR   ${KGA_KTRI_CERT}     ${cert}  scope=Global
+    VAR   ${KGA_KTRI_KEY}      ${key}   scope=Global
 
 Issue NEG ECC KARI Cert
     [Documentation]    Issue a new ECC negative KARI certificate for the EnvelopedData tests.
@@ -1574,8 +1574,8 @@ Issue NEG ECC KARI Cert
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
     Must Not Contain KeyUsage    ${cert}   keyAgreement
-    VAR   ${NEG_KARI_CERT}     ${cert}  scope=Global   # robocop: off=VAR04
-    VAR   ${NEG_KARI_KEY}      ${key}   scope=Global   # robocop: off=VAR04
+    VAR   ${NEG_KARI_CERT}     ${cert}  scope=Global
+    VAR   ${NEG_KARI_KEY}      ${key}   scope=Global
 
 Issue POS ECC KARI Cert   # robocop: off=LEN03
     [Documentation]    Issue a new ECC positive KARI certificate for the EnvelopedData tests.
@@ -1604,8 +1604,8 @@ Issue POS ECC KARI Cert   # robocop: off=LEN03
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
-    VAR   ${KGA_KARI_CERT}     ${cert}  scope=Global   # robocop: off=VAR04
-    VAR   ${KGA_KARI_KEY}      ${key}   scope=Global   # robocop: off=VAR04
+    VAR   ${KGA_KARI_CERT}     ${cert}  scope=Global
+    VAR   ${KGA_KARI_KEY}      ${key}   scope=Global
 
 Set Up EnvelopedData Certs For Tests
     [Documentation]    Set up the KGA certs for the tests. This is done by creating a new key and
@@ -1734,8 +1734,8 @@ Setup PQ Sig Cert
     ${pq_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
     ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${pq_cert}
     Write Certs To Dir    ${cert_chain}  pq_sig_chain
-    VAR   ${PQ_SIG_CERT}     ${pq_cert}  scope=Global  # robocop: off=VAR04
-    VAR   ${PQ_SIG_KEY}      ${pq_key}  scope=Global  # robocop: off=VAR04
+    VAR   ${PQ_SIG_CERT}     ${pq_cert}  scope=Global
+    VAR   ${PQ_SIG_KEY}      ${pq_key}  scope=Global
 
 Setup Composite Sig Cert
     [Documentation]    Issue a new composite signature certificate for the tests.
@@ -1763,8 +1763,8 @@ Setup Composite Sig Cert
     ${comp_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
     ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${comp_cert}
     Write Certs To Dir    ${cert_chain}  composite_sig_chain
-    VAR   ${COMPOSITE_SIG_CERT}     ${comp_cert}  scope=Global  # robocop: off=VAR04
-    VAR   ${COMPOSITE_SIG_KEY}      ${comp_key}  scope=Global  # robocop: off=VAR04
+    VAR   ${COMPOSITE_SIG_CERT}     ${comp_cert}  scope=Global
+    VAR   ${COMPOSITE_SIG_KEY}      ${comp_key}  scope=Global
 
 Build KEMBasedMAC General Message
     [Documentation]    Build a KEMBasedMAC General Message, to establish a KEM shared secret.

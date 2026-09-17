@@ -1194,17 +1194,17 @@ Initialize Global Variables
     VAR    ${NEG_KTRI_CERT}    ${None}    scope=Global
 
     # ecc key with extension. (keyAgreement)
-    VAR    ${KGA_KARI_KEY}    ${None}    scope=GLOBAL   # robocop: off=VAR04
-    VAR    ${KGA_KARI_CERT}    ${None}    scope=GLOBAL  # robocop: off=VAR04
+    VAR    ${KGA_KARI_KEY}    ${None}    scope=GLOBAL
+    VAR    ${KGA_KARI_CERT}    ${None}    scope=GLOBAL
 
     # To Test KARI, if the CA rejects a request for KGA without the keyAgreement extension.
-    VAR    ${NEG_KARI_KEY}    ${None}    scope=Global   # robocop: off=VAR04
-    VAR    ${NEG_KARI_CERT}    ${None}    scope=Global  # robocop: off=VAR04
+    VAR    ${NEG_KARI_KEY}    ${None}    scope=Global
+    VAR    ${NEG_KARI_CERT}    ${None}    scope=Global
 
-    VAR    ${RR_CERT_FOR_TRUSTED}    ${None}    scope=Global  # robocop: off=VAR04
+    VAR    ${RR_CERT_FOR_TRUSTED}    ${None}    scope=Global
 
-    VAR    @{GLOBAL_CERTS}    @{EMPTY}    scope=Global  # robocop: off=VAR04
-    VAR    @{GLOBAL_KEYS}    @{EMPTY}    scope=Global   # robocop: off=VAR04
+    VAR    @{GLOBAL_CERTS}    @{EMPTY}    scope=Global
+    VAR    @{GLOBAL_KEYS}    @{EMPTY}    scope=Global
     TRY
         Set Up CRR Test Cases
     EXCEPT

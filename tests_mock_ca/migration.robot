@@ -133,7 +133,7 @@ CA MUST issue a valid Catalyst Signed Certificate with Wished Signature Algorith
     ${extension}=   Prepare AltSignatureAlgorithm Extension   key=${key}    hash_alg=sha512
     ${extensions}=   Create List     ${extension}
     ${subject}=    Get Next Common Name
-    ${cert_template}=   Prepare CertTemplate   subject=${subject}    extensions=${extensions}   key=${new_key}   
+    ${cert_template}=   Prepare CertTemplate   subject=${subject}    extensions=${extensions}   key=${new_key}
     ${ir}=   Build Ir From Key    ${new_key}   cert_template=${cert_template}
     ...      exclude_fields=senderKID,sender   recipient=${RECIPIENT}
     ${protected_ir}=    Protect PKIMessage
@@ -148,12 +148,12 @@ CA MUST issue a valid Catalyst Signed Certificate with Wished Signature Algorith
     ${extensions}=    Validate Catalyst Extensions     cert=${cert}   sig_alg_must_be=ml-dsa-87-sha512
     ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}   for_issued_cert=True
     Verify Catalyst Signature    ${cert}   ${cert_chain[1]}
-    
+
 
 ##########################
 # Catalyst Issuing Tests
 ##########################
-    
+
 
 CA Could Support Valid 2 POP For Signing Keys
     [Documentation]    The Catalyst extension could be used to support two POPs for the signing keys.
@@ -335,8 +335,8 @@ CA MUST Issue Sun Hybrid Non-Critical Extensions
 
 CA MUST Issue a Valid Sun Hybrid Certificate
     [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
-    ...                to the CA. The CA should process the valid CSR and issue a valid certificate. 
-    [Tags]    sun-hybrid   hybrid-sig  
+    ...                to the CA. The CA should process the valid CSR and issue a valid certificate.
+    [Tags]    sun-hybrid   hybrid-sig
     ${key}=   Generate Unique Key    composite-sig
     ${ir}=   Build Ir From Key   ${key}   exclude_fields=senderKID,sender   recipient=${RECIPIENT}
     ...      implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
@@ -450,7 +450,7 @@ CA MUST Update a Sun Hybrid Certificate
     ${response}=   Exchange Migration PKIMessage    ${protected_kur}   ${CA_BASE_URL}  ${SUN_HYBRID_SUFFIX}
     PKIMessage Body Type Must Be    ${response}    kup
     PKIStatus Must Be    ${response}    status=accepted
-    
+
 ##############################
 # Hybrid-Authentication Tests
 ##############################
@@ -522,7 +522,7 @@ CA MUST Issue a valid Chameleon Cert
     VAR   ${CHAMELEON_DELTA_KEY}    ${pq_key}   scope=Global
 
 CA Could Support Composite Signature with Chameleon Cert
-    [Documentation]    A CA could support a PKIMessage signed with composite signature with a chameleon 
+    [Documentation]    A CA could support a PKIMessage signed with composite signature with a chameleon
     ...                certificate. We send a certificate request, which is signed with a composite signature.
     ...                The CA should correctly validate the signature and issue the certificate.
     [Tags]    hybrid-auth
@@ -626,7 +626,7 @@ CA Should not allow Key Update with same key
     ...                We send a certificate request, which contains the same key as the previous certificate.
     ...                The CA should reject the request and MAY respond with the optional failInfo `badCertTemplate`.
     [Tags]    bad-cert-template   composite-sig
-    ${result}=  Is Certificate And Key Set    ${COMPOSITE_SIG_CERT}   ${COMPOSITE_SIG_KEY}    
+    ${result}=  Is Certificate And Key Set    ${COMPOSITE_SIG_CERT}   ${COMPOSITE_SIG_KEY}
     SKIP IF    not ${result}    The Composite Certificate and Key are not set.
     ${ir}=   Build Key Update Request    ${COMPOSITE_SIG_KEY}    ${COMPOSITE_SIG_CERT}
     ${protected_ir}=    Protect Hybrid PKIMessage
@@ -762,7 +762,7 @@ CA MUST Check That The ML-DSA Key Is Not Used Inside Another Cert
     ...                inside another certificate. The CA MUST reject the request and MAY respond with the optional
     ...                failInfo `badCertTemplate`.
     [Tags]    composite-sig  composite
-    ${result}=  Is Certificate And Key Set    ${COMPOSITE_SIG_CERT}   ${COMPOSITE_SIG_KEY}    
+    ${result}=  Is Certificate And Key Set    ${COMPOSITE_SIG_CERT}   ${COMPOSITE_SIG_KEY}
     SKIP IF    not ${result}    The Composite Certificate and Key are not set.
     ${key}=   Generate Key  algorithm=composite-sig  pq_key=${COMPOSITE_SIG_KEY.pq_key}
     ${cert_template}=   Prepare CertTemplate  ${key}  cert=${COMPOSITE_SIG_CERT}   include_fields=subject,publicKey
@@ -874,7 +874,7 @@ CA MUST Detect Invalid Composite Sig PKIProtection
     [Tags]    composite-sig  composite
     # Always the latest version of the algorithm.
     ${key}=  Generate Fresh Composite Sig Key
-    ${ir}=   Build Ir From Key    ${key}  exclude_fields=senderKID,sender  
+    ${ir}=   Build Ir From Key    ${key}  exclude_fields=senderKID,sender
     ...      recipient=${RECIPIENT}
     ${protected_ir}=    Protect Hybrid PKIMessage    ${ir}   ${COMPOSITE_SIG_KEY}
     ...                 cert=${COMPOSITE_SIG_CERT}   bad_message_check=True
@@ -986,9 +986,9 @@ Generate Fresh Composite Sig Key
     # Generates always the latest version of the algorithm.
     ${key}=   Generate Unique Key  composite-sig
     RETURN  ${key}
-    
+
 Issue Or Get Composite Sig Cert And Key
-    [Documentation]    Get an already issued composite signature key and certificate, or generate 
+    [Documentation]    Get an already issued composite signature key and certificate, or generate
     ...                a new one if not already issued. Used to save resources, Could be turned off.
     [Tags]    composite-sig
     ${result}=  Is Certificate And Key Set    ${COMPOSITE_SIG_CERT}   ${COMPOSITE_SIG_KEY}
@@ -1017,8 +1017,8 @@ Setup Composite KEM Certs
     [Documentation]    Issue new composite KEM certificates for the tests.
     [Tags]    composite-kem
     ${comp_kem_cert}  ${comp_kem_key}=  Issue new Composite KEM Cert
-    VAR   ${COMPOSITE_KEM_CERT}   ${comp_kem_cert}   scope=Global   # robocop: off=VAR04
-    VAR   ${COMPOSITE_KEM_KEY}   ${comp_kem_key}   scope=Global   # robocop: off=VAR04
+    VAR   ${COMPOSITE_KEM_CERT}   ${comp_kem_cert}   scope=Global
+    VAR   ${COMPOSITE_KEM_KEY}   ${comp_kem_key}   scope=Global
     Setup Revoke Composite KEM Cert
     Setup Update Composite KEM Cert
 
@@ -1080,8 +1080,8 @@ Setup Update Composite KEM Cert
     ${comp_kem_cert2}=   Confirm EncrCert Certificate If Needed    ${response}  ${comp_kem_key2}
     ...                 url=${composite_url}   exclude_rid_check=${True}   shared_secret=${ss}
     ...                 for_kem_based_mac=True
-    VAR   ${UPDATED_COMP_KEM_CERT}   ${comp_kem_cert2}   scope=Global   # robocop: off=VAR04
-    VAR   ${UPDATED_COMP_KEM_KEY}   ${comp_kem_key2}   scope=Global   # robocop: off=VAR04
+    VAR   ${UPDATED_COMP_KEM_CERT}   ${comp_kem_cert2}   scope=Global
+    VAR   ${UPDATED_COMP_KEM_KEY}   ${comp_kem_key2}   scope=Global
 
 Setup Revoke Composite KEM Cert
     [Documentation]    Revoke a composite KEM certificate.
@@ -1098,8 +1098,8 @@ Setup Revoke Composite KEM Cert
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}    accepted
     Wait Until Server Revoked Cert
-    VAR   ${REVOKED_COMP_KEM_CERT}   ${comp_kem_cert3}   scope=Global   # robocop: off=VAR04
-    VAR   ${REVOKED_COMP_KEM_KEY}   ${comp_kem_key3}   scope=Global   # robocop: off=VAR04
+    VAR   ${REVOKED_COMP_KEM_CERT}   ${comp_kem_cert3}   scope=Global
+    VAR   ${REVOKED_COMP_KEM_KEY}   ${comp_kem_key3}   scope=Global
 
 Issue New Composite Certs
     [Documentation]    Issue new composite certificates for the tests.
@@ -1113,6 +1113,6 @@ Issue New Composite Certs
     ${prot_rr}=  Protect PKIMessage    ${rr}   signature   private_key=${rr_comp_key}   cert=${rr_comp_cert}
     ${response}=  Exchange PKIMessage    ${prot_rr}   ${composite_url}
     Wait Until Server Revoked Cert
-    VAR   ${REVOKED_COMP_CERT}   ${rr_comp_cert}   scope=Global   # robocop: off=VAR04
-    VAR   ${REVOKED_COMP_KEY}   ${rr_comp_key}   scope=Global     # robocop: off=VAR04
+    VAR   ${REVOKED_COMP_CERT}   ${rr_comp_cert}   scope=Global
+    VAR   ${REVOKED_COMP_KEY}   ${rr_comp_key}   scope=Global
     Setup Composite KEM Certs

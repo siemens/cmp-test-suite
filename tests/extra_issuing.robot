@@ -794,8 +794,8 @@ CA May Process The UTF8Pairs String
     ${cert_request2}=   Prepare CertRequest   ${key}  ${cm}  extensions=${extensions}
     ${ir}=   Build Ir From Key    ${key}    cert_request=${cert_request}
     ...               recipient=${RECIPIENT}   exclude_fields=sender,senderKID
-    ${alt_cert_req}=  Prepare Utf8Pairs reqInfo    ${cert_request2}   utf8Pairs=CN=Test   # robocop: off=NAME02
-    ${ir}=   Add regInfo To PKIMessage   ${ir}    ${alt_cert_req}   # robocop: off=NAME02
+    ${alt_cert_req}=  Prepare Utf8Pairs reqInfo    ${cert_request2}   utf8Pairs=CN=Test
+    ${ir}=   Add regInfo To PKIMessage   ${ir}    ${alt_cert_req}
     ${protected_ir}=  Default Protect PKIMessage  ${ir}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
@@ -818,7 +818,7 @@ CA MUST Used the CertRequest Inside the reqInfo
     ${ir}=   Build Ir From Key    ${key}    cert_request=${cert_request}
     ...               recipient=${RECIPIENT}   exclude_fields=sender,senderKID
     ${alt_cert_req}=  Prepare CertReq ReqInfo    ${cert_request2}
-    ${ir}=   Add regInfo To PKIMessage   ${ir}    ${alt_cert_req}    # robocop: off=NAME02
+    ${ir}=   Add regInfo To PKIMessage   ${ir}    ${alt_cert_req}
     ${protected_ir}=  Default Protect PKIMessage  ${ir}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
@@ -844,7 +844,7 @@ CA MUST Reject different Public Key in Alt CertReq
     ${ir}=   Build Ir From Key    ${key}    cert_request=${cert_request}
     ...               recipient=${RECIPIENT}   exclude_fields=sender,senderKID
     ${alt_cert_req}=  Prepare CertReq ReqInfo    ${cert_request2}
-    ${ir}=   Add regInfo To PKIMessage   ${ir}    ${alt_cert_req}  # robocop: off=NAME02
+    ${ir}=   Add regInfo To PKIMessage   ${ir}    ${alt_cert_req}
     ${protected_ir}=  Default Protect PKIMessage  ${ir}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
