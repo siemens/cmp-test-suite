@@ -93,7 +93,7 @@ test-friendly responses to CMP requests. It is primarily used to:
 
 ### Missing Features
 
-- Does not support **CRS** attributes, besides the one for extensions.
+- Does not support **CSR** attributes, besides the one for extensions.
 - Only supports **CA** `ccp` Cross-Certification Response.
 - Does not support Announcement messages yet (Python logic is present).
 - Does not support `krr` (key recovery request) messages and
@@ -208,13 +208,6 @@ Or via the docker container:
   docker run --rm -it ghcr.io/siemens/cmp-test:latest --mockca 5000
 ```
 
-#### Expected output
-
-You should see Flask startup output similar to:
-
-- Serving Flask app 'mock_ca.ca_handler'
-- Debug mode: on
-- Running on <http://127.0.0.1:5000>
 
 ### Verify MockCA is running
 
@@ -369,9 +362,6 @@ robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable env
   - When using the `Exchange PKIMessage` keyword, any error message is typically returned there.
   - If inspecting the `PKIMessage` directly, use the `PKIStatus Must Be` keyword to view the `PKIStatusInfo`
     in a human-readable format.
-- **Logging:**
-  - The Mock-CA runs in `Debug` mode by default. However, more advanced logging and debugging methods are planned
-    but not yet implemented.
 - **Stateful tests failing on re-run:** Some tests depend on state (e.g., issuance and revocation); re‑running the
    same test without resetting state can cause failures. **Restart** the MockCA to reset its in‑memory state.
 - **`Connection refused`**: Mock CA is not running, or the host/port does not match `config/mock_ca.robot`.

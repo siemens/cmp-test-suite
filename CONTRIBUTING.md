@@ -137,3 +137,52 @@ This section explains how OpenSSL can be used to generate test data, such as key
 - The test data is stored in textual form.
 - The test data does not contain sensitive information (e.g., department identifiers or personal data).
 - Private keys and other test data are not taken from production systems.
+
+
+# Using tags
+Tags are used to categorize tests, and can be leveraged when you want to test specific functionality only. This table
+explains the available tags and their meanings. If you write new tests, consider using one of the existing tags instead
+of creating a new one.
+
+
+| Tag    | Description, area of application                                                                   |
+|--------|----------------------------------------------------------------------------------------------------|
+| lwcmp  | Tests the Lightweight profile.                                                                     |
+| extraCert  | Additional certificates included in a message to facilitate the validation of a certificate chain. |
+| rfc9483-header  | Tests related to the `PKIHeader` description in RFC 9483, Section 3.                               |
+| headers         | Header fields.                                                                                     |
+| sender          | The `sender` field.                                                                                |
+| senderKID       | The `senderKID` field.                                                                             |
+| senderNonce     | The `senderNonce` field.                                                                           |
+| time            | The `messageTime` field.                                                                           |
+| implicit_confirm| Tests related to the `implicitConfirm` inside the `generalInfo` field.                             |
+| protectionAlg   | Tests related to the `protectionAlg` field.                                                        |
+| kup            | Tests specifically related to the `Key Update Response` body.                                      |
+| kur            | Tests specifically related to the `Key Update Request` body.                                       |
+| ip             | Tests specifically related to the `Initialization Response` body.                                  |
+| ir             | Tests specifically related to the `Initialization Request` body.                                   |
+| cp             | Tests related only to the `Certification Response` body.                                           |
+| cr             | Tests related only to the `Certification Request` body.                                            |
+| rr             | Tests related to the `Revocation or Revive Request` body.                                          |
+| general-message| Tests related to the `General Message` body.                                                       |
+| batching       | Tests related to processing multiple certificate requests in a single batch.                       |
+| certConf       | Tests related to the `Certificate Confirmation` body.                                              |
+| csr             | Tests related only to CSR (Certificate Signing Request).                                           |
+| add-info        | Tests related to missing additional information in requests or responses.                          |
+| adding-protection| Tests for RFC 9483, Section 5.2.2.1.                                                               |
+| bad-behaviour   | Indicates improper or non-compliant behavior in protocol operations.                               |
+| validity        | Tests related to the validity period of a certificate to be issued.                                |
+| extended-key-usage | Tests whether the CA issued the certificate with the `extended-key-usage` extension.               |
+| extensions         | Tests related to certificate extensions.                                                           |
+| basic-constraints  | Tests whether the `basic-constraints` extension is included and validated during issuance.         |
+| inconsistency| Detection of mismatches or conflicts within protocol data or operations.                           |
+| key          | Key management, from issuing to correct usage.                                                     |
+| mac          | MAC-based protection.                                                                              |
+| signature    | Signature-based protection.                                                                        |
+| trust        | Tests related to trust (e.g., `raVerified from an EE`).                                            |
+| ca-certs           | Description not provided.                                                                          |
+| get_cert_template  | Description not provided.                                                                          |
+| get_root_ca_cert_update| Description not provided.                                                                          |
+| rfc6712           | Reference to RFC 6712, which defines rules for CMP over HTTP.                                      |
+| rfc9483-header    | Header information specific to the RFC 9483 protocol.                                              |
+| rfc9483-validation| Validation processes and checks as defined by RFC 9483.                                            |
