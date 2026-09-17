@@ -1,6 +1,9 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
 [lint]
 ignore = [
-    # Sets global variables outside the *** Variables *** section on purpose, to share
     # state (e.g. issued certs/keys) between test cases within a suite.
     "VAR04",
     "VAR05",
