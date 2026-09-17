@@ -97,8 +97,8 @@ from resources.exceptions import (
     InvalidAltSignature,
     InvalidKeyData,
     NotAuthorized,
-    UnsupportedVersion,
     UnknownOID,
+    UnsupportedVersion,
 )
 from resources.general_msg_utils import build_genp_kem_ct_info_from_genm
 from resources.keyutils import generate_key, load_private_key_from_file, load_public_key_from_spki
