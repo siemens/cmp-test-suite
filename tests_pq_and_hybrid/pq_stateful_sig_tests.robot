@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# robocop: off=LEN28
-#
 *** Settings ***
 Documentation    Test cases for XMSS, XMSSMT, and HSS stateful hash-based signature algorithms,
 ...              based on RFC 8391, RFC 8554, and RFC 9802. Tests cover certificate issuance,

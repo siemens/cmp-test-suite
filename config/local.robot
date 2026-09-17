@@ -36,7 +36,10 @@ ${ENFORCE_RFC9481}   ${True}
 
 # Root certificates that we trust when verifying the identity of the server, this applies when sending CMP-over-HTTP
 # requests
-@{CA_TRUSTED_ROOTS}=    Create List     ${CERT_PATH}/PPKIPlaygroundECCRootCAv10.crt    ${CERT_PATH}/PPKIPlaygroundInfrastructureRootCAv10.crt     ${CERT_PATH}/PPKIPlaygroundRSARootCAv10.crt
+@{CA_TRUSTED_ROOTS}=    Create List
+...    ${CERT_PATH}/PPKIPlaygroundECCRootCAv10.crt
+...    ${CERT_PATH}/PPKIPlaygroundInfrastructureRootCAv10.crt
+...    ${CERT_PATH}/PPKIPlaygroundRSARootCAv10.crt
 
 ${ALLOW_ONLY_HTTP_STATUS_CODE}    200, 201, 202, 203, 3xx, 4xx, 5xx
 ${DEFAULT_X509NAME}    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111

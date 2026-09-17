@@ -1,10 +1,6 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG  # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
-# robocop: off=LEN08
-# LEN08:  Line length is longer than 120 characters.
-# LEN28:  File is too long.
-# LEN27:  Too-many-test cases.
 
 
 *** Settings ***

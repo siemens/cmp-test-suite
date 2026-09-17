@@ -1577,7 +1577,7 @@ Issue NEG ECC KARI Cert
     VAR   ${NEG_KARI_CERT}     ${cert}  scope=Global
     VAR   ${NEG_KARI_KEY}      ${key}   scope=Global
 
-Issue POS ECC KARI Cert   # robocop: off=LEN03
+Issue POS ECC KARI Cert
     [Documentation]    Issue a new ECC positive KARI certificate for the EnvelopedData tests.
     ...                This certificate is positive, because the keyAgreement and digitalSignature
     ...                KeyUsage bits are set.
