@@ -400,7 +400,7 @@ CA MUST Accept Valid Revocation Request
     PKIStatus Must Be    ${response}   status=accepted
     Verify statusString   ${response}   revoked,Revoked
     Wait Until Server Revoked Cert
-    VAR   ${ca_cert}   ${rr["extraCerts"][1]}
+    VAR   ${ca_cert}=   ${rr["extraCerts"][1]}
     Validate If Certificate Is Revoked    ${cert}   ${ca_cert}   expected_to_be_revoked=True
 
 CA Should Respond with certRevoked for Already Revoked Cert
@@ -494,7 +494,7 @@ CA MUST Accept Valid Revive Request
     PKIStatus Must Be   ${response}    status=accepted
     Verify StatusString   ${response}    Revive,revive
     Wait Until Server Revived Cert
-    VAR   ${ca_cert}   ${rr["extraCerts"][1]}
+    VAR   ${ca_cert}=   ${rr["extraCerts"][1]}
     Validate If Certificate Is Revoked    ${cert}   ${ca_cert}   expected_to_be_revoked=False
 
 #### Section 4 RR checks for issuing.
@@ -562,8 +562,8 @@ Regenerate Cert For RR Tests
     ...             - The private key for the certificate.
     [Tags]    setup
     ${cert}   ${key}=   Issue New Cert For Testing
-    VAR    ${REVOCATION_CERT}    ${cert}    scope=GlOBAL
-    VAR    ${REVOCATION_KEY}    ${key}    scope=GlOBAL
+    VAR    ${REVOCATION_CERT}=    ${cert}    scope=GlOBAL
+    VAR    ${REVOCATION_KEY}=    ${key}    scope=GlOBAL
 
 Revoke Certificate
     [Documentation]    Send a revocation request and return the certificate and key used.

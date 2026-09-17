@@ -75,10 +75,10 @@ CA MUST Accept valid Request with CSR with related Cert
     PKIStatus Must Be    ${response}    accepted
     ${cert}=    Get Cert From PKIMessage    ${response}
     Validate Related Cert Extension    ${cert}    ${PQ_SIG_CERT}
-    VAR   ${RELATED_KEY}    ${trad_key}   scope=Suite
-    VAR   ${RELATED_CERT}    ${cert}    scope=Suite
-    VAR   ${RELATED_KEY_SEC}    ${PQ_SIG_KEY}   scope=Suite
-    VAR   ${RELATED_CERT_SEC}   ${PQ_SIG_CERT}   scope=Suite
+    VAR   ${RELATED_KEY}=    ${trad_key}   scope=Suite
+    VAR   ${RELATED_CERT}=    ${cert}    scope=Suite
+    VAR   ${RELATED_KEY_SEC}=    ${PQ_SIG_KEY}   scope=Suite
+    VAR   ${RELATED_CERT_SEC}=   ${PQ_SIG_CERT}   scope=Suite
 
 CA SHOULD Accept CSR with related cert from different CA
     [Documentation]    As defined in Cert-binding-for-multiple-auth Section 3, we generate a CSR with the related
@@ -166,7 +166,7 @@ CA MUST Validate that the URI is reachable
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    systemFailure,badPOP
 
-CA MUST Check If The Related Certificate Is Not Revoked.
+CA MUST Check If The Related Certificate Is Not Revoked
     [Documentation]    As defined in Cert-binding-for-multiple-auth Section 3.2, we generate a CSR with the related
     ...                certificate attribute. We send a valid CSR, with an valid POP, but an invalid related certificate
     ...                for the related certificate. The CA MUST detect this error and reject the request and MAY

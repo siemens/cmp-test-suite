@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation       Tests for extra issuing logic.
 
@@ -27,39 +28,6 @@ Test Tags    non-signing-key
 
 *** Variables ***
 ${regToken}   SuperSecretRegToken   # robocop: off=NAME08
-
-
-*** Keywords ***
-Set Up Extra Issuing Logic Test Suite
-    [Documentation]     Set up the test suite by generating a key and a certificate for the CA.
-    [Tags]    setup
-    Set Up Test Suite
-    ${x25519_cert}=   May Load Cert   ${CA_X25519_CERT}
-    VAR    ${CA_X25519_CERT}    ${X25519_cert}  scope=Global
-    ${x448_cert}=   May Load Cert   ${CA_X448_CERT}
-    VAR    ${CA_X448_CERT}    ${x448_cert}  scope=Global
-    ${ecc_cert}=   May Load Cert   ${CA_ECC_CERT}
-    VAR    ${CA_ECC_CERT}    ${ecc_cert}   scope=Global
-    ${hybrid_kem_cert}=   May Load Cert   ${CA_HYBRID_KEM_CERT}
-    VAR    ${CA_HYBRID_KEM_CERT}    ${hybrid_kem_cert}   scope=Global
-    ${kem_cert}=   May Load Cert   ${CA_KEM_CERT}
-    VAR    ${CA_KEM_CERT}    ${kem_cert}   scope=Global
-
-Build Encrypted Key Request
-    [Documentation]    Build an request with an encrypted key as POPO.
-    [Tags]     popo  encryptedKey
-    [Arguments]    ${key}   ${ca_cert}   ${cmp_protection}   ${ecc_key}=${None}   &{args}
-    ${cm}=   Get Next Common Name
-    ${sender}=   Get From Dictionary    ${args}   sender   default=${cm}
-    ${for_agreement}=   Get From Dictionary    ${args}   for_agreement   default=True
-    ${use_string}=   Get From Dictionary    ${args}   use_string   default=False
-    ${enc_key_id}=   Prepare EncKeyWithID    ${key}  sender=${sender}   use_string=${use_string}
-    ${popo}=   Prepare EncryptedKey For POPO    ${enc_key_id}   ${None}   ${ca_cert}
-    ...        for_agreement=${for_agreement}   cmp_protection_cert=${cmp_protection}
-    ...        private_key=${key}   private_key=${ecc_key}
-    ${ir}=   Build Ir From Key    ${key}    common_name=${cm}   popo=${popo}
-    ...              recipient=${RECIPIENT}   exclude_fields=sender,senderKID
-    RETURN   ${ir}
 
 
 *** Test Cases ***
@@ -101,8 +69,8 @@ CA Must Accept EncrCert POPO For Request With X25519 Key
     ${protected_cert_conf}=    Default Protect PKIMessage    ${cert_conf}
     ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-    VAR    ${CLIENT_X25519_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${CLIENT_X25519_KEY}    ${new_key}    scope=GLOBAL
+    VAR    ${CLIENT_X25519_CERT}=    ${cert}    scope=GLOBAL
+    VAR    ${CLIENT_X25519_KEY}=    ${new_key}    scope=GLOBAL
 
 CA Must Accept EncrCert POPO For Request With X448 Key
     [Documentation]    According to RFC 4210-bis18 5.2.8.4 the CA must accept a request with a x448 key with the
@@ -134,8 +102,8 @@ CA Must Accept EncrCert POPO For Request With X448 Key
     ${protected_cert_conf}=    Default Protect PKIMessage    ${cert_conf}
     ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-    VAR    ${CLIENT_X448_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${CLIENT_X448_KEY}    ${new_key}    scope=GLOBAL
+    VAR    ${CLIENT_X448_CERT}=    ${cert}    scope=GLOBAL
+    VAR    ${CLIENT_X448_KEY}=    ${new_key}    scope=GLOBAL
 
 CA Must Accept EncrCert POPO For Request With ECC Key
     [Documentation]    According to RFC 4210-bis18 5.2.8.4 the CA must accept a request with a ECC key with the
@@ -168,8 +136,8 @@ CA Must Accept EncrCert POPO For Request With ECC Key
     ${protected_cert_conf}=    Default Protect PKIMessage    ${cert_conf}
     ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
-    VAR    ${CLIENT_ECC_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${CLIENT_ECC_KEY}    ${new_key}    scope=GLOBAL
+    VAR    ${CLIENT_ECC_CERT}=    ${cert}    scope=GLOBAL
+    VAR    ${CLIENT_ECC_KEY}=    ${new_key}    scope=GLOBAL
 
 CA Must Accept ChallengeResp POPO For Request With X25519 Key
     [Documentation]    According to RFC 4210bis-18 Section 5.2.8.3.3. the Client can use the `challengeResp`
@@ -850,3 +818,36 @@ CA MUST Reject different Public Key in Alt CertReq
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}   rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate,badRequest
+
+
+*** Keywords ***
+Set Up Extra Issuing Logic Test Suite
+    [Documentation]     Set up the test suite by generating a key and a certificate for the CA.
+    [Tags]    setup
+    Set Up Test Suite
+    ${x25519_cert}=   May Load Cert   ${CA_X25519_CERT}
+    VAR    ${CA_X25519_CERT}=    ${x25519_cert}  scope=Global
+    ${x448_cert}=   May Load Cert   ${CA_X448_CERT}
+    VAR    ${CA_X448_CERT}=    ${x448_cert}  scope=Global
+    ${ecc_cert}=   May Load Cert   ${CA_ECC_CERT}
+    VAR    ${CA_ECC_CERT}=    ${ecc_cert}   scope=Global
+    ${hybrid_kem_cert}=   May Load Cert   ${CA_HYBRID_KEM_CERT}
+    VAR    ${CA_HYBRID_KEM_CERT}=    ${hybrid_kem_cert}   scope=Global
+    ${kem_cert}=   May Load Cert   ${CA_KEM_CERT}
+    VAR    ${CA_KEM_CERT}=    ${kem_cert}   scope=Global
+
+Build Encrypted Key Request
+    [Documentation]    Build an request with an encrypted key as POPO.
+    [Tags]     popo  encryptedKey
+    [Arguments]    ${key}   ${ca_cert}   ${cmp_protection}   ${ecc_key}=${None}   &{args}
+    ${cm}=   Get Next Common Name
+    ${sender}=   Get From Dictionary    ${args}   sender   default=${cm}
+    ${for_agreement}=   Get From Dictionary    ${args}   for_agreement   default=True
+    ${use_string}=   Get From Dictionary    ${args}   use_string   default=False
+    ${enc_key_id}=   Prepare EncKeyWithID    ${key}  sender=${sender}   use_string=${use_string}
+    ${popo}=   Prepare EncryptedKey For POPO    ${enc_key_id}   ${None}   ${ca_cert}
+    ...        for_agreement=${for_agreement}   cmp_protection_cert=${cmp_protection}
+    ...        private_key=${key}   private_key=${ecc_key}
+    ${ir}=   Build Ir From Key    ${key}    common_name=${cm}   popo=${popo}
+    ...              recipient=${RECIPIENT}   exclude_fields=sender,senderKID
+    RETURN   ${ir}

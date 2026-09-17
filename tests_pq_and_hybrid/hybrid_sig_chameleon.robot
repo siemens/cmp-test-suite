@@ -52,15 +52,15 @@ CA MUST Issue a valid Chameleon Cert
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
     ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
-    VAR    ${extracted_delta_cert}    ${response["extraCerts"][1]}
+    VAR    ${extracted_delta_cert}=    ${response["extraCerts"][1]}
     ${der_delta}=   Encode To Der    ${delta_cert}
     ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
     Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
     ...                be the same as the extracted delta certificate.
-    VAR   ${CHAMELEON_CERT}    ${cert}      scope=Global
-    VAR   ${CHAMELEON_KEY}    ${trad_key}   scope=Global
-    VAR   ${CHAMELEON_DELTA_CERT}    ${delta_cert}   scope=Global
-    VAR   ${CHAMELEON_DELTA_KEY}    ${pq_key}   scope=Global
+    VAR   ${CHAMELEON_CERT}=    ${cert}      scope=Global
+    VAR   ${CHAMELEON_KEY}=    ${trad_key}   scope=Global
+    VAR   ${CHAMELEON_DELTA_CERT}=    ${delta_cert}   scope=Global
+    VAR   ${CHAMELEON_DELTA_KEY}=    ${pq_key}   scope=Global
 
 CA MUST Detect Invalid Secondary POP in Paired CSR
     [Documentation]    According to chameleon-certs-05 section 5.2, a receiver must check that the
@@ -261,6 +261,7 @@ Client MUST Check that the Chameleon Certificate is Valid
 ###########################
 # PQ STFL Chameleon Tests
 ###########################
+
 CA CAN Issue a valid Base STFL Chameleon Cert
     [Documentation]    According to chameleon-certs-05 section 5, is a valid paired CSR send.
     ...                The CA should issue a valid chameleon certificate. We send a paired CSR,
@@ -280,7 +281,7 @@ CA CAN Issue a valid Base STFL Chameleon Cert
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
     ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
-    VAR    ${extracted_delta_cert}    ${response["extraCerts"][1]}
+    VAR    ${extracted_delta_cert}=    ${response["extraCerts"][1]}
     ${der_delta}=   Encode To Der    ${delta_cert}
     ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
     Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
@@ -306,7 +307,7 @@ CA CAN Issue a valid Delta STFL Chameleon Cert
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
     ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
-    VAR    ${extracted_delta_cert}    ${response["extraCerts"][1]}
+    VAR    ${extracted_delta_cert}=    ${response["extraCerts"][1]}
     ${der_delta}=   Encode To Der    ${delta_cert}
     ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
     Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
@@ -328,7 +329,7 @@ CA MUST Detect Already Used Base XMSS Key
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
     ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
-    VAR    ${extracted_delta_cert}    ${response["extraCerts"][1]}
+    VAR    ${extracted_delta_cert}=    ${response["extraCerts"][1]}
     ${der_delta}=   Encode To Der    ${delta_cert}
     ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
     Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
@@ -360,7 +361,7 @@ CA MUST Detect Already Used Delta XMSS Key
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
     ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
-    VAR    ${extracted_delta_cert}    ${response["extraCerts"][1]}
+    VAR    ${extracted_delta_cert}=    ${response["extraCerts"][1]}
     ${der_delta}=   Encode To Der    ${delta_cert}
     ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
     Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should

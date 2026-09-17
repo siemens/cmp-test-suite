@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation       Tests specifically for the lightweight CMP profile
 
-Resource            ../config/${environment}.robot
+Resource            ../config/${ENVIRONMENT}.resource
 Resource            ../resources/keywords.resource
 Library             Collections
 Library             OperatingSystem
@@ -25,691 +26,10 @@ Test Tags    rfc9483-validation  rfc9483-header  verbose-tests  verbose-pkiheade
 *** Variables ***
 ${RE_USE_RR}    False
 ${RE_USE_KUR}    False
-${RE_USE_P10cr}   False
+${RE_USE_P10CR}   False
 ${RE_USE_CCR}    False
 ${RE_USE_IR}    False
 ${RE_USE_CR}    False
-
-
-*** Keywords ***
-Set Up LWCMP
-    [Documentation]    Set up the test environment for LwCMP tests
-    Set Up Test Suite
-    ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${OTHER_TRUSTED_PKI_KEY}
-    IF  ${is_file}
-        ${der_cert}=    Load And Decode PEM File    ${OTHER_TRUSTED_PKI_CERT}
-        ${cert}=   Parse Certificate    ${der_cert}
-        ${key}=    Load Private Key From File   ${OTHER_TRUSTED_PKI_KEY}
-        VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global
-        VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global
-    END
-    Set Up Test Suite
-    VAR   ${INNER_CERT}    ${ISSUED_CERT}    scope=Global
-    VAR   ${INNER_KEY}    ${ISSUED_KEY}    scope=Global
-    IF  '${RA_CERT_CHAIN_PATH}' == '${None}'
-        ${cert_chain}=   Build Cert Chain From Dir    ${OTHER_TRUSTED_PKI_CERT}   ${RA_CERT_CHAIN_DIR}
-    ELSE
-        ${cert_chain}=   Load Certificate Chain     ${RA_CERT_CHAIN_PATH}
-    END
-    VAR   ${RA_CERT_CHAIN}    ${cert_chain}    scope=Global
-    TRY
-        Set Up CRR Test Cases
-    EXCEPT
-        Log    Failed to setup the CCR required certificate and signing key.
-    END
-
-Default Build Inner IR Message
-    [Documentation]    Build an inner IR message with the default signature protection
-    [Arguments]    &{params}
-    ${cert_template}   ${key}=    Generate CertTemplate For Testing
-    ${ir}=    Build Ir From Key  ${key}  cert_template=${cert_template}
-    ...       recipient=${RECIPIENT}   &{params}
-    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
-    IF  ${use_mac}
-        ${prot_body}=    Protect With MAC    ${ir}   &{params}
-        RETURN    ${protected_ir}
-    END
-
-    ${ir}=    May Patch Message For Bad SIG Sender Or SenderKID  ${ir}   ${INNER_CERT}   &{params}
-    ${protected_ir}=    Protect PKIMessage    ${ir}    signature
-    ...                 private_key=${INNER_KEY}    cert=${INNER_CERT}   &{params}
-    RETURN    ${protected_ir}
-
-Protect With Trusted PKI
-    [Documentation]    Protect a PKIMessage with a trusted PKI
-    [Arguments]    ${pki_message}   &{params}
-    ${pki_message}=  May Patch Message For Bad SIG Sender Or SenderKID  ${pki_message}   ${RA_CERT_CHAIN}[0]   &{params}
-    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
-    IF  ${use_mac}
-        ${prot_msg}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
-        ...                 password=${PRESHARED_SECRET}   bad_message_check=True
-        RETURN    ${prot_msg}
-    END
-    ${prot_msg}=    Protect PKIMessage    ${pki_message}    signature
-    ...                 private_key=${OTHER_TRUSTED_PKI_KEY}    cert_chain=${RA_CERT_CHAIN}
-    ...                 &{params}
-    RETURN    ${prot_msg}
-
-Protect With Trusted CA
-    [Documentation]    Protect a PKIMessage with a trusted CA.
-    [Arguments]    ${pki_message}   &{params}
-    ${pki_message}=  May Patch Message For Bad SIG Sender Or SenderKID  ${pki_message}   ${RA_CERT_CHAIN}[0]   &{params}
-    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
-    IF  ${use_mac}
-        ${prot_msg}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
-        ...                 password=${PRESHARED_SECRET}   bad_message_check=True
-        RETURN    ${prot_msg}
-    END
-    ${prot_msg}=    Protect PKIMessage    ${pki_message}    signature
-    ...                 private_key=${TRUSTED_CA_KEY_OBJ}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
-    ...                 &{params}
-    RETURN    ${prot_msg}
-
-Build Fresh Inner Body
-    [Documentation]    Build a fresh inner body with the default signature protection
-    [Arguments]    ${inner_name}   &{params}
-    IF  '${inner_name}' == 'ir'
-        ${cert_template}   ${key}=    Generate CertTemplate For Testing
-        ${ir}=   Build Cr From Key    ${key}   cert_template=${cert_template}
-        ...             recipient=${RECIPIENT}   &{params}
-        ${protected}=    Default Protect For Build Body    ${ir}   &{params}
-    ELSE IF   '${inner_name}' == 'cr'
-        ${cert_template}   ${key}=    Generate CertTemplate For Testing
-        ${ir}=   Build Cr From Key    ${key}   cert_template=${cert_template}
-        ...             recipient=${RECIPIENT}   &{params}
-        ${protected}=    Default Protect For Build Body    ${ir}   &{params}
-    ELSE IF   '${inner_name}' == 'kur'
-        ${cert}   ${key}=    Issue New Cert For Testing
-        ${cert_template}   ${new_key}=    Generate CertTemplate For Testing
-        ${ir}=    Build Key Update Request   ${new_key}  cert_template=${cert_template}
-        ...       recipient=${RECIPIENT}   &{params}
-        ${protected}=    Default Protect For Build Body RR OR KUR   ${ir}   ${cert}   ${key}   &{params}
-    ELSE IF   '${inner_name}' == 'p10cr'
-        ${cm}=  Get Next Common Name
-        ${key}=  Generate Default Key
-        ${ir}=   Build P10cr From Key   ${key}   recipient=${RECIPIENT}   common_name=${cm}
-        ...             &{params}
-        ${protected}=    Default Protect For Build Body    ${ir}   &{params}
-    ELSE IF   '${inner_name}' == 'ccr'
-        ${cert_template}   ${key}=    Generate CCR CertTemplate For Testing
-        ${ir}=   Build Ccr From Key     ${key}   cert_template=${cert_template}
-        ...             recipient=${RECIPIENT}   &{params}
-        ${protected}=    Protect With Trusted CA     ${ir}   &{params}
-    ELSE
-        Fail    Unknown inner name: ${inner_name}
-    END
-    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
-    IF  ${use_mac}
-        ${protected}=    Protect With MAC    ${protected}   &{params}
-    END
-    ${set_mac_alg}=   Get From Dictionary    ${params}   set_mac_algorithm  ${False}
-    IF  ${set_mac_alg}
-        ${protected}=  Patch ProtectionAlg    ${protected}    protection=${DEFAULT_MAC_ALGORITHM}
-    END
-    RETURN    ${protected}
-
-Build Added Protection Body Inner
-    [Documentation]    Build a PKIMessage with added protection
-    [Arguments]    ${name}   ${exclude_fields}   &{params}
-    VAR    ${empty_data}
-    ${inner_name}=   Replace String    ${name}    added-protection-inner-   ${empty_data}
-    ${protected_ir}=    Build Fresh Inner Body  ${inner_name}   exclude_fields=${exclude_fields}   &{params}
-    ${nested}=    Build Nested PKIMessage
-    ...    recipient=${RECIPIENT}
-    ...    other_messages=${protected_ir}
-    ...    for_added_protection=True
-    ${prot_body}=    Protect With Trusted PKI   ${nested}
-    RETURN    ${prot_body}
-
-Build Added Protection Body
-    [Documentation]    Build a PKIMessage with added protection
-    [Arguments]    ${exclude_fields}   &{params}
-    ${protected_ir}=    Default Build Inner IR Message
-    ${nested}=    Build Nested PKIMessage
-    ...    recipient=${RECIPIENT}
-    ...    other_messages=${protected_ir}
-    ...    for_added_protection=True
-    ...    exclude_fields=${exclude_fields}
-    ...    &{params}
-    ${prot_body}=    Protect With Trusted PKI   ${nested}   &{params}
-    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
-    IF   ${without_cert_chain}
-        ${prot_body}=  Patch For Without CertChain    ${prot_body}  ${OTHER_TRUSTED_PKI_CERT}
-    END
-    RETURN    ${prot_body}
-
-Build Batch Body Inner
-    [Documentation]    Generate a unprotected nested PKIMessage with the given sender nonces and ids.
-    ...
-    ...            Returns:
-    ...             - a nested PKIMessage with the IR messages (unprotected or protected).
-    [Tags]    loop    nested
-    [Arguments]    ${name}   ${exclude_fields}   &{params}
-    ${nonces}=    Generate Unique Byte Values    length=4
-    ${ids}=    Generate Unique Byte Values    length=4
-    VAR   @{protected_irs}
-    FOR    ${i}    IN RANGE    2
-        ${protected_ir}=    Default Build Inner IR Message    transaction_id=${ids}[${i}]
-        ...                 sender_nonce=${nonces}[${i}]
-        Append To List    ${protected_irs}    ${protected_ir}
-    END
-    # To ensure that this test always works, we need to set the sender nonce
-    # and transaction id, which are now unique for each message.
-    ${tx_id}=   Get From Dictionary    ${params}   transaction_id   ${ids}[2]
-    ${sender_nonce}=   Get From Dictionary    ${params}   sender_nonce   ${nonces}[2]
-    Set To Dictionary    ${params}   transaction_id=${tx_id}
-    Set To Dictionary    ${params}   sender_nonce=${sender_nonce}
-    VAR    ${empty_data}
-    ${inner_name}=   Replace String    ${name}    batch_inner_   ${empty_data}
-    ${prot_ir3}=    Build Fresh Inner Body  ${inner_name}   exclude_fields=${exclude_fields}   &{params}
-    Append To List    ${protected_irs}   ${prot_ir3}
-    ${nested}=  Build Nested PKIMessage
-    ...    recipient=${RECIPIENT}
-    ...    other_messages=${protected_irs}
-    ...    sender_nonce=${nonces}[3]
-    ...    transaction_id=${ids}[3]
-    ...    exclude_fields=sender,senderKID
-    ${prot_body}=    Protect With Trusted PKI   ${nested}
-    RETURN   ${prot_body}
-
-Build Batch Body
-    [Documentation]    Generate a unprotected nested PKIMessage with the given sender nonces and ids.
-    ...
-    ...            Returns:
-    ...             - a nested PKIMessage with the IR messages (unprotected or protected).
-    [Tags]    loop    nested
-    [Arguments]    ${exclude_fields}   &{params}
-    ${nonces}=    Generate Unique Byte Values    length=4
-    ${ids}=    Generate Unique Byte Values    length=4
-    VAR   @{protected_irs}
-    FOR    ${i}    IN RANGE    3
-        ${protected_ir}=    Default Build Inner IR Message    transaction_id=${ids}[${i}]
-        ...                 sender_nonce=${nonces}[${i}]
-        Append To List    ${protected_irs}    ${protected_ir}
-    END
-    # To ensure that this test always works, we need to set the sender nonce
-    # and transaction id, which are now unique for each message.
-    ${tx_id}=   Get From Dictionary    ${params}   transaction_id   ${ids}[3]
-    ${sender_nonce}=   Get From Dictionary    ${params}   sender_nonce   ${nonces}[3]
-    Set To Dictionary    ${params}   transaction_id=${tx_id}
-    Set To Dictionary    ${params}   sender_nonce=${sender_nonce}
-    ${nested}=  Build Nested PKIMessage
-    ...    recipient=${RECIPIENT}
-    ...    other_messages=${protected_irs}
-    ...    exclude_fields=${exclude_fields}
-    ...    &{params}
-    ${prot_body}=    Protect With Trusted PKI   ${nested}   &{params}
-    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
-    IF   ${without_cert_chain}
-        ${prot_body}=  Patch For Without CertChain    ${prot_body}  ${OTHER_TRUSTED_PKI_CERT}
-    END
-    RETURN   ${prot_body}
-
-Patch For Without CertChain
-    [Documentation]    Patch the PKIMessage with the without cert chain
-    [Arguments]    ${body}   ${cert}
-    VAR   @{certs}   ${cert}
-    ${body}=   Patch ExtraCerts    ${body}   ${certs}
-    RETURN   ${body}
-
-May Patch Message For Bad SIG Sender Or SenderKID
-    [Documentation]    Patch the PKIMessage for a bad sender or senderKID
-    [Arguments]    ${body}   ${cert}   &{params}
-    ${bad_ski}=   Get From Dictionary    ${params}   bad_ski  ${False}
-    ${bad_sender}=   Get From Dictionary    ${params}   bad_sender  ${False}
-    ${use_issuer}=   Get From Dictionary    ${params}   use_issuer  ${False}
-    IF  ${bad_ski}
-        ${body}=  Patch SenderKID    ${body}    ${cert}   negative=True
-        ${body}=  Patch Sender    ${body}    ${cert}   subject=True
-    ELSE IF   ${use_issuer}
-        ${body}=  Patch Sender    ${body}    ${cert}   subject=False
-        ${body}=  Patch SenderKID    ${body}    ${cert}
-    ELSE IF   ${bad_sender}
-        ${sender}=  Modify Common Name Cert    ${cert}  False
-        ${body}=  Patch Sender    ${body}   sender_name=${sender}
-        ${body}=  Patch SenderKID    ${body}    ${cert}
-    END
-    RETURN   ${body}
-
-Protect With MAC
-    [Documentation]    Protect a PKIMessage with a MAC algorithm.
-    [Arguments]    ${pki_message}   &{params}
-    ${bad_sender_kid}=  Get From Dictionary    ${params}   bad_sender_kid  ${False}
-    ${bad_message_check}=  Get From Dictionary    ${params}   bad_message_check  ${False}
-    IF  ${bad_sender_kid}
-        ${sender}=   Get From Dictionary    ${params}   sender
-        ${pki_message}=  Patch SenderKID    ${pki_message}    ${sender}   negative=True
-    ELSE
-        ${sender}=   Get From Dictionary    ${params}   sender
-        ${pki_message}=  Patch SenderKID    ${pki_message}    ${ISSUED_CERT}
-    END
-    ${prot_body}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
-    ...              password=${PRESHARED_SECRET}   bad_message_check=${bad_message_check}
-    RETURN    ${prot_body}
-
-Default Protect For Build Body
-    [Documentation]    Default protection for a PKIMessage body.
-    [Arguments]    ${body}   &{params}
-    ${exclude_protection}=   Get From Dictionary    ${params}   exclude_protection  ${False}
-    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
-    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
-    ${set_mac_alg}=   Get From Dictionary    ${params}   set_mac_algorithm  ${False}
-    IF  ${set_mac_alg}
-        ${body}=  Patch ProtectionAlg    ${body}    protection=${DEFAULT_MAC_ALGORITHM}
-        RETURN   ${body}
-    END
-    IF  ${exclude_protection}
-        RETURN   ${body}
-    END
-    IF  ${use_mac}
-        ${prot_body}=   Protect With MAC    ${body}   &{params}
-        RETURN   ${prot_body}
-    END
-    ${body}=  May Patch Message For Bad SIG Sender Or SenderKID  ${body}   ${ISSUED_CERT}   &{params}
-    ${prot_body}=   Default Protect PKIMessage    ${body}   &{params}
-    IF   ${without_cert_chain}
-        ${prot_body}=  Patch For Without CertChain    ${prot_body}  ${ISSUED_CERT}
-    END
-    RETURN   ${prot_body}
-
-Default Protect For Build Body RR OR KUR
-    [Documentation]    Default protection for a PKIMessage body.
-    [Arguments]    ${body}   ${cert}   ${sign_key}   &{params}
-    ${exclude_protection}=   Get From Dictionary    ${params}   exclude_protection  ${False}
-    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
-    IF  ${exclude_protection}
-        RETURN   ${body}
-    END
-    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
-    IF  ${use_mac}
-        ${prot_body}=   Protect With MAC    ${body}   &{params}
-        RETURN   ${prot_body}
-    END
-    ${mod_body}=   May Patch Message For Bad SIG Sender Or SenderKID  ${body}   ${cert}   &{params}
-    ${do_patch}=   Get From Dictionary    ${params}   do_patch  ${True}
-    ${prot_body}=   Protect PKIMessage  ${mod_body}   signature
-    ...                 private_key=${sign_key}  cert=${cert}   &{params}
-    IF   ${without_cert_chain}
-        ${prot_body}=  Patch For Without CertChain    ${prot_body}  ${cert}
-    END
-    RETURN   ${prot_body}
-
-Build Body By Name
-    [Documentation]    Build a body by name
-    [Arguments]    ${body_name}  ${exclude_fields}   &{params}
-    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
-    ${exclude_protection}=   Get From Dictionary    ${params}   exclude_protection  ${False}
-    IF   '${body_name}' == "cr"
-        IF   '${RE_USE_CR}' == '${False}'
-            ${cert_template}   ${key}=   Generate CertTemplate For Testing
-            VAR   ${CR_TEMPLATE}    ${cert_template}    scope=Suite
-            VAR   ${CR_KEY}    ${key}    scope=Suite
-            VAR   ${RE_USE_CR}    False    scope=Suite
-        END
-        ${body}=   Build Cr From Key    ${CR_KEY}   cert_template=${CR_TEMPLATE}
-        ...             exclude_fields=${exclude_fields}   recipient=${RECIPIENT}
-        ...             &{params}
-        ${prot_body}=    Default Protect For Build Body    ${body}   &{params}
-    ELSE IF    '${body_name}' == "ir"
-        IF   '${RE_USE_IR}' == '${False}'
-            ${cert_template}   ${key}=   Generate CertTemplate For Testing
-            VAR   ${IR_TEMPLATE}    ${cert_template}    scope=Suite
-            VAR   ${IR_KEY}    ${key}    scope=Suite
-            VAR   ${RE_USE_IR}    False    scope=Suite
-        END
-        ${body}=   Build Ir From Key    ${IR_KEY}   cert_template=${IR_TEMPLATE}
-        ...             exclude_fields=${exclude_fields}   recipient=${RECIPIENT}
-        ...             &{params}
-        ${prot_body}=    Default Protect For Build Body    ${body}   &{params}
-    ELSE IF    '${body_name}' == "ccr"
-        IF   '${RE_USE_CCR}' == '${False}'
-            ${cert_template}   ${key}=   Generate CCR CertTemplate For Testing
-            VAR   ${CCR_TEMPLATE}    ${cert_template}    scope=Suite
-            VAR   ${CCR_KEY}    ${key}    scope=Suite
-            VAR   ${RE_USE_CCR}    False    scope=Suite
-        END
-        ${body}=   Build Ccr From Key    ${CCR_KEY}   cert_template=${CCR_TEMPLATE}
-        ...             exclude_fields=${exclude_fields}   recipient=${RECIPIENT}
-        ...             &{params}
-        IF   ${exclude_protection}
-            RETURN    ${body}
-        END
-        ${prot_body}=    Protect With Trusted CA    ${body}  &{params}
-        IF   ${without_cert_chain}
-            ${body}=  Patch For Without CertChain    ${body}  ${TRUSTED_CA_CERT_CHAIN}[0]
-        END
-    ELSE IF    '${body_name}' == "kur"
-         IF   '${RE_USE_KUR}' == '${False}'
-            ${cert}   ${key}=   Issue New Cert For Testing
-            VAR   ${KUR_CERT}    ${cert}    scope=Suite
-            VAR   ${KUR_KEY}    ${key}    scope=Suite
-            ${cert_template}   ${new_key}=   Generate CertTemplate For Testing
-            VAR   ${KUR_TEMPLATE}    ${cert_template}    scope=Suite
-            VAR   ${KUR_NEW_KEY}    ${new_key}    scope=Suite
-            VAR   ${RE_USE_KUR}    False    scope=Suite
-        END
-        ${body}=   Build Key Update Request   ${KUR_NEW_KEY}   cert_template=${KUR_TEMPLATE}
-        ...        exclude_fields=${exclude_fields}   recipient=${RECIPIENT}
-        ...        &{params}
-        ${prot_body}=   Default Protect For Build Body RR OR KUR    ${body}   ${KUR_CERT}   ${KUR_KEY}   &{params}
-    ELSE IF    '${body_name}' == 'p10cr'
-        IF  '${RE_USE_P10CR}' == '${False}'
-            ${csr}   ${_}=   Generate CSR For Testing
-            VAR   ${P10CR_CSR}    ${csr}    scope=Suite
-            VAR   ${RE_USE_P10cr}    False    scope=Suite
-        END
-        ${bad_pop}=   Get From Dictionary    ${params}   bad_pop  ${False}
-        IF  ${bad_pop}
-            ${key}=  Generate Default Key
-            ${cm}=  Get Next Common Name
-            ${body}=   Build P10Cr From Key   ${key}   recipient=${RECIPIENT}  common_name=${cm}
-            ...        exclude_fields=${exclude_fields}   &{params}
-        ELSE
-            ${body}=   Build P10Cr From CSR   ${P10CR_CSR}   recipient=${RECIPIENT}
-             ...        exclude_fields=${exclude_fields}   &{params}
-        END
-        ${prot_body}=    Default Protect For Build Body    ${body}   &{params}
-    ELSE IF    '${body_name}' == 'genm'
-        ${body}    Build CMP General Message   current_crl    recipient=${RECIPIENT}
-        ...        exclude_fields=${exclude_fields}   &{params}
-        ${prot_body}=    Default Protect For Build Body    ${body}   &{params}
-    ELSE IF    '${body_name}' == 'rr'
-        # Used to save resources by reusing the RR cert and key,
-        # if possible.
-        IF   '${RE_USE_RR}' == '${False}'
-            ${cert}   ${key}=   Issue New Cert For Testing
-            VAR   ${RR_CERT}    ${cert}    scope=Suite
-            VAR   ${RR_KEY}    ${key}    scope=Suite
-            VAR   ${RE_USE_RR}    False    scope=Suite
-        END
-        ${body}=    Build CMP Revoke Request   ${RR_CERT}   recipient=${RECIPIENT}
-        ...        exclude_fields=${exclude_fields}   &{params}
-        ${prot_body}=   Default Protect For Build Body RR OR KUR    ${body}   ${RR_CERT}   ${RR_KEY}   &{params}
-    ELSE IF    '${body_name}' == 'added-protection'
-        ${prot_body}=   Build Added Protection Body   ${exclude_fields}   &{params}
-    ELSE IF    'added-protection-inner' in '${body_name}'
-        ${prot_body}=   Build Added Protection Body Inner   ${body_name}    ${exclude_fields}   &{params}
-    ELSE IF    '${body_name}' == 'batch'
-        ${prot_body}=   Build Batch Body     ${exclude_fields}   &{params}
-    ELSE IF    'batch_inner' in '${body_name}'
-        ${prot_body}=   Build Batch Body Inner    ${body_name}    ${exclude_fields}   &{params}
-    ELSE
-        Fail    Unknown body name: ${body_name}
-    END
-    RETURN    ${prot_body}
-
-Check For Resource Minimizing
-    [Documentation]    Check if created structures can be reused, for the next test.
-    [Arguments]    ${body_name}
-    IF  '${body_name}' == 'rr'
-        VAR    ${RE_USE_RR}   ${True}    scope=Suite
-    ELSE IF   '${body_name}' == 'kur'
-        VAR    ${RE_USE_KUR}   ${True}    scope=Suite
-    ELSE IF   '${body_name}' == 'p10cr'
-        VAR    ${RE_USE_P10cr}   ${True}    scope=Suite
-    ELSE IF   '${body_name}' == 'ir'
-        VAR    ${RE_USE_IR}   ${True}    scope=Suite
-    ELSE IF   '${body_name}' == 'cr'
-        VAR    ${RE_USE_CR}   ${True}    scope=Suite
-    ELSE IF   '${body_name}' == 'ccr'
-        VAR    ${RE_USE_CCR}   ${True}    scope=Suite
-    END
-
-Set Resource Minimizing To False
-    [Documentation]    Set the resource minimizing to False.
-    [Arguments]    ${body_name}
-    IF  '${body_name}' == 'rr'
-        VAR    ${RE_USE_RR}   ${False}    scope=Suite
-    ELSE IF   '${body_name}' == 'kur'
-        VAR    ${RE_USE_KUR}   ${False}    scope=Suite
-    ELSE IF   '${body_name}' == 'p10cr'
-        VAR    ${RE_USE_P10cr}   ${False}    scope=Suite
-    ELSE IF   '${body_name}' == 'ir'
-        VAR    ${RE_USE_IR}   ${False}    scope=Suite
-    ELSE IF   '${body_name}' == 'cr'
-        VAR    ${RE_USE_CR}   ${False}    scope=Suite
-    ELSE IF   '${body_name}' == 'ccr'
-        VAR    ${RE_USE_CCR}   ${False}    scope=Suite
-    END
-
-Validate Negative Response
-    [Documentation]    Validate negative test cases
-    [Arguments]    ${response}   ${body_name}    ${failinfo}   ${exclusive}=True
-    PKIStatus Must Be    ${response}   rejection
-    VAR    ${data}   nested, inner_batch, added-protection, genm
-    IF  '${body_name}' in '${data}'
-        PKIMessage Body Type Must Be    ${response}   error
-    END
-    Check For Resource Minimizing    ${body_name}
-    PKIStatusInfo Failinfo Bit Must Be    ${response}   ${failinfo}   ${exclusive}
-
-Build Without senderNonce
-    [Documentation]    Build requests with bad sender nonce
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   senderNonce,sender,senderKID
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badSenderNonce   True
-
-Build With Too Short senderNonce
-    [Documentation]    Build requests with bad sender nonce
-    [Arguments]    ${body_name}
-    ${nonces}=   Generate Unique Byte Values    1    8
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   sender_nonce=${nonces[0]}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badSenderNonce   True
-
-Build With Too Long senderNonce
-    [Documentation]    Build requests with bad sender nonce
-    [Arguments]    ${body_name}
-    ${nonces}=   Generate Unique Byte Values    1    100
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   sender_nonce=${nonces[0]}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badSenderNonce   True
-
-Build Without TransactionID
-    [Documentation]    Build requests with bad transaction ID
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   transactionID,sender,senderKID
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badDataFormat   True
-
-Build With Too Short TransactionID
-    [Documentation]    Build requests with bad transaction ID
-    [Arguments]    ${body_name}
-    ${nonces}=   Generate Unique Byte Values    1    8
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   transaction_id=${nonces[0]}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badRequest   True
-
-Build With Too Long TransactionID
-    [Documentation]    Build requests with bad transaction ID
-    [Arguments]    ${body_name}
-    ${nonces}=   Generate Unique Byte Values    1    100
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   transaction_id=${nonces[0]}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badRequest   True
-
-Build Without messageTime
-    [Documentation]    Build requests without a message time set.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   messageTime,sender,senderKID
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badTime   True
-
-Build With MessageTime In Future
-    [Documentation]    Build requests with a message time in the future.
-    [Arguments]    ${body_name}
-    ${message_time}=   Get Current Date   UTC   increment=5 hours
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID  message_time=${message_time}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badTime   True
-
-Build With MessageTime In Past
-    [Documentation]    Build requests with a message time in the past.
-    [Arguments]    ${body_name}
-    ${message_time}=   Get Current Date   UTC   increment=-5 hours
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   message_time=${message_time}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badTime   True
-
-Build With Sig Alg Without Protection
-    [Documentation]   Build requests with a protection algorithm without a protection value.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   sender=${SENDER}  exclude_protection=True
-    ${body}=  Patch ProtectionAlg    ${body}    protection=signature   private_key=${INNER_KEY}
-    ${response}=  Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build With MAC Alg Without Protection
-    [Documentation]   Build requests with a protection algorithm without a protection value.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   sender=${SENDER}   exclude_protection=True
-    ...       set_mac_algorithm=True
-    ${response}=  Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build With Protection Without Alg
-    [Documentation]    Build requests with a protection without an algorithm.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   exclude_protection=True
-    ${body}=  Modify PKIMessage Protection    ${body}
-    ${response}=  Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build With Bad Sig Protection
-    [Documentation]    Build requests with a protection algorithm without a protection value.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   bad_message_check=True
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build Without extraCerts
-    [Documentation]    Build requests without an extraCerts field
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   exclude_certs=True
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck,addInfoNotAvailable   False
-
-Build Without Cert Chain
-    [Documentation]    Build requests without a cert chain
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   exclude_certs=True
-    ...       without_cert_chain=True
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck,signerNotTrusted  False
-
-Build With recipNonce
-    [Documentation]    Build requests with a recipNonce set, which is not allowed.
-    [Arguments]    ${body_name}
-    ${nonces}=   Generate Unique Byte Values    1    16
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   recip_nonce=${nonces[0]}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badRecipientNonce   True
-
-Build With Bad Sig Sender
-    [Documentation]    Build requests with a bad sender for a signature protected PKIMessage.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_sender=True  do_patch=${False}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build With Bad Issuer As Sender
-    [Documentation]    Build requests with a bad issuer as sender.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   use_issuer=True  do_patch=${False}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build With Bad Sig SenderKID
-    [Documentation]    Build requests with a bad senderKID for a signature protected PKIMessage.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_ski=True  do_patch=${False}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build With Bad MAC Sender Choice
-    [Documentation]    Build requests with a bad sender choice for a MAC protected PKIMessage.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_mac_sender=True
-    ...       do_patch=${False}   use_mac=True   sender=${SENDER}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build With Bad MAC SenderKID
-    [Documentation]    Build requests with a bad senderKID for a MAC protected PKIMessage.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_sender_kid=True
-    ...       do_patch=${False}   use_mac=True   sender=${SENDER}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build Bad MAC Protected Message
-    [Documentation]    Build requests with a MAC protected PKIMessage, which is not allowed.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_message_check=True
-    ...       do_patch=${False}   use_mac=True   sender=${SENDER}   sender_kid=${SENDER}
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-
-Build Not Allowed MAC-Protected Message
-    [Documentation]    Build requests with a MAC protected PKIMessage, which is not allowed.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   ${None}   sender=${SENDER}
-    ...       do_patch=${False}    for_mac=True
-    ${protected}=    Default Protect With MAC    ${body}
-    ${response}=   Exchange PKIMessage    ${protected}
-    Validate Negative Response   ${response}   ${body_name}   wrongIntegrity   True
-
-Build Message For Positive Header Validation
-    [Documentation]    Build a message for header validation.
-    [Arguments]    ${body_name}
-    ${body}=  Build Body By Name    ${body_name}   sender,senderKID
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate PKIMessage Header    ${response}   ${body}   allow_failure_sender=${STRICT}
-    Validate Cmp Body Types    ${response}   ${body}   error=False
-    IF  'batch_inner' in '${body_name}'
-        ${inner_response}=   Get Inner PKIMessage    ${response}   2
-        ${inner_body}=   Get Inner PKIMessage    ${body}   2
-        Validate PKIMessage Header    ${inner_response}   ${inner_body}   allow_failure_sender=${STRICT}
-    END
-    IF  'added-protection' in '${body_name}'
-        ${inner_body}=   Get Inner PKIMessage    ${body}
-        Validate PKIMessage Header    ${response}   ${inner_body}   allow_failure_sender=${STRICT}
-    END
-    # Set the resource minimizing to False, so that the next
-    # structures does use a new fresh structure.
-    # So that not a similar CertRequest is used.
-    # Might cause the `badCertTemplate` error.
-    Set Resource Minimizing To False   ${body_name}
-
-Build Message For Negative Header Validation
-    [Documentation]    Build a message for negative header validation.
-    [Arguments]    ${body_name}
-    VAR   ${names}   genm, rr, batch, added-protection
-    IF  '${body_name}' in '${names}'
-        ${body}=  Build Body By Name    ${body_name}   sender,senderKID   bad_message_check=True
-    ELSE
-        ${body}=  Build Body By Name    ${body_name}   sender,senderKID   bad_pop=True
-    END
-    ${response}=   Exchange PKIMessage    ${body}
-    Validate PKIMessage Header    ${response}   ${body}   allow_failure_sender=${STRICT}
-    Validate Cmp Body Types    ${response}   ${body}
-    IF  '${body_name}' in '${names}'
-        Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
-    ELSE IF    'added-protection-inner' in '${body_name}'
-        VAR   ${empty_data}
-        ${inner_name}=   Replace String    ${body_name}    'added-protection-inner'   ${empty_data}
-        Validate Negative Response   ${response}   ${inner_name}   badPOP   True
-    ELSE IF   'batch_inner' in '${body_name}'
-        VAR   ${empty_data}
-        ${inner_name}=   Replace String    ${body_name}    batch_inner_   ${empty_data}
-        ${inner_body}=   Get Inner PKIMessage    ${body}    2
-        ${inner_response}=   Get Inner PKIMessage    ${response}    2
-        Validate Negative Response   ${inner_response}   ${inner_name}   badPOP   True
-        Validate PKIMessage Header    ${inner_response}   ${inner_body}   allow_failure_sender=${STRICT}
-    ELSE
-        Validate Negative Response   ${response}   ${body_name}   badPOP   True
-    END
 
 
 *** Test Cases ***
@@ -3210,3 +2530,678 @@ CA MUST Return For POS BATCH_INNER_CCR A Valid PKIHeader
      ...    Ref: RFC 9483, Section 3.1.
      [Tags]    positive    PKIHeader    nested    batch    ccr
      Build Message For Positive Header Validation    batch_inner_ccr
+
+
+*** Keywords ***
+Set Up LWCMP
+    [Documentation]    Set up the test environment for LwCMP tests
+    Set Up Test Suite
+    ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${OTHER_TRUSTED_PKI_KEY}
+    IF  ${is_file}
+        ${der_cert}=    Load And Decode PEM File    ${OTHER_TRUSTED_PKI_CERT}
+        ${cert}=   Parse Certificate    ${der_cert}
+        ${key}=    Load Private Key From File   ${OTHER_TRUSTED_PKI_KEY}
+        VAR    ${OTHER_TRUSTED_PKI_CERT}=    ${cert}    scope=Global
+        VAR    ${OTHER_TRUSTED_PKI_KEY}=    ${key}    scope=Global
+    END
+    Set Up Test Suite
+    VAR   ${INNER_CERT}=    ${ISSUED_CERT}    scope=Global
+    VAR   ${INNER_KEY}=    ${ISSUED_KEY}    scope=Global
+    IF  '${RA_CERT_CHAIN_PATH}' == '${None}'
+        ${cert_chain}=   Build Cert Chain From Dir    ${OTHER_TRUSTED_PKI_CERT}   ${RA_CERT_CHAIN_DIR}
+    ELSE
+        ${cert_chain}=   Load Certificate Chain     ${RA_CERT_CHAIN_PATH}
+    END
+    VAR   ${RA_CERT_CHAIN}=    ${cert_chain}    scope=Global
+    TRY
+        Set Up CRR Test Cases
+    EXCEPT
+        Log    Failed to setup the CCR required certificate and signing key.
+    END
+
+Default Build Inner IR Message
+    [Documentation]    Build an inner IR message with the default signature protection
+    [Arguments]    &{params}
+    ${cert_template}   ${key}=    Generate CertTemplate For Testing
+    ${ir}=    Build Ir From Key  ${key}  cert_template=${cert_template}
+    ...       recipient=${RECIPIENT}   &{params}
+    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
+    IF  ${use_mac}
+        # TODO(robocop VAR02): 'RETURN ${protected_ir}' below references an undefined variable
+        # (this branch assigns ${prot_body}); likely a typo. Needs investigation. Tracked separately.
+        ${prot_body}=    Protect With MAC    ${ir}   &{params}  # robocop: off=VAR02
+        RETURN    ${protected_ir}
+    END
+
+    ${ir}=    May Patch Message For Bad SIG Sender Or SenderKID  ${ir}   ${INNER_CERT}   &{params}
+    ${protected_ir}=    Protect PKIMessage    ${ir}    signature
+    ...                 private_key=${INNER_KEY}    cert=${INNER_CERT}   &{params}
+    RETURN    ${protected_ir}
+
+Protect With Trusted PKI
+    [Documentation]    Protect a PKIMessage with a trusted PKI
+    [Arguments]    ${pki_message}   &{params}
+    ${pki_message}=  May Patch Message For Bad SIG Sender Or SenderKID  ${pki_message}   ${RA_CERT_CHAIN}[0]   &{params}
+    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
+    IF  ${use_mac}
+        ${prot_msg}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
+        ...                 password=${PRESHARED_SECRET}   bad_message_check=True
+        RETURN    ${prot_msg}
+    END
+    ${prot_msg}=    Protect PKIMessage    ${pki_message}    signature
+    ...                 private_key=${OTHER_TRUSTED_PKI_KEY}    cert_chain=${RA_CERT_CHAIN}
+    ...                 &{params}
+    RETURN    ${prot_msg}
+
+Protect With Trusted CA
+    [Documentation]    Protect a PKIMessage with a trusted CA.
+    [Arguments]    ${pki_message}   &{params}
+    ${pki_message}=  May Patch Message For Bad SIG Sender Or SenderKID  ${pki_message}   ${RA_CERT_CHAIN}[0]   &{params}
+    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
+    IF  ${use_mac}
+        ${prot_msg}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
+        ...                 password=${PRESHARED_SECRET}   bad_message_check=True
+        RETURN    ${prot_msg}
+    END
+    ${prot_msg}=    Protect PKIMessage    ${pki_message}    signature
+    ...                 private_key=${TRUSTED_CA_KEY_OBJ}    cert_chain=${TRUSTED_CA_CERT_CHAIN}
+    ...                 &{params}
+    RETURN    ${prot_msg}
+
+Build Fresh Inner Body
+    [Documentation]    Build a fresh inner body with the default signature protection
+    [Arguments]    ${inner_name}   &{params}
+    IF  '${inner_name}' == 'ir'
+        ${cert_template}   ${key}=    Generate CertTemplate For Testing
+        ${ir}=   Build Cr From Key    ${key}   cert_template=${cert_template}
+        ...             recipient=${RECIPIENT}   &{params}
+        ${protected}=    Default Protect For Build Body    ${ir}   &{params}
+    ELSE IF   '${inner_name}' == 'cr'
+        ${cert_template}   ${key}=    Generate CertTemplate For Testing
+        ${ir}=   Build Cr From Key    ${key}   cert_template=${cert_template}
+        ...             recipient=${RECIPIENT}   &{params}
+        ${protected}=    Default Protect For Build Body    ${ir}   &{params}
+    ELSE IF   '${inner_name}' == 'kur'
+        ${cert}   ${key}=    Issue New Cert For Testing
+        ${cert_template}   ${new_key}=    Generate CertTemplate For Testing
+        ${ir}=    Build Key Update Request   ${new_key}  cert_template=${cert_template}
+        ...       recipient=${RECIPIENT}   &{params}
+        ${protected}=    Default Protect For Build Body RR OR KUR   ${ir}   ${cert}   ${key}   &{params}
+    ELSE IF   '${inner_name}' == 'p10cr'
+        ${cm}=  Get Next Common Name
+        ${key}=  Generate Default Key
+        ${ir}=   Build P10cr From Key   ${key}   recipient=${RECIPIENT}   common_name=${cm}
+        ...             &{params}
+        ${protected}=    Default Protect For Build Body    ${ir}   &{params}
+    ELSE IF   '${inner_name}' == 'ccr'
+        ${cert_template}   ${key}=    Generate CCR CertTemplate For Testing
+        ${ir}=   Build Ccr From Key     ${key}   cert_template=${cert_template}
+        ...             recipient=${RECIPIENT}   &{params}
+        ${protected}=    Protect With Trusted CA     ${ir}   &{params}
+    ELSE
+        Fail    Unknown inner name: ${inner_name}
+    END
+    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
+    IF  ${use_mac}
+        ${protected}=    Protect With MAC    ${protected}   &{params}
+    END
+    ${set_mac_alg}=   Get From Dictionary    ${params}   set_mac_algorithm  ${False}
+    IF  ${set_mac_alg}
+        ${protected}=  Patch ProtectionAlg    ${protected}    protection=${DEFAULT_MAC_ALGORITHM}
+    END
+    RETURN    ${protected}
+
+Build Added Protection Body Inner
+    [Documentation]    Build a PKIMessage with added protection
+    [Arguments]    ${name}   ${exclude_fields}   &{params}
+    VAR    ${empty_data}=    ${EMPTY}
+    ${inner_name}=   Replace String    ${name}    added-protection-inner-   ${empty_data}
+    ${protected_ir}=    Build Fresh Inner Body  ${inner_name}   exclude_fields=${exclude_fields}   &{params}
+    ${nested}=    Build Nested PKIMessage
+    ...    recipient=${RECIPIENT}
+    ...    other_messages=${protected_ir}
+    ...    for_added_protection=True
+    ${prot_body}=    Protect With Trusted PKI   ${nested}
+    RETURN    ${prot_body}
+
+Build Added Protection Body
+    [Documentation]    Build a PKIMessage with added protection
+    [Arguments]    ${exclude_fields}   &{params}
+    ${protected_ir}=    Default Build Inner IR Message
+    ${nested}=    Build Nested PKIMessage
+    ...    recipient=${RECIPIENT}
+    ...    other_messages=${protected_ir}
+    ...    for_added_protection=True
+    ...    exclude_fields=${exclude_fields}
+    ...    &{params}
+    ${prot_body}=    Protect With Trusted PKI   ${nested}   &{params}
+    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
+    IF   ${without_cert_chain}
+        ${prot_body}=  Patch For Without CertChain    ${prot_body}  ${OTHER_TRUSTED_PKI_CERT}
+    END
+    RETURN    ${prot_body}
+
+Build Batch Body Inner
+    [Documentation]    Generate a unprotected nested PKIMessage with the given sender nonces and ids.
+    ...
+    ...            Returns:
+    ...             - a nested PKIMessage with the IR messages (unprotected or protected).
+    [Tags]    loop    nested
+    [Arguments]    ${name}   ${exclude_fields}   &{params}
+    ${nonces}=    Generate Unique Byte Values    length=4
+    ${ids}=    Generate Unique Byte Values    length=4
+    VAR   @{protected_irs}=    @{EMPTY}
+    FOR    ${i}    IN RANGE    2
+        ${protected_ir}=    Default Build Inner IR Message    transaction_id=${ids}[${i}]
+        ...                 sender_nonce=${nonces}[${i}]
+        Append To List    ${protected_irs}    ${protected_ir}
+    END
+    # To ensure that this test always works, we need to set the sender nonce
+    # and transaction id, which are now unique for each message.
+    ${tx_id}=   Get From Dictionary    ${params}   transaction_id   ${ids}[2]
+    ${sender_nonce}=   Get From Dictionary    ${params}   sender_nonce   ${nonces}[2]
+    Set To Dictionary    ${params}   transaction_id=${tx_id}
+    Set To Dictionary    ${params}   sender_nonce=${sender_nonce}
+    VAR    ${empty_data}=    ${EMPTY}
+    ${inner_name}=   Replace String    ${name}    batch_inner_   ${empty_data}
+    ${prot_ir3}=    Build Fresh Inner Body  ${inner_name}   exclude_fields=${exclude_fields}   &{params}
+    Append To List    ${protected_irs}   ${prot_ir3}
+    ${nested}=  Build Nested PKIMessage
+    ...    recipient=${RECIPIENT}
+    ...    other_messages=${protected_irs}
+    ...    sender_nonce=${nonces}[3]
+    ...    transaction_id=${ids}[3]
+    ...    exclude_fields=sender,senderKID
+    ${prot_body}=    Protect With Trusted PKI   ${nested}
+    RETURN   ${prot_body}
+
+Build Batch Body
+    [Documentation]    Generate a unprotected nested PKIMessage with the given sender nonces and ids.
+    ...
+    ...            Returns:
+    ...             - a nested PKIMessage with the IR messages (unprotected or protected).
+    [Tags]    loop    nested
+    [Arguments]    ${exclude_fields}   &{params}
+    ${nonces}=    Generate Unique Byte Values    length=4
+    ${ids}=    Generate Unique Byte Values    length=4
+    VAR   @{protected_irs}=    @{EMPTY}
+    FOR    ${i}    IN RANGE    3
+        ${protected_ir}=    Default Build Inner IR Message    transaction_id=${ids}[${i}]
+        ...                 sender_nonce=${nonces}[${i}]
+        Append To List    ${protected_irs}    ${protected_ir}
+    END
+    # To ensure that this test always works, we need to set the sender nonce
+    # and transaction id, which are now unique for each message.
+    ${tx_id}=   Get From Dictionary    ${params}   transaction_id   ${ids}[3]
+    ${sender_nonce}=   Get From Dictionary    ${params}   sender_nonce   ${nonces}[3]
+    Set To Dictionary    ${params}   transaction_id=${tx_id}
+    Set To Dictionary    ${params}   sender_nonce=${sender_nonce}
+    ${nested}=  Build Nested PKIMessage
+    ...    recipient=${RECIPIENT}
+    ...    other_messages=${protected_irs}
+    ...    exclude_fields=${exclude_fields}
+    ...    &{params}
+    ${prot_body}=    Protect With Trusted PKI   ${nested}   &{params}
+    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
+    IF   ${without_cert_chain}
+        ${prot_body}=  Patch For Without CertChain    ${prot_body}  ${OTHER_TRUSTED_PKI_CERT}
+    END
+    RETURN   ${prot_body}
+
+Patch For Without CertChain
+    [Documentation]    Patch the PKIMessage with the without cert chain
+    [Arguments]    ${body}   ${cert}
+    VAR   @{certs}=   ${cert}
+    ${body}=   Patch ExtraCerts    ${body}   ${certs}
+    RETURN   ${body}
+
+May Patch Message For Bad SIG Sender Or SenderKID
+    [Documentation]    Patch the PKIMessage for a bad sender or senderKID
+    [Arguments]    ${body}   ${cert}   &{params}
+    ${bad_ski}=   Get From Dictionary    ${params}   bad_ski  ${False}
+    ${bad_sender}=   Get From Dictionary    ${params}   bad_sender  ${False}
+    ${use_issuer}=   Get From Dictionary    ${params}   use_issuer  ${False}
+    IF  ${bad_ski}
+        ${body}=  Patch SenderKID    ${body}    ${cert}   negative=True
+        ${body}=  Patch Sender    ${body}    ${cert}   subject=True
+    ELSE IF   ${use_issuer}
+        ${body}=  Patch Sender    ${body}    ${cert}   subject=False
+        ${body}=  Patch SenderKID    ${body}    ${cert}
+    ELSE IF   ${bad_sender}
+        ${sender}=  Modify Common Name Cert    ${cert}  False
+        ${body}=  Patch Sender    ${body}   sender_name=${sender}
+        ${body}=  Patch SenderKID    ${body}    ${cert}
+    END
+    RETURN   ${body}
+
+Protect With MAC
+    [Documentation]    Protect a PKIMessage with a MAC algorithm.
+    [Arguments]    ${pki_message}   &{params}
+    ${bad_sender_kid}=  Get From Dictionary    ${params}   bad_sender_kid  ${False}
+    ${bad_message_check}=  Get From Dictionary    ${params}   bad_message_check  ${False}
+    IF  ${bad_sender_kid}
+        ${sender}=   Get From Dictionary    ${params}   sender
+        ${pki_message}=  Patch SenderKID    ${pki_message}    ${sender}   negative=True
+    ELSE
+        ${pki_message}=  Patch SenderKID    ${pki_message}    ${ISSUED_CERT}
+    END
+    ${prot_body}=    Protect PKIMessage    ${pki_message}    ${DEFAULT_MAC_ALGORITHM}
+    ...              password=${PRESHARED_SECRET}   bad_message_check=${bad_message_check}
+    RETURN    ${prot_body}
+
+Default Protect For Build Body
+    [Documentation]    Default protection for a PKIMessage body.
+    [Arguments]    ${body}   &{params}
+    ${exclude_protection}=   Get From Dictionary    ${params}   exclude_protection  ${False}
+    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
+    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
+    ${set_mac_alg}=   Get From Dictionary    ${params}   set_mac_algorithm  ${False}
+    IF  ${set_mac_alg}
+        ${body}=  Patch ProtectionAlg    ${body}    protection=${DEFAULT_MAC_ALGORITHM}
+        RETURN   ${body}
+    END
+    IF    ${exclude_protection}    RETURN    ${body}
+    IF  ${use_mac}
+        ${prot_body}=   Protect With MAC    ${body}   &{params}
+        RETURN   ${prot_body}
+    END
+    ${body}=  May Patch Message For Bad SIG Sender Or SenderKID  ${body}   ${ISSUED_CERT}   &{params}
+    ${prot_body}=   Default Protect PKIMessage    ${body}   &{params}
+    IF   ${without_cert_chain}
+        ${prot_body}=  Patch For Without CertChain    ${prot_body}  ${ISSUED_CERT}
+    END
+    RETURN   ${prot_body}
+
+Default Protect For Build Body RR OR KUR
+    [Documentation]    Default protection for a PKIMessage body.
+    [Arguments]    ${body}   ${cert}   ${sign_key}   &{params}
+    ${exclude_protection}=   Get From Dictionary    ${params}   exclude_protection  ${False}
+    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
+    IF    ${exclude_protection}    RETURN    ${body}
+    ${use_mac}=   Get From Dictionary    ${params}   use_mac  ${False}
+    IF  ${use_mac}
+        ${prot_body}=   Protect With MAC    ${body}   &{params}
+        RETURN   ${prot_body}
+    END
+    ${mod_body}=   May Patch Message For Bad SIG Sender Or SenderKID  ${body}   ${cert}   &{params}
+    ${prot_body}=   Protect PKIMessage  ${mod_body}   signature
+    ...                 private_key=${sign_key}  cert=${cert}   &{params}
+    IF   ${without_cert_chain}
+        ${prot_body}=  Patch For Without CertChain    ${prot_body}  ${cert}
+    END
+    RETURN   ${prot_body}
+
+Build Body By Name
+    [Documentation]    Build a body by name
+    [Arguments]    ${body_name}  ${exclude_fields}   &{params}
+    ${without_cert_chain}=   Get From Dictionary    ${params}   without_cert_chain  ${False}
+    ${exclude_protection}=   Get From Dictionary    ${params}   exclude_protection  ${False}
+    IF   '${body_name}' == "cr"
+        IF   '${RE_USE_CR}' == '${False}'
+            ${cert_template}   ${key}=   Generate CertTemplate For Testing
+            VAR   ${CR_TEMPLATE}=    ${cert_template}    scope=Suite
+            VAR   ${CR_KEY}=    ${key}    scope=Suite
+            VAR   ${RE_USE_CR}=    False    scope=Suite
+        END
+        ${body}=   Build Cr From Key    ${CR_KEY}   cert_template=${CR_TEMPLATE}
+        ...             exclude_fields=${exclude_fields}   recipient=${RECIPIENT}
+        ...             &{params}
+        ${prot_body}=    Default Protect For Build Body    ${body}   &{params}
+    ELSE IF    '${body_name}' == "ir"
+        IF   '${RE_USE_IR}' == '${False}'
+            ${cert_template}   ${key}=   Generate CertTemplate For Testing
+            VAR   ${IR_TEMPLATE}=    ${cert_template}    scope=Suite
+            VAR   ${IR_KEY}=    ${key}    scope=Suite
+            VAR   ${RE_USE_IR}=    False    scope=Suite
+        END
+        ${body}=   Build Ir From Key    ${IR_KEY}   cert_template=${IR_TEMPLATE}
+        ...             exclude_fields=${exclude_fields}   recipient=${RECIPIENT}
+        ...             &{params}
+        ${prot_body}=    Default Protect For Build Body    ${body}   &{params}  # robocop: off=VAR03 -- false positive, each assignment is in a mutually exclusive ELSE IF branch
+    ELSE IF    '${body_name}' == "ccr"
+        IF   '${RE_USE_CCR}' == '${False}'
+            ${cert_template}   ${key}=   Generate CCR CertTemplate For Testing
+            VAR   ${CCR_TEMPLATE}=    ${cert_template}    scope=Suite
+            VAR   ${CCR_KEY}=    ${key}    scope=Suite
+            VAR   ${RE_USE_CCR}=    False    scope=Suite
+        END
+        ${body}=   Build Ccr From Key    ${CCR_KEY}   cert_template=${CCR_TEMPLATE}
+        ...             exclude_fields=${exclude_fields}   recipient=${RECIPIENT}
+        ...             &{params}
+        IF    ${exclude_protection}    RETURN    ${body}
+        ${prot_body}=    Protect With Trusted CA    ${body}  &{params}  # robocop: off=VAR03 -- false positive, each assignment is in a mutually exclusive ELSE IF branch
+        IF   ${without_cert_chain}
+            ${body}=  Patch For Without CertChain    ${body}  ${TRUSTED_CA_CERT_CHAIN}[0]
+        END
+    ELSE IF    '${body_name}' == "kur"
+        IF   '${RE_USE_KUR}' == '${False}'
+            ${cert}   ${key}=   Issue New Cert For Testing
+            VAR   ${KUR_CERT}=    ${cert}    scope=Suite
+            VAR   ${KUR_KEY}=    ${key}    scope=Suite
+            ${cert_template}   ${new_key}=   Generate CertTemplate For Testing
+            VAR   ${KUR_TEMPLATE}=    ${cert_template}    scope=Suite
+            VAR   ${KUR_NEW_KEY}=    ${new_key}    scope=Suite
+            VAR   ${RE_USE_KUR}=    False    scope=Suite
+        END
+        ${body}=   Build Key Update Request   ${KUR_NEW_KEY}   cert_template=${KUR_TEMPLATE}
+        ...        exclude_fields=${exclude_fields}   recipient=${RECIPIENT}
+        ...        &{params}
+        ${prot_body}=   Default Protect For Build Body RR OR KUR    ${body}   ${KUR_CERT}   ${KUR_KEY}   &{params}  # robocop: off=VAR03 -- false positive, each assignment is in a mutually exclusive ELSE IF branch
+    ELSE IF    '${body_name}' == 'p10cr'
+        IF  '${RE_USE_P10CR}' == '${False}'
+            ${csr}   ${_}=   Generate CSR For Testing
+            VAR   ${P10CR_CSR}=    ${csr}    scope=Suite
+            VAR   ${RE_USE_P10CR}=    False    scope=Suite
+        END
+        ${bad_pop}=   Get From Dictionary    ${params}   bad_pop  ${False}
+        IF  ${bad_pop}
+            ${key}=  Generate Default Key
+            ${cm}=  Get Next Common Name
+            ${body}=   Build P10Cr From Key   ${key}   recipient=${RECIPIENT}  common_name=${cm}
+            ...        exclude_fields=${exclude_fields}   &{params}
+        ELSE
+            ${body}=   Build P10Cr From CSR   ${P10CR_CSR}   recipient=${RECIPIENT}
+             ...        exclude_fields=${exclude_fields}   &{params}
+        END
+        ${prot_body}=    Default Protect For Build Body    ${body}   &{params}
+    ELSE IF    '${body_name}' == 'genm'
+        ${body}=    Build CMP General Message   current_crl    recipient=${RECIPIENT}
+        ...        exclude_fields=${exclude_fields}   &{params}
+        ${prot_body}=    Default Protect For Build Body    ${body}   &{params}  # robocop: off=VAR03 -- false positive, each assignment is in a mutually exclusive ELSE IF branch
+    ELSE IF    '${body_name}' == 'rr'
+        # Used to save resources by reusing the RR cert and key,
+        # if possible.
+        IF   '${RE_USE_RR}' == '${False}'
+            ${cert}   ${key}=   Issue New Cert For Testing
+            VAR   ${RR_CERT}=    ${cert}    scope=Suite
+            VAR   ${RR_KEY}=    ${key}    scope=Suite
+            VAR   ${RE_USE_RR}=    False    scope=Suite
+        END
+        ${body}=    Build CMP Revoke Request   ${RR_CERT}   recipient=${RECIPIENT}
+        ...        exclude_fields=${exclude_fields}   &{params}
+        ${prot_body}=   Default Protect For Build Body RR OR KUR    ${body}   ${RR_CERT}   ${RR_KEY}   &{params}
+    ELSE IF    '${body_name}' == 'added-protection'
+        ${prot_body}=   Build Added Protection Body   ${exclude_fields}   &{params}
+    ELSE IF    'added-protection-inner' in '${body_name}'
+        ${prot_body}=   Build Added Protection Body Inner   ${body_name}    ${exclude_fields}   &{params}
+    ELSE IF    '${body_name}' == 'batch'
+        ${prot_body}=   Build Batch Body     ${exclude_fields}   &{params}
+    ELSE IF    'batch_inner' in '${body_name}'
+        ${prot_body}=   Build Batch Body Inner    ${body_name}    ${exclude_fields}   &{params}
+    ELSE
+        Fail    Unknown body name: ${body_name}
+    END
+    RETURN    ${prot_body}
+
+Check For Resource Minimizing
+    [Documentation]    Check if created structures can be reused, for the next test.
+    [Arguments]    ${body_name}
+    IF  '${body_name}' == 'rr'
+        VAR    ${RE_USE_RR}=   ${True}    scope=Suite
+    ELSE IF   '${body_name}' == 'kur'
+        VAR    ${RE_USE_KUR}=   ${True}    scope=Suite
+    ELSE IF   '${body_name}' == 'p10cr'
+        VAR    ${RE_USE_P10CR}=   ${True}    scope=Suite
+    ELSE IF   '${body_name}' == 'ir'
+        VAR    ${RE_USE_IR}=   ${True}    scope=Suite
+    ELSE IF   '${body_name}' == 'cr'
+        VAR    ${RE_USE_CR}=   ${True}    scope=Suite
+    ELSE IF   '${body_name}' == 'ccr'
+        VAR    ${RE_USE_CCR}=   ${True}    scope=Suite
+    END
+
+Set Resource Minimizing To False
+    [Documentation]    Set the resource minimizing to False.
+    [Arguments]    ${body_name}
+    IF  '${body_name}' == 'rr'
+        VAR    ${RE_USE_RR}=   ${False}    scope=Suite
+    ELSE IF   '${body_name}' == 'kur'
+        VAR    ${RE_USE_KUR}=   ${False}    scope=Suite
+    ELSE IF   '${body_name}' == 'p10cr'
+        VAR    ${RE_USE_P10CR}=   ${False}    scope=Suite
+    ELSE IF   '${body_name}' == 'ir'
+        VAR    ${RE_USE_IR}=   ${False}    scope=Suite
+    ELSE IF   '${body_name}' == 'cr'
+        VAR    ${RE_USE_CR}=   ${False}    scope=Suite
+    ELSE IF   '${body_name}' == 'ccr'
+        VAR    ${RE_USE_CCR}=   ${False}    scope=Suite
+    END
+
+Validate Negative Response
+    [Documentation]    Validate negative test cases
+    [Arguments]    ${response}   ${body_name}    ${failinfo}   ${exclusive}=True
+    PKIStatus Must Be    ${response}   rejection
+    VAR    ${data}=   nested, inner_batch, added-protection, genm
+    IF  '${body_name}' in '${data}'
+        PKIMessage Body Type Must Be    ${response}   error
+    END
+    Check For Resource Minimizing    ${body_name}
+    PKIStatusInfo Failinfo Bit Must Be    ${response}   ${failinfo}   ${exclusive}
+
+Build Without senderNonce
+    [Documentation]    Build requests with bad sender nonce
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   senderNonce,sender,senderKID
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badSenderNonce   True
+
+Build With Too Short senderNonce
+    [Documentation]    Build requests with bad sender nonce
+    [Arguments]    ${body_name}
+    ${nonces}=   Generate Unique Byte Values    1    8
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   sender_nonce=${nonces[0]}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badSenderNonce   True
+
+Build With Too Long senderNonce
+    [Documentation]    Build requests with bad sender nonce
+    [Arguments]    ${body_name}
+    ${nonces}=   Generate Unique Byte Values    1    100
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   sender_nonce=${nonces[0]}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badSenderNonce   True
+
+Build Without TransactionID
+    [Documentation]    Build requests with bad transaction ID
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   transactionID,sender,senderKID
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badDataFormat   True
+
+Build With Too Short TransactionID
+    [Documentation]    Build requests with bad transaction ID
+    [Arguments]    ${body_name}
+    ${nonces}=   Generate Unique Byte Values    1    8
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   transaction_id=${nonces[0]}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badRequest   True
+
+Build With Too Long TransactionID
+    [Documentation]    Build requests with bad transaction ID
+    [Arguments]    ${body_name}
+    ${nonces}=   Generate Unique Byte Values    1    100
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   transaction_id=${nonces[0]}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badRequest   True
+
+Build Without messageTime
+    [Documentation]    Build requests without a message time set.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   messageTime,sender,senderKID
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badTime   True
+
+Build With MessageTime In Future
+    [Documentation]    Build requests with a message time in the future.
+    [Arguments]    ${body_name}
+    ${message_time}=   Get Current Date   UTC   increment=5 hours
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID  message_time=${message_time}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badTime   True
+
+Build With MessageTime In Past
+    [Documentation]    Build requests with a message time in the past.
+    [Arguments]    ${body_name}
+    ${message_time}=   Get Current Date   UTC   increment=-5 hours
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   message_time=${message_time}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badTime   True
+
+Build With Sig Alg Without Protection
+    [Documentation]   Build requests with a protection algorithm without a protection value.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   sender=${SENDER}  exclude_protection=True
+    ${body}=  Patch ProtectionAlg    ${body}    protection=signature   private_key=${INNER_KEY}
+    ${response}=  Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build With MAC Alg Without Protection
+    [Documentation]   Build requests with a protection algorithm without a protection value.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   sender=${SENDER}   exclude_protection=True
+    ...       set_mac_algorithm=True
+    ${response}=  Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build With Protection Without Alg
+    [Documentation]    Build requests with a protection without an algorithm.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   exclude_protection=True
+    ${body}=  Modify PKIMessage Protection    ${body}
+    ${response}=  Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build With Bad Sig Protection
+    [Documentation]    Build requests with a protection algorithm without a protection value.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   bad_message_check=True
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build Without extraCerts
+    [Documentation]    Build requests without an extraCerts field
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   exclude_certs=True
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck,addInfoNotAvailable   False
+
+Build Without Cert Chain
+    [Documentation]    Build requests without a cert chain
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   exclude_certs=True
+    ...       without_cert_chain=True
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck,signerNotTrusted  False
+
+Build With recipNonce
+    [Documentation]    Build requests with a recipNonce set, which is not allowed.
+    [Arguments]    ${body_name}
+    ${nonces}=   Generate Unique Byte Values    1    16
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID   recip_nonce=${nonces[0]}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badRecipientNonce   True
+
+Build With Bad Sig Sender
+    [Documentation]    Build requests with a bad sender for a signature protected PKIMessage.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_sender=True  do_patch=${False}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build With Bad Issuer As Sender
+    [Documentation]    Build requests with a bad issuer as sender.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   use_issuer=True  do_patch=${False}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build With Bad Sig SenderKID
+    [Documentation]    Build requests with a bad senderKID for a signature protected PKIMessage.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_ski=True  do_patch=${False}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build With Bad MAC Sender Choice
+    [Documentation]    Build requests with a bad sender choice for a MAC protected PKIMessage.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_mac_sender=True
+    ...       do_patch=${False}   use_mac=True   sender=${SENDER}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build With Bad MAC SenderKID
+    [Documentation]    Build requests with a bad senderKID for a MAC protected PKIMessage.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_sender_kid=True
+    ...       do_patch=${False}   use_mac=True   sender=${SENDER}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build Bad MAC Protected Message
+    [Documentation]    Build requests with a MAC protected PKIMessage, which is not allowed.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   bad_message_check=True
+    ...       do_patch=${False}   use_mac=True   sender=${SENDER}   sender_kid=${SENDER}
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+
+Build Not Allowed MAC-Protected Message
+    [Documentation]    Build requests with a MAC protected PKIMessage, which is not allowed.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   ${None}   sender=${SENDER}
+    ...       do_patch=${False}    for_mac=True
+    ${protected}=    Default Protect With MAC    ${body}
+    ${response}=   Exchange PKIMessage    ${protected}
+    Validate Negative Response   ${response}   ${body_name}   wrongIntegrity   True
+
+Build Message For Positive Header Validation
+    [Documentation]    Build a message for header validation.
+    [Arguments]    ${body_name}
+    ${body}=  Build Body By Name    ${body_name}   sender,senderKID
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate PKIMessage Header    ${response}   ${body}   allow_failure_sender=${STRICT}
+    Validate Cmp Body Types    ${response}   ${body}   error=False
+    IF  'batch_inner' in '${body_name}'
+        ${inner_response}=   Get Inner PKIMessage    ${response}   2
+        ${inner_body}=   Get Inner PKIMessage    ${body}   2
+        Validate PKIMessage Header    ${inner_response}   ${inner_body}   allow_failure_sender=${STRICT}
+    END
+    IF  'added-protection' in '${body_name}'
+        ${inner_body}=   Get Inner PKIMessage    ${body}
+        Validate PKIMessage Header    ${response}   ${inner_body}   allow_failure_sender=${STRICT}
+    END
+    # Set the resource minimizing to False, so that the next
+    # structures does use a new fresh structure.
+    # So that not a similar CertRequest is used.
+    # Might cause the `badCertTemplate` error.
+    Set Resource Minimizing To False   ${body_name}
+
+Build Message For Negative Header Validation
+    [Documentation]    Build a message for negative header validation.
+    [Arguments]    ${body_name}
+    VAR   ${names}=   genm, rr, batch, added-protection
+    IF  '${body_name}' in '${names}'
+        ${body}=  Build Body By Name    ${body_name}   sender,senderKID   bad_message_check=True
+    ELSE
+        ${body}=  Build Body By Name    ${body_name}   sender,senderKID   bad_pop=True
+    END
+    ${response}=   Exchange PKIMessage    ${body}
+    Validate PKIMessage Header    ${response}   ${body}   allow_failure_sender=${STRICT}
+    Validate Cmp Body Types    ${response}   ${body}
+    IF  '${body_name}' in '${names}'
+        Validate Negative Response   ${response}   ${body_name}   badMessageCheck   True
+    ELSE IF    'added-protection-inner' in '${body_name}'
+        VAR   ${empty_data}=    ${EMPTY}
+        ${inner_name}=   Replace String    ${body_name}    'added-protection-inner'   ${empty_data}
+        Validate Negative Response   ${response}   ${inner_name}   badPOP   True
+    ELSE IF   'batch_inner' in '${body_name}'
+        VAR   ${empty_data}=    ${EMPTY}
+        ${inner_name}=   Replace String    ${body_name}    batch_inner_   ${empty_data}
+        ${inner_body}=   Get Inner PKIMessage    ${body}    2
+        ${inner_response}=   Get Inner PKIMessage    ${response}    2
+        Validate Negative Response   ${inner_response}   ${inner_name}   badPOP   True
+        Validate PKIMessage Header    ${inner_response}   ${inner_body}   allow_failure_sender=${STRICT}
+    ELSE
+        Validate Negative Response   ${response}   ${body_name}   badPOP   True
+    END

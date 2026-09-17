@@ -26,41 +26,6 @@ Test Tags           kem   pqc
 Suite Setup          Set Up PQ KEM Suite
 
 
-*** Keywords ***
-Request With PQ KEM Key
-    [Documentation]  Send a valid Initialization Request for a PQ KEM key.
-    [Arguments]    ${alg_name}     ${invalid_key_size}
-    ${response}    ${key}=   Build And Exchange KEM Certificate Request    ${alg_name}    ${invalid_key_size}
-    ${cert}=   Validate EncrCert For KEM    ${response}    ${key}
-    Certificate Must Be Valid    ${cert}
-
-Build And Exchange KEM Certificate Request
-    [Documentation]    Build a KEM certificate request and exchange it with the CA to get a certificate.
-    ...
-    ...                Only builds the Initialization Request for the encrypted cert mechanism request.
-    ...
-    ...                Arguments:
-    ...                - ${key_alg}: The key algorithm to use for the key generation (e.g. `ml-kem-768`).
-    ...                - ${invalid_key_size}: Whether to use an invalid key size. Defaults to `False`.
-    ...
-    ...                Returns:
-    ...                - The response from the CA.
-    ...                - The key used for the certificate generation.
-    ...
-    ...                Examples:
-    ...                | ${response}= | Build and Exchange KEM Certificate Request | ml-kem-768 |
-    ...                | ${response}= | Build and Exchange KEM Certificate Request | ml-kem-768 | False |
-    [Arguments]    ${key_alg}    ${invalid_key_size}=False   ${extensions}=${None}
-    ${key}=    Generate Key    ${key_alg}
-    ${cm}=    Get Next Common Name
-    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}      invalid_key_size=${invalid_key_size}
-    ${cert_req_msg}=    Prepare CertReqMsg  ${key}  spki=${spki}   common_name=${cm}   extensions=${extensions}
-    ${ir}=    Build Ir From Key    ${key}   cert_req_msg=${cert_req_msg}   exclude_fields=senderKID,sender
-    ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=    Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}    ${PQ_ISSUING_SUFFIX}
-    RETURN    ${response}   ${key}
-
-
 *** Test Cases ***
 CA MUST Accept A Valid IR FOR ML-KEM-768
     [Documentation]   According to draft-ietf-lamps-kyber-certificates-07 is ML-KEM-768 used. We send an valid
@@ -70,8 +35,8 @@ CA MUST Accept A Valid IR FOR ML-KEM-768
     ${response}  ${key}=    Build And Exchange KEM Certificate Request    ml-kem-768
     ${cert}=   Validate EncrCert For KEM    ${response}    ${key}
     Certificate Must Be Valid    ${cert}
-    VAR   ${KEM_CERT}   ${cert}  scope=GLOBAL
-    VAR   ${KEM_KEY}   ${key}         scope=GLOBAL
+    VAR   ${KEM_CERT}=   ${cert}  scope=GLOBAL
+    VAR   ${KEM_KEY}=   ${key}         scope=GLOBAL
     ${certs}=   Build CMP Chain From PKIMessage    ${response}   ${cert}
     Write Certs To Dir     ${certs}
 
@@ -123,7 +88,6 @@ CA MUST Support KEMBasedMAC Until Certificate Is Confirmed
     ...                message and then a certificate confirmation message. The CA MUST process the request and
     ...                respond with an `accepted` status.
     [Tags]    kem-based-mac   genm  certConf
-    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
     ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
@@ -170,7 +134,6 @@ CA MUST Protect pkiconf message with KEMBasedMAC
     ...                message and then a certificate confirmation message. The CA MUST protect the
     ...                pkiconf message with the KEMBasedMAC.
     [Tags]    kem-based-mac   genm  certConf
-    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${PQ_ISSUING_SUFFIX}
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
     ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
@@ -220,12 +183,10 @@ CA MUST not reuse the same ss for KEMBASEDMAC
     [Tags]    kem-based-mac   genm
     ${result}=   Is Certificate And Key Set    ${KEM_CERT}   ${KEM_KEY}
     SKIP IF  not ${result}    KEM Certificate and Key not set
-    ${url}=   Get PQ Issuing URL
-    ${cm}=    Get Next Common Name
+    ${_cm}=    Get Next Common Name
     ${genm}=   Build KEMBasedMAC General Message   ${KEM_KEY}    ${KEM_CERT}
     ${genp}=   Exchange PKIMessage    ${genm}
     ${ss}=   Validate Genp KEMCiphertextInfo    ${genp}    ${KEM_KEY}
-    ${key}=  Generate Default Key
     ${tx_id}=   Get Asn1 Value As Bytes   ${genm}  header.transactionID
     ${protected_ir}=   Build IR Request KEMBasedMac Protected
     ...       ${tx_id}   ${ss}   True  ${None}
@@ -270,6 +231,39 @@ CA MUST ISSUE A Valid sntrup761 Certificate
 
 
 *** Keywords ***
+Request With PQ KEM Key
+    [Documentation]  Send a valid Initialization Request for a PQ KEM key.
+    [Arguments]    ${alg_name}     ${invalid_key_size}
+    ${response}    ${key}=   Build And Exchange KEM Certificate Request    ${alg_name}    ${invalid_key_size}
+    ${cert}=   Validate EncrCert For KEM    ${response}    ${key}
+    Certificate Must Be Valid    ${cert}
+
+Build And Exchange KEM Certificate Request
+    [Documentation]    Build a KEM certificate request and exchange it with the CA to get a certificate.
+    ...
+    ...                Only builds the Initialization Request for the encrypted cert mechanism request.
+    ...
+    ...                Arguments:
+    ...                - ${key_alg}: The key algorithm to use for the key generation (e.g. `ml-kem-768`).
+    ...                - ${invalid_key_size}: Whether to use an invalid key size. Defaults to `False`.
+    ...
+    ...                Returns:
+    ...                - The response from the CA.
+    ...                - The key used for the certificate generation.
+    ...
+    ...                Examples:
+    ...                | ${response}= | Build and Exchange KEM Certificate Request | ml-kem-768 |
+    ...                | ${response}= | Build and Exchange KEM Certificate Request | ml-kem-768 | False |
+    [Arguments]    ${key_alg}    ${invalid_key_size}=False   ${extensions}=${None}
+    ${key}=    Generate Key    ${key_alg}
+    ${cm}=    Get Next Common Name
+    ${spki}=    Prepare SubjectPublicKeyInfo    ${key}      invalid_key_size=${invalid_key_size}
+    ${cert_req_msg}=    Prepare CertReqMsg  ${key}  spki=${spki}   common_name=${cm}   extensions=${extensions}
+    ${ir}=    Build Ir From Key    ${key}   cert_req_msg=${cert_req_msg}   exclude_fields=senderKID,sender
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=    Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}    ${PQ_ISSUING_SUFFIX}
+    RETURN    ${response}   ${key}
+
 Build IR Request KEMBasedMac Protected
     [Documentation]    Build a IR request with KEMBasedMac protected.
     ...
@@ -289,11 +283,10 @@ Build IR Request KEMBasedMac Protected
     ...
     [Arguments]    ${tx_id}    ${ss}    ${for_mac}=False  ${cert_chain}=${None}   ${bad_message_check}=False
     ${cm}=    Get Next Common Name
-    ${key}=  Generate Default Key
     IF   ${for_mac}
-        VAR   ${exclude_fields}  ${None}
+        VAR   ${exclude_fields}=  ${None}
     ELSE
-        VAR   ${exclude_fields}  senderKID,sender
+        VAR   ${exclude_fields}=  senderKID,sender
     END
     # TODO decide if both options are allowed, or the `GeneralName` must be for MAC or SIG.
     ${ir}=    Build Ir From Key  ${key}   ${cm}   for_mac=${for_mac}

@@ -1,6 +1,8 @@
+*** Comments ***
 # Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
+
 
 *** Settings ***
 Documentation     An example resource file with configuration options that are meant for use on your local development
@@ -24,7 +26,6 @@ ${INITIAL_KEY_PATH}    ${None}
 ${INITIAL_CERT_PATH}   ${None}
 ${INITIAL_KEY_PASSWORD}   ${None}
 
-
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CN=CloudCA-Integration-Test-User
 ${RECIPIENT}           CN=CloudPKI-Integration-Test
@@ -43,7 +44,7 @@ ${ALLOW_IR_SAME_KEY}       ${True}
 # Could be used to always load the same PKIMessage structure and patch it during testing.
 # TODO implement a one dataclass for the PKIMessage to always patch the same message if allowed,
 # to have some lax test settings and save as much resources as possible.
-${IRELEVANT_messageTime}    ${FALSE}
+${IRELEVANT_MESSAGETIME}    ${FALSE}
 # Currently does not support strict validation on it.
 # MUST be used but if not a strict setting could be ignored.
 ${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}   ${False}
@@ -81,7 +82,6 @@ ${LWCMP}   ${True}
 # Only MAC and traditional signatures.
 ${ENFORCE_RFC9481}   ${True}
 
-
 # IF legacy systems are used, it might be allowed to use,
 # to use NULL instead of absent AlgorithmIdentifier `parameters`
 ${ALLOW_NULL_INSTEAD_OF_ABSENT}   ${False}
@@ -115,8 +115,8 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
 ##### Section 3
-#Indicating if the PKIFailInfo must be set correctly.
-${FAILINFO_MUST_BE_CORRECT}=    True
+# Indicating if the PKIFailInfo must be set correctly.
+${FAILINFO_MUST_BE_CORRECT}    True
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 
@@ -138,7 +138,6 @@ ${ALLOW_P10CR_MAC_BASED}   ${True}
 ${ALLOW_CR_MAC_BASED}   ${False}
 ${ALLOW_IR_MAC_BASED}   ${False}
 ${ALLOW_KUR_SAME_KEY}    ${False}
-${ALLOW_IR_SAME_KEY}   ${True}
 ${LARGE_KEY_SIZE}    ${False}
 ${ALLOW_CERT_CONF}    ${False}
 
@@ -154,7 +153,6 @@ ${REVOCATION_STRICT_CHECK}    ${False}
 ${REVOKED_WAIT_TIME}   10s
 ${UPDATE_WAIT_TIME}   3s
 ${WAIT_UNTIL_UPDATED_CONFIRMATION_IS_EXPIRED}   15s
-
 
 # Section 4.3
 # Whether a Support message can be used with a pre-shared-Secret.
@@ -176,13 +174,9 @@ ${REVOKE_CERT_ON_ERROR}  ${False}
 ${REVOKE_CERT_ON_LATE_CONFIRMATION}  ${False}
 
 # Certificates and Keys to set.
-${INITIAL_KEY_PATH}    ${None}
-${INITIAL_CERT_PATH}   ${None}
-${INITIAL_KEY_PASSWORD}   11111
 
 # Device certificate and key (None means not provided).
 ${DEVICE_CERT}   ${None}
-${DEVICE_KEY}  ${None}
 
 # Section 5.2 and 5.3
 # Other trusted PKI and Key (None means not provided, so test are skipped).
@@ -219,4 +213,3 @@ ${CHAMELEON_SUFFIX}    ${None}
 ${RELATED_CERT_SUFFIX}    ${None}
 ${MULTI_AUTH_SUFFIX}    ${None}
 ${CERT_DISCOVERY_SUFFIX}    ${None}
-

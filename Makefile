@@ -24,7 +24,7 @@ help:
 	@echo  ''
 
 
-# By default, run the tests against the local environment from config/local.robot
+# By default, run the tests against the local environment from config/local.resource
 # You can override it, e.g., `make test env=cloudpki`
 env ?= cloudpki
 test: check_ejbca

@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation       Tests specifically for the lightweight CMP profile
 
-Resource            ../config/${environment}.robot
+Resource            ../config/${ENVIRONMENT}.resource
 Resource            ../resources/keywords.resource
 Library             Collections
 Library             OperatingSystem
@@ -20,6 +21,7 @@ Library             ../resources/certextractutils.py
 
 Test Template     Request With Trad Sig Key
 Test Tags    verbose-tests   trad-sig   pki-protection
+
 
 *** Test Cases ***     PROTECTION    SIGN_KEY    CERT    HASH_ALG    BAD
 CA MUST Accept ED25519 Protected Request    signature    ${ED25519_KEY}    ${ED25519_CERT}    ${None}    False
@@ -184,8 +186,8 @@ Request With Trad Sig Key
     ...                bad_message_check=${bad}
     ${response}=   Exchange PKIMessage    ${protected_ir}
     IF    ${ENFORCE_RFC9481} and ("sha1" == '${hash_alg}' or ("sha3" in '${hash_alg}' and '${hash_alg}' != "sha384"))
-         PKIStatus Must Be    ${response}    rejection
-         PKIStatusInfo Failinfo Bit Must Be    ${response}    badAlg
+        PKIStatus Must Be    ${response}    rejection
+        PKIStatusInfo Failinfo Bit Must Be    ${response}    badAlg
     ELSE IF    ${bad}
         # Validate the error response
         PKIStatus Must Be    ${response}    rejection

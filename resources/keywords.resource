@@ -1,11 +1,13 @@
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG   # robocop: off=COM04
 #
 # SPDX-License-Identifier: Apache-2.0
+
+
 *** Settings ***
 Documentation       Keywords are often used for testing.
 
-Resource            ../config/${environment}.robot
-# Resource    ../config/local.robot
+Resource            ../config/${ENVIRONMENT}.resource
+# Resource    ../config/local.resource
 Library             Collections
 Library             DateTime
 Library             OperatingSystem
@@ -25,9 +27,10 @@ Library             ../resources/general_msg_utils.py
 Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/pq_verify_logic.py
 
+
 *** Variables ***
-${environment}          cloudpki
-# ${environment}    local
+${ENVIRONMENT}          cloudpki
+# ${ENVIRONMENT}    local
 
 # This variable is a collector of nonces that the server sent back to us throughout all the tests. In the end we use
 # it to check that the server is not sending the same nonce twice, and that the nonces are cryptographically secure.
@@ -38,6 +41,7 @@ ${TEST_INDEX}            ${0}
 &{CERT_CONF_DEF_VALS}   sender=${SENDER}    recipient=${RECIPIENT}
 ...        private_key=${ISSUED_KEY}    cert=${ISSUED_CERT}
 ...        password=${PRESHARED_SECRET}    protection=signature
+
 
 *** Keywords ***
 Set Up Test Suite
@@ -78,22 +82,22 @@ Set Up Test Suite
         ${response}=   Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}    ${INIT_SUFFIX}
         PKIStatus Must Be    ${response}   accepted
         ${issued_cert}=    Confirm Certificate If Needed    ${response}
-        VAR    ${ISSUED_KEY}    ${issued_key}    scope=Global
-        VAR    ${ISSUED_CERT}    ${issued_cert}    scope=Global
+        VAR    ${ISSUED_KEY}=    ${issued_key}    scope=Global
+        VAR    ${ISSUED_CERT}=    ${issued_cert}    scope=Global
         LOG    Initial certificate issued, with `MAC` protection.
         ${cert_chain}=   Build CMP Chain From PKIMessage  ${response}   ee_cert=${ISSUED_CERT}
         Write Certs To Dir    ${cert_chain}
         ${root_cert}=   Get From List   ${cert_chain}  -1
         Write Cmp Certificate To Pem    ${root_cert}  data/trustanchors/issued_cert_root.pem
-        VAR    &{CERT_CONF_DEF_VALS}    sender=${SENDER}    recipient=${RECIPIENT}
+        VAR    &{CERT_CONF_DEF_VALS}=    sender=${SENDER}    recipient=${RECIPIENT}
         ...    private_key=${ISSUED_KEY}    cert=${ISSUED_CERT}    password=${PRESHARED_SECRET}
         ...    protection=signature   scope=Global
-        VAR    &{DEFAULT_PROTECTION_VALS}    protection=signature   private_key=${ISSUED_KEY}
+        VAR    &{DEFAULT_PROTECTION_VALS}=    protection=signature   private_key=${ISSUED_KEY}
         ...    cert=${ISSUED_CERT}   password=${PRESHARED_SECRET}  scope=Global
     END
     ${cert}  ${key}=   May Load Cert And Key    ${OTHER_TRUSTED_PKI_CERT}    ${OTHER_TRUSTED_PKI_KEY}
-    VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global
-    VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global
+    VAR    ${OTHER_TRUSTED_PKI_CERT}=    ${cert}    scope=Global
+    VAR    ${OTHER_TRUSTED_PKI_KEY}=    ${key}    scope=Global
     TRY
         Set Up CRR Test Cases
     EXCEPT
@@ -111,13 +115,13 @@ Initialize PQ Cert And Key Variables
     ...                Additionally used, to verify if the PKIProtection is working as expected.
     [Tags]    setup  keys   setup-global-dict
     # Initialize the newly issued certificates and keys.
-    VAR   &{PQ_SIG_CERTS}  scope=Global
-    VAR   &{PQ_SIG_KEYS}   scope=Global
-    VAR   &{PQ_STATEFUL_SIG_KEYS}     scope=Global
+    VAR   &{PQ_SIG_CERTS}=    &{EMPTY}  scope=Global
+    VAR   &{PQ_SIG_KEYS}=    &{EMPTY}   scope=Global
+    VAR   &{PQ_STATEFUL_SIG_KEYS}=    &{EMPTY}     scope=Global
     # Used for the verbose STFL signature keys.
-    VAR   &{PQ_STATEFUL_SIG_KEYS_VERBOSE}     scope=Global
-    VAR   &{PQ_STATEFUL_SIG_CERTS_VERBOSE}   scope=Global
-    VAR   &{PQ_STATEFUL_SIG_CERT_CONF_CERTS}    scope=Global
+    VAR   &{PQ_STATEFUL_SIG_KEYS_VERBOSE}=    &{EMPTY}     scope=Global
+    VAR   &{PQ_STATEFUL_SIG_CERTS_VERBOSE}=    &{EMPTY}   scope=Global
+    VAR   &{PQ_STATEFUL_SIG_CERT_CONF_CERTS}=    &{EMPTY}    scope=Global
     Load PQ Stateful Sig Keys
     Load Verbose PQ Stateful Sig Keys
 
@@ -140,7 +144,7 @@ Get PQ Stateful Sig Key Verbose
     ...                If the key is not set, it will be generated and returned.
     [Tags]    keys
     [Arguments]    ${algorithm}   ${body_name}    ${reason}
-    ${name}=    Set Variable    ${algorithm}_${body_name}_${reason}
+    VAR    ${name}=    ${algorithm}_${body_name}_${reason}
     ${key}=    Get From Dictionary   ${PQ_STATEFUL_SIG_KEYS_VERBOSE}   ${name}   ${None}
     IF  '${key}' == '${None}'
         Fail    The verbose ${body_name} PQ stateful signature key for algorithm '${algorithm}' is not set, for
@@ -154,14 +158,14 @@ Load PQ Stateful Sig Keys
     ...                stored in the dictionary `${PQ_STATEFUL_SIG_KEYS}` under
     ...                their algorithm names (e.g. `xmss-sha2_20_256`).
     [Tags]    setup  keys
-    VAR    ${directory}    data/keys/xmss_xmssmt_keys
+    VAR    ${directory}=    data/keys/xmss_xmssmt_keys
     ${files}=    List Files In Directory    ${directory}
-    VAR  ${empty}
+    VAR  ${empty}=    ${EMPTY}
     FOR  ${key_file}  IN  @{files}
         ${key_name}=   Replace String     ${key_file}   _layers_    /
         ${algorithm}=   Replace String    ${key_name}   .pem    ${empty}
         ${algorithm}=   Replace String    ${algorithm}   private-key-   ${empty}
-        ${key_path}=    Set Variable    ${directory}/${key_file}
+        VAR    ${key_path}=    ${directory}/${key_file}
         ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${key_path}
         IF  ${is_file}
             ${key}=    Load Private Key From File    ${key_path}
@@ -178,15 +182,14 @@ Load Verbose PQ Stateful Sig Keys
     ...                This keyword is used to load the keys in verbose mode, which means that the keys are
     ...                loaded with the `verbose=True` parameter. This is useful for debugging purposes.
     [Tags]    setup  keys
-    [Arguments]
-    VAR    ${directory}    data/keys/xmss_xmssmt_keys_verbose
+    VAR    ${directory}=    data/keys/xmss_xmssmt_keys_verbose
     ${files}=    List Files In Directory    ${directory}
-    VAR  ${empty}
+    VAR  ${empty}=    ${EMPTY}
     FOR  ${key_file}  IN  @{files}
         ${key_name}=   Replace String     ${key_file}   _layers_    /
         ${algorithm}=   Replace String    ${key_name}   .pem    ${empty}
         ${algorithm}=   Replace String    ${algorithm}   private-key-   ${empty}
-        ${key_path}=    Set Variable    ${directory}/${key_file}
+        VAR    ${key_path}=    ${directory}/${key_file}
         ${is_file}=    Run Keyword And Return Status    OperatingSystem.File Should Exist    ${key_path}
         IF  ${is_file}
             ${key}=    Load Private Key From File    ${key_path}
@@ -194,7 +197,6 @@ Load Verbose PQ Stateful Sig Keys
             Set To Dictionary    ${PQ_STATEFUL_SIG_KEYS_VERBOSE}    ${algorithm}=${key}
         END
     END
-
 
 Set Up CRR Test Cases
     [Documentation]    Prepare the environment variables for the Cross-Certification Request (CRR) tests.
@@ -218,10 +220,10 @@ Set Up CRR Test Cases
     [Tags]    setup  trust   ccr
     ${cert}=   May Load Cert   ${TRUSTED_CA_CERT}
     ${key}=    Load Private Key From File    ${TRUSTED_CA_KEY}   password=${TRUSTED_CA_KEY_PASSWORD}
-    VAR   ${TRUSTED_CA_CERT_OBJ}    ${cert}  scope=Global
-    VAR   ${TRUSTED_CA_KEY_OBJ}     ${key}  scope=Global
+    VAR   ${TRUSTED_CA_CERT_OBJ}=    ${cert}  scope=Global
+    VAR   ${TRUSTED_CA_KEY_OBJ}=     ${key}  scope=Global
     ${cert_chain}=  Build Cert Chain From Dir    ${cert}   ${TRUSTED_CA_DIR}
-    VAR   ${TRUSTED_CA_CERT_CHAIN}   ${cert_chain}   scope=Global
+    VAR   ${TRUSTED_CA_CERT_CHAIN}=   ${cert_chain}   scope=Global
 
 Set UP Trusted PKI RA Cert Chain
     [Documentation]    Load the trusted PKI RA certificate chain into global variables.
@@ -249,23 +251,23 @@ Set UP Trusted PKI RA Cert Chain
         ${der_cert}=    Load And Decode PEM File    ${OTHER_TRUSTED_PKI_CERT}
         ${cert}=   Parse Certificate    ${der_cert}
         ${key}=    Load Private Key From File   ${OTHER_TRUSTED_PKI_KEY}
-        VAR    ${OTHER_TRUSTED_PKI_CERT}    ${cert}    scope=Global
-        VAR    ${OTHER_TRUSTED_PKI_KEY}    ${key}    scope=Global
+        VAR    ${OTHER_TRUSTED_PKI_CERT}=    ${cert}    scope=Global
+        VAR    ${OTHER_TRUSTED_PKI_KEY}=    ${key}    scope=Global
     END
-    VAR   ${INNER_CERT}    ${ISSUED_CERT}    scope=Global
-    VAR   ${INNER_KEY}    ${ISSUED_KEY}    scope=Global
+    VAR   ${INNER_CERT}=    ${ISSUED_CERT}    scope=Global
+    VAR   ${INNER_KEY}=    ${ISSUED_KEY}    scope=Global
     IF  '${RA_CERT_CHAIN_PATH}' == '${None}'
         ${cert_chain}=   Build Cert Chain From Dir    ${OTHER_TRUSTED_PKI_CERT}   ${RA_CERT_CHAIN_DIR}
     ELSE
         ${cert_chain}=   Load Certificate Chain     ${RA_CERT_CHAIN_PATH}
     END
-    VAR   ${RA_CERT_CHAIN}    ${cert_chain}    scope=Global
+    VAR   ${RA_CERT_CHAIN}=    ${cert_chain}    scope=Global
 
 Increase TestIndex
     [Documentation]    Perform the incrementation of the `TestIndex` to update the sender name inside the PKIMessage,
     ...                for each test case.
     ${NUMBER}=    Evaluate    ${TEST_INDEX} + 1
-    VAR    ${TEST_INDEX}    ${NUMBER}    scope=Global
+    VAR    ${TEST_INDEX}=    ${NUMBER}    scope=Global
 
 Try To Log PKIMessage As ASN1
     [Documentation]    Tentatively parse a buffer, assuming it is a DER-encoded PKIMessage, and log its contents.
@@ -375,7 +377,7 @@ Exchange Data With CA
     #    Run Keyword And Ignore Error    Try to Log PKIMessage as ASN1    ${payload}
     Try To Log PKIMessage    ${payload}
     # TODO check if type of payload is a pyasn1 structure, and if it is, der-encode it automatically? Maybe?
-    VAR    &{headers}    Content-Type=application/pkixcmp    Accept-Type=application/pkixcmp
+    VAR    &{headers}=    Content-Type=application/pkixcmp    Accept-Type=application/pkixcmp
     ${response}=    POST
     ...    url=${url}
     ...    data=${payload}
@@ -432,7 +434,7 @@ Response Time Must Be Fresh
 
     ${delta_verbose}=    Subtract Date From Date    ${response_time}    ${request_time}    verbose
     ${delta}=    Subtract Date From Date    ${response_time}    ${request_time}
-    Should Be True    ${delta} < ${tolerance}    Time between request and response exceeds tolerance
+    Should Be True    ${delta} < ${tolerance}    Time between request and response exceeds tolerance: ${delta_verbose}
 
 SenderNonce Must Be At Least 128 Bits Long
     [Documentation]    Ensure that the senderNonce of a PKIMessage is at least 128 bits long
@@ -667,7 +669,7 @@ Exchange PKIMessage
         ${effective_url}=    Set Variable    ${url}/${pkibody_type}
     ELSE IF    ${APPEND_PKIBODY_URL_SUFFIX}
         ${body_name}=    Get Cmp Message Type    ${request_pki_message}
-        ${effective_url}=    Set Variable    ${url}/${body_name}
+        VAR    ${effective_url}=    ${url}/${body_name}
     END
     ${encoded_request}=    Encode To Der    ${request_pki_message}
     Log Base64    ${encoded_request}
@@ -731,7 +733,7 @@ Generate Default Key
     ...                --------
     ...                | ${private_key}=    Generate Default Key |
     [Tags]    key
-    VAR     &{params}    length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
+    VAR     &{params}=    length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
     ${private_key}=    Generate Unique Key    algorithm=${DEFAULT_ALGORITHM}    &{params}
     RETURN    ${private_key}
 
@@ -799,7 +801,7 @@ Generate Default Composite Sig Key
     ...               | ${key}= | Generate Default Composite Sig Key |
     ...
     [Tags]         composite-sig    key
-    VAR   &{params}  trad_name=${DEFAULT_TRAD_ALG}
+    VAR   &{params}=  trad_name=${DEFAULT_TRAD_ALG}
     ...              length=${DEFAULT_KEY_LENGTH}    curve=${DEFAULT_ECC_CURVE}
     ...              pq_name=${DEFAULT_PQ_SIG_ALG}
     # Generates always the latest (supported) version of the algorithm.
@@ -885,11 +887,11 @@ Confirm Certificate If Needed
         ${cert}=    Get Cert From PKIMessage    ${response}
         ${protection}=   Get From Dictionary    ${args}    protection
         IF  '${protection}' == 'signature'
-            VAR   ${exclude_fields}    sender,senderKID
-            VAR   ${for_mac}    ${False}
+            VAR   ${exclude_fields}=    sender,senderKID
+            VAR   ${for_mac}=    ${False}
         ELSE
-            VAR   ${exclude_fields}    ${None}
-            VAR   ${for_mac}    ${True}
+            VAR   ${exclude_fields}=    ${None}
+            VAR   ${for_mac}=    ${True}
         END
         ${cert_req_id}=    Get From Dictionary    ${args}    cert_req_id   ${None}
         ${cert_conf}=   Build Cert Conf From Resp  ${response}   sender=${sender}
@@ -944,19 +946,19 @@ Confirm EncrCert Certificate If Needed
     ${for_mac}=    Get From Dictionary    ${params}    for_mac   ${False}
     ${for_kem_based_mac}=    Get From Dictionary    ${params}    for_kem_based_mac   ${False}
     IF  ${for_mac}
-        VAR   ${exclude_fields}    ${None}
+        VAR   ${exclude_fields}=    ${None}
     ELSE IF   ${for_kem_based_mac}
-        VAR   ${for_mac}    ${True}
-        VAR   ${exclude_fields}    ${None}
+        VAR   ${for_mac}=    ${True}
+        VAR   ${exclude_fields}=    ${None}
     ELSE
-        VAR   ${exclude_fields}    sender,senderKID
+        VAR   ${exclude_fields}=    sender,senderKID
     END
     ${cert_conf}=   Build Cert Conf From Resp  ${response}   cert=${cert}   recipient=${recipient}   pvno=3
     ...             sender=${SENDER}   for_mac=${for_mac}     cert_req_id=${cert_req_id}    exclude_fields=${exclude_fields}
 
     IF  ${for_kem_based_mac}
         ${ss}=   Get From Dictionary    ${params}    shared_secret
-                ${protected_cert_conf}=  Protect PKIMessage KEMBasedMAC     ${cert_conf}    shared_secret=${ss}
+        ${protected_cert_conf}=  Protect PKIMessage KEMBasedMAC     ${cert_conf}    shared_secret=${ss}
     ELSE IF  ${for_mac}
         ${protected_cert_conf}=  Default Protect With MAC    ${cert_conf}
     ELSE
@@ -988,7 +990,7 @@ Get Next Common Name
     ...
     [Tags]    setup
     IF    ${ALLOW_ONLY_ONE_SENDER}    RETURN    ${DEFAULT_X509NAME}
-    VAR    ${cm}    ${DEFAULT_X509NAME} ${TEST_INDEX}
+    VAR    ${cm}=    ${DEFAULT_X509NAME} ${TEST_INDEX}
     Increase TestIndex
     RETURN    ${cm}
 
@@ -1020,9 +1022,9 @@ Build Composite Signature Request
     END
     ${protection}=   Get From Dictionary    ${DEFAULT_PROTECTION_VALS}    protection   signature
     IF  '${protection}' == 'signature'
-        VAR   ${exclude_fields}    sender,senderKID
+        VAR   ${exclude_fields}=    sender,senderKID
     ELSE
-        VAR   ${exclude_fields}    ${None}
+        VAR   ${exclude_fields}=    ${None}
     END
     ${cm}=    Get Next Common Name
     ${ir}=   Build Ir From Key    ${comp_key}  common_name=${cm}  sender=${SENDER}
@@ -1241,7 +1243,7 @@ Generate Default MAC Protected PKIMessage
     ...                - `mac_alg`: The protection algorithm to use. Defaults to the algorithm specified in the config.
     ...                If `False` is parsed, an unprotected message is returned.
     [Arguments]    ${mac_alg}=${DEFAULT_MAC_ALGORITHM}   ${allow_implicit_confirm}=${ALLOW_IMPLICIT_CONFIRM}
-    VAR    ${for_mac}    ${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
+    VAR    ${for_mac}=    ${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     IF    ${ALLOW_IR_MAC_BASED}
         # Generate the necessary certificate template and key for IR protection
         ${cert_template}    ${key}=    Generate CertTemplate For Testing
@@ -1306,7 +1308,7 @@ Issue New Cert For Testing
     IF    '${key}' == '${None}'
         ${cert_template}   ${key}=    Generate CertTemplate For Testing
     ELSE
-        VAR   ${cert_template}   ${None}
+        VAR   ${cert_template}=   ${None}
     END
     ${ir}=    Build IR From Key   ${key}    cert_template=${cert_template}    recipient=${RECIPIENT}
     ...                  implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}    exclude_fields=sender,senderKID
@@ -1413,7 +1415,7 @@ Exchange Migration PKIMessage
     [Documentation]    Exchange a PKIMessage with the Mock CA
     [Arguments]    ${ir}    ${ca_base_url}=${CA_BASE_URL}    ${suffix}=${NONE}
     ${url}=    Add URL Suffix    ${ca_base_url}    ${suffix}
-    VAR     ${APPEND_PKIBODY_URL_SUFFIX}    ${False}     scope=TEST
+    VAR     ${APPEND_PKIBODY_URL_SUFFIX}=    ${False}     scope=TEST
     ${response}=    Exchange PKIMessage    ${ir}    ${url}
     RETURN    ${response}
 
@@ -1514,8 +1516,8 @@ Issued NEG RSA KTRI CERT
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
     Must Not Contain KeyUsage    ${cert}   keyEncipherment
-    VAR   ${NEG_KTRI_CERT}     ${cert}  scope=Global
-    VAR   ${NEG_KTRI_KEY}      ${key}   scope=Global
+    VAR   ${NEG_KTRI_CERT}=     ${cert}  scope=Global
+    VAR   ${NEG_KTRI_KEY}=      ${key}   scope=Global
 
 ISSUE POS RSA KTRI Cert
     [Documentation]    Issue a new RSA positive KTRI certificate for the EnvelopedData tests.
@@ -1544,8 +1546,8 @@ ISSUE POS RSA KTRI Cert
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
-    VAR   ${KGA_KTRI_CERT}     ${cert}  scope=Global
-    VAR   ${KGA_KTRI_KEY}      ${key}   scope=Global
+    VAR   ${KGA_KTRI_CERT}=     ${cert}  scope=Global
+    VAR   ${KGA_KTRI_KEY}=      ${key}   scope=Global
 
 Issue NEG ECC KARI Cert
     [Documentation]    Issue a new ECC negative KARI certificate for the EnvelopedData tests.
@@ -1574,8 +1576,8 @@ Issue NEG ECC KARI Cert
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
     Must Not Contain KeyUsage    ${cert}   keyAgreement
-    VAR   ${NEG_KARI_CERT}     ${cert}  scope=Global
-    VAR   ${NEG_KARI_KEY}      ${key}   scope=Global
+    VAR   ${NEG_KARI_CERT}=     ${cert}  scope=Global
+    VAR   ${NEG_KARI_KEY}=      ${key}   scope=Global
 
 Issue POS ECC KARI Cert
     [Documentation]    Issue a new ECC positive KARI certificate for the EnvelopedData tests.
@@ -1604,8 +1606,8 @@ Issue POS ECC KARI Cert
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${cert}=   Confirm Certificate If Needed    ${response}  url=${url}
-    VAR   ${KGA_KARI_CERT}     ${cert}  scope=Global
-    VAR   ${KGA_KARI_KEY}      ${key}   scope=Global
+    VAR   ${KGA_KARI_CERT}=     ${cert}  scope=Global
+    VAR   ${KGA_KARI_KEY}=      ${key}   scope=Global
 
 Set Up EnvelopedData Certs For Tests
     [Documentation]    Set up the KGA certs for the tests. This is done by creating a new key and
@@ -1717,12 +1719,12 @@ Setup PQ Sig Cert
     ${cm}=    Get Next Common Name
     ${extensions}=  Prepare Extensions  digitalSignature
     IF  ${ALLOW_MAC_PROTECTION}
-        VAR   ${protection}    ${DEFAULT_MAC_ALGORITHM}
+        VAR   ${protection}=    ${DEFAULT_MAC_ALGORITHM}
         ${ir}=  Build Ir From Key    ${pq_key}   ${cm}   extensions=${extensions}
         ...     recipient=${RECIPIENT}   sender=${sender}   for_mac=True
         ${prot_ir}=    Default Protect With MAC      ${ir}
     ELSE
-        VAR   ${protection}    signature
+        VAR   ${protection}=    signature
         ${ir}=  Build Ir From Key    ${pq_key}   ${cm}   extensions=${extensions}
         ...     recipient=${RECIPIENT}   exclude_fields=sender,senderKID
         ${prot_ir}=    Default Protect PKIMessage    ${ir}
@@ -1734,8 +1736,8 @@ Setup PQ Sig Cert
     ${pq_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
     ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${pq_cert}
     Write Certs To Dir    ${cert_chain}  pq_sig_chain
-    VAR   ${PQ_SIG_CERT}     ${pq_cert}  scope=Global
-    VAR   ${PQ_SIG_KEY}      ${pq_key}  scope=Global
+    VAR   ${PQ_SIG_CERT}=     ${pq_cert}  scope=Global
+    VAR   ${PQ_SIG_KEY}=      ${pq_key}  scope=Global
 
 Setup Composite Sig Cert
     [Documentation]    Issue a new composite signature certificate for the tests.
@@ -1747,12 +1749,12 @@ Setup Composite Sig Cert
     ${url}=   Get Composite Issuing URL
     ${extensions}=  Prepare Extensions  digitalSignature
     IF  ${ALLOW_MAC_PROTECTION}
-        VAR   ${protection}    ${DEFAULT_MAC_ALGORITHM}
+        VAR   ${protection}=    ${DEFAULT_MAC_ALGORITHM}
         ${ir}=  Build Ir From Key    ${comp_key}   ${cm}   extensions=${extensions}
         ...     recipient=${RECIPIENT}   sender=${sender}   for_mac=True
         ${prot_ir}=    Default Protect With MAC      ${ir}
     ELSE
-        VAR   ${protection}    signature
+        VAR   ${protection}=    signature
         ${ir}=  Build Ir From Key    ${comp_key}   ${cm}   extensions=${extensions}
         ...     recipient=${RECIPIENT}   exclude_fields=sender,senderKID
         ${prot_ir}=    Default Protect PKIMessage    ${ir}
@@ -1763,8 +1765,8 @@ Setup Composite Sig Cert
     ${comp_cert}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=${protection}
     ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}  ${comp_cert}
     Write Certs To Dir    ${cert_chain}  composite_sig_chain
-    VAR   ${COMPOSITE_SIG_CERT}     ${comp_cert}  scope=Global
-    VAR   ${COMPOSITE_SIG_KEY}      ${comp_key}  scope=Global
+    VAR   ${COMPOSITE_SIG_CERT}=     ${comp_cert}  scope=Global
+    VAR   ${COMPOSITE_SIG_KEY}=      ${comp_key}  scope=Global
 
 Build KEMBasedMAC General Message
     [Documentation]    Build a KEMBasedMAC General Message, to establish a KEM shared secret.

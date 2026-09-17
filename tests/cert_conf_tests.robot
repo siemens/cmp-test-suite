@@ -9,7 +9,7 @@ Documentation       General tests for CMP Certificate Confirmation (`certConf`) 
 ...                 issued certificates or responses to invalid or duplicate `certConf` requests.
 
 Resource            ../resources/keywords.resource
-Resource            ../config/${environment}.robot
+Resource            ../config/${ENVIRONMENT}.resource
 Library             OperatingSystem
 Library             ../resources/utils.py
 Library             ../resources/asn1utils.py
@@ -82,7 +82,7 @@ CA MUST Reject More Than One CertStatus Inside The certConf
     ${cert}=    Get Cert From PKIMessage    ${response}
     ${cert_hash}=    Calculate Cert Hash    ${cert}   hash_alg=sha256
     ${cert_status}=    Prepare CertStatus    ${cert_hash}    cert=${cert}   hash_alg=sha256
-    VAR    @{My_List}    ${cert_status}    ${cert_status}
+    VAR    @{My_List}=    ${cert_status}    ${cert_status}
     Append To List    ${My_List}    ${cert_status}
     ${cert_conf}=    Build Cert Conf From Resp
     ...    ${response}

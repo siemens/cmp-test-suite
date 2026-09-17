@@ -1,10 +1,13 @@
+*** Comments ***
 # Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation     An example resource file with configuration options that are meant for use on your local development
 ...               system. Use this file as a template when adapting the tests to a specific environment.
+
 
 *** Variables ***
 ${CA_CMP_URL}    http://139.25.105.164:5556/lraserver/default/
@@ -29,12 +32,11 @@ ${LWCMP}   ${True}
 # Only MAC and traditional signatures.
 ${ENFORCE_RFC9481}   ${True}
 
-
 ${PRESHARED_SECRET}    SiemensIT
 ${SENDER}              CloudCA-Integration-Test-User
 ${RECIPIENT}           CloudPKI-Integration-Test
 
-#${CA_CMP_URL}    https://signservice-playground.ct.siemens.com/ejbca/publicweb/cmp/PlaygroundMdcNameExtension
+# ${CA_CMP_URL}    https://signservice-playground.ct.siemens.com/ejbca/publicweb/cmp/PlaygroundMdcNameExtension
 ${CERT_PATH}        config/cert
 ${CA_CLIENT_CERT}   ${CERT_PATH}/PPKI_Playground_CMP.p12
 ${CA_CLIENT_KEY}    ${CERT_PATH}/PPKI_Playground_CMP.p12
@@ -70,8 +72,8 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
 ##### Section 3
-#Indicating if the PKIFailInfo must be set correctly.
-${FAILINFO_MUST_BE_CORRECT}=    True
+# Indicating if the PKIFailInfo must be set correctly.
+${FAILINFO_MUST_BE_CORRECT}    True
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 

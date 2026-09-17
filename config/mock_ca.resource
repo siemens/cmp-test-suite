@@ -53,7 +53,7 @@ ${ALLOW_ONLY_ONE_SENDER}   ${True}
 # Could be used to always load the same PKIMessage structure and patch it during testing.
 # TODO implement a one dataclass for the PKIMessage to always patch the same message if allowed,
 # to have some lax test settings and save as much resources as possible.
-${IRELEVANT_messageTime}    ${FALSE}
+${IRELEVANT_MESSAGETIME}    ${FALSE}
 # Currently does not support strict validation on it.
 # MUST be used but if not a strict setting could be ignored.
 ${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}   ${True}

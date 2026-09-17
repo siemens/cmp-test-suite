@@ -57,7 +57,7 @@ CA MUST Issue A Valid XMSS EE Certificate With KeyUsages
     ${cm}=   Get Next Common Name
     ${extensions}=    Prepare Extensions    digitalSignature, nonRepudiation, cRLSign
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
-    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    VAR  &{params}=    spki=${spki}    extensions=${extensions}
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Accepted    ${response}
 
@@ -107,9 +107,9 @@ CA MUST Accept CA Certificate Request With XMSS KeyUsages
     ${cm}=   Get Next Common Name
     ${extension}=    Prepare BasicConstraints Extension    True    critical=True
     ${extension2}=    Prepare KeyUsage Extension    keyCertSign, digitalSignature, nonRepudiation, cRLSign
-    VAR  @{extensions}    ${extension}    ${extension2}
+    VAR  @{extensions}=    ${extension}    ${extension2}
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
-    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    VAR  &{params}=    spki=${spki}    extensions=${extensions}
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Accepted    ${response}
 
@@ -123,9 +123,9 @@ CA Reject A Valid XMSS EE Request With keyCertSign KeyUsage
     ${cm}=   Get Next Common Name
     ${extension}=    Prepare BasicConstraints Extension    False    critical=False
     ${extension2}=    Prepare KeyUsage Extension    keyCertSign, digitalSignature, nonRepudiation, cRLSign
-    VAR  @{extensions}    ${extension}    ${extension2}
+    VAR  @{extensions}=    ${extension}    ${extension2}
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
-    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    VAR  &{params}=    spki=${spki}    extensions=${extensions}
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Rejected    ${response}    ip    badCertTemplate
 
@@ -187,7 +187,7 @@ CA MUST Issue A Valid XMSSMT EE Certificate With KeyUsages
     ${cm}=    Get Next Common Name
     ${extensions}=    Prepare Extensions    digitalSignature,nonRepudiation,cRLSign
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
-    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    VAR  &{params}=    spki=${spki}    extensions=${extensions}
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Accepted    ${response}
 
@@ -237,9 +237,9 @@ CA MUST Accept CA Certificate Request With XMSSMT KeyUsages
     ${cm}=    Get Next Common Name
     ${extension}=    Prepare BasicConstraints Extension    True    critical=True
     ${extension2}=    Prepare KeyUsage Extension    keyCertSign,digitalSignature,nonRepudiation,cRLSign
-    VAR  @{extensions}    ${extension}    ${extension2}
+    VAR  @{extensions}=    ${extension}    ${extension2}
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
-    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    VAR  &{params}=    spki=${spki}    extensions=${extensions}
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Accepted    ${response}
 
@@ -253,9 +253,9 @@ CA MUST Reject A Valid XMSSMT EE Request With keyCertSign KeyUsages
     ${cm}=    Get Next Common Name
     ${extension}=    Prepare BasicConstraints Extension    False    critical=False
     ${extension2}=    Prepare KeyUsage Extension    keyCertSign,digitalSignature,nonRepudiation,cRLSign
-    VAR  @{extensions}    ${extension}    ${extension2}
+    VAR  @{extensions}=    ${extension}    ${extension2}
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
-    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    VAR  &{params}=    spki=${spki}    extensions=${extensions}
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Rejected    ${response}    ip    badCertTemplate
 
@@ -300,7 +300,7 @@ CA MUST Issue A Valid HSS EE Certificate With KeyUsages
     ${cm}=   Get Next Common Name
     ${extensions}=    Prepare Extensions    digitalSignature, nonRepudiation, cRLSign
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
-    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    VAR  &{params}=    spki=${spki}    extensions=${extensions}
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Accepted    ${response}
 
@@ -347,9 +347,9 @@ CA MUST Accept CA Certificate Request With HSS KeyUsages
     ${cm}=   Get Next Common Name
     ${extension}=    Prepare BasicConstraints Extension    True    critical=True
     ${extension2}=    Prepare KeyUsage Extension    keyCertSign, digitalSignature, nonRepudiation, cRLSign
-    VAR  @{extensions}    ${extension}    ${extension2}
+    VAR  @{extensions}=    ${extension}    ${extension2}
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
-    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    VAR  &{params}=    spki=${spki}    extensions=${extensions}
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Accepted    ${response}
 
@@ -363,9 +363,9 @@ CA MUST Reject A Valid HSS EE Request With keyCertSign KeyUsage
     ${cm}=   Get Next Common Name
     ${extension}=    Prepare BasicConstraints Extension    False    critical=False
     ${extension2}=    Prepare KeyUsage Extension    keyCertSign, digitalSignature, nonRepudiation, cRLSign
-    VAR  @{extensions}    ${extension}    ${extension2}
+    VAR  @{extensions}=    ${extension}    ${extension2}
     ${spki}=    Prepare SubjectPublicKeyInfo    ${key}
-    VAR  &{params}    spki=${spki}    extensions=${extensions}
+    VAR  &{params}=    spki=${spki}    extensions=${extensions}
     ${response}=    Build And Send PKIMessage PQ Stateful    ${key}    ${cm}    ${params}
     Check PKIMessage Rejected    ${response}    ip    badCertTemplate
 
@@ -481,7 +481,7 @@ Build And Send PKIMessage PQ Stateful
     [Arguments]    ${key}    ${cm}    ${params}=${None}
     # Set default values if params is not provided
     IF   $params is None
-        VAR    &{params}   # robocop: off=VAR01
+        VAR    &{params}=   # robocop: off=VAR01
     END
     ${spki}=    Get From Dictionary    ${params}    spki    default=${None}
     ${exclude_fields}=    Get From Dictionary    ${params}    exclude_fields    default=sender,senderKID

@@ -5,12 +5,12 @@
 
 *** Settings ***
 Documentation  Contain common keywords for setup the CMP tests, like overwriting variables or initializing resources.
-Resource            ../config/${environment}.robot
+Resource            ../config/${ENVIRONMENT}.resource
 Resource            ../resources/keywords.resource
 
 
 *** Variables ***
-${environment}          cloudpki
+${ENVIRONMENT}          cloudpki
 
 
 *** Keywords ***
@@ -24,7 +24,7 @@ Set Up PQ Sig Suite
     ...                The CA_CMP_URL suite variable is updated to the PQ-specific endpoint.
     Set Up Test Suite
     ${url}=   Get PQ Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${CA_CMP_URL}=    ${url}   scope=SUITE
 
 Set Up PQ Stateful Sig Suite
     [Documentation]    Initializes the test suite for PQ stateful signature algorithm tests.
@@ -35,7 +35,7 @@ Set Up PQ Stateful Sig Suite
     ...                The CA_CMP_URL suite variable is updated to the PQ stateful-specific endpoint.
     Set Up Test Suite
     ${url}=   Get PQ Stateful Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${CA_CMP_URL}=    ${url}   scope=SUITE
 
 Set Up PQ KEM Suite
     [Documentation]    Initializes the test suite for PQ KEM (Key Encapsulation Mechanism) tests.
@@ -47,7 +47,7 @@ Set Up PQ KEM Suite
     ...                The CA_CMP_URL suite variable is updated to the PQ-specific endpoint.
     Set Up Test Suite
     ${url}=   Get PQ Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${CA_CMP_URL}=    ${url}   scope=SUITE
 
 Set Up Hybrid Sig Suite
     [Documentation]    Initializes the test suite for hybrid/composite signature algorithm tests.
@@ -59,7 +59,7 @@ Set Up Hybrid Sig Suite
     ...                The CA_CMP_URL suite variable is updated to the composite-specific endpoint.
     Set Up Test Suite
     ${url}=   Get Composite Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${CA_CMP_URL}=    ${url}   scope=SUITE
 
 Set Up Composite Sig Suite
     [Documentation]    Initializes the test suite for composite signature algorithm tests.
@@ -71,7 +71,7 @@ Set Up Composite Sig Suite
     ...                The CA_CMP_URL suite variable is updated to the composite-specific endpoint.
     Set Up Test Suite
     ${url}=   Get Composite Issuing URL
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${CA_CMP_URL}=    ${url}   scope=SUITE
 
 Set Up Related Certificates Suite
     [Documentation]    Initializes the test suite for related certificate tests as defined in RFC 9763.
@@ -83,8 +83,7 @@ Set Up Related Certificates Suite
     ...                The CA_CMP_URL suite variable is updated to the related certificate-specific endpoint.
     Set Up Test Suite
     ${url}=   Add URL Suffix   ${CA_BASE_URL}    ${RELATED_CERT_SUFFIX}
-    VAR   ${CA_CMP_URL}    ${url}   scope=SUITE   # robocop: off=VAR05
-
+    VAR   ${CA_CMP_URL}=    ${url}   scope=SUITE
 
 ##############################################
 ## Issue New Certificates for Testing Keywords
@@ -100,8 +99,8 @@ Issue New PQ Sig Cert For Testing
     ${pq_key}=   Generate Default PQ SIG Key
     ${pq_url}=  Get PQ Issuing URL
     ${pq_cert}  ${_}=   Issue New Cert For Testing    ${pq_url}   ${pq_key}
-    VAR   ${PQ_SIG_CERT}   ${pq_cert}   scope=SUITE   # robocop: off=VAR05
-    VAR   ${PQ_SIG_KEY}    ${pq_key}    scope=SUITE   # robocop: off=VAR05
+    VAR   ${PQ_SIG_CERT}=   ${pq_cert}   scope=SUITE
+    VAR   ${PQ_SIG_KEY}=    ${pq_key}    scope=SUITE
 
 Revoked New PQ Sig Cert
     [Documentation]    This keyword revokes the current PQ signature certificate and issues a new one, to be used in
@@ -117,8 +116,8 @@ Revoked New PQ Sig Cert
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}    accepted
     Wait Until Server Revoked Cert
-    VAR   ${REVOKED_PQ_CERT}   ${pq_cert}   scope=SUITE   # robocop: off=VAR05
-    VAR   ${REVOKED_PQ_KEY}   ${pq_key}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${REVOKED_PQ_CERT}=   ${pq_cert}   scope=SUITE
+    VAR   ${REVOKED_PQ_KEY}=   ${pq_key}   scope=SUITE
 
 Update New PQ Sig Cert
     [Documentation]    This keyword updates the current PQ signature certificate, to be used in the related cert tests.
@@ -136,8 +135,8 @@ Update New PQ Sig Cert
     PKIStatus Must Be    ${response}    accepted
     Confirm Certificate If Needed  ${response}    url=${pq_url}
     Wait Until Server Updated Cert
-    VAR   ${UPDATED_PQ_CERT}   ${pq_cert}   scope=SUITE   # robocop: off=VAR05
-    VAR   ${UPDATED_PQ_KEY}   ${pq_key}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${UPDATED_PQ_CERT}=   ${pq_cert}   scope=SUITE
+    VAR   ${UPDATED_PQ_KEY}=   ${pq_key}   scope=SUITE
 
 Issue New PQ CA Cert For Testing
     [Documentation]    This keyword issues a new CA certificate, to be used in the related cert tests.
@@ -152,5 +151,5 @@ Issue New PQ CA Cert For Testing
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${ca_cert}=   Confirm Certificate If Needed    ${response}   url=${pq_url}
-    VAR   ${PQ_CA_CERT}   ${ca_cert}   scope=SUITE   # robocop: off=VAR05
-    VAR   ${PQ_CA_KEY}   ${ca_key}   scope=SUITE   # robocop: off=VAR05
+    VAR   ${PQ_CA_CERT}=   ${ca_cert}   scope=SUITE
+    VAR   ${PQ_CA_KEY}=   ${ca_key}   scope=SUITE

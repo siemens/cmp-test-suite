@@ -1,10 +1,13 @@
+*** Comments ***
 # Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation     An example resource file with configuration options that are meant for use on your local development
 ...               system. Use this file as a template when adapting the tests to a specific environment.
+
 
 *** Variables ***
 ${CA_CMP_URL}    http://127.0.0.1:8000/pkix
@@ -33,10 +36,9 @@ ${LWCMP}   ${True}
 # Only MAC and traditional signatures.
 ${ENFORCE_RFC9481}   ${True}
 
-
 # Root certificates that we trust when verifying the identity of the server, this applies when sending CMP-over-HTTP
 # requests
-@{CA_TRUSTED_ROOTS}=    Create List
+@{CA_TRUSTED_ROOTS}    Create List
 ...    ${CERT_PATH}/PPKIPlaygroundECCRootCAv10.crt
 ...    ${CERT_PATH}/PPKIPlaygroundInfrastructureRootCAv10.crt
 ...    ${CERT_PATH}/PPKIPlaygroundRSARootCAv10.crt
@@ -71,10 +73,9 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 # Sensitive Service so maybe disallowed
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
-
 ##### Section 3
-#Indicating if the PKIFailInfo must be set correctly.
-${FAILINFO_MUST_BE_CORRECT}=    True
+# Indicating if the PKIFailInfo must be set correctly.
+${FAILINFO_MUST_BE_CORRECT}    True
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 
@@ -95,7 +96,6 @@ ${REVOCATION_STRICT_CHECK}    ${False}
 ${REVOKED_WAIT_TIME}   10s
 ${UPDATE_WAIT_TIME}   3s
 ${WAIT_UNTIL_UPDATED_CONFIRMATION_IS_EXPIRED}   15s
-
 
 # Section 5.2 and 5.3
 # Other trusted PKI and Key (None means not provided, so test are skipped).

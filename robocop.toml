@@ -3,6 +3,8 @@ ignore = [
     # Sets global variables outside the *** Variables *** section on purpose, to share
     # state (e.g. issued certs/keys) between test cases within a suite.
     "VAR04",
+    "VAR05",
+    "VAR06",
     # TODOs are tracked as a policy/backlog question, not a formatting issue.
     "COM01",
     # Size/length limits below don't fit this suite's style: CMP protocol tests are
@@ -28,4 +30,6 @@ configure = [
     # hundreds of unrelated files that use the same names as variables/kwargs.
     "wrong-case-in-keyword-call.pattern=senderNonce|messageTime|extraCerts|recipNonce|regInfo|reqInfo|statusString|failinfo",
     "wrong-case-in-keyword-name.pattern=senderNonce|messageTime|extraCerts|recipNonce|regInfo|reqInfo|statusString|failinfo",
+    "unused-variable.ignore=CMP_MAC,KEY_UPDATE_REQUEST,REVOCATION_REQUEST,CHAMELEON_DELTA_CERT,SUN_HYBRID_CERT,SUN_HYBRID_KEY,SUN_HYBRID_CERT_CHAIN",
+    "missing-space-after-comment.block=^#+",
 ]

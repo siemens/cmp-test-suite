@@ -1,6 +1,8 @@
+*** Comments ***
 # SPDX-FileCopyrightText: Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
+
 
 *** Settings ***
 Documentation       Contains tests for hybrid signatures which are currently not part of the
@@ -23,13 +25,11 @@ Library             ../pq_logic/hybrid_issuing.py
 Library             ../pq_logic/hybrid_prepare.py
 Library             ../pq_logic/pq_verify_logic.py
 
-
 Test Tags           pqc  mock-ca  experimental   hybrid
 Suite Setup         Setup Certs For Migration Tests
 
-*** Variables ***
-${uri_multiple_auth}=   ${None}
 
+*** Variables ***
 ${ISSUED_KEY}=   ${None}
 ${ISSUED_CERT}=   ${None}
 
@@ -66,7 +66,6 @@ ${SUN_HYBRID_REVOKED_CERT_CHAIN}=   ${None}
 
 
 *** Test Cases ***
-
 ###########################
 # The tests are sorted by the different hybrid signature/issuing mechanisms,
 # to clearly distinguish between the different mechanisms.
@@ -131,7 +130,7 @@ CA MUST issue a valid Catalyst Signed Certificate with Wished Signature Algorith
     ${new_key}=    Generate Default Key
     ${key}=   Generate Key    ml-dsa-87
     ${extension}=   Prepare AltSignatureAlgorithm Extension   key=${key}    hash_alg=sha512
-    ${extensions}=   Create List     ${extension}
+    VAR    @{extensions}=    ${extension}
     ${subject}=    Get Next Common Name
     ${cert_template}=   Prepare CertTemplate   subject=${subject}    extensions=${extensions}   key=${new_key}
     ${ir}=   Build Ir From Key    ${new_key}   cert_template=${cert_template}
@@ -145,15 +144,13 @@ CA MUST issue a valid Catalyst Signed Certificate with Wished Signature Algorith
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
-    ${extensions}=    Validate Catalyst Extensions     cert=${cert}   sig_alg_must_be=ml-dsa-87-sha512
+    Validate Catalyst Extensions     cert=${cert}   sig_alg_must_be=ml-dsa-87-sha512
     ${cert_chain}=   Build CMP Chain From PKIMessage    ${response}   for_issued_cert=True
     Verify Catalyst Signature    ${cert}   ${cert_chain[1]}
-
 
 ##########################
 # Catalyst Issuing Tests
 ##########################
-
 
 CA Could Support Valid 2 POP For Signing Keys
     [Documentation]    The Catalyst extension could be used to support two POPs for the signing keys.
@@ -511,15 +508,15 @@ CA MUST Issue a valid Chameleon Cert
     PKIStatus Must Be    ${response}    status=accepted
     ${cert}=   Get Cert From PKIMessage    ${response}
     ${delta_cert}=   Build Delta Cert From Paired Cert    ${cert}
-    VAR    ${extracted_delta_cert}   ${response["extraCerts"][1]}
+    VAR    ${extracted_delta_cert}=   ${response["extraCerts"][1]}
     ${der_delta}=   Encode To Der    ${delta_cert}
     ${der_extracted_delta}=   Encode To Der    ${extracted_delta_cert}
     Should Be Equal    ${der_delta}    ${der_extracted_delta}   The delta certificate should
     ...                be the same as the extracted delta certificate.
-    VAR   ${CHAMELEON_CERT}    ${cert}      scope=Global
-    VAR   ${CHAMELEON_KEY}    ${trad_key}   scope=Global
-    VAR   ${CHAMELEON_DELTA_CERT}    ${delta_cert}   scope=Global
-    VAR   ${CHAMELEON_DELTA_KEY}    ${pq_key}   scope=Global
+    VAR   ${CHAMELEON_CERT}=    ${cert}      scope=Global
+    VAR   ${CHAMELEON_KEY}=    ${trad_key}   scope=Global
+    VAR   ${CHAMELEON_DELTA_CERT}=    ${delta_cert}   scope=Global
+    VAR   ${CHAMELEON_DELTA_KEY}=    ${pq_key}   scope=Global
 
 CA Could Support Composite Signature with Chameleon Cert
     [Documentation]    A CA could support a PKIMessage signed with composite signature with a chameleon
@@ -589,10 +586,10 @@ CA MUST Accept valid Request with CSR with related Cert
     PKIStatus Must Be    ${response}    accepted
     ${cert}=    Get Cert From PKIMessage    ${response}
     Validate Related Cert Extension    ${cert}    ${PQ_SIG_CERT}
-    VAR   ${RELATED_KEY}    ${trad_key}   scope=Global
-    VAR   ${RELATED_CERT}    ${cert}    scope=Global
-    VAR   ${RELATED_KEY_SEC}    ${PQ_SIG_KEY}   scope=Global
-    VAR   ${RELATED_CERT_SEC}   ${PQ_SIG_CERT}   scope=Global
+    VAR   ${RELATED_KEY}=    ${trad_key}   scope=Global
+    VAR   ${RELATED_CERT}=    ${cert}    scope=Global
+    VAR   ${RELATED_KEY_SEC}=    ${PQ_SIG_KEY}   scope=Global
+    VAR   ${RELATED_CERT_SEC}=   ${PQ_SIG_CERT}   scope=Global
 
 CA Could Detect Bad Composite Signature with Related Cert
     [Documentation]    A CA could support a PKIMessage signed with composite signature with a related
@@ -615,7 +612,6 @@ CA Could Detect Bad Composite Signature with Related Cert
     ${response}=   Exchange Migration PKIMessage    ${protected_ir}   ${CA_BASE_URL}    ${MULTI_AUTH_SUFFIX}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    status=rejection
-
 
 ##########################
 # BadCertTemplate Tests
@@ -665,7 +661,6 @@ CA MUST Reject A Revoked Composite Sig Key
     [Tags]    composite-sig  badCertTemplate
     ${result}=  Is Certificate And Key Set    ${REVOKED_COMP_CERT}    ${REVOKED_COMP_KEY}
     SKIP IF    not ${result}    The Revoked Composite Certificate and Key are not set.
-    ${key}=  Generate Default Key
     ${ir}=   Build Ir From Key    ${REVOKED_COMP_KEY}   exclude_fields=senderKID,sender
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
@@ -696,8 +691,8 @@ CA MUST Accept A Valid Composite Sig Update Request
     ${_}=   Confirm Certificate If Needed    ${response}   url=${url}   protection=signature
     ...        private_key=${key}    cert=${cert}
     Wait Until Server Updated Cert
-    VAR   ${UPDATED_COMP_SIG_CERT}    ${cert}   scope=Global
-    VAR   ${UPDATED_COMP_SIG_KEY}    ${key}   scope=Global
+    VAR   ${UPDATED_COMP_SIG_CERT}=    ${cert}   scope=Global
+    VAR   ${UPDATED_COMP_SIG_KEY}=    ${key}   scope=Global
 
 CA MUST Reject A Update Composite Sig Key
     [Documentation]    According to composite-sig-cms07 the keys should not be used inside another certificate.
@@ -706,7 +701,6 @@ CA MUST Reject A Update Composite Sig Key
     [Tags]    composite-sig
     ${result}=  Is Certificate And Key Set    ${UPDATED_COMP_SIG_CERT}   ${UPDATED_COMP_SIG_KEY}
     SKIP IF    not ${result}    The Updated Composite Certificate and Key are not set.
-    ${key}=  Generate Default Key
     ${cert_template}=   Prepare CertTemplate  ${UPDATED_COMP_SIG_KEY}  cert=${UPDATED_COMP_SIG_CERT}   include_fields=subject,publicKey
     ${ir}=   Build Ir From Key    ${UPDATED_COMP_SIG_KEY}   cert_template=${cert_template}    exclude_fields=senderKID,sender
     ${protected_ir}=    Protect PKIMessage
@@ -726,7 +720,6 @@ CA MUST Reject A Revoked Composite KEM Key
     [Tags]    composite-kem
     ${result}=  Is Certificate And Key Set   ${REVOKED_COMP_KEM_CERT}   ${REVOKED_COMP_KEM_KEY}
     SKIP IF    not ${result}    The Revoked Composite KEM Certificate and Key are not set.
-    ${key}=  Generate Default Key
     ${ir}=   Build Ir From Key    ${REVOKED_COMP_KEM_KEY}   exclude_fields=senderKID,sender
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
@@ -745,7 +738,6 @@ CA MUST Reject A Update Composite KEM Key
     [Tags]    composite-kem
     ${result}=  Is Certificate And Key Set    ${COMPOSITE_KEM_CERT}   ${COMPOSITE_KEM_KEY}
     SKIP IF    not ${result}    The Updated Composite KEM Certificate and Key are not set.
-    ${key}=  Generate Default Key
     ${ir}=   Build Ir From Key    ${COMPOSITE_KEM_KEY}   exclude_fields=senderKID,sender
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
@@ -918,7 +910,7 @@ Default Protect Composite Sig
 Exchange Composite Request
     [Documentation]    Exchange a composite signature request.
     [Arguments]     ${suffix}=${COMPOSITE_SUFFIX}   ${key}=${None}   ${implicit_confirm}=${ALLOW_IMPLICIT_CONFIRM}
-    IF   '${key}'=='${None}'
+    IF   '${key}' == '${None}'
         ${key}=   Generate Key    composite-sig
     END
     ${ir}=   Build Ir From Key    ${key}  exclude_fields=senderKID,sender
@@ -943,12 +935,12 @@ Issue Relevant Certs
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}    accepted
     Wait Until Server Revoked Cert
-    VAR   ${REVOKED_CERT}   ${pq_cert}   scope=Global
-    VAR   ${REVOKED_KEY}   ${pq_key}   scope=Global
+    VAR   ${REVOKED_CERT}=   ${pq_cert}   scope=Global
+    VAR   ${REVOKED_KEY}=   ${pq_key}   scope=Global
     ${kur_key}=   Generate Default PQ SIG Key
     ${pq_url}=  Get PQ Issuing URL
     ${pq_cert}  ${_}=   Issue New Cert For Testing    ${pq_url}   ${kur_key}
-    ${cm}=  Get Next Common Name
+    ${_cm}=  Get Next Common Name
     ${up_key}=   Generate Default PQ SIG Key
     ${kur}=  Build Key Update Request  ${up_key}    ${pq_cert}   recipient=${RECIPIENT}
     ...          exclude_fields=senderKID,sender   implicit_confirm=${True}
@@ -958,8 +950,8 @@ Issue Relevant Certs
     PKIStatus Must Be    ${response}    accepted
     ${_}=   Confirm Certificate If Needed    ${response}   url=${pq_url}
     Wait Until Server Updated Cert
-    VAR   ${UPDATED_CERT}   ${pq_cert}   scope=Global
-    VAR   ${UPDATED_KEY}   ${kur_key}   scope=Global
+    VAR   ${UPDATED_CERT}=   ${pq_cert}   scope=Global
+    VAR   ${UPDATED_KEY}=   ${kur_key}   scope=Global
     ${ca_key}=   Generate Default PQ SIG Key
     ${extns}=   Prepare Extensions    is_ca=True
     ${ir}=   Build Ir From Key    ${ca_key}   recipient=${RECIPIENT}   extensions=${extns}
@@ -969,8 +961,8 @@ Issue Relevant Certs
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    accepted
     ${ca_cert}=   Confirm Certificate If Needed    ${response}   url=${pq_url}
-    VAR   ${CA_CERT}   ${ca_cert}   scope=Global
-    VAR   ${CA_KEY}   ${ca_key}   scope=Global
+    VAR   ${CA_CERT}=   ${ca_cert}   scope=Global
+    VAR   ${CA_KEY}=   ${ca_key}   scope=Global
 
 Protect PKIMessage With Composite Sig
     [Documentation]    Protect a PKIMessage with a composite signature key and certificate.
@@ -1017,8 +1009,8 @@ Setup Composite KEM Certs
     [Documentation]    Issue new composite KEM certificates for the tests.
     [Tags]    composite-kem
     ${comp_kem_cert}  ${comp_kem_key}=  Issue New Composite KEM Cert
-    VAR   ${COMPOSITE_KEM_CERT}   ${comp_kem_cert}   scope=Global
-    VAR   ${COMPOSITE_KEM_KEY}   ${comp_kem_key}   scope=Global
+    VAR   ${COMPOSITE_KEM_CERT}=   ${comp_kem_cert}   scope=Global
+    VAR   ${COMPOSITE_KEM_KEY}=   ${comp_kem_key}   scope=Global
     Setup Revoke Composite KEM Cert
     Setup Update Composite KEM Cert
 
@@ -1080,8 +1072,8 @@ Setup Update Composite KEM Cert
     ${comp_kem_cert2}=   Confirm EncrCert Certificate If Needed    ${response}  ${comp_kem_key2}
     ...                 url=${composite_url}   exclude_rid_check=${True}   shared_secret=${ss}
     ...                 for_kem_based_mac=True
-    VAR   ${UPDATED_COMP_KEM_CERT}   ${comp_kem_cert2}   scope=Global
-    VAR   ${UPDATED_COMP_KEM_KEY}   ${comp_kem_key2}   scope=Global
+    VAR   ${UPDATED_COMP_KEM_CERT}=   ${comp_kem_cert2}   scope=Global
+    VAR   ${UPDATED_COMP_KEM_KEY}=   ${comp_kem_key2}   scope=Global
 
 Setup Revoke Composite KEM Cert
     [Documentation]    Revoke a composite KEM certificate.
@@ -1098,8 +1090,8 @@ Setup Revoke Composite KEM Cert
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}    accepted
     Wait Until Server Revoked Cert
-    VAR   ${REVOKED_COMP_KEM_CERT}   ${comp_kem_cert3}   scope=Global
-    VAR   ${REVOKED_COMP_KEM_KEY}   ${comp_kem_key3}   scope=Global
+    VAR   ${REVOKED_COMP_KEM_CERT}=   ${comp_kem_cert3}   scope=Global
+    VAR   ${REVOKED_COMP_KEM_KEY}=   ${comp_kem_key3}   scope=Global
 
 Issue New Composite Certs
     [Documentation]    Issue new composite certificates for the tests.
@@ -1111,8 +1103,8 @@ Issue New Composite Certs
     ${rr}=   Build CMP Revoke Request   cert=${rr_comp_cert}   reason=keyCompromise
     ...           recipient=${RECIPIENT}
     ${prot_rr}=  Protect PKIMessage    ${rr}   signature   private_key=${rr_comp_key}   cert=${rr_comp_cert}
-    ${response}=  Exchange PKIMessage    ${prot_rr}   ${composite_url}
+    ${_response}=  Exchange PKIMessage    ${prot_rr}   ${composite_url}
     Wait Until Server Revoked Cert
-    VAR   ${REVOKED_COMP_CERT}   ${rr_comp_cert}   scope=Global
-    VAR   ${REVOKED_COMP_KEY}   ${rr_comp_key}   scope=Global
+    VAR   ${REVOKED_COMP_CERT}=   ${rr_comp_cert}   scope=Global
+    VAR   ${REVOKED_COMP_KEY}=   ${rr_comp_key}   scope=Global
     Setup Composite KEM Certs

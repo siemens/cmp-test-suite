@@ -1,17 +1,20 @@
+*** Comments ***
 # SPDX-FileCopyrightText: Copyright 2025 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation       Minimal CMP tests.
-Library             Process
 Library             Collections
 Library             OperatingSystem
+Library             Process
 Library             String
 Library             cmp_client.py
 
 Suite Setup         Ensure Environment Clean
 Test Setup          Ensure Environment Clean
+
 
 *** Variables ***
 ${CMP_URL}          http://127.0.0.1:5000/issuing
@@ -29,12 +32,8 @@ ${CERTIFICATION_REQUEST}   p10cr
 ${KEY_UPDATE_REQUEST}      kur
 ${REVOCATION_REQUEST}      rr
 
-*** Keywords ***
-Ensure Environment Clean
-    Remove File    certs/received_cert.pem
 
 *** Test Cases ***
-
 # === IR Tests ===
 IR 01 - Valid IR CMP Request Should Pass
     [Documentation]    Send a new certificate initialization request using OpenSSL CMP client with MAC-based protection.
@@ -99,6 +98,7 @@ IR 02 - IR Request With Wrong Secret Should Fail
     File Should Not Exist     ${CERT_OUT}
 
 # === P10CR Tests ===
+
 P10CR 01 - P10CR Unprotected Request Should Fail
     [Documentation]    Send a P10CR request with `-unprotected_requests` using OpenSSL to simulate missing protection.
     ...
@@ -124,7 +124,6 @@ P10CR 01 - P10CR Unprotected Request Should Fail
     Should Not Be Equal As Integers  ${output.rc}    0
     Should Contain    ${out}    error
     Should Contain    ${out}    protection
-
 
 P10CR 02 - P10CR With Missing CSR Should Fail
 
@@ -171,3 +170,9 @@ P10CR 03 - Valid P10CR With CSR Should Pass
     LOG    CMP Request Output: ${output.stdout}
     Should Be Equal As Integers  ${output.rc}    0
     Should Not Contain    ${output.stdout.lower()}    error
+
+
+*** Keywords ***
+Ensure Environment Clean
+    [Documentation]    Remove leftover certificate files from a previous test run.
+    Remove File    certs/received_cert.pem

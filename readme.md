@@ -56,7 +56,7 @@ Create a Python virtual environment and install the dependencies as follows:
 
 1. Activate the virtual environment.
 2. Navigate into the test suite: `cd cmp-test-suite`.
-3. Adjust the settings in the config/local.robot file to match your environment.
+3. Adjust the settings in the config/local.resource file to match your environment.
    - To run the smoke test, this step is not necessary. 
 4. Run the test:
    - Run `robot tests/smoke.robot` to run the smoke test, that checks if everything works so far.
@@ -68,15 +68,15 @@ You can run specific tests on specific environments by adjusting command line op
 `robot --outputdir=out --variable environment:cloudpki --include crypto tests`
 
 - `--outputdir=out` - store the results in the `out` directory
-- `--variable environment:cloudpki` - use the settings given in the `config/cloudpki.robot` file (replace as needed)
+- `--variable environment:cloudpki` - use the settings given in the `config/cloudpki.resource` file (replace as needed)
 - `--include crypto` - run only the tests that have the `crypto` tag
 
 ### Other useful commands
-- `make test` - run all the tests, store the results in `out/`, use the `config/local.robot` settings.
+- `make test` - run all the tests, store the results in `out/`, use the `config/local.resource` settings.
 - `make testlog` - run all the tests, store the results in subdirectories like `out/2024-01-20_17-45_January-1`, so that
   you can keep track of the history of test runs, instead of overwriting them. This will use the default test environment.
-- `make testlog env=cloudpki` - as above, but use the `config/cloudpki.robot` settings.
-- `make testlog env=ejbca` - as above, but use the `config/ejbca.robot` settings.
+- `make testlog env=cloudpki` - as above, but use the `config/cloudpki.resource` settings.
+- `make testlog env=ejbca` - as above, but use the `config/ejbca.resource` settings.
 - `make docs` - generate HTML documentation for test suites and available keywords, store in `doc/`.
 - `make unittest` - run unit tests that verify the functionality of the library itself.
 
