@@ -1834,3 +1834,29 @@ def get_all_xmss_xmssmt_keys() -> dict[str, str]:
                 raise FileNotFoundError(f"Key file for {alg_name} not found at {path}")
 
     return keys
+
+
+def wait_for_port(host: str, port: int, timeout: float = 30.0) -> None:
+    """Wait until a TCP port is accepting connections, or raise after a timeout.
+
+    Used to wait for a mock CA subprocess to actually start listening, instead of a fixed
+    `time.sleep(...)`. A fixed sleep can be too short under heavy CPU load (e.g. when many
+    tests run in parallel), where the subprocess is alive but hasn't finished starting yet.
+
+    :param host: The host to connect to.
+    :param port: The port to connect to.
+    :param timeout: Maximum time in seconds to wait for the port to open.
+    :raises TimeoutError: If the port does not open within the given timeout.
+    """
+    import socket
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                return
+        except OSError:
+            time.sleep(0.2)
+
+    raise TimeoutError(f"Port {port} on {host} did not open within {timeout} seconds.")

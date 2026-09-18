@@ -3,14 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import subprocess
+import sys
 import time
 import unittest
 
-from mock_ca.client import send_pkimessage_to_mock_ca, build_example_rsa_mac_request
-from resources.certutils import validate_ocsp_status_openssl, build_cmp_chain_from_pkimessage
-from resources.cmputils import get_pkistatusinfo, build_cmp_revoke_request
+from mock_ca.client import build_example_rsa_mac_request, send_pkimessage_to_mock_ca
+
+from resources.certutils import build_cmp_chain_from_pkimessage, validate_ocsp_status_openssl
+from resources.cmputils import build_cmp_revoke_request, get_pkistatusinfo
 from resources.protectionutils import protect_pkimessage
 from resources.utils import display_pki_status_info
+from unit_tests.utils_for_test import wait_for_port
 
 
 class TestOCSPOpenSSLMockCA(unittest.TestCase):
@@ -21,14 +24,18 @@ class TestOCSPOpenSSLMockCA(unittest.TestCase):
         cls.port_num = 6000
         # Start the server as a subprocess (adjust command as needed)
         cls.service_process = subprocess.Popen(
-            ["python3", "./mock_ca/ca_handler.py", "--port", str(cls.port_num)],
+            [sys.executable, "./mock_ca/ca_handler.py", "--port", str(cls.port_num)],
             stdout=subprocess.DEVNULL,  # Avoid blocking
             stderr=subprocess.DEVNULL,
             text=True  # So output is returned as strings instead of bytes
         )
-        time.sleep(10)  # Give the service time to start
         if cls.service_process.poll() is not None:
             raise RuntimeError("Mock CA service did not start successfully.")
+        try:
+            wait_for_port("127.0.0.1", cls.port_num, timeout=30)
+        except TimeoutError:
+            cls.service_process.kill()
+            raise RuntimeError("Mock CA service did not start listening in time.")
 
     def _get_ocsp_url(self) -> str:
         """Return the OCSP URL for the mock CA."""
