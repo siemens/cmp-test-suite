@@ -799,10 +799,10 @@ def _verify_certificate_chain(command: List[str], cert_chain: List[rfc9480.CMPCe
     :raises SignerNotTrusted: If `cert_chain` is empty, or OpenSSL returns a non-zero exit code,
     indicating a validation failure or if the verification process exceeds the specified timeout.
     """
-    dir_fpath = "data/tmp_cert_checks"
-    os.makedirs(dir_fpath, exist_ok=True)
     if len(cert_chain) == 0:
         raise ValueError("Got a empty chain to validate!")
+
+    dir_fpath = tempfile.mkdtemp(prefix="tmp_cert_checks_", dir="data")
 
     if len(cert_chain) <= 3:
         cmds = _verify_less_then_three_certificates(cert_chain, dir_fpath=dir_fpath)
