@@ -62,8 +62,6 @@ jobs:
         uses: actions/checkout@v6
       - name: RobotFramework style check
         run: robocop check
-    # We haven't settled on a style for RobotFramework yet, enforce check when consensus is reached
-    continue-on-error: true
 
   spelling_check:
     needs: prepare_env
