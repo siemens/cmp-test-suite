@@ -152,7 +152,7 @@ Build Batch Inner Body
     ${params}=   Set To Dictionary    ${params}    transaction_id=${tx_ids[0]}    sender_nonce=${nonces[0]}
     ${protected_ir3}=    Build Single Body By Name   ${inner_name}    &{params}
     ${key1}=   Generate Unique Key    ${DEFAULT_ALGORITHM}
-    ${key2}=   Generate Unique Key    ${DEFAULT_ALGORITHM}
+    ${key2}=   Generate Unique Key    ${DEFAULT_ALGORITHM}  # robocop: off=VAR02
     ${cm1}=   Get Next Common Name
     ${ir}=   Build Ir From Key    ${key1}   ${cm1}    sender=${SENDER}  recipient=${RECIPIENT}
     ${protected_ir1}=   Default Protect PKIMessage    ${ir}   protection=signature
@@ -215,7 +215,7 @@ Build Single Body By Name
     IF  '${body_name}' == 'ir'
         ${body}=   Build Ir From Key    ${key}   sender=${SENDER}  recipient=${RECIPIENT}   &{params}
     ELSE IF    '${body_name}' == 'cr'
-        ${body}=   Build Cr From Key    ${key}   sender=${SENDER}  recipient=${RECIPIENT}   &{params}
+        ${body}=   Build Cr From Key    ${key}   sender=${SENDER}  recipient=${RECIPIENT}   &{params}  # robocop: off=VAR03
     ELSE IF    '${body_name}' == 'ccr'
         ${cert_template}=   Get From Dictionary    ${params}    cert_template   ${None}
         IF  '${cert_template}' == '${None}'

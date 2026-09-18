@@ -1079,8 +1079,7 @@ Initialize Cert Setup
             ...    to be provided.
         END
         ${cert_template}    ${key}=    Generate CertTemplate For Testing
-        VAR    ${INIT_KEY}    ${tmp_key}
-        VAR    ${INIT_CERT}    ${tmp_cert}
+        VAR    ${INIT_CERT}=    ${tmp_cert}  # robocop: off=VAR02
         ${ir}=    Build Ir From Key
         ...    ${key}
         ...    cert_template=${cert_template}
@@ -1134,8 +1133,8 @@ Do Cert Conf If Needed Init
     ${pki_conf}=    Exchange PKIMessage    ${cert_conf}
     ${body_type}=    Get CMP Message Type    ${pki_conf}
     IF    '${body_type}' != 'pkiconf'    Fatal Error    Setup failed.
-    VAR    ${INIT_KEY}    ${None}
-    VAR    ${INIT_CERT}    ${None}
+    VAR    ${INIT_KEY}=    ${None}  # robocop: off=VAR02
+    VAR    ${INIT_CERT}=    ${None}  # robocop: off=VAR02
 
 Initialize Global Variables
     [Documentation]    Define global variables that will be used in the test suite and accessible within any test case.

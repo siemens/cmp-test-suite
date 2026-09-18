@@ -304,7 +304,7 @@ CA MUST Include the Sun-Hybrid Extensions
     ...    ${ir}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}  # robocop: off=VAR02
     ${response}=   Exchange Migration PKIMessage    ${ir}    ${CA_BASE_URL}   ${SUN_HYBRID_SUFFIX}
     PKIMessage Body Type Must Be    ${response}    ip
     ${cert}=   Get Cert From PKIMessage    ${response}
@@ -322,7 +322,7 @@ CA MUST Issue Sun Hybrid Non-Critical Extensions
     ...    ${ir}
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}
+    ...    cert=${ISSUED_CERT}  # robocop: off=VAR02
     ${response}=   Exchange Migration PKIMessage    ${ir}    ${CA_BASE_URL}   ${SUN_HYBRID_SUFFIX}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
@@ -337,7 +337,7 @@ CA MUST Issue a Valid Sun Hybrid Certificate
     ${key}=   Generate Unique Key    composite-sig
     ${ir}=   Build Ir From Key   ${key}   exclude_fields=senderKID,sender   recipient=${RECIPIENT}
     ...      implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}  # robocop: off=VAR02
     ${response}=   Exchange Migration PKIMessage    ${ir}    ${CA_BASE_URL}   ${SUN_HYBRID_SUFFIX}
     PKIMessage Body Type Must Be    ${response}    ip
     PKIStatus Must Be    ${response}    status=accepted
@@ -397,7 +397,7 @@ CA MUST Revoked a Valid Sun Hybrid Certificate
     ...    protection=signature
     ...    private_key=${key.trad_key}
     ...    cert=${cert}
-    ${protected_ir}=    Patch ExtraCerts    ${protected_rr}    ${cert_chain}
+    ${protected_ir}=    Patch ExtraCerts    ${protected_rr}    ${cert_chain}  # robocop: off=VAR02
     ${response}=   Exchange Migration PKIMessage    ${protected_rr}   ${CA_BASE_URL}  ${SUN_HYBRID_SUFFIX}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}    status=accepted
@@ -576,7 +576,7 @@ CA MUST Accept valid Request with CSR with related Cert
     ${trad_key}=   Generate Default Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${trad_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${trad_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}

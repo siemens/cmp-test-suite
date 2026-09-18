@@ -65,7 +65,7 @@ CA MUST Accept valid Request with CSR with related Cert
     ${trad_key}=   Generate Default Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${trad_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${trad_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -101,7 +101,7 @@ CA SHOULD Accept CSR with related cert from different CA
     ${pq_key}=    Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Protect PKIMessage
@@ -132,7 +132,7 @@ CA MUST Reject Invalid POP for Cert A
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -156,7 +156,7 @@ CA MUST Validate that the URI is reachable
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -180,7 +180,7 @@ CA MUST Check If The Related Certificate Is Not Revoked
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -205,7 +205,7 @@ CA MUST Check If The Related Certificate Is Not Updated
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   ${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -230,7 +230,7 @@ CA MUST Reject Related Cert With Non-EE Cert
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -253,7 +253,7 @@ CA MUST Reject Related Cert For Non-EE Cert
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True   extensions=${extns}
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
