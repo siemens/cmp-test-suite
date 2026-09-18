@@ -140,7 +140,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Unit tests
-        run:  python3 -m unittest discover -s unit_tests
+        run:  python3 -m pytest unit_tests -n auto
 
   type_check:
     needs: prepare_env
