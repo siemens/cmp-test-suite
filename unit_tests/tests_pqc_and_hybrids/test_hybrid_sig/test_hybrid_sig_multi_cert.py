@@ -3,8 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import unittest
+
+from pyasn1_alt_modules import rfc9480
+
+from pq_logic.hybrid_sig.cert_binding_for_multi_auth import prepare_related_cert_extension
 from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.pq_verify_logic import verify_composite_signature_with_hybrid_cert
+from pq_logic.tmp_oids import id_compSig_mldsa44_rsa2048_pkcs15
 from resources.certbuildutils import generate_certificate
 from resources.certutils import parse_certificate
 from resources.cryptoutils import sign_data
@@ -12,7 +18,7 @@ from resources.keyutils import load_private_key_from_file
 from resources.utils import load_and_decode_pem_file
 
 
-class TestSigVerificationMultiCert:
+class TestSigVerificationMultiCert(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -20,7 +26,10 @@ class TestSigVerificationMultiCert:
         cls.cert_a_key = load_private_key_from_file("data/keys/private-key-rsa.pem", password=None)
         cls.cert_a = parse_certificate(load_and_decode_pem_file("data/unittest/rsa_cert_ski.pem"))
         cls.cert_b = parse_certificate(load_and_decode_pem_file("data/unittest/pq_root_ca_ml_dsa_44.pem"))
-        cls.cert_related = generate_certificate(private_key=cls.cert_a_key, issuer_cert=cls.cert_b, hash_alg="sha256")
+        extn = prepare_related_cert_extension(cert_a=cls.cert_b, hash_alg="sha256", critical=False)
+        cls.cert_related = generate_certificate(
+            private_key=cls.cert_a_key, issuer_cert=cls.cert_b, extensions=[extn], hash_alg="sha256"
+        )
 
     def test_sig_with_related_cert(self):
         """
@@ -33,9 +42,12 @@ class TestSigVerificationMultiCert:
         composite_key = CompositeSigPrivateKey(mldsa_key, rsa_key)
         signature = sign_data(key=composite_key, data=b"Hello World")
 
+        sig_alg = rfc9480.AlgorithmIdentifier()
+        sig_alg["algorithm"] = id_compSig_mldsa44_rsa2048_pkcs15
 
         verify_composite_signature_with_hybrid_cert(data=b"Hello World",
                                                     signature=signature,
+                                                    sig_alg=sig_alg,
                                                     cert=self.cert_related,
                                                     other_certs=[self.cert_a, self.cert_b])
 
