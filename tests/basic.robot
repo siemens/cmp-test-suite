@@ -1079,6 +1079,7 @@ Initialize Cert Setup
             ...    to be provided.
         END
         ${cert_template}    ${key}=    Generate CertTemplate For Testing
+        VAR    ${INIT_KEY}=    ${tmp_key}  # robocop: off=VAR02
         VAR    ${INIT_CERT}=    ${tmp_cert}  # robocop: off=VAR02
         ${ir}=    Build Ir From Key
         ...    ${key}
