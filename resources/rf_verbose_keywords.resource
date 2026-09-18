@@ -6,8 +6,8 @@ Documentation      Contains keywords for verbose test cases so that keywords can
 ...                To ensure that similar logic and shared keywords, which are easier to change
 ...                and maintainable, are used.
 
-Resource            ../config/${environment}.robot
-# Resource    ../config/local.robot
+Resource            ../config/${ENVIRONMENT}.resource
+# Resource    ../config/local.resource
 Library             Collections
 Library             DateTime
 Library             OperatingSystem
@@ -116,8 +116,7 @@ Build Request With BadPOP
 Build Added Protection Body Inner
     [Documentation]    Build a PKIMessage with added protection.
     [Arguments]    ${name}   &{params}
-    VAR    ${empty_data}
-    ${key}=   Get From Dictionary   ${params}    key
+    VAR    ${empty_data}=    ${EMPTY}
     ${inner_name}=   Replace String    ${name}    added-protection-inner-   ${empty_data}
     ${protected_ir}=    Build Single Body By Name   ${inner_name}    &{params}
     ${nested}=    Build Nested PKIMessage
@@ -146,21 +145,20 @@ Build Batch Inner Body
     ...                | ${prot_body} | Build Batch Inner Body | batch-inner-cr | key=${key} |
     ...
     [Arguments]    ${name}   &{params}
-    VAR    ${empty_data}
-    ${key}=   Get From Dictionary   ${params}    key
+    VAR    ${empty_data}=    ${EMPTY}
     ${inner_name}=   Replace String    ${name}    batch-inner-   ${empty_data}
     ${tx_ids}=  Generate Unique Byte Values    4   16
     ${nonces}=  Generate Unique Byte Values    4   16
     ${params}=   Set To Dictionary    ${params}    transaction_id=${tx_ids[0]}    sender_nonce=${nonces[0]}
     ${protected_ir3}=    Build Single Body By Name   ${inner_name}    &{params}
     ${key1}=   Generate Unique Key    ${DEFAULT_ALGORITHM}
-    ${key2}=   Generate Unique Key    ${DEFAULT_ALGORITHM}
+    ${key2}=   Generate Unique Key    ${DEFAULT_ALGORITHM}  # robocop: off=VAR02
     ${cm1}=   Get Next Common Name
     ${ir}=   Build Ir From Key    ${key1}   ${cm1}    sender=${SENDER}  recipient=${RECIPIENT}
     ${protected_ir1}=   Default Protect PKIMessage    ${ir}   protection=signature
     ${ir2}=   Build Ir From Key    ${key1}   ${cm1}    sender=${SENDER}  recipient=${RECIPIENT}
     ${protected_ir2}=   Default Protect PKIMessage    ${ir2}   protection=signature
-    VAR    @{messages}    ${protected_ir1}   ${protected_ir2}    ${protected_ir3}
+    VAR    @{messages}=    ${protected_ir1}   ${protected_ir2}    ${protected_ir3}
     ${nested}=    Build Nested PKIMessage
     ...    recipient=${RECIPIENT}
     ...    other_messages=${messages}
@@ -187,9 +185,7 @@ Get Or Generate Kur Key
     [Tags]    build_request   key   kur
     [Arguments]     &{params}
     ${key}=   Get From Dictionary    ${params}    new_key   ${None}
-    IF  '${key}' != '${None}'
-        RETURN   ${key}
-    END
+    IF    '${key}' != '${None}'    RETURN    ${key}
     ${old_key}=   Get From Dictionary    ${params}    old_key
     ${key_name}=   Get Key Name    ${old_key}
     ${new_key}=   Generate Unique Key    ${key_name}
@@ -219,7 +215,7 @@ Build Single Body By Name
     IF  '${body_name}' == 'ir'
         ${body}=   Build Ir From Key    ${key}   sender=${SENDER}  recipient=${RECIPIENT}   &{params}
     ELSE IF    '${body_name}' == 'cr'
-        ${body}=   Build Cr From Key    ${key}   sender=${SENDER}  recipient=${RECIPIENT}   &{params}
+        ${body}=   Build Cr From Key    ${key}   sender=${SENDER}  recipient=${RECIPIENT}   &{params}  # robocop: off=VAR03
     ELSE IF    '${body_name}' == 'ccr'
         ${cert_template}=   Get From Dictionary    ${params}    cert_template   ${None}
         IF  '${cert_template}' == '${None}'
@@ -272,7 +268,7 @@ Protect Body ByName
     [Tags]    build_request   protect_body  protection
     [Arguments]    ${body_name}   ${body}   ${for_mac}=${False}   ${old_cert}=${None}   ${old_key}=${None}
     IF   'added-protection' in '${body_name}' or 'batch-inner' in '${body_name}'
-            ${prot_body}=   Default Protect With Trusted Cert    ${body}
+        ${prot_body}=   Default Protect With Trusted Cert    ${body}
     ELSE IF  ${for_mac}
         ${prot_body}=   Default Protect With MAC    ${body}
     ELSE IF    'ccr' == '${body_name}'

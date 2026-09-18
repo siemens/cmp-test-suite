@@ -276,8 +276,8 @@ CA MUST Send A Valid KUP After Receiving valid KUR
     PKIMessage Body Type Must Be    ${response}    kup
     ${cert}=   Confirm Certificate If Needed   ${response}   protection=signature   url=${CA_CMP_URL}
     Validate Ca Message Body    ${response}
-    VAR    ${UPDATED_CERT}    ${cert}    scope=Global
-    VAR    ${UPDATED_KEY}    ${kur_key}    scope=Global
+    VAR    ${UPDATED_CERT}=    ${cert}    scope=Global
+    VAR    ${UPDATED_KEY}=    ${kur_key}    scope=Global
     Wait Until Server Updated Cert
 
 CA MUST Send A Valid CP After Receiving valid P10CR
@@ -509,8 +509,8 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid KUR
         PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
         Signature Protection Must Match    response=${response}    pki_conf=${pki_conf}
     END
-    VAR    ${UPDATED_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${UPDATED_KEY}    ${kur_key}    scope=GLOBAL
+    VAR    ${UPDATED_CERT}=    ${cert}    scope=GLOBAL
+    VAR    ${UPDATED_KEY}=    ${kur_key}    scope=GLOBAL
     Wait Until Server Updated Cert
     # positioned here so if the Response is incorrect, the certificate is still updated, so that it
     # can be used for other test cases.
@@ -606,8 +606,8 @@ CA MUST React To A Valid Cert Request With The BasicConstraints Extension
             ${pki_conf}=    Exchange PKIMessage    ${protected_cert_conf}
             PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
         END
-        VAR    ${CA_KEY}    ${new_key}    scope=GLOBAL
-        VAR    ${CA_CERT}    ${cert}    scope=GLOBAL
+        VAR    ${CA_KEY}=    ${new_key}    scope=GLOBAL
+        VAR    ${CA_CERT}=    ${cert}    scope=GLOBAL
     END
 
 # TODO maybe strict
@@ -618,7 +618,7 @@ CA MUST React To A Valid Cert Request With Invalid Path-length In BasicConstrain
     ...    with `ca` set to False and a specified `path_length` value. The CA MUST reject the request
     ...    to enforce certificate template constraints, as `path_length` is invalid when `ca` is False.
     [Tags]    basic-constraints    extension   minimal
-    VAR    ${common_name}    CN=Hans Mustermann CA 2
+    VAR    ${common_name}=    CN=Hans Mustermann CA 2
     ${new_key}=    Generate Default Key
     ${extensions}=    Prepare Extensions    path_length=5    is_ca=False
     ${ir}=    Build Ir From Key
@@ -644,7 +644,7 @@ CA MAY React To Cert Request With Invalid Is_ca In BasicConstraints False But Ke
     ...    to enforce certificate template constraints. If the policy allows, the CA MAY process
     ...    the request with modifications.
     [Tags]    basic-constraints    extension    strict
-    VAR    ${common_name}    CN=Hans Mustermann CA 3
+    VAR    ${common_name}=    CN=Hans Mustermann CA 3
     ${new_key}=    Generate Default Key
     ${extensions}=    Prepare Extensions    is_ca=False    key_usage=keyCertSign,digitalSignature
     ${ir}=    Build Ir From Key    signing_key=${new_key}    common_name=${common_name}    extensions=${extensions}
@@ -713,8 +713,8 @@ CA MUST Issue A Certificate With The KeyAgreement KeyUsage Extension
         PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     END
     Validate KeyUsage   ${cert}    keyAgreement,digitalSignature    strictness=STRICT
-    VAR    ${KGA_KARI_KEY}    ${new_key}    scope=Global
-    VAR    ${KGA_KARI_CERT}    ${cert}    scope=Global
+    VAR    ${KGA_KARI_KEY}=    ${new_key}    scope=Global
+    VAR    ${KGA_KARI_CERT}=    ${cert}    scope=Global
 
 CA MUST Issue ECDSA Cert With KeyUsage
     [Documentation]    According to RFC 9483 Section 5, the CA responds to a certificate request based on its own
@@ -736,8 +736,8 @@ CA MUST Issue ECDSA Cert With KeyUsage
     PKIStatus Must Be   ${ca_response}    status=accepted
     ${cert}=  Confirm Certificate If Needed    ${ca_response}   request=${protected_ir}   url=${CA_CMP_URL}
     Validate KeyUsage   ${cert}    keyAgreement,digitalSignature    strictness=STRICT
-    VAR    ${CLIENT_ECC_KEY}    ${new_key}    scope=Global
-    VAR    ${CLIENT_ECC_CERT}    ${cert}    scope=Global
+    VAR    ${CLIENT_ECC_KEY}=    ${new_key}    scope=Global
+    VAR    ${CLIENT_ECC_CERT}=    ${cert}    scope=Global
 
 # Needed for 4.1.6.1. Using the Key Transport Key Management Technique
 
@@ -779,8 +779,8 @@ CA MUST Issue A Certificate With The KeyEncipherment KeyUsage Extension
         PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
     END
     Validate KeyUsage    ${cert}    keyEncipherment,digitalSignature    strictness=STRICT
-    VAR    ${KGA_KTRI_KEY}    ${new_key}    scope=Global
-    VAR    ${KGA_KTRI_CERT}    ${cert}    scope=Global
+    VAR    ${KGA_KTRI_KEY}=    ${new_key}    scope=Global
+    VAR    ${KGA_KTRI_CERT}=    ${cert}    scope=Global
 
 #### EKU
 
@@ -825,8 +825,8 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmcRA
             PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
         END
         Validate CMP ExtendedKeyUsage    ${cert}    cmcRA    STRICT
-        VAR    ${CMC_RA_KEY}    ${new_key}    scope=Global
-        VAR    ${CMC_RA_CERT}    ${cert}    scope=Global
+        VAR    ${CMC_RA_KEY}=    ${new_key}    scope=Global
+        VAR    ${CMC_RA_CERT}=    ${cert}    scope=Global
     END
 
 CA MAY Issue A Certificate With The Extended KeyUsage cmcCA
@@ -870,8 +870,8 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmcCA
             PKIMessage Body Type Must Be    ${pki_conf}    pkiconf
         END
         Validate CMP ExtendedKeyUsage    ${cert}    cmcCA    STRICT
-        VAR    ${CMC_CA_KEY}    ${new_key}    scope=Global
-        VAR    ${CMC_CA_CERT}    ${cert}    scope=Global
+        VAR    ${CMC_CA_KEY}=    ${new_key}    scope=Global
+        VAR    ${CMC_CA_CERT}=    ${cert}    scope=Global
     END
 
 CA MAY Issue A Certificate With The Extended KeyUsage cmKGA
@@ -918,8 +918,8 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmKGA
         END
         # must be present and contain the expected extension.
         Validate CMP ExtendedKeyUsage    ${cert}    cmKGA    STRICT
-        VAR    ${CMC_RA_KEY}    ${new_key}    scope=Global
-        VAR    ${CMC_RA_CERT}    ${cert}    scope=Global
+        VAR    ${CMC_RA_KEY}=    ${new_key}    scope=Global
+        VAR    ${CMC_RA_CERT}=    ${cert}    scope=Global
     END
 
 CA MIGHT Reject initialization requests With An Invalid Extension
@@ -1068,7 +1068,7 @@ Initialize Cert Setup
     ...     certificate `(ISSUED_CERT)` and `(ISSUED_KEY)` to be able to start the test for the test suite.
     [Tags]    setup
     IF    not ${ALLOW_MAC_PROTECTION}
-        VAR    ${protection}    sig
+        VAR    ${protection}=    sig
         ${tmp_cert}    ${tmp_key}=    May Load Cert And Key
         ...    cert_path=${INITIAL_CERT_PATH}
         ...    key_path=${INITIAL_KEY_PATH}
@@ -1079,8 +1079,8 @@ Initialize Cert Setup
             ...    to be provided.
         END
         ${cert_template}    ${key}=    Generate CertTemplate For Testing
-        VAR    ${INIT_KEY}    ${tmp_key}
-        VAR    ${INIT_CERT}    ${tmp_cert}
+        VAR    ${INIT_KEY}=    ${tmp_key}  # robocop: off=VAR02
+        VAR    ${INIT_CERT}=    ${tmp_cert}  # robocop: off=VAR02
         ${ir}=    Build Ir From Key
         ...    ${key}
         ...    cert_template=${cert_template}
@@ -1093,7 +1093,7 @@ Initialize Cert Setup
         ...    cert=${tmp_cert}
         ${response}=    Exchange PKIMessage    ${protected_ir}
     ELSE
-        VAR    ${protection}    mac
+        VAR    ${protection}=    mac
         ${message}=    Generate Default MAC Protected PKIMessage
         ${key}=    Get From List    ${burned_keys}    -1
         ${response}=    Exchange PKIMessage    ${message}
@@ -1105,8 +1105,8 @@ Initialize Cert Setup
     END
     Do Cert Conf If Needed Init    ${response}    ${protection}
     ${cert}=    Get Cert From PKIMessage    ${response}
-    VAR    ${ISSUED_CERT}    ${cert}    scope=GLOBAL
-    VAR    ${ISSUED_KEY}    ${key}    scope=GLOBAL
+    VAR    ${ISSUED_CERT}=    ${cert}    scope=GLOBAL
+    VAR    ${ISSUED_KEY}=    ${key}    scope=GLOBAL
     ${chain}=    Build CMP Chain From PKIMessage    ${response}    for_issued_cert=True
     Write Certs To Dir    ${chain}
     ${root}=    Get From List    ${chain}    -1
@@ -1134,8 +1134,8 @@ Do Cert Conf If Needed Init
     ${pki_conf}=    Exchange PKIMessage    ${cert_conf}
     ${body_type}=    Get CMP Message Type    ${pki_conf}
     IF    '${body_type}' != 'pkiconf'    Fatal Error    Setup failed.
-    VAR    ${INIT_KEY}    ${None}
-    VAR    ${INIT_CERT}    ${None}
+    VAR    ${INIT_KEY}=    ${None}  # robocop: off=VAR02
+    VAR    ${INIT_CERT}=    ${None}  # robocop: off=VAR02
 
 Initialize Global Variables
     [Documentation]    Define global variables that will be used in the test suite and accessible within any test case.
@@ -1144,24 +1144,24 @@ Initialize Global Variables
     ${result}=    Is Certificate And Key Set    ${ISSUED_CERT}    ${ISSUED_KEY}
     IF    not ${result}    Fatal Error    Unable to set up the Test-Suite
     ${csr}    ${tmp_key}=    Generate CSR For Testing
-    VAR    ${EXP_CSR}    ${csr}    scope=GLOBAL
-    VAR    ${EXP_KEY}    ${tmp_key}    scope=GLOBAL
+    VAR    ${EXP_CSR}=    ${csr}    scope=GLOBAL
+    VAR    ${EXP_KEY}=    ${tmp_key}    scope=GLOBAL
     # used to indicate, which common-name was already issued to just add a number at the
     # end so the issuer are different.
     # In some cases are only the sender==common_name is accepted, so for all other
     # cases this is used.
-    VAR    ${TEST_INDEX}    ${1}    scope=GLOBAL
+    VAR    ${TEST_INDEX}=    ${1}    scope=GLOBAL
     # Generate During Runtime
     # Successfully updated certificate and key.
-    VAR    ${UPDATED_KEY}    ${None}    scope=GLOBAL
-    VAR    ${UPDATED_CERT}    ${None}    scope=GLOBAL
+    VAR    ${UPDATED_KEY}=    ${None}    scope=GLOBAL
+    VAR    ${UPDATED_CERT}=    ${None}    scope=GLOBAL
     # Certificate and key to be revoked during Runtime.
-    VAR    ${REVOCATION_PRIVATE_KEY}    ${None}    scope=GLOBAL
-    VAR    ${REVOCATION_CERT}    ${None}    scope=GLOBAL
+    VAR    ${REVOCATION_PRIVATE_KEY}=    ${None}    scope=GLOBAL
+    VAR    ${REVOCATION_CERT}=    ${None}    scope=GLOBAL
     # Issuing of a CA Certificate with KeyUsage and BasicConstraint Extension
     # and the ExtendedKeyUsage `cmcCA` and `cmcRA` if granted.
-    VAR    ${CA_CERT}    ${None}    scope=GLOBAL
-    VAR    ${CA_KEY}    ${None}    scope=GLOBAL
+    VAR    ${CA_CERT}=    ${None}    scope=GLOBAL
+    VAR    ${CA_KEY}=    ${None}    scope=GLOBAL
 
     # Issuing of a CA Certificate with the ExtendedKeyUsage `cmcRA` if granted.
     # only set if granted, used as trusted RA, if not set.
@@ -1169,42 +1169,42 @@ Initialize Global Variables
     # But there is also the possibility to set just set the
     # ${OTHER_TRUSTED_PKI_KEY} and ${OTHER_TRUSTED_PKI_CERT} inside the config file.
     # Also has the KeyUsage extension: digitalSignature
-    VAR    ${RA_CERT}    ${None}    scope=GLOBAL
-    VAR    ${RA_KEY}    ${None}    scope=GLOBAL
+    VAR    ${RA_CERT}=    ${None}    scope=GLOBAL
+    VAR    ${RA_KEY}=    ${None}    scope=GLOBAL
 
     # Successfully revoked certificate to be Revive, if allowed.
-    VAR    ${REVOKED_CERT}    ${None}    scope=GLOBAL
-    VAR    ${REVOKED_PRIVATE_KEY}    ${None}    scope=GLOBAL
+    VAR    ${REVOKED_CERT}=    ${None}    scope=GLOBAL
+    VAR    ${REVOKED_PRIVATE_KEY}=    ${None}    scope=GLOBAL
     # Only needed to test LWCMP version, where DSA is not allowed as signing algorithm.
     ${dsa_cert}   ${dsa_key}=    May Load Cert And Key     ${DSA_CERT}   ${DSA_KEY}   ${DSA_KEY_PASSWORD}
-    VAR    ${DSA_CERT}    ${dsa_cert}    scope=GLOBAL
-    VAR    ${DSA_KEY}    ${dsa_key}    scope=GLOBAL
+    VAR    ${DSA_CERT}=    ${dsa_cert}    scope=GLOBAL
+    VAR    ${DSA_KEY}=    ${dsa_key}    scope=GLOBAL
     # To Test with KARI, if allowed.
-    VAR    ${X25519_CERT}    ${None}    scope=GLOBAL
-    VAR    ${X25519_KEY}    ${None}    scope=GLOBAL
+    VAR    ${X25519_CERT}=    ${None}    scope=GLOBAL
+    VAR    ${X25519_KEY}=    ${None}    scope=GLOBAL
     # To Test with KARI, if allowed.
-    VAR    ${ECDSA_CERT}    ${None}    scope=GLOBAL
-    VAR    ${ECDSA_KEY}    ${None}    scope=GLOBAL
+    VAR    ${ECDSA_CERT}=    ${None}    scope=GLOBAL
+    VAR    ${ECDSA_KEY}=    ${None}    scope=GLOBAL
     # To Test with KTRI, if allowed. RSA with extension (keyEncipherment)
-    VAR    ${KGA_KTRI_KEY}    ${None}    scope=GLOBAL
-    VAR    ${KGA_KTRI_CERT}    ${None}    scope=GLOBAL
+    VAR    ${KGA_KTRI_KEY}=    ${None}    scope=GLOBAL
+    VAR    ${KGA_KTRI_CERT}=    ${None}    scope=GLOBAL
 
     # To Test KTRI, if the CA rejects a request for KGA without the keyEncipherment extension.
-    VAR    ${NEG_KTRI_KEY}    ${None}    scope=Global
-    VAR    ${NEG_KTRI_CERT}    ${None}    scope=Global
+    VAR    ${NEG_KTRI_KEY}=    ${None}    scope=Global
+    VAR    ${NEG_KTRI_CERT}=    ${None}    scope=Global
 
     # ecc key with extension. (keyAgreement)
-    VAR    ${KGA_KARI_KEY}    ${None}    scope=GLOBAL   # robocop: off=VAR04
-    VAR    ${KGA_KARI_CERT}    ${None}    scope=GLOBAL  # robocop: off=VAR04
+    VAR    ${KGA_KARI_KEY}=    ${None}    scope=GLOBAL
+    VAR    ${KGA_KARI_CERT}=    ${None}    scope=GLOBAL
 
     # To Test KARI, if the CA rejects a request for KGA without the keyAgreement extension.
-    VAR    ${NEG_KARI_KEY}    ${None}    scope=Global   # robocop: off=VAR04
-    VAR    ${NEG_KARI_CERT}    ${None}    scope=Global  # robocop: off=VAR04
+    VAR    ${NEG_KARI_KEY}=    ${None}    scope=Global
+    VAR    ${NEG_KARI_CERT}=    ${None}    scope=Global
 
-    VAR    ${RR_CERT_FOR_TRUSTED}    ${None}    scope=Global  # robocop: off=VAR04
+    VAR    ${RR_CERT_FOR_TRUSTED}=    ${None}    scope=Global
 
-    VAR    @{GLOBAL_CERTS}    @{EMPTY}    scope=Global  # robocop: off=VAR04
-    VAR    @{GLOBAL_KEYS}    @{EMPTY}    scope=Global   # robocop: off=VAR04
+    VAR    @{GLOBAL_CERTS}=    @{EMPTY}    scope=Global
+    VAR    @{GLOBAL_KEYS}=    @{EMPTY}    scope=Global
     TRY
         Set Up CRR Test Cases
     EXCEPT

@@ -1,9 +1,12 @@
+*** Comments ***
 # Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation     Config file for running tests on the PKI playground.
+
 
 *** Variables ***
 ${CA_CMP_URL}    https://signservice-playground.ct.siemens.com/ejbca/publicweb/cmp/PlaygroundMdcNameExtension
@@ -56,8 +59,8 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
 ##### Section 3
-#Indicating if the PKIFailInfo must be set correctly.
-${FAILINFO_MUST_BE_CORRECT}=    True
+# Indicating if the PKIFailInfo must be set correctly.
+${FAILINFO_MUST_BE_CORRECT}    True
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 

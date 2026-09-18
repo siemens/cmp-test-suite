@@ -3,16 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import subprocess
-import time
+import sys
 import unittest
 
 import requests
+from mock_ca.ca_handler import BODY_NAMES_2_EXPECTED_NAME
+from mock_ca.client import build_example_rsa_mac_request, send_pkimessage_to_mock_ca
 from pyasn1.codec.der import encoder
 
-from mock_ca.ca_handler import BODY_NAMES_2_EXPECTED_NAME
-from mock_ca.client import send_pkimessage_to_mock_ca, build_example_rsa_mac_request
 from resources.cmputils import get_pkistatusinfo
 from resources.utils import display_pki_status_info
+from unit_tests.utils_for_test import wait_for_port
 
 _PREFIXES = ["/", "/issuing/", "/.well-known/cmp/p/"]
 
@@ -44,14 +45,18 @@ class TestRegisterRoutesMockCA(unittest.TestCase):
         # MUST be different from the default option, to also check the correct port usage.
         cls.port_num = 6002
         cls.service_process = subprocess.Popen(
-            ["python3", "./mock_ca/ca_handler.py", "--port", str(cls.port_num)],
+            [sys.executable, "./mock_ca/ca_handler.py", "--port", str(cls.port_num)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             text=True,
         )
-        time.sleep(10)  # Give the service time to start
         if cls.service_process.poll() is not None:
             raise RuntimeError("Mock CA service did not start successfully.")
+        try:
+            wait_for_port("127.0.0.1", cls.port_num, timeout=30)
+        except TimeoutError:
+            cls.service_process.kill()
+            raise RuntimeError("Mock CA service did not start listening in time.")
 
     # ------------------------------------------------------------------
     # Helpers

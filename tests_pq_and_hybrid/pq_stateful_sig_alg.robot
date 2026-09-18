@@ -26,15 +26,2953 @@ Suite Setup         Set Up PQ Stateful Sig Suite
 Suite Teardown      Clean Verbose STFL Mappings
 
 
+*** Test Cases ***
+Invalid Stateful Sig XMSS-SHA2_10_256 IR Request
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_10_256 IR Request
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_256 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_256 IR Key Size
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_10_256 IR Request
+    [Tags]    positive    xmss    xmss-sha2_10_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_256 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_10_256 IR Request
+    [Tags]    positive    xmss    xmss-sha2_10_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 IR Request
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_10_256 IR Request
+    [Tags]    positive    xmss    xmss-sha2_10_256    certConf
+    Build Certificate Confirmation Test    xmss-sha2_10_256    ir
+
+Invalid Cert Conf for XMSS-SHA2_10_256 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_10_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_10_256    ir
+
+Invalid Stateful Sig XMSS-SHA2_16_256 IR Request
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_16_256 IR Request
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_256 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_256 IR Key Size
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_16_256 IR Request
+    [Tags]    positive    xmss    xmss-sha2_16_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_256 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_16_256 IR Request
+    [Tags]    positive    xmss    xmss-sha2_16_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 IR Request
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_16_256 IR Request
+    [Tags]    positive    xmss    xmss-sha2_16_256    certConf
+    Build Certificate Confirmation Test    xmss-sha2_16_256    ir
+
+Invalid Cert Conf for XMSS-SHA2_16_256 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_16_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_16_256    ir
+
+Invalid Stateful Sig XMSS-SHA2_20_256 IR Request
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_20_256 IR Request
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_256 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_256 IR Key Size
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_20_256 IR Request
+    [Tags]    positive    xmss    xmss-sha2_20_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_256 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_20_256 IR Request
+    [Tags]    positive    xmss    xmss-sha2_20_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 IR Request
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_20_256 IR Request
+    [Tags]    positive    xmss    xmss-sha2_20_256    certConf
+    Build Certificate Confirmation Test    xmss-sha2_20_256    ir
+
+Invalid Cert Conf for XMSS-SHA2_20_256 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_20_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_20_256    ir
+
+Invalid NIST Disapproved XMSS-SHAKE_10_256 IR Request
+    [Tags]    negative    xmss    xmss-shake_10_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_10_256    ir
+
+Invalid NIST Disapproved XMSS-SHAKE_16_256 IR Request
+    [Tags]    negative    xmss    xmss-shake_16_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_16_256    ir
+
+Invalid NIST Disapproved XMSS-SHAKE_20_256 IR Request
+    [Tags]    negative    xmss    xmss-shake_20_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_20_256    ir
+
+Invalid NIST Disapproved XMSS-SHA2_10_512 IR Request
+    [Tags]    negative    xmss    xmss-sha2_10_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_10_512    ir
+
+Invalid NIST Disapproved XMSS-SHA2_16_512 IR Request
+    [Tags]    negative    xmss    xmss-sha2_16_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_16_512    ir
+
+Invalid NIST Disapproved XMSS-SHA2_20_512 IR Request
+    [Tags]    negative    xmss    xmss-sha2_20_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_20_512    ir
+
+Invalid NIST Disapproved XMSS-SHAKE_10_512 IR Request
+    [Tags]    negative    xmss    xmss-shake_10_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_10_512    ir
+
+Invalid NIST Disapproved XMSS-SHAKE_16_512 IR Request
+    [Tags]    negative    xmss    xmss-shake_16_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_16_512    ir
+
+Invalid NIST Disapproved XMSS-SHAKE_20_512 IR Request
+    [Tags]    negative    xmss    xmss-shake_20_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_20_512    ir
+
+Invalid Stateful Sig XMSS-SHA2_10_192 IR Request
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_10_192 IR Request
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_192 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_192 IR Key Size
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_10_192 IR Request
+    [Tags]    positive    xmss    xmss-sha2_10_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_192 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_10_192 IR Request
+    [Tags]    positive    xmss    xmss-sha2_10_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 IR Request
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_10_192 IR Request
+    [Tags]    positive    xmss    xmss-sha2_10_192    certConf
+    Build Certificate Confirmation Test    xmss-sha2_10_192    ir
+
+Invalid Cert Conf for XMSS-SHA2_10_192 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_10_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_10_192    ir
+
+Invalid Stateful Sig XMSS-SHA2_16_192 IR Request
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_16_192 IR Request
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_192 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_192 IR Key Size
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_16_192 IR Request
+    [Tags]    positive    xmss    xmss-sha2_16_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_192 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_16_192 IR Request
+    [Tags]    positive    xmss    xmss-sha2_16_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 IR Request
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_16_192 IR Request
+    [Tags]    positive    xmss    xmss-sha2_16_192    certConf
+    Build Certificate Confirmation Test    xmss-sha2_16_192    ir
+
+Invalid Cert Conf for XMSS-SHA2_16_192 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_16_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_16_192    ir
+
+Invalid Stateful Sig XMSS-SHA2_20_192 IR Request
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_20_192 IR Request
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_192 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_192 IR Key Size
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_20_192 IR Request
+    [Tags]    positive    xmss    xmss-sha2_20_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_192 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_20_192 IR Request
+    [Tags]    positive    xmss    xmss-sha2_20_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 IR Request
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_20_192 IR Request
+    [Tags]    positive    xmss    xmss-sha2_20_192    certConf
+    Build Certificate Confirmation Test    xmss-sha2_20_192    ir
+
+Invalid Cert Conf for XMSS-SHA2_20_192 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_20_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_20_192    ir
+
+Invalid Stateful Sig XMSS-SHAKE256_10_192 IR Request
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_10_192 IR Request
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_192 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_192 IR Key Size
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_10_192 IR Request
+    [Tags]    positive    xmss    xmss-shake256_10_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_192 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_10_192 IR Request
+    [Tags]    positive    xmss    xmss-shake256_10_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_10_192 IR Request
+    [Tags]    positive    xmss    xmss-shake256_10_192    certConf
+    Build Certificate Confirmation Test    xmss-shake256_10_192    ir
+
+Invalid Cert Conf for XMSS-SHAKE256_10_192 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_10_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_10_192    ir
+
+Invalid Stateful Sig XMSS-SHAKE256_16_192 IR Request
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_16_192 IR Request
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_192 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_192 IR Key Size
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_16_192 IR Request
+    [Tags]    positive    xmss    xmss-shake256_16_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_192 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_16_192 IR Request
+    [Tags]    positive    xmss    xmss-shake256_16_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_16_192 IR Request
+    [Tags]    positive    xmss    xmss-shake256_16_192    certConf
+    Build Certificate Confirmation Test    xmss-shake256_16_192    ir
+
+Invalid Cert Conf for XMSS-SHAKE256_16_192 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_16_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_16_192    ir
+
+Invalid Stateful Sig XMSS-SHAKE256_20_192 IR Request
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_20_192 IR Request
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_192 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_192 IR Key Size
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_20_192 IR Request
+    [Tags]    positive    xmss    xmss-shake256_20_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_192 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_20_192 IR Request
+    [Tags]    positive    xmss    xmss-shake256_20_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_20_192 IR Request
+    [Tags]    positive    xmss    xmss-shake256_20_192    certConf
+    Build Certificate Confirmation Test    xmss-shake256_20_192    ir
+
+Invalid Cert Conf for XMSS-SHAKE256_20_192 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_20_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_20_192    ir
+
+Invalid Stateful Sig XMSS-SHAKE256_10_256 IR Request
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_10_256 IR Request
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_256 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_256 IR Key Size
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_10_256 IR Request
+    [Tags]    positive    xmss    xmss-shake256_10_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_256 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_10_256 IR Request
+    [Tags]    positive    xmss    xmss-shake256_10_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_10_256 IR Request
+    [Tags]    positive    xmss    xmss-shake256_10_256    certConf
+    Build Certificate Confirmation Test    xmss-shake256_10_256    ir
+
+Invalid Cert Conf for XMSS-SHAKE256_10_256 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_10_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_10_256    ir
+
+Invalid Stateful Sig XMSS-SHAKE256_16_256 IR Request
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_16_256 IR Request
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_256 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_256 IR Key Size
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_16_256 IR Request
+    [Tags]    positive    xmss    xmss-shake256_16_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_256 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_16_256 IR Request
+    [Tags]    positive    xmss    xmss-shake256_16_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_16_256 IR Request
+    [Tags]    positive    xmss    xmss-shake256_16_256    certConf
+    Build Certificate Confirmation Test    xmss-shake256_16_256    ir
+
+Invalid Cert Conf for XMSS-SHAKE256_16_256 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_16_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_16_256    ir
+
+Invalid Stateful Sig XMSS-SHAKE256_20_256 IR Request
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_20_256 IR Request
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_256 IR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_256 IR Key Size
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_20_256 IR Request
+    [Tags]    positive    xmss    xmss-shake256_20_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_256 Already In Use IR Request
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_20_256 IR Request
+    [Tags]    positive    xmss    xmss-shake256_20_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_20_256 IR Request
+    [Tags]    positive    xmss    xmss-shake256_20_256    certConf
+    Build Certificate Confirmation Test    xmss-shake256_20_256    ir
+
+Invalid Cert Conf for XMSS-SHAKE256_20_256 IR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_20_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_20_256    ir
+
+Invalid Stateful Sig XMSS-SHA2_10_256 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_10_256 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_256 P10CR Key Size
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_10_256 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_10_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_256 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_10_256 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_10_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_10_256 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_10_256    certConf
+    Build Certificate Confirmation Test    xmss-sha2_10_256    p10cr
+
+Invalid Cert Conf for XMSS-SHA2_10_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_10_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_10_256    p10cr
+
+Invalid Stateful Sig XMSS-SHA2_16_256 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_16_256 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_256 P10CR Key Size
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_16_256 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_16_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_256 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_16_256 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_16_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_16_256 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_16_256    certConf
+    Build Certificate Confirmation Test    xmss-sha2_16_256    p10cr
+
+Invalid Cert Conf for XMSS-SHA2_16_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_16_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_16_256    p10cr
+
+Invalid Stateful Sig XMSS-SHA2_20_256 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_20_256 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_256 P10CR Key Size
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_20_256 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_20_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_256 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_20_256 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_20_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_20_256 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_20_256    certConf
+    Build Certificate Confirmation Test    xmss-sha2_20_256    p10cr
+
+Invalid Cert Conf for XMSS-SHA2_20_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_20_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_20_256    p10cr
+
+Invalid NIST Disapproved XMSS-SHAKE_10_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake_10_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_10_256    p10cr
+
+Invalid NIST Disapproved XMSS-SHAKE_16_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake_16_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_16_256    p10cr
+
+Invalid NIST Disapproved XMSS-SHAKE_20_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake_20_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_20_256    p10cr
+
+Invalid NIST Disapproved XMSS-SHA2_10_512 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_10_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_10_512    p10cr
+
+Invalid NIST Disapproved XMSS-SHA2_16_512 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_16_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_16_512    p10cr
+
+Invalid NIST Disapproved XMSS-SHA2_20_512 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_20_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_20_512    p10cr
+
+Invalid NIST Disapproved XMSS-SHAKE_10_512 P10CR Request
+    [Tags]    negative    xmss    xmss-shake_10_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_10_512    p10cr
+
+Invalid NIST Disapproved XMSS-SHAKE_16_512 P10CR Request
+    [Tags]    negative    xmss    xmss-shake_16_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_16_512    p10cr
+
+Invalid NIST Disapproved XMSS-SHAKE_20_512 P10CR Request
+    [Tags]    negative    xmss    xmss-shake_20_512    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_20_512    p10cr
+
+Invalid Stateful Sig XMSS-SHA2_10_192 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_10_192 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_192 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_192 P10CR Key Size
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_10_192 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_10_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_10_192 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_10_192 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_10_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_10_192 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_10_192    certConf
+    Build Certificate Confirmation Test    xmss-sha2_10_192    p10cr
+
+Invalid Cert Conf for XMSS-SHA2_10_192 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_10_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_10_192    p10cr
+
+Invalid Stateful Sig XMSS-SHA2_16_192 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_16_192 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_192 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_192 P10CR Key Size
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_16_192 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_16_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_16_192 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_16_192 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_16_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_16_192 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_16_192    certConf
+    Build Certificate Confirmation Test    xmss-sha2_16_192    p10cr
+
+Invalid Cert Conf for XMSS-SHA2_16_192 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_16_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_16_192    p10cr
+
+Invalid Stateful Sig XMSS-SHA2_20_192 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHA2_20_192 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_192 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_192 P10CR Key Size
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHA2_20_192 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_20_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHA2_20_192 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHA2_20_192 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_20_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHA2_20_192 P10CR Request
+    [Tags]    positive    xmss    xmss-sha2_20_192    certConf
+    Build Certificate Confirmation Test    xmss-sha2_20_192    p10cr
+
+Invalid Cert Conf for XMSS-SHA2_20_192 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-sha2_20_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-sha2_20_192    p10cr
+
+Invalid Stateful Sig XMSS-SHAKE256_10_192 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_10_192 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_192 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_192 P10CR Key Size
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_10_192 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_10_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_192 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_10_192 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_10_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_10_192 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_10_192    certConf
+    Build Certificate Confirmation Test    xmss-shake256_10_192    p10cr
+
+Invalid Cert Conf for XMSS-SHAKE256_10_192 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_10_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_10_192    p10cr
+
+Invalid Stateful Sig XMSS-SHAKE256_16_192 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_16_192 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_192 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_192 P10CR Key Size
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_16_192 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_16_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_192 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_16_192 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_16_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_16_192 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_16_192    certConf
+    Build Certificate Confirmation Test    xmss-shake256_16_192    p10cr
+
+Invalid Cert Conf for XMSS-SHAKE256_16_192 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_16_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_16_192    p10cr
+
+Invalid Stateful Sig XMSS-SHAKE256_20_192 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_20_192 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_192 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_192 P10CR Key Size
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_20_192 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_20_192    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_192 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_20_192 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_20_192    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_20_192 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_20_192    certConf
+    Build Certificate Confirmation Test    xmss-shake256_20_192    p10cr
+
+Invalid Cert Conf for XMSS-SHAKE256_20_192 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_20_192    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_20_192    p10cr
+
+Invalid Stateful Sig XMSS-SHAKE256_10_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_10_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_256 P10CR Key Size
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_10_256 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_10_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_10_256 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_10_256 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_10_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_10_256 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_10_256    certConf
+    Build Certificate Confirmation Test    xmss-shake256_10_256    p10cr
+
+Invalid Cert Conf for XMSS-SHAKE256_10_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_10_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_10_256    p10cr
+
+Invalid Stateful Sig XMSS-SHAKE256_16_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_16_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_256 P10CR Key Size
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_16_256 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_16_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_16_256 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_16_256 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_16_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_16_256 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_16_256    certConf
+    Build Certificate Confirmation Test    xmss-shake256_16_256    p10cr
+
+Invalid Cert Conf for XMSS-SHAKE256_16_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_16_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_16_256    p10cr
+
+Invalid Stateful Sig XMSS-SHAKE256_20_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSS-SHAKE256_20_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_256 P10CR Key Size
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSS-SHAKE256_20_256 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_20_256    nist_approved
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSS-SHAKE256_20_256 Already In Use P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSS-SHAKE256_20_256 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_20_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSS-SHAKE256_20_256 P10CR Request
+    [Tags]    positive    xmss    xmss-shake256_20_256    certConf
+    Build Certificate Confirmation Test    xmss-shake256_20_256    p10cr
+
+Invalid Cert Conf for XMSS-SHAKE256_20_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmss    xmss-shake256_20_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmss-shake256_20_256    p10cr
+
+Invalid Stateful Sig XMSSMT-SHA2_20/2_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_20/2_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/2_256 IR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/2_256 IR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_20/2_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/2_256 Already In Use IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_20/2_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_20/2_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_20/2_256    ir
+
+Invalid Cert Conf for XMSSMT-SHA2_20/2_256 IR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_20/2_256    ir
+
+Invalid Stateful Sig XMSSMT-SHA2_20/4_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_20/4_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/4_256 IR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/4_256 IR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_20/4_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/4_256 Already In Use IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_20/4_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_20/4_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_20/4_256    ir
+
+Invalid Cert Conf for XMSSMT-SHA2_20/4_256 IR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_20/4_256    ir
+
+Invalid Stateful Sig XMSSMT-SHA2_40/2_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_40/2_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/2_256 IR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/2_256 IR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_40/2_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/2_256 Already In Use IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_40/2_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_40/2_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_40/2_256    ir
+
+Invalid Cert Conf for XMSSMT-SHA2_40/2_256 IR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/2_256    ir
+
+Invalid Stateful Sig XMSSMT-SHA2_40/4_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_40/4_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/4_256 IR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/4_256 IR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_40/4_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/4_256 Already In Use IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_40/4_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_40/4_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_40/4_256    ir
+
+Invalid Cert Conf for XMSSMT-SHA2_40/4_256 IR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/4_256    ir
+
+Invalid Stateful Sig XMSSMT-SHA2_40/8_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_40/8_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/8_256 IR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/8_256 IR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_40/8_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/8_256 Already In Use IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_40/8_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_40/8_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_40/8_256    ir
+
+Invalid Cert Conf for XMSSMT-SHA2_40/8_256 IR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/8_256    ir
+
+Invalid Stateful Sig XMSSMT-SHA2_60/3_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_60/3_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/3_256 IR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/3_256 IR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_60/3_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/3_256 Already In Use IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_60/3_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_60/3_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_60/3_256    ir
+
+Invalid Cert Conf for XMSSMT-SHA2_60/3_256 IR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/3_256    ir
+
+Invalid Stateful Sig XMSSMT-SHA2_60/6_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_60/6_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/6_256 IR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/6_256 IR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_60/6_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/6_256 Already In Use IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_60/6_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_60/6_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_60/6_256    ir
+
+Invalid Cert Conf for XMSSMT-SHA2_60/6_256 IR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/6_256    ir
+
+Invalid Stateful Sig XMSSMT-SHA2_60/12_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_60/12_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    ir    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/12_256 IR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    ir    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/12_256 IR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    ir    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_60/12_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/12_256 Already In Use IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    ir    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_60/12_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_60/12_256 IR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_60/12_256    ir
+
+Invalid Cert Conf for XMSSMT-SHA2_60/12_256 IR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/12_256    ir
+
+Invalid NIST Disapproved XMSSMT-SHAKE_20/2_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_20/2_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_20/2_256    ir
+
+Invalid NIST Disapproved XMSSMT-SHAKE_20/4_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_20/4_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_20/4_256    ir
+
+Invalid NIST Disapproved XMSSMT-SHAKE_40/2_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_40/2_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/2_256    ir
+
+Invalid NIST Disapproved XMSSMT-SHAKE_40/4_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_40/4_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/4_256    ir
+
+Invalid NIST Disapproved XMSSMT-SHAKE_40/8_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_40/8_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/8_256    ir
+
+Invalid NIST Disapproved XMSSMT-SHAKE_60/3_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_60/3_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/3_256    ir
+
+Invalid NIST Disapproved XMSSMT-SHAKE_60/6_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_60/6_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/6_256    ir
+
+Invalid NIST Disapproved XMSSMT-SHAKE_60/12_256 IR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_60/12_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/12_256    ir
+
+Invalid Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/2_256 Already In Use P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_20/2_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_20/2_256    p10cr
+
+Invalid Cert Conf for XMSSMT-SHA2_20/2_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_20/2_256    p10cr
+
+Invalid Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_20/4_256 Already In Use P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_20/4_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_20/4_256    p10cr
+
+Invalid Cert Conf for XMSSMT-SHA2_20/4_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_20/4_256    p10cr
+
+Invalid Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/2_256 Already In Use P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_40/2_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_40/2_256    p10cr
+
+Invalid Cert Conf for XMSSMT-SHA2_40/2_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/2_256    p10cr
+
+Invalid Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/4_256 Already In Use P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_40/4_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_40/4_256    p10cr
+
+Invalid Cert Conf for XMSSMT-SHA2_40/4_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/4_256    p10cr
+
+Invalid Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_40/8_256 Already In Use P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_40/8_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_40/8_256    p10cr
+
+Invalid Cert Conf for XMSSMT-SHA2_40/8_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/8_256    p10cr
+
+Invalid Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/3_256 Already In Use P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_60/3_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_60/3_256    p10cr
+
+Invalid Cert Conf for XMSSMT-SHA2_60/3_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/3_256    p10cr
+
+Invalid Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/6_256 Already In Use P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}    ${False}
+    ...     ${True}
+
+Valid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_60/6_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_60/6_256    p10cr
+
+Invalid Cert Conf for XMSSMT-SHA2_60/6_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/6_256    p10cr
+
+Invalid Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${True}    ${False}    ${False}    ${False}
+    ...     ${False}
+
+Exhausted Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    p10cr    exhausted
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${True}    ${False}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Algorithm Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    p10cr    invalid_parameters
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${True}    ${False}
+    ...     ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Key Size
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    p10cr    invalid_key_size
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}    ${True}
+    ...     ${False}
+
+Valid Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    nist_approved
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid Stateful Sig XMSSMT-SHA2_60/12_256 Already In Use P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    p10cr    already_in_use    same_key
+    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    bad_message_check
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${True}    ${False}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request with Invalid Parameters
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    invalid_parameters
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${True}    ${False}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request with Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${True}
+    ...     ${False}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request with Already Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
+    ...       used_stfl_key_index
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${True}    ${False}
+
+Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request with POPO Exhausted Key
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
+    ...       popo_exhausted_key
+    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
+    ...     ${False}    ${True}
+
+Valid Cert Conf for XMSSMT-SHA2_60/12_256 P10CR Request
+    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    certConf
+    Build Certificate Confirmation Test    xmssmt-sha2_60/12_256    p10cr
+
+Invalid Cert Conf for XMSSMT-SHA2_60/12_256 P10CR Request With Used Key Index
+    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    certConf    used_stfl_key_index
+    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/12_256    p10cr
+
+Invalid NIST Disapproved XMSSMT-SHAKE_20/2_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_20/2_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_20/2_256    p10cr
+
+Invalid NIST Disapproved XMSSMT-SHAKE_20/4_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_20/4_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_20/4_256    p10cr
+
+Invalid NIST Disapproved XMSSMT-SHAKE_40/2_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_40/2_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/2_256    p10cr
+
+Invalid NIST Disapproved XMSSMT-SHAKE_40/4_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_40/4_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/4_256    p10cr
+
+Invalid NIST Disapproved XMSSMT-SHAKE_40/8_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_40/8_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/8_256    p10cr
+
+Invalid NIST Disapproved XMSSMT-SHAKE_60/3_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_60/3_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/3_256    p10cr
+
+Invalid NIST Disapproved XMSSMT-SHAKE_60/6_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_60/6_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/6_256    p10cr
+
+Invalid NIST Disapproved XMSSMT-SHAKE_60/12_256 P10CR Request
+    [Tags]    negative    xmssmt    xmssmt-shake_60/12_256    nist_disapproved
+    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/12_256    p10cr
+
+
 *** Keywords ***
 Clean Verbose STFL Mappings
     [Documentation]   Remove all verbose mappings for stateful signature algorithms, to save
-    ...                memory and avoid conflicts in the test suite.
+    ...               memory and avoid conflicts in the test suite.
     # Uncomment the next line to disable the cleaning of verbose mappings.
     # RETURN
-    VAR    &{PQ_STATEFUL_SIG_CERT_CONF_CERTS}    scope=Global
-    VAR    &{PQ_STATEFUL_SIG_KEYS_VERBOSE}     scope=Global
-    VAR    &{PQ_STATEFUL_SIG_CERTS_VERBOSE}   scope=Global
+    VAR    &{PQ_STATEFUL_SIG_CERT_CONF_CERTS}=    &{EMPTY}    scope=Global
+    VAR    &{PQ_STATEFUL_SIG_KEYS_VERBOSE}=    &{EMPTY}     scope=Global
+    VAR    &{PQ_STATEFUL_SIG_CERTS_VERBOSE}=    &{EMPTY}   scope=Global
 
 Get Reason Name
     [Documentation]    Determine the correct reason string for a request.
@@ -52,17 +2990,17 @@ Get Reason Name
     ...                - A string representing the reason to load the key for.
     [Arguments]    ${bad_pop}   ${exhausted}   ${invalid_param}   ${invalid_key_size}   ${already_in_use}
     IF   ${exhausted}
-        VAR   ${reason}    exhausted
+        VAR   ${reason}=    exhausted
     ELSE IF   ${already_in_use}
-        VAR   ${reason}    popo
+        VAR   ${reason}=    popo
     ELSE IF   ${bad_pop}
-        VAR   ${reason}    bad_pop
+        VAR   ${reason}=    bad_pop
     ELSE IF   ${invalid_param}
-        VAR   ${reason}    bad_params
+        VAR   ${reason}=    bad_params
     ELSE IF   ${invalid_key_size}
-        VAR   ${reason}    bad_key_size
+        VAR   ${reason}=    bad_key_size
     ELSE
-        VAR   ${reason}    popo
+        VAR   ${reason}=    popo
     END
     RETURN    ${reason}
 
@@ -82,8 +3020,8 @@ Build P10cr Request For STFL Sig Key
     [Arguments]    ${pq_key}   ${cm}   ${spki}   ${bad_pop}
     ${extensions}=   Prepare Extensions    digitalSignature    critical=${False}
     ${p10cr}=   Build P10cr From Key    ${pq_key}   common_name=${cm}   bad_pop=${bad_pop}
-    ...      spki=${spki}   extensions=${extensions}   exclude_fields=sender,senderKID
-    ...      implicit_confirm=True    recipient=${RECIPIENT}
+    ...         spki=${spki}   extensions=${extensions}   exclude_fields=sender,senderKID
+    ...         implicit_confirm=True    recipient=${RECIPIENT}
     RETURN    ${p10cr}
 
 Request For PQ Stateful Sig Key
@@ -91,15 +3029,15 @@ Request For PQ Stateful Sig Key
     ...              This keyword covers the complete test flow: creation of the request,
     ...              sending it to the CA and validating the response.
     ...
-    ...            Arguments:
-    ...            ---------
-    ...            - `alg_name`: The name of the algorithm to use for the key.
-    ...            - `body_name`: The type of body to use for the request, e.g., `p10cr` or `ir`.
-    ...            - `bad_pop`: A boolean indicating whether to use an invalid proof of possession.
-    ...            - `exhausted`: A boolean indicating whether to exhaust the key.
-    ...            - `invalid_param`: A boolean indicating whether to use invalid parameters in the request.
-    ...            - `invalid_key_size`: A boolean indicating whether to use an invalid key size.
-    ...            - `already_in_use`: A boolean indicating whether to use a key that already has a certificate.
+    ...              Arguments:
+    ...              ---------
+    ...              - `alg_name`: The name of the algorithm to use for the key.
+    ...              - `body_name`: The type of body to use for the request, e.g., `p10cr` or `ir`.
+    ...              - `bad_pop`: A boolean indicating whether to use an invalid proof of possession.
+    ...              - `exhausted`: A boolean indicating whether to exhaust the key.
+    ...              - `invalid_param`: A boolean indicating whether to use invalid parameters in the request.
+    ...              - `invalid_key_size`: A boolean indicating whether to use an invalid key size.
+    ...              - `already_in_use`: A boolean indicating whether to use a key that already has a certificate.
     [Arguments]    ${alg_name}   ${body_name}    ${bad_pop}   ${exhausted}   ${invalid_param}   ${invalid_key_size}   ${already_in_use}
     ${reason}=   Get Reason Name    ${bad_pop}   ${exhausted}   ${invalid_param}   ${invalid_key_size}   ${already_in_use}
     ${pq_key}=   Get PQ Stateful Sig Key Verbose    ${alg_name}   ${body_name}    ${reason}
@@ -121,16 +3059,15 @@ Request For PQ Stateful Sig Key
         ${cert_request}=   Prepare CertRequest  ${pq_key}  ${cm}  spki=${spki}   extensions=${extensions}
         ${popo}=   Prepare Signature POPO    ${pq_key}   ${cert_request}  bad_pop=${bad_pop}
         ${request_body}=   Build Ir From Key    ${pq_key}   cert_request=${cert_request}  popo=${popo}
-            ...      exclude_fields=sender,senderKID   implicit_confirm=True    recipient=${RECIPIENT}
+            ...            exclude_fields=sender,senderKID   implicit_confirm=True    recipient=${RECIPIENT}
     ELSE
         Fail    Unsupported body name: ${body_name}
     END
     ${protected_ir}=   Default Protect PKIMessage    ${request_body}
-    ${url}=  Get PQ Stateful Issuing URL
     ${response}=   Exchange PKIMessage    ${protected_ir}
     Validate Response For PQ Stateful Sig Key    ${response}   ${body_name}   ${alg_name}
     ...      ${bad_pop}   ${exhausted}
-    ...     ${already_in_use}   ${invalid_param}   ${invalid_key_size}
+    ...      ${already_in_use}   ${invalid_param}   ${invalid_key_size}
 
 Validate Response For PQ Stateful Sig Key
     [Documentation]    Validate the response of a request for a PQ stateful signature key.
@@ -181,11 +3118,10 @@ Request For NIST Disapproved PQ Stateful Sig Key
     ...                - `${body_name}`: Name of the request body (`p10cr` or `ir`).
     [Arguments]    ${algorithm}   ${body_name}
     ${pq_key}=   Get PQ Stateful Sig Key Verbose    ${algorithm}    ${body_name}   bad_pop
-    ${cm}=   Get Next Common Name
+    ${_cm}=   Get Next Common Name
     ${ir}=   Build Ir From Key    ${pq_key}   exclude_fields=sender,senderKID   implicit_confirm=True
     ...      recipient=${RECIPIENT}
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
-    ${url}=  Get PQ Stateful Issuing URL
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badAlg,badCertTemplate   False
@@ -200,14 +3136,13 @@ Request For Only HSS Stateful Sig Key
     ...                - `${invalid_key_size}`: If `True`, create a key with an invalid size.
     ...                - `${zero_length}`: If `True`, use a zero-length key for negative testing.
     [Arguments]    ${algorithm}   ${body_name}   ${invalid_key_size}   ${zero_length}
-    [Arguments]    ${algorithm}   ${body_name}   ${invalid_key_size}   ${zero_length}
     IF  ${invalid_key_size}
         # Length must be less than 9 for HSS.
         ${pq_key}=   Generate Unique Key    ${algorithm}   length=9
         # ${pq_key}=   Get PQ Stateful Sig Key Verbose    ${algorithm}    ${body_name}   invalid_key_size
     ELSE IF   ${zero_length}
-        ${pq_key}=    ${pq_key}=   Generate Unique Key    ${algorithm}
-        #${pq_key}=   Get PQ Stateful Sig Key Verbose    ${algorithm}    ${body_name}   zero_length
+        ${pq_key}=   Generate Unique Key    ${algorithm}
+        # ${pq_key}=   Get PQ Stateful Sig Key Verbose    ${algorithm}    ${body_name}   zero_length
     ELSE
         ${pq_key}=   Get PQ Stateful Sig Key Verbose    ${algorithm}    ${body_name}
     END
@@ -216,14 +3151,14 @@ Request For Only HSS Stateful Sig Key
     ${extensions}=   Prepare Extensions    digitalSignature    critical=${False}
     IF  '${body_name}' == 'p10cr'
         ${p10cr}=   Build P10cr From Key    ${pq_key}   common_name=${cm}   spki=${spki}
-        ...      extensions=${extensions}   exclude_fields=sender,senderKID
-        ...      implicit_confirm=True    recipient=${RECIPIENT}
+        ...         extensions=${extensions}   exclude_fields=sender,senderKID
+        ...         implicit_confirm=True    recipient=${RECIPIENT}
         ${protected}=   Default Protect PKIMessage    ${p10cr}
     ELSE IF  '${body_name}' == 'ir'
         ${cert_request}=   Prepare CertRequest  ${pq_key}  ${cm}  spki=${spki}   extensions=${extensions}
         ${popo}=   Prepare Signature POPO    ${pq_key}   ${cert_request}
         ${ir}=   Build Ir From Key    ${pq_key}   cert_request=${cert_request}  popo=${popo}
-            ...      exclude_fields=sender,senderKID   implicit_confirm=True    recipient=${RECIPIENT}
+            ...  exclude_fields=sender,senderKID   implicit_confirm=True    recipient=${RECIPIENT}
         ${protected}=   Default Protect PKIMessage    ${ir}
     ELSE
         Fail    Unsupported body name: ${body_name}
@@ -260,7 +3195,6 @@ Validate PKIProtected Response
         PKIStatus Must Be    ${response}    rejection
         PKIStatusInfo Failinfo Bit Must Be    ${response}    badMessageCheck,badRequest   False
         ${_}=   Display PKIStatusInfo    ${response}
-
     ELSE IF    ${popo_exhausted_key}
         PKIStatus Must Be    ${response}    rejection
         PKIStatusInfo Failinfo Bit Must Be    ${response}    badMessageCheck,badRequest   False
@@ -300,7 +3234,7 @@ Request With PKIProtected Stateful Sig Key
     END
     ${cert_template}   ${new_key}=   Generate CertTemplate For Testing
     ${ir}=   Build Ir From Key    ${new_key}   cert_template=${cert_template}
-    ...       exclude_fields=sender,senderKID    recipient=${RECIPIENT}
+    ...      exclude_fields=sender,senderKID    recipient=${RECIPIENT}
     ${protected_ir}=   Protect PKIMessage    ${ir}   signature   bad_message_check=${bad_message_check}
     ...                add_params_rand_val=${invalid_parameters}   private_key=${pq_key}   cert=${pq_cert}
     ${response}=   Exchange PKIMessage    ${protected_ir}
@@ -318,16 +3252,19 @@ Build Certificate Confirmation Test
     [Arguments]    ${algorithm}   ${body_name}
     ${new_key}=   Get PQ Stateful Sig Key Verbose     ${algorithm}   ${body_name}   cert_conf
     ${ir}=   Build Ir From Key    ${new_key}
-        ...       exclude_fields=sender,senderKID    recipient=${RECIPIENT}   implicit_confirm=False
+    ...  exclude_fields=sender,senderKID    recipient=${RECIPIENT}   implicit_confirm=False
     ${protected_ir}=   Default Protect PKIMessage    ${ir}
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    accepted
     ${cert}=  Get Cert From PKIMessage    ${response}
     ${cert_conf}=  Build Cert Conf From Resp    ${response}
-    ${prot_cert_conf}=   Default Protect PKIMessage    ${cert_conf}
+    ${prot_cert_conf}=   Default Protect PKIMessage    ${cert_conf}  # robocop: off=VAR02
+    # TODO(robocop VAR02): ${prot_cert_conf} is built above but the unprotected ${cert_conf}
+    # is sent below. Needs investigation before fixing; may change test outcome against the CA.
+    # Tracked separately.
     ${exchange_conf}=   Exchange PKIMessage    ${cert_conf}
     PKIMessage Body Type Must Be    ${exchange_conf}    pkiconf
-    ${name}=  Set Variable    ${algorithm}_${body_name}
+    VAR    ${name}=    ${algorithm}_${body_name}
     Set To Dictionary    ${PQ_STATEFUL_SIG_CERT_CONF_CERTS}   ${name}=${cert}
 
 Build Certificate Confirmation Used Key Test
@@ -340,7 +3277,7 @@ Build Certificate Confirmation Used Key Test
     ...                - `${body_name}`: Request body type for the certificate issuance.
     [Arguments]    ${algorithm}   ${body_name}
     ${new_key}=   Get PQ Stateful Sig Key Verbose     ${algorithm}   ${body_name}   cert_conf
-    ${name}=  Set Variable    ${algorithm}_${body_name}
+    VAR    ${name}=    ${algorithm}_${body_name}
     ${pq_cert}=   Get From Dictionary    ${PQ_STATEFUL_SIG_CERT_CONF_CERTS}    ${name}    ${None}
     ${result}=   Is Certificate And Key Set    ${pq_cert}    ${new_key}
     IF  not ${result}
@@ -349,7 +3286,7 @@ Build Certificate Confirmation Used Key Test
     # To avoid a already in use key, failure.
     ${key}=   Generate Default Key
     ${ir}=   Build Ir From Key    ${key}
-    ...       exclude_fields=sender,senderKID    recipient=${RECIPIENT}
+    ...      exclude_fields=sender,senderKID    recipient=${RECIPIENT}
     # To check if the index of the POPO signature was also saved.
     ${exhausted_key}=   Modify PQ Stateful Sig Private Key    ${new_key}   used_index=0
     ${protected_ir}=   Protect PKIMessage    ${ir}   signature
@@ -357,2941 +3294,3 @@ Build Certificate Confirmation Used Key Test
     ${response}=   Exchange PKIMessage    ${protected_ir}
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badMessageCheck,badRequest   False
-
-
-*** Test Cases ***
-Invalid Stateful Sig XMSS-SHA2_10_256 IR Request
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_10_256 IR Request
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_256 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_256 IR Key Size
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_10_256 IR Request
-    [Tags]    positive    xmss    xmss-sha2_10_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_256 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_10_256 IR Request
-    [Tags]    positive    xmss    xmss-sha2_10_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 IR Request
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_10_256 IR Request
-    [Tags]    positive    xmss    xmss-sha2_10_256    certConf
-    Build Certificate Confirmation Test    xmss-sha2_10_256    ir
-
-Invalid Cert Conf for XMSS-SHA2_10_256 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_10_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_10_256    ir
-
-Invalid Stateful Sig XMSS-SHA2_16_256 IR Request
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_16_256 IR Request
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_256 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_256 IR Key Size
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_16_256 IR Request
-    [Tags]    positive    xmss    xmss-sha2_16_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_256 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_16_256 IR Request
-    [Tags]    positive    xmss    xmss-sha2_16_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 IR Request
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_16_256 IR Request
-    [Tags]    positive    xmss    xmss-sha2_16_256    certConf
-    Build Certificate Confirmation Test    xmss-sha2_16_256    ir
-
-Invalid Cert Conf for XMSS-SHA2_16_256 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_16_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_16_256    ir
-
-Invalid Stateful Sig XMSS-SHA2_20_256 IR Request
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_20_256 IR Request
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_256 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_256 IR Key Size
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_20_256 IR Request
-    [Tags]    positive    xmss    xmss-sha2_20_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_256 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_20_256 IR Request
-    [Tags]    positive    xmss    xmss-sha2_20_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 IR Request
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_20_256 IR Request
-    [Tags]    positive    xmss    xmss-sha2_20_256    certConf
-    Build Certificate Confirmation Test    xmss-sha2_20_256    ir
-
-Invalid Cert Conf for XMSS-SHA2_20_256 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_20_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_20_256    ir
-
-Invalid NIST Disapproved XMSS-SHAKE_10_256 IR Request
-    [Tags]    negative    xmss    xmss-shake_10_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_10_256    ir
-
-Invalid NIST Disapproved XMSS-SHAKE_16_256 IR Request
-    [Tags]    negative    xmss    xmss-shake_16_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_16_256    ir
-
-Invalid NIST Disapproved XMSS-SHAKE_20_256 IR Request
-    [Tags]    negative    xmss    xmss-shake_20_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_20_256    ir
-
-Invalid NIST Disapproved XMSS-SHA2_10_512 IR Request
-    [Tags]    negative    xmss    xmss-sha2_10_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_10_512    ir
-
-Invalid NIST Disapproved XMSS-SHA2_16_512 IR Request
-    [Tags]    negative    xmss    xmss-sha2_16_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_16_512    ir
-
-Invalid NIST Disapproved XMSS-SHA2_20_512 IR Request
-    [Tags]    negative    xmss    xmss-sha2_20_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_20_512    ir
-
-Invalid NIST Disapproved XMSS-SHAKE_10_512 IR Request
-    [Tags]    negative    xmss    xmss-shake_10_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_10_512    ir
-
-Invalid NIST Disapproved XMSS-SHAKE_16_512 IR Request
-    [Tags]    negative    xmss    xmss-shake_16_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_16_512    ir
-
-Invalid NIST Disapproved XMSS-SHAKE_20_512 IR Request
-    [Tags]    negative    xmss    xmss-shake_20_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_20_512    ir
-
-Invalid Stateful Sig XMSS-SHA2_10_192 IR Request
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_10_192 IR Request
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_192 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_192 IR Key Size
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_10_192 IR Request
-    [Tags]    positive    xmss    xmss-sha2_10_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_192 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_10_192 IR Request
-    [Tags]    positive    xmss    xmss-sha2_10_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 IR Request
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_10_192 IR Request
-    [Tags]    positive    xmss    xmss-sha2_10_192    certConf
-    Build Certificate Confirmation Test    xmss-sha2_10_192    ir
-
-Invalid Cert Conf for XMSS-SHA2_10_192 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_10_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_10_192    ir
-
-Invalid Stateful Sig XMSS-SHA2_16_192 IR Request
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_16_192 IR Request
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_192 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_192 IR Key Size
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_16_192 IR Request
-    [Tags]    positive    xmss    xmss-sha2_16_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_192 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_16_192 IR Request
-    [Tags]    positive    xmss    xmss-sha2_16_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 IR Request
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_16_192 IR Request
-    [Tags]    positive    xmss    xmss-sha2_16_192    certConf
-    Build Certificate Confirmation Test    xmss-sha2_16_192    ir
-
-Invalid Cert Conf for XMSS-SHA2_16_192 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_16_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_16_192    ir
-
-Invalid Stateful Sig XMSS-SHA2_20_192 IR Request
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_20_192 IR Request
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_192 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_192 IR Key Size
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_20_192 IR Request
-    [Tags]    positive    xmss    xmss-sha2_20_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_192 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_20_192 IR Request
-    [Tags]    positive    xmss    xmss-sha2_20_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 IR Request
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_20_192 IR Request
-    [Tags]    positive    xmss    xmss-sha2_20_192    certConf
-    Build Certificate Confirmation Test    xmss-sha2_20_192    ir
-
-Invalid Cert Conf for XMSS-SHA2_20_192 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_20_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_20_192    ir
-
-Invalid Stateful Sig XMSS-SHAKE256_10_192 IR Request
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_10_192 IR Request
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_192 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_192 IR Key Size
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_10_192 IR Request
-    [Tags]    positive    xmss    xmss-shake256_10_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_192 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_10_192 IR Request
-    [Tags]    positive    xmss    xmss-shake256_10_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_10_192 IR Request
-    [Tags]    positive    xmss    xmss-shake256_10_192    certConf
-    Build Certificate Confirmation Test    xmss-shake256_10_192    ir
-
-Invalid Cert Conf for XMSS-SHAKE256_10_192 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_10_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_10_192    ir
-
-Invalid Stateful Sig XMSS-SHAKE256_16_192 IR Request
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_16_192 IR Request
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_192 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_192 IR Key Size
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_16_192 IR Request
-    [Tags]    positive    xmss    xmss-shake256_16_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_192 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_16_192 IR Request
-    [Tags]    positive    xmss    xmss-shake256_16_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_16_192 IR Request
-    [Tags]    positive    xmss    xmss-shake256_16_192    certConf
-    Build Certificate Confirmation Test    xmss-shake256_16_192    ir
-
-Invalid Cert Conf for XMSS-SHAKE256_16_192 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_16_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_16_192    ir
-
-Invalid Stateful Sig XMSS-SHAKE256_20_192 IR Request
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_20_192 IR Request
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_192 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_192 IR Key Size
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_20_192 IR Request
-    [Tags]    positive    xmss    xmss-shake256_20_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_192 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_20_192 IR Request
-    [Tags]    positive    xmss    xmss-shake256_20_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_20_192 IR Request
-    [Tags]    positive    xmss    xmss-shake256_20_192    certConf
-    Build Certificate Confirmation Test    xmss-shake256_20_192    ir
-
-Invalid Cert Conf for XMSS-SHAKE256_20_192 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_20_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_20_192    ir
-
-Invalid Stateful Sig XMSS-SHAKE256_10_256 IR Request
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_10_256 IR Request
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_256 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_256 IR Key Size
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_10_256 IR Request
-    [Tags]    positive    xmss    xmss-shake256_10_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_256 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_10_256 IR Request
-    [Tags]    positive    xmss    xmss-shake256_10_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_10_256 IR Request
-    [Tags]    positive    xmss    xmss-shake256_10_256    certConf
-    Build Certificate Confirmation Test    xmss-shake256_10_256    ir
-
-Invalid Cert Conf for XMSS-SHAKE256_10_256 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_10_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_10_256    ir
-
-Invalid Stateful Sig XMSS-SHAKE256_16_256 IR Request
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_16_256 IR Request
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_256 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_256 IR Key Size
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_16_256 IR Request
-    [Tags]    positive    xmss    xmss-shake256_16_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_256 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_16_256 IR Request
-    [Tags]    positive    xmss    xmss-shake256_16_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_16_256 IR Request
-    [Tags]    positive    xmss    xmss-shake256_16_256    certConf
-    Build Certificate Confirmation Test    xmss-shake256_16_256    ir
-
-Invalid Cert Conf for XMSS-SHAKE256_16_256 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_16_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_16_256    ir
-
-Invalid Stateful Sig XMSS-SHAKE256_20_256 IR Request
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_20_256 IR Request
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_256 IR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_256 IR Key Size
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_20_256 IR Request
-    [Tags]    positive    xmss    xmss-shake256_20_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_256 Already In Use IR Request
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_20_256 IR Request
-    [Tags]    positive    xmss    xmss-shake256_20_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_20_256 IR Request
-    [Tags]    positive    xmss    xmss-shake256_20_256    certConf
-    Build Certificate Confirmation Test    xmss-shake256_20_256    ir
-
-Invalid Cert Conf for XMSS-SHAKE256_20_256 IR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_20_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_20_256    ir
-
-Invalid Stateful Sig XMSS-SHA2_10_256 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_10_256 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_256 P10CR Key Size
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_10_256 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_10_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_256 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_10_256 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_10_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_10_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_10_256 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_10_256    certConf
-    Build Certificate Confirmation Test    xmss-sha2_10_256    p10cr
-
-Invalid Cert Conf for XMSS-SHA2_10_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_10_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_10_256    p10cr
-
-Invalid Stateful Sig XMSS-SHA2_16_256 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_16_256 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_256 P10CR Key Size
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_16_256 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_16_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_256 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_16_256 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_16_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_16_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_16_256 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_16_256    certConf
-    Build Certificate Confirmation Test    xmss-sha2_16_256    p10cr
-
-Invalid Cert Conf for XMSS-SHA2_16_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_16_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_16_256    p10cr
-
-Invalid Stateful Sig XMSS-SHA2_20_256 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_20_256 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_256 P10CR Key Size
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_20_256 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_20_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_256 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_20_256 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_20_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_20_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_20_256 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_20_256    certConf
-    Build Certificate Confirmation Test    xmss-sha2_20_256    p10cr
-
-Invalid Cert Conf for XMSS-SHA2_20_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_20_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_20_256    p10cr
-
-Invalid NIST Disapproved XMSS-SHAKE_10_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake_10_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_10_256    p10cr
-
-Invalid NIST Disapproved XMSS-SHAKE_16_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake_16_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_16_256    p10cr
-
-Invalid NIST Disapproved XMSS-SHAKE_20_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake_20_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_20_256    p10cr
-
-Invalid NIST Disapproved XMSS-SHA2_10_512 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_10_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_10_512    p10cr
-
-Invalid NIST Disapproved XMSS-SHA2_16_512 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_16_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_16_512    p10cr
-
-Invalid NIST Disapproved XMSS-SHA2_20_512 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_20_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-sha2_20_512    p10cr
-
-Invalid NIST Disapproved XMSS-SHAKE_10_512 P10CR Request
-    [Tags]    negative    xmss    xmss-shake_10_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_10_512    p10cr
-
-Invalid NIST Disapproved XMSS-SHAKE_16_512 P10CR Request
-    [Tags]    negative    xmss    xmss-shake_16_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_16_512    p10cr
-
-Invalid NIST Disapproved XMSS-SHAKE_20_512 P10CR Request
-    [Tags]    negative    xmss    xmss-shake_20_512    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmss-shake_20_512    p10cr
-
-Invalid Stateful Sig XMSS-SHA2_10_192 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_10_192 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_192 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_192 P10CR Key Size
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_10_192 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_10_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_10_192 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_10_192 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_10_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_10_192 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_10_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_10_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_10_192 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_10_192    certConf
-    Build Certificate Confirmation Test    xmss-sha2_10_192    p10cr
-
-Invalid Cert Conf for XMSS-SHA2_10_192 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_10_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_10_192    p10cr
-
-Invalid Stateful Sig XMSS-SHA2_16_192 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_16_192 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_192 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_192 P10CR Key Size
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_16_192 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_16_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_16_192 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_16_192 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_16_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_16_192 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_16_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_16_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_16_192 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_16_192    certConf
-    Build Certificate Confirmation Test    xmss-sha2_16_192    p10cr
-
-Invalid Cert Conf for XMSS-SHA2_16_192 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_16_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_16_192    p10cr
-
-Invalid Stateful Sig XMSS-SHA2_20_192 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHA2_20_192 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_192 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_192 P10CR Key Size
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHA2_20_192 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_20_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHA2_20_192 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHA2_20_192 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_20_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHA2_20_192 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-sha2_20_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-sha2_20_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHA2_20_192 P10CR Request
-    [Tags]    positive    xmss    xmss-sha2_20_192    certConf
-    Build Certificate Confirmation Test    xmss-sha2_20_192    p10cr
-
-Invalid Cert Conf for XMSS-SHA2_20_192 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-sha2_20_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-sha2_20_192    p10cr
-
-Invalid Stateful Sig XMSS-SHAKE256_10_192 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_10_192 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_192 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_192 P10CR Key Size
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_10_192 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_10_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_192 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_10_192 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_10_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_192 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_10_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_10_192 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_10_192    certConf
-    Build Certificate Confirmation Test    xmss-shake256_10_192    p10cr
-
-Invalid Cert Conf for XMSS-SHAKE256_10_192 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_10_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_10_192    p10cr
-
-Invalid Stateful Sig XMSS-SHAKE256_16_192 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_16_192 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_192 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_192 P10CR Key Size
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_16_192 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_16_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_192 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_16_192 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_16_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_192 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_16_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_16_192 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_16_192    certConf
-    Build Certificate Confirmation Test    xmss-shake256_16_192    p10cr
-
-Invalid Cert Conf for XMSS-SHAKE256_16_192 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_16_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_16_192    p10cr
-
-Invalid Stateful Sig XMSS-SHAKE256_20_192 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_20_192 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_192 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_192 P10CR Key Size
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_20_192 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_20_192    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_192 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_20_192 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_20_192    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_192 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_20_192    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_192    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_20_192 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_20_192    certConf
-    Build Certificate Confirmation Test    xmss-shake256_20_192    p10cr
-
-Invalid Cert Conf for XMSS-SHAKE256_20_192 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_20_192    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_20_192    p10cr
-
-Invalid Stateful Sig XMSS-SHAKE256_10_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_10_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_256 P10CR Key Size
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_10_256 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_10_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_10_256 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_10_256 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_10_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_10_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_10_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_10_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_10_256 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_10_256    certConf
-    Build Certificate Confirmation Test    xmss-shake256_10_256    p10cr
-
-Invalid Cert Conf for XMSS-SHAKE256_10_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_10_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_10_256    p10cr
-
-Invalid Stateful Sig XMSS-SHAKE256_16_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_16_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_256 P10CR Key Size
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_16_256 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_16_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_16_256 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_16_256 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_16_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_16_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_16_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_16_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_16_256 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_16_256    certConf
-    Build Certificate Confirmation Test    xmss-shake256_16_256    p10cr
-
-Invalid Cert Conf for XMSS-SHAKE256_16_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_16_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_16_256    p10cr
-
-Invalid Stateful Sig XMSS-SHAKE256_20_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSS-SHAKE256_20_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_256 P10CR Key Size
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSS-SHAKE256_20_256 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_20_256    nist_approved
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSS-SHAKE256_20_256 Already In Use P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSS-SHAKE256_20_256 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_20_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSS-SHAKE256_20_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmss    xmss-shake256_20_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmss-shake256_20_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSS-SHAKE256_20_256 P10CR Request
-    [Tags]    positive    xmss    xmss-shake256_20_256    certConf
-    Build Certificate Confirmation Test    xmss-shake256_20_256    p10cr
-
-Invalid Cert Conf for XMSS-SHAKE256_20_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmss    xmss-shake256_20_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmss-shake256_20_256    p10cr
-
-Invalid Stateful Sig XMSSMT-SHA2_20/2_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_20/2_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/2_256 IR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/2_256 IR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_20/2_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/2_256 Already In Use IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_20/2_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_20/2_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_20/2_256    ir
-
-Invalid Cert Conf for XMSSMT-SHA2_20/2_256 IR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_20/2_256    ir
-
-Invalid Stateful Sig XMSSMT-SHA2_20/4_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_20/4_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/4_256 IR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/4_256 IR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_20/4_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/4_256 Already In Use IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_20/4_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_20/4_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_20/4_256    ir
-
-Invalid Cert Conf for XMSSMT-SHA2_20/4_256 IR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_20/4_256    ir
-
-Invalid Stateful Sig XMSSMT-SHA2_40/2_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_40/2_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/2_256 IR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/2_256 IR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_40/2_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/2_256 Already In Use IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_40/2_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_40/2_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_40/2_256    ir
-
-Invalid Cert Conf for XMSSMT-SHA2_40/2_256 IR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/2_256    ir
-
-Invalid Stateful Sig XMSSMT-SHA2_40/4_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_40/4_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/4_256 IR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/4_256 IR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_40/4_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/4_256 Already In Use IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_40/4_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_40/4_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_40/4_256    ir
-
-Invalid Cert Conf for XMSSMT-SHA2_40/4_256 IR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/4_256    ir
-
-Invalid Stateful Sig XMSSMT-SHA2_40/8_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_40/8_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/8_256 IR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/8_256 IR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_40/8_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/8_256 Already In Use IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_40/8_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_40/8_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_40/8_256    ir
-
-Invalid Cert Conf for XMSSMT-SHA2_40/8_256 IR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/8_256    ir
-
-Invalid Stateful Sig XMSSMT-SHA2_60/3_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_60/3_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/3_256 IR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/3_256 IR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_60/3_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/3_256 Already In Use IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_60/3_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_60/3_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_60/3_256    ir
-
-Invalid Cert Conf for XMSSMT-SHA2_60/3_256 IR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/3_256    ir
-
-Invalid Stateful Sig XMSSMT-SHA2_60/6_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_60/6_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/6_256 IR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/6_256 IR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_60/6_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/6_256 Already In Use IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_60/6_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_60/6_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_60/6_256    ir
-
-Invalid Cert Conf for XMSSMT-SHA2_60/6_256 IR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/6_256    ir
-
-Invalid Stateful Sig XMSSMT-SHA2_60/12_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_60/12_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    ir    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/12_256 IR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    ir    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/12_256 IR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    ir    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_60/12_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/12_256 Already In Use IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    ir    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_60/12_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 IR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    ir    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_60/12_256 IR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_60/12_256    ir
-
-Invalid Cert Conf for XMSSMT-SHA2_60/12_256 IR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/12_256    ir
-
-Invalid NIST Disapproved XMSSMT-SHAKE_20/2_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_20/2_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_20/2_256    ir
-
-Invalid NIST Disapproved XMSSMT-SHAKE_20/4_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_20/4_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_20/4_256    ir
-
-Invalid NIST Disapproved XMSSMT-SHAKE_40/2_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_40/2_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/2_256    ir
-
-Invalid NIST Disapproved XMSSMT-SHAKE_40/4_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_40/4_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/4_256    ir
-
-Invalid NIST Disapproved XMSSMT-SHAKE_40/8_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_40/8_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/8_256    ir
-
-Invalid NIST Disapproved XMSSMT-SHAKE_60/3_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_60/3_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/3_256    ir
-
-Invalid NIST Disapproved XMSSMT-SHAKE_60/6_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_60/6_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/6_256    ir
-
-Invalid NIST Disapproved XMSSMT-SHAKE_60/12_256 IR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_60/12_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/12_256    ir
-
-Invalid Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_20/2_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/2_256 Already In Use P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/2_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/2_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_20/2_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/2_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_20/2_256    p10cr
-
-Invalid Cert Conf for XMSSMT-SHA2_20/2_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/2_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_20/2_256    p10cr
-
-Invalid Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_20/4_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_20/4_256 Already In Use P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_20/4_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_20/4_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_20/4_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_20/4_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_20/4_256    p10cr
-
-Invalid Cert Conf for XMSSMT-SHA2_20/4_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_20/4_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_20/4_256    p10cr
-
-Invalid Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_40/2_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/2_256 Already In Use P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/2_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/2_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_40/2_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/2_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_40/2_256    p10cr
-
-Invalid Cert Conf for XMSSMT-SHA2_40/2_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/2_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/2_256    p10cr
-
-Invalid Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_40/4_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/4_256 Already In Use P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/4_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/4_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_40/4_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/4_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_40/4_256    p10cr
-
-Invalid Cert Conf for XMSSMT-SHA2_40/4_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/4_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/4_256    p10cr
-
-Invalid Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_40/8_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_40/8_256 Already In Use P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_40/8_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_40/8_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_40/8_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_40/8_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_40/8_256    p10cr
-
-Invalid Cert Conf for XMSSMT-SHA2_40/8_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_40/8_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_40/8_256    p10cr
-
-Invalid Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_60/3_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/3_256 Already In Use P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/3_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/3_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_60/3_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/3_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_60/3_256    p10cr
-
-Invalid Cert Conf for XMSSMT-SHA2_60/3_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/3_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/3_256    p10cr
-
-Invalid Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_60/6_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/6_256 Already In Use P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}    ${False}
-    ...    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/6_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/6_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_60/6_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/6_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_60/6_256    p10cr
-
-Invalid Cert Conf for XMSSMT-SHA2_60/6_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/6_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/6_256    p10cr
-
-Invalid Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${True}    ${False}    ${False}    ${False}
-    ...    ${False}
-
-Exhausted Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    p10cr    exhausted
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${True}    ${False}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Algorithm Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    p10cr    invalid_parameters
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${True}    ${False}
-    ...    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Key Size
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    p10cr    invalid_key_size
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}    ${True}
-    ...    ${False}
-
-Valid Stateful Sig XMSSMT-SHA2_60/12_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    nist_approved
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid Stateful Sig XMSSMT-SHA2_60/12_256 Already In Use P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    p10cr    already_in_use    same_key
-    Request For PQ Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    bad_message_check
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${True}    ${False}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request with Invalid Parameters
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    invalid_parameters
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${True}    ${False}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request with Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${True}
-    ...    ${False}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request with Already Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
-    ...    used_stfl_key_index
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${True}    ${False}
-
-Invalid PKIProtected XMSSMT-SHA2_60/12_256 P10CR Request with POPO Exhausted Key
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    nist_approved    PKIProtection    exhausted
-    ...    popo_exhausted_key
-    Request With PKIProtected Stateful Sig Key    xmssmt-sha2_60/12_256    p10cr    ${False}    ${False}    ${False}
-    ...    ${False}    ${True}
-
-Valid Cert Conf for XMSSMT-SHA2_60/12_256 P10CR Request
-    [Tags]    positive    xmssmt    xmssmt-sha2_60/12_256    certConf
-    Build Certificate Confirmation Test    xmssmt-sha2_60/12_256    p10cr
-
-Invalid Cert Conf for XMSSMT-SHA2_60/12_256 P10CR Request With Used Key Index
-    [Tags]    negative    xmssmt    xmssmt-sha2_60/12_256    certConf    used_stfl_key_index
-    Build Certificate Confirmation Used Key Test    xmssmt-sha2_60/12_256    p10cr
-
-Invalid NIST Disapproved XMSSMT-SHAKE_20/2_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_20/2_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_20/2_256    p10cr
-
-Invalid NIST Disapproved XMSSMT-SHAKE_20/4_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_20/4_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_20/4_256    p10cr
-
-Invalid NIST Disapproved XMSSMT-SHAKE_40/2_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_40/2_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/2_256    p10cr
-
-Invalid NIST Disapproved XMSSMT-SHAKE_40/4_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_40/4_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/4_256    p10cr
-
-Invalid NIST Disapproved XMSSMT-SHAKE_40/8_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_40/8_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_40/8_256    p10cr
-
-Invalid NIST Disapproved XMSSMT-SHAKE_60/3_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_60/3_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/3_256    p10cr
-
-Invalid NIST Disapproved XMSSMT-SHAKE_60/6_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_60/6_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/6_256    p10cr
-
-Invalid NIST Disapproved XMSSMT-SHAKE_60/12_256 P10CR Request
-    [Tags]    negative    xmssmt    xmssmt-shake_60/12_256    nist_disapproved
-    Request For NIST Disapproved PQ Stateful Sig Key    xmssmt-shake_60/12_256    p10cr

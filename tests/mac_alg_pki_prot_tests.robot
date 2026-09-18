@@ -7,7 +7,7 @@ Documentation       Tests MAC protection algorithms, for ensure that the CA acce
 ...                the correct algorithms. The test cases are based on the algorithm profile
 ...                defined in RFC 9481 and the new SHA3 OIDs defined in RFC 9688.
 
-Resource            ../config/${environment}.robot
+Resource            ../config/${ENVIRONMENT}.resource
 Resource            ../resources/keywords.resource
 Library             Collections
 Library             OperatingSystem

@@ -21,7 +21,7 @@ Library             ../resources/certextractutils.py
 Library             ../resources/envdatautils.py
 Library             ../resources/compareutils.py
 
-Test Tags    robot:skip-on-failure   deprecated
+Test Tags    robot:skip-on-failure   deprecated   positive    challenge   popo  issuing  advanced  challenge-response  encrValue
 
 
 *** Test Cases ***
@@ -29,7 +29,7 @@ CA Must Accept ChallengeResp POPO For Request With X25519 Key
     [Documentation]    According to RFC 4210bis-18 Section 5.2.8.3.3. the Client can use the `challengeResp`
     ...     POPO to prove possession of the private key. We send a PKIMessage with a X25519
     ...     SubsequentMessage POPO. The CA MUST accept the request and issue a certificate.
-    [Tags]    positive    challenge   popo  issuing  advanced  x25519   challenge-response  encrValue
+    [Tags]    x25519
     Should Contain    ${ALLOWED_ALGORITHM}    x25519
     ${key}=   Generate Key     x25519
     ${cm}=   Get Next Common Name
@@ -51,7 +51,7 @@ CA Must Accept ChallengeResp POPO For Request With X448 Key
     [Documentation]    According to RFC 4210bis-18 Section 5.2.8.3.3. the Client can use the `challengeResp`
     ...     POPO to prove possession of the private key. We send a PKIMessage with a X448
     ...     SubsequentMessage POPO. The CA MUST accept the request and issue a certificate.
-    [Tags]    positive    challenge   popo  issuing  advanced  x448  challenge-response  encrValue
+    [Tags]    x448
     Should Contain    ${ALLOWED_ALGORITHM}    x448
     ${key}=   Generate Key     x448
     ${cm}=   Get Next Common Name
@@ -73,7 +73,7 @@ CA Must Accept ChallengeResp POPO For Request With ECC Key
     [Documentation]    According to RFC 4210bis-18 Section 5.2.8.3.3. the Client can use the `challengeResp`
     ...     POPO to prove possession of the private key. We send a PKIMessage with a ECC
     ...     SubsequentMessage POPO. The CA MUST accept the request and issue a certificate.
-    [Tags]    positive    challenge   popo  issuing  advanced  ecc  challenge-response  encrValue
+    [Tags]    ecc
     Should Contain    ${ALLOWED_ALGORITHM}    ecc
     ${key}=   Generate Key     ecc
     ${cm}=   Get Next Common Name
@@ -95,7 +95,7 @@ CA Must Accept ChallengeResp POPO For Request With RSA Key
     [Documentation]    According to RFC 4210bis-18 Section 5.2.8.3.3. the Client can use the `challengeResp`
     ...     POPO to prove possession of the private key. We send a PKIMessage with a RSA keyEncipherment key
     ...     and SubsequentMessage POPO. The CA MUST accept the request and issue a certificate.
-    [Tags]    positive    challenge   popo  issuing  advanced  rsa  challenge-response  encrValue
+    [Tags]    rsa
     Should Contain    ${ALLOWED_ALGORITHM}    rsa
     ${key}=   Generate Key     rsa
     ${cm}=   Get Next Common Name

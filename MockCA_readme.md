@@ -66,7 +66,7 @@ test-friendly responses to CMP requests. It is primarily used to:
 
 - **Implementation:** [`mock_ca/`](./mock_ca)
 - **MockCA test suites:** [`tests_mock_ca/`](./tests_mock_ca)
-- **MockCA test environment settings:** [`config/mock_ca.robot`](config/mock_ca.robot)
+- **MockCA test environment settings:** [`config/mock_ca.resource`](config/mock_ca.resource)
 - **Test documentation (generated):** `doc/test-mock-ca.html` via `make docs`
 
 ## Features
@@ -162,12 +162,12 @@ The default configuration assumes:
 - MockCA listens on `http://127.0.0.1:5000` by default.
 - The CMP issuing endpoint is `http://127.0.0.1:5000/issuing`.
 - The Robot Framework tests select MockCA via `--variable environment:mock_ca`, which loads
-  `config/mock_ca.robot`.
+  `config/mock_ca.resource`.
 
-These defaults are defined in `mock_ca/ca_handler.py` (host/port defaults) and `config/mock_ca.robot` (CMP URLs and
+These defaults are defined in `mock_ca/ca_handler.py` (host/port defaults) and `config/mock_ca.resource` (CMP URLs and
 shared secret). Update the config or pass `--host`/`--port` as needed.
 
-You can verify the default URLs in `config/mock_ca.robot`:
+You can verify the default URLs in `config/mock_ca.resource`:
 
 ```robot
 ${PORT}    5000
@@ -179,7 +179,7 @@ ${CA_CMP_URL}    http://127.0.0.1:${PORT}/issuing
 
 All CMP requests are sent to `${CA_CMP_URL}` (default `/issuing`).
 Specialized endpoints used by certain tests are configured via the suffix variables in
-`config/mock_ca.robot` (for example `${SUN_HYBRID_SUFFIX}`, `${CHAMELEON_SUFFIX}`, `${CATALYST_ISSUING}`).
+`config/mock_ca.resource` (for example `${SUN_HYBRID_SUFFIX}`, `${CHAMELEON_SUFFIX}`, `${CATALYST_ISSUING}`).
 
 ### Start the CA
 
@@ -225,9 +225,9 @@ To run an example CMP request against the MockCA, see the
 ### Required configuration changes
 
 The test suite selects MockCA by passing the environment variable `environment:mock_ca`, which loads
-`config/mock_ca.robot`. You typically do **not** need to edit any files to use the default MockCA settings.
+`config/mock_ca.resource`. You typically do **not** need to edit any files to use the default MockCA settings.
 
-Key variables in `config/mock_ca.robot` include:
+Key variables in `config/mock_ca.resource` include:
 
 - `${CA_BASE_URL}` and `${CA_CMP_URL}` — base and issuing CMP endpoints.
 - `${PRESHARED_SECRET}` — shared secret for MAC-based protection (`SiemensIT` by default).
@@ -235,11 +235,11 @@ Key variables in `config/mock_ca.robot` include:
 
 ### Key material and certificates
 
-MockCA uses local test keys and certificates referenced in `config/mock_ca.robot` (for example
+MockCA uses local test keys and certificates referenced in `config/mock_ca.resource` (for example
 `data/mock_ca/device_cert_ecdsa_cert_chain.pem`, `data/keys/private-key-ecdsa.pem`, and other files
 under `data/`). No external CA material is required for the default configuration.
 
-If you update any paths in `config/mock_ca.robot`, ensure the referenced files exist.
+If you update any paths in `config/mock_ca.resource`, ensure the referenced files exist.
 
 ## Endpoints
 
@@ -364,7 +364,7 @@ robot --pythonpath=./ --exclude verbose-tests --outputdir=reports --variable env
     in a human-readable format.
 - **Stateful tests failing on re-run:** Some tests depend on state (e.g., issuance and revocation); re‑running the
    same test without resetting state can cause failures. **Restart** the MockCA to reset its in‑memory state.
-- **`Connection refused`**: Mock CA is not running, or the host/port does not match `config/mock_ca.robot`.
+- **`Connection refused`**: Mock CA is not running, or the host/port does not match `config/mock_ca.resource`.
 - **`Address already in use`**: Another process is using port 5000. Stop it or start Mock CA on another port.
 - **Unexpected 404 responses:** Confirm the request is sent to `/issuing` or the configured endpoint suffix.
    The list of supported endpoints is documented above.

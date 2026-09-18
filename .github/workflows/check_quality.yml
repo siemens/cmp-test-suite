@@ -61,9 +61,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: RobotFramework style check
-        run: robocop check --ignore VAR04
-    # We haven't settled on a style for RobotFramework yet, enforce check when consensus is reached
-    continue-on-error: true
+        run: robocop check
 
   spelling_check:
     needs: prepare_env
@@ -140,7 +138,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Unit tests
-        run:  python3 -m unittest discover -s unit_tests
+        run:  python3 -m pytest unit_tests -n auto
 
   type_check:
     needs: prepare_env

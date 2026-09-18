@@ -6,7 +6,7 @@
 Documentation       Contains Test cases which are more or less only relevant for CMP and not LwCMP.
 
 Resource            ../resources/keywords.resource
-Resource            ../config/${environment}.robot
+Resource            ../config/${ENVIRONMENT}.resource
 Library             OperatingSystem
 Library             ../resources/utils.py
 Library             ../resources/asn1utils.py

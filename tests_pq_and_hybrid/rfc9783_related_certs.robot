@@ -57,7 +57,7 @@ CA MUST Accept valid Request with CSR with related Cert
     ...                certificate attribute. We send a valid CSR, with an valid POP, and an valid related certificate
     ...                from the same CA. The CA MUST accept the request and issue a valid certificate.
     [Tags]         multiple-auth   csr   positive
-    Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
+    Skip If   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     Issue New PQ Sig Cert For Testing
     ${cert_url}=  Prepare Related Cert URL    ${PQ_SIG_CERT}
     ${req_cert}=   Prepare RequesterCertificate  cert_a=${PQ_SIG_CERT}
@@ -65,7 +65,7 @@ CA MUST Accept valid Request with CSR with related Cert
     ${trad_key}=   Generate Default Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${trad_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${trad_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -75,17 +75,17 @@ CA MUST Accept valid Request with CSR with related Cert
     PKIStatus Must Be    ${response}    accepted
     ${cert}=    Get Cert From PKIMessage    ${response}
     Validate Related Cert Extension    ${cert}    ${PQ_SIG_CERT}
-    VAR   ${RELATED_KEY}    ${trad_key}   scope=Suite
-    VAR   ${RELATED_CERT}    ${cert}    scope=Suite
-    VAR   ${RELATED_KEY_SEC}    ${PQ_SIG_KEY}   scope=Suite
-    VAR   ${RELATED_CERT_SEC}   ${PQ_SIG_CERT}   scope=Suite
+    VAR   ${RELATED_KEY}=    ${trad_key}   scope=Suite
+    VAR   ${RELATED_CERT}=    ${cert}    scope=Suite
+    VAR   ${RELATED_KEY_SEC}=    ${PQ_SIG_KEY}   scope=Suite
+    VAR   ${RELATED_CERT_SEC}=   ${PQ_SIG_CERT}   scope=Suite
 
 CA SHOULD Accept CSR with related cert from different CA
     [Documentation]    As defined in Cert-binding-for-multiple-auth Section 3, we generate a CSR with the related
     ...                certificate attribute. We send a valid CSR, with an valid POP, but an valid related certificate
     ...                from a different CA. The CA SHOULD accept the request and issue a valid certificate.
     [Tags]         multiple-auth   csr   positive   different-ca
-    Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
+    Skip If   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     # TODO uncomment, if needed.
     # get a new cert, if the CA requires to issue a related cert in time.
     # ${ir}=    Generate Default IR Sig Protected
@@ -101,7 +101,7 @@ CA SHOULD Accept CSR with related cert from different CA
     ${pq_key}=    Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Protect PKIMessage
@@ -125,14 +125,14 @@ CA MUST Reject Invalid POP for Cert A
     ...                `RequesterCertificate` structure. The CA MUST detect this error and reject the request and MAY
     ...                respond with the optional failInfo `badPOP`.
     [Tags]         multiple-auth   csr   negative   popo
-    Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
+    Skip If   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     ${cert_url}=  Prepare Related Cert URL    ${ISSUED_CERT}
     ${req_cert}=   Prepare RequesterCertificate  cert_a=${ISSUED_CERT}
     ...            cert_a_key=${ISSUED_KEY}   uri=${cert_url}   bad_pop=True
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -150,13 +150,13 @@ CA MUST Validate that the URI is reachable
     ...                unreachable URI for the related certificate. The CA MUST detect this error and reject
     ...                the request and MAY respond with the optional failInfo `badRequest`.
     [Tags]         multiple-auth   csr   negative   uri
-    Skip if   '${NEG_URI_RELATED_CERT}' == None    The Not reachable URI for multiple auth is not defined.
+    Skip If   '${NEG_URI_RELATED_CERT}' == None    The Not reachable URI for multiple auth is not defined.
     ${req_cert}=   Prepare RequesterCertificate  cert_a=${ISSUED_CERT}
     ...            cert_a_key=${ISSUED_KEY}   uri=${NEG_URI_RELATED_CERT}
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -166,13 +166,13 @@ CA MUST Validate that the URI is reachable
     PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    systemFailure,badPOP
 
-CA MUST Check If The Related Certificate Is Not Revoked.
+CA MUST Check If The Related Certificate Is Not Revoked
     [Documentation]    As defined in Cert-binding-for-multiple-auth Section 3.2, we generate a CSR with the related
     ...                certificate attribute. We send a valid CSR, with an valid POP, but an invalid related certificate
     ...                for the related certificate. The CA MUST detect this error and reject the request and MAY
     ...                respond with the optional failInfo `badCertTemplate`.
     [Tags]         multiple-auth   csr   negative   rr
-    Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
+    Skip If   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     Revoked New PQ Sig Cert
     ${cert_url}=  Prepare Related Cert URL    ${REVOKED_PQ_CERT}
     ${req_cert}=   Prepare RequesterCertificate  cert_a=${REVOKED_PQ_CERT}
@@ -180,7 +180,7 @@ CA MUST Check If The Related Certificate Is Not Revoked.
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -197,7 +197,7 @@ CA MUST Check If The Related Certificate Is Not Updated
     ...                for the related certificate. The CA MUST detect this error and reject the request and MAY
     ...                respond with the optional failInfo `badCertTemplate`.
     [Tags]         multiple-auth   csr   negative   rr
-    Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
+    Skip If   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     Update New PQ Sig Cert
     ${cert_url}=  Prepare Related Cert URL    ${UPDATED_PQ_CERT}
     ${req_cert}=   Prepare RequesterCertificate  cert_a=${UPDATED_PQ_CERT}
@@ -205,7 +205,7 @@ CA MUST Check If The Related Certificate Is Not Updated
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   ${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -222,7 +222,7 @@ CA MUST Reject Related Cert With Non-EE Cert
     ...                an end entity. The CA MUST detect this error and reject the request and MAY respond with the
     ...                optional failInfo `badCertTemplate`.
     [Tags]         multiple-auth   csr   negative
-    Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
+    Skip If   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     Issue New PQ CA Cert For Testing
     ${cert_url}=  Prepare Related Cert URL    ${PQ_CA_CERT}
     ${req_cert}=   Prepare RequesterCertificate  cert_a=${PQ_CA_CERT}
@@ -230,7 +230,7 @@ CA MUST Reject Related Cert With Non-EE Cert
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}
@@ -245,7 +245,7 @@ CA MUST Reject Related Cert For Non-EE Cert
     ...                certificate attribute. We send a valid CSR, with an valid POP, and an valid related certificate
     ...                from the same CA. The CA MUST accept the request and issue a valid certificate.
     [Tags]         multiple-auth   csr   positive
-    Skip if   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
+    Skip If   '${URI_RELATED_CERT}' == None   The URI for related cert is not defined.
     ${cert_url}=  Prepare Related Cert URL    ${ISSUED_CERT}
     ${extns}=   Prepare Extensions    is_ca=True
     ${req_cert}=   Prepare RequesterCertificate  cert_a=${ISSUED_CERT}
@@ -253,7 +253,7 @@ CA MUST Reject Related Cert For Non-EE Cert
     ${pq_key}=   Generate Default PQ SIG Key
     ${cm}=             Get Next Common Name
     ${csr}=    Build CSR    ${pq_key}    ${cm}   exclude_signature=True   extensions=${extns}
-    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}
+    ${req_cert}=    Add CSR RelatedCertRequest Attribute    ${csr}   ${req_cert}  # robocop: off=VAR02
     ${csr}=   Sign CSR    ${csr}   signing_key=${pq_key}
     ${p10cr}=   Build P10cr From CSR    ${csr}   recipient=${RECIPIENT}   exclude_fields=senderKID,sender   implicit_confirm=${True}
     ${protected_p10cr}=  Default Protect PKIMessage    ${p10cr}

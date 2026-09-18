@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: Copyright 2024 Siemens AG
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[lint]
+ignore = [
+    # state (e.g. issued certs/keys) between test cases within a suite.
+    "VAR04",
+    "VAR05",
+    "VAR06",
+    # TODOs are tracked as a policy/backlog question, not a formatting issue.
+    "COM01",
+    # Size/length limits below don't fit this suite's style: CMP protocol tests are
+    # long, linear conversation flows (build request -> protect -> exchange -> parse
+    # response -> validate), and splitting them up to satisfy these thresholds would
+    # hurt readability rather than help it.
+    "LEN01",  # too-long-keyword
+    "LEN03",  # too-many-calls-in-keyword
+    "LEN04",  # too-long-test-case
+    "LEN06",  # too-many-calls-in-test-case
+    "LEN07",  # too-many-arguments
+    "LEN27",  # too-many-test-cases
+    "LEN28",  # file-too-long
+    "LEN32",  # too-long-variable-name
+    "DOC02",  # missing-doc-test-case
+]
+
+configure = [
+    "line-too-long.line_length=160",
+    # These keywords intentionally embed CMP/ASN.1 field names verbatim (e.g. senderNonce,
+    # messageTime, extraCerts, recipNonce, regInfo, reqInfo, statusString), matching the
+    # names used throughout the Python codebase. Renaming them would mean touching
+    # hundreds of unrelated files that use the same names as variables/kwargs.
+    "wrong-case-in-keyword-call.pattern=senderNonce|messageTime|extraCerts|recipNonce|regInfo|reqInfo|statusString|failinfo",
+    "wrong-case-in-keyword-name.pattern=senderNonce|messageTime|extraCerts|recipNonce|regInfo|reqInfo|statusString|failinfo",
+    "unused-variable.ignore=CMP_MAC,KEY_UPDATE_REQUEST,REVOCATION_REQUEST,CHAMELEON_DELTA_CERT,SUN_HYBRID_CERT,SUN_HYBRID_KEY,SUN_HYBRID_CERT_CHAIN",
+    "missing-space-after-comment.block=^#+",
+]

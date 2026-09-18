@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation       General tests for CMP logic, not necessarily specific to the lightweight profile
 
 Resource            ../resources/keywords.resource
-Resource            ../config/${environment}.robot
+Resource            ../config/${ENVIRONMENT}.resource
 Library             OperatingSystem
 Library             ../resources/utils.py
 Library             ../resources/asn1utils.py
@@ -16,23 +17,6 @@ Library             ../resources/protectionutils.py
 Library             ../resources/general_msg_utils.py
 
 Test Tags           general-message    support-messages
-
-
-*** Keywords ***
-Default Protect General Message
-    [Documentation]    Protects a general message with the default protection method.
-    ...                based on the values defined in the configuration file.
-    [Arguments]    ${genm}
-    IF   ${ALLOW_MAC_PROTECTED_SUPPORT_MSG}
-        IF   ${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
-            ${genm}=   Patch Sender   ${genm}    sender_name=${SENDER}
-            ${genm}=   Patch SenderKID    ${genm}     for_mac=True
-        END
-        ${protected_genm}=    Default Protect With MAC    ${genm}
-    ELSE
-        ${protected_genm}=    Default Protect PKIMessage    ${genm}
-    END
-    RETURN    ${protected_genm}
 
 
 *** Test Cases ***
@@ -207,7 +191,7 @@ CA MUST Respond To Valid Protected CRL Update Retrieval With CRL File
     ...    the provided CRL is outdated or leave the `infoValue` field absent if no update is available.
     [Tags]    positive    robot:skip-on-failure
     Skip If    '${CRL_FILEPATH}' == 'None'    Skipped because the CRL_FILEPATH variable is not set.
-    ${info_val}=   Prepare CRL Update Retrieval    crl_filepath=${CRL_FILEPATH}    exclude_this_update=True    
+    ${info_val}=   Prepare CRL Update Retrieval    crl_filepath=${CRL_FILEPATH}    exclude_this_update=True
     ${genm}=    Build CMP General Message
     ...    info_values=${info_val}
     ...    recipient=${RECIPIENT}
@@ -375,10 +359,27 @@ CA MUST Reject Supported Language Tags with only invalid Tags
     PKIStatusInfo Failinfo Bit Must Be    ${genp}    failinfo=badRequest    exclusive=True
 
 # TODO add this test.
-#CA MUST Accept Key Pair Parameters Request
+# CA MUST Accept Key Pair Parameters Request
 #    [Documentation]    According to RFC 4210bis-18 5.3.19.8, the EE may request the CA the parameters for a
 #    ...    OID for a specific algorithm/ecc curve. We send a general message with the `id-it-keyPairParamReq`
 #    ...    InfoType. The CA MUST respond with the parameters for the requested OID or and absent value if
 #    ...    the OID is not supported.
 #    [Tags]    positive
 #    Skip     This test is skipped because this is not supported.
+
+
+*** Keywords ***
+Default Protect General Message
+    [Documentation]    Protects a general message with the default protection method.
+    ...                based on the values defined in the configuration file.
+    [Arguments]    ${genm}
+    IF   ${ALLOW_MAC_PROTECTED_SUPPORT_MSG}
+        IF   ${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
+            ${genm}=   Patch Sender   ${genm}    sender_name=${SENDER}
+            ${genm}=   Patch SenderKID    ${genm}     for_mac=True
+        END
+        ${protected_genm}=    Default Protect With MAC    ${genm}
+    ELSE
+        ${protected_genm}=    Default Protect PKIMessage    ${genm}
+    END
+    RETURN    ${protected_genm}

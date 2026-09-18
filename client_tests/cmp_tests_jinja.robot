@@ -1,17 +1,20 @@
+*** Comments ***
 # SPDX-FileCopyrightText: Copyright 2025 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation       Minimal CMP tests.
-Library             Process
 Library             Collections
 Library             OperatingSystem
+Library             Process
 Library             String
 Library             cmp_client.py
 
 Suite Setup         Ensure Environment Clean
 Test Setup          Ensure Environment Clean
+
 
 *** Variables ***
 ${CMP_URL}          http://127.0.0.1:5000/issuing
@@ -23,18 +26,14 @@ ${CERT_OUT}         certs/received_cert.pem
 
 # CMP Commands - Adapt these for you cmp client, default is OpenSSL
 # CMP_CLIENT variable is always called first in the cli command
-${CMP_CLIENT}    openssl 
+${CMP_CLIENT}    openssl
 ${INITIATION_REQUEST}      ir
 ${CERTIFICATION_REQUEST}   p10cr
 ${KEY_UPDATE_REQUEST}      kur
-${REVOCATION_REQUEST}      rr  
+${REVOCATION_REQUEST}      rr
 
-*** Keywords ***
-Ensure Environment Clean
-    Remove File    certs/received_cert.pem
 
 *** Test Cases ***
-
 # === IR Tests ===
 IR 01 - Valid IR CMP Request Should Pass
     [Documentation]    Send a new certificate initialization request using OpenSSL CMP client with MAC-based protection.
@@ -58,15 +57,15 @@ IR 01 - Valid IR CMP Request Should Pass
     ...    secret=${CMP_SECRET}
     ...    recipient=${CMP_RECIPIENT}
     ...    newkey=${CMP_KEY}
-    ...    certout=${CERT_OUT}   
-    log    CMP Request Args: ${args}
-    Run Process    @{args}    stdout=PIPE    stderr=STDOUT    alias=cmp_run 
+    ...    certout=${CERT_OUT}
+    Log    CMP Request Args: ${args}
+    Run Process    @{args}    stdout=PIPE    stderr=STDOUT    alias=cmp_run
     ${output}=    Wait For Process    cmp_run
     LOG    CMP Request Output: ${output.stdout}
     LOG    CMP Request rc: ${Output.rc}
     ${out}=    Convert To Lowercase    ${output.stdout}
     Should Not Contain Any    ${out}    error
-    Should Be Equal As Integers  ${output.rc}    0  
+    Should Be Equal As Integers  ${output.rc}    0
     File Should Exist     ${CERT_OUT}
 
 IR 02 - IR Request With Wrong Secret Should Fail
@@ -88,9 +87,9 @@ IR 02 - IR Request With Wrong Secret Should Fail
     ...    secret=pass:WrongPassword
     ...    recipient=${CMP_RECIPIENT}
     ...    newkey=${CMP_KEY}
-    ...    certout=${CERT_OUT}   
-    log    CMP Request Args: ${args}
-    Run Process    @{args}    stdout=PIPE    stderr=STDOUT    alias=cmp_run 
+    ...    certout=${CERT_OUT}
+    Log    CMP Request Args: ${args}
+    Run Process    @{args}    stdout=PIPE    stderr=STDOUT    alias=cmp_run
     ${output}=    Wait For Process    cmp_run
     LOG    CMP Request Output: ${output.stdout}
     ${out}=    Convert To Lowercase    ${output.stdout}
@@ -99,6 +98,7 @@ IR 02 - IR Request With Wrong Secret Should Fail
     File Should Not Exist     ${CERT_OUT}
 
 # === P10CR Tests ===
+
 P10CR 01 - P10CR Unprotected Request Should Fail
     [Documentation]    Send a P10CR request with `-unprotected_requests` using OpenSSL to simulate missing protection.
     ...
@@ -123,11 +123,10 @@ P10CR 01 - P10CR Unprotected Request Should Fail
     ${out}=    Convert To Lowercase    ${output.stdout}
     Should Not Be Equal As Integers  ${output.rc}    0
     Should Contain    ${out}    error
-    Should Contain    ${out}    protection    
-
+    Should Contain    ${out}    protection
 
 P10CR 02 - P10CR With Missing CSR Should Fail
-    
+
     [Documentation]    Send a P10CR request without a CSR using a CMP client to test input validation.
     ...
     ...                This test omits the `csr` option entirely, resulting in a malformed request.
@@ -141,7 +140,7 @@ P10CR 02 - P10CR With Missing CSR Should Fail
     ...    ref=P10CR-Client-2
     ...    subject=/CN=P10CR-Client-2
     ...    secret=${CMP_SECRET}
-    
+
     Run Process    @{args}    stdout=PIPE    stderr=STDOUT    alias=cmp_run
     ${output}=    Wait For Process    cmp_run
     LOG    CMP Request Output: ${output.stdout}
@@ -169,5 +168,11 @@ P10CR 03 - Valid P10CR With CSR Should Pass
     Run Process    @{args}    stdout=PIPE    stderr=STDOUT    alias=cmp_run
     ${output}=    Wait For Process    cmp_run
     LOG    CMP Request Output: ${output.stdout}
-    Should Be Equal As Integers  ${output.rc}    0  
+    Should Be Equal As Integers  ${output.rc}    0
     Should Not Contain    ${output.stdout.lower()}    error
+
+
+*** Keywords ***
+Ensure Environment Clean
+    [Documentation]    Remove leftover certificate files from a previous test run.
+    Remove File    certs/received_cert.pem

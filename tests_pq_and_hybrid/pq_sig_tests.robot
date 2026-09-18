@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation       General tests for CMP logic, not necessarily specific to the lightweight profile
 
@@ -20,91 +21,6 @@ Library             ../pq_logic/pq_verify_logic.py
 
 Test Tags           pq-sig   pqc
 Suite Setup         Set Up PQ Sig Suite
-
-
-*** Keywords ***
-Initialize Global Variables
-    [Documentation]    Initialize global variables for the test suite.
-    ${cert}   ${key}=   May Load Cert And Key    data/unittest/ca1_cert_ecdsa.pem   data/keys/private-key-ecdsa.pem
-    VAR    ${OTHER_TRUSTED_PKI_CERT}  ${cert}   scope=Global
-    VAR    ${OTHER_TRUSTED_PKI_KEY}   ${key}    scope=Global
-    ${cert}   ${key}=   May Load Cert And Key    data/unittest/ca1_cert_ecdsa.pem   data/keys/private-key-ecdsa.pem
-    VAR    ${ISSUED_CERT}  ${cert}   scope=Global
-    VAR    ${ISSUED_KEY}   ${key}    scope=Global
-    VAR    &{CERT_CONF_DEF_VALS}    sender=${SENDER}    recipient=${RECIPIENT}    private_key=${ISSUED_KEY}
-    ...     cert=${ISSUED_CERT}    password=${PRESHARED_SECRET}    protection=signature   scope=GLOBAL
-    VAR    &{DEFAULT_PROTECTION_VALS}    protection=${DEFAULT_PROTECTION}   private_key=${ISSUED_KEY}
-    ...   cert=${ISSUED_CERT}   password=${PRESHARED_SECRET}   scope=GLOBAL
-
-Exchange PQ Signature PKIMessage
-    [Documentation]    Exchange a PKIMessage for a PQ signature certificate.
-    ...
-    ...                Arguments:
-    ...                - `name`:  The name of the PQ signature algorithm.
-    ...                - `hash_alg`: The hash algorithm to use, for the pre-hash version. Defaults to `None`.
-    ...                - `bad_pop`: Whether to invalidate the POP. Defaults to `False`.
-    ...                - `invalid_key_size`: Whether to use an invalid key size. Defaults to `False`.
-    ...
-    ...                Returns:
-    ...                - The response PKIMessage.
-    ...
-
-    ...                Examples:
-    ...                | Exchange PQ Signature PKIMessage | ml-dsa-44 |
-    ...                | Exchange PQ Signature PKIMessage | ml-dsa-44 | sha512 |
-    ...                | Exchange PQ Signature PKIMessage | ml-dsa-44 | sha512 | True  |
-    [Arguments]    ${name}    ${hash_alg}=${None}    ${bad_pop}=False   ${invalid_key_size}=False
-    ${key}=   Generate Key    ${name}
-    ${cm}=    Get Next Common Name
-    ${spki}=   Prepare SubjectPublicKeyInfo    ${key}   hash_alg=${hash_alg}   invalid_key_size=${invalid_key_size}
-    ${cert_req_msg}=    Prepare CertReqMsg    ${key}   common_name=${cm}
-    ...                 spki=${spki}
-    ...                 bad_pop=${bad_pop}
-    ${ir}=    Build Ir From Key    ${key}   ${cm}   cert_req_msg=${cert_req_msg}
-    ...       recipient=${RECIPIENT}
-    ...       exclude_fields=senderKID,sender
-    ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange PKIMessage    ${protected_ir}
-    RETURN    ${response}
-
-Exchange PQ Signature PKIMessage With Extensions
-    [Documentation]    Exchange a PKIMessage for a PQ signature certificate that includes specified extensions.
-    ...
-    ...                Arguments:
-    ...                - ${name}: The name of the PQ signature algorithm.
-    ...                - ${extension}: The extension to be applied (e.g., key_usage=cRLSign).
-    ...
-    ...                Returns:
-    ...                - The response PKIMessage.
-    ...
-    ...                Examples:
-    ...                | Exchange PQ Signature PKIMessage With Extensions | ml-dsa-44 | cRLSign |
-    ...
-    [Arguments]    ${name}    ${key_usages}
-    ${key}=   Generate Key    ${name}
-    ${cm}=    Get Next Common Name
-    ${extensions}=  Prepare Extensions    key_usage=${key_usages}
-    ${spki}=   Prepare SubjectPublicKeyInfo    ${key}
-    ${cert_req_msg}=    Prepare CertReqMsg  ${key}   common_name=${cm}
-    ...                 spki=${spki}   extensions=${extensions}
-    ${ir}=    Build Ir From Key    ${key}   cert_req_msg=${cert_req_msg}
-    ...       recipient=${RECIPIENT}
-    ...       exclude_fields=senderKID,sender
-    ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange PKIMessage    ${protected_ir}
-    RETURN    ${response}
-
-Validate BadPOP
-    [Documentation]    Validate that the response PKIMessage for a expected `badPOP` failInfo.
-    ...
-    ...                Arguments:
-    ...                - `${response}`: The PKIMessage response object to be validated.
-    ...
-    ...                Examples:
-    ...                | Validate BadPOP | ${response} |
-    [Arguments]    ${response}
-    PKIStatus Must Be    ${response}    status=rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP
 
 
 *** Variables ***
@@ -889,3 +805,87 @@ CA MUST Reject a SLH-DSA with KeyUsage decipherOnly
     ${response}=   Exchange PQ Signature PKIMessage With Extensions    ${Default_SLH_DSA_ALG}    decipherOnly
     PKIStatus Must Be    ${response}    status=rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badCertTemplate
+
+
+*** Keywords ***
+Initialize Global Variables
+    [Documentation]    Initialize global variables for the test suite.
+    ${cert}   ${key}=   May Load Cert And Key    data/unittest/ca1_cert_ecdsa.pem   data/keys/private-key-ecdsa.pem
+    VAR    ${OTHER_TRUSTED_PKI_CERT}=  ${cert}   scope=Global
+    VAR    ${OTHER_TRUSTED_PKI_KEY}=   ${key}    scope=Global
+    ${cert}   ${key}=   May Load Cert And Key    data/unittest/ca1_cert_ecdsa.pem   data/keys/private-key-ecdsa.pem
+    VAR    ${ISSUED_CERT}=  ${cert}   scope=Global
+    VAR    ${ISSUED_KEY}=   ${key}    scope=Global
+    VAR    &{CERT_CONF_DEF_VALS}=    sender=${SENDER}    recipient=${RECIPIENT}    private_key=${ISSUED_KEY}
+    ...     cert=${ISSUED_CERT}    password=${PRESHARED_SECRET}    protection=signature   scope=GLOBAL
+    VAR    &{DEFAULT_PROTECTION_VALS}=    protection=${DEFAULT_PROTECTION}   private_key=${ISSUED_KEY}
+    ...   cert=${ISSUED_CERT}   password=${PRESHARED_SECRET}   scope=GLOBAL
+
+Exchange PQ Signature PKIMessage
+    [Documentation]    Exchange a PKIMessage for a PQ signature certificate.
+    ...
+    ...                Arguments:
+    ...                - `name`:  The name of the PQ signature algorithm.
+    ...                - `hash_alg`: The hash algorithm to use, for the pre-hash version. Defaults to `None`.
+    ...                - `bad_pop`: Whether to invalidate the POP. Defaults to `False`.
+    ...                - `invalid_key_size`: Whether to use an invalid key size. Defaults to `False`.
+    ...
+    ...                Returns:
+    ...                - The response PKIMessage.
+    ...
+    ...                Examples:
+    ...                | Exchange PQ Signature PKIMessage | ml-dsa-44 |
+    ...                | Exchange PQ Signature PKIMessage | ml-dsa-44 | sha512 |
+    ...                | Exchange PQ Signature PKIMessage | ml-dsa-44 | sha512 | True  |
+    [Arguments]    ${name}    ${hash_alg}=${None}    ${bad_pop}=False   ${invalid_key_size}=False
+    ${key}=   Generate Key    ${name}
+    ${cm}=    Get Next Common Name
+    ${spki}=   Prepare SubjectPublicKeyInfo    ${key}   hash_alg=${hash_alg}   invalid_key_size=${invalid_key_size}
+    ${cert_req_msg}=    Prepare CertReqMsg    ${key}   common_name=${cm}
+    ...                 spki=${spki}
+    ...                 bad_pop=${bad_pop}
+    ${ir}=    Build Ir From Key    ${key}   ${cm}   cert_req_msg=${cert_req_msg}
+    ...       recipient=${RECIPIENT}
+    ...       exclude_fields=senderKID,sender
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    RETURN    ${response}
+
+Exchange PQ Signature PKIMessage With Extensions
+    [Documentation]    Exchange a PKIMessage for a PQ signature certificate that includes specified extensions.
+    ...
+    ...                Arguments:
+    ...                - ${name}: The name of the PQ signature algorithm.
+    ...                - ${extension}: The extension to be applied (e.g., key_usage=cRLSign).
+    ...
+    ...                Returns:
+    ...                - The response PKIMessage.
+    ...
+    ...                Examples:
+    ...                | Exchange PQ Signature PKIMessage With Extensions | ml-dsa-44 | cRLSign |
+    ...
+    [Arguments]    ${name}    ${key_usages}
+    ${key}=   Generate Key    ${name}
+    ${cm}=    Get Next Common Name
+    ${extensions}=  Prepare Extensions    key_usage=${key_usages}
+    ${spki}=   Prepare SubjectPublicKeyInfo    ${key}
+    ${cert_req_msg}=    Prepare CertReqMsg  ${key}   common_name=${cm}
+    ...                 spki=${spki}   extensions=${extensions}
+    ${ir}=    Build Ir From Key    ${key}   cert_req_msg=${cert_req_msg}
+    ...       recipient=${RECIPIENT}
+    ...       exclude_fields=senderKID,sender
+    ${protected_ir}=    Default Protect PKIMessage    ${ir}
+    ${response}=   Exchange PKIMessage    ${protected_ir}
+    RETURN    ${response}
+
+Validate BadPOP
+    [Documentation]    Validate that the response PKIMessage for a expected `badPOP` failInfo.
+    ...
+    ...                Arguments:
+    ...                - `${response}`: The PKIMessage response object to be validated.
+    ...
+    ...                Examples:
+    ...                | Validate BadPOP | ${response} |
+    [Arguments]    ${response}
+    PKIStatus Must Be    ${response}    status=rejection
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP

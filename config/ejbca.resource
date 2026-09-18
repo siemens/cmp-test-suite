@@ -1,25 +1,34 @@
+*** Comments ***
 # Copyright 2024 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
-Documentation     An example resource file with configuration options that are meant for use on your local development
-...               system. Use this file as a template when adapting the tests to a specific environment.
+Documentation    Resource file to access local docker EJBCA .
+
 
 *** Variables ***
-${CA_CMP_URL}    http://127.0.0.1:8000/pkix
-${CA_BASE_URL}   http://127.0.0.1:8000/pkix
-# If set to True, the PKIBody type is appended to the URL (e.g. /pkix/ir).
+${CA_CMP_URL}          http://127.0.0.1:6080/ejbca/publicweb/cmp/cmp_imprint_RA
+${CA_BASE_URL}         http://127.0.0.1:6080/ejbca/publicweb/cmp/cmp_imprint_RA
+# If set to True, the PKIBody type is appended to the URL (e.g. .../cmp_imprint_RA/ir).
 ${APPEND_PKIBODY_URL_SUFFIX}    ${False}
+${PRESHARED_SECRET}    SecretCmp
 
-${CERT_PATH}        config/cert
-${CA_CLIENT_CERT}   ${CERT_PATH}/PPKI_Playground_CMP.p12
-${CA_CLIENT_KEY}    ${CERT_PATH}/PPKI_Playground_CMP.p12
+${SENDER}      CN=CUSTOMER_ISSUING_CA
+${RECIPIENT}   CN=test-genCMPClientDemo/OU=For testing purposes only/O=Siemens/C=DE
+# export EJBCA_CMP_SUBJECT_IMPRINT=${EJBCA_CMP_SUBJECT}/OU=IDevID
 
-# The initial issued certificate and key for running the tests.
-${ISSUED_KEY}    ${None}
-${ISSUED_CERT}   ${None}
-# Certificates and Keys to set.
+${CERT_PATH}           config/cert
+${CA_CLIENT_CERT}      ${CERT_PATH}/PPKI_Playground_CMP.p12
+${CA_CLIENT_KEY}       ${CERT_PATH}/PPKI_Playground_CMP.p12
+
+${DEFAULT_ALGORITHEM}    rsa
+${DEFAULT_EC_CURVE}    None
+${ALLOW_ONLY_HTTP_STATUS_CODE}    200, 201, 202, 203, 3xx, 4xx, 5xx
+${DEFAULT_X509NAME}    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
+
+# The initial issued certificate and key for running the tests setup.
 ${INIT_SUFFIX}   ${None}
 ${INITIAL_KEY_PATH}    ${None}
 ${INITIAL_CERT_PATH}   ${None}
@@ -31,15 +40,7 @@ ${LWCMP}   ${True}
 # Algorithm Profile RFC9481.
 # Does not affect the PQ signature algorithms.
 # Only MAC and traditional signatures.
-${ENFORCE_RFC9481}   ${True}
-
-
-# Root certificates that we trust when verifying the identity of the server, this applies when sending CMP-over-HTTP
-# requests
-@{CA_TRUSTED_ROOTS}=    Create List     ${CERT_PATH}/PPKIPlaygroundECCRootCAv10.crt    ${CERT_PATH}/PPKIPlaygroundInfrastructureRootCAv10.crt     ${CERT_PATH}/PPKIPlaygroundRSARootCAv10.crt
-
-${ALLOW_ONLY_HTTP_STATUS_CODE}    200, 201, 202, 203, 3xx, 4xx, 5xx
-${DEFAULT_X509NAME}    C=DE,L=Munich,CN=Hans MustermannG11111111111111111111
+${ENFORCE_RFC9481}   ${False}
 
 ##### About Algorithms
 ${DEFAULT_KEY_LENGTH}    2048
@@ -51,8 +52,6 @@ ${DEFAULT_PQ_SIG_ALGORITHM}   ml-dsa-44
 ${DEFAULT_PQ_KEM_ALGORITHM}   ml-kem-512
 ${DEFAULT_KEY_AGREEMENT_ALG}   x25519
 ${DEFAULT_KEY_ENCIPHERMENT_ALG}   ml-kem-768
-${DEFAULT_ML_DSA_ALG}    ml-dsa-87
-${DEFAULT_ML_KEM_ALG}    ml-kem-768
 
 ##### Extra Issuing Logic
 ${CA_RSA_ENCR_CERT}    ${None}
@@ -68,10 +67,9 @@ ${ALLOW_ISSUING_OF_CA_CERTS}  ${True}
 # Sensitive Service so maybe disallowed
 ${ALLOW_CMP_EKU_EXTENSION}  ${True}
 
-
 ##### Section 3
-#Indicating if the PKIFailInfo must be set correctly.
-${FAILINFO_MUST_BE_CORRECT}=    True
+# Indicating if the PKIFailInfo must be set correctly.
+${FAILINFO_MUST_BE_CORRECT}    True
 # For messageTime check.
 ${MAX_ALLOW_TIME_INTERVAL_RECEIVED}  ${-500}
 
@@ -92,7 +90,6 @@ ${REVOCATION_STRICT_CHECK}    ${False}
 ${REVOKED_WAIT_TIME}   10s
 ${UPDATE_WAIT_TIME}   3s
 ${WAIT_UNTIL_UPDATED_CONFIRMATION_IS_EXPIRED}   15s
-
 
 # Section 5.2 and 5.3
 # Other trusted PKI and Key (None means not provided, so test are skipped).

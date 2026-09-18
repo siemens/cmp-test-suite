@@ -2,10 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 *** Settings ***
 Documentation       Tests specifically for the lightweight CMP profile
 
-Resource            ../config/${environment}.robot
+Resource            ../config/${ENVIRONMENT}.resource
 Resource            ../resources/keywords.resource
 Library             Collections
 Library             OperatingSystem
@@ -23,16 +24,7 @@ Suite Setup    Set Up LWCMP
 
 *** Variables ***
 # normally this would be provided from the command line
-${environment}      cloudpki
-
-
-*** Keywords ***
-Set Up LWCMP
-    [Documentation]    Set up the test environment for LwCMP tests
-    ${exp_csr}   ${exp_key}=    Generate CSR For Testing
-    VAR   ${EXP_CSR}   ${exp_csr}   scope=Global
-    VAR   ${EXP_KEY}   ${exp_key}   scope=Global
-    Set Up Test Suite
+${ENVIRONMENT}      cloudpki
 
 
 *** Test Cases ***
@@ -766,7 +758,7 @@ CA MUST Reject Signature Protected PKIMessage Without Complete Certificate Chain
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    VAR    @{my_list}    ${ISSUED_CERT}
+    VAR    @{my_list}=    ${ISSUED_CERT}
     ${patched_cr}=    Patch ExtraCerts    ${protected_ir}    ${my_list}
     ${response}=    Exchange PKIMessage    ${patched_cr}
     PKIStatusInfo Failinfo Bit Must Be      ${response}    failinfo=badMessageCheck,signerNotTrusted
@@ -805,7 +797,7 @@ CA MUST Reject IR With More Than One CertReqMsg Inside The IR
     ${cm2}=    Get Next Common Name
     ${cert_req_msg}=    Prepare CertReqMsg    ${key}    common_name=${cm}
     ${cert_req_msg2}=    Prepare CertReqMsg    ${key2}    common_name=${cm2}
-    VAR    @{msgs}    ${cert_req_msg}    ${cert_req_msg2}
+    VAR    @{msgs}=    ${cert_req_msg}    ${cert_req_msg2}
     ${ir}=    Build IR From Key    signing_key=${None}    cert_req_msg=${msgs}
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
@@ -1078,8 +1070,8 @@ CA MUST Issue A ECC Certificate With A Valid IR
     ${public_key}=   Load Public Key From Cert    ${cert}
     ${key_name}=   Get Key Name   ${public_key}
     Should Be Equal    ${key_name}    ecdsa
-    VAR    ${ECDSA_CERT}    ${cert}    scope=Global
-    VAR    ${ECDSA_KEY}    ${ecc_key}    scope=Global
+    VAR    ${ECDSA_CERT}=    ${cert}    scope=Global
+    VAR    ${ECDSA_KEY}=    ${ecc_key}    scope=Global
 
 CA MAY Issue A Ed25519 Certificate With A Valid IR
     [Documentation]    According to RFC 9483, Section 4.1.3, the CA may issue a certificate for a valid initialization
@@ -1105,8 +1097,8 @@ CA MAY Issue A Ed25519 Certificate With A Valid IR
     ${public_key}=   Load Public Key From Cert    ${cert}
     ${key_name}=   Get Key Name   ${public_key}
     Should Be Equal    ${key_name}    ed25519
-    VAR    ${Ed25519_CERT}    ${cert}    scope=Global     # robocop: off=VAR07
-    VAR    ${Ed25519_KEY}    ${ed_key}    scope=Global   # robocop: off=VAR07
+    VAR    ${Ed25519_CERT}=    ${cert}    scope=Global     # robocop: off=VAR07
+    VAR    ${Ed25519_KEY}=    ${ed_key}    scope=Global   # robocop: off=VAR07
 
 CA MAY Issue A Ed448 Certificate With A Valid IR
     [Documentation]    According to RFC 9483, Section 4.1.3, the CA may issue a certificate for a valid initialization
@@ -1132,8 +1124,8 @@ CA MAY Issue A Ed448 Certificate With A Valid IR
     ${public_key}=   Load Public Key From Cert    ${cert}
     ${key_name}=   Get Key Name   ${public_key}
     Should Be Equal    ${key_name}    ed448
-    VAR    ${Ed448_CERT}    ${cert}    scope=Global     # robocop: off=VAR07
-    VAR    ${Ed448_KEY}    ${ed_key}    scope=Global   # robocop: off=VAR07
+    VAR    ${Ed448_CERT}=    ${cert}    scope=Global     # robocop: off=VAR07
+    VAR    ${Ed448_KEY}=    ${ed_key}    scope=Global   # robocop: off=VAR07
 
 CA MAY Issue A RSA Certificate With A Valid IR
     [Documentation]    According to RFC 9483, Section 4.1.3, the CA may issue a certificate for a valid initialization
@@ -1158,8 +1150,8 @@ CA MAY Issue A RSA Certificate With A Valid IR
     ${public_key}=   Load Public Key From Cert    ${cert}
     ${key_name}=   Get Key Name   ${public_key}
     Should Be Equal    ${key_name}    rsa
-    VAR    ${RSA_CERT}    ${cert}    scope=Global     # robocop: off=VAR07
-    VAR    ${RSA_KEY}    ${rsa_key}    scope=Global   # robocop: off=VAR07
+    VAR    ${RSA_CERT}=    ${cert}    scope=Global
+    VAR    ${RSA_KEY}=    ${rsa_key}    scope=Global
 
 CA MUST Reject IR With Invalid Algorithm
     [Documentation]    We Send a initialization request (ir) using Diffie-Hellman (DH) as the certificate algorithm
@@ -1250,8 +1242,8 @@ CA MAY Issue A DSA Certificate
     ${status}=    Get PKIStatusInfo    ${response}
     IF  '${status["status"]}' == 'accepted'
         ${cert}=    Confirm Certificate If Needed    ${response}   url=${CA_CMP_URL}
-        VAR    ${DSA_CERT}    ${cert}    scope=Global
-        VAR    ${DSA_KEY}    ${key}    scope=Global
+        VAR    ${DSA_CERT}=    ${cert}    scope=Global
+        VAR    ${DSA_KEY}=    ${key}    scope=Global
     END
     PKIStatus Must Be    ${response}    rejection
 
@@ -1380,7 +1372,7 @@ CA Should Return A MAC protected Error Message
     [Documentation]   According to RFC 9483, Section 3 the CA SHOULD return a MAC protected error message
     ...   when it receives a invalid PKIMessage and the CA is configured to do so. We send a PKIMessage
     ...   with a missing `senderNonce` field and expect the CA to respond with a MAC protected error message.
-    [Tags]    error    negative  robot: skip-on-failure  mac
+    [Tags]    error    negative  robot:skip-on-failure  mac
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${ir}=    Build Ir From Key  ${key}   ${cm}   for_mac=True  sender=${SENDER}  recipient=${RECIPIENT}
@@ -1394,7 +1386,7 @@ CA Should Return A SIG protected Error Message
     [Documentation]   According to RFC 9483, Section 3 the CA SHOULD return a SIG protected error message
     ...   when it receives a invalid PKIMessage and the CA is configured to do so. We send a PKIMessage
     ...   with a missing `senderNonce` field and expect the CA to respond with a SIG protected error message.
-    [Tags]    error    negative  robot: skip-on-failure  sig
+    [Tags]    error    negative  robot:skip-on-failure  sig
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${ir}=    Build Ir From Key  ${key}   ${cm}   recipient=${RECIPIENT}
@@ -1419,3 +1411,12 @@ SenderNonces Must Be Cryptographically Secure
     IF    not ${count}    Fail    The Nonces could not be extracted.
     Nonces Must Be Unique    ${COLLECTED_NONCES}
     Nonces Must Be Diverse    ${COLLECTED_NONCES}
+
+
+*** Keywords ***
+Set Up LWCMP
+    [Documentation]    Set up the test environment for LwCMP tests
+    ${exp_csr}   ${exp_key}=    Generate CSR For Testing
+    VAR   ${EXP_CSR}=   ${exp_csr}   scope=Global
+    VAR   ${EXP_KEY}=   ${exp_key}   scope=Global
+    Set Up Test Suite

@@ -24,7 +24,7 @@ help:
 	@echo  ''
 
 
-# By default, run the tests against the local environment from config/local.robot
+# By default, run the tests against the local environment from config/local.resource
 # You can override it, e.g., `make test env=cloudpki`
 env ?= cloudpki
 test: check_ejbca
@@ -56,13 +56,13 @@ build-unittest:
 unittest-docker: build-unittest
 	@echo "Running unittest Docker container..."
 	docker run --rm -v $(shell pwd):/app -w /app unittest-image \
-		python3 -m unittest discover -s unit_tests
+		python3 -m pytest unit_tests -n auto
 
 unittest:
 	# adjust path such that the unit tests can be started from the root directory, to make it easier to load
-	# example files from data/
-	PYTHONPATH=./resources python -m unittest discover -s unit_tests
-	# On Windows Powershell: `$env:PYTHONPATH = "./resources"; python -m unittest discover -s unit_tests`
+	# example files from data/. Runs in parallel across all available CPU cores.
+	PYTHONPATH=./resources python -m pytest unit_tests -n auto
+	# On Windows Powershell: `$env:PYTHONPATH = "./resources"; python -m pytest unit_tests -n auto`
 
 check_ejbca:
 ifeq ($(env), ejbca)

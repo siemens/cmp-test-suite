@@ -9,7 +9,7 @@
 *** Settings ***
 Documentation    Test cases for Composite Signature Algorithms in all flavors. Supports version 14 of the draft.
 
-Resource            ../config/${environment}.robot
+Resource            ../config/${ENVIRONMENT}.resource
 Resource            ../resources/keywords.resource
 Resource            ../resources/setup_keywords.resource
 Library             Collections
