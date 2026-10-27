@@ -36,6 +36,17 @@ class TestValidateRevocationDetails(unittest.TestCase):
         self.assertEqual(str(status["status"]), "accepted")
         self.assertEqual(data["reason"], "keyCompromise")
 
+    def test_valid_rev_details_multi_rdn_issuer(self):
+        """
+        GIVEN revocation details prepared from a certificate whose issuer has several RDNs.
+        WHEN validate_rev_details is called,
+        THEN the status must be 'accepted'.
+        """
+        cert, _ = build_certificate(common_name="CN=Test CA,O=Test Org,C=DE")
+        rev_details = prepare_rev_details(cert=cert, reason="keyCompromise")
+        status, _ = validate_rev_details(rev_details, issued_certs=[cert])
+        self.assertEqual(str(status["status"]), "accepted")
+
     def test_rev_details_invalid_version_in_cert_template(self):
         """
         GIVEN a revocation details with an invalid version in the cert template.

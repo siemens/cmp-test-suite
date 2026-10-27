@@ -83,6 +83,32 @@ class TestPrepareCertTemplate(unittest.TestCase):
         self.assertEqual(not_valid_before_utc, pyasn1_time_obj_to_py_datetime(validity_obj["notBefore"]))
         self.assertEqual(not_valid_after_utc, pyasn1_time_obj_to_py_datetime(validity_obj["notAfter"]))
 
+    def test_prepare_cert_template_keeps_multi_rdn_names(self):
+        """
+        GIVEN a `pyasn1` `rfc9480.CMPCertificate` whose issuer and subject have several RDNs.
+        WHEN prepare_cert_template is called with the certificate.
+        THEN the issuer and subject of the CertTemplate must be DER-identical to those of the certificate.
+        """
+        cert, key = build_certificate(common_name="CN=Test CA,O=Test Org,C=DE")
+        cert_template = prepare_cert_template(cert=cert, include_fields="issuer,subject")
+        for field in ["issuer", "subject"]:
+            self.assertEqual(
+                encode(cert_template[field]["rdnSequence"]),
+                encode(cert["tbsCertificate"][field]["rdnSequence"]),
+            )
+
+    def test_prepare_cert_template_does_not_share_names_with_cert(self):
+        """
+        GIVEN a `pyasn1` `rfc9480.CMPCertificate`.
+        WHEN prepare_cert_template is called with the certificate and the issuer of the template is changed.
+        THEN the issuer of the certificate must stay unchanged.
+        """
+        cert, key = build_certificate(common_name="CN=Test CA,O=Test Org,C=DE")
+        issuer_der = encode(cert["tbsCertificate"]["issuer"]["rdnSequence"])
+        cert_template = prepare_cert_template(cert=cert, include_fields="issuer,serialNumber")
+        cert_template["issuer"]["rdnSequence"].clear()
+        self.assertEqual(encode(cert["tbsCertificate"]["issuer"]["rdnSequence"]), issuer_der)
+
 
 if __name__ == "__main__":
     unittest.main()
