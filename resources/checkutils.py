@@ -1394,6 +1394,7 @@ def check_message_time_field(
     :param pki_message: The PKIMessage object to be validated.
     :param allowed_interval: The maximum allowed time difference in seconds between the `messageTime` in the message
                             and the `request_time` or current time. If `None`, the time difference check is skipped.
+                            It is also skipped if the `messageTime` field is absent.
     :param request_time: The original request time to compare against the `messageTime`. If not provided, the current
                         UTC time is used. Defaults to `None`.
     :raises BadTime: If the `messageTime` field is required but missing, or if the time difference exceeds
@@ -1410,6 +1411,11 @@ def check_message_time_field(
                 raise BadTime("The `messageTime` field must be present if `confirmWaitTime` is set!")
 
     if allowed_interval is not None:
+        if not pki_message["header"]["messageTime"].isValue:
+            # The field is OPTIONAL (RFC 9483 Section 3.1), so there is no time to check.
+            logging.info("The `messageTime` field is not present, so the time interval check is skipped.")
+            return
+
         msg_time = asn1utils.get_asn1_value(pki_message, query="header.messageTime")  # type: ignore
         msg_time: useful.GeneralizedTime
         time_obj = msg_time.asDateTime
@@ -1604,7 +1610,8 @@ def validate_pkimessage_header(  # noqa D417 undocumented-param
         - `ValueError`: The `GeneralInfo` field values (e.g., `implicitConfirm`, `confirmWaitTime`, `certProfile`) \
         do not conform
         to the standard. Wrong values, types or un-decode-able.
-        - `ValueError`: The `messageTime` field is missing or exceeds the allowed interval.
+        - `ValueError`: The `messageTime` field is missing although `confirmWaitTime` is set, or it exceeds the \
+        allowed interval.
         - `ValueError`:`transactionID` and `senderNonce` in the response do not match those in the request.
         - `ValueError`: the recipientNonce is too small.
         - `ValueError`: The recipient in the response does not match the sender in the request, if `must_be_eq` \
