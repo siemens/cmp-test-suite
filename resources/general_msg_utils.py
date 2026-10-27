@@ -861,6 +861,10 @@ def validate_general_response(  # noqa D417 undocumented-param
     genp_content: rfc9480.GenRepContent = pki_message["body"][body_name]
     if len(genp_content) != int(expected_size):
         logging.info("General Response: \n%s", genp_content.prettyPrint())
+        raise ValueError(
+            f"Expected the general response to contain {expected_size} `InfoTypeAndValue` element(s), "
+            f"but got {len(genp_content)}."
+        )
 
 
 # TODO maybe change to MUST prepare crl_update_retrieval by the user before hand.
