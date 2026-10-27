@@ -232,7 +232,7 @@ CA MUST Reject PKIMessage With messageTime Outside Allowed Window
     ...    sender=${SENDER}
     ...    exclude_fields=messageTime,sender,senderKID
     ...    recipient=${RECIPIENT}
-    ${date_object}=    Get Current Date    increment=${MAX_ALLOW_TIME_INTERVAL_RECEIVED}
+    ${date_object}=    Get Current Date    UTC    increment=${MAX_ALLOW_TIME_INTERVAL_RECEIVED}
     ${ir}=    Patch MessageTime    ${ir}    ${date_object}
     ${protected_ir}=    Protect PKIMessage
     ...    ${ir}
