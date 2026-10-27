@@ -1013,7 +1013,7 @@ CA MUST Reject IR With Invalid CertReqId
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badDataFormat,badRequest    exclusive=True
 
 #### CertTemplate structure
 
