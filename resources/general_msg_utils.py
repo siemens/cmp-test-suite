@@ -470,7 +470,7 @@ def validate_get_certificate_request_template(  # noqa D417 undocumented-param
         logging.info("General Response: \n%s", genp_content.prettyPrint())
 
         raise ValueError(
-            "The Server response did not contain the oid for `id-it-caCerts` as of Section 4.3.4 specified!"
+            "The Server response did not contain the oid for `id-it-certReqTemplate` as of Section 4.3.3 specified!"
         )
 
     if not value.isValue:
@@ -796,7 +796,7 @@ def validate_current_crl(pki_message: PKIMessageTMP, expected_size: Strint = 1):
     """Validate the presence and structure of the `id-it-currentCRL` in a `PKIMessage`.
 
     Checks if the provided PKIMessage contains the 'id-it-currentCRL' value, as specified in
-    Rfc 9483, Section 4.3.1. It first verifies that the PKIMessage is a valid general response (`genp`) using
+    Rfc 9483, Section 4.3.4. It first verifies that the PKIMessage is a valid general response (`genp`) using
     and then it checks for the presence of the `id-it-currentCRL` OID in the response
     content. If found, it ensures that the `CurrentCRLValue` structure is valid.
 
@@ -824,7 +824,7 @@ def validate_current_crl(pki_message: PKIMessageTMP, expected_size: Strint = 1):
     val = cmputils.get_value_from_seq_of_info_value_field(genp_content, oid=rfc9480.id_it_currentCRL)
     if val is None:
         logging.info("General Response: \n%s", genp_content.prettyPrint())
-        raise ValueError("The CA did not contain the oid for `id-it-currentCRL` as Section 4.3.1 specified!")
+        raise ValueError("The CA did not contain the oid for `id-it-currentCRL` as Section 4.3.4 specified!")
 
     crl_list, rest = decoder.decode(val, rfc9480.CurrentCRLValue())
     if rest != b"":
