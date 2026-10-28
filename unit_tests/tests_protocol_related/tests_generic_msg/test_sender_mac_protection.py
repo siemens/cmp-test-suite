@@ -53,3 +53,24 @@ class TestSenderFieldForMacProtection(unittest.TestCase):
 
         with self.assertRaises(BadMessageCheck):
             check_sender_cmp_protection(pki_message=protected_msg, allow_failure=False)
+
+    def test_check_sender_directoryName_without_common_name(self):
+        """
+        GIVEN a PKIMessage with MAC-based protection and a 'directoryName' sender without a commonName
+        WHEN check_sender_cmp_protection is called with `allow_failure=False`,
+        THEN a BadMessageCheck should be raised, because the commonName identifies the shared secret
+        """
+        pki_message = build_pkimessage(body_type="p10cr", sender=prepare_general_name("directoryName", "C=DE,O=Siemens"))
+
+        protected_msg = protect_pkimessage(
+            pki_message=pki_message,
+            cert=None,
+            private_key=None,
+            protection="pbmac1",
+            password="PASSWORD",
+            exclude_certs=False,
+        )
+        protected_msg = de_and_encode_pkimessage(protected_msg)
+
+        with self.assertRaises(BadMessageCheck):
+            check_sender_cmp_protection(pki_message=protected_msg, allow_failure=False)

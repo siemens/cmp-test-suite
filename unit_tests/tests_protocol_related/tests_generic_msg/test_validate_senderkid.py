@@ -163,3 +163,21 @@ class TestValidateSenderKID(unittest.TestCase):
 
         with self.assertRaises(BadMessageCheck):
             validate_senderkid_for_cmp_protection(pki_message=protected_msg, allow_mac_failure=False)
+
+    def test_check_mac_protected_sender_without_common_name(self):
+        """
+        GIVEN a PKIMessage protected with MAC-based protection, whose `directoryName` sender has no commonName
+        and whose senderKID is "NULL-DN".
+        WHEN check_senderkid_for_cmp_protection is called with `allow_mac_failure=False`,
+        THEN a BadMessageCheck should be raised, because the sender has no commonName.
+        """
+        sender = prepare_general_name("directoryName", name_str="C=DE,O=Siemens")
+        pki_message = build_pkimessage(sender_kid=b"NULL-DN", sender=sender)
+        protected_msg = protect_pkimessage(
+            pki_message=pki_message, protection="pbmac1", password="PASSWORD", exclude_certs=False
+        )
+
+        protected_msg = de_and_encode_pkimessage(protected_msg)
+
+        with self.assertRaises(BadMessageCheck):
+            validate_senderkid_for_cmp_protection(pki_message=protected_msg, allow_mac_failure=False)
