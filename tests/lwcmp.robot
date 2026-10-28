@@ -1065,7 +1065,7 @@ CA MUST Issue A ECC Certificate With A Valid IR
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
     ${response}=    Exchange PKIMessage    ${protected_ir}
     PKIMessage Body Type Must Be        ${response}    ip
-    PKIStatus Must Be    ${response}    accepted
+    PKIStatus Must Be    ${response}    accepted,grantedWithMods
     ${cert}=    Confirm Certificate If Needed    ${response}
     ${public_key}=   Load Public Key From Cert    ${cert}
     ${key_name}=   Get Key Name   ${public_key}
