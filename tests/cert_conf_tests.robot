@@ -409,7 +409,7 @@ CA MUST Reject CertConf with omitted transactionID
     [Documentation]    According to RFC 9483 Section 3.1, the `transactionID` in the certConf message must match the
     ...    `transactionID` from the initial certificate issuance request. We send a certConf message
     ...    without the `transactionID` field. The CA MUST detect this omission and reject the message,
-    ...    optionally including the failInfo `badRequest`.
+    ...    optionally including the failInfo `badDataFormat`, as specified in Section 3.5, or `badRequest`.
     [Tags]    negative    rfc9483-header   minimal
     ${response}=    Generate Default IR And Exchange For Cert Conf
     ${cert_conf}=    Build Cert Conf From Resp
@@ -424,7 +424,7 @@ CA MUST Reject CertConf with omitted transactionID
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_cert_conf}
     PKIMessage Body Type Must Be    ${response}    error
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badRequest    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badDataFormat,badRequest    exclusive=True
 
 CA MUST Reject CertConf with Different transactionID
     [Documentation]    According to RFC 9483 Section 3.1, the `transactionID` in the certConf message must match the
