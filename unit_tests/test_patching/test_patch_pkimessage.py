@@ -9,8 +9,11 @@ from pyasn1_alt_modules import rfc4210
 from resources.certbuildutils import build_csr
 from resources.certutils import parse_certificate
 from resources.cmputils import (
+    build_ir_from_key,
     build_p10cr_from_csr,
+    get_common_name_from_str,
     patch_messageTime,
+    patch_sender,
     patch_senderkid,
     patch_sendernonce,
     patch_transaction_id,
@@ -106,6 +109,46 @@ class TestPKIMessagePatchingFunctions(unittest.TestCase):
         with self.assertRaises(ValueError):
             certificate = parse_certificate(load_and_decode_pem_file("data/unittest/bare_certificate.pem"))
             patch_senderkid(self.pki_message, certificate)
+
+    def test_patch_senderkid_for_mac_uses_common_name_value(self):
+        """
+        GIVEN a PKIMessage whose sender is a directoryName with several RDNs and a commonName.
+        WHEN patch_senderkid is called with `for_mac=True`.
+        THEN the senderKID should be the commonName value without the "CN=" prefix.
+        """
+        pki_message = patch_sender(self.pki_message, sender_name="C=DE,CN=Hans the Tester")
+        updated_message = patch_senderkid(pki_message, for_mac=True)
+        self.assertEqual(updated_message["header"]["senderKID"].asOctets(), b"Hans the Tester")
+
+    def test_patch_senderkid_for_mac_without_common_name(self):
+        """
+        GIVEN a PKIMessage whose sender is a directoryName without a commonName.
+        WHEN patch_senderkid is called with `for_mac=True`.
+        THEN a ValueError should be raised.
+        """
+        pki_message = patch_sender(self.pki_message, sender_name="C=DE,O=Siemens")
+        with self.assertRaises(ValueError):
+            patch_senderkid(pki_message, for_mac=True)
+
+    def test_build_ir_for_mac_sets_common_name_value(self):
+        """
+        GIVEN a sender name with a commonName.
+        WHEN an ir is built with `for_mac=True`.
+        THEN the senderKID should be the commonName value without the "CN=" prefix.
+        """
+        ir = build_ir_from_key(self.private_key, sender="CN=Hans the Tester", for_mac=True)
+        self.assertEqual(ir["header"]["senderKID"].asOctets(), b"Hans the Tester")
+
+    def test_get_common_name_from_str(self):
+        """
+        GIVEN distinguished name strings with and without a commonName.
+        WHEN get_common_name_from_str is called.
+        THEN the commonName value without the "CN=" prefix or `None` should be returned.
+        """
+        self.assertEqual(get_common_name_from_str("CN=Hans the Tester"), "Hans the Tester")
+        self.assertEqual(get_common_name_from_str("C=DE, CN=Hans the Tester"), "Hans the Tester")
+        self.assertIsNone(get_common_name_from_str("C=DE,O=Siemens"))
+        self.assertIsNone(get_common_name_from_str("tests@example.com"))
 
 
 if __name__ == "__main__":
