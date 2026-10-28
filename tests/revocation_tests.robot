@@ -503,7 +503,9 @@ CA MUST Reject Valid IR With Already Revoked Certificate
     [Documentation]    According to RFC 9483, Section 4.1.1, the CA must reject an initialization request (ir) if the
     ...    certificate has already been revoked. We send an ir with a revoked certificate, expecting
     ...    the CA to reject the request. The CA should respond with a `certRevoked` failinfo to indicate
-    ...    that the certificate cannot be used for issuance.
+    ...    that the certificate cannot be used for issuance. A CA that rejects the revoked CMP protection
+    ...    certificate during path validation may respond with `badMessageCheck` or `signerNotTrusted`
+    ...    instead, as specified in Section 3.5.
     [Tags]    ir    negative   minimal
     ${rev_cert}   ${rev_key}=   Revoke Certificate    ${REVOCATION_CERT}    ${REVOCATION_KEY}
     ${cert_template}   ${key}=    Generate CertTemplate For Testing
@@ -514,13 +516,16 @@ CA MUST Reject Valid IR With Already Revoked Certificate
     ...    cert=${rev_cert}
     ${response}=    Exchange PKIMessage    ${ir}
     PKIStatus Must Be   ${response}    status=rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=certRevoked    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=certRevoked,badMessageCheck,signerNotTrusted
+    ...    exclusive=True
 
 CA MUST Reject Valid Key Update Request With Already Revoked Certificate
     [Documentation]    According to RFC 9483, Section 4.1.3, the CA must validate a key update request (kur) and reject
     ...    it if the certificate has been revoked. We send a kur message for a certificate that has
     ...    already been revoked, expecting the CA to reject the request. The CA should respond with a
-    ...    `certRevoked` failinfo to indicate that the certificate cannot be updated.
+    ...    `certRevoked` failinfo to indicate that the certificate cannot be updated. A CA that rejects the
+    ...    revoked CMP protection certificate during path validation may respond with `badMessageCheck` or
+    ...    `signerNotTrusted` instead, as specified in Section 3.5.
     [Tags]    kur    negative   minimal
     ${rev_cert}   ${rev_key}=   Revoke Certificate    ${REVOCATION_CERT}    ${REVOCATION_KEY}
     ${new_key}=    Generate Default Key
@@ -528,7 +533,8 @@ CA MUST Reject Valid Key Update Request With Already Revoked Certificate
     ${prot_kur}=    Protect PKIMessage    ${kur}    signature    cert=${rev_cert}    private_key=${rev_key}
     ${response}=    Exchange PKIMessage    ${prot_kur}
     PKIStatus Must Be   ${response}    status=rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=certRevoked    exclusive=True
+    PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=certRevoked,badMessageCheck,signerNotTrusted
+    ...    exclusive=True
 
 CA MUST Accept A Revocation Revive From Trusted PKI Management Entity
     [Documentation]    According to RFC 9483 Section 5.3.2, a PKI management entity may request the revival of a
