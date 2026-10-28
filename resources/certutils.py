@@ -1937,7 +1937,8 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
        - `allow_request_failure`: Passed to the OCSP request function to allow or
               disallow request failures.
        - `allow_ocsp_unknown`: Whether to allow OCSP 'unknown' status as non-revoked.
-       - `allow_no_crl_urls`: Whether to allow no CRL URLs to be found in the certificate.
+       - `allow_no_crl_urls`: Whether to allow no CRL URLs to be found in the certificate. If `True` and no OCSP
+         or CRL source is available at all, the check is skipped.
        - `expected_to_be_revoked`: Whether the certificate is expected to be revoked.
 
     Raises:
@@ -1959,6 +1960,14 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
     """
     if ca_cert is None and ocsp_url is not None:
         raise ValueError("OCSP URL provided, but no issuer certificate provided. OCSP check cannot be performed.")
+
+    if allow_no_crl_urls and not (ocsp_url or crl_url or crl_file_path):
+        can_use_ocsp = ca_cert is not None and get_ocsp_url_from_cert(cert)
+        if not can_use_ocsp and not _extract_crl_urls_from_cert_pyasn1(cert):
+            # OCSP URLs and CRL distribution points are optional (RFC 9483 Section 4.3.4),
+            # so without them the revocation status cannot be checked.
+            logging.info("No OCSP URL or CRL distribution point is available, so the revocation check is skipped.")
+            return
 
     try:
         if ca_cert:
