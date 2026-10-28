@@ -7,6 +7,7 @@ import unittest
 
 from pyasn1.codec.der import encoder
 from pyasn1.codec.der.decoder import decode
+from pyasn1.type import univ
 from pyasn1_alt_modules import rfc5480, rfc6664, rfc9480, rfc9481
 from resources.certbuildutils import prepare_cert_template, prepare_validity
 from resources.general_msg_utils import check_controls_for_cert_temp, validate_get_certificate_request_template
@@ -65,6 +66,36 @@ class TestValidateGetCertificateRequestTemplate(unittest.TestCase):
         """
         alg_id = rfc9480.AlgorithmIdentifier()
         alg_id["algorithm"] = rfc9481.rsaEncryption
+        controls = prepare_genp_controls(alg_id=alg_id)
+        der_data = encoder.encode(controls)
+        controls, rest = decode(der_data, rfc9480.Controls())
+        self.assertEqual(rest, b"")
+        with self.assertRaises(ValueError):
+            check_controls_for_cert_temp(controls)
+
+    def test_valid_controls_ed25519_without_parameters(self):
+        """
+        GIVEN a Controls structure containing an Ed25519 algorithm identifier without parameters
+        WHEN `check_controls_for_cert_temp` is called
+        THEN no errors should be raised, because RFC 8410 requires the parameters to be absent.
+        """
+        alg_id = rfc9480.AlgorithmIdentifier()
+        alg_id["algorithm"] = rfc9481.id_Ed25519
+        controls = prepare_genp_controls(alg_id=alg_id)
+        der_data = encoder.encode(controls)
+        controls, rest = decode(der_data, rfc9480.Controls())
+        self.assertEqual(rest, b"")
+        check_controls_for_cert_temp(controls)
+
+    def test_invalid_controls_ed448_with_parameters(self):
+        """
+        GIVEN a Controls structure containing an Ed448 algorithm identifier with NULL parameters
+        WHEN `check_controls_for_cert_temp` is called
+        THEN a ValueError should be raised, indicating the parameters must be absent.
+        """
+        alg_id = rfc9480.AlgorithmIdentifier()
+        alg_id["algorithm"] = rfc9481.id_Ed448
+        alg_id["parameters"] = univ.Null("")
         controls = prepare_genp_controls(alg_id=alg_id)
         der_data = encoder.encode(controls)
         controls, rest = decode(der_data, rfc9480.Controls())
