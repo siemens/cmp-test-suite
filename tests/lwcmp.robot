@@ -671,11 +671,13 @@ CA MUST Reject PKIMessage With Signature Based protectionAlg But No Protection V
     ${cm}=    Get Next Common Name
     ${ir}=    Build IR From Key
     ...    ${key}
-    ...    sender=${SENDER}
     ...    common_name=${cm}
     ...    recipient=${RECIPIENT}
+    ...    exclude_fields=sender,senderKID
     ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${patched_ir}=    Patch ProtectionAlg    ${ir}    private_key=${key}
+    ${ir}=    Patch Sender    ${ir}    cert=${ISSUED_CERT}
+    ${ir}=    Patch SenderKID    ${ir}    sender_kid=${ISSUED_CERT}
+    ${patched_ir}=    Patch ProtectionAlg    ${ir}    protection=signature    private_key=${ISSUED_KEY}
     ${response}=    Exchange PKIMessage    ${patched_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck   exclusive=True
