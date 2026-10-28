@@ -744,6 +744,11 @@ CA MUST Reject Signature Protected PKIMessage Without Complete Certificate Chain
     ...    in the `extraCerts` field. The CA MUST reject this request, and the response may include the
     ...    failinfo `badMessageCheck`, as specified in Section 3.5.
     [Tags]    ak    extraCert    negative    rfc9483-validation   minimal
+    # Self-signed certificates should be omitted from `extraCerts` (RFC 9483 Section 3.3). If the root CA
+    # issued `ISSUED_CERT`, the certificate alone is a complete chain, so an intermediate CA is needed.
+    ${cert_chain}=    Build Cert Chain From Dir    ${ISSUED_CERT}    data/cert_logs
+    ${chain_length}=    Get Length    ${cert_chain}
+    Skip If    ${chain_length} < 3    Skipped because no intermediate CA certificate of `ISSUED_CERT` was found.
     ${key}=    Generate Default Key
     ${cm}=    Get Next Common Name
     ${ir}=    Build IR From Key
@@ -761,6 +766,7 @@ CA MUST Reject Signature Protected PKIMessage Without Complete Certificate Chain
     VAR    @{my_list}=    ${ISSUED_CERT}
     ${patched_cr}=    Patch ExtraCerts    ${protected_ir}    ${my_list}
     ${response}=    Exchange PKIMessage    ${patched_cr}
+    PKIStatus Must Be    ${response}    rejection
     PKIStatusInfo Failinfo Bit Must Be      ${response}    failinfo=badMessageCheck,signerNotTrusted
 
 #### Section 3.5 Generic Validation of PKI Message
