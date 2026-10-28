@@ -135,25 +135,32 @@ def _compare_alg_id(
 ) -> bool:
     """Compare two `AlgorithmIdentifier` structures.
 
-    If `allow_null` is True, the entire structures are DER-encoded and compared.
+    If `allow_null` is True, NULL and absent parameters are treated as equal and other parameters
+    must have the same DER encoding.
 
     :param alg_id1: The first `AlgorithmIdentifier` to compare.
     :param alg_id2: The second `AlgorithmIdentifier` to compare.
     :param allow_null: If True, allows absent values to have the value `NULL` for legacy systems.
     :return: True if equal; False otherwise.
     """
-    if allow_null:
-        alg_id1_der = encoder.encode(alg_id1)
-        alg_id2_der = encoder.encode(alg_id2)
-        return alg_id1_der == alg_id2_der
-
     if alg_id1["algorithm"] != alg_id2["algorithm"]:
         return False
+
+    if allow_null:
+        # NULL and absent parameters are equivalent encodings (RFC 4055 Section 2.1).
+        return _get_non_null_params_der(alg_id1) == _get_non_null_params_der(alg_id2)
 
     if alg_id2["parameters"].isValue:
         return False
 
     return True
+
+
+def _get_non_null_params_der(alg_id: rfc9480.AlgorithmIdentifier) -> Optional[bytes]:
+    """Return the DER-encoded parameters, or `None` if they are absent or NULL."""
+    if not alg_id["parameters"].isValue or _is_parmeters_null(alg_id):
+        return None
+    return encoder.encode(alg_id["parameters"])
 
 
 def _compare_pbm_parameters(
