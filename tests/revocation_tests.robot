@@ -376,6 +376,7 @@ CA MUST Accept A Revocation Request From Trusted PKI Management Entity
     ${cert_chain}=  Build Cert Chain From Dir   ${cert}   ./data/cert_logs
     Wait Until Server Revoked Cert
     Validate If Certificate Is Revoked    ${cert}   ${cert_chain}[1]   expected_to_be_revoked=True
+    ...    allow_no_crl_urls=True
 
 # MUST be the last test case to run to ensure the Revive request can be run.
 
@@ -401,6 +402,7 @@ CA MUST Accept Valid Revocation Request
     Wait Until Server Revoked Cert
     VAR   ${ca_cert}=   ${rr["extraCerts"][1]}
     Validate If Certificate Is Revoked    ${cert}   ${ca_cert}   expected_to_be_revoked=True
+    ...    allow_no_crl_urls=True
 
 CA Should Respond with certRevoked for Already Revoked Cert
     [Documentation]    According to RFC 9483 Section 4.2, an rr message is used to request revocation of a certificate.
@@ -494,6 +496,7 @@ CA MUST Accept Valid Revive Request
     Wait Until Server Revived Cert
     VAR   ${ca_cert}=   ${rr["extraCerts"][1]}
     Validate If Certificate Is Revoked    ${cert}   ${ca_cert}   expected_to_be_revoked=False
+    ...    allow_no_crl_urls=True
 
 #### Section 4 RR checks for issuing.
 
