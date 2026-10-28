@@ -166,7 +166,8 @@ def _compare_pbm_parameters(
         `parameters` field of the `protectionAlg`.
     :param allow_null: If True, allows `parameters` fields in `owf` and `mac` to be either unset
         or set to NULL in `param2`.
-    :param same_salt: A flag to indicate if the salt values in both parameters should match exactly.
+    :param same_salt: A flag to indicate if the salt values in both parameters must match exactly.
+        If `False`, the salt values may be the same or different.
     :return: True if all components match; False otherwise.
     """
     try:
@@ -175,9 +176,9 @@ def _compare_pbm_parameters(
         logging.info("Could not decode `PBMParameter` structure.")
         return False
 
-    salt_mismatch = param1["salt"].asOctets() != param2["salt"].asOctets()  # type: ignore
-
-    if (salt_mismatch and same_salt) or (not salt_mismatch and not same_salt):
+    # The parameters should stay constant within a PKI management operation (RFC 9483 Section 4.1.5),
+    # so the same salt is always allowed.
+    if same_salt and param1["salt"].asOctets() != param2["salt"].asOctets():  # type: ignore
         return False
 
     if int(param1["iterationCount"]) != int(param2["iterationCount"]):  # type: ignore
@@ -204,7 +205,8 @@ def _compare_pbkdf2_parameters(
     :param param2: The second `PBKDF2Params` structure to compare.
     :param allow_null: If True, allows `parameters` fields for `prf` and `salt` `otherSource`
         to be NULL instead of absent.
-    :param same_salt: A flag to indicate if the salt value must be the same or different.
+    :param same_salt: A flag to indicate if the salt value must be the same. If `False`, the salt value may
+        be the same or different.
     :return: True if all components match; False otherwise.
     """
     logging.info("Comparing PBKDF2Params:")
@@ -216,8 +218,9 @@ def _compare_pbkdf2_parameters(
         return False
 
     if param2["salt"].getName() == "specified":
-        is_eq = param1["salt"]["specified"] == param2["salt"]["specified"]
-        if (not is_eq and same_salt) or (is_eq and not same_salt):
+        # The parameters should stay constant within a PKI management operation (RFC 9483 Section 4.1.5),
+        # so the same salt is always allowed.
+        if same_salt and param1["salt"]["specified"] != param2["salt"]["specified"]:
             return False
 
     elif param1["salt"].getName() == "otherSource":
@@ -247,7 +250,8 @@ def _compare_pbmac1_parameters(
         `parameters` field of the `protectionAlg`.
     :param allow_null: If True, allows `parameters` fields in `keyDerivationFunc` and
         `messageAuthScheme` to be either unset or set to NULL in `param2`.
-    :param same_salt: A flag to indicate if the salt value must be the same or different.
+    :param same_salt: A flag to indicate if the salt value must be the same. If `False`, the salt value may
+        be the same or different.
     :return: True if all components match; False otherwise.
     """
     logging.info("Comparing PBMAC1 `parameters`:")
@@ -1498,7 +1502,7 @@ def _compare_mac_params(
     :param first_param: The first parameters field.
     :param second_param: The second parameters field, to compare to.
     :param allow_null: Indicates whether `NULL` is allowed instead of absent parameters.
-    :param same_salt: Indicates whether the salt needs to be the same or different.
+    :param same_salt: Indicates whether the salt needs to be the same. If `False`, it may be the same or different.
     :raises ValueError: If the parameters are different.
     """
     der_data = encoder.encode(first_param["parameters"])
@@ -1587,8 +1591,8 @@ def mac_protection_algorithms_must_match(  # noqa D417 undocumented-param
         - `response`: The server's PKI response message containing the protection algorithm received.
         - `pkiconf`: An optional PKIMessage for verifying additional protection algorithm
             parameters against the response message. Defaults to `None`.
-        - `same_salt`: Indicates whether the salt value has to be the same or different.
-            If set to `False`, it must be different. Defaults to `False`.
+        - `same_salt`: Indicates whether the salt value has to be the same.
+            If set to `False`, it may be the same or different. Defaults to `False`.
         - `allow_null`: Indicates whether `NULL` is accepted instead of absent parameters. Defaults to `True`.
         - `strict`: Indicates whether all messages have to be MAC protected. If `False`, only checks
             that both messages use MAC protection, not necessarily the same algorithm. Defaults to `True`.
