@@ -4269,7 +4269,7 @@ def patch_extra_certs(  # noqa D417 undocumented-param
     Examples:
     --------
     | ${patched_message}= | Patch extraCerts | ${pki_message} | certs=${cert_list} |
-    | ${patched_message}= | Patch extraCerts | ${pki_message} | certs=${cert_list} | negative=True |
+    | ${patched_message}= | Patch extraCerts | ${pki_message} | certs=${cert_list} | swap_certs=True |
 
     """
     if swap_certs:

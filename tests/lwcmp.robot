@@ -683,11 +683,13 @@ CA MUST Reject PKIMessage With Signature Based protectionAlg But No Protection V
 CA MUST Reject PKIMessage With Incorrect Protection Certificate Position
     [Documentation]    According to RFC 9483 Section 3.3, when using signature-based protection, the `extraCerts` field
     ...    must include the complete certificate chain necessary to verify the signature, with the
-    ...    protection certificate placed at index 0. We send a PKIMessage with the protection
-    ...    certificate positioned at the second index in the `extraCerts` field. The CA MUST reject this
-    ...    request, and the response may include the failinfo `badMessageCheck`, as specified in
-    ...    Section 3.5.
-    [Tags]    extraCert    negative    rfc9483-validation    robot:skip-on-failure   minimal
+    ...    protection certificate placed at index 0. The same section asks all implementations to handle
+    ...    arbitrary orderings of the certificates, so this test only runs with STRICT enabled. We send a
+    ...    PKIMessage with the protection certificate positioned at the second index in the `extraCerts`
+    ...    field. The CA is expected to reject this request, and the response may include the failinfo
+    ...    `badMessageCheck`, as specified in Section 3.5.
+    [Tags]    extraCert    negative    rfc9483-validation    robot:skip-on-failure   minimal    strict
+    Skip If    not ${STRICT}    STRICT is deactivated, skipping test.
     # can fail based on the issuer certificate.
     ${cert_chain}=    Build Cert Chain From Dir    ${ISSUED_CERT}    data/cert_logs
     ${csr}    ${key}=    Generate CSR For Testing
@@ -704,7 +706,7 @@ CA MUST Reject PKIMessage With Incorrect Protection Certificate Position
     ...    protection=signature
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
-    ${patched_ir}=    Patch ExtraCerts    ${protected_ir}    ${cert_chain}    negative=True
+    ${patched_ir}=    Patch ExtraCerts    ${protected_ir}    ${cert_chain}    swap_certs=True
     ${response}=    Exchange PKIMessage    ${patched_ir}
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck   exclusive=True
