@@ -2251,7 +2251,7 @@ def _prepare_cert_req_msg_body(body_type: str) -> rfc9480.PKIBody:
 def build_key_update_request(  # noqa D417 undocumented-param
     signing_key: SignKey,
     cert: Optional[rfc9480.CMPCertificate] = None,
-    common_name: Union[str, rfc9480.Name] = "CN=Hans Mustermann",
+    common_name: Optional[Union[str, rfc9480.Name]] = None,
     sender: str = "tests@example.com",
     recipient: str = "testr@example.com",
     exclude_fields: Optional[str] = "sender,senderKID",
@@ -2269,7 +2269,8 @@ def build_key_update_request(  # noqa D417 undocumented-param
     ---------
         - `signing_key`: The new private key to be used for updating the certificate.
         - `cert`: The existing certificate for which the key update is requested.
-        - `common_name`: The common name to be used in the certificate request. Defaults to `CN=Hans Mustermann`.
+        - `common_name`: The common name to be used in the certificate request. Defaults to the subject of `cert`, \
+        or to `CN=Hans Mustermann` if no certificate is given.
         - `sender`: The sender of the request. Defaults to "tests@example.com".
         - `recipient`: The recipient of the request. Defaults to "testr@example.com".
         - `exclude_fields`: Comma-separated list of fields to omit from the PKIHeader. Defaults to `sender,senderKID`.
@@ -2307,6 +2308,10 @@ def build_key_update_request(  # noqa D417 undocumented-param
     | ${pki_message}= | Build Key Update Request | ${new_key} | ${cert} | hash_alg=sha512 | implicit_confirm=True |
 
     """
+    # RFC 9483 Section 4.1.3: the subject MUST be the one of the certificate to be updated.
+    if common_name is None and cert is None:
+        common_name = "CN=Hans Mustermann"
+
     cert_template = params.get("cert_template")
     if cert_template is None:
         cert_template = certbuildutils.prepare_cert_template(

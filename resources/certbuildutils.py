@@ -1228,7 +1228,8 @@ def _prepare_name_obj(cm: Union[str, rfc9480.Name], tagged_name: rfc9480.Name) -
     if isinstance(cm, str):
         tmp_name = prepareutils.prepare_name(common_name=cm, target=tagged_name)
     elif isinstance(cm, rfc5280.Name):
-        tmp_name = cm
+        # Copy, so that changing the template does not change the source `Name`.
+        tmp_name = copy_name(target=rfc5280.Name(), filled_name=cm)
     else:
         raise TypeError(f"Expected str or rfc9480.Name, got {type(cm)}")
 
@@ -1253,8 +1254,10 @@ def _prepare_issuer_and_subject(
     :return: The modified `CertTemplate` object with issuer and subject fields set if applicable.
     """
     if cert is not None:
-        issuer = issuer or utils.get_openssl_name_notation(cert["tbsCertificate"]["issuer"])  # type: ignore
-        subject = subject or utils.get_openssl_name_notation(cert["tbsCertificate"]["subject"])  # type: ignore
+        # Use the `Name` objects. A round trip through text reverses the RDN order (RFC 4514 Section 2.1)
+        # and changes the string types, so the template would no longer match the certificate.
+        issuer = issuer or cert["tbsCertificate"]["issuer"]
+        subject = subject or cert["tbsCertificate"]["subject"]
 
     if subject and "subject" not in exclude_list:
         subject_obj = rfc5280.Name().subtype(implicitTag=tag.Tag(tag.tagClassContext, tag.tagFormatConstructed, 5))
@@ -1616,8 +1619,8 @@ def prepare_cert_template_from_csr(csr: rfc6402.CertificationRequest) -> rfc4211
     der_data = encoder.encode(csr["certificationRequestInfo"]["subjectPublicKeyInfo"])
     public_key = certutils.load_public_key_from_der(der_data)
     extensions = certextractutils.extract_extensions_from_csr(csr)
-    subject = utils.get_openssl_name_notation(csr["certificationRequestInfo"]["subject"])  # type: ignore
-    subject: str
+    # Use the `Name` object. A round trip through text reverses the RDN order (RFC 4514 Section 2.1).
+    subject = csr["certificationRequestInfo"]["subject"]
     return prepare_cert_template(key=public_key, subject=subject, extensions=extensions)
 
 

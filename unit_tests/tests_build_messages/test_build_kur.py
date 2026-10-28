@@ -4,7 +4,7 @@
 
 import unittest
 
-from pyasn1.codec.der import decoder
+from pyasn1.codec.der import decoder, encoder
 from pyasn1_alt_modules import rfc9480
 from resources.asn1utils import encode_to_der
 from resources.certbuildutils import build_certificate
@@ -13,6 +13,7 @@ from resources.cmputils import (
     get_cmp_message_type,
 )
 from resources.keyutils import generate_key
+from resources.utils import get_openssl_name_notation
 from unit_tests.utils_for_test import de_and_encode_pkimessage
 
 
@@ -72,3 +73,28 @@ class TestBuildKUR(unittest.TestCase):
 
         pki_msg = de_and_encode_pkimessage(pki_message)
         self.assertEqual(get_cmp_message_type(pki_msg), "kur")
+
+    def test_build_kur_uses_cert_subject(self):
+        """
+        GIVEN a certificate with a multi-RDN subject, issued by a CA
+        WHEN `build_key_update_request` is called with the certificate and without a common name,
+        THEN the subject of the certificate template must be DER-identical to the subject of the certificate.
+        """
+        ca_cert, ca_key = build_certificate(common_name="CN=Test CA,O=Test Org,C=DE")
+        cert, _ = build_certificate(common_name="CN=Test Device,O=Test Org,C=DE", ca_key=ca_key, ca_cert=ca_cert)
+        pki_message = build_key_update_request(signing_key=generate_key("ec"), cert=cert, exclude_fields=None)
+        cert_template = pki_message["body"]["kur"][0]["certReq"]["certTemplate"]
+        self.assertEqual(
+            encoder.encode(cert_template["subject"]["rdnSequence"]),
+            encoder.encode(cert["tbsCertificate"]["subject"]["rdnSequence"]),
+        )
+
+    def test_build_kur_without_cert_uses_default_subject(self):
+        """
+        GIVEN no certificate and no common name
+        WHEN `build_key_update_request` is called,
+        THEN the subject of the certificate template must be the default `CN=Hans Mustermann`.
+        """
+        pki_message = build_key_update_request(signing_key=generate_key("ec"), exclude_fields=None)
+        cert_template = pki_message["body"]["kur"][0]["certReq"]["certTemplate"]
+        self.assertEqual(get_openssl_name_notation(cert_template["subject"]), "CN=Hans Mustermann")
