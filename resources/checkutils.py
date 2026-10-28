@@ -377,10 +377,14 @@ def _verify_sender_field_for_mac(sender_name: rfc9480.GeneralName, allow_failure
             "MUST use an identifier in the commonName field of the directoryName choice."
         )
 
-    cm_name = utils.get_openssl_name_notation(name=sender_name["directoryName"], oids=[rfc5280.id_at_commonName])
+    # The string form is "NULL-DN" when no commonName is present, so the dictionary form is checked.
+    cn_values = utils.get_openssl_name_notation(
+        name=sender_name["directoryName"], oids=[rfc5280.id_at_commonName], return_dict=True
+    )
+    cm_name = cn_values.get("CN")  # type: ignore
 
     if not allow_failure:
-        if cm_name is None:
+        if not cm_name:
             raise BadMessageCheck(
                 " For MAC-based protection, the CA "
                 "MUST use an identifier in the commonName field of the directoryName choice."
@@ -612,7 +616,9 @@ def _verify_senderkid_for_mac(pki_message: PKIMessageTMP, allow_mac_failure: boo
         raise BadMessageCheck("The senderKID field in the PKIHeader must be a valid UTF-8 string.") from e
     sender_kid_name = sender_kid.removeprefix("CN=")
 
-    cm_name = utils.get_openssl_name_notation(name=sender_name, oids=[rfc5280.id_at_commonName])
+    # The string form is "NULL-DN" when no commonName is present, so the dictionary form is checked.
+    cn_values = utils.get_openssl_name_notation(name=sender_name, oids=[rfc5280.id_at_commonName], return_dict=True)
+    cm_name = cn_values.get("CN")  # type: ignore
 
     if not cm_name:
         if not allow_mac_failure:
@@ -620,7 +626,6 @@ def _verify_senderkid_for_mac(pki_message: PKIMessageTMP, allow_mac_failure: boo
         logging.warning("PKIMessage `sender` did not contain a commonName: %s", sender_name.prettyPrint())
         return
 
-    cm_name = cm_name.removeprefix("CN=")  # type: ignore
     if sender_kid_name != cm_name:
         if not allow_mac_failure:
             sender_name_formatted = utils.get_openssl_name_notation(name=sender_name)
