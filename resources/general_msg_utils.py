@@ -311,53 +311,46 @@ def _prepare_get_certificate_request_template(fill_info_val: bool = False) -> rf
     return cmputils.prepare_info_type_and_value(oid=rfc9480.id_it_certReqTemplate, fill_random=fill_info_val)
 
 
-def _get_type_inside_controls(controls, oid: univ.ObjectIdentifier) -> Union[None, univ.Any]:
-    for x in controls:
-        if x["type"] == oid:
-            return x["value"]
-    return None
-
-
 @not_keyword
 def check_controls_for_cert_temp(
     controls: rfc9480.Controls, must_be_present: bool = False, rsa_length_min: int = 2048
 ) -> None:
     """Validate the `Controls` structure inside the `pyasn1` `rfc9480.CertReqTemplateValue` structure.
 
-    According to the rfc9483 Section 4.3.3, it checks the presence and validity of RSA key length and
-    algorithm identifier constraints.
+    According to the rfc9483 Section 4.3.3, the field is optional and contains one entry per supported
+    algorithm, either `id-regCtrl-algId` or `id-regCtrl-rsaKeyLen`. Every entry is checked.
 
     :param controls: The structure objects to validate.
     :param must_be_present: Whether the structure must be present or not. Defaults to `False`.
     :param rsa_length_min: The minimal key length expected for the RSA Algorithm. Defaults to `2048`.
     :raises: ValueError If the `Controls` is missing, when required or Invalid RsaKeyLenCtrl decoding or value, or
-    invalid/unsupported algorithm in `AlgIdCtrl`
+    invalid/unsupported algorithm in `AlgIdCtrl`, or an entry of another type.
     """
     if not controls.isValue:
-        if not must_be_present:
-            logging.info("No Requirements for the public key are available.")
-        else:
+        if must_be_present:
             raise ValueError("The CertReqTemplate Response did not contain a value.")
+        logging.info("No Requirements for the public key are available.")
+        return
 
-    if len(controls) != 1:
-        raise ValueError(
-            "Controls is either supposed to be `id-reg-Ctrl-algId` or `id-regCtrl-rsaKeyLen`, but both were present"
-        )
+    for entry in controls:
+        if entry["type"] == rfc9480.id_regCtrl_rsaKeyLen:
+            val, rest = decoder.decode(entry["value"], asn1Spec=rfc9480.RsaKeyLenCtrl())
+            if rest != b"":
+                raise ValueError("Decoding of `RsaKeyLenCtrl` had some rest!")
 
-    value = _get_type_inside_controls(controls, oid=rfc9480.id_regCtrl_rsaKeyLen)
-    if value is not None:
-        val, rest = decoder.decode(value, asn1Spec=rfc9480.RsaKeyLenCtrl())
-        if rest != b"":
-            raise ValueError("Decoding of `RsaKeyLenCtrl` had some rest!")
+            if int(val) < rsa_length_min:
+                raise ValueError(f"The `RsaKeyLen` must be a integer at least of size: {rsa_length_min}.")
 
-        if int(val) < rsa_length_min:
-            raise ValueError(f"The `RsaKeyLen` must be a integer at least of size: {rsa_length_min}.")
+            logging.info("`RsaKeyLen` is %s", str(int(val)))
 
-        logging.info("`RsaKeyLen` is %s", str(int(val)))
+        elif entry["type"] == rfc9480.id_regCtrl_algId:
+            _validate_id_reg_ctrl_alg_id(entry["value"].asOctets())
 
-    value = _get_type_inside_controls(controls, oid=rfc9480.id_regCtrl_algId)
-    if value is not None:
-        _validate_id_reg_ctrl_alg_id(value.asOctets())  # type: ignore
+        else:
+            raise ValueError(
+                "Controls is supposed to contain only `id-regCtrl-algId` or `id-regCtrl-rsaKeyLen` entries, "
+                f"but got: {entry['type']}"
+            )
 
 
 def _validate_id_reg_ctrl_alg_id(value: bytes) -> None:
