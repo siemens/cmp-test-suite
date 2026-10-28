@@ -1373,7 +1373,11 @@ PKIStatusInfo failinfo Bit Must Be
     ...
     [Arguments]    ${pki_message}    ${failinfo}    ${exclusive}=False    ${index}=0
     ${status}=    Get PKIStatusInfo    ${pki_message}    ${index}
-    ${result}=    Is Bit Set    ${status["failInfo"]}    ${failinfo}    ${exclusive}
+    # The failInfo field is optional (RFC 9483 Section 3.6.4). If it is absent, no bit is set.
+    VAR    ${result}=    ${False}
+    IF    $status["failInfo"].isValue
+        ${result}=    Is Bit Set    ${status["failInfo"]}    ${failinfo}    ${exclusive}
+    END
     IF    not ${result}
         IF    ${FAILINFO_MUST_BE_CORRECT}
             ${_}=   Display PKIStatusInfo   ${status}
