@@ -420,14 +420,16 @@ CA Should Respond with certRevoked for Already Revoked Cert
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=certRevoked    exclusive=True
 
-#### 4.2 Revocation Revive Requests
+#### Revive Requests
 
 CA MUST Reject Revive Request With Invalid Issuer
-    [Documentation]    According to RFC 9483 Section 4.2, a revive request must include a CertTemplate
-    ...    with correct issuer and serial number fields. We send a revive request with an
+    [Documentation]    A revive request is a revocation request with the `removeFromCRL` reason. It must include a
+    ...    CertTemplate with correct issuer and serial number fields. We send a revive request with an
     ...    invalid issuer field. The CA MUST reject the request, potentially responding
     ...    with the failInfo `badCertId`.
+    ...    RFC 9483 does not define revive requests, so this test is skipped with LWCMP enabled.
     [Tags]    negative    revive
+    Skip If    ${LWCMP}    Skipped because RFC 9483 does not define revive requests.
     ${rev_cert}   ${rev_key}=   Revoke Certificate    ${REVOCATION_CERT}    ${REVOCATION_KEY}
     ${modified_issuer}=    Modify Common Name Cert    ${rev_cert}    issuer=True
     ${cert_template}=    Prepare CertTemplate  issuer=${modified_issuer}  cert=${rev_cert}
@@ -440,12 +442,14 @@ CA MUST Reject Revive Request With Invalid Issuer
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badCertId    exclusive=True
 
 CA MUST Reject Revive Request With Invalid Subject
-    [Documentation]    According to RFC 9483 Section 4.2, when a revive request is submitted, it MUST contain
+    [Documentation]    A revive request is a revocation request with the `removeFromCRL` reason. It MUST contain
     ...    the `issuer` and `serialNumber` fields inside the `CertTemplate`. If the `subject` field is
     ...    provided as additional information, it MUST match the subject of the certificate being revived.
     ...    We send a revive request with an invalid sender inside the CertTemplate.
     ...    The CA MUST reject the request and may respond with the optional failInfo `badCertId`.
+    ...    RFC 9483 does not define revive requests, so this test is skipped with LWCMP enabled.
     [Tags]    add-info    certTemplate    negative    revive
+    Skip If    ${LWCMP}    Skipped because RFC 9483 does not define revive requests.
     ${cert}   ${key}=   Revoke Certificate    ${REVOCATION_CERT}    ${REVOCATION_KEY}
     ${modified_subject}=    Modify Common Name Cert    ${cert}    issuer=False
     ${cert_template}=    Prepare CertTemplate
@@ -462,11 +466,13 @@ CA MUST Reject Revive Request With Invalid Subject
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badCertId    exclusive=True
 
 CA MUST Reject Revive Request With Non-Revoked serialNumber
-    [Documentation]    According to RFC 9483 Section 4.2, a revive request is valid only for certificates
-    ...    that have been revoked. We send a revive request for a certificate that has not been
-    ...    revoked. The CA MUST reject the request and may respond with the optional failInfo
+    [Documentation]    A revive request is a revocation request with the `removeFromCRL` reason. It is valid only
+    ...    for certificates that have been revoked. We send a revive request for a certificate that has not
+    ...    been revoked. The CA MUST reject the request and may respond with the optional failInfo
     ...    `badCertId`.
+    ...    RFC 9483 does not define revive requests, so this test is skipped with LWCMP enabled.
     [Tags]    negative    revive
+    Skip If    ${LWCMP}    Skipped because RFC 9483 does not define revive requests.
     ${rr}=    Build CMP Revive Request
     ...    cert=${REVOCATION_CERT}
     ...    recipient=${RECIPIENT}
@@ -477,12 +483,14 @@ CA MUST Reject Revive Request With Non-Revoked serialNumber
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badCertId    exclusive=True
 
 CA MUST Accept Valid Revive Request
-    [Documentation]    According to RFC 9483 Section 4.2, a revive request must include a CertTemplate
-    ...    containing correct issuer and serial number fields, signed with the private key
+    [Documentation]    A revive request is a revocation request with the `removeFromCRL` reason. It must include a
+    ...    CertTemplate containing correct issuer and serial number fields, signed with the private key
     ...    corresponding to the certificate being revived. We send a valid revive request with
     ...    all required details. The CA MUST accept the request and successfully revive the
     ...    certificate.
+    ...    RFC 9483 does not define revive requests, so this test is skipped with LWCMP enabled.
     [Tags]    positive    revive
+    Skip If    ${LWCMP}    Skipped because RFC 9483 does not define revive requests.
     ${cert}   ${key}=   Revoke Certificate
     ${rr}=    Build CMP Revive Request
     ...    cert=${cert}
@@ -531,13 +539,15 @@ CA MUST Reject Valid Key Update Request With Already Revoked Certificate
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=certRevoked    exclusive=True
 
 CA MUST Accept A Revocation Revive From Trusted PKI Management Entity
-    [Documentation]    According to RFC 9483 Section 5.3.2, a PKI management entity may request the revival of a
+    [Documentation]    A PKI management entity may request the revival of a
     ...    previously revoked certificate on behalf of another PKI entity by sending a revocation request
-    ...    with the `revive` `CRLReason`, signed using its CMP protection key. We send a revive request
+    ...    with the `removeFromCRL` `CRLReason`, signed using its CMP protection key. We send a revive request
     ...    from a trusted PKI management entity. If allowed by policy, the CA MUST accept the request and
     ...    and revive the certificate. If not allowed, the CA MUST reject the request and may respond with
     ...    the optional failinfo `certRevoked`.
+    ...    RFC 9483 does not define revive requests, so this test is skipped with LWCMP enabled.
     [Tags]    policy-dependent    positive    revive    trust
+    Skip If    ${LWCMP}    Skipped because RFC 9483 does not define revive requests.
     ${is_set}=    Is Certificate And Key Set    ${OTHER_TRUSTED_PKI_CERT}    ${OTHER_TRUSTED_PKI_KEY}
     Skip If    not ${is_set}    Skipped because `OTHER_TRUSTED_PKI_KEY` and/or `OTHER_TRUSTED_PKI_CERT` are not set.
     ${rev_cert}   ${_}=   Revoke Certificate    ${REVOCATION_CERT}    ${REVOCATION_KEY}
