@@ -80,7 +80,7 @@ Set Up Test Suite
             ${protected_ir}=    Protect Hybrid PKIMessage     ${ir}    private_key=${tmp_key}    cert=${tmp_cert}
         END
         ${response}=   Exchange Migration PKIMessage    ${protected_ir}    ${CA_BASE_URL}    ${INIT_SUFFIX}
-        PKIStatus Must Be    ${response}   accepted
+        PKIStatus Must Be    ${response}   accepted,grantedWithMods
         ${issued_cert}=    Confirm Certificate If Needed    ${response}
         VAR    ${ISSUED_KEY}=    ${issued_key}    scope=Global
         VAR    ${ISSUED_CERT}=    ${issued_cert}    scope=Global
@@ -1314,7 +1314,7 @@ Issue New Cert For Testing
     ...                  implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}    exclude_fields=sender,senderKID
     ${protected_ir}=    Default Protect PKIMessage    ${ir}
     ${response}=    Exchange PKIMessage    ${protected_ir}   ${url}
-    PKIStatus Must Be   ${response}   accepted
+    PKIStatus Must Be   ${response}   accepted,grantedWithMods
     ${cert}=   Confirm Certificate If Needed    ${response}
     RETURN   ${cert}    ${key}
 
