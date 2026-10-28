@@ -346,7 +346,8 @@ CA MUST Reject MAC Based Protected PKIMessage Without SenderKID
     ...    ${EXP_CSR}
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ...    exclude_fields=senderKID
+    ...    exclude_fields=sender,senderKID
+    ${p10cr}=    Patch Sender    ${p10cr}    sender_name=${SENDER}
     ${protected_p10cr}=    Protect PKIMessage
     ...    ${p10cr}
     ...    protection=${DEFAULT_MAC_ALGORITHM}
@@ -654,6 +655,7 @@ CA MUST Reject PKIMessage With MAC Based protectionAlg But No Protection Value
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
     ...    implicit_confirm=${False}
+    ...    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     ${patched_protected_p10cr}=    Patch ProtectionAlg    ${p10cr}    protection=${DEFAULT_MAC_ALGORITHM}
     ${response}=    Exchange PKIMessage    ${patched_protected_p10cr}
     PKIMessage Body Type Must Be    ${response}    error
