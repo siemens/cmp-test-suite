@@ -655,11 +655,11 @@ CA MAY React To Cert Request With Invalid Is_ca In BasicConstraints False But Ke
     ...    cert=${ISSUED_CERT}
     ${ca_response}=    Exchange PKIMessage    ${protected_ir}
     ${body}=    Get CMP Message Type    ${ca_response}
-    IF    '${body} == error'
+    IF    '${body}' == 'error'
         PKIStatusInfo Failinfo Bit Must Be    ${ca_response}     badCertTemplate
     ELSE
         ${status}=    Get PKIStatusInfo     ${ca_response}
-        IF    '${status["status"]}' != rejection
+        IF    '${status["status"]}' != 'rejection'
             Check For GrantedWithMods    ${ca_response}    ${ir}    strict_subject_validation=False
             IF    ${STRICT}    Fail    Expected to reject this request.
         END
