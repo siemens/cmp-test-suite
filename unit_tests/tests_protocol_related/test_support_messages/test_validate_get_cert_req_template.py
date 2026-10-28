@@ -18,14 +18,24 @@ from unit_tests.prepare_support_message_structures import (
 )
 
 
-def _prepare_ec_param():
+def _prepare_ec_param(curve=rfc5480.secp256r1):
     """Prepare EC parameter with namedCurve for testing."""
     alg_id = rfc9480.AlgorithmIdentifier()
     alg_id["algorithm"] = rfc6664.id_ecPublicKey
     ec_param = rfc5480.ECParameters()
-    ec_param["namedCurve"] = rfc5480.secp256r1
+    ec_param["namedCurve"] = curve
     alg_id["parameters"] = ec_param
     return alg_id
+
+
+def _prepare_alg_id_controls(*alg_ids):
+    """Prepare a DER round-tripped `Controls` structure with one `id-regCtrl-algId` entry per algorithm."""
+    controls = rfc9480.Controls()
+    for alg_id in alg_ids:
+        controls.extend(prepare_genp_controls(alg_id=alg_id))
+    controls, rest = decode(encoder.encode(controls), rfc9480.Controls())
+    assert rest == b""
+    return controls
 
 
 class TestValidateGetCertificateRequestTemplate(unittest.TestCase):
@@ -43,19 +53,52 @@ class TestValidateGetCertificateRequestTemplate(unittest.TestCase):
         self.assertEqual(rest, b"")
         check_controls_for_cert_temp(controls, rsa_length_min=512)
 
-    def test_invalid_controls_contains_both_ec_and_rsa_key_length(self):
+    def test_valid_controls_contains_both_ec_and_rsa_key_length(self):
         """
         GIVEN a Controls structure containing both EC algorithm identifier and RSA key length
         WHEN `check_controls_for_cert_temp` is called
-        THEN a ValueError should be raised, indicating both cannot coexist.
+        THEN no errors should be raised, because RFC 9483 Section 4.3.3 allows one entry per supported algorithm.
         """
         alg_id = _prepare_ec_param()
         controls = prepare_genp_controls(alg_id=alg_id, rsa_key_len=512)
         der_data = encoder.encode(controls)
         controls, rest = decode(der_data, rfc9480.Controls())
         self.assertEqual(rest, b"")
+        check_controls_for_cert_temp(controls, rsa_length_min=512)
+
+    def test_valid_controls_contains_two_ec_curves(self):
+        """
+        GIVEN a Controls structure containing two EC algorithm identifiers with different curves
+        WHEN `check_controls_for_cert_temp` is called
+        THEN no errors should be raised.
+        """
+        controls = _prepare_alg_id_controls(_prepare_ec_param(), _prepare_ec_param(rfc5480.secp384r1))
+        check_controls_for_cert_temp(controls)
+
+    def test_invalid_second_alg_id_inside_controls_structure(self):
+        """
+        GIVEN a Controls structure with a valid EC algorithm identifier followed by an RSA one
+        WHEN `check_controls_for_cert_temp` is called
+        THEN a ValueError should be raised, because every entry is checked.
+        """
+        rsa_alg_id = rfc9480.AlgorithmIdentifier()
+        rsa_alg_id["algorithm"] = rfc9481.rsaEncryption
+        controls = _prepare_alg_id_controls(_prepare_ec_param(), rsa_alg_id)
         with self.assertRaises(ValueError):
-            check_controls_for_cert_temp(controls, rsa_length_min=512)
+            check_controls_for_cert_temp(controls)
+
+    def test_unknown_type_inside_controls_structure(self):
+        """
+        GIVEN a Controls structure with an entry that is neither `id-regCtrl-algId` nor `id-regCtrl-rsaKeyLen`
+        WHEN `check_controls_for_cert_temp` is called
+        THEN a ValueError should be raised.
+        """
+        controls = prepare_genp_controls(rsa_key_len=2048)
+        controls[0]["type"] = rfc9480.id_regCtrl_altCertTemplate
+        controls, rest = decode(encoder.encode(controls), rfc9480.Controls())
+        self.assertEqual(rest, b"")
+        with self.assertRaises(ValueError):
+            check_controls_for_cert_temp(controls)
 
     def test_invalid_alg_id_inside_controls_structure(self):
         """
@@ -84,6 +127,17 @@ class TestValidateGetCertificateRequestTemplate(unittest.TestCase):
         cert_req_template_value = prepare_cert_req_template_content(
             cert_template=cert_template, key_spec=prepare_genp_controls(alg_id=_prepare_ec_param())
         )
+        genp = build_genp_cert_req_template_content(cert_req_template_value)
+        validate_get_certificate_request_template(genp)
+
+    def test_absent_key_spec(self):
+        """
+        GIVEN a CertReqTemplateValue without the optional keySpec field
+        WHEN `validate_get_certificate_request_template` is called with the default `control_presents=False`
+        THEN no errors should be raised, because the CA has no requirements on the public key.
+        """
+        cert_template = prepare_cert_template(include_fields="subject")
+        cert_req_template_value = prepare_cert_req_template_content(cert_template=cert_template, key_spec=None)
         genp = build_genp_cert_req_template_content(cert_req_template_value)
         validate_get_certificate_request_template(genp)
 
