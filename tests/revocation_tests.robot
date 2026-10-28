@@ -40,7 +40,8 @@ CA MUST Reject Revocation Request With MAC Based Protection
     [Documentation]    According to RFC 9483 Section 4.2, a revocation request must not use MAC-based protection.
     ...    The PKIMessage must be signed with the private key corresponding to the certificate being
     ...    revoked. We send a revocation request using MAC-based protection instead of a signature.
-    ...    The CA MUST reject the request and may respond with the optional failInfo `wrongIntegrity`.
+    ...    The CA MUST reject the request with an error message, as specified in Section 3.6.2, and may
+    ...    respond with the optional failInfo `wrongIntegrity`.
     [Tags]    mac    negative
     ${rr}=    Build Cmp Revoke Request
     ...    cert=${REVOCATION_CERT}
@@ -50,14 +51,15 @@ CA MUST Reject Revocation Request With MAC Based Protection
     ...    for_mac=${SUPPORT_DIRECTORY_CHOICE_FOR_MAC_PROTECTION}
     ${protected_rr}=    Default Protect With MAC    ${rr}
     ${response}=    Exchange PKIMessage    ${protected_rr}
-    PKIMessage Body Type Must Be    ${response}    rp
+    PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=wrongIntegrity   exclusive=True
 
 CA MUST Reject Revocation Request Without Protection
     [Documentation]    According to RFC 9483 Section 4.2, a revocation request must include PKIMessage protection.
     ...    The request must be signed with the private key corresponding to the certificate being revoked.
-    ...    We send a revocation request without PKIMessage protection. The CA MUST reject the request and
-    ...    may respond with the optional failInfo `badMessageCheck`.
+    ...    We send a revocation request without PKIMessage protection. The CA MUST reject the request with an
+    ...    error message, as specified in Section 3.6.2, and may respond with the optional failInfo
+    ...    `badMessageCheck`.
     [Tags]    negative    protection   minimal
     ${cert_template}=    Prepare CertTemplate    cert=${REVOCATION_CERT}    include_fields=serialNumber,issuer
     ${rr}=    Build CMP Revoke Request    cert_template=${cert_template}
@@ -66,7 +68,7 @@ CA MUST Reject Revocation Request Without Protection
     ...    recipient=${RECIPIENT}
     ...    exclude_fields=${None}
     ${response}=    Exchange PKIMessage    ${rr}
-    PKIMessage Body Type Must Be    ${response}    rp
+    PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck   exclusive=True
 
 # TODO clarify failinfo because RR
@@ -74,7 +76,8 @@ CA MUST Reject Revocation Request Without Protection
 CA MUST Reject Revocation Request Without ExtraCerts
     [Documentation]    According to RFC 9483 Sections 3 the `extraCerts` field is required for proper verification in
     ...    a revocation requests. We send a revocation request omitting the `extraCerts` field. The CA MUST
-    ...    reject the request and may respond with the failInfo `badMessageCheck` or `addInfoNotAvailable`.
+    ...    reject the request with an error message, as specified in Section 3.6.2, and may respond with the
+    ...    failInfo `badMessageCheck` or `addInfoNotAvailable`.
     [Tags]    negative    protection   minimal
     ${rr}=    Build CMP Revoke Request
     ...    cert=${REVOCATION_CERT}
@@ -88,14 +91,14 @@ CA MUST Reject Revocation Request Without ExtraCerts
     ...    private_key=${REVOCATION_KEY}
     ...    exclude_certs=True
     ${response}=    Exchange PKIMessage    ${rr}
-    PKIMessage Body Type Must Be    ${response}    rp
+    PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck,addInfoNotAvailable
 
 CA MUST Reject Revocation Request With Issuer As Sender
     [Documentation]    According to RFC 9483 Section 4.2, the sender of a revocation request MUST NOT be set to the
     ...    issuer. We send a revocation request where the sender is incorrectly set to the certificate
-    ...    issuer. The CA MUST reject the request and MAY respond with the optional failInfo
-    ...    `badMessageCheck`.
+    ...    issuer. The CA MUST reject the request with an error message, as specified in Section 3.6.2, and
+    ...    MAY respond with the optional failInfo `badMessageCheck`.
     [Tags]    negative    rfc9483-header  minimal
     ${cert_template}=    Prepare CertTemplate    cert=${REVOCATION_CERT}    include_fields=serialNumber,issuer
     ${rr}=    Build CMP Revoke Request    cert_template=${cert_template}
@@ -111,7 +114,7 @@ CA MUST Reject Revocation Request With Issuer As Sender
     ...    do_patch=${False}
     Log Asn1    ${rr["header"]["sender"]}
     ${response}=    Exchange PKIMessage    ${rr}
-    PKIMessage Body Type Must Be    ${response}    rp
+    PKIMessage Body Type Must Be    ${response}    error
     PKIStatusInfo Failinfo Bit Must Be    ${response}    failinfo=badMessageCheck    exclusive=True
 
 # CRLReason
