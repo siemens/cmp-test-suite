@@ -1655,8 +1655,7 @@ def check_signature_alg_is_consistent(
 
     Verifies that the `protectionAlg` used in the first PKI response matches
     the signature algorithm used in the optional `pki_conf` and `pki_polling` messages. It also
-    ensures that the `protectionAlg` parameters are not present, as required for signature-based
-    protection.
+    ensures that the `protectionAlg` parameters are allowed for the signature algorithm.
 
     :param pki_response: An `PKIMessageTMP` object representing the PKI response message to check.
     :param pki_conf: An optional `PKIMessageTMP` object representing the PKI confirmation message
@@ -1664,7 +1663,7 @@ def check_signature_alg_is_consistent(
     :param pki_polling: An optional `PKIMessageTMP` object representing the PKI polling message
         for comparison. Defaults to `None`.
     :raises ValueError: If the signature algorithms in the provided messages do not match, or if the
-        `protectionAlg` field includes parameters when they should not be present.
+        `protectionAlg` field includes parameters that are not allowed for the algorithm.
     """
     protection_alg = pki_response["header"]["protectionAlg"]
 
@@ -1684,16 +1683,34 @@ def check_signature_alg_is_consistent(
             logging.info("Initial ProtectionAlg OID was: %s but pkiConf OID was %s", server_alg_id, pki_polling_oid)
             raise ValueError("The `pkiConf` message has a different ObjectIdentifier!")
 
-    pki_conf_value = None
-    pki_polling_value = None
+    _check_signature_prot_alg_params(protection_alg)
     if pki_conf is not None:
-        pki_conf_value = pki_conf["header"]["protectionAlg"]["parameters"].isValue
+        _check_signature_prot_alg_params(pki_conf["header"]["protectionAlg"])
 
     if pki_polling is not None:
-        pki_polling_value = pki_polling["header"]["protectionAlg"]["parameters"].isValue
+        _check_signature_prot_alg_params(pki_polling["header"]["protectionAlg"])
 
-    if protection_alg["parameters"].isValue or pki_conf_value or pki_polling_value:
-        raise ValueError("The `protectionAlg` MUST not have parameters for PKIMessage signature-based protection.")
+
+def _check_signature_prot_alg_params(alg_id: rfc9480.AlgorithmIdentifier) -> None:
+    """Check that the `parameters` of a signature `protectionAlg` are allowed for its algorithm.
+
+    :param alg_id: The `protectionAlg` to check.
+    :raises ValueError: If the parameters are not allowed for the algorithm.
+    """
+    if not alg_id["parameters"].isValue:
+        return
+
+    if alg_id["algorithm"] == rfc9481.id_RSASSA_PSS:
+        # RSASSA-PSS carries `RSASSA-PSS-params` (RFC 4056 Section 2).
+        return
+
+    if alg_id["algorithm"] in RSA_OID_2_NAME:
+        # PKCS #1 v1.5 signatures use NULL parameters (RFC 4055 Section 5, RFC 5754 Section 3.2).
+        if _is_parmeters_null(alg_id):
+            return
+        raise ValueError("The `protectionAlg` parameters MUST be NULL or absent for PKCS #1 v1.5 RSA signatures.")
+
+    raise ValueError("The `protectionAlg` MUST not have parameters for PKIMessage signature-based protection.")
 
 
 def _check_is_same_chain(
