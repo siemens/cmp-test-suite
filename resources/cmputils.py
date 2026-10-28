@@ -4198,27 +4198,23 @@ def prepare_orig_pki_message(  # noqa D417 undocumented-param
 
 @not_keyword
 def get_common_name_from_str(name: str) -> Union[None, str]:
-    """Extract the common name (CN) from a given distinguished name string.
+    """Extract the commonName value from a distinguished name string.
 
     Parses a distinguished name in OpenSSL notation (e.g., "C=DE, ST=Bavaria,
-    L=Munich, CN=CA Name").
+    L=Munich, CN=CA Name"). The value is returned without the "CN=" prefix,
+    because RFC 9483 Section 3.1 puts the commonName value into the MAC senderKID.
 
     :param name: The distinguished name string to extract the common name from.
-    :return: The common name (CN) as a string if found, otherwise `None`.
+    :return: The first commonName value if found, otherwise `None`.
     """
     if "=" not in name:
         return None
 
-    common_name = ""
     for entry in name.split(","):
-        attribute, value = entry.split("=")
-        if attribute == "CN":
-            common_name += f"CN={value}"
-
-    if not common_name:
-        return None
-
-    return common_name
+        attribute, _, value = entry.partition("=")
+        if attribute.strip().upper() == "CN":
+            return value.strip()
+    return None
 
 
 @not_keyword
@@ -4382,8 +4378,8 @@ def patch_messageTime(  # noqa D417 undocumented-param pylint: disable=invalid-n
 def _patch_senderkid_for_mac(sender: rfc9480.GeneralName, negative: bool) -> bytes:
     """Generate a `senderKID` for MAC-based protection using the sender's common name (CN).
 
-    For the MAC-based protection MUST the sender be the common name inside the
-    `directoryName` choice, according to rfc9483 Section 3.1. If negative changes a
+    RFC 9483 Section 3.1 requires the senderKID to contain the same name as the commonName
+    of the `directoryName` sender, so the bare commonName value is used. If negative changes a
     random char of the correct `senderKID`, used to ensure that the CA checks the senderKID correctly.
 
     :param sender: An `rfc9480.GeneralName` object representing the sender's identity.
@@ -4400,8 +4396,9 @@ def _patch_senderkid_for_mac(sender: rfc9480.GeneralName, negative: bool) -> byt
         raise ValueError("The 'sender' must be of type 'directoryName' for MAC-based protection.")
 
     name_obj = sender["directoryName"]
-    common_name = utils.get_openssl_name_notation(name_obj, oids=[rfc5280.id_at_commonName])
-    if common_name is None:
+    cn_values = utils.get_openssl_name_notation(name_obj, oids=[rfc5280.id_at_commonName], return_dict=True)
+    common_name = cn_values.get("CN")  # type: ignore
+    if not common_name:
         raise ValueError("The 'directoryName' must contain a common name (CN) for MAC-based protection.")
 
     if negative:
