@@ -111,7 +111,30 @@ class TestValidateIfCertificateIsRevoked(unittest.TestCase):
 
         validate_if_certificate_is_revoked(self.cert, ca_cert=self.ca_cert)
 
+    @patch("resources.certutils._post_ocsp_request")
+    @patch("requests.get")
+    def test_no_revocation_source_allowed(self, mock_requests_get, mock_post_ocsp):
+        """
+        GIVEN a certificate without an OCSP URL and without CRL distribution points
+        WHEN validating revocation status with `allow_no_crl_urls=True` and `expected_to_be_revoked=True`,
+        THEN no exception should be raised and no OCSP or CRL request should be sent.
+        """
+        cert = parse_certificate(load_and_decode_pem_file("data/unittest/bare_certificate.pem"))
+        validate_if_certificate_is_revoked(
+            cert, ca_cert=self.ca_cert, allow_no_crl_urls=True, expected_to_be_revoked=True
+        )
+        mock_requests_get.assert_not_called()
+        mock_post_ocsp.assert_not_called()
 
+    def test_no_revocation_source_not_allowed(self):
+        """
+        GIVEN a certificate without an OCSP URL and without CRL distribution points
+        WHEN validating revocation status with the default `allow_no_crl_urls=False`,
+        THEN a ValueError should be raised.
+        """
+        cert = parse_certificate(load_and_decode_pem_file("data/unittest/bare_certificate.pem"))
+        with self.assertRaises(ValueError):
+            validate_if_certificate_is_revoked(cert, ca_cert=self.ca_cert, expected_to_be_revoked=True)
 
 
 if __name__ == "__main__":
