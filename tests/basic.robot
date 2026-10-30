@@ -982,7 +982,7 @@ CA MIGHT Allow A Validity Request with Valid IR
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIStatus Must Be    ${response}    accepted
+    PKIStatus Must Be    ${response}    accepted,grantedWithMods
     Check For GrantedWithMods    ${response}    ${protected_ir}    include_fields=validity
 
 CA MIGHT Allow A Validity Request For 180 Days with Valid IR
@@ -1005,7 +1005,7 @@ CA MIGHT Allow A Validity Request For 180 Days with Valid IR
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIStatus Must Be    ${response}    accepted
+    PKIStatus Must Be    ${response}    accepted,grantedWithMods
     Check For GrantedWithMods    ${response}    ${protected_ir}    include_fields=validity
 
 CA or RA MUST Reject Not Authorized Sender
