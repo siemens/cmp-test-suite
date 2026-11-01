@@ -104,7 +104,7 @@ CA MUST Reject Revocation Request With Issuer As Sender
     ...    exclude_fields=senderKID,sender
     ${rr}=    Patch Sender    ${rr}    cert=${REVOCATION_CERT}    subject=False
     Log Asn1    ${rr["header"]["sender"]}
-    ${rr}=    Patch SenderKID    ${rr}    cert=${REVOCATION_CERT}
+    ${rr}=    Patch SenderKID    ${rr}    sender_kid=${REVOCATION_CERT}
     ${rr}=    Protect PKIMessage  ${rr}  protection=signature
     ...    cert=${REVOCATION_CERT}
     ...    private_key=${REVOCATION_KEY}
