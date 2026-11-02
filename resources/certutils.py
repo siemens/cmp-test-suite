@@ -1919,10 +1919,11 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
 
     Steps:
     ------
-      1. First checks if the certificate is revoked via OCSP.
-      2. Perform a CRL check (either with given 'crl_url', 'crl_file_path',
+      1. If `allow_no_crl_urls` is `True` and no OCSP or CRL source can be used, return without a check.
+      2. Check if the certificate is revoked via OCSP.
+      3. Perform a CRL check (either with given 'crl_url', 'crl_file_path',
          or from the cert's CRL Distribution Points). If revoked => raise.
-      3. If we finish both checks without raising, we conclude the certificate
+      4. If we finish both checks without raising, we conclude the certificate
          is not revoked.
 
     Arguments:
@@ -1937,24 +1938,25 @@ def validate_if_certificate_is_revoked(  # noqa D417 undocumented-param
        - `allow_request_failure`: Passed to the OCSP request function to allow or
               disallow request failures.
        - `allow_ocsp_unknown`: Whether to allow OCSP 'unknown' status as non-revoked.
-       - `allow_no_crl_urls`: Whether to allow no CRL URLs to be found in the certificate. If `True` and no OCSP
-         or CRL source is available at all, the check is skipped.
-       - `expected_to_be_revoked`: Whether the certificate is expected to be revoked.
+       - `allow_no_crl_urls`: Whether to allow no CRL URLs to be found in the certificate. If `True` and neither
+         OCSP (an OCSP URL in the certificate and `ca_cert`) nor a CRL source is available, the check is skipped,
+         also with `expected_to_be_revoked=True`. Defaults to `False`.
+       - `expected_to_be_revoked`: Whether the certificate is expected to be revoked. Defaults to `False`.
 
     Raises:
     ------
-        - `ValueError`: If the the ocsp request fails.
         - `ValueError`: If `ca_cert` is not provided and `ocsp_url` is given.
-        - `CertRevoked`: If the certificate is revoked.
+        - `CertRevoked`: If the certificate is revoked and `expected_to_be_revoked` is `False`.
         - `IOError`: If there's an issue loading or parsing the CRL or OCSP data.
         - `ValueError`: If the OCSP request fails.
-        - `ValueError`: If the certificate does not contain any CRL URLs and non was provided.
+        - `ValueError`: If the certificate has no CRL URL, none was provided and `allow_no_crl_urls` is `False`.
+        - `ValueError`: If `expected_to_be_revoked` is `True` and the certificate is not revoked.
 
 
     Examples:
     --------
-    | Validate If Certificate Is Revoked | cert=${cert} | issuer=${issuer} |
-    | Validate If Certificate Is Revoked | cert=${cert} | issuer=${issuer} | ocsp_url=${ocsp_url} |
+    | Validate If Certificate Is Revoked | cert=${cert} | ca_cert=${ca_cert} |
+    | Validate If Certificate Is Revoked | cert=${cert} | ca_cert=${ca_cert} | ocsp_url=${ocsp_url} |
     | Validate If Certificate Is Revoked | cert=${cert} | crl_url=${crl_url} |
 
     """
