@@ -109,6 +109,19 @@ class TestPrepareCertTemplate(unittest.TestCase):
         cert_template["issuer"]["rdnSequence"].clear()
         self.assertEqual(encode(cert["tbsCertificate"]["issuer"]["rdnSequence"]), issuer_der)
 
+    def test_prepare_cert_template_does_not_share_name_passed_in(self):
+        """
+        GIVEN an issuer `Name` passed to prepare_cert_template as `issuer`.
+        WHEN the issuer of the returned template is changed.
+        THEN the `Name` passed in must stay unchanged.
+        """
+        cert, key = build_certificate(common_name="CN=Test CA,O=Test Org,C=DE")
+        issuer = cert["tbsCertificate"]["issuer"]
+        issuer_der = encode(issuer["rdnSequence"])
+        cert_template = prepare_cert_template(issuer=issuer, include_fields="issuer")
+        cert_template["issuer"]["rdnSequence"].clear()
+        self.assertEqual(encode(issuer["rdnSequence"]), issuer_der)
+
 
 if __name__ == "__main__":
     unittest.main()
