@@ -133,8 +133,12 @@ def validate_get_ca_certs(  # noqa D417 undocumented-param
         logging.info("General Response: \n%s", genp_content.prettyPrint())
         raise ValueError("The CA did not contain the oid for `id-it-caCerts` as of Section 4.3.1 specified!")
 
-    if not value.isValue and must_be_present:
-        raise ValueError("The Server's response did not contain CA certificates.")
+    # RFC 9483 Section 4.3.1: the CA sends no content when no CA certificate is available.
+    if not value.isValue:
+        if must_be_present:
+            raise ValueError("The Server's response did not contain CA certificates.")
+        logging.info("The Server's response did not contain CA certificates.")
+        return None
 
     try:
         ca_certs, _ = decoder.decode(value, asn1Spec=rfc9480.CaCertsValue())
@@ -473,11 +477,12 @@ def validate_get_certificate_request_template(  # noqa D417 undocumented-param
             "The Server response did not contain the oid for `id-it-caCerts` as of Section 4.3.4 specified!"
         )
 
+    # RFC 9483 Section 4.3.3: the CA sends no content when it has no requirements.
     if not value.isValue:
-        if not must_be_present:
-            logging.info("No Requirements are available")
-        else:
+        if must_be_present:
             raise ValueError("The CertReqTemplate Response did not contain a value.")
+        logging.info("No Requirements are available")
+        return
 
     cert_req_temp, rest = decoder.decode(value, asn1Spec=rfc9480.CertReqTemplateValue())
 
