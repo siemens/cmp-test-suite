@@ -52,6 +52,16 @@ class TestValidateGeneralResponse(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_get_ca_certs(genp)
 
+    def test_get_ca_certs_string_expected_size(self):
+        """
+        GIVEN a `genp` message with one `id-it-caCerts` element whose `infoValue` is not a `CaCertsValue`.
+        WHEN `validate_get_ca_certs` is called with `expected_size` as a string, as Robot Framework passes it.
+        THEN a `ValueError` should be raised, because the content is still checked.
+        """
+        genp = build_genp_pkimessage([prepare_info_type_and_value(rfc9480.id_it_caCerts, fill_random=True)])
+        with self.assertRaises(ValueError):
+            validate_get_ca_certs(genp, expected_size="1")
+
 
 if __name__ == "__main__":
     unittest.main()
