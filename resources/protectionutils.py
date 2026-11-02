@@ -136,11 +136,11 @@ def _compare_alg_id(
     """Compare two `AlgorithmIdentifier` structures.
 
     If `allow_null` is True, NULL and absent parameters are treated as equal and other parameters
-    must have the same DER encoding.
+    must have the same DER encoding. If `allow_null` is False, `alg_id2` must have absent parameters.
 
     :param alg_id1: The first `AlgorithmIdentifier` to compare.
     :param alg_id2: The second `AlgorithmIdentifier` to compare.
-    :param allow_null: If True, allows absent values to have the value `NULL` for legacy systems.
+    :param allow_null: If True, treat NULL and absent parameters as equal.
     :return: True if equal; False otherwise.
     """
     if alg_id1["algorithm"] != alg_id2["algorithm"]:
