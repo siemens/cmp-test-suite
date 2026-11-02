@@ -520,11 +520,12 @@ def is_bit_set(  # noqa D417 undocumented-param
         except ValueError as err:
             raise ValueError(f"Provided names: {values} but allowed are: {names}") from err
 
-        if all_set_names == values and not exclusive:
+        # Compare as sets, so the order of the given names does not matter.
+        if set(all_set_names) == set(values) and not exclusive:
             # to ensure that if all bits are set, it will return True.
             return True
 
-        if all_set_names == values and exclusive:
+        if set(all_set_names) == set(values) and exclusive:
             return True
 
         if all_set_names == names and exclusive:
