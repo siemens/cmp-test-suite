@@ -80,6 +80,23 @@ class TestMACProtectionAlgorithmsMustMatch(unittest.TestCase):
         response = utils_for_test.de_and_encode_pkimessage(response)
         mac_protection_algorithms_must_match(request, response, same_salt=True)
 
+    def test_same_salt_allowed_by_default(self):
+        """
+        GIVEN two PKIMessages protected with password-based MAC or PBMAC1 and the same salt.
+        WHEN `protection_algorithms_must_match` is called with same_salt=False,
+        THEN no exception is raised, because the parameters should stay constant (RFC 9483 Section 4.1.5).
+        """
+        for protection in ["password_based_mac", "pbmac1"]:
+            with self.subTest(protection=protection):
+                request = protect_pkimessage(
+                    self.pki_message, password=self.password, protection=protection, salt="0x1234567890"
+                )
+                response = protect_pkimessage(
+                    self.pki_message2, password=self.password, protection=protection, salt="0x1234567890"
+                )
+                response = utils_for_test.de_and_encode_pkimessage(response)
+                mac_protection_algorithms_must_match(request, response, same_salt=False)
+
     def test_different_protection_method(self):
         """
         GIVEN two PKIMessages protected with different MAC-protection methods.
