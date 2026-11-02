@@ -1599,6 +1599,7 @@ def validate_pkimessage_header(  # noqa D417 undocumented-param
           If `True`, ensures that protection is present. Defaults to `True`.
         - `time_interval`: The maximum allowable time difference (in seconds) between the `messageTime`
           field of the request and response. Defaults to `200`. If set to `None` is disabled.
+          The check is also skipped if the response has no `messageTime`.
         - `allow_failure_sender`: If `True`, logs a warning for sender mismatches instead of raising an error.
           Defaults to `True`.
 
@@ -1610,7 +1611,7 @@ def validate_pkimessage_header(  # noqa D417 undocumented-param
         - `ValueError`: The `GeneralInfo` field values (e.g., `implicitConfirm`, `confirmWaitTime`, `certProfile`) \
         do not conform
         to the standard. Wrong values, types or un-decode-able.
-        - `ValueError`: The `messageTime` field is missing although `confirmWaitTime` is set, or it exceeds the \
+        - `BadTime`: The `messageTime` field is missing although `confirmWaitTime` is set, or it exceeds the \
         allowed interval.
         - `ValueError`:`transactionID` and `senderNonce` in the response do not match those in the request.
         - `ValueError`: the recipientNonce is too small.
