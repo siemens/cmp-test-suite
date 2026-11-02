@@ -1607,7 +1607,7 @@ def mac_protection_algorithms_must_match(  # noqa D417 undocumented-param
     Examples:
     --------
     | MAC Protection Algorithms Must Match | ${pki_message} | ${resp_pki_message} |
-    | MAC Protection Algorithms Must Match | ${pki_message} | pkiconf=${pkiconf} |
+    | MAC Protection Algorithms Must Match | ${pki_message} | ${resp_pki_message} | same_salt=True |
     | MAC Protection Algorithms Must Match | ${pki_message} | ${resp_pki_message} | pkiconf=${pkiconf} |
 
     """
