@@ -74,8 +74,8 @@ CA MUST Reject Revocation Request Without Protection
 # TODO clarify failinfo because RR
 
 CA MUST Reject Revocation Request Without ExtraCerts
-    [Documentation]    According to RFC 9483 Sections 3 the `extraCerts` field is required for proper verification in
-    ...    a revocation requests. We send a revocation request omitting the `extraCerts` field. The CA MUST
+    [Documentation]    According to RFC 9483 Section 4.2, the `extraCerts` field is required for proper verification
+    ...    of a revocation request. We send a revocation request omitting the `extraCerts` field. The CA MUST
     ...    reject the request with an error message, as specified in Section 3.6.2, and may respond with the
     ...    failInfo `badMessageCheck` or `addInfoNotAvailable`.
     [Tags]    negative    protection   minimal
