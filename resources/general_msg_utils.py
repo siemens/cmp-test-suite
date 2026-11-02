@@ -317,14 +317,14 @@ def check_controls_for_cert_temp(
 ) -> None:
     """Validate the `Controls` structure inside the `pyasn1` `rfc9480.CertReqTemplateValue` structure.
 
-    According to the rfc9483 Section 4.3.3, the field is optional and contains one entry per supported
+    According to RFC 9483 Section 4.3.3, the field is optional and contains one entry per supported
     algorithm, either `id-regCtrl-algId` or `id-regCtrl-rsaKeyLen`. Every entry is checked.
 
     :param controls: The structure objects to validate.
     :param must_be_present: Whether the structure must be present or not. Defaults to `False`.
     :param rsa_length_min: The minimal key length expected for the RSA Algorithm. Defaults to `2048`.
-    :raises: ValueError If the `Controls` is missing, when required or Invalid RsaKeyLenCtrl decoding or value, or
-    invalid/unsupported algorithm in `AlgIdCtrl`, or an entry of another type.
+    :raises ValueError: If the field is missing when required or is empty. Also if an `RsaKeyLenCtrl` entry is
+    invalid or too short, an `AlgIdCtrl` entry is invalid or unsupported or an entry has another type.
     """
     if not controls.isValue:
         if must_be_present:
