@@ -74,7 +74,7 @@ CA Must Issue A Certificate When We Send A Valid P10cr Request
     ...    hash_alg=sha256
     ${response}=  Exchange PKIMessage    ${protected_p10cr}
     PKIMessage Body Type Must Be    ${response}    cp
-    PKIStatus Must Be    ${response}    accepted
+    PKIStatus Must Be    ${response}    accepted,grantedWithMods
     Validate Sender And Recipient Nonce    ${response}    ${protected_p10cr}
     ${cert}=    Get Cert From PKIMessage    ${response}
     Certificate Must Be Valid    ${cert}
@@ -809,7 +809,7 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmcRA
     IF    not ${ALLOW_CMP_EKU_EXTENSION}
         PKIStatusInfo Failinfo Bit Must Be    ${ca_response}     failinfo=notAuthorized
     ELSE
-        PKIStatus Must Be   ${ca_response}    status=accepted
+        PKIStatus Must Be   ${ca_response}    status=accepted,grantedWithMods
         ${cert}=    Get Cert From PKIMessage    ${ca_response}
         IF    not ${ALLOW_IMPLICIT_CONFIRM}
             ${cert_conf}=    Build Cert Conf From Resp
@@ -854,7 +854,7 @@ CA MAY Issue A Certificate With The Extended KeyUsage cmcCA
     IF    not ${ALLOW_CMP_EKU_EXTENSION}
         PKIStatusInfo Failinfo Bit Must Be    ${ca_response}     failinfo=notAuthorized
     ELSE
-        PKIStatus Must Be   ${ca_response}    status=accepted
+        PKIStatus Must Be   ${ca_response}    status=accepted,grantedWithMods
         ${cert}=    Get Cert From PKIMessage    ${ca_response}
         IF    not ${ALLOW_IMPLICIT_CONFIRM}
             ${cert_conf}=    Build Cert Conf From Resp
@@ -982,7 +982,7 @@ CA MIGHT Allow A Validity Request with Valid IR
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIStatus Must Be    ${response}    accepted
+    PKIStatus Must Be    ${response}    accepted,grantedWithMods
     Check For GrantedWithMods    ${response}    ${protected_ir}    include_fields=validity
 
 CA MIGHT Allow A Validity Request For 180 Days with Valid IR
@@ -1005,7 +1005,7 @@ CA MIGHT Allow A Validity Request For 180 Days with Valid IR
     ...    private_key=${ISSUED_KEY}
     ...    cert=${ISSUED_CERT}
     ${response}=    Exchange PKIMessage    ${protected_ir}
-    PKIStatus Must Be    ${response}    accepted
+    PKIStatus Must Be    ${response}    accepted,grantedWithMods
     Check For GrantedWithMods    ${response}    ${protected_ir}    include_fields=validity
 
 CA or RA MUST Reject Not Authorized Sender
@@ -1217,8 +1217,8 @@ Send New Key Update Request
     ...                First issues a new certificate for testing, then generates a new key and
     ...                builds a key update request with the new key. The request is protected with
     ...                the old key and the old certificate. The request is sent to the CA and
-    ...                the response is checked. The response must be a key update request with
-    ...                the status `accepted`.
+    ...                the response is checked. The response must be a key update response with
+    ...                the status `accepted` or `grantedWithMods`.
     ...
     ...                Returns:
     ...                -------
@@ -1233,5 +1233,5 @@ Send New Key Update Request
     ${prot_kur}=  Protect PKIMessage   ${kur}   signature   private_key=${old_key}   cert=${old_cert}
     ${response}=    Exchange PKIMessage    ${prot_kur}
     PKIMessage Body Type Must Be    ${response}    kup
-    PKIStatus Must Be    ${response}    accepted
+    PKIStatus Must Be    ${response}    accepted,grantedWithMods
     RETURN   ${response}   ${old_cert}   ${old_key}
