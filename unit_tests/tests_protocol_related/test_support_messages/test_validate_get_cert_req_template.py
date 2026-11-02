@@ -100,6 +100,17 @@ class TestValidateGetCertificateRequestTemplate(unittest.TestCase):
         with self.assertRaises(ValueError):
             check_controls_for_cert_temp(controls)
 
+    def test_empty_controls_structure(self):
+        """
+        GIVEN a present but empty Controls structure
+        WHEN `check_controls_for_cert_temp` is called
+        THEN a ValueError should be raised, because `Controls` must contain at least one entry.
+        """
+        controls, rest = decode(bytes.fromhex("3000"), rfc9480.Controls())
+        self.assertEqual(rest, b"")
+        with self.assertRaises(ValueError):
+            check_controls_for_cert_temp(controls)
+
     def test_invalid_alg_id_inside_controls_structure(self):
         """
         GIVEN a Controls structure containing an invalid algorithm identifier (RSA)
