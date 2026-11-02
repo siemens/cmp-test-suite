@@ -332,6 +332,10 @@ def check_controls_for_cert_temp(
         logging.info("No Requirements for the public key are available.")
         return
 
+    # `Controls` is SEQUENCE SIZE (1..MAX), but the decoder does not enforce the size.
+    if len(controls) == 0:
+        raise ValueError("The `keySpec` field is present but contains no entry.")
+
     for entry in controls:
         if entry["type"] == rfc9480.id_regCtrl_rsaKeyLen:
             val, rest = decoder.decode(entry["value"], asn1Spec=rfc9480.RsaKeyLenCtrl())
