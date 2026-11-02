@@ -796,7 +796,7 @@ def validate_current_crl(pki_message: PKIMessageTMP, expected_size: Strint = 1):
     """Validate the presence and structure of the `id-it-currentCRL` in a `PKIMessage`.
 
     Checks if the provided PKIMessage contains the 'id-it-currentCRL' value, as specified in
-    Rfc 9483, Section 4.3.4. It first verifies that the PKIMessage is a valid general response (`genp`) using
+    RFC 9483, Section 4.3.4. It first verifies that the PKIMessage is a valid general response (`genp`)
     and then it checks for the presence of the `id-it-currentCRL` OID in the response
     content. If found, it ensures that the `CurrentCRLValue` structure is valid.
 
