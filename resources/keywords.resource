@@ -1390,23 +1390,25 @@ PKIStatus Must Be
     ...     Arguments:
     ...     ---------
     ...     - `pki_message` (PKIMessage): The PKIMessage to be validated. Typically, this is the response from the CA/RA.
-    ...     - `failinfo` (str, int): The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
-    ...     - `exclusive` (bool): When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
+    ...     - `status` (str): The expected `PKIStatus` name, such as `accepted` or `rejection`. A comma-separated
+    ...     list such as `accepted,grantedWithMods` accepts any of the listed names.
     ...     - `index` (str, int): Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
     ...
     ...     Raises:
     ...     ------
     ...     - `ValueError`: If the `pki_message` does not contain a `PKIStatusInfo` object.
-    ...     - `ValueError`: If the `PKIStatus` does not match the expected value.
+    ...     - `AssertionError`: If the `PKIStatus` does not match the expected value.
     ...
     ...     Examples:
     ...     --------
     ...     | PKIStatus Must Be | ${pki_message} | accepted |
-    ...     | PKIStatus Must Be | ${pki_message} | rejected | 1
+    ...     | PKIStatus Must Be | ${pki_message} | accepted,grantedWithMods |
+    ...     | PKIStatus Must Be | ${pki_message} | rejection | index=1 |
     ...
     [Arguments]    ${pki_message}  ${status}   ${index}=0
     ${pki_status}=    Get Status From PKIMessage      ${pki_message}    ${index}
-    IF  not '${pki_status}' == '${status}'
+    @{allowed}=    Split String    ${status}    ,
+    IF  $pki_status not in [value.strip() for value in $allowed]
         ${pki_status_info}=   Display PKIStatusInfo    ${pki_message}    ${index}   # robocop: off=VAR02
         Fail   The PKIStatus is not as expected. Expected: `${status}`, Got: `${pki_status}`
     END
