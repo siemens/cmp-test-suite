@@ -7,8 +7,8 @@ import unittest
 from pyasn1.codec.der.decoder import decode
 from pyasn1.codec.der.encoder import encode
 from pyasn1_alt_modules import rfc4211, rfc5280
-from resources.certbuildutils import generate_certificate
-from resources.cmputils import prepare_controls_structure
+from resources.certbuildutils import build_certificate, generate_certificate
+from resources.cmputils import prepare_controls_structure, prepare_old_cert_id_control
 from resources.keyutils import generate_key
 from resources.utils import get_openssl_name_notation
 
@@ -50,6 +50,31 @@ class TestPrepareStructure(unittest.TestCase):
         encoded_data = encode(controls_structure)
         decoded_controls, rest = decode(encoded_data, asn1Spec=rfc4211.Controls())
         self.assertEqual(rest, b"")
+
+    def test_old_cert_id_keeps_multi_rdn_issuer(self):
+        """
+        GIVEN a certificate whose issuer has several RDNs
+        WHEN prepare_old_cert_id_control is called with the certificate,
+        THEN the issuer of the `OldCertId` must be DER-identical to the issuer of the certificate.
+        """
+        cert, _ = build_certificate(common_name="CN=Test CA,O=Test Org,C=DE")
+        control = prepare_old_cert_id_control(cert=cert)
+        self.assertEqual(
+            encode(control["value"]["issuer"]["directoryName"]["rdnSequence"]),
+            encode(cert["tbsCertificate"]["issuer"]["rdnSequence"]),
+        )
+
+    def test_old_cert_id_does_not_share_issuer_with_cert(self):
+        """
+        GIVEN a certificate
+        WHEN prepare_old_cert_id_control is called with the certificate and the issuer of the control is changed,
+        THEN the issuer of the certificate must stay unchanged.
+        """
+        cert, _ = build_certificate(common_name="CN=Test CA,O=Test Org,C=DE")
+        issuer_der = encode(cert["tbsCertificate"]["issuer"]["rdnSequence"])
+        control = prepare_old_cert_id_control(cert=cert)
+        control["value"]["issuer"]["directoryName"]["rdnSequence"].clear()
+        self.assertEqual(encode(cert["tbsCertificate"]["issuer"]["rdnSequence"]), issuer_der)
 
 
 if __name__ == "__main__":

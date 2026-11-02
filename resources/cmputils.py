@@ -40,6 +40,7 @@ from resources import (
     certextractutils,
     certutils,
     convertutils,
+    copyasn1utils,
     cryptoutils,
     envdatautils,
     keyutils,
@@ -562,12 +563,6 @@ def prepare_old_cert_id_control(
     if inc_serial_number:
         ser_num += 1
 
-    if cert is not None:
-        cert_issuer = utils.get_openssl_name_notation(cert["tbsCertificate"]["issuer"])  # type: ignore
-        cert_issuer: Optional[str]
-    else:
-        cert_issuer = None
-
     if bad_issuer and cert is None:
         raise ValueError("A valid certificate must be provided when `bad_issuer` is True.")
 
@@ -577,15 +572,19 @@ def prepare_old_cert_id_control(
             issuer=True,
         )
 
-    if issuer is None and cert_issuer is None:
+    if not issuer and cert is None:
         raise ValueError("Either a valid certificate or an issuer must be provided.")
 
-    _issuer_name = issuer or cert_issuer  # type: ignore
-    _issuer_name: str
-    issuer_name = prepareutils.prepare_general_name(
-        name_type="directoryName",
-        name_str=_issuer_name,
-    )
+    if issuer:
+        issuer_name = prepareutils.prepare_general_name(
+            name_type="directoryName",
+            name_str=issuer,
+        )
+    else:
+        # Copy the `Name` object. A round trip through text reverses the RDN order (RFC 4514 Section 2.1),
+        # so the control would no longer identify the certificate.
+        cert_issuer = copyasn1utils.copy_name(target=rfc9480.Name(), filled_name=cert["tbsCertificate"]["issuer"])  # type: ignore
+        issuer_name = prepareutils.prepare_general_name_from_name(cert_issuer)
 
     old_cert_id = rfc4211.OldCertId()
     old_cert_id["issuer"] = issuer_name
