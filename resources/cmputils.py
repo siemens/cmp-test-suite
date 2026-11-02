@@ -2308,7 +2308,7 @@ def build_key_update_request(  # noqa D417 undocumented-param
     | ${pki_message}= | Build Key Update Request | ${new_key} | ${cert} | hash_alg=sha512 | implicit_confirm=True |
 
     """
-    # RFC 9483 Section 4.1.3: the subject MUST be the one of the certificate to be updated.
+    # With a certificate, the template takes its subject (RFC 9483 Section 4.1.3).
     if common_name is None and cert is None:
         common_name = "CN=Hans Mustermann"
 
