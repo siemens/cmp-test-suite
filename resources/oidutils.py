@@ -447,7 +447,7 @@ ECMQV_NAME_2_OID = {y: x for x, y in ECMQV.items()}
 KM_KA_ALG.update(ECMQV)
 KM_KA_ALG_NAME_2_OID = {y: x for x, y in KM_KA_ALG.items()}
 
-KM_KD_ALG = {rfc9481.id_PBKDF2: "pbkdf2"}  # As per Section 4.4 in RFC 9481
+KM_KD_ALG: Dict[univ.ObjectIdentifier, str] = {rfc9481.id_PBKDF2: "pbkdf2"}  # As per Section 4.4 in RFC 9481
 KM_KW_ALG = {
     rfc9481.id_aes128_wrap: "aes128_wrap",
     rfc9481.id_aes192_wrap: "aes192_wrap",
@@ -469,6 +469,7 @@ ALL_KNOWN_OIDS_2_NAME = {}
 ALL_KNOWN_OIDS_2_NAME.update({rfc6664.id_ecPublicKey: "ecPublicKey"})
 ALL_KNOWN_OIDS_2_NAME.update(RFC9481_OID_2_NAME)
 ALL_KNOWN_OIDS_2_NAME.update(HMAC_NAME_2_OID)
+ALL_KNOWN_OIDS_2_NAME.update(OID_HASH_MAP)
 
 
 ###########################
@@ -490,7 +491,7 @@ HKDF_NAME_2_OID = {
 HKDF_OID_2_NAME = {v: k for k, v in HKDF_NAME_2_OID.items()}
 
 
-KDF_OID_2_NAME = {}
+KDF_OID_2_NAME: Dict[univ.ObjectIdentifier, str] = {}
 KDF_OID_2_NAME.update(KM_KD_ALG)
 KDF_OID_2_NAME.update(HKDF_OID_2_NAME)
 KDF_OID_2_NAME.update({rfc9690.id_kdf_kdf3: "kdf3", rfc9690.id_kdf_kdf2: "kdf2"})

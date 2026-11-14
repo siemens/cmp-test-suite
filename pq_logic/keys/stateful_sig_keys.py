@@ -20,6 +20,7 @@ from cryptography.exceptions import InvalidSignature
 from pyhsslms.pyhsslms import LenI
 from pyhsslms.pyhsslms import lmots_params as PYHSSLMS_LMOTS_PARAMS
 from pyhsslms.pyhsslms import lms_params as PYHSSLMS_LMS_PARAMS
+from robot.api.deco import not_keyword
 
 from pq_logic.keys.abstract_stateful_hash_sig import PQHashStatefulSigPrivateKey, PQHashStatefulSigPublicKey
 from resources.exceptions import InvalidKeyData
@@ -284,6 +285,7 @@ def _compute_hss_signature_length(details: Dict[str, int], levels: int) -> int:
     return 4 + max(levels - 1, 0) * (per_sig + per_pub) + per_sig
 
 
+@not_keyword
 def compute_hss_signature_index(signature: bytes, key: Union["HSSPrivateKey", "HSSPublicKey"]) -> int:
     """Return the global HSS signature index and the encoded depth."""
     # TODO fix, if needed for different LMS and LMOTS key types.
@@ -507,6 +509,12 @@ class XMSSPublicKey(PQHashStatefulSigPublicKey):
                 return "shake256"
             return "shake128"
         return XMSS_ALG_DETAILS[self.name.lower()]["hash_alg"]
+
+    @property
+    def key_bit_security(self) -> int:
+        """Return the traditional bit security of the XMSS public key."""
+        # Approximate bit security based on the hash output size
+        return int(self.name.split("_")[-1]) // 2
 
 
 class XMSSPrivateKey(PQHashStatefulSigPrivateKey):
@@ -771,6 +779,12 @@ class XMSSMTPublicKey(PQHashStatefulSigPublicKey):
     def hash_alg(self) -> str:
         """Return the hash algorithm used by this XMSSMT public key."""
         return XMSSMT_ALG_DETAILS[self.name.lower()]["hash_alg"]
+
+    @property
+    def key_bit_security(self) -> int:
+        """Return the pq bit security of the XMSSMT public key."""
+        # Approximate bit security based on the hash output size
+        return XMSSMT_ALG_DETAILS[self.name.lower()]["n"] * 4
 
 
 class XMSSMTPrivateKey(PQHashStatefulSigPrivateKey):
@@ -1084,6 +1098,15 @@ class HSSPublicKey(PQHashStatefulSigPublicKey):
         num_levels = self.levels
         levels = [(lms_name, lmots_name)] * num_levels
         return levels
+
+    @property
+    def key_bit_security(self) -> int:
+        """Return the key bit security of this HSS key."""
+        # TODO fix for multiple levels with different parameters.
+        n = self._details["n"]
+        if n == 24:
+            return 96
+        return 128
 
 
 class HSSPrivateKey(PQHashStatefulSigPrivateKey):
