@@ -969,7 +969,7 @@ CA MIGHT Allow A Validity Request with Valid IR
     ...    policy.
     [Tags]    certTemplate    policy-dependent    positive    validity
     ${key}=    Generate Default Key
-    ${not_before}=    Get Current Date
+    ${not_before}=    Get Current Date    UTC
     ${cm}=    Get Next Common Name
     ${not_after}=    Add Time To Date    ${not_before}    1000 days
     ${validity}=    Prepare Validity    not_before=${not_before}    not_after=${not_after}
@@ -993,7 +993,7 @@ CA MIGHT Allow A Validity Request For 180 Days with Valid IR
     ...    to comply with the policy.
     [Tags]    certTemplate    policy-dependent    positive    validity
     ${key}=    Generate Default Key
-    ${not_before}=    Get Current Date
+    ${not_before}=    Get Current Date    UTC
     ${cm}=    Get Next Common Name
     ${not_after}=    Add Time To Date    ${not_before}    180 days
     ${validity}=    Prepare Validity    not_before=${not_before}    not_after=${not_after}
