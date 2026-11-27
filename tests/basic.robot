@@ -157,7 +157,7 @@ CA MUST Issue A Valid Certificate Upon Receiving A Valid MAC-Protected CR
         ${cert}=    Get Cert From PKIMessage    ${response}
         Certificate Must Be Valid    ${cert}
     ELSE
-        ${result}=    Find OID In GeneralInfo    ${pki_message}    1.3.6.1.5.5.7.4.13
+        ${result}=    Find OID In GeneralInfo    ${response}    1.3.6.1.5.5.7.4.13
         Should Be True    not ${result}
     END
 
