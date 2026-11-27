@@ -14,7 +14,7 @@ from unit_tests.utils_for_test import (
     build_pkimessage,
     compare_pyasn1_objects,
     load_or_generate_cert_chain,
-    print_chain_subject_and_issuer,
+    pretty_print_chain_subject_and_issuer,
 )
 
 
@@ -67,7 +67,7 @@ class TestCheckIfChainInOrder(unittest.TestCase):
         pki_message = build_ca_pki_message(body_type="ip", cert=self.cert_chain[0], ca_pubs=[self.root_cert])
         pki_message["extraCerts"] = extra_certs
         cert_chain = build_cmp_chain_from_pkimessage(pki_message, for_issued_cert=True, cert_number=0)
-        print_chain_subject_and_issuer(cert_chain)
+        print(pretty_print_chain_subject_and_issuer(cert_chain))
         self.assertEqual(len(cert_chain), 6)
         self.assertTrue(compare_pyasn1_objects(cert_chain[0], self.cert_chain[0]))
         self.assertTrue(compare_pyasn1_objects(cert_chain[-1], self.root_cert))
