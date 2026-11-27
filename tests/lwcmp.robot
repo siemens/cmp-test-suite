@@ -992,10 +992,10 @@ CA MUST Reject IR With Valid Proof-of-Possession And raVerified From EE
 # TODO verify FailInfo!
 
 CA MUST Reject IR With Invalid CertReqId
-    [Documentation]    According to RFC 9483, Section 4.1.3, the `certReqId` field in an initialization request (ir)
+    [Documentation]    According to RFC 9483, Section 4.1.1, the `certReqId` field in an initialization request (ir)
     ...    must be set to 0 to indicate a valid request. We send an IR with an invalid `certReqId`
     ...    value of -1, expecting the CA to reject the request. The CA should respond with a failinfo code
-    ...    of `badDataFormat` or `badRequest` to signal the invalid format or content of the `certReqId`.
+    ...    of `badRequest` to signal the invalid content of the `certReqId`.
     [Tags]    certReqID    ir    negative  minimal
     ${cm}=    Get Next Common Name
     ${new_key}=    Generate Default Key
