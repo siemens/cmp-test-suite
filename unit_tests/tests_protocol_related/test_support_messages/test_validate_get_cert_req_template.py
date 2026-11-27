@@ -99,6 +99,25 @@ class TestValidateGetCertificateRequestTemplate(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_get_certificate_request_template(genp, must_be_present=True, control_presents=True)
 
+    def test_absent_info_value(self):
+        """
+        GIVEN a `genp` with the `id-it-certReqTemplate` OID and an absent `infoValue`
+        WHEN `validate_get_certificate_request_template` is called with the default `must_be_present=False`
+        THEN no errors should be raised, because the CA has no requirements to announce.
+        """
+        genp = build_genp_cert_req_template_content(None)
+        validate_get_certificate_request_template(genp)
+
+    def test_absent_info_value_must_be_present(self):
+        """
+        GIVEN a `genp` with the `id-it-certReqTemplate` OID and an absent `infoValue`
+        WHEN `validate_get_certificate_request_template` is called with `must_be_present=True`
+        THEN a ValueError should be raised.
+        """
+        genp = build_genp_cert_req_template_content(None)
+        with self.assertRaises(ValueError):
+            validate_get_certificate_request_template(genp, must_be_present=True)
+
     def test_invalid_ec_curve_in_controls(self):
         """
         GIVEN a Controls structure with an EC algorithm identifier and an invalid curve
