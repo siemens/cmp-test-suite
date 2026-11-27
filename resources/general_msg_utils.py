@@ -122,12 +122,6 @@ def validate_get_ca_certs(  # noqa D417 undocumented-param
     """
     validate_general_response(pki_message, expected_size=expected_size)
     genp_content: rfc9480.GenRepContent = pki_message["body"][pki_message["body"].getName()]
-    if len(genp_content) != expected_size:
-        logging.info("General Response: \n%s", genp_content.prettyPrint())
-
-        logging.info("Expected to get exactly one Response message but got: %s", len(genp_content))
-        return None
-
     value = cmputils.get_value_from_seq_of_info_value_field(genp_content, oid=rfc9480.id_it_caCerts)
     if value is None:
         logging.info("General Response: \n%s", genp_content.prettyPrint())
@@ -861,6 +855,10 @@ def validate_general_response(  # noqa D417 undocumented-param
     genp_content: rfc9480.GenRepContent = pki_message["body"][body_name]
     if len(genp_content) != int(expected_size):
         logging.info("General Response: \n%s", genp_content.prettyPrint())
+        raise ValueError(
+            f"Expected the general response to contain {expected_size} `InfoTypeAndValue` element(s), "
+            f"but got {len(genp_content)}."
+        )
 
 
 # TODO maybe change to MUST prepare crl_update_retrieval by the user before hand.
