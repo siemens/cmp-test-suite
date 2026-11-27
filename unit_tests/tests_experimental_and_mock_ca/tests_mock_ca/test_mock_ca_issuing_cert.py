@@ -90,6 +90,48 @@ class TestMockCAIssuing(unittest.TestCase):
         response = self.ca_handler.process_normal_request(prot_cert_conf)
         self.assertEqual(response["body"].getName(), "pkiconf")
 
+    def test_cert_conf_rejects_missing_and_unknown_transaction_ids(self) -> None:
+        """GIVEN an enrollment awaiting explicit confirmation.
+
+        WHEN a protected certConf omits the transactionID or supplies an unknown one.
+        THEN the Mock CA rejects with badDataFormat for omission and badRequest for an unknown ID.
+        """
+        sender = "CN=Certificate Confirmation Transaction Test"
+        password = self.ca_handler.pre_shared_secret
+        ir = build_ir_from_key(
+            generate_key("ecc"), common_name=sender, sender=sender, implicit_confirm=False, for_mac=True
+        )
+        ir = protect_pkimessage(ir, "pbmac1", password=password)
+        response = self.ca_handler.process_normal_request(parse_pkimessage(try_encode_pyasn1(ir)))
+        self.assertEqual(response["body"].getName(), "ip")
+        self.assertEqual(get_pkistatusinfo(response)["status"].prettyPrint(), "accepted")
+        cert = get_cert_from_pkimessage(response)
+        transaction_id = response["header"]["transactionID"].asOctets()
+        unknown_id = bytes([transaction_id[0] ^ 1]) + transaction_id[1:]
+
+        # RFC 9483 Section 3.5: "The transactionID MUST be present. (failInfo bit: badDataFormat)"
+        for requested_id, failinfo in ((None, "badDataFormat"), (unknown_id, "badRequest")):
+            with self.subTest(failinfo=failinfo):
+                cert_conf = build_cert_conf_from_resp(
+                    response,
+                    cert=cert,
+                    sender=sender,
+                    recipient="CN=Mock CA",
+                    for_mac=True,
+                    pvno=3,
+                    hash_alg="sha256",
+                    transaction_id=requested_id,
+                    exclude_fields="transactionID" if requested_id is None else None,
+                )
+                cert_conf = protect_pkimessage(cert_conf, "pbmac1", password=password)
+                request = parse_pkimessage(try_encode_pyasn1(cert_conf))
+                self.assertEqual(request["header"]["transactionID"].isValue, requested_id is not None)
+                error = self.ca_handler.process_normal_request(request)
+                self.assertEqual(error["body"].getName(), "error")
+                status = get_pkistatusinfo(error)
+                self.assertEqual(status["status"].prettyPrint(), "rejection")
+                self.assertTrue(is_bit_set(status["failInfo"], failinfo, exclusive=True), status.prettyPrint())
+
     def test_issue_cert_without_implicit_confirm_no_announcement(self):
         """
         GIVEN a certificate request without implicit confirmation,

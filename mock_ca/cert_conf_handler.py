@@ -81,7 +81,7 @@ class CertConfState:
     def is_confirmed(self, pki_message: PKIMessageTMP) -> None:
         """Check if the certificates are already confirmed."""
         if not pki_message["header"]["transactionID"].isValue:
-            raise BadRequest("The transaction ID is not set.")
+            raise BadDataFormat("The transaction ID is not set.")
 
         tx_id = pki_message["header"]["transactionID"].asOctets()
 
