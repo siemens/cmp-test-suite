@@ -5199,7 +5199,7 @@ def verify_statusstring(  # noqa D417 undocumented-param
           must contain all of these phrases for the check to pass. Defaults to `None`.
         - `index`: The index of the `statusString` to be verified. Can be either a string or integer. Defaults to `0`.
         - `must_be_present`: If `True`, the `PKIFreeText` must be present inside the `PKIStatusInfo`. \
-        Defaults to `False`.
+        If `False` and the field is absent, the text checks are skipped. Defaults to `False`.
 
     Raises:
     ------
@@ -5218,6 +5218,9 @@ def verify_statusstring(  # noqa D417 undocumented-param
     if not pki_free_text.isValue:
         if must_be_present:
             raise ValueError("The `statusString` field is not present in the `PKIStatusInfo`.")
+        # The field is OPTIONAL (RFC 9483 Sections 3.6.4 and 4.2), so there is no text to check.
+        logging.info("The `statusString` field is not present, so the text checks are skipped.")
+        return
 
     status_text = pki_free_text[int(index)]
 

@@ -69,6 +69,25 @@ class TestVerifyStatusText(unittest.TestCase):
                 self.pki_message, any_text="random,missing", all_text="status,text", must_be_present=True
             )
 
+    def test_absent_status_text_not_required(self):
+        """
+        GIVEN a `PKIMessage` without a status text
+        WHEN verify_statusstring is called with any_text and all_text and must_be_present set to False
+        THEN the verification should pass, as the status text is optional.
+        """
+        pki_message = build_cmp_error_message(texts=None)
+        verify_statusstring(pki_message, any_text="revoked,Revoked", all_text="status", must_be_present=False)
+
+    def test_absent_status_text_required(self):
+        """
+        GIVEN a `PKIMessage` without a status text
+        WHEN verify_statusstring is called with must_be_present set to True
+        THEN the verification should fail, raising a ValueError.
+        """
+        pki_message = build_cmp_error_message(texts=None)
+        with self.assertRaises(ValueError):
+            verify_statusstring(pki_message, any_text="revoked,Revoked", must_be_present=True)
+
 
 if __name__ == "__main__":
     unittest.main()
