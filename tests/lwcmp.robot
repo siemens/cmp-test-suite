@@ -401,14 +401,17 @@ CA MUST Reject PKIMessage If transactionId Is Already In Use
     ...    to process the first request successfully and reject the second as a duplicate.
     [Tags]    negative    rfc9483-header    transactionId  minimal
     ${csr}    ${key}=    Generate CSR For Testing
+    # Without implicit confirmation the first transaction stays open until certConf, so its
+    # `transactionID` is still in use. A fresh random ID avoids clashes with earlier runs.
     ${ir}=    Build Ir From CSR
     ...    ${csr}
     ...    ${key}
     ...    exclude_fields=transactionID,sender,senderKID
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ...    implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${ir}=    Patch TransactionID    ${ir}    0x01234567890123456789012345678910
+    ...    implicit_confirm=${False}
+    ${ir}=    Patch TransactionID    ${ir}
+    ${tx_id}=    Get Asn1 Value As Bytes    ${ir}    header.transactionID
     ${ir}=    Protect PKIMessage
     ...    pki_message=${ir}
     ...    protection=signature
@@ -421,7 +424,7 @@ CA MUST Reject PKIMessage If transactionId Is Already In Use
     ...    exclude_fields=transactionID,sender,senderKID
     ...    sender=${SENDER}
     ...    recipient=${RECIPIENT}
-    ${patched_ir2}=    Patch TransactionID    ${ir2}    0x01234567890123456789012345678910
+    ${patched_ir2}=    Patch TransactionID    ${ir2}    ${tx_id}
     ${protected_ir2}=    Protect PKIMessage
     ...    pki_message=${patched_ir2}
     ...    protection=signature
