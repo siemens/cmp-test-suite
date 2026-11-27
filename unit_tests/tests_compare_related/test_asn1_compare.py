@@ -42,6 +42,34 @@ class TestASN1Utils(unittest.TestCase):
         self.assertTrue(is_bit_set(bitstring, "1", exclusive=False), msg="Should is bit set should not return True")
         self.assertFalse(is_bit_set(bitstring, "1,9", exclusive=True), msg="Should is bit set should not return True")
 
+    def test_is_bit_set_names_in_any_order(self):
+        """
+        GIVEN a failInfo with badRequest and badDataFormat set
+        WHEN is_bit_set is called with both names in either order
+        THEN the result should not depend on the order of the names.
+        """
+        failinfo = rfc9480.PKIFailureInfo("badRequest,badDataFormat")
+        for names in ["badRequest,badDataFormat", "badDataFormat,badRequest"]:
+            for exclusive in [True, False]:
+                with self.subTest(names=names, exclusive=exclusive):
+                    self.assertTrue(is_bit_set(failinfo, names, exclusive=exclusive))
+
+    def test_is_bit_set_names_exclusive_mismatch(self):
+        """
+        GIVEN a failInfo with badRequest and badDataFormat set
+        WHEN is_bit_set is called with exclusive=True and names that differ from the set bits
+        THEN the result should be False in either order.
+        """
+        failinfo = rfc9480.PKIFailureInfo("badRequest,badDataFormat")
+        for names in [
+            "badRequest",
+            "badDataFormat,badAlg",
+            "badRequest,badDataFormat,badAlg",
+            "badAlg,badDataFormat,badRequest",
+        ]:
+            with self.subTest(names=names):
+                self.assertFalse(is_bit_set(failinfo, names, exclusive=True))
+
     def test_compare_named_int(self):
         """
         GIVEN an `pyasn` object which has named integer values
