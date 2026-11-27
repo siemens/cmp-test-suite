@@ -4,6 +4,9 @@
 
 import unittest
 
+from pyasn1.codec.der import decoder, encoder
+from pyasn1.type import univ
+from pyasn1_alt_modules import rfc9480
 from resources.cmputils import build_cmp_error_message
 from resources.protectionutils import mac_protection_algorithms_must_match, protect_pkimessage
 
@@ -91,6 +94,46 @@ class TestMACProtectionAlgorithmsMustMatch(unittest.TestCase):
         response = utils_for_test.de_and_encode_pkimessage(response)
         with self.assertRaises(ValueError):
             mac_protection_algorithms_must_match(request, response)
+
+    def _protect_with_absent_owf_params(self, pki_message):
+        """Protect a message with password-based MAC and remove the NULL `owf` parameters of its `PBMParameter`."""
+        protected = protect_pkimessage(
+            pki_message, password=self.password, protection=self.protection, salt="0x1234567890"
+        )
+        protected = utils_for_test.de_and_encode_pkimessage(protected)
+        prot_alg = protected["header"]["protectionAlg"]
+        pbm_params, _ = decoder.decode(prot_alg["parameters"].asOctets(), asn1Spec=rfc9480.PBMParameter())
+        self.assertEqual(encoder.encode(pbm_params["owf"]["parameters"]), encoder.encode(univ.Null("")))
+        owf = rfc9480.AlgorithmIdentifier()
+        owf["algorithm"] = pbm_params["owf"]["algorithm"]
+        pbm_params["owf"] = owf
+        prot_alg["parameters"] = univ.Any(encoder.encode(pbm_params))
+        return utils_for_test.de_and_encode_pkimessage(protected)
+
+    def test_absent_owf_parameters_allowed(self):
+        """
+        GIVEN a request with NULL `owf` parameters and a response with absent `owf` parameters.
+        WHEN `protection_algorithms_must_match` is called with allow_null=True,
+        THEN no exception is raised, because NULL and absent parameters are equivalent (RFC 4055 Section 2.1).
+        """
+        request = protect_pkimessage(
+            self.pki_message, password=self.password, protection=self.protection, salt="0x1234567890"
+        )
+        response = self._protect_with_absent_owf_params(self.pki_message2)
+        mac_protection_algorithms_must_match(request, response, same_salt=True, allow_null=True)
+
+    def test_absent_owf_parameters_not_allowed(self):
+        """
+        GIVEN a request with NULL `owf` parameters and a response with absent `owf` parameters.
+        WHEN `protection_algorithms_must_match` is called with allow_null=False,
+        THEN a `ValueError` is raised.
+        """
+        request = protect_pkimessage(
+            self.pki_message, password=self.password, protection=self.protection, salt="0x1234567890"
+        )
+        response = self._protect_with_absent_owf_params(self.pki_message2)
+        with self.assertRaises(ValueError):
+            mac_protection_algorithms_must_match(request, response, same_salt=True, allow_null=False)
 
 
 if __name__ == "__main__":
