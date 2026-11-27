@@ -1350,21 +1350,22 @@ PKIStatusInfo failinfo Bit Must Be
     ...
     ...    Notes:
     ...    -----
-    ...    - If the `failinfo` bit(s) are invalid logs the `PKIStatusInfo` in a human-readable format.
+    ...    - If the `failinfo` bit(s) are not set correctly, logs the `PKIStatusInfo` in a human-readable format.
+    ...    - An absent `failInfo` field counts as no bit set.
     ...    - If `FAILINFO_MUST_BE_CORRECT` is `True`, the keyword will fail if the `failinfo` bit is not set correctly.
-    ...    - If `FAILINFO_MUST_BE_CORRECT` is `False`, the keyword will log a warning instead of failing.
+    ...    - If `FAILINFO_MUST_BE_CORRECT` is `False`, the keyword logs the mismatch instead of failing.
     ...
     ...    Arguments:
     ...    ---------
     ...    - `pki_message` (PKIMessage): The PKIMessage to be validated. Typically, this is the response from the CA/RA.
     ...    - `failinfo` (str, int): The expected `failinfo` bit(s) that must be set in the `PKIStatusInfo` field.
-    ...    - `exclusive` (bool): When `True`, ensures that no other failinfo bits are set. Defaults to `True`.
+    ...    - `exclusive` (bool): When `True`, ensures that no other failinfo bits are set. Defaults to `False`.
     ...    - `index` (str, int): Specifies which `PKIStatusInfo` to validate if the message contains multiple. Defaults to `0`.
     ...
     ...    Raises:
     ...    ------
     ...    - `ValueError`: If the `pki_message` does not contain a `PKIStatusInfo` object.
-    ...    - `ValueError`: If the `failinfo` bit is not set correctly.
+    ...    - `AssertionError`: If the `failinfo` bit is not set correctly and `FAILINFO_MUST_BE_CORRECT` is `True`.
     ...
     ...    Examples:
     ...    --------
@@ -1373,7 +1374,11 @@ PKIStatusInfo failinfo Bit Must Be
     ...
     [Arguments]    ${pki_message}    ${failinfo}    ${exclusive}=False    ${index}=0
     ${status}=    Get PKIStatusInfo    ${pki_message}    ${index}
-    ${result}=    Is Bit Set    ${status["failInfo"]}    ${failinfo}    ${exclusive}
+    # The failInfo field is optional (RFC 9483 Section 3.6.4). If it is absent, no bit is set.
+    VAR    ${result}=    ${False}
+    IF    $status["failInfo"].isValue
+        ${result}=    Is Bit Set    ${status["failInfo"]}    ${failinfo}    ${exclusive}
+    END
     IF    not ${result}
         IF    ${FAILINFO_MUST_BE_CORRECT}
             ${_}=   Display PKIStatusInfo   ${status}
