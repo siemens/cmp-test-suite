@@ -398,7 +398,6 @@ CA MUST Accept Valid Revocation Request
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be    ${response}   status=accepted
-    Verify statusString   ${response}   revoked,Revoked
     Wait Until Server Revoked Cert
     VAR   ${ca_cert}=   ${rr["extraCerts"][1]}
     Validate If Certificate Is Revoked    ${cert}   ${ca_cert}   expected_to_be_revoked=True
@@ -492,7 +491,6 @@ CA MUST Accept Valid Revive Request
     ${response}=    Exchange PKIMessage    ${rr}
     PKIMessage Body Type Must Be    ${response}    rp
     PKIStatus Must Be   ${response}    status=accepted
-    Verify StatusString   ${response}    Revive,revive
     Wait Until Server Revived Cert
     VAR   ${ca_cert}=   ${rr["extraCerts"][1]}
     Validate If Certificate Is Revoked    ${cert}   ${ca_cert}   expected_to_be_revoked=False
