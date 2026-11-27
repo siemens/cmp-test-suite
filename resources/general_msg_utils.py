@@ -376,7 +376,8 @@ def _validate_id_reg_ctrl_alg_id(value: bytes) -> None:
         raise ValueError("The decoding of `AlgIdCtrl` structure had a remainder!")
 
     if alg_id["algorithm"] in {rfc9481.id_Ed448, rfc9481.id_Ed25519}:
-        if not alg_id["parameters"].isValue:
+        # RFC 8410 Section 3: the parameters MUST be absent.
+        if alg_id["parameters"].isValue:
             raise ValueError("The parameters field for `Ed448` and `Ed25519` must be absent.")
 
     elif alg_id["algorithm"] == rfc9481.rsaEncryption:
