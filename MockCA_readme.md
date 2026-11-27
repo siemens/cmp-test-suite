@@ -179,7 +179,7 @@ ${CA_CMP_URL}    http://127.0.0.1:${PORT}/issuing
 
 All CMP requests are sent to `${CA_CMP_URL}` (default `/issuing`).
 Specialized endpoints used by certain tests are configured via the suffix variables in
-`config/mock_ca.resource` (for example `${SUN_HYBRID_SUFFIX}`, `${CHAMELEON_SUFFIX}`, `${CATALYST_ISSUING}`).
+`config/mock_ca.resource` (for example `${CHAMELEON_SUFFIX}`, `${CATALYST_ISSUING}`).
 
 ### Start the CA
 
@@ -253,8 +253,6 @@ The server listens on `127.0.0.1:5000` by default and exposes the following rout
   – Handle standard CMP requests and return a `PKIMessage` with the issued certificate or an error.
 - **`/chameleon`** (`POST`)
   – Processes requests for chameleon certificates.
-- **`/sun-hybrid`** (`POST`)
-  – Issues Sun‑Hybrid certificates using PQ and traditional keys.
 - **`/multi-auth`** (`POST`)
   – Validate hybrid-protected requests using multiple certificates.
 - **`/cert-discovery`** (`POST`)
@@ -271,10 +269,6 @@ The server listens on `127.0.0.1:5000` by default and exposes the following rout
   – Returns the current certificate revocation list.
 - **`/cert/<serial_number>`** (`GET`)
   – Retrieves the certificate with the specified serial number.
-- **`/pubkey/<serial_number>`** (`GET`)
-  – Returns the public key for the given certificate.
-- **`/sig/<serial_number>`** (`GET`)
-  – Returns the alternative signature for the specified Sun‑Hybrid certificate.
 
 ## Example Usage
 

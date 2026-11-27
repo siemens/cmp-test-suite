@@ -15,7 +15,7 @@ mechanisms to issue a certificate.
 
 """
 
-from typing import Any, Optional, Sequence, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
@@ -29,17 +29,15 @@ from pq_logic.hybrid_sig import (
     cert_binding_for_multi_auth,
     certdiscovery,
     chameleon_logic,
-    sun_lamps_hybrid_scheme_00,
 )
 from pq_logic.hybrid_sig.certdiscovery import prepare_subject_info_access_syntax_extension
 from pq_logic.hybrid_structures import AltSignatureValueExt
 from pq_logic.keys.abstract_pq import PQKEMPrivateKey, PQKEMPublicKey, PQSignaturePrivateKey, PQSignaturePublicKey
-from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, HybridKEMPublicKey, KEMPublicKey
-from pq_logic.keys.composite_sig import CompositeSigPrivateKey, CompositeSigPublicKey
+from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey, KEMPublicKey
+from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.keys.sig_keys import MLDSAPrivateKey
 from pq_logic.tmp_oids import (
     COMPOSITE_SIG_OID_TO_NAME,
-    id_altSignatureExt,
     id_ce_deltaCertificateDescriptor,
     id_relatedCert,
 )
@@ -88,129 +86,6 @@ from resources.typingutils import (
     TradSignKey,
     TradVerifyKey,
 )
-
-
-def build_sun_hybrid_cert_from_request(  # noqa: D417 Missing argument descriptions in the docstring
-    request: PKIMessageTMP,
-    ca_key: CompositeSigPrivateKey,
-    pub_key_loc: str,
-    sig_loc: str,
-    serial_number: Optional[int] = None,
-    ca_cert: Optional[rfc9480.CMPCertificate] = None,
-    cert_chain: Optional[Sequence[rfc9480.CMPCertificate]] = None,
-    cert_index: Optional[int] = None,
-    **kwargs,
-) -> Tuple[PKIMessageTMP, rfc9480.CMPCertificate, rfc9480.CMPCertificate]:
-    """Build a Sun-Hybrid certificate from a request.
-
-    The certificate in form 1 is at the second position in the `extraCerts` list.
-
-    Arguments:
-    ---------
-       - `request`: The PKIMessage request.
-       - `ca_key`: The key to sign the certificate with.
-       - `protection_key`: The key to protect the certificate with.
-       - `pub_key_loc`: The location of the public key.
-       - `sig_loc`: The location of the signature.
-       - `protection`: The protection to use. Defaults to "password_based_mac".
-       - `password`: The password to use for protection. Defaults to `None`.
-       - `issuer_cert`: The issuer certificate. Defaults to `None`.
-       - `cert_chain`: The certificate chain. Defaults to `None`.
-       - `cert_index`: The certificate index. Defaults to `None`.
-
-    **kwargs:
-    --------
-         - `extensions`: The extensions to use for the certificate.
-         (as an example for OCSP, CRL or etc.)
-         - `bad_alt_sig`: Whether to manipulate the alternative signature. Defaults to `False`.
-
-    Returns:
-    -------
-       - The PKIMessage with the certificate response.
-
-    Raises:
-    ------
-         - `ValueError`: If the CA certificate or the certificate chain is missing.
-
-    Examples:
-    --------
-    | ${response} ${cert4} ${cert1}= | Build Sun Hybrid Cert From Request | ${request} | ${signing_key} | ${ca_cert} |
-
-    """
-    if ca_cert is None and cert_chain is None:
-        raise ValueError("Either ca_cert or cert_chain must be provided.")
-
-    if ca_cert is None:
-        ca_cert = cert_chain[0]  # type: ignore
-
-    if request["body"].getName() == "p10cr":
-        certutils.verify_csr_signature(csr=request["body"]["p10cr"])
-        cert4, cert1 = sun_lamps_hybrid_scheme_00.sun_csr_to_cert(
-            csr=request["body"]["p10cr"],
-            issuer_private_key=ca_key.trad_key,  # type: ignore
-            alt_private_key=ca_key.pq_key,  # type: ignore
-            serial_number=serial_number,
-            ca_cert=ca_cert,
-            extensions=kwargs.get("extensions"),
-            bad_alt_sig=kwargs.get("bad_alt_sig", False),
-        )
-        pki_message, _ = ca_ra_utils.build_cp_from_p10cr(request=request, cert=cert4, cert_req_id=-1)
-
-    elif request["body"].getName() in ["ir", "cr", "kur", "crr"]:
-        body_name = request["body"].getName()
-        cert_index = cert_index if cert_index is not None else 0
-        cert_req_msg: rfc4211.CertReqMsg = request["body"][body_name][cert_index]
-        public_key = ca_ra_utils.get_public_key_from_cert_req_msg(cert_req_msg)
-        if isinstance(public_key, CompositeSigPublicKey):
-            ca_ra_utils.verify_sig_pop_for_pki_request(request, cert_index)
-            cert4, cert1 = sun_lamps_hybrid_scheme_00.sun_cert_template_to_cert(
-                cert_template=cert_req_msg["certReq"]["certTemplate"],
-                ca_cert=ca_cert,
-                ca_key=ca_key.trad_key,
-                serial_number=serial_number,
-                alt_private_key=ca_key.pq_key,
-                pub_key_loc=pub_key_loc,
-                sig_loc=sig_loc,
-                extensions=kwargs.get("extensions"),
-                bad_alt_sig=kwargs.get("bad_alt_sig", False),
-            )
-
-            cert_response = ca_ra_utils.prepare_cert_response(
-                cert_req_id=int(cert_req_msg["certReq"]["certReqId"]),
-                cert=cert4,
-            )
-
-            pki_message = ca_ra_utils.build_ca_message(
-                request=request,
-                responses=cert_response,
-                **kwargs,
-            )
-
-        elif isinstance(public_key, HybridKEMPublicKey):
-            cert4, cert1 = sun_lamps_hybrid_scheme_00.sun_cert_template_to_cert(
-                cert_template=cert_req_msg["certReq"]["certTemplate"],
-                ca_cert=ca_cert,
-                serial_number=serial_number,
-                ca_key=ca_key.trad_key,
-                alt_private_key=ca_key.pq_key,
-                pub_key_loc=pub_key_loc,
-                sig_loc=sig_loc,
-                extensions=kwargs.get("extensions"),
-            )
-
-            pki_message = build_enc_cert_response(
-                new_ee_cert=cert4,
-                ca_cert=ca_cert,
-                request=request,
-                client_pub_key=public_key,
-            )
-        else:
-            raise ValueError(f"Invalid key type: {type(public_key).__name__}")
-
-    else:
-        raise ValueError(f"Invalid request type: {request['body'].getName()}")
-
-    return pki_message, cert4, cert1
 
 
 @not_keyword
@@ -1282,10 +1157,6 @@ def is_hybrid_cert(cert: rfc9480.CMPCertificate) -> Optional[str]:
     dcd = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_ce_deltaCertificateDescriptor)
     if dcd is not None:
         return "chameleon"
-
-    extn = certextractutils.get_extension(cert["tbsCertificate"]["extensions"], id_altSignatureExt)
-    if extn is not None:
-        return "sun-hybrid"
 
     extn = certextractutils.get_extension(
         cert["tbsCertificate"]["extensions"],

@@ -621,7 +621,6 @@ def may_load_cert_and_key(  # noqa D417 undocumented-param
 def is_certificate_and_key_set(  # noqa D417 undocumented-param
     cert: Optional[Union[str, rfc9480.CMPCertificate]] = None,
     key: Optional[Union[PrivateKey, str]] = None,
-    for_sun_hybrid: bool = False,
 ) -> bool:
     """Check if a certificate and its corresponding private key are valid and set.
 
@@ -631,7 +630,6 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
     ---------
         - `cert`: The certificate or path of the certificate to validate. Default is `None`.
         - `key`: The private key to validate against the certificate. Default is `None`.
-        - `for_sun_hybrid`: Whether the certificate is Sun-Hybrid certificate. Default is `False`.
 
     Returns:
     -------
@@ -663,16 +661,8 @@ def is_certificate_and_key_set(  # noqa D417 undocumented-param
 
     cert_pub_key = certutils.load_public_key_from_cert(cert)  # type: ignore
 
-    if not for_sun_hybrid:
-        if key.public_key() != cert_pub_key:
-            raise ValueError("The private key and the public key inside the certificate are not a pair!")
-
-    else:
-        if not isinstance(key, HybridPrivateKey):
-            raise ValueError("The Sun-Hybrid private key is not a `HybridPrivateKey`!")
-
-        if key.trad_key.public_key() != cert_pub_key:
-            raise ValueError("The private key and the public key inside the certificate are not a pair!")
+    if key.public_key() != cert_pub_key:
+        raise ValueError("The private key and the public key inside the certificate are not a pair!")
 
     return True
 

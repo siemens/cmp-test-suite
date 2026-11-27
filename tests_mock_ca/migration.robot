@@ -56,14 +56,6 @@ ${RELATED_KEY}=   ${None}
 ${RELATED_CERT_SEC}=   ${None}
 ${RELATED_KEY_SEC}=   ${None}
 
-${SUN_HYBRID_CERT}=   ${None}
-${SUN_HYBRID_KEY}=    ${None}
-${SUN_HYBRID_CERT_CHAIN}=   ${None}
-
-${SUN_HYBRID_CERT_REVOKED}=   ${None}
-${SUN_HYBRID_KEY_REVOKED}=    ${None}
-${SUN_HYBRID_REVOKED_CERT_CHAIN}=   ${None}
-
 
 *** Test Cases ***
 ###########################
@@ -76,10 +68,6 @@ ${SUN_HYBRID_REVOKED_CERT_CHAIN}=   ${None}
 # - Catalyst-Signature: The CA uses a different signature algorithm for signing, so that two signature
 # algorithms protect the same certificate.
 # In this experimental tests has the client the option to ask for a specific signature algorithm.
-##### Sun-Hybrid:
-# - Also supports Hybrid KEM and Hybrid Signature Issuing.
-# - The CA will only present the certificate in form1, if the certificate was correctly
-# confirmed by the client, if a HybridKEM mechanism was used.
 ##### Hybrid-Authentication:
 # Allows the user to use different mechanisms for authentication.
 # Either allows alternative signatures inside the generalInfo field of the pkimessage,
@@ -287,166 +275,6 @@ CA Could Detect The Hybrid-KEM Catalyst Invalid alternative POP
     PKIMessage Body Type Must Be    ${response}    error
     PKIStatus Must Be    ${response}    status=rejection
     PKIStatusInfo Failinfo Bit Must Be    ${response}    badPOP
-
-##########################
-# Sun-Hybrid Tests
-##########################
-
-CA MUST Include the Sun-Hybrid Extensions
-    [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
-    ...                to the CA. The CA should process the valid CSR and issue a valid certificate.
-    ...                The CA MUST include the Sun-Hybrid extensions in the certificate.
-    [Tags]    sun-hybrid   hybrid-sig  positive
-    ${key}=   Generate Key   composite-sig
-    ${ir}=   Build Ir From Key    ${key}  exclude_fields=senderKID,sender
-    ...      implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_ir}=    Protect PKIMessage
-    ...    ${ir}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}  # robocop: off=VAR02
-    ${response}=   Exchange Migration PKIMessage    ${ir}    ${CA_BASE_URL}   ${SUN_HYBRID_SUFFIX}
-    PKIMessage Body Type Must Be    ${response}    ip
-    ${cert}=   Get Cert From PKIMessage    ${response}
-    Validate Cert Contains Sun Hybrid Extensions    ${cert}
-
-CA MUST Issue Sun Hybrid Non-Critical Extensions
-    [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
-    ...                to the CA. The CA should process the valid CSR and issue a valid certificate.
-    ...                The CA should include the Sun-Hybrid extensions in the certificate.
-    [Tags]    sun-hybrid   hybrid-sig
-    ${key}=   Generate Key   composite-sig
-    ${ir}=   Build Ir From Key    ${key}  exclude_fields=senderKID,sender
-    ...      implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_ir}=    Protect PKIMessage
-    ...    ${ir}
-    ...    protection=signature
-    ...    private_key=${ISSUED_KEY}
-    ...    cert=${ISSUED_CERT}  # robocop: off=VAR02
-    ${response}=   Exchange Migration PKIMessage    ${ir}    ${CA_BASE_URL}   ${SUN_HYBRID_SUFFIX}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
-    ${cert}=   Get Cert From PKIMessage    ${response}
-    Extension Must Be Non Critical    ${cert}    sun_hybrid_alt_pubkey
-    Extension Must Be Non Critical    ${cert}    sun_hybrid_alt_sig
-
-CA MUST Issue a Valid Sun Hybrid Certificate
-    [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
-    ...                to the CA. The CA should process the valid CSR and issue a valid certificate.
-    [Tags]    sun-hybrid   hybrid-sig
-    ${key}=   Generate Unique Key    composite-sig
-    ${ir}=   Build Ir From Key   ${key}   exclude_fields=senderKID,sender   recipient=${RECIPIENT}
-    ...      implicit_confirm=${ALLOW_IMPLICIT_CONFIRM}
-    ${protected_ir}=    Default Protect PKIMessage    ${ir}  # robocop: off=VAR02
-    ${response}=   Exchange Migration PKIMessage    ${ir}    ${CA_BASE_URL}   ${SUN_HYBRID_SUFFIX}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    status=accepted
-    ${cert}=   Get Cert From PKIMessage    ${response}
-    ${issuer_cert}=  Find Sun Hybrid Issuer Cert   ${cert}    ${response["extraCerts"]}
-    Verify Sun Hybrid Cert    ${cert}    ${issuer_cert}
-
-CA MUST Send the Certificate in Form 1 or 3 as well
-    [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
-    ...                to the CA. The CA should process the valid CSR and issue a valid certificate.
-    ...                The CA should send the certificate in form 1 or 3 as well, so that the has the original
-    ...                alternative signature.
-    [Tags]    sun-hybrid   hybrid-sig
-    ${response}=   Exchange Composite Request    ${SUN_HYBRID_SUFFIX}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    accepted
-    ${cert}=   Get Cert From PKIMessage    ${response}
-    Contains Sun Hybrid Cert Form 1 Or 3    ${cert}   ${response["extraCerts"]}
-
-CA MUST Support Sun Hybrid Valid Certificate Confirmation
-    [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
-    ...                to the CA. The CA should process the valid CSR and issue a valid certificate.
-    ...                The CA should support the Sun-Hybrid confirmation mechanism.
-    [Tags]    sun-hybrid   hybrid-sig
-    ${key}=   Generate Key   composite-sig
-    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${SUN_HYBRID_SUFFIX}
-    ${ir}=   Build Ir From Key    ${key}  exclude_fields=senderKID,sender
-    ...      recipient=${RECIPIENT}
-    ${protected_ir}=    Default Protect PKIMessage    ${ir}
-    ${response}=   Exchange PKIMessage  ${protected_ir}   ${url}
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    accepted
-    ${cert}=   Get Cert From PKIMessage    ${response}
-    ${cert_chain}=   Build Sun Hybrid Cert Chain    ${cert}    ${response["extraCerts"]}
-    Write Certs To Dir    ${cert_chain}
-    ${cert_conf}=  Build Cert Conf From Resp    ${response}   recipient=${RECIPIENT}   exclude_fields=sender,senderKID
-    ${prot_cert_conf}=  Default Protect PKIMessage    ${cert_conf}
-    ${response}=   Exchange Migration PKIMessage    ${prot_cert_conf}   ${CA_BASE_URL}  ${SUN_HYBRID_SUFFIX}
-    PKIMessage Body Type Must Be    ${response}    pkiconf
-    VAR   ${SUN_HYBRID_CERT_CHAIN}=   ${cert_chain}   scope=Global
-    VAR   ${SUN_HYBRID_CERT}=   ${cert}   scope=Global
-    VAR   ${SUN_HYBRID_KEY}=   ${key}   scope=Global
-
-CA MUST Revoked a Valid Sun Hybrid Certificate
-    [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
-    ...                to the CA. The CA should process the valid CSR and issue a valid certificate.
-    ...                The CA should revoke the certificate.
-    [Tags]    sun-hybrid   hybrid-sig
-    ${key}=   Generate Unique Key    composite-sig
-    ${response}=   Exchange Composite Request    ${SUN_HYBRID_SUFFIX}   ${key}
-    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${SUN_HYBRID_SUFFIX}
-    ${cert}=  Confirm Certificate If Needed    ${response}   url=${url}
-    ${cert_chain}=   Build Sun Hybrid Cert Chain    ${cert}    ${response["extraCerts"]}
-    ${rr}=   Build CMP Revoke Request    ${cert}   recipient=${RECIPIENT}
-    ${protected_rr}=    Protect Hybrid PKIMessage
-    ...    ${rr}
-    ...    protection=signature
-    ...    private_key=${key.trad_key}
-    ...    cert=${cert}
-    ${protected_ir}=    Patch ExtraCerts    ${protected_rr}    ${cert_chain}  # robocop: off=VAR02
-    ${response}=   Exchange Migration PKIMessage    ${protected_rr}   ${CA_BASE_URL}  ${SUN_HYBRID_SUFFIX}
-    PKIMessage Body Type Must Be    ${response}    rp
-    PKIStatus Must Be    ${response}    status=accepted
-    VAR   ${SUN_HYBRID_REVOKED_CERT_CHAIN}=   ${cert_chain}   scope=Global
-    VAR   ${SUN_HYBRID_CERT_REVOKED}=   ${cert}   scope=Global
-    VAR   ${SUN_HYBRID_KEY_REVOKED}=   ${key}   scope=Global
-
-CA MUST Reject Request With Revoked Sun Hybrid Request
-    [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
-    ...                to the CA. We send a certificate request, which is signed with a revoked hybrid sun
-    ...                certificate and key. The CA should reject the request and MAY respond with the optional
-    ...                failInfo `certRevoked`.
-    [Tags]    sun-hybrid   hybrid-sig
-    ${result}=   Is Certificate And Key Set    ${SUN_HYBRID_CERT_REVOKED}    ${SUN_HYBRID_KEY_REVOKED}   for_sun_hybrid=True
-    SKIP IF    not ${result}    The Sun Hybrid Certificate and Key are not set.
-    ${key}=   Generate Key   composite-sig
-    ${ir}=   Build Ir From Key    ${key}  exclude_fields=senderKID,sender  recipient=${RECIPIENT}
-    ${protected_ir}=    Protect Hybrid PKIMessage
-    ...    ${ir}
-    ...    protection=composite
-    ...    private_key=${SUN_HYBRID_KEY_REVOKED}
-    ...    cert=${SUN_HYBRID_CERT_REVOKED}
-    ${protected_ir}=    Patch ExtraCerts    ${protected_ir}    ${SUN_HYBRID_REVOKED_CERT_CHAIN}
-    ${response}=   Exchange Migration PKIMessage    ${protected_ir}   ${CA_BASE_URL}  ${SUN_HYBRID_SUFFIX}
-    PKIStatus Must Be    ${response}    status=rejection
-    PKIStatusInfo Failinfo Bit Must Be    ${response}    certRevoked
-
-CA MUST Update a Sun Hybrid Certificate
-    [Documentation]    According to draft-sun-lamps-hybrid-scheme-00 is a valid composite signature CSR send
-    ...                to the CA. The CA should process the valid CSR and issue a valid certificate.
-    ...                The CA should update the certificate.
-    [Tags]    sun-hybrid   hybrid-sig
-    ${key}=   Generate Key   composite-sig
-    ${response}=   Exchange Composite Request    ${SUN_HYBRID_SUFFIX}   ${key}   True
-    PKIMessage Body Type Must Be    ${response}    ip
-    PKIStatus Must Be    ${response}    accepted
-    ${url}=  Add URL Suffix    ${CA_BASE_URL}   ${SUN_HYBRID_SUFFIX}
-    ${cert}=   Confirm Certificate If Needed    ${response}   url=${url}
-    ${new_key}=   Generate Key   composite-sig
-    ${kur}=   Build Key Update Request    ${new_key}    ${cert}
-    ...       exclude_fields=senderKID,sender  recipient=${RECIPIENT}
-    ${protected_kur}=    Protect Hybrid PKIMessage
-    ...    ${kur}
-    ...    protection=composite
-    ...    private_key=${key}
-    ...    cert=${cert}
-    ${response}=   Exchange Migration PKIMessage    ${protected_kur}   ${CA_BASE_URL}  ${SUN_HYBRID_SUFFIX}
-    PKIMessage Body Type Must Be    ${response}    kup
-    PKIStatus Must Be    ${response}    status=accepted
 
 ##############################
 # Hybrid-Authentication Tests

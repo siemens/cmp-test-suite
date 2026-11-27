@@ -33,6 +33,6 @@ configure = [
     # hundreds of unrelated files that use the same names as variables/kwargs.
     "wrong-case-in-keyword-call.pattern=senderNonce|messageTime|extraCerts|recipNonce|regInfo|reqInfo|statusString|failinfo",
     "wrong-case-in-keyword-name.pattern=senderNonce|messageTime|extraCerts|recipNonce|regInfo|reqInfo|statusString|failinfo",
-    "unused-variable.ignore=CMP_MAC,KEY_UPDATE_REQUEST,REVOCATION_REQUEST,CHAMELEON_DELTA_CERT,SUN_HYBRID_CERT,SUN_HYBRID_KEY,SUN_HYBRID_CERT_CHAIN",
+    "unused-variable.ignore=CMP_MAC,KEY_UPDATE_REQUEST,REVOCATION_REQUEST,CHAMELEON_DELTA_CERT",
     "missing-space-after-comment.block=^#+",
 ]

@@ -319,8 +319,7 @@ class ProtectionHandler:
         """Sign the PKI message with the specified protection method.
 
         :param response: The PKI message to sign.
-        :param secondary_cert: The secondary certificate to add, either the extra Chameleon cert or
-        the Sun-hybrid cert in form 1.
+        :param secondary_cert: The secondary certificate to add, e.g. the extra Chameleon cert.
         :param add_certs: Additional certificates to add to the PKIMessage.
         :param bad_message_check: Whether to invalidate the protection. Defaults to `False`.
         :param bad_alt_message_check: Whether to invalidate the alternative protection. Defaults to `False`.
@@ -362,8 +361,7 @@ class ProtectionHandler:
 
         :param response: The PKI message to protect.
         :param request: The original PKI message.
-        :param secondary_cert: The secondary certificate to add, either the extra Chameleon cert or
-        the Sun-hybrid cert in form 1.
+        :param secondary_cert: The secondary certificate to add, e.g. the extra Chameleon cert.
         :param add_certs: Additional certificates to add to the PKIMessage.
         :param bad_protection_type: Normal uses the same MAC protection algorithm as the request,
             but this Flag will use the different one. ("pbmac1" or "password_based_mac")

@@ -6,14 +6,12 @@ import unittest
 
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import prepare_related_cert_extension
 from pq_logic.hybrid_sig.chameleon_logic import build_paired_csr, build_chameleon_cert_from_paired_csr
-from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import sun_csr_to_cert
 from resources.protectionutils import protect_hybrid_pkimessage
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from resources.certbuildutils import generate_certificate
 from resources.cmputils import parse_csr, build_p10cr_from_csr
 from resources.keyutils import load_private_key_from_file
 from resources.utils import load_and_decode_pem_file
-from unit_tests.utils_for_test import build_sun_hybrid_composite_csr
 
 
 class TestVerifyHybridPkimessageProtection(unittest.TestCase):
@@ -122,38 +120,6 @@ class TestVerifyHybridPkimessageProtection(unittest.TestCase):
             alt_signing_key=self.comp_key.pq_key,
         )
         protected_p10cr["extraCerts"].append(paired_cert)
-
-        verify_hybrid_pkimessage_protection(protected_p10cr)
-
-    def verify_composite_with_sun_hybrid_cert_form1(self):
-        """
-        GIVEN a hybrid SUN certificate in form 1 and a Composite signed PKIMessage.
-        WHEN verifying the protection,
-        THEN it should pass if the protection is valid.
-        """
-        csr = build_sun_hybrid_composite_csr(
-            signing_key=self.comp_key,
-            common_name="CN=Hans the Tester",
-            pub_key_hash_alg="sha256",
-            pub_key_location="https://example.com/pubkey",
-            sig_hash_alg="sha384",
-            sig_value_location="https://example.com/sig"
-        )
-
-        cert4, cert1 = sun_csr_to_cert(
-            csr=csr,
-            issuer_private_key=self.comp_key.trad_key,
-            alt_private_key=self.comp_key.pq_key,
-        )
-        csr = parse_csr(load_and_decode_pem_file("data/csrs/hybrid_csr_composite_sig_rsa2048_ml_dsa_44.pem"))
-        p10cr = build_p10cr_from_csr(csr)
-        protected_p10cr = protect_hybrid_pkimessage(
-            pki_message=p10cr,
-            protection="composite",
-            private_key=self.comp_key.trad_key,
-            alt_signing_key=self.comp_key.pq_key,
-        )
-        protected_p10cr["extraCerts"].append(cert1)
 
         verify_hybrid_pkimessage_protection(protected_p10cr)
 

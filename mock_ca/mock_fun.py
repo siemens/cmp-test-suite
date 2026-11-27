@@ -15,7 +15,6 @@ from cryptography.x509 import CertificateRevocationList, ExtensionNotFound, ocsp
 from pyasn1.codec.der import encoder
 from pyasn1_alt_modules import rfc5280, rfc9480
 
-from mock_ca.operation_dbs import SunHybridState
 from pq_logic.keys.abstract_wrapper_keys import HybridPublicKey, KEMPublicKey
 from resources import ca_ra_utils, certutils, keyutils
 from resources.asn1_structures import PKIMessageTMP
@@ -1329,7 +1328,6 @@ class MockCAState:
         kem_mac_based: The KEM-MAC-based shared secrets.
         to_be_confirmed_certs: The certificates to be confirmed.
         challenge_rand_int: The challenge random integers.
-        sun_hybrid_state: The state of the Sun Hybrid handler.
 
     """
 
@@ -1340,7 +1338,6 @@ class MockCAState:
     # stores the (txid, sender_raw) mapped to the certificate.
     to_be_confirmed_certs: Dict[Tuple[bytes, bytes], List[rfc9480.CMPCertificate]] = field(default_factory=dict)
     challenge_rand_int: Dict[bytes, int] = field(default_factory=dict)
-    sun_hybrid_state: SunHybridState = field(default_factory=SunHybridState)
     certificate_db: CertificateDB = field(default_factory=CertificateDB)
 
     @property
@@ -1436,7 +1433,7 @@ class MockCAState:
         return self.to_be_confirmed_certs[(transaction_id, der_sender)]
 
     def get_cert_by_serial_number(self, serial_number: int) -> rfc9480.CMPCertificate:
-        """Get the Sun-Hybrid certificate for the specified serial number.
+        """Get the certificate for the specified serial number.
 
         :param serial_number: The serial number of the certificate.
         :return: The certificate.
@@ -1569,11 +1566,3 @@ class BaseURLData:
     def get_cert_url(self, serial_number: int):
         """Return the certificate URL path."""
         return f"{self.get_base_url()}/cert/{serial_number}"
-
-    def get_sig_url(self, serial_number: int):
-        """Return the signature URL path."""
-        return f"{self.get_base_url()}/sig/{serial_number}"
-
-    def get_pubkey_url(self, serial_number: int):
-        """Return the public key URL path."""
-        return f"{self.get_base_url()}/pubkey/{serial_number}"

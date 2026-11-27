@@ -10,7 +10,7 @@ from pyasn1_alt_modules.rfc2315 import IssuerAndSerialNumber
 from pyasn1_alt_modules.rfc7906 import BinaryTime
 
 
-# Used for the Sun-Hybrid-Signature method.
+# Used for the cert-discovery method.
 class UniformResourceIdentifier(char.IA5String):
     """ASN.1 Definition of the `UniformResourceIdentifier` structure.
 
@@ -18,49 +18,6 @@ class UniformResourceIdentifier(char.IA5String):
     """
 
 
-class AltSubPubKeyExt(univ.Sequence):
-    """ASN.1 Definition of the `AltSubPubKeyExt` structure.
-
-    AltSubPubKeyExt ::= SEQUENCE {
-        byVal BOOLEAN DEFAULT FALSE,
-        plainOrHash BIT STRING,
-        altAlgorithm AlgorithmIdentifier,
-        hashAlg AlgorithmIdentifier OPTIONAL,
-        location IA5String OPTIONAL
-    }
-    """
-
-    componentType = namedtype.NamedTypes(
-        namedtype.DefaultedNamedType("byVal", univ.Boolean(False)),
-        namedtype.NamedType("plainOrHash", univ.BitString()),
-        namedtype.NamedType("altAlgorithm", rfc5280.AlgorithmIdentifier()),
-        namedtype.OptionalNamedType("hashAlg", rfc5280.AlgorithmIdentifier()),
-        namedtype.OptionalNamedType("location", UniformResourceIdentifier()),
-    )
-
-
-class AltSignatureExt(univ.Sequence):
-    """ASN.1 Definition of the `AltSignatureExt` structure.
-
-    AltSignatureExt ::= SEQUENCE {
-        byVal BOOLEAN DEFAULT FALSE,
-        plainOrHash BIT STRING,
-        altSigAlgorithm AlgorithmIdentifier,
-        hashAlg AlgorithmIdentifier OPTIONAL,
-        location IA5String OPTIONAL
-    }
-    """
-
-    componentType = namedtype.NamedTypes(
-        namedtype.DefaultedNamedType("byVal", univ.Boolean(False)),
-        namedtype.NamedType("plainOrHash", univ.BitString()),
-        namedtype.NamedType("altSigAlgorithm", rfc5280.AlgorithmIdentifier()),
-        namedtype.OptionalNamedType("hashAlg", rfc5280.AlgorithmIdentifier()),
-        namedtype.OptionalNamedType("location", UniformResourceIdentifier()),
-    )
-
-
-# Used for the cert-discovery method.
 class RelatedCertificateDescriptor(univ.Sequence):
     """ASN.1 Definition of the `RelatedCertificateDescriptor` structure.
 

@@ -44,9 +44,6 @@ id_hybrid_sig_multi_auth = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.2"
 # used inside the cert discovery method.
 id_hybrid_sig_cert_binding = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.3")
 
-# OIDs used for the sun-hybrid signature method.
-id_hybrid_sun = univ.ObjectIdentifier(f"{id_hybrid_sig_test_suite}.4")
-
 nist_algorithms_oid = rfc5990.nistAlgorithm
 
 # Ref: https://github.com/open-quantum-safe/oqs-provider/blob/main/ALGORITHMS.md
@@ -318,19 +315,6 @@ id_mod_related_cert = univ.ObjectIdentifier(f"{id_hybrid_sig_multi_auth}.{3}")
 id_ad_certDiscovery = univ.ObjectIdentifier(f"{id_hybrid_sig_cert_binding}.{1}")
 id_ad_relatedCertificateDescriptor = univ.ObjectIdentifier(f"{id_hybrid_sig_cert_binding}.{2}")
 
-
-# Hybrid SUN Signature OIDs
-# CSR OIDs
-
-id_altSubPubKeyHashAlgAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.2")
-id_altSubPubKeyLocAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.3")
-id_altSigValueHashAlgAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.4")
-id_altSigValueLocAttr = univ.ObjectIdentifier(f"{id_hybrid_sun}.5")
-
-# x509 OIDs
-
-id_altSubPubKeyExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.6")
-id_altSignatureExt = univ.ObjectIdentifier(f"{id_hybrid_sun}.7")
 
 # Composite KEM OIDs
 COMPOSITE_KEM_NAME_2_OID = {}
