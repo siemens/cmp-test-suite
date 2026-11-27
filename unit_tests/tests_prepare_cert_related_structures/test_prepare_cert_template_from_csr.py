@@ -33,6 +33,19 @@ class TestPrepareCertTemplateFromCSR(unittest.TestCase):
         self.assertEqual(rest, b"")
         self.assertEqual("CN=Hans the Tester", get_openssl_name_notation(decoded_template["subject"]))
 
+    def test_prepare_csr_with_multi_rdn_subject(self):
+        """
+        GIVEN a CSR whose subject has several RDNs
+        WHEN `prepare_cert_template_from_csr` is called,
+        THEN the subject of the certificate template must be DER-identical to the subject of the CSR.
+        """
+        csr = build_csr(common_name="CN=Hans the Tester,O=Test Org,C=DE", signing_key=self.private_key_ecc)
+        cert_template = prepare_cert_template_from_csr(csr)
+        self.assertEqual(
+            encoder.encode(cert_template["subject"]["rdnSequence"]),
+            encoder.encode(csr["certificationRequestInfo"]["subject"]["rdnSequence"]),
+        )
+
 
     def test_prepare_with_extensions(self):
         """
