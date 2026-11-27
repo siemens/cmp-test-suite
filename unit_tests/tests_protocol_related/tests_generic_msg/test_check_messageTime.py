@@ -54,3 +54,20 @@ class TestCheckMessageTimeField(unittest.TestCase):
 
         with self.assertRaises(BadTime):
             check_message_time_field(response_pki_message, allowed_interval=60, request_time=request_time)
+
+    def test_absent_messagetime_with_request_time(self):
+        """
+        GIVEN a PKI response without a 'messageTime'
+        WHEN check_message_time_field is called with an allowed interval and a request time
+        THEN the function should pass without raising an exception, because the field is optional.
+        """
+        request_time = datetime.datetime.now(datetime.timezone.utc)
+        check_message_time_field(self.pki_message, allowed_interval=60, request_time=request_time)
+
+    def test_absent_messagetime_without_request_time(self):
+        """
+        GIVEN a PKI response without a 'messageTime'
+        WHEN check_message_time_field is called with an allowed interval and without a request time
+        THEN the function should pass without raising an exception, because the field is optional.
+        """
+        check_message_time_field(self.pki_message, allowed_interval=60)
