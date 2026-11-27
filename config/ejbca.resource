@@ -121,7 +121,6 @@ ${NEG_URI_RELATED_CERT}   ${None}
 ${ISSUING_SUFFIX}    ${None}
 ${COMPOSITE_URL_PREFIX}    ${None}
 ${CATALYST_SIGNATURE}    ${None}
-${SUN_HYBRID_SUFFIX}    ${None}
 ${CHAMELEON_SUFFIX}    ${None}
 ${RELATED_CERT_SUFFIX}    ${None}
 ${MULTI_AUTH_SUFFIX}    ${None}

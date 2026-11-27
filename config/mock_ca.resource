@@ -219,7 +219,6 @@ ${ISSUING_SUFFIX}   issuing
 ${COMPOSITE_URL_PREFIX}   issuing
 ${CATALYST_ISSUING}  catalyst-issuing
 ${CATALYST_SIGNATURE}   catalyst-sig
-${SUN_HYBRID_SUFFIX}   sun-hybrid
 ${CHAMELEON_SUFFIX}   chameleon
 ${RELATED_CERT_SUFFIX}   related-cert
 ${MULTI_AUTH_SUFFIX}   multi-auth

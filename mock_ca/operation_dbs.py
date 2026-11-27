@@ -20,7 +20,7 @@ from resources.convertutils import ensure_is_sign_key, str_to_bytes
 from resources.exceptions import BadConfig, BadRequest
 from resources.keyutils import load_private_key_from_file
 from resources.oid_mapping import compute_hash
-from resources.typingutils import ECDHPrivateKey, PrivateKey, PublicKey, SignKey
+from resources.typingutils import ECDHPrivateKey, PrivateKey, SignKey
 from resources.utils import (
     is_certificate_and_key_set,
     load_and_decode_pem_file,
@@ -425,15 +425,6 @@ class MockCAOPCertsAndKeys:
             )
 
         return cert
-
-
-@dataclass
-class SunHybridState:
-    """A simple class to store the state of the SunHybridHandler."""
-
-    sun_hybrid_certs: Dict[int, rfc9480.CMPCertificate] = field(default_factory=dict)
-    sun_hybrid_pub_keys: Dict[int, PublicKey] = field(default_factory=dict)
-    sun_hybrid_signatures: Dict[int, bytes] = field(default_factory=dict)
 
 
 @dataclass

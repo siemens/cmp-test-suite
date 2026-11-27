@@ -12,7 +12,7 @@ import sys
 from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509 import ocsp
 
 # needs to be here to import the correct modules
@@ -28,7 +28,7 @@ from mock_ca.cert_req_handler import CertReqHandler
 from mock_ca.challenge_handler import ChallengeHandler
 from mock_ca.db_config_vars import CertConfConfigVars, VerifyState
 from mock_ca.general_msg_handler import GeneralMessageHandler
-from mock_ca.hybrid_handler import HybridIssuingHandler, SunHybridHandler
+from mock_ca.hybrid_handler import HybridIssuingHandler
 from mock_ca.mock_fun import BaseURLData, KeySecurityChecker, MockCAState
 from mock_ca.nested_handler import NestedHandler
 from mock_ca.operation_dbs import MockCAOPCertsAndKeys, StatefulSigState
@@ -41,13 +41,10 @@ from pq_logic.hybrid_issuing import (
     build_cert_from_catalyst_request,
     build_chameleon_from_p10cr,
     build_related_cert_from_csr,
-    is_hybrid_cert,
 )
 from pq_logic.hybrid_sig.cert_binding_for_multi_auth import validate_multi_auth_binding_csr
-from pq_logic.hybrid_sig.sun_lamps_hybrid_scheme_00 import extract_sun_hybrid_alt_sig, sun_cert_template_to_cert
 from pq_logic.keys.abstract_pq import PQSignaturePrivateKey
 from pq_logic.keys.abstract_wrapper_keys import HybridKEMPrivateKey
-from pq_logic.keys.composite_sig import CompositeSigPrivateKey
 from pq_logic.pq_verify_logic import verify_hybrid_pkimessage_protection
 from pq_logic.tmp_oids import id_it_KemCiphertextInfo
 from resources import asn1utils
@@ -61,7 +58,6 @@ from resources.ca_ra_utils import (
 from resources.certbuildutils import (
     build_certificate,
     prepare_authority_key_identifier_extension,
-    prepare_cert_template,
     prepare_crl_distribution_point_extension,
     prepare_distribution_point,
     prepare_issuing_distribution_point,
@@ -277,7 +273,7 @@ class CAHandler:
         :param port: The port for the CA, used for the Extensions preparation. Defaults to `5000`.
         :param use_openssl: If OpenSSL should be used for verification. Defaults to `False`.
         :param config: The configuration for the CA Handler.
-        :param base_url: The base URL for the CA ONLY used to prepare the extensions (CRL-DP, OCSP, IDP, Sun-Hybrid).
+        :param base_url: The base URL for the CA ONLY used to prepare the extensions (CRL-DP, OCSP, IDP).
         Defaults to `http://localhost`.
         :param enforce_rfc9481: Whether to enforce the RFC 9481 algorithm profile,
         for MAC and traditional protected PKIMessages. Defaults to `False`.
@@ -315,33 +311,12 @@ class CAHandler:
 
         self.comp_key = generate_key("composite-sig")
         self.comp_cert = build_certificate(private_key=self.comp_key, is_ca=True, common_name="CN=Test CA")[0]
-        self.sun_hybrid_key = generate_key("composite-sig")  # type: ignore
-        self.sun_hybrid_key: CompositeSigPrivateKey
-        cert_template = prepare_cert_template(
-            self.sun_hybrid_key,
-            subject="CN=Hans the Tester",
-        )
-        self.sun_hybrid_cert, cert1 = sun_cert_template_to_cert(
-            cert_template=cert_template,
-            ca_cert=ca_cert,
-            ca_key=self.sun_hybrid_key.trad_key,  # type: ignore
-            alt_private_key=self.sun_hybrid_key.pq_key,  # type: ignore
-            pub_key_loc=self.url_data.get_pubkey_url(1),
-            sig_loc=self.url_data.get_sig_url(1),
-            serial_number=1,
-            extensions=[self.ocsp_extn, self.crl_extn],
-        )
 
         self.sender = "CN=Mock CA"
         self.ca_alt_key = ca_alt_key
         self.state = mock_ca_state or MockCAState()
         self.pre_shared_secret = pre_shared_secret
-        self.cert_chain = [self.ca_cert, self.comp_cert, self.sun_hybrid_cert, cert1]
-
-        alt_sig = extract_sun_hybrid_alt_sig(cert1)
-        self.state.sun_hybrid_state.sun_hybrid_certs[1] = self.sun_hybrid_cert
-        self.state.sun_hybrid_state.sun_hybrid_pub_keys[1] = self.sun_hybrid_key.pq_key.public_key()
-        self.state.sun_hybrid_state.sun_hybrid_signatures[1] = alt_sig
+        self.cert_chain = [self.ca_cert, self.comp_cert]
 
         if config.get("hybrid_kem_path"):
             self.hybrid_kem = load_private_key_from_file(config["hybrid_kem_path"])
@@ -389,7 +364,6 @@ class CAHandler:
             self.ca_cert,
             self.kga_cert,
             self.comp_cert,
-            self.sun_hybrid_cert,
         ]
 
         if self.xwing_cert is not None:
@@ -470,17 +444,6 @@ class CAHandler:
             cmp_protection_cert=self.protection_handler.protection_cert,
             sender=self.sender,
             extensions=extensions,
-        )
-
-        if not isinstance(self.sun_hybrid_key, CompositeSigPrivateKey):
-            raise BadConfig(f"The Sun Hybrid key is not a `CompositeSig03PrivateKey`.Got: {type(self.sun_hybrid_key)}")
-
-        self.sun_hybrid_handler = SunHybridHandler(
-            ca_cert=self.sun_hybrid_cert,
-            ca_key=self.sun_hybrid_key,
-            sun_hybrid_state=self.state.sun_hybrid_state,
-            cert_chain=None,
-            pre_shared_secret=self.pre_shared_secret,
         )
 
         self.alg_profile = {}
@@ -1016,17 +979,6 @@ class CAHandler:
             f"Not implemented to handle a chameleon request with body: {pki_message['body'].getName()}"
         )
 
-    def _get_serial_number(self) -> int:
-        """Get a unique serial number."""
-        serial_number = None
-        for _ in range(100):
-            serial_number = x509.random_serial_number()
-            if serial_number not in self.state.sun_hybrid_state.sun_hybrid_certs:
-                break
-        if serial_number is None:
-            raise Exception("Could not generate a unique serial number.")
-        return serial_number
-
     def _after_request(
         self,
         request_msg: PKIMessageTMP,
@@ -1049,75 +1001,6 @@ class CAHandler:
             self.cert_req_handler.add_request_for_cert_conf(request=request_msg, response=response, certs=certs)
         else:
             self.state.add_certs(certs=certs)
-
-    def process_sun_hybrid(
-        self,
-        pki_message: PKIMessageTMP,
-        bad_alt_sig: bool = False,
-    ) -> PKIMessageTMP:
-        """Process the Sun Hybrid message.
-
-        :param pki_message: The Sun Hybrid message.
-        :param bad_alt_sig: If `True`, the alternative signature will be invalid.
-        :return: The PKI message containing the response.
-        """
-        if is_hybrid_cert(pki_message["extraCerts"][0]):
-            logging.info("Processing hybrid cert")
-
-        prot_type = ProtectedType.get_protection_type(pki_message)
-        if prot_type != ProtectedType.MAC:
-            try:
-                self.hybrid_handler.is_revoked_for_issuing(request=pki_message, used_both_certs=False)
-            except CertRevoked as e:
-                return self.build_error_from_exception(e, request_msg=pki_message)
-
-        if pki_message["body"].getName() == "certConf":
-            response = self.process_cert_conf(pki_message)
-            return self.sun_hybrid_handler.sign_response(
-                response=response,
-                request=pki_message,
-                protection_config=self.protection_handler.prot_handler_config,
-            )
-
-        if pki_message["body"].getName() == "rr":
-            pki_message = self.sun_hybrid_handler.validate_for_rev_request(pki_message)
-            response = self.process_rr(pki_message)
-            return self.sun_hybrid_handler.sign_response(
-                response=response, request=pki_message, protection_config=self.protection_handler.prot_handler_config
-            )
-
-        serial_number = self._get_serial_number()
-
-        if not isinstance(self.sun_hybrid_key, CompositeSigPrivateKey):
-            raise Exception("The Sun-Hybrid CA key is not a CompositeSig03PrivateKey.")
-
-        try:
-            response, issued_cert, to_be_confirmed = self.sun_hybrid_handler.process_request(
-                request=pki_message,
-                base_url=self.url_data.get_base_url(),
-                serial_number=serial_number,
-                extensions=self.extensions,
-                bad_alt_sig=bad_alt_sig,
-                protection_config=self.protection_handler.prot_handler_config,
-            )
-        except CMPTestSuiteError as e:
-            return self.build_error_from_exception(e, pki_message)
-
-        if sum([issued_cert is None, to_be_confirmed is None]) in [0, 2]:
-            raise Exception(
-                "The newly issued certificate can either be implicit confirmed ormust be confirmed, but not both."
-            )
-
-        logging.debug("Issued certs is confined:", issued_cert is not None)
-
-        self._after_request(
-            request_msg=pki_message,
-            response=response,
-            certs=[issued_cert] if issued_cert else [to_be_confirmed],  # type: ignore
-            confirmed=issued_cert is not None,
-        )
-
-        return response
 
     def process_multi_auth(self, pki_message: PKIMessageTMP) -> PKIMessageTMP:
         """Process the Multi-Auth message.
@@ -1165,9 +1048,10 @@ class CAHandler:
             raise NotImplementedError(f"Not implemented to handle a cert discovery request with body: {body_name}")
 
         serial_number = None
+        existing_serial_numbers = {int(c["tbsCertificate"]["serialNumber"]) for c in self.state.issued_certs}
         for _ in range(100):
             serial_number = x509.random_serial_number()
-            if serial_number not in self.state.sun_hybrid_state.sun_hybrid_certs:
+            if serial_number not in existing_serial_numbers:
                 break
             serial_number = None
 
@@ -1506,42 +1390,10 @@ def handle_root_cert():
 
 @app.route("/cert/<serial_number>", methods=["GET"])
 def get_cert(serial_number):
-    """Get the Sun-Hybrid certificate for the specified serial number."""
+    """Get the certificate for the specified serial number."""
     serial_number = int(serial_number)
     cert = state.get_cert_by_serial_number(serial_number)
     return _build_response(cert)
-
-
-@app.route("/pubkey/<serial_number>", methods=["GET"])
-def get_pubkey(serial_number):
-    """Get the Sun-Hybrid public key for the specified serial number."""
-    serial_number = int(serial_number)
-    logging.debug(state.sun_hybrid_state.sun_hybrid_pub_keys.keys())
-    pub_key = state.sun_hybrid_state.sun_hybrid_pub_keys.get(serial_number)
-
-    if pub_key is None:
-        raise BadRequest(
-            f"Could not find public key with serial number {serial_number}"
-            f" in {state.sun_hybrid_state.sun_hybrid_pub_keys.keys()}"
-        )
-
-    der_data = pub_key.public_bytes(encoding=Encoding.DER, format=PublicFormat.SubjectPublicKeyInfo)
-    return Response(der_data, content_type="application/octet-stream")
-
-
-@app.route("/sig/<serial_number>", methods=["GET"])
-def get_signature(serial_number):
-    """Get the Sun-Hybrid signature for the specified serial number."""
-    serial_number = int(serial_number)
-    alt_sig = state.sun_hybrid_state.sun_hybrid_signatures.get(serial_number)
-
-    if alt_sig is None:
-        raise BadRequest(
-            f"Could not find signature with serial number {serial_number}"
-            f" in {state.sun_hybrid_state.sun_hybrid_signatures.keys()}"
-        )
-
-    return Response(alt_sig, content_type="application/octet-stream")
 
 
 def _check_pkimessage_can_be_parsed(data: bytes) -> Tuple[PKIMessageTMP, bool]:
@@ -1594,20 +1446,6 @@ def handle_chameleon():
         pki_message=pki_message,
     )
     return _build_response(pki_message)
-
-
-@app.route("/sun-hybrid", methods=["POST"])
-def handle_sun_hybrid():
-    """Handle the Sun Hybrid request.
-
-    :return: The DER-encoded response.
-    """
-    data = request.get_data()
-    pki_message = parse_pkimessage(data)
-    response = handler.process_sun_hybrid(
-        pki_message=pki_message,
-    )
-    return _build_response(response)
 
 
 @app.route("/multi-auth", methods=["POST"])

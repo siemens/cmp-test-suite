@@ -24,14 +24,12 @@ from pq_logic.hybrid_sig import (
     cert_binding_for_multi_auth,
     certdiscovery,
     chameleon_logic,
-    sun_lamps_hybrid_scheme_00,
 )
 from pq_logic.keys.abstract_pq import PQSignaturePublicKey
 from pq_logic.keys.composite_sig import CompositeSigPublicKey
 from pq_logic.keys.pq_key_factory import PQKeyFactory
 from pq_logic.tmp_oids import (
     COMPOSITE_SIG_OID_TO_NAME,
-    id_altSubPubKeyExt,
     id_ce_deltaCertificateDescriptor,
     id_relatedCert,
 )
@@ -227,45 +225,6 @@ def _check_names(cert, poss_issuer):
     return cert_issuer == issuer_subject
 
 
-@keyword(name="Find Sun Hybrid Issuer Cert")
-def find_sun_hybrid_issuer_cert(  # noqa D417 undocumented-param
-    ee_cert: rfc9480.CMPCertificate,
-    certs: Iterable[rfc9480.CMPCertificate],
-) -> rfc9480.CMPCertificate:
-    """Find the SUN hybrid issuer certificate.
-
-    Arguments:
-    ---------
-        - `ee_cert`: The end-entity certificate.
-        - `certs`: A list of certificates to search for the issuer certificate.
-
-    Returns:
-    -------
-        - The issuer certificate if found.
-
-    Raises:
-    ------
-        - `ValueError`: If no issuer certificate is found.
-
-    Examples:
-    --------
-    | ${issuer_cert} = | Find Sun Hybrid Issuer Cert | ${ee_cert} | ${certs} |
-
-    """
-    cert4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(ee_cert, "Form4")
-
-    for x in certs:
-        if not _check_names(cert4, x):
-            continue
-        try:
-            _verify_sun_hybrid_trad_sig(cert4, x)
-            return x
-        except InvalidSignature:
-            continue
-
-    raise ValueError("No issuer certificate found.")
-
-
 def build_migration_cert_chain(  # noqa D417 undocumented-param
     cert: rfc9480.CMPCertificate,
     certs: Iterable[rfc9480.CMPCertificate],
@@ -279,7 +238,6 @@ def build_migration_cert_chain(  # noqa D417 undocumented-param
     Note:
     ----
        - Verifies only the traditional signature of the certificate to find the client.
-       (which means it is not a valid solution for a sun-hybrid certificate chain.)
        (Could be enough for the Test-Suite, but not for the real-world use-case.)
 
     Arguments:
@@ -334,112 +292,6 @@ def build_migration_cert_chain(  # noqa D417 undocumented-param
         logging.info("The certificate was self-signed.")
 
     return cert_chain
-
-
-def build_sun_hybrid_cert_chain(  # noqa D417 undocumented-param
-    cert: rfc9480.CMPCertificate,
-    certs: Union[Iterable[rfc9480.CMPCertificate], PKIMessageTMP],
-) -> List[rfc9480.CMPCertificate]:
-    """Build the SUN hybrid certificate chain.
-
-    Arguments:
-    ---------
-        - `cert`: The SUN hybrid certificate.
-        - `certs`: A list of certificates to search for the related certificate.
-
-    Returns:
-    -------
-        - A list of certificates in the chain. starting with the EE certificate.
-
-    Raises:
-    ------
-        - `ValueError`: If no issuer certificate is found.
-
-    Examples:
-    --------
-    | ${chain} = | Build Sun Hybrid Cert Chain | ${cert} | ${certs} |
-
-    """
-    if isinstance(certs, PKIMessageTMP):
-        certs = certs["extraCerts"]
-        if not certs.isValue:  # type: ignore
-            raise ValueError("The `PKIMessage` does not contain any extra certificates.")
-
-    cert4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(cert, "Form4")
-
-    all_poss_form4 = []
-    for x in certs:
-        try:
-            form4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(x, "Form4")
-            all_poss_form4.append(form4)
-        except ValueError:
-            pass
-
-    chain = certutils.build_chain_from_list(cert4, all_poss_form4)
-    if len(chain) == 1:
-        raise ValueError("No issuer certificate found.")
-    return chain
-
-
-def _verify_sun_hybrid_trad_sig(
-    cert: rfc9480.CMPCertificate,
-    issuer_cert: rfc9480.CMPCertificate,
-) -> None:
-    """Verify the traditional signature of a SUN hybrid certificate."""
-    cert4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(cert, "Form4")
-
-    public_key = certutils.load_public_key_from_cert(issuer_cert)
-    public_key = convertutils.ensure_is_verify_key(public_key)
-    data = encoder.encode(cert4["tbsCertificate"])
-    alg_id = cert4["tbsCertificate"]["signature"]
-    signature = cert4["signature"].asOctets()
-    protectionutils.verify_signature_with_alg_id(public_key=public_key, data=data, signature=signature, alg_id=alg_id)
-
-
-def verify_sun_hybrid_cert(  # noqa D417 undocumented-param
-    cert: rfc9480.CMPCertificate,
-    issuer_cert: rfc9480.CMPCertificate,
-    alt_issuer_key: Optional[VerifyKey] = None,
-    check_alt_sig: bool = True,
-    other_certs: Optional[List[rfc9480.CMPCertificate]] = None,
-) -> None:
-    """Verify a Sun hybrid certificate.
-
-    Validates the primary and alternative signatures in a certificate.
-    The main signature is verified using the issuer's tradition key inside the certificate public key.
-    And the alternative signature is verified using the issuer's alternative key.
-
-    Arguments:
-    ---------
-        - `cert`: The SUN hybrid certificate to verify.
-        - `issuer_cert`: The issuer's certificate for verifying the main signature.
-        - `check_alt_sig`: Whether to validate the alternative signature (default: True).
-        - `alt_issuer_key`: The issuer's public key for verifying the alternative signature.
-        - Otherwise, will need to get the public key from the issuer's certificate.
-        - `other_certs`: A list of other certificates to search for the related certificate.
-
-    Raises:
-    ------
-        - `ValueError`: If validation fails for the certificate or its extensions.
-        - `ValueError`: If the alternative issuer key is not found.
-        - `BadAsn1Data`: If the AlternativePublicKeyInfo extension contains remainder data.
-
-    Examples:
-    --------
-    | Verify Sun Hybrid Cert | ${cert} | ${issuer_cert} |
-
-    """
-    cert4 = sun_lamps_hybrid_scheme_00.convert_sun_hybrid_cert_to_target_form(cert, "Form4")
-
-    _verify_sun_hybrid_trad_sig(cert, issuer_cert)
-    if alt_issuer_key is None:
-        alt_issuer_key = may_extract_alt_key_from_cert(issuer_cert, other_certs=other_certs)
-        if alt_issuer_key is None:
-            raise ValueError("No alternative issuer key found.")
-
-    _ = sun_lamps_hybrid_scheme_00.validate_alt_pub_key_extn(cert4)
-    if check_alt_sig:
-        sun_lamps_hybrid_scheme_00.validate_alt_sig_extn(cert4, alt_issuer_key)
 
 
 def _get_catalyst_info_vals(
@@ -739,7 +591,6 @@ def may_extract_alt_key_from_cert(  # noqa: D417 Missing argument descriptions i
     extn_sia = get_extension(extensions, rfc5280.id_pe_subjectInfoAccess)
     extn_alt_spki = get_extension(extensions, id_ce_subjectAltPublicKeyInfo)
     extn_chameleon = get_extension(extensions, id_ce_deltaCertificateDescriptor)
-    extn_sun_hybrid = get_extension(extensions, id_altSubPubKeyExt)
 
     rel_cert_desc = None
     if extn_sia is not None:
@@ -755,11 +606,7 @@ def may_extract_alt_key_from_cert(  # noqa: D417 Missing argument descriptions i
     spki = cert["tbsCertificate"]["subjectPublicKeyInfo"]
     oid = spki["algorithm"]["algorithm"]
 
-    if extn_sun_hybrid is not None:
-        public_key = sun_lamps_hybrid_scheme_00.get_sun_hybrid_alt_pub_key(cert["tbsCertificate"]["extensions"])
-        if public_key is not None:
-            return public_key  # type: ignore
-        raise ValueError("Could not extract the Sun-Hybrid alternative public key.")
+
 
     if extn_rel_cert is not None and other_certs is not None:
         logging.info("Validate signature with related certificate.")

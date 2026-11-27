@@ -805,7 +805,6 @@ def validate_kemri_enveloped_data(  # noqa D417 undocumented-param
     recip_info_index: Strint = 0,
     for_pop: bool = False,
     expected_raw_data: bool = False,
-    is_sun_hybrid: bool = False,
 ) -> bytes:
     """Validate and decrypt the content inside a `EnvelopedData` structure for a `KEMRecipientInfo`.
 
@@ -819,7 +818,6 @@ def validate_kemri_enveloped_data(  # noqa D417 undocumented-param
         - `for_pop`: Whether the extraction is for proof-of-possession (POP) purposes (
         skip rid validation).
         - `expected_raw_data`: Whether to expect raw data in the `EncryptedContentInfo`.
-        - `is_sun_hybrid`: Whether the KEMRecipientInfo is from a Sun hybrid KEM request.
 
     Returns:
     -------
@@ -859,7 +857,6 @@ def validate_kemri_enveloped_data(  # noqa D417 undocumented-param
         server_cert=ee_cert,
         private_key=ee_key,
         for_pop=for_pop,
-        is_sun_hybrid=is_sun_hybrid,
     )
 
     return validate_encrypted_content_info(
@@ -2026,14 +2023,11 @@ def validate_recip_identifier(server_cert: rfc9480.CMPCertificate, rid: rfc9629.
 def _validate_kem_and_kemct(
     kem_recip_info: rfc9629.KEMRecipientInfo,
     private_key: Optional[KEMPrivateKey] = None,
-    is_sun_hybrid: bool = False,
 ) -> bytes:
     """Validate the KEM and KEMCT fields in a KEMRecipientInfo structure.
 
     :param kem_recip_info: The KEMRecipientInfo structure to validate.
     :param private_key: The private key to validate the OID against. Defaults to `None`.
-    :param is_sun_hybrid: A boolean indicating whether the KEM is a Sun hybrid KEM (skip the
-    cert KEM oid and KEMRI oid validation. Defaults to `False`.
     :return: The encapsulated key as bytes.
     :raises ValueError: If the KEM or KEMCT fields are missing or invalid.
     """
@@ -2050,7 +2044,7 @@ def _validate_kem_and_kemct(
     if not kem_recip_info["kemct"].isValue:
         raise ValueError("The `kemct` (encapsulated ciphertext) field of the `KEMRecipientInfo` structure is missing!")
 
-    if private_key is not None and not is_sun_hybrid:
+    if private_key is not None:
         key_oid = get_kem_oid_from_key(private_key)
         if key_oid != kem_oid:
             raise ValueError(
@@ -2102,7 +2096,6 @@ def validate_kem_recip_info_structure(
     server_cert: Optional[rfc9480.CMPCertificate] = None,
     for_pop: bool = False,
     private_key: Optional[KEMPrivateKey] = None,
-    is_sun_hybrid: bool = False,
 ) -> dict:
     """Validate a `KEMRecipientInfo` structure and ensure all necessary items are correctly set.
 
@@ -2117,8 +2110,6 @@ def validate_kem_recip_info_structure(
     :param for_pop: A boolean indicating whether the validation is for proof-of-possession.
     (skip the validation).
     :param private_key: The KEM private key to validate the OID against.
-    :param is_sun_hybrid: A boolean indicating whether the KEM is a Sun hybrid KEM (skip the
-    cert KEM oid and KEMRI oid validation. Defaults to `False`.
     :return: A dictionary containing the following:
         - `encrypted_key`: The encrypted content encryption key (CEK) as bytes.
         - `kemct`: The encapsulated ciphertext as bytes.
@@ -2152,7 +2143,7 @@ def validate_kem_recip_info_structure(
 
         validate_recip_identifier(server_cert, kem_recip_info["rid"])
 
-    kem_ct = _validate_kem_and_kemct(kem_recip_info, private_key, is_sun_hybrid)
+    kem_ct = _validate_kem_and_kemct(kem_recip_info, private_key)
 
     if not kem_recip_info["kdf"].isValue:
         raise ValueError("The `kdf` (Key Derivation Function) field of the `KEMRecipientInfo` structure is missing!")
@@ -2212,7 +2203,6 @@ def process_kem_recip_info(
     server_cert: Optional[rfc9480.CMPCertificate],
     private_key: KEMPrivateKey,
     for_pop: bool = False,
-    is_sun_hybrid: bool = False,
 ) -> bytes:
     """Process a `KEMRecipientInfo` structure to derive the content encryption key (CEK).
 
@@ -2225,8 +2215,6 @@ def process_kem_recip_info(
     :param private_key: The private key used for decapsulation.
     :param for_pop: A boolean indicating whether the validation is for proof-of-possession.
     (skipped `rid` validation).
-    :param is_sun_hybrid: A boolean indicating whether the KEM is a Sun hybrid KEM (skip the
-    cert KEM oid and KEMRI oid validation. Defaults to `False`.
     :return: The unwrapped content encryption key (CEK) as bytes.
     :raises ValueError: If validation or processing of the `KEMRecipientInfo` fails or the
     key cannot be unwrapped.
@@ -2239,7 +2227,6 @@ def process_kem_recip_info(
         server_cert=server_cert,
         for_pop=for_pop,
         private_key=private_key,
-        is_sun_hybrid=is_sun_hybrid,
     )
 
     if isinstance(private_key, CompositeKEMPrivateKey):
